@@ -36,6 +36,7 @@ import {
   TaskDetailRowIcon,
   TaskDetailRowValue,
 } from '../taskDetail.types';
+import TaskDetailListValue from './TaskDetailListValue';
 
 export interface TaskDetailSummaryProps {
   rows: TaskDetailRow[];
@@ -95,6 +96,9 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
           {value.tags.map((tag) => tag.tagFQN).join(', ')}
         </Typography>
       );
+
+    case 'list':
+      return <TaskDetailListValue items={value.items} title={value.title} />;
 
     case 'link':
       return (

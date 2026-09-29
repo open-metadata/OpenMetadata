@@ -45,7 +45,10 @@ export type TaskDetailRowValue =
   | { kind: 'date'; timestamp?: number }
   | { kind: 'users'; refs: EntityReference[] }
   | { kind: 'tags'; tags: TagLabel[] }
-  | { kind: 'link'; label: string; to: string };
+  | { kind: 'link'; label: string; to: string }
+  // A long list, e.g. requested columns: the first few inline, the rest in a
+  // popover headed by `title` (already translated).
+  | { kind: 'list'; items: string[]; title: string };
 
 export interface TaskDetailRow {
   /** Stable React key, unique within the descriptor. */

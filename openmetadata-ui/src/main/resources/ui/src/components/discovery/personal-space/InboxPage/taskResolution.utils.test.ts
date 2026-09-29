@@ -131,10 +131,10 @@ describe('getTaskResolutionSummary', () => {
 
 describe('getTaskStatusBadge', () => {
   it.each([
-    [TaskStatus.Open, 'warning'],
-    [TaskStatus.Pending, 'warning'],
-    [TaskStatus.InProgress, 'warning'],
-    [TaskStatus.ManualRevoke, 'warning'],
+    [TaskStatus.Open, 'gray'],
+    [TaskStatus.Pending, 'gray'],
+    [TaskStatus.InProgress, 'gray'],
+    [TaskStatus.ManualRevoke, 'gray'],
     [TaskStatus.Approved, 'success'],
     [TaskStatus.Granted, 'success'],
     [TaskStatus.Completed, 'success'],
@@ -204,7 +204,7 @@ describe('getTaskStatusLabel', () => {
         new Set(['u1']),
         t
       )
-    ).toEqual({ label: 'label.pending-your-approval', tone: 'warning' });
+    ).toEqual({ label: 'label.pending-approval', tone: 'brand' });
   });
 
   // A task assigned to the viewer's team is equally theirs to act on.
@@ -216,7 +216,7 @@ describe('getTaskStatusLabel', () => {
         new Set(['u1', 'team-1']),
         t
       )?.label
-    ).toBe('label.pending-your-approval');
+    ).toBe('label.pending-approval');
   });
 
   it('prefers the workflow stage name over a derived label', () => {

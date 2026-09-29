@@ -14,10 +14,9 @@
 import {
   Box,
   EmptyPlaceholder,
-  Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, Inbox01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
@@ -49,10 +48,15 @@ import { TASK_TYPE_DOT_CLASS } from '../components/TaskTypeIcon';
 import { isTaskOpen } from '../inbox.utils';
 import { getTaskTypeBadge } from '../taskDetail.utils';
 import {
+  DEFAULT_TASK_STATUS_BUCKETS,
+  filterTasksByStatus,
   filterTasksByTypes,
+  getStatusGroupForBuckets,
   groupTasksByType,
+  TaskStatusBucket,
   TaskTypeGroup,
 } from '../taskList.utils';
+import { useCurrentUserIds } from '../useCurrentUserIds';
 import { INBOX_COUNTS_QUERY_KEY } from '../useInboxCounts';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
 import { useIsScrolled } from '../useIsScrolled';
@@ -63,36 +67,34 @@ const SEARCH_DEBOUNCE_MS = 300;
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
 
-// React Query cache key for the All/Open/Closed badge totals. Shared so a task
-// mutation can invalidate them (see handleResolved / handleTaskUpdated).
-export const TASK_STATUS_COUNTS_QUERY_KEY = 'inbox-task-status-counts';
-const TASK_COUNTS_STALE_TIME = 30_000;
 // React Query cache key prefix for the task lists, one entry per scope, status
-// and search, so switching back to a list reads it from the cache.
+// group and search, so switching back to a list reads it from the cache.
 const TASK_LIST_QUERY_KEY = 'inbox-task-list';
 
-type TaskStatusFilter = 'all' | 'open' | 'closed';
+// The chosen statuses, compared order-free, e.g. to pick an empty state.
+const isSameSelection = (a: TaskStatusBucket[], b: TaskStatusBucket[]) =>
+  a.length === b.length && a.every((bucket) => b.includes(bucket));
 
-const STATUS_FILTERS: { id: TaskStatusFilter; labelKey: string }[] = [
-  { id: 'all', labelKey: 'label.all' },
-  { id: 'open', labelKey: 'label.open' },
-  { id: 'closed', labelKey: 'label.closed' },
-];
+const CLOSED_BUCKETS = new Set([
+  TaskStatusBucket.Approved,
+  TaskStatusBucket.Rejected,
+]);
 
-// Pulls the three per-status totals out of the useQueries results array.
-const getStatusCounts = (
-  countQueries: { data?: number }[]
-): Record<TaskStatusFilter, number> => ({
-  all: countQueries[0].data ?? 0,
-  open: countQueries[1].data ?? 0,
-  closed: countQueries[2].data ?? 0,
-});
+type EmptyStateKind = 'all' | 'open' | 'closed';
 
-// "all" loads every status (no statusGroup param); Open/Closed map to the API.
-const STATUS_GROUP: Record<TaskStatusFilter, TaskStatusGroup | undefined> = {
-  all: undefined,
-  open: TaskStatusGroup.Open,
-  closed: TaskStatusGroup.Closed,
+// The empty state follows the question being asked: work in flight reads
+// "nothing open", outcomes only read archival, anything else is generic.
+const getEmptyStateKind = (
+  statusFilter: TaskStatusBucket[]
+): EmptyStateKind => {
+  if (isSameSelection(statusFilter, DEFAULT_TASK_STATUS_BUCKETS)) {
+    return 'open';
+  }
+  const isClosedSelection =
+    statusFilter.length > 0 &&
+    statusFilter.every((bucket) => CLOSED_BUCKETS.has(bucket));
+
+  return isClosedSelection ? 'closed' : 'all';
 };
 
 export interface TasksTabProps {
@@ -255,9 +257,11 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [selectedTaskId, setSelectedTaskId] = useState<string>();
-  // Land on Open by default: it's the actionable set, and its total feeds the
-  // Tasks tab count so the badge matches the sidebar's open-task red bubble.
-  const [status, setStatus] = useState<TaskStatusFilter>('open');
+  // Land on work still in flight: it's the actionable set, and its total feeds
+  // the Tasks tab count so the badge matches the sidebar's open-task bubble.
+  const [statusFilter, setStatusFilter] = useState<TaskStatusBucket[]>(
+    DEFAULT_TASK_STATUS_BUCKETS
+  );
   const [search, setSearch] = useState('');
   // The query the server is filtering on. Kept apart from `search` so typing
   // stays responsive while the request trails it.
@@ -266,27 +270,11 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // Kinds as getTaskTypeKey names them, so types sharing a label filter as one.
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
 
-  // Per-status totals for the All / Open / Closed badges, fetched cheaply
-  // (limit=1, server paging.total) and cached by React Query keyed on the active
-  // scope. A work queue has no date window: an open task never ages out. The
-  // keyed cache dedupes the fetch across tab-switch remounts and StrictMode's
-  // dev double-invoke; mutations invalidate the key.
   const scope = aboutEntity ?? 'me';
-  const countQueries = useQueries({
-    queries: [undefined, TaskStatusGroup.Open, TaskStatusGroup.Closed].map(
-      (statusGroup) => ({
-        queryKey: [TASK_STATUS_COUNTS_QUERY_KEY, scope, statusGroup ?? 'all'],
-        queryFn: () =>
-          (aboutEntity ? listTasks : listMyVisibleTasks)({
-            statusGroup,
-            limit: 1,
-            ...(aboutEntity ? { aboutEntity } : {}),
-          }).then((res) => res.paging?.total ?? 0),
-        staleTime: TASK_COUNTS_STALE_TIME,
-      })
-    ),
-  });
-  const statusCounts = getStatusCounts(countQueries);
+  const currentUserIds = useCurrentUserIds();
+  // Fetch only the group the chosen statuses can come from; the options within
+  // it are told apart on the client (see filterTasksByStatus).
+  const statusGroup = getStatusGroupForBuckets(statusFilter);
 
   // One trailing commit per pause, so a typed word costs one request, not one
   // per keystroke. Recreated only if the component remounts.
@@ -309,7 +297,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const fetchPage = useCallback(
     (after?: string) => {
       const params = {
-        statusGroup: STATUS_GROUP[status],
+        statusGroup,
         fields: TASK_FIELDS,
         limit: TASK_LIMIT,
         after,
@@ -322,7 +310,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         ? listTasks({ ...params, aboutEntity })
         : listMyVisibleTasks(params);
     },
-    [status, aboutEntity, searchQuery]
+    [statusGroup, aboutEntity, searchQuery]
   );
 
   const {
@@ -335,7 +323,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setItems,
     setTotal,
   } = useInboxInfiniteList<Task>(
-    [TASK_LIST_QUERY_KEY, scope, status, searchQuery],
+    [TASK_LIST_QUERY_KEY, scope, statusGroup ?? 'all', searchQuery],
     fetchPage
   );
 
@@ -343,15 +331,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
     onCountChange?.(total);
   }, [total, onCountChange]);
 
-  // Invalidate the cached badge totals so a task action re-fetches them.
-  const refreshStatusCounts = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: [TASK_STATUS_COUNTS_QUERY_KEY],
-    });
-  }, [queryClient]);
-
-  // A task action can move a task between the All/Open/Closed lists, so the
-  // cached ones go stale. `refetch` re-reads the showing list now; without it
+  // A task action can move a task between the status groups, so the cached
+  // lists go stale. `refetch` re-reads the showing list now; without it
   // the showing list keeps its in-place edit and every list re-reads on its
   // next visit.
   const invalidateTaskLists = useCallback(
@@ -364,11 +345,17 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [queryClient, scope]
   );
 
-  // The server has no `type` filter on the scoped lists, so the chosen types
-  // narrow the loaded pages here; search and status stay server-side.
+  // The server has no `type` filter on the scoped lists, and statuses such as
+  // "Pending approval" are the viewer's own reading, so both narrow the loaded
+  // pages here; search and the status group stay server-side.
   const visibleTasks = useMemo(
-    () => filterTasksByTypes(tasks, typeFilter),
-    [tasks, typeFilter]
+    () =>
+      filterTasksByStatus(
+        filterTasksByTypes(tasks, typeFilter),
+        statusFilter,
+        currentUserIds
+      ),
+    [tasks, typeFilter, statusFilter, currentUserIds]
   );
 
   // Grouped once here so the list and the default selection agree on order.
@@ -403,15 +390,15 @@ const TasksTab: React.FC<TasksTabProps> = ({
 
   const handleResolved = useCallback(
     (resolved: Task) => {
-      // A resolved task only leaves the list if it no longer matches the active
-      // filter. A Data Access Request that was just Approved stays Open (it is
-      // awaiting grant), so removing it optimistically would make it vanish and
-      // then reappear on refresh — update it in place instead.
-      const matchesOpenFilter =
-        status === 'open' ? isTaskOpen(resolved) : !isTaskOpen(resolved);
-      const stillVisible = status === 'all' ? true : matchesOpenFilter;
+      // A resolved task leaves the fetched set only if it left the status group
+      // being fetched; the status filter hides it otherwise. A Data Access
+      // Request that was just Approved stays open (it is awaiting grant), so
+      // removing it would make it vanish and reappear on refresh.
+      const leftStatusGroup =
+        (statusGroup === TaskStatusGroup.Open && !isTaskOpen(resolved)) ||
+        (statusGroup === TaskStatusGroup.Closed && isTaskOpen(resolved));
 
-      if (stillVisible) {
+      if (!leftStatusGroup) {
         setItems((prev) =>
           prev.map((task) => (task.id === resolved.id ? resolved : task))
         );
@@ -421,17 +408,9 @@ const TasksTab: React.FC<TasksTabProps> = ({
       }
       // The transition may shift the task across buckets, so re-sync the counts.
       invalidateTaskLists();
-      refreshStatusCounts();
       syncInboxCountBadge();
     },
-    [
-      status,
-      setItems,
-      setTotal,
-      invalidateTaskLists,
-      refreshStatusCounts,
-      syncInboxCountBadge,
-    ]
+    [statusGroup, setItems, setTotal, invalidateTaskLists, syncInboxCountBadge]
   );
 
   // Assignee changes can move the task out of the current user's visible set
@@ -439,9 +418,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // otherwise the rows and the count badges drift apart.
   const handleTaskUpdated = useCallback(() => {
     invalidateTaskLists(true);
-    refreshStatusCounts();
     syncInboxCountBadge();
-  }, [invalidateTaskLists, refreshStatusCounts, syncInboxCountBadge]);
+  }, [invalidateTaskLists, syncInboxCountBadge]);
 
   // A comment change doesn't affect the task's bucket or visibility, so patch the
   // row in place instead of refetching the list.
@@ -455,47 +433,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [setItems, invalidateTaskLists]
   );
 
-  // A segmented control on a gray track: the selected option is a raised white
-  // chip with no outline, and its total takes the brand colour.
-  const statusFilter = (
-    <Tabs
-      className="tw:w-fit"
-      selectedKey={status}
-      onSelectionChange={(key) => setStatus(key as TaskStatusFilter)}>
-      <Tabs.List
-        className="tw:rounded-lg tw:bg-tertiary tw:p-1 tw:outline-0"
-        size="sm"
-        type="button-border">
-        {STATUS_FILTERS.map(({ id, labelKey }) => (
-          <Tabs.Item
-            className={({ isSelected }) =>
-              classNames(
-                'tw:gap-1.5 tw:px-3 tw:py-1.5 tw:text-xs tw:font-semibold',
-                isSelected ? 'tw:text-primary' : 'tw:text-tertiary'
-              )
-            }
-            id={id}
-            key={id}>
-            {({ isSelected }) => (
-              <>
-                {t(labelKey)}
-                <span
-                  className={
-                    isSelected ? 'tw:text-brand-secondary' : 'tw:text-tertiary'
-                  }>
-                  {statusCounts[id]}
-                </span>
-              </>
-            )}
-          </Tabs.Item>
-        ))}
-      </Tabs.List>
-    </Tabs>
-  );
-
-  // A dedicated empty state per status: All = generic "nothing to do", Open =
-  // "no open tasks", Closed = archival. All render the same blank placeholder.
-  const emptyStateByStatus: Record<TaskStatusFilter, ReactNode> = {
+  const emptyStates: Record<EmptyStateKind, ReactNode> = {
     all: (
       <EmptyPlaceholder
         data-testid="inbox-tasks-empty"
@@ -524,7 +462,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       />
     ),
   };
-  const emptyState = emptyStateByStatus[status];
+  const emptyState = emptyStates[getEmptyStateKind(statusFilter)];
 
   return (
     <Box
@@ -558,6 +496,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
             typeFilter={typeFilter}
             onGroupingChange={setGrouping}
             onSearchChange={handleSearchChange}
+            onStatusFilterChange={setStatusFilter}
             onTypeFilterChange={setTypeFilter}
           />
         }

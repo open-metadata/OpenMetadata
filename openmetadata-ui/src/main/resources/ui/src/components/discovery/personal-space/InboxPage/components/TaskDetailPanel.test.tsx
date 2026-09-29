@@ -350,9 +350,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
-  Typography: ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
-  ),
+  Typography: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children?: ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={testId}>{children}</span>,
   EmptyPlaceholder: ({
     title,
     description,
@@ -1166,8 +1170,25 @@ describe('TaskDetailPanel', () => {
       await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
       expect(screen.getByTestId('task-status-badge')).toHaveTextContent(
-        'label.pending-your-approval'
+        'label.pending-approval'
       );
+      expect(screen.getByTestId('task-status-badge')).toHaveAttribute(
+        'data-color',
+        'brand'
+      );
+    });
+
+    // The design's meta row: status badge, then the id, then the type.
+    it('leads the header with the status, then the id and the type', async () => {
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      const badge = screen.getByTestId('task-status-badge');
+      const type = screen.getByTestId('task-type-badge');
+
+      expect(
+        badge.compareDocumentPosition(type) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(type).not.toHaveTextContent('·');
     });
 
     it('reads an open task assigned to someone else as assigned', async () => {

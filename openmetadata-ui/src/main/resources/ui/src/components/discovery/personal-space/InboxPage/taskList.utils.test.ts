@@ -14,15 +14,20 @@
 import {
   Task,
   TaskAvailableTransition,
+  TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { TaskResolutionType } from '../../../../rest/tasksAPI';
 import {
+  filterTasksByStatus,
   filterTasksByTypes,
   formatEntityType,
+  getStatusGroupForBuckets,
+  getTaskStatusBucket,
   groupTasksByType,
   isApproveTransition,
   isRejectTransition,
+  TaskStatusBucket,
 } from './taskList.utils';
 
 const task = (id: string, type: TaskType): Task =>
@@ -151,5 +156,78 @@ describe('filterTasksByTypes', () => {
 
   it('treats an empty choice as no filter at all', () => {
     expect(filterTasksByTypes(tasks, [])).toHaveLength(2);
+  });
+});
+
+describe('getTaskStatusBucket', () => {
+  const me = new Set(['u1', 'team-1']);
+  const bucketOf = (task: Partial<Task>) =>
+    getTaskStatusBucket(task as Task, me);
+
+  it.each([
+    [{ status: TaskStatus.Open }, TaskStatusBucket.Open],
+    [{ status: TaskStatus.InProgress }, TaskStatusBucket.InReview],
+    [{ status: TaskStatus.Pending }, TaskStatusBucket.InReview],
+    [{ status: TaskStatus.Approved }, TaskStatusBucket.Approved],
+    [{ status: TaskStatus.Granted }, TaskStatusBucket.Approved],
+    [{ status: TaskStatus.Completed }, TaskStatusBucket.Approved],
+    [{ status: TaskStatus.Rejected }, TaskStatusBucket.Rejected],
+    [{ status: TaskStatus.Revoked }, TaskStatusBucket.Rejected],
+    [{ status: TaskStatus.Cancelled }, undefined],
+    [{ status: TaskStatus.Expired }, undefined],
+  ])('files %o under %s', (task, bucket) => {
+    expect(bucketOf(task)).toBe(bucket);
+  });
+
+  it('files an open task the viewer or their team holds as pending approval', () => {
+    expect(
+      bucketOf({
+        status: TaskStatus.InProgress,
+        assignees: [{ id: 'team-1' }],
+      } as Partial<Task>)
+    ).toBe(TaskStatusBucket.PendingApproval);
+  });
+
+  // Approved but not yet granted: open, yet the outcome is what it reads as.
+  it('files an approved access request under Approved though it is open', () => {
+    expect(
+      bucketOf({
+        status: TaskStatus.Approved,
+        type: TaskType.DataAccessRequest,
+        assignees: [{ id: 'u1' }],
+      } as Partial<Task>)
+    ).toBe(TaskStatusBucket.Approved);
+  });
+});
+
+describe('filterTasksByStatus', () => {
+  const tasks = [
+    { id: 'a', status: TaskStatus.Open },
+    { id: 'b', status: TaskStatus.Rejected },
+    { id: 'c', status: TaskStatus.Cancelled },
+  ] as unknown as Task[];
+
+  it('keeps the tasks under the chosen options', () => {
+    expect(
+      filterTasksByStatus(tasks, [TaskStatusBucket.Rejected], new Set()).map(
+        ({ id }) => id
+      )
+    ).toEqual(['b']);
+  });
+
+  it('keeps every task, even those under no option, with nothing chosen', () => {
+    expect(filterTasksByStatus(tasks, [], new Set())).toHaveLength(3);
+  });
+});
+
+describe('getStatusGroupForBuckets', () => {
+  it.each([
+    [[TaskStatusBucket.Open, TaskStatusBucket.PendingApproval], 'open'],
+    [[TaskStatusBucket.Rejected], 'closed'],
+    [[TaskStatusBucket.Approved], undefined],
+    [[TaskStatusBucket.Open, TaskStatusBucket.Rejected], undefined],
+    [[], undefined],
+  ])('fetches %o from %s', (buckets, group) => {
+    expect(getStatusGroupForBuckets(buckets)).toBe(group);
   });
 });

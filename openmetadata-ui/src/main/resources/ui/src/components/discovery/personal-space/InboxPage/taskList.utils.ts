@@ -14,9 +14,11 @@
 import {
   Task,
   TaskAvailableTransition,
+  TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
-import { TaskResolutionType } from '../../../../rest/tasksAPI';
+import { TaskResolutionType, TaskStatusGroup } from '../../../../rest/tasksAPI';
+import { isTaskOpen } from './inbox.utils';
 import { getTaskTypeKey } from './taskDetail.utils';
 
 export const formatEntityType = (type?: string): string => {
@@ -106,3 +108,115 @@ export const filterTasksByTypes = (tasks: Task[], keys: string[]): Task[] =>
   keys.length === 0
     ? tasks
     : tasks.filter((task) => keys.includes(getTaskTypeKey(task)));
+
+/**
+ * The Status filter's options. "Pending approval" is the viewer's own queue —
+ * derived from who holds the task, not a backend status — and the rest group
+ * the backend statuses the way the queue reads them.
+ */
+export enum TaskStatusBucket {
+  Open = 'open',
+  PendingApproval = 'pending-approval',
+  InReview = 'in-review',
+  Approved = 'approved',
+  Rejected = 'rejected',
+}
+
+export const TASK_STATUS_BUCKET_OPTIONS: {
+  value: TaskStatusBucket;
+  labelKey: string;
+}[] = [
+  { value: TaskStatusBucket.Open, labelKey: 'label.open' },
+  {
+    value: TaskStatusBucket.PendingApproval,
+    labelKey: 'label.pending-approval',
+  },
+  { value: TaskStatusBucket.InReview, labelKey: 'label.in-review' },
+  { value: TaskStatusBucket.Approved, labelKey: 'label.approved' },
+  { value: TaskStatusBucket.Rejected, labelKey: 'label.rejected' },
+];
+
+/** The queue opens on work still in flight. */
+export const DEFAULT_TASK_STATUS_BUCKETS: TaskStatusBucket[] = [
+  TaskStatusBucket.Open,
+  TaskStatusBucket.PendingApproval,
+  TaskStatusBucket.InReview,
+];
+
+const OPEN_BUCKETS = new Set<TaskStatusBucket>(DEFAULT_TASK_STATUS_BUCKETS);
+
+const OUTCOME_BUCKET: Partial<Record<TaskStatus, TaskStatusBucket>> = {
+  [TaskStatus.Approved]: TaskStatusBucket.Approved,
+  [TaskStatus.Granted]: TaskStatusBucket.Approved,
+  [TaskStatus.Completed]: TaskStatusBucket.Approved,
+  [TaskStatus.Rejected]: TaskStatusBucket.Rejected,
+  [TaskStatus.Revoked]: TaskStatusBucket.Rejected,
+};
+
+const IN_REVIEW_STATUSES = new Set<TaskStatus>([
+  TaskStatus.InProgress,
+  TaskStatus.Pending,
+  TaskStatus.ManualRevoke,
+]);
+
+/**
+ * Which Status option a task falls under, or none (Cancelled, Expired, Failed).
+ *
+ * The outcome comes first, so an access request approved but not yet granted
+ * reads Approved even though it is still open. Among open tasks, one the viewer
+ * holds is theirs to act on, which outranks the stage it is in.
+ */
+export const getTaskStatusBucket = (
+  task: Pick<Task, 'status' | 'type' | 'assignees'>,
+  currentUserIds: ReadonlySet<string>
+): TaskStatusBucket | undefined => {
+  const outcome = OUTCOME_BUCKET[task.status];
+  if (outcome || !isTaskOpen(task)) {
+    return outcome;
+  }
+  if ((task.assignees ?? []).some(({ id }) => currentUserIds.has(id))) {
+    return TaskStatusBucket.PendingApproval;
+  }
+
+  return IN_REVIEW_STATUSES.has(task.status)
+    ? TaskStatusBucket.InReview
+    : TaskStatusBucket.Open;
+};
+
+/** Tasks under any of the chosen options; no choice keeps every task. */
+export const filterTasksByStatus = (
+  tasks: Task[],
+  buckets: TaskStatusBucket[],
+  currentUserIds: ReadonlySet<string>
+): Task[] => {
+  if (buckets.length === 0) {
+    return tasks;
+  }
+  const chosen = new Set(buckets);
+
+  return tasks.filter((task) => {
+    const bucket = getTaskStatusBucket(task, currentUserIds);
+
+    return bucket !== undefined && chosen.has(bucket);
+  });
+};
+
+/**
+ * The server-side status group that covers the chosen options, so the list
+ * fetches only what the filter can show. Approved spans both groups — an
+ * approved access request stays open until granted — so it fetches all.
+ */
+export const getStatusGroupForBuckets = (
+  buckets: TaskStatusBucket[]
+): TaskStatusGroup | undefined => {
+  if (buckets.length === 0) {
+    return undefined;
+  }
+  if (buckets.every((bucket) => OPEN_BUCKETS.has(bucket))) {
+    return TaskStatusGroup.Open;
+  }
+
+  return buckets.every((bucket) => bucket === TaskStatusBucket.Rejected)
+    ? TaskStatusGroup.Closed
+    : undefined;
+};

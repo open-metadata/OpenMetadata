@@ -15,12 +15,10 @@ import {
   Badge,
   Box,
   Button,
-  Dot,
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { DotsVertical } from '@untitledui/icons';
-import classNames from 'classnames';
 import React, { ComponentProps, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserTeamSelectableList } from '../../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -29,7 +27,6 @@ import { EntityReference } from '../../../../../generated/entity/teams/user';
 import { TaskTypeBadge } from '../taskDetail.types';
 import { TaskStatusBadge, TaskStatusTone } from '../taskResolution.utils';
 import { splitTaskActions, TaskResolveAction } from '../taskResolve.utils';
-import { TASK_TYPE_ICON } from './TaskTypeIcon';
 
 export interface TaskDetailHeaderProps {
   task: Task;
@@ -45,25 +42,17 @@ export interface TaskDetailHeaderProps {
 
 type TaskActionButtonColor = ComponentProps<typeof Button>['color'];
 
-// The status reads as a coloured dot and word beside the id, not as a pill:
-// the type chip is the header's one badge. The word sits a shade darker than
-// its dot, as in the design.
-const STATUS_TONE_CLASS: Record<TaskStatusTone, { text: string; dot: string }> =
-  {
-    success: {
-      text: 'tw:text-utility-success-700',
-      dot: 'tw:text-fg-success-primary',
-    },
-    error: {
-      text: 'tw:text-utility-error-700',
-      dot: 'tw:text-fg-error-primary',
-    },
-    warning: {
-      text: 'tw:text-utility-warning-700',
-      dot: 'tw:text-fg-warning-primary',
-    },
-    gray: { text: 'tw:text-tertiary', dot: 'tw:text-fg-quaternary' },
-  };
+// The status leads the header as a badge; its tone picks the colour, so
+// "Pending approval" reads blue, an outcome green or red, the rest neutral.
+const STATUS_BADGE_COLOR: Record<
+  TaskStatusTone,
+  ComponentProps<typeof Badge>['color']
+> = {
+  brand: 'brand',
+  success: 'success',
+  error: 'error',
+  gray: 'gray',
+};
 
 const getTaskActionTestId = (action: TaskResolveAction): string => {
   if (action.kind === 'approve') {
@@ -159,7 +148,6 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { primary, secondary, overflow } = splitTaskActions(actions);
-  const TypeIcon = TASK_TYPE_ICON[typeBadge.icon];
   // An assignee action opens a picker rather than firing, so it cannot live in
   // the menu — it stays a button even when it did not win a header slot.
   const menuActions = overflow.filter((action) => action.kind !== 'assignee');
@@ -167,39 +155,34 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
 
   return (
     <Box align="center" className="tw:justify-between tw:gap-3 tw:mb-2" gap={3}>
+      {/* Status, then id and type: the one question a viewer brings is
+          whether the task waits on them. */}
       <Box align="center" className="tw:min-w-0 tw:flex-wrap" gap={2}>
-        <Badge
-          color={typeBadge.color}
-          data-testid="task-type-badge"
-          size="md"
-          type="color">
-          <Box align="center" className="tw:gap-1.5">
-            <TypeIcon height={14} width={14} />
-            {typeBadge.label}
-          </Box>
-        </Badge>
-        <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
+        {statusBadge && (
+          <Badge
+            color={STATUS_BADGE_COLOR[statusBadge.tone]}
+            data-color={statusBadge.tone}
+            data-testid="task-status-badge"
+            size="sm"
+            type="color">
+            {statusBadge.label}
+          </Badge>
+        )}
+        <Typography
+          className="tw:text-secondary"
+          size="text-xs"
+          weight="medium">
           {task.taskId ?? ''}
         </Typography>
-        {statusBadge && (
-          <span aria-hidden className="tw:h-3.5 tw:w-px tw:bg-border-primary" />
-        )}
-        {statusBadge && (
-          <span
-            className={classNames(
-              'tw:inline-flex tw:items-center tw:gap-1.5 tw:text-xs tw:font-medium',
-              STATUS_TONE_CLASS[statusBadge.tone].text
-            )}
-            data-color={statusBadge.tone}
-            data-testid="task-status-badge">
-            <Dot
-              aria-hidden
-              className={STATUS_TONE_CLASS[statusBadge.tone].dot}
-              size="sm"
-            />
-            {statusBadge.label}
-          </span>
-        )}
+        <span aria-hidden className="tw:text-xs tw:text-quaternary">
+          ·
+        </span>
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="task-type-badge"
+          size="text-xs">
+          {typeBadge.label}
+        </Typography>
       </Box>
 
       <Box align="center" className="tw:shrink-0" gap={2}>
