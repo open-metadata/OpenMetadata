@@ -18,6 +18,7 @@ import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventCon
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
 import com.google.common.util.concurrent.Striped;
+import io.dropwizard.db.DataSourceFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.List;
@@ -87,6 +88,9 @@ public class EventSubscriptionScheduler {
   @Getter private final Scheduler alertsScheduler;
   private static final String SCHEDULER_NAME = "OMEventSubScheduler";
   private static final int SCHEDULER_THREAD_COUNT = 10;
+  // A trigger later than this is skipped by acquisition until the misfire handler, which rescans at
+  // this period, picks it up again.
+  static final long MISFIRE_THRESHOLD_MS = 5_000L;
 
   // Derived from the scheduler's instance name, which Quartz already requires to be unique per
   // cluster. DBConnectionManager is a process-wide singleton whose registration is an unguarded
@@ -127,33 +131,8 @@ public class EventSubscriptionScheduler {
       OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
       throws SchedulerException {
 
-    Properties properties = new Properties();
-    properties.put("org.quartz.scheduler.instanceName", SCHEDULER_NAME);
-    properties.put("org.quartz.scheduler.instanceId", "AUTO");
-    properties.put("org.quartz.scheduler.skipUpdateCheck", "true");
-    properties.put("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
-    properties.put("org.quartz.threadPool.threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
-    properties.put("org.quartz.threadPool.threadPriority", "5");
-    properties.put("org.quartz.jobStore.misfireThreshold", "60000");
-    properties.put("org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
-    properties.put("org.quartz.jobStore.useProperties", "true");
-    properties.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
-    properties.put("org.quartz.jobStore.isClustered", "true");
-    // No org.quartz.dataSource.* properties: those make Quartz build its own c3p0 pool from a
-    // captured static password. The pool is registered against this name below.
-    properties.put("org.quartz.jobStore.dataSource", DATA_SOURCE_NAME);
-    if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
-      properties.put(
-          "org.quartz.jobStore.driverDelegateClass",
-          "org.quartz.impl.jdbcjobstore.StdJDBCDelegate");
-    } else {
-      properties.put(
-          "org.quartz.jobStore.driverDelegateClass",
-          "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate");
-    }
-
     StdSchedulerFactory factory = new StdSchedulerFactory();
-    factory.initialize(properties);
+    factory.initialize(quartzProperties(config.getDataSourceFactory()));
     // Must precede getScheduler(): that is where the job store resolves its datasource name.
     DBConnectionManager.getInstance()
         .addConnectionProvider(
@@ -174,6 +153,32 @@ public class EventSubscriptionScheduler {
     LOG.info(
         "Event Subscription Scheduler started. Instance ID: {}",
         this.alertsScheduler.getSchedulerInstanceId());
+  }
+
+  static Properties quartzProperties(DataSourceFactory database) {
+    Properties properties = new Properties();
+    properties.put("org.quartz.scheduler.instanceName", SCHEDULER_NAME);
+    properties.put("org.quartz.scheduler.instanceId", "AUTO");
+    properties.put("org.quartz.scheduler.skipUpdateCheck", "true");
+    properties.put("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
+    properties.put("org.quartz.threadPool.threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
+    properties.put("org.quartz.threadPool.threadPriority", "5");
+    properties.put("org.quartz.jobStore.misfireThreshold", String.valueOf(MISFIRE_THRESHOLD_MS));
+    properties.put("org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
+    properties.put("org.quartz.jobStore.useProperties", "true");
+    properties.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
+    properties.put("org.quartz.jobStore.isClustered", "true");
+    // No org.quartz.dataSource.* properties: those make Quartz build its own c3p0 pool from a
+    // captured static password. The pool is registered against this name by the constructor.
+    properties.put("org.quartz.jobStore.dataSource", DATA_SOURCE_NAME);
+    properties.put("org.quartz.jobStore.driverDelegateClass", driverDelegate(database));
+    return properties;
+  }
+
+  private static String driverDelegate(DataSourceFactory database) {
+    return ConnectionType.MYSQL.label.equals(database.getDriverClass())
+        ? "org.quartz.impl.jdbcjobstore.StdJDBCDelegate"
+        : "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate";
   }
 
   @SneakyThrows
@@ -377,13 +382,19 @@ public class EventSubscriptionScheduler {
     return jobBuilder.build();
   }
 
-  private Trigger trigger(EventSubscription eventSubscription) {
+  static Trigger trigger(EventSubscription eventSubscription) {
     return TriggerBuilder.newTrigger()
         .withIdentity(eventSubscription.getId().toString(), ALERT_TRIGGER_GROUP)
-        .withSchedule(
-            SimpleScheduleBuilder.repeatSecondlyForever(eventSubscription.getPollInterval()))
+        .withSchedule(pollerSchedule(eventSubscription.getPollInterval()))
         .startNow()
         .build();
+  }
+
+  // A late poller fires once now and re-anchors its timetable: no wait for the next slot and no
+  // burst of catch-up runs.
+  private static SimpleScheduleBuilder pollerSchedule(int intervalSeconds) {
+    return SimpleScheduleBuilder.repeatSecondlyForever(intervalSeconds)
+        .withMisfireHandlingInstructionNowWithExistingCount();
   }
 
   private SubscriptionStatus getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status status) {
@@ -890,7 +901,7 @@ public class EventSubscriptionScheduler {
   private static Trigger buildAuditLogTrigger() {
     return TriggerBuilder.newTrigger()
         .withIdentity(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP)
-        .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(AUDIT_LOG_POLL_INTERVAL_SECONDS))
+        .withSchedule(pollerSchedule(AUDIT_LOG_POLL_INTERVAL_SECONDS))
         .startNow()
         .build();
   }
