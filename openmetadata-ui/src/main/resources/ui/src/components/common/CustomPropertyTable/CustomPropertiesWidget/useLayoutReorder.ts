@@ -30,20 +30,28 @@ export const useLayoutReorder = (
   onMove: (fromIndex: number, toIndex: number) => void
 ) => {
   const [dropTarget, setDropTarget] = useState<LayoutDropTarget>();
+  // The drop can fire before the hover's state update renders (a quick drag),
+  // so the drop reads the latest target from a ref, not from state.
+  const dropTargetRef = useRef<LayoutDropTarget>();
 
-  const handleHover = (fromIndex: number, target: LayoutDropTarget) => {
-    const next =
-      getLayoutDropIndex(fromIndex, target) === undefined ? undefined : target;
+  const updateDropTarget = (next?: LayoutDropTarget) => {
+    dropTargetRef.current = next;
     setDropTarget((current) => (isEqual(current, next) ? current : next));
   };
 
-  const clearDropTarget = () => setDropTarget(undefined);
+  const handleHover = (fromIndex: number, target: LayoutDropTarget) =>
+    updateDropTarget(
+      getLayoutDropIndex(fromIndex, target) === undefined ? undefined : target
+    );
+
+  const clearDropTarget = () => updateDropTarget(undefined);
 
   const [, drop] = useDrop<DragItem>({
     accept: dragType,
     drop: (dragged) => {
-      const toIndex = dropTarget
-        ? getLayoutDropIndex(dragged.index, dropTarget)
+      const target = dropTargetRef.current;
+      const toIndex = target
+        ? getLayoutDropIndex(dragged.index, target)
         : undefined;
       if (toIndex !== undefined) {
         onMove(dragged.index, toIndex);
