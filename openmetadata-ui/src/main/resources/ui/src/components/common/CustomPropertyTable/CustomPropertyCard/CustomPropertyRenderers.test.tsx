@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { CustomPropertyCard } from './CustomPropertyCard';
 
 jest.mock('../../../Database/SchemaEditor/SchemaEditor', () =>
@@ -70,6 +71,10 @@ jest.mock('../../RichTextEditor/RichTextEditorPreviewerV1', () =>
 
 jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('../../../../utils/EntityUtilClassBase', () => ({
@@ -298,6 +303,43 @@ describe('Custom property renderers', () => {
         displayText: 'Runbook',
       });
     });
+
+    it('requires a url when display text is set', async () => {
+      const { onValueSave } = renderCard(createProperty('hyperlink-cp'), {
+        url: 'https://example.com',
+      });
+
+      await user.click(screen.getByTestId('edit-icon'));
+      await user.clear(screen.getByTestId('hyperlink-url-input'));
+      await user.type(
+        screen.getByTestId('hyperlink-display-text-input'),
+        'Runbook'
+      );
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      expect(onValueSave).not.toHaveBeenCalled();
+      expect(screen.getByText('label.field-required')).toBeInTheDocument();
+    });
+
+    it('clears the value when url and display text are empty', async () => {
+      const { onValueSave } = renderCard(createProperty('hyperlink-cp'), {
+        url: 'https://example.com',
+      });
+
+      await user.click(screen.getByTestId('edit-icon'));
+      await user.clear(screen.getByTestId('hyperlink-url-input'));
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      expect(onValueSave).toHaveBeenCalledWith(expect.anything(), undefined);
+    });
+
+    it('shows an example url while empty', () => {
+      renderCard(createProperty('hyperlink-cp'), undefined);
+
+      expect(screen.getByTestId('no-data')).toHaveTextContent(
+        'message.example-value'
+      );
+    });
   });
 
   describe('entity reference', () => {
@@ -335,6 +377,89 @@ describe('Custom property renderers', () => {
         expect.anything(),
         references.slice(0, 2)
       );
+    });
+
+    it('adds a searched reference to the list', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue({
+        hits: {
+          hits: [{ _source: { ...references[3], entityType: 'table' } }],
+          total: { value: 1 },
+        },
+      });
+      const { onValueSave } = renderCard(
+        createProperty('entityReferenceList', ['table']),
+        references.slice(0, 1)
+      );
+
+      await user.click(screen.getByTestId('edit-icon'));
+      await user.type(screen.getByRole('combobox'), 'table');
+      await user.click(await screen.findByTestId('table_3'));
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      expect(onValueSave).toHaveBeenCalledWith(expect.anything(), [
+        references[0],
+        expect.objectContaining({ id: 'id-3', type: 'table' }),
+      ]);
+    });
+
+    it('swaps a single reference after clearing the current one', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue({
+        hits: {
+          hits: [{ _source: { ...references[1], entityType: 'table' } }],
+          total: { value: 1 },
+        },
+      });
+      const { onValueSave } = renderCard(
+        createProperty('entityReference', ['table']),
+        references[0]
+      );
+
+      await user.click(screen.getByTestId('edit-icon'));
+      await user.click(
+        within(screen.getByTestId('autocomplete-selected-item')).getByRole(
+          'button'
+        )
+      );
+      await user.type(screen.getByRole('combobox'), 'table');
+      await user.click(await screen.findByTestId('table_1'));
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      expect(onValueSave).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ id: 'id-1' })
+      );
+    });
+
+    it('removes a selected reference', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue({
+        hits: { hits: [], total: { value: 0 } },
+      });
+      const { onValueSave } = renderCard(
+        createProperty('entityReferenceList', ['table']),
+        references.slice(0, 2)
+      );
+
+      await user.click(screen.getByTestId('edit-icon'));
+      const [firstChip] = screen.getAllByTestId('autocomplete-selected-item');
+      await user.click(within(firstChip).getByRole('button'));
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      expect(onValueSave).toHaveBeenCalledWith(expect.anything(), [
+        references[1],
+      ]);
+    });
+
+    it('shows an error toast when the search fails', async () => {
+      const error = new Error('search failed');
+      (searchQuery as jest.Mock).mockRejectedValue(error);
+      renderCard(
+        createProperty('entityReferenceList', ['table']),
+        references.slice(0, 1)
+      );
+
+      await user.click(screen.getByTestId('edit-icon'));
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
     });
   });
 
@@ -423,6 +548,71 @@ describe('Custom property renderers', () => {
       expect(interval).toHaveAttribute('data-end', String(end));
       expect(screen.getByTestId('time-interval-start')).toBeInTheDocument();
       expect(screen.getByTestId('time-interval-end')).toBeInTheDocument();
+    });
+
+    it('renders a legacy single-bound value as plain text', () => {
+      renderCard(createProperty('timeInterval'), { start });
+
+      expect(screen.getByTestId('time-interval-value')).toHaveTextContent(
+        String(start)
+      );
+      expect(
+        screen.queryByTestId('time-interval-start')
+      ).not.toBeInTheDocument();
+    });
+
+    it('keeps manual edits after switching back to the calendar', async () => {
+      const { onValueSave } = renderCard(createProperty('timeInterval'), {
+        start,
+        end,
+      });
+
+      await user.click(screen.getByTestId('edit-icon'));
+      await user.click(screen.getByRole('switch'));
+      const startInput = screen.getByTestId('start-input');
+      await user.clear(startInput);
+      await user.type(startInput, '1790195280000');
+      await user.click(screen.getByRole('switch'));
+
+      expect(screen.queryByTestId('start-input')).not.toBeInTheDocument();
+
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      expect(onValueSave).toHaveBeenCalledWith(expect.anything(), {
+        start: 1790195280000,
+        end,
+      });
+    });
+
+    it('moves both bounds to the picked calendar days', async () => {
+      const { onValueSave } = renderCard(createProperty('timeInterval'), {
+        start,
+        end,
+      });
+
+      await user.click(screen.getByTestId('edit-icon'));
+      const calendar = screen.getByRole('grid');
+      await user.click(within(calendar).getByText('10'));
+      await user.click(within(calendar).getByText('12'));
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      const saved = onValueSave.mock.calls[0][1];
+
+      expect(new Date(saved.start).getDate()).toBe(10);
+      expect(new Date(saved.end).getDate()).toBe(12);
+      expect(new Date(saved.start).getHours()).toBe(new Date(start).getHours());
+    });
+
+    it('switches the editor to UTC', async () => {
+      renderCard(createProperty('timeInterval'), { start, end });
+
+      await user.click(screen.getByTestId('edit-icon'));
+      await user.click(screen.getByRole('button', { name: /label.timezone/ }));
+      await user.click(screen.getByRole('option', { name: 'label.utc' }));
+
+      expect(
+        screen.getByRole('button', { name: /label.timezone/ })
+      ).toHaveTextContent('label.utc');
     });
 
     it('saves epoch bounds entered manually', async () => {
