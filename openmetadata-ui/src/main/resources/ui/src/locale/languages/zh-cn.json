@@ -1850,6 +1850,7 @@
     "metric-for": "指标对象",
     "metric-group": "指标组",
     "metric-hierarchy": "指标层级",
+    "metric-lowercase": "指标",
     "metric-plural": "指标",
     "metric-type": "指标类型",
     "metric-value": "指标值",
