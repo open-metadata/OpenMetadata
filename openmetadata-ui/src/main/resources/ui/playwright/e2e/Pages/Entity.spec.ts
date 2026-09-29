@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Page, Request } from '@playwright/test';
-import { setDomain } from '../../utils/domainPicker';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
@@ -51,6 +50,7 @@ import {
   verifyDomainPropagation,
 } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   assignTagToChildren,

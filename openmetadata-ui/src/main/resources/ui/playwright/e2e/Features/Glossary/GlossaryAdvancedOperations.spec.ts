@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { setDomain } from '../../../utils/domainPicker';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../../support/entity/Entity.interface';
@@ -25,6 +24,7 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
+import { setDomain } from '../../../utils/domainPicker';
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { setDomain } from '../../utils/domainPicker';
 import { SERVICE_TYPE } from '../../constant/service';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -56,6 +55,7 @@ import {
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
 import { addAssetsToDataProduct } from '../../utils/domain';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   assignGlossaryTerm,

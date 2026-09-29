@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { setDomain } from './domainPicker';
 import { GlobalSettingOptions } from '../constant/settings';
 import { Domain } from '../support/domain/Domain';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
@@ -26,6 +25,7 @@ import {
   uuid,
   waitForAntdPopupToSettle,
 } from './common';
+import { setDomain } from './domainPicker';
 import {
   addMultiOwner,
   addOwner,

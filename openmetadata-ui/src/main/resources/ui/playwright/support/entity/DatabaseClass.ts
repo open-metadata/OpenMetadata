@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { setDomain } from '../../utils/domainPicker';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
@@ -26,6 +25,7 @@ import {
   verifyDomainLinkInCard,
   waitForSearchResult,
 } from '../../utils/common';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   addOwner,

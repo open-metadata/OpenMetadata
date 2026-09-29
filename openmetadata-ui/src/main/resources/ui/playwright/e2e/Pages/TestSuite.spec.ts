@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Route } from '@playwright/test';
-import { setDomain } from '../../utils/domainPicker';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { Domain } from '../../support/domain/Domain';
 import { BundleTestSuiteClass } from '../../support/entity/BundleTestSuiteClass';
@@ -39,6 +38,7 @@ import {
   addTestSuitePipeline,
   removeFirstNTestCasesFromLogicalTestSuite,
 } from '../../utils/dataQuality';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   removeOwnersFromList,

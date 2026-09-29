@@ -41,11 +41,11 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { setDomain } from './domainPicker';
 import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
 } from './customProperty';
+import { setDomain } from './domainPicker';
 import {
   escapeESReservedCharacters,
   waitForAllLoadersToDisappear,

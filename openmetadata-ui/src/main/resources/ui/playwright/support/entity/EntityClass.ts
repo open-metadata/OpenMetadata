@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { setDomain } from '../../utils/domainPicker';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
 import { deleteFixtureEntity } from '../../utils/apiResponse';
@@ -27,6 +26,7 @@ import {
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   addOwner,

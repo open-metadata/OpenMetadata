@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, type Page } from '@playwright/test';
-import { setDomain } from '../../utils/domainPicker';
 import { ServiceTypes } from '../../constant/settings';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -33,6 +32,7 @@ import {
   redirectToHomePage,
   searchDataProductOptions,
 } from '../../utils/common';
+import { setDomain } from '../../utils/domainPicker';
 import {
   softDeleteEntity,
   waitForAllLoadersToDisappear,

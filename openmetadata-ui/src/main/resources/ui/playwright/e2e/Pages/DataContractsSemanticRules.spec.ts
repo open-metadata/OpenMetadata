@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { setDomain } from '../../utils/domainPicker';
 import {
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTIC_OPERATIONS,
@@ -40,6 +39,7 @@ import {
   getCurrentMillis,
   getEpochMillisForFutureDays,
 } from '../../utils/dateTime';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addOwner,
   removeOwnersFromList,
