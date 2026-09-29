@@ -80,8 +80,8 @@ describe('TimeIntervalPropertyValue.utils', () => {
   });
 
   describe('date-time parts', () => {
-    it('round-trips through UTC parts', () => {
-      const ms = Date.UTC(2026, 8, 24, 1, 57);
+    it('round-trips through UTC parts, keeping seconds and milliseconds', () => {
+      const ms = Date.UTC(2026, 8, 24, 1, 57, 30, 500);
       const parts = toDateTimeParts(ms, 'utc');
 
       expect(parts).toEqual({
@@ -90,6 +90,8 @@ describe('TimeIntervalPropertyValue.utils', () => {
         day: 24,
         hour: 1,
         minute: 57,
+        second: 30,
+        millisecond: 500,
       });
       expect(fromDateTimeParts(parts, 'utc')).toBe(ms);
     });

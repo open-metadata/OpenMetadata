@@ -585,8 +585,9 @@ describe('Custom property renderers', () => {
     });
 
     it('moves both bounds to the picked calendar days', async () => {
+      const preciseStart = start + 30_500;
       const { onValueSave } = renderCard(createProperty('timeInterval'), {
-        start,
+        start: preciseStart,
         end,
       });
 
@@ -601,6 +602,7 @@ describe('Custom property renderers', () => {
       expect(new Date(saved.start).getDate()).toBe(10);
       expect(new Date(saved.end).getDate()).toBe(12);
       expect(new Date(saved.start).getHours()).toBe(new Date(start).getHours());
+      expect(saved.start % 60_000).toBe(30_500);
     });
 
     it('switches the editor to UTC', async () => {

@@ -357,7 +357,13 @@ const IntervalEndpointEditor = ({
           value={parts ? toTimeValue(parts) : null}
           onChange={(time) => {
             if (parts && time) {
-              onTimeChange(fromDateTimeParts({ ...parts, ...time }, zone));
+              // The picker has minute granularity: the picked time is exact.
+              onTimeChange(
+                fromDateTimeParts(
+                  { ...parts, ...time, second: 0, millisecond: 0 },
+                  zone
+                )
+              );
             }
           }}
         />
@@ -447,6 +453,8 @@ const IntervalCalendarPanel = ({
           day: date.day,
           hour: time?.hour ?? 0,
           minute: time?.minute ?? 0,
+          second: time?.second ?? 0,
+          millisecond: time?.millisecond ?? 0,
         },
         zone
       );

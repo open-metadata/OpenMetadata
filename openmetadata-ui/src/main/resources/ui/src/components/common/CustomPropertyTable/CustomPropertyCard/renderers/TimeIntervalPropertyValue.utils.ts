@@ -38,6 +38,8 @@ export interface DateTimeParts {
   day: number;
   hour: number;
   minute: number;
+  second: number;
+  millisecond: number;
 }
 
 const DURATION_UNITS = ['days', 'hours', 'minutes'] as const;
@@ -91,11 +93,10 @@ export const toDateTimeParts = (
   ms: number,
   zone: TimeIntervalZone
 ): DateTimeParts => {
-  const { year, month, day, hour, minute } = DateTime.fromMillis(ms, {
-    zone,
-  });
+  const { year, month, day, hour, minute, second, millisecond } =
+    DateTime.fromMillis(ms, { zone });
 
-  return { year, month, day, hour, minute };
+  return { year, month, day, hour, minute, second, millisecond };
 };
 
 export const fromDateTimeParts = (
