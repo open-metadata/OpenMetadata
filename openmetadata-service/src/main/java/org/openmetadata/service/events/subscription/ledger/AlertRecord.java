@@ -1,7 +1,5 @@
 package org.openmetadata.service.events.subscription.ledger;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,11 +8,8 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.AlertHealth;
 import org.openmetadata.schema.entity.events.AlertMetrics;
-import org.openmetadata.schema.entity.events.DestinationHealth;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -42,7 +37,7 @@ public final class AlertRecord {
             .withStartingTimestamp(now)
             .withTimestamp(now);
     insertIfAbsent(alertId, LedgerKeys.POSITION, LedgerKeys.POSITION_SCHEMA, position);
-    insertIfAbsent(alertId, LedgerKeys.HEALTH, LedgerKeys.HEALTH_SCHEMA, initialHealth(alert, now));
+    insertIfAbsent(alertId, LedgerKeys.HEALTH, LedgerKeys.HEALTH_SCHEMA, initialHealth(now));
   }
 
   /** Empty when the alert has no position row, which means it was never scheduled or is gone. */
@@ -111,24 +106,9 @@ public final class AlertRecord {
     return dao().listIdsHavingExtensions(LedgerKeys.all());
   }
 
-  static AlertHealth initialHealth(EventSubscription alert, long now) {
-    Map<String, DestinationHealth> destinations = new LinkedHashMap<>();
-    for (SubscriptionDestination destination : listOrEmpty(alert.getDestinations())) {
-      destinations.put(destination.getId().toString(), healthWithoutHistory(destination, now));
-    }
-    return new AlertHealth().withDestinations(destinations).withTimestamp(now);
-  }
-
-  /** What a destination reads before any tick has reported on it. */
-  public static DestinationHealth healthWithoutHistory(
-      SubscriptionDestination destination, long now) {
-    SubscriptionStatus.Status status =
-        Boolean.FALSE.equals(destination.getEnabled())
-            ? SubscriptionStatus.Status.DISABLED
-            : SubscriptionStatus.Status.ACTIVE;
-    return new DestinationHealth()
-        .withStatus(new SubscriptionStatus().withStatus(status).withTimestamp(now))
-        .withConsecutiveFailedTicks(0);
+  // Health holds only what ticks reported: nothing before the first one.
+  static AlertHealth initialHealth(long now) {
+    return new AlertHealth().withDestinations(new LinkedHashMap<>()).withTimestamp(now);
   }
 
   private static void insertIfAbsent(String alertId, String key, String schema, Object document) {

@@ -65,8 +65,7 @@ public final class AlertLedger {
     this.gapWaitAtOpen = read(rows, LedgerKeys.GAP_WAIT, AlertGapWait.class);
     this.interrupted = read(rows, LedgerKeys.IN_PROGRESS, AlertEventInProgress.class);
     AlertHealth stored = read(rows, LedgerKeys.HEALTH, AlertHealth.class);
-    this.health =
-        stored != null ? stored : AlertRecord.initialHealth(alert, System.currentTimeMillis());
+    this.health = stored != null ? stored : AlertRecord.initialHealth(System.currentTimeMillis());
     this.readUpTo = position.getCurrentOffset();
     this.gapSince = gapWaitSince();
   }
