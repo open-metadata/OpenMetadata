@@ -142,3 +142,52 @@ def test_planning_reads_the_data_branch_baseline():
     assert "ci/playwright-timing" in step["run"]
     # The planner's history loop only picks up files with this name.
     assert "playwright-timing-history.json" in step["run"]
+
+
+def test_queue_retry_report_lists_only_retry_passes(tmp_path):
+    coverage = next(step for step in shard_steps() if step.get("id") == "verify-shard-coverage")
+    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE'):]
+    output = tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/output"
+    output.mkdir(parents=True)
+
+    def spec(title, status, attempts):
+        return {
+            "title": title,
+            "file": "Features/Sample.spec.ts",
+            "line": 1,
+            "tests": [{"status": status, "results": [{"status": s} for s in attempts]}],
+        }
+
+    (output / "results.json").write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "specs": [
+                            spec("first attempt", "expected", ["passed"]),
+                            spec("retry pass", "flaky", ["failed", "passed"]),
+                            spec("real failure", "unexpected", ["failed", "failed"]),
+                        ]
+                    }
+                ]
+            }
+        )
+    )
+    summary = tmp_path / "summary.md"
+    summary.touch()
+    result = subprocess.run(
+        ["bash", "-e", "-c", report_part],
+        env={
+            **os.environ,
+            "GITHUB_WORKSPACE": str(tmp_path),
+            "GITHUB_STEP_SUMMARY": str(summary),
+            "SHARD_ID": "chromium-01",
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "retry pass" in summary.read_text()
+    assert "real failure" not in summary.read_text()
+    assert result.stdout.count("::warning") == 1

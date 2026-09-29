@@ -1706,9 +1706,11 @@ jobs:
             --output "$RUNNER_TEMP/shard-coverage.json"
           jq '{plannedTests, executedTests, zeroAttemptSkippedTestIds}' "$RUNNER_TEMP/shard-coverage.json"
           # The queue uploads no reports, so surface retry passes here: they are the
-          # evidence for when the queue can drop its retry.
+          # evidence for when the queue can drop its retry. Playwright marks a test
+          # that failed and then passed on retry as `flaky`; one that failed every
+          # attempt is `unexpected` and is a real failure, not a retry pass.
           results="$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/results.json"
-          retried=$(jq -r '[.. | objects | select(has("tests") and has("title")) | . as $s | .tests[] | select((.results | length) > 1) | "\($s.file):\($s.line) › \($s.title)"] | unique | .[]' "$results")
+          retried=$(jq -r '[.. | objects | select(has("tests") and has("title")) | . as $s | .tests[] | select(.status == "flaky") | "\($s.file):\($s.line) › \($s.title)"] | unique | .[]' "$results")
           if [[ -n "$retried" ]]; then
             echo "### Passed only on retry ($SHARD_ID)" >> "$GITHUB_STEP_SUMMARY"
             while read -r test; do
