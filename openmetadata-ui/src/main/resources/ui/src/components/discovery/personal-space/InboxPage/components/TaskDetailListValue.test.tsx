@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+
+// The menu's onAction, so a mock item can report being chosen.
+let mockMenuAction: ((key: string) => void) | undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const Pass = ({ children }: { children?: ReactNode }) => (
@@ -38,16 +41,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Menu: ({
         children,
         'data-testid': testId,
+        onAction,
       }: {
         children?: ReactNode;
         'data-testid'?: string;
-      }) => (
-        <div data-testid={testId} role="menu">
-          {children}
-        </div>
-      ),
-      Item: ({ label }: { label?: string }) => (
-        <div role="menuitem">{label}</div>
+        onAction?: (key: string) => void;
+      }) => {
+        mockMenuAction = onAction;
+
+        return (
+          <div data-testid={testId} role="menu">
+            {children}
+          </div>
+        );
+      },
+      Item: ({ id, label }: { id?: string; label?: string }) => (
+        <button role="menuitem" onClick={() => mockMenuAction?.(id ?? '')}>
+          {label}
+        </button>
       ),
     },
     Typography: ({ children }: { children?: ReactNode }) => (
@@ -55,6 +66,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
   };
 });
+
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -65,7 +82,10 @@ jest.mock('react-i18next', () => ({
 
 import TaskDetailListValue from './TaskDetailListValue';
 
-const COLUMNS = Array.from({ length: 20 }, (_, index) => `column_${index + 1}`);
+const COLUMNS = Array.from({ length: 20 }, (_, index) => ({
+  label: `column_${index + 1}`,
+  to: `/table/svc.db.sch.t.column_${index + 1}`,
+}));
 
 describe('TaskDetailListValue', () => {
   it('shows the first four inline and counts the rest', () => {
@@ -82,16 +102,36 @@ describe('TaskDetailListValue', () => {
   it('lists every item under the title in the standard dropdown', () => {
     render(<TaskDetailListValue items={COLUMNS} title="Columns requested" />);
 
-    const menu = screen.getByTestId('task-detail-list-popover');
-
-    expect(menu).toHaveTextContent('Columns requested');
+    expect(screen.getByTestId('task-detail-list-header')).toHaveTextContent(
+      'Columns requested'
+    );
     expect(screen.getByTestId('list-count')).toHaveTextContent('20');
     expect(screen.getAllByRole('menuitem')).toHaveLength(20);
   });
 
+  // The header sits outside the scrolling menu, so it stays in view.
+  it('keeps the header out of the scrolling list', () => {
+    render(<TaskDetailListValue items={COLUMNS} title="Columns requested" />);
+
+    expect(screen.getByTestId('task-detail-list-popover')).not.toContainElement(
+      screen.getByTestId('task-detail-list-header')
+    );
+  });
+
+  it('opens the chosen item', () => {
+    render(<TaskDetailListValue items={COLUMNS} title="Columns requested" />);
+
+    fireEvent.click(screen.getByText('column_7'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/table/svc.db.sch.t.column_7');
+  });
+
   it('offers no popover when everything fits inline', () => {
     render(
-      <TaskDetailListValue items={['a', 'b', 'c']} title="Columns requested" />
+      <TaskDetailListValue
+        items={[{ label: 'a' }, { label: 'b' }, { label: 'c' }]}
+        title="Columns requested"
+      />
     );
 
     expect(screen.getByText('a, b, c')).toBeInTheDocument();

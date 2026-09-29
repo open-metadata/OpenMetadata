@@ -47,8 +47,14 @@ export type TaskDetailRowValue =
   | { kind: 'tags'; tags: TagLabel[] }
   | { kind: 'link'; label: string; to: string }
   // A long list, e.g. requested columns: the first few inline, the rest in a
-  // popover headed by `title` (already translated).
-  | { kind: 'list'; items: string[]; title: string };
+  // dropdown headed by `title` (already translated).
+  | { kind: 'list'; items: TaskDetailListItem[]; title: string };
+
+/** One entry of a list value; `to` makes it open that page when chosen. */
+export interface TaskDetailListItem {
+  label: string;
+  to?: string;
+}
 
 export interface TaskDetailRow {
   /** Stable React key, unique within the descriptor. */
