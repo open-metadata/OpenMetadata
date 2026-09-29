@@ -17,17 +17,17 @@ export interface ChangeRequest {
     /**
      * Populated on read only; never persisted in the request row.
      */
-    activeRevision?:           ChangeRevision;
-    activeRevisionId:          string;
-    activeRevisionNumber:      number;
-    conflicts?:                ChangeConflict[];
-    createdAt:                 number;
-    deliveryAttempts?:         number;
-    deliveryStatus?:           DeliveryStatus;
-    entityFullyQualifiedName?: string;
-    entityId:                  string;
-    entityType:                string;
-    id:                        string;
+    activeRevision?:          ChangeRevision;
+    activeRevisionId:         string;
+    activeRevisionNumber:     number;
+    conflicts?:               ChangeConflict[];
+    createdAt:                number;
+    deliveryAttempts?:        number;
+    deliveryStatus?:          DeliveryStatus;
+    entityFullyQualifiedName: string;
+    entityId:                 string;
+    entityType:               string;
+    id:                       string;
     /**
      * Bot that submitted on the requester's behalf, if any.
      */

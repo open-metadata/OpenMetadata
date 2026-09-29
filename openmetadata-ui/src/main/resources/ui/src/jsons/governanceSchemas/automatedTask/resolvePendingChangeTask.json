@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ResolvePendingChangeTaskDefinition",
   "description": "Resolves the change request the workflow run reviews. The action is configured on the node itself: 'commit' applies the reviewed revision when an eligible approval of that exact revision is recorded (the point a real ChangeEvent is emitted); 'discard' rejects it, leaving the published values in place. Place commit on the approval path and discard on the rejection path.",
   "javaInterfaces": [
