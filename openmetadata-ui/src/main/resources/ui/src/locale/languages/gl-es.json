@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "Especifica os eventos de cambio para limitar o alcance das túas alertas.",
     "alerts-source-description": "Especifica a fonte que activará a alerta.",
     "alerts-trigger-description": "Selecciona eventos de activación importantes como 'Cambio de esquema' ou 'Fallos de proba' para xerar unha alerta.",
-    "all-changes-saved": "Todos os cambios gardados",
     "all-charts-are-mapped": "Todos os gráficos están mapeados con KPI existentes.",
     "all-conditions-must-match": "Todas as condicións deben coincidir",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

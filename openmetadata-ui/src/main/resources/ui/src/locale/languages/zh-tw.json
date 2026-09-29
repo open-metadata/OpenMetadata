@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "指定變更事件以縮小警示範圍。",
     "alerts-source-description": "指定將啟動警示的來源。",
     "alerts-trigger-description": "選擇重要的觸發事件，如「結構變更」或「測試失敗」，以產生警示。",
-    "all-changes-saved": "所有變更已儲存",
     "all-charts-are-mapped": "所有圖表都已對應到現有的 KPI。",
     "all-conditions-must-match": "必須符合所有條件",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

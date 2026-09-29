@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "Uyarılarınızın kapsamını daraltmak için değişiklik olaylarını belirtin.",
     "alerts-source-description": "Uyarıyı etkinleştirecek kaynağı belirtin.",
     "alerts-trigger-description": "Bir uyarı oluşturmak için 'Şema Değişikliği' veya 'Test Başarısızlığı' gibi önemli tetikleyici olayları seçin.",
-    "all-changes-saved": "Tüm değişiklikler kaydedildi",
     "all-charts-are-mapped": "Tüm grafikler mevcut KPI'larla eşleştirilmiştir.",
     "all-conditions-must-match": "Tüm koşullar eşleşmelidir",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

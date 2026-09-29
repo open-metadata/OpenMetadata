@@ -244,23 +244,16 @@ describe('PersonaAppLayoutPage', () => {
     });
   });
 
-  describe('Save and discard', () => {
-    it('disables save and discard until something changes', () => {
+  describe('Save and reset', () => {
+    it('disables save until something changes', () => {
       seedDoc({ appMode: AppMode.AI, defaultLandingPage: '/explore' });
       renderPage();
 
       expect(getSaveButton()).toBeDisabled();
-      expect(screen.getByTestId('discard-button')).toBeDisabled();
-      expect(screen.getByTestId('save-status')).toHaveTextContent(
-        'message.all-changes-saved'
-      );
 
       fireEvent.click(getRadio(AppMode.Classic));
 
       expect(getSaveButton()).toBeEnabled();
-      expect(screen.getByTestId('save-status')).toHaveTextContent(
-        'message.unsaved-changes'
-      );
     });
 
     it('saves the selected app mode and keeps Home as unset', async () => {
@@ -314,12 +307,9 @@ describe('PersonaAppLayoutPage', () => {
       expect(onSave).toHaveBeenCalledTimes(1);
       expect(getRadio(AppMode.AI).checked).toBe(true);
       expect(getSaveButton()).toBeEnabled();
-      expect(screen.getByTestId('save-status')).toHaveTextContent(
-        'message.unsaved-changes'
-      );
     });
 
-    it('discard reverts every unsaved change to the saved values', () => {
+    it('reset returns every setting to its default after confirming', () => {
       seedDoc({
         appMode: AppMode.AI,
         defaultLandingPage: '/glossary',
@@ -327,14 +317,15 @@ describe('PersonaAppLayoutPage', () => {
       });
       renderPage();
 
-      fireEvent.click(getRadio(AppMode.Classic));
-      fireEvent.click(screen.getByTestId('remove-view-mode-domains'));
-      fireEvent.click(screen.getByTestId('discard-button'));
+      fireEvent.click(screen.getByTestId('reset-button'));
+      fireEvent.click(screen.getByTestId('unsaved-changes-modal-save'));
 
-      expect(getRadio(AppMode.AI).checked).toBe(true);
-      expect(getLandingPageTrigger()).toHaveTextContent('label.glossary');
-      expect(getViewOption('domains', 'label.tree')).toBeChecked();
-      expect(getSaveButton()).toBeDisabled();
+      expect(getRadio('null').checked).toBe(true);
+      expect(getLandingPageTrigger()).toHaveTextContent('label.home');
+      expect(
+        screen.queryByTestId('view-mode-row-domains')
+      ).not.toBeInTheDocument();
+      expect(getSaveButton()).toBeEnabled();
     });
   });
 });

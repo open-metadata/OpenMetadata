@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "حدد أحداث التغيير لتضييق نطاق التنبيهات الخاصة بك.",
     "alerts-source-description": "حدد المصدر الذي سيقوم بتنشيط التنبيه.",
     "alerts-trigger-description": "حدد أحداث المشغل المهمة مثل 'تغيير المخطط' أو 'فشل الاختبار' لتوليد تنبيه.",
-    "all-changes-saved": "تم حفظ جميع التغييرات",
     "all-charts-are-mapped": "تم تعيين جميع المخططات بمؤشرات الأداء الرئيسية الحالية.",
     "all-conditions-must-match": "يجب أن تتطابق جميع الشروط",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

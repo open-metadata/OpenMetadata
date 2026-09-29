@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "Specify the change events to narrow the scope of your alerts.",
     "alerts-source-description": "Specify the source that will activate the alert.",
     "alerts-trigger-description": "Select important trigger events like 'Schema Change' or 'Test Failure' to generate an alert.",
-    "all-changes-saved": "All changes saved",
     "all-charts-are-mapped": "All charts are mapped with existing KPIs.",
     "all-conditions-must-match": "All conditions must match",
     "all-ontology-terms-connected": "All visible terms connected.",

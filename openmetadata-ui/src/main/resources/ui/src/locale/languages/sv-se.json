@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "Ange ändringshändelserna för att begränsa omfattningen av dina aviseringar.",
     "alerts-source-description": "Ange källan som ska aktivera aviseringen.",
     "alerts-trigger-description": "Välj viktiga utlösande händelser som ’Schemaändring’ eller ’Testfel’ för att generera en avisering.",
-    "all-changes-saved": "Alla ändringar sparade",
     "all-charts-are-mapped": "Alla diagram är mappade till befintliga KPI:er.",
     "all-conditions-must-match": "Alla villkor måste matcha",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

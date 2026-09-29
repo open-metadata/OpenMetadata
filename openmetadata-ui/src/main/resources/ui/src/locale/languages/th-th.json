@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "กำหนดเหตุการณ์การเปลี่ยนแปลงเพื่อลดขอบเขตของการแจ้งเตือนของคุณ",
     "alerts-source-description": "กำหนดแหล่งที่มาที่จะกระตุ้นการแจ้งเตือน",
     "alerts-trigger-description": "เลือกเหตุการณ์การกระตุ้นที่สำคัญ เช่น 'การเปลี่ยนแปลงโครงสร้าง' หรือ 'การล้มเหลวในการทดสอบ' เพื่อสร้างการแจ้งเตือน",
-    "all-changes-saved": "บันทึกการเปลี่ยนแปลงทั้งหมดแล้ว",
     "all-charts-are-mapped": "แผนภูมิทั้งหมดแมพกับ KPIs ที่มีอยู่",
     "all-conditions-must-match": "ต้องตรงกับทุกเงื่อนไข",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

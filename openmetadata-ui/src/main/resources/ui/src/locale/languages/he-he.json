@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "ציין את אירועי השינוי כדי להגביל את תחום התראותיך.",
     "alerts-source-description": "ציין את המקור שיפעיל את ההתראה.",
     "alerts-trigger-description": "בחר אירועי טריגר חשובים כמו 'שינוי סכמה' או 'כשל בדיקה' ליצירת התראה.",
-    "all-changes-saved": "כל השינויים נשמרו",
     "all-charts-are-mapped": "כל התרשימים ממופים עם KPIs קיימים.",
     "all-conditions-must-match": "כל התנאים חייבים להתאים",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

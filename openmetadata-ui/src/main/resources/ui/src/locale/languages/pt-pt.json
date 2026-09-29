@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "Especifique os eventos de mudança para limitar o escopo dos seus alertas.",
     "alerts-source-description": "Especifique a fonte que irá ativar o alerta.",
     "alerts-trigger-description": "Selecione eventos de gatilho importantes como 'Alteração de Esquema' ou 'Falha de Teste' para gerar um alerta.",
-    "all-changes-saved": "Todas as alterações guardadas",
     "all-charts-are-mapped": "Todos os gráficos estão mapeados com KPIs existentes.",
     "all-conditions-must-match": "Todas as condições devem corresponder",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "対象の変更イベントを指定して、アラートの範囲を制御します。",
     "alerts-source-description": "アラートをトリガーするソースを指定します。",
     "alerts-trigger-description": "「スキーマの変更」や「テスト失敗」など、重要なトリガーイベントを選択してアラートを生成します。",
-    "all-changes-saved": "すべての変更を保存済み",
     "all-charts-are-mapped": "すべてのチャートは KPI にマッピングされています。",
     "all-conditions-must-match": "すべての条件が一致する必要があります",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

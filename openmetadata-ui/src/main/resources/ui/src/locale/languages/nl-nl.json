@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "Specificeer de wijzigingsevents om het bereik van uw alerts te beperken.",
     "alerts-source-description": "Specificeer de bron die de alert zal activeren.",
     "alerts-trigger-description": "Selecteer belangrijke trigger-gebeurtenissen zoals 'Schemawijziging' of 'Testfout' om een alert te genereren.",
-    "all-changes-saved": "Alle wijzigingen opgeslagen",
     "all-charts-are-mapped": "Alle charts zijn gekoppeld aan bestaande KPI's.",
     "all-conditions-must-match": "Aan alle voorwaarden moet worden voldaan",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

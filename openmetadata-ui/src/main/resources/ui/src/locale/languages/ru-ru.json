@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "Настройте фильтр: выберите нужные объекты",
     "alerts-source-description": "Выберите источник оповещения.",
     "alerts-trigger-description": "Какое действие должно активировать оповещение?",
-    "all-changes-saved": "Все изменения сохранены",
     "all-charts-are-mapped": "Диаграммы строятся на основе актуальных KPI.",
     "all-conditions-must-match": "Все условия должны совпадать",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",

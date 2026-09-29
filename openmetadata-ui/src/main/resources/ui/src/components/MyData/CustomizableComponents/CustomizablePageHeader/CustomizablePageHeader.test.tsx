@@ -255,6 +255,22 @@ describe('CustomizablePageHeader', () => {
       ).toBeInTheDocument();
     });
 
+    it('uses app-layout subheader key when pageFqn is "app-layout"', () => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        pageFqn: 'app-layout',
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId('message.customize-your-app-layout-subheader')
+      ).toBeInTheDocument();
+    });
+
     it('uses home-page subheader key for PageType.LandingPage', () => {
       (useCustomizeStore as unknown as jest.Mock).mockReturnValue({
         currentPageType: PageType.LandingPage,

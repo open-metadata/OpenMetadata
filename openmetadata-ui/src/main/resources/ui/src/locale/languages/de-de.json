@@ -3437,7 +3437,6 @@
     "alerts-filter-description": "Geben Sie die Änderungsereignisse an, um den Umfang Ihrer Benachrichtigungen einzugrenzen.",
     "alerts-source-description": "Geben Sie die Quelle an, die den Alarm auslösen wird.",
     "alerts-trigger-description": "Wählen Sie wichtige Auslöser wie „Schemaänderung“ oder „Testfehler“, um einen Alarm zu erzeugen.",
-    "all-changes-saved": "Alle Änderungen gespeichert",
     "all-charts-are-mapped": "Alle Diagramme sind mit vorhandenen KPIs verknüpft.",
     "all-conditions-must-match": "Alle Bedingungen müssen zutreffen",
     "all-ontology-terms-connected": "All ontology terms in this scope are connected.",
