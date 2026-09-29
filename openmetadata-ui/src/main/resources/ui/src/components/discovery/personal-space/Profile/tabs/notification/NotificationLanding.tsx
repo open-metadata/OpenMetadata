@@ -53,8 +53,16 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
           <Card
             isClickable
             key={card.id}
+            role="button"
             size="md"
-            onClick={() => onNavigate(card.view)}>
+            tabIndex={0}
+            onClick={() => onNavigate(card.view)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onNavigate(card.view);
+              }
+            }}>
             <Card.Content>
               <Box
                 align="start"
