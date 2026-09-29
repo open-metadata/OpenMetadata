@@ -45,7 +45,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     'om-playwright/no-positional-locator': 1122,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
-    'playwright/no-wait-for-selector': 24,
+    'playwright/no-wait-for-selector': 22,
   };
 
   assert.deepStrictEqual(
