@@ -190,7 +190,10 @@ base_requirements = {
     "PyYAML~=6.0",
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "sqlalchemy>=2.0.0,<3",
+    # snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState, which is
+    # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
+    # Raise the ceiling once a snowflake-sqlalchemy release supports 2.1.
+    "sqlalchemy>=2.0.0,<2.1",
     "collate-sqllineage==2.1.7",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
