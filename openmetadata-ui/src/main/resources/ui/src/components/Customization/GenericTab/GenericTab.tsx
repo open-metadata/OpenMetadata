@@ -89,8 +89,9 @@ export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
       useCSSTransforms
       verticalCompact
       className={classNames(
-        'grid-container tw:bg-primary tw:dark:bg-transparent',
+        'grid-container tw:dark:bg-transparent',
         {
+          'tw:bg-primary': variant !== 'flat',
           'custom-tab': !leftSideWidgetPresent,
           'height-auto': type === PageType.Glossary,
           'flat-left-panel': variant === 'flat',
