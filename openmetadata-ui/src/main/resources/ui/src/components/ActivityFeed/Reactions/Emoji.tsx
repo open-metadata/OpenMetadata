@@ -14,7 +14,7 @@
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
 import classNames from 'classnames';
-import { createElement, FC, useEffect, useMemo, useState } from 'react';
+import { createElement, FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
@@ -29,7 +29,7 @@ interface EmojiProps {
   onReactionSelect: (
     reaction: ReactionType,
     operation: ReactionOperation
-  ) => void;
+  ) => void | Promise<void>;
 }
 
 const Emoji: FC<EmojiProps> = ({
@@ -39,14 +39,12 @@ const Emoji: FC<EmojiProps> = ({
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const [reactionType, setReactionType] = useState(reaction);
-  const [isClicked, setIsClicked] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [visible, setVisible] = useState(false);
 
-  // get reaction object based on current reactionType
   const reactionObject = useMemo(
-    () => REACTION_LIST.find((value) => value.reaction === reactionType),
-    [reactionType]
+    () => REACTION_LIST.find((value) => value.reaction === reaction),
+    [reaction]
   );
 
   const { image } = useImage(`emojis/${reactionObject?.reaction}`);
@@ -60,14 +58,18 @@ const Emoji: FC<EmojiProps> = ({
     getEntityName(reactionItem.user)
   );
 
-  const handleEmojiOnClick = (e: React.MouseEvent) => {
+  const handleEmojiOnClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isClicked) {
+    if (!isUpdating) {
+      setIsUpdating(true);
       const operation = isReacted
         ? ReactionOperation.REMOVE
         : ReactionOperation.ADD;
-      onReactionSelect(reactionObject?.reaction as ReactionType, operation);
-      setIsClicked(true);
+      try {
+        await onReactionSelect(reaction, operation);
+      } finally {
+        setIsUpdating(false);
+      }
     }
   };
 
@@ -83,16 +85,11 @@ const Emoji: FC<EmojiProps> = ({
           ? `, +${moreList.length} ${t('label.more-lowercase')}`
           : ''}{' '}
         <span className="font-normal text-sm">
-          {t('message.reacted-with-emoji', { type: reactionType })}
+          {t('message.reacted-with-emoji', { type: reaction })}
         </span>
       </p>
     );
   };
-
-  useEffect(() => {
-    setReactionType(reaction);
-    setIsClicked(false);
-  }, [reaction]);
 
   const element = createElement(
     'g-emoji',
@@ -121,6 +118,7 @@ const Emoji: FC<EmojiProps> = ({
           }
         )}
         data-testid="emoji-button"
+        disabled={isUpdating}
         key={reaction}
         shape="round"
         size="small"

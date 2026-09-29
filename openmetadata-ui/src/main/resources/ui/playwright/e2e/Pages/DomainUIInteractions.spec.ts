@@ -712,7 +712,7 @@ test.describe('Domain Global Dropdown', () => {
       await page.getByTestId('domain-dropdown').click();
 
       const domainOption = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
+        `tree-node-${domain.responseData.fullyQualifiedName}`
       );
 
       if (await domainOption.isVisible()) {
@@ -740,14 +740,14 @@ test.describe('Domain Global Dropdown', () => {
       await page.getByTestId('domain-dropdown').click();
 
       const domainOption = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
+        `tree-node-${domain.responseData.fullyQualifiedName}`
       );
 
       if (await domainOption.isVisible()) {
         await domainOption.click();
 
         await page.getByTestId('domain-dropdown').click();
-        await page.getByTestId('all-domains-selector').click();
+        await page.getByTestId('tree-node-All Domains').click();
 
         await expect(page.getByTestId('domain-dropdown')).toContainText(
           'All Domains'

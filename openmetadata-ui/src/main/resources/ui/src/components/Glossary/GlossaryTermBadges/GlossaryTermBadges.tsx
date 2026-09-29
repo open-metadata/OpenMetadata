@@ -15,6 +15,7 @@ import { Link } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
 import { VersionStatus } from '../../../utils/EntityVersionUtils.interface';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 
 // `data-diff` marks version-view additions/removals for tests; the legacy
 // `.diff-added` class is not used because its global styles override Badge's.
@@ -31,22 +32,6 @@ const getVersionBadgeProps = (versionStatus?: VersionStatus) => {
   }
 
   return { color: 'gray' as const, className: undefined, diff: undefined };
-};
-
-// Reference endpoints are user-entered; anything other than http(s), e.g.
-// `javascript:`, must never reach `href`.
-const getSafeReferenceHref = (endpoint?: string) => {
-  if (!endpoint) {
-    return undefined;
-  }
-
-  try {
-    const { protocol } = new URL(endpoint);
-
-    return ['http:', 'https:'].includes(protocol) ? endpoint : undefined;
-  } catch {
-    return undefined;
-  }
 };
 
 export const SynonymBadge = ({
@@ -87,7 +72,7 @@ export const ReferenceBadge = ({
         className="tw:no-underline"
         data-diff={diff}
         data-testid={`reference-link-${reference.name}`}
-        href={getSafeReferenceHref(reference.endpoint)}
+        href={getSafeHttpUrl(reference.endpoint)}
         rel="noopener noreferrer"
         target="_blank">
         <Badge
