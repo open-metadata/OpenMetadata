@@ -117,6 +117,10 @@ def test_merge_queue_failures_alert_ci_cleanup_without_checked_out_code():
         "Build the merge-queue failure message",
         "Post the merge-queue failure to Slack (ci-cleanup)",
     }
+    download = next(s for s in alert if s["name"] == "Download failed merge-queue shard results")
+    # Artifacts belong to the run, so an unscoped pattern would report tests
+    # that failed only in an earlier attempt of a re-run.
+    assert download["with"]["pattern"] == "playwright-results-json-*-a${{ github.run_attempt }}*"
     build = next(s for s in alert if s.get("id") == "queue-slack")
     assert "C0AC5T013V1" in build["run"]
     # Queue runs never check out code in the summary job, so the alert must not
