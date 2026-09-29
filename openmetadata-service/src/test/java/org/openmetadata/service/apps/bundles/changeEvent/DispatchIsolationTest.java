@@ -112,6 +112,36 @@ class DispatchIsolationTest {
     assertSame(broken, consumer.failures.getFirst().getChangeEventWithSubscription().getRight());
   }
 
+  // A message that cannot even be made costs its event on that channel, never the batch.
+  @Test
+  void aMessageThatCannotBeMadeKeepsTheBatch() throws Exception {
+    RecordingConsumer consumer = new RecordingConsumer();
+    Destination<ChangeEvent> channel = destinationOfType(WEBHOOK);
+    UUID destinationId = UUID.randomUUID();
+    ChangeEvent broken = new ChangeEvent().withId(UUID.randomUUID()).withEntityType("table");
+    ChangeEvent healthy = new ChangeEvent().withId(UUID.randomUUID()).withEntityType("table");
+    doThrow(new IllegalStateException("template helper blew up"))
+        .when(channel)
+        .prepare(eq(broken), any());
+    Map<ChangeEvent, Set<UUID>> events = new LinkedHashMap<>();
+    events.put(broken, Set.of(destinationId));
+    events.put(healthy, Set.of(destinationId));
+
+    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+        MockedConstruction<RecipientResolver> ignored = mockConstruction(RecipientResolver.class)) {
+      consumer.openTick(Map.of(destinationId, channel));
+      alertUtil
+          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .thenReturn(events);
+      consumer.publishEvents(events);
+    }
+
+    assertEquals(1, consumer.ledger.pending().successEvents());
+    assertEquals(1, consumer.ledger.pending().failedEvents());
+    assertEquals(1, consumer.failures.size());
+    assertSame(broken, consumer.failures.getFirst().getChangeEventWithSubscription().getRight());
+  }
+
   @Test
   void publishersAreClosedAfterEachTick() throws Exception {
     Destination<ChangeEvent> first = destinationOfType(WEBHOOK);

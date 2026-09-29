@@ -126,7 +126,8 @@ final class TickChannels implements ChannelDelivery {
                 TickChannels::channelIdOf, LinkedHashMap::new, Collectors.toList()));
   }
 
-  // Anything that throws costs this channel for this event, never the rest of the batch.
+  // Anything that throws costs this channel for this event, never the rest of the batch, and
+  // each of its destinations reads failed: nothing it had to send went out.
   private ChannelResult sendThrough(
       List<Destination<ChangeEvent>> group, ChangeEvent event, EventContent content) {
     ChannelResult result;
@@ -136,12 +137,20 @@ final class TickChannels implements ChannelDelivery {
               .send(event, content);
     } catch (EventPublisherException e) {
       LOG.error("Failed to send alert: {}", e.getMessage());
-      result = ChannelResult.Failed.of(e);
+      result = failedByAll(group, ChannelResult.Failed.of(e));
     } catch (RuntimeException e) {
       LOG.error("Unexpected error sending alert for change event {}", event.getId(), e);
-      result = unexpectedFailure(group, e);
+      result = failedByAll(group, unexpectedFailure(group, e));
     }
     return result;
+  }
+
+  private ChannelResult failedByAll(
+      List<Destination<ChangeEvent>> group, ChannelResult.Failed failed) {
+    group.forEach(
+        destination ->
+            health.channelFailed(destinationIdOf(destination), failed.failure().reason()));
+    return failed;
   }
 
   private static ChannelResult.Failed unexpectedFailure(

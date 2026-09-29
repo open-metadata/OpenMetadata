@@ -20,6 +20,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FA
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
@@ -31,10 +32,11 @@ import org.openmetadata.service.events.subscription.ledger.DestinationOutcome.Ca
 /**
  * What a tick learned about each destination. A destination's outcome is the sum of what happened
  * to the targets it produced: every one delivered is delivered, and a failure is a failure, saying
- * how many of how many recipients failed and naming the first. A failure outranks a lookup that
- * failed, which outranks not being attempted, and nothing learned later in the tick erases a
- * failure. Finding nobody to send to is the weakest: a destination that reached anyone in the tick
- * reads delivered, and one that reached nobody at all reads not attempted, with why.
+ * how many of how many recipients failed and naming the first. A failed recipient outranks a
+ * channel that failed as a whole, which outranks a lookup that failed, which outranks not being
+ * attempted, and nothing learned later in the tick erases a failure. Finding nobody to send to is
+ * the weakest: a destination that reached anyone in the tick reads delivered, and one that reached
+ * nobody at all reads not attempted, with why.
  */
 final class TickHealth {
 
@@ -44,6 +46,7 @@ final class TickHealth {
     private SubscriptionStatus mostSerious;
     private String firstFailure;
     private String lookupFailure;
+    private String channelFailure;
     private Cause notAttemptedCause;
     private String notAttemptedBecause;
     private String nobodyBecause;
@@ -99,6 +102,14 @@ final class TickHealth {
     }
   }
 
+  /** The channel failed as a whole for an event: nothing it had to send for it went out. */
+  void channelFailed(UUID destinationId, String reason) {
+    Tally tally = tallyOf(destinationId);
+    if (tally.channelFailure == null) {
+      tally.channelFailure = reason;
+    }
+  }
+
   void lookupFailed(UUID destinationId, String reason) {
     Tally tally = tallyOf(destinationId);
     if (tally.lookupFailure == null) {
@@ -128,10 +139,18 @@ final class TickHealth {
   }
 
   private static DestinationOutcome withNoRecipientFailed(Tally tally) {
-    return tally.lookupFailure == null
-        ? notAttemptedOrDelivered(tally)
-        : DestinationOutcome.failed(
-            failedNow("Recipients could not be looked up: " + tally.lookupFailure));
+    return whyNothingWentOut(tally)
+        .map(reason -> DestinationOutcome.failed(failedNow(reason)))
+        .orElseGet(() -> notAttemptedOrDelivered(tally));
+  }
+
+  private static Optional<String> whyNothingWentOut(Tally tally) {
+    return Optional.ofNullable(tally.channelFailure)
+        .map(reason -> "Could not send: " + reason)
+        .or(
+            () ->
+                Optional.ofNullable(tally.lookupFailure)
+                    .map(reason -> "Recipients could not be looked up: " + reason));
   }
 
   private static DestinationOutcome notAttemptedOrDelivered(Tally tally) {
