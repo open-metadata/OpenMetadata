@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import {
+  Badge,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../../../styles/variables.less';
@@ -19,7 +24,6 @@ import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
 import { DataQualityLegendItem } from './DataQualityLegendItem';
 import { DataQualityProgressSegment } from './DataQualityProgressSegment';
 import { DataQualitySectionProps } from './DataQualitySection.interface';
-import './DataQualitySection.less';
 import { DataQualityStatCard } from './DataQualityStatCard';
 
 const DataQualitySection: React.FC<DataQualitySectionProps> = ({
@@ -65,7 +69,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   }, [tests, totalTests]);
 
   return isDataQualityTab ? (
-    <div className="data-quality-stats-container">
+    <Card className="data-quality-stats-container tw:mr-4 tw:mb-2.5 tw:flex">
       <DataQualityStatCard
         count={successTests}
         isActive={activeFilter === 'success'}
@@ -73,7 +77,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         type="success"
         onClick={() => onFilterChange?.('success')}
       />
-      <div className="stat-card-vertical-divider" />
+      <Divider className="tw:my-3" orientation="vertical" />
       <DataQualityStatCard
         count={abortedTests}
         isActive={activeFilter === 'aborted'}
@@ -81,7 +85,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         type="aborted"
         onClick={() => onFilterChange?.('aborted')}
       />
-      <div className="stat-card-vertical-divider" />
+      <Divider className="tw:my-3" orientation="vertical" />
       <DataQualityStatCard
         count={failedTests}
         isActive={activeFilter === 'failed'}
@@ -89,20 +93,18 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         type="failed"
         onClick={() => onFilterChange?.('failed')}
       />
-    </div>
+    </Card>
   ) : (
     <SectionWithEdit
       showEditButton={false}
       title={
         <div className="d-flex">
-          <Typography.Text className="section-title mr-2">
+          <Typography className="section-title mr-2">
             {t('label.data-quality-test-plural')}
-          </Typography.Text>
-          <div className="data-quality-badge">
-            <Typography.Text className="data-quality-badge-text">
-              {totalTests}
-            </Typography.Text>
-          </div>
+          </Typography>
+          <Badge color="gray" size="sm">
+            {totalTests}
+          </Badge>
         </div>
       }
       onEdit={onEdit}>
@@ -112,9 +114,8 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
         </div>
       ) : (
         <div className="data-quality-content">
-          <div className="data-quality-header" />
-          <div className="data-quality-progress">
-            <div className="data-quality-progress-segments">
+          <div className="data-quality-progress tw:mb-3">
+            <div className="tw:flex tw:h-3 tw:overflow-hidden tw:rounded-xs tw:bg-quaternary">
               <DataQualityProgressSegment
                 percent={successPercent}
                 type="success"
@@ -130,7 +131,7 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
             </div>
           </div>
 
-          <div className="data-quality-legend">
+          <div className="data-quality-legend tw:flex tw:flex-wrap tw:gap-3.5">
             <DataQualityLegendItem
               count={successTests}
               label={t('label.-with-colon', { text: t('label.success') })}

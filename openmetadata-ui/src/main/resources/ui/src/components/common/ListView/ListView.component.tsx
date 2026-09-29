@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Segmented, Space, Switch, Typography } from 'antd';
+import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Switch, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as GridIcon } from '../../../assets/svg/ic-grid.svg';
 import { ReactComponent as ListIcon } from '../../../assets/svg/ic-list.svg';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SERVICE_VISIBLE_COLUMNS,
@@ -44,10 +49,12 @@ export const ListView = <T extends object = Record<string, unknown>>({
     {
       label: <Icon component={GridIcon} data-testid="grid" />,
       value: ListViewOptions.CARD,
+      ariaLabel: t('label.card'),
     },
     {
       label: <Icon component={ListIcon} data-testid="list" />,
       value: ListViewOptions.TABLE,
+      ariaLabel: t('label.table'),
     },
   ];
 
@@ -90,12 +97,29 @@ export const ListView = <T extends object = Record<string, unknown>>({
             </span>
           )}
 
-          <Segmented
-            className="segment-toggle"
-            options={listViewOptions}
-            value={currentView}
-            onChange={(value) => setCurrentView(value as ListViewOptions)}
-          />
+          <ButtonGroup
+            disallowEmptySelection
+            className={SEGMENT_TOGGLE_GROUP_CLASS}
+            selectedKeys={[currentView]}
+            size="sm"
+            onSelectionChange={(keys) => {
+              const selected = [...keys][0];
+              if (selected) {
+                setCurrentView(selected as ListViewOptions);
+              }
+            }}>
+            {listViewOptions.map(({ label, value, ariaLabel }) => (
+              <ButtonGroupItem
+                aria-label={ariaLabel}
+                // The legacy SVGs bake in a dark fill; follow the item text colour when
+                // selected and in dark mode so the icon stays visible.
+                className={`${SEGMENT_TOGGLE_ITEM_CLASS} tw:selected:[&_path]:fill-current tw:dark:[&_path]:fill-current`}
+                id={value}
+                key={value}>
+                {label}
+              </ButtonGroupItem>
+            ))}
+          </ButtonGroup>
         </Space>
       </Col>
       <Col span={24}>

@@ -20,12 +20,14 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 
 export const DataProductDomainWidget = () => {
   const { t } = useTranslation();
   const { data: dataProduct, onUpdate } = useGenericContext<DataProduct>();
+  const domainProps = useGenericDomainLabel<DataProduct>();
   const [assetCount, setAssetCount] = useState<number>(0);
   const [pendingDomains, setPendingDomains] = useState<
     EntityReference | EntityReference[] | null
@@ -128,10 +130,12 @@ export const DataProductDomainWidget = () => {
 
   return (
     <>
-      <DomainLabelV2
+      <DomainLabel
+        {...domainProps}
         showDomainHeading
         isClearable={false}
         multiple={false}
+        variant="widget"
         onUpdate={handleDomainUpdate}
       />
 

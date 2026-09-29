@@ -469,7 +469,7 @@ test.describe('Activity Feed - Entity Page', () => {
     const leftPanel = page.getByTestId('global-setting-left-panel');
     await expect(leftPanel).toBeVisible();
 
-    const tasksMenuItem = leftPanel.getByRole('menuitem', { name: /tasks/i });
+    const tasksMenuItem = leftPanel.getByRole('button', { name: /tasks/i });
     await expect(tasksMenuItem).toBeVisible();
     await tasksMenuItem.click();
     await waitForPageLoaded(page);
@@ -573,7 +573,9 @@ test.describe('Activity Feed - Real-time Updates', () => {
     await waitForPageLoaded(page);
 
     // Count initial tasks
-    const tasksButton = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksButton = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksButton.isVisible()) {
       await tasksButton.click();
       await waitForPageLoaded(page);

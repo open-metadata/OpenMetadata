@@ -30,6 +30,9 @@ interface UseTreeSelectDataOptions<T> {
   fetchData: TreeSelectDataFetcher<T>;
   searchTerm?: string;
   pageSize?: number;
+  onFetchError?: (error: unknown) => void;
+  // False holds off every fetch, so a closed picker on each row costs no request.
+  enabled?: boolean;
 }
 
 interface UseTreeSelectDataReturn<T> {
@@ -75,6 +78,8 @@ export const useTreeSelectData = <T = unknown>({
   fetchData,
   searchTerm = '',
   pageSize = 50,
+  onFetchError,
+  enabled = true,
 }: UseTreeSelectDataOptions<T>): UseTreeSelectDataReturn<T> => {
   const [state, setState] = useState<TreeSelectDataState<T>>({
     data: [],
@@ -189,20 +194,29 @@ export const useTreeSelectData = <T = unknown>({
           loadingNodes: nextLoadingNodes,
         }));
 
-        toast.error(errorMessage);
+        // A consumer that knows its transport can render a translated message
+        // (and its own retry); the raw `error.message` is an axios string like
+        // "Request failed with status code 500".
+        if (onFetchError) {
+          onFetchError(error);
+        } else {
+          toast.error(errorMessage);
+        }
       }
     },
-    [fetchData, pageSize]
+    [fetchData, pageSize, onFetchError]
   );
 
   useEffect(() => {
-    fetchTreeData({ searchTerm });
+    if (enabled) {
+      fetchTreeData({ searchTerm });
+    }
 
     return () => {
       abortControllerRef.current?.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm]);
+  }, [searchTerm, enabled]);
 
   const loadChildren = useCallback(
     async (parentId: string) => {

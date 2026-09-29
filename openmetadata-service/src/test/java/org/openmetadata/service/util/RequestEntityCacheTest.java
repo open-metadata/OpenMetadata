@@ -103,4 +103,32 @@ class RequestEntityCacheTest {
     assertNotNull(
         RequestEntityCache.getById(Entity.TABLE, id, fields, includes, true, Table.class));
   }
+
+  @Test
+  void freshReadScopeBypassesRequestCache() {
+    UUID id = UUID.randomUUID();
+    Fields fields = new Fields(Set.of("owners"));
+    RelationIncludes includes = RelationIncludes.fromInclude(NON_DELETED);
+    Table beforeConcurrentWrite = new Table().withId(id).withName("before");
+    RequestEntityCache.putById(
+        Entity.TABLE, id, fields, includes, false, beforeConcurrentWrite, Table.class);
+
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      assertNull(
+          RequestEntityCache.getById(Entity.TABLE, id, fields, includes, false, Table.class));
+      RequestEntityCache.putById(
+          Entity.TABLE,
+          id,
+          fields,
+          includes,
+          false,
+          new Table().withId(id).withName("during_scope"),
+          Table.class);
+    }
+
+    assertEquals(
+        "before",
+        RequestEntityCache.getById(Entity.TABLE, id, fields, includes, false, Table.class)
+            .getName());
+  }
 }

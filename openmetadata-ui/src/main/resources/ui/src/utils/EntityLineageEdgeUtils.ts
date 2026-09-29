@@ -18,7 +18,6 @@ import type {
   CustomEdgeData,
   EdgeData,
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import type { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import type {
@@ -30,6 +29,7 @@ import type {
   LineageDetails,
 } from '../generated/type/entityLineage';
 import type { EntityReference } from '../generated/type/entityReference';
+import type { EdgeDetails } from '../interface/lineage.interface';
 import { getEntityReferenceFromEntity } from './EntityReferenceUtils';
 import Fqn from './Fqn';
 import { getPartialNameFromTableFQN } from './FqnUtils';

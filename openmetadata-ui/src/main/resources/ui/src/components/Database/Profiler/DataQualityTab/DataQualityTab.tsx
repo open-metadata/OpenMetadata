@@ -33,9 +33,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
 import { TEST_CASE_DELETION_MODE } from '../../../../constants/DataQuality.constants';
 import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {

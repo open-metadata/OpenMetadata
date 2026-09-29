@@ -38,11 +38,9 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   EntityStatus,
@@ -53,6 +51,7 @@ import { Style } from '../../../generated/type/tagLabel';
 import { Votes } from '../../../generated/type/votes';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
+import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
   exportGlossaryInCSVFormat,
   getGlossariesById,
@@ -81,7 +80,6 @@ import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.c
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
-import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import {
   MOCK_SUGGESTIONS,
   MOCK_SUGGESTIONS_WITH_SAME_USER,
@@ -27,7 +28,6 @@ import * as toastUtils from '../../../utils/ToastUtils';
 import SuggestionsProvider, {
   useSuggestionsContext,
 } from './SuggestionsProvider';
-import { SuggestionAction } from './SuggestionsProvider.interface';
 
 const mockPagingResponse = {
   data: MOCK_SUGGESTIONS,
