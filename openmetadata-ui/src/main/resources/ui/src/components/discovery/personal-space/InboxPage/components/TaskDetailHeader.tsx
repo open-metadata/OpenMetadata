@@ -171,17 +171,17 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
         )}
         <Typography
           className="tw:text-secondary"
-          size="text-xs"
+          size="text-sm"
           weight="medium">
           {task.taskId ?? ''}
         </Typography>
-        <span aria-hidden className="tw:text-xs tw:text-quaternary">
+        <span aria-hidden className="tw:text-sm tw:text-quaternary">
           ·
         </span>
         <Typography
           className="tw:text-tertiary"
           data-testid="task-type-badge"
-          size="text-xs">
+          size="text-sm">
           {typeBadge.label}
         </Typography>
       </Box>
