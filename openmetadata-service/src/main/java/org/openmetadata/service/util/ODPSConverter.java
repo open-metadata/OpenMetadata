@@ -155,12 +155,16 @@ public final class ODPSConverter {
 
     DataProduct dp = new DataProduct();
     // ODPS productID is the stable identifier; ODPS name is the human-readable
-    // label. Map them onto OpenMetadata's identity/display split: the entity
-    // name (which forms the FQN and is the key an update matches on) comes from
-    // productID sanitized into an FQN-safe slug, and the original ODPS name is
-    // kept as displayName. This keeps import symmetric with export, where toODPS
-    // writes productID from the entity identifier and name from displayName.
-    dp.setName(sanitizeEntityName(details.getProductID()));
+    // label. Map them onto OpenMetadata's identity/display split: the entity name
+    // (which forms the FQN and is the key an update matches on) comes from productID
+    // sanitized into an FQN-safe slug, and the original ODPS name is kept as
+    // displayName. This keeps import symmetric with export, where toODPS writes
+    // productID from the entity identifier and name from displayName.
+    // Fall back to the name when the productID has no characters valid for an entity
+    // name (e.g. an all-non-ASCII productID) so such a document still imports as it
+    // did before productID became the identity.
+    String sanitizedName = sanitizeEntityNameOrNull(details.getProductID());
+    dp.setName(sanitizedName != null ? sanitizedName : sanitizeEntityName(details.getName()));
     dp.setDisplayName(details.getName());
     dp.setDescription(buildDescription(details));
     dp.setDataProductType(fromODPSType(details.getType()));
@@ -263,14 +267,8 @@ public final class ODPSConverter {
    *     clear message instead of an invalid empty-name entity.
    */
   static String sanitizeEntityName(String raw) {
-    if (raw == null) return null;
-    String replaced = INVALID_NAME_CHARS.matcher(raw).replaceAll("_");
-    replaced = CONSECUTIVE_UNDERSCORES.matcher(replaced).replaceAll("_");
-    replaced = trimUnderscores(replaced);
-    if (replaced.length() > MAX_ENTITY_NAME_LENGTH) {
-      replaced = trimUnderscores(replaced.substring(0, MAX_ENTITY_NAME_LENGTH));
-    }
-    if (replaced.isEmpty()) {
+    String sanitized = sanitizeEntityNameOrNull(raw);
+    if (raw != null && sanitized == null) {
       throw new IllegalArgumentException(
           "ODPS product name '"
               + raw
@@ -278,7 +276,24 @@ public final class ODPSConverter {
               + "(allowed: a-z, A-Z, 0-9, '_', '-', '.'). "
               + "Rename the product in your ODPS source or import it under a different ID.");
     }
-    return replaced;
+    return sanitized;
+  }
+
+  /**
+   * Like {@link #sanitizeEntityName} but returns null instead of throwing when the input
+   * has no characters valid for an entity name. Lets callers fall back to another field.
+   */
+  static String sanitizeEntityNameOrNull(String raw) {
+    if (raw == null) {
+      return null;
+    }
+    String replaced = INVALID_NAME_CHARS.matcher(raw).replaceAll("_");
+    replaced = CONSECUTIVE_UNDERSCORES.matcher(replaced).replaceAll("_");
+    replaced = trimUnderscores(replaced);
+    if (replaced.length() > MAX_ENTITY_NAME_LENGTH) {
+      replaced = trimUnderscores(replaced.substring(0, MAX_ENTITY_NAME_LENGTH));
+    }
+    return replaced.isEmpty() ? null : replaced;
   }
 
   private static String trimUnderscores(String value) {
