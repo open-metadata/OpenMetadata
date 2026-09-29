@@ -168,7 +168,7 @@ class ContextMemoryReconcilerTest {
 
     assertEquals(1, result.deleted());
     assertEquals(1, result.created());
-    verify(memoryRepository).delete(Entity.ADMIN_USER_NAME, gone.getId(), false, true);
+    verify(memoryRepository).releaseExtractedMemory(gone.getId(), source);
     verify(memoryRepository, never()).update(any(), any(), any(), any());
   }
 
@@ -230,6 +230,85 @@ class ContextMemoryReconcilerTest {
 
     assertEquals(1, result.created());
     verify(memoryRepository).create(isNull(), any());
+  }
+
+  @Test
+  void reusesEquivalentMemoryForAnotherFile() {
+    EntityReference file =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("report")
+            .withType(Entity.CONTEXT_FILE);
+    when(memoryRepository.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(List.of());
+    ContextMemory equivalent =
+        pill(
+            "What is the retention window?",
+            "Events are retained for 90 days.",
+            ContextMemorySourceType.FILE_EXTRACTION,
+            ContextMemoryStatus.ACTIVE);
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(memoryRepository, ignored -> equivalent);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconciler.reconcile(
+            file,
+            Entity.CONTEXT_FILE,
+            List.of(derived("What is the retention window?", "Events are retained for 90 days.")));
+
+    assertEquals(0, result.created());
+    assertEquals(1, result.kept());
+    verify(memoryRepository).linkExtractedMemory(equivalent.getId(), file);
+    verify(memoryRepository, never()).create(any(), any());
+  }
+
+  @Test
+  void changedSharedFactLeavesOtherSourceMemoryIntact() {
+    ContextMemory shared =
+        pill(
+            "How long are events retained?",
+            "Events are retained for 90 days.",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.ACTIVE);
+    existing(shared);
+    when(memoryRepository.hasOtherSources(shared.getId(), source)).thenReturn(true);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(
+            List.of(derived("How long are events retained?", "Events are retained for 30 days.")));
+
+    assertEquals(1, result.created());
+    verify(memoryRepository).releaseExtractedMemory(shared.getId(), source);
+    verify(memoryRepository, never()).update(any(), any(), any(), any());
+  }
+
+  @Test
+  void identicalSourceLinksAllExistingMemories() {
+    EntityReference original =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("original.md")
+            .withType(Entity.CONTEXT_FILE);
+    EntityReference copy =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("copy.md")
+            .withType(Entity.CONTEXT_FILE);
+    ContextMemory memory =
+        pill(
+            "What is the retention window?",
+            "Events are retained for 90 days.",
+            ContextMemorySourceType.FILE_EXTRACTION,
+            ContextMemoryStatus.ACTIVE);
+    when(memoryRepository.listExtractedMemories(original.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(List.of(memory));
+
+    ContextMemoryReconciler.ReconcileResult result =
+        new ContextMemoryReconciler(memoryRepository).reuseExtractedFrom(copy, original);
+
+    assertEquals(1, result.kept());
+    verify(memoryRepository).linkExtractedMemory(memory.getId(), copy);
+    verify(memoryRepository, never()).create(any(), any());
   }
 
   @Test

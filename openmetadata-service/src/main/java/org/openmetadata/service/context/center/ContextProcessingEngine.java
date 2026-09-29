@@ -70,6 +70,10 @@ public abstract class ContextProcessingEngine {
   }
 
   private ExtractionOutcome extractAndReconcile(UUID entityId, Source source) {
+    ExtractionOutcome reused = reuseExisting(entityId, source);
+    if (reused != null) {
+      return reused;
+    }
     DeriveResult derived = extractor.derive(source.text(), source.sourceRef(), sourceType());
     if (derived.chunksProcessed() != derived.chunksTotal()) {
       throw new LLMCompletionException(
@@ -86,6 +90,10 @@ public abstract class ContextProcessingEngine {
             .withSourceHash(source.hash());
     stampStats(entityId, stats);
     return ExtractionOutcome.processed(stats, reconciled);
+  }
+
+  protected ExtractionOutcome reuseExisting(UUID entityId, Source source) {
+    return null;
   }
 
   /**
