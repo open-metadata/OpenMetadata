@@ -17,12 +17,14 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  WorkflowRedo,
+  WorkflowUndo,
+} from '@openmetadata/ui-core-components/icons';
 import { GitBranch01, Maximize01, Minus, Plus } from '@untitledui/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useReactFlow } from 'reactflow';
-import { ReactComponent as RedoIcon } from '../../../assets/svg/ic_redo.svg';
-import { ReactComponent as UndoIcon } from '../../../assets/svg/ic_undo.svg';
 import { CustomControlsProps } from '../../../interface/workflow-builder-components.interface';
 
 export const CustomControls: React.FC<CustomControlsProps> = ({
@@ -74,7 +76,7 @@ export const CustomControls: React.FC<CustomControlsProps> = ({
       <Button
         color="tertiary"
         data-testid="undo-button"
-        iconLeading={UndoIcon}
+        iconLeading={WorkflowUndo}
         isDisabled={!canUndo || isViewMode}
         size="sm"
         onPress={onUndo}
@@ -82,7 +84,7 @@ export const CustomControls: React.FC<CustomControlsProps> = ({
       <Button
         color="tertiary"
         data-testid="redo-button"
-        iconLeading={RedoIcon}
+        iconLeading={WorkflowRedo}
         isDisabled={!canRedo || isViewMode}
         size="sm"
         onPress={onRedo}
