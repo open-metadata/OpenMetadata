@@ -222,6 +222,33 @@ class HealthAttributionTest {
         outcome.status().getLastFailedReason());
   }
 
+  // A channel that failed as a whole reached nobody, whatever else the tick delivered.
+  @Test
+  void aChannelFailureReadsFailedAndStartsAStreak() {
+    TickHealth health = new TickHealth();
+    health.delivered(owners, "alice");
+    health.channelFailed(owners, "template helper blew up");
+
+    DestinationOutcome outcome = outcomes(health).get(owners);
+
+    assertEquals(DestinationOutcome.Kind.FAILED, outcome.kind());
+    assertEquals("Could not send: template helper blew up", outcome.status().getLastFailedReason());
+    assertEquals(1, HealthStreak.after(null, outcome).getConsecutiveFailedTicks());
+  }
+
+  @Test
+  void aChannelFailureIsNotHiddenByALaterDeliveryOrLookupFailure() {
+    TickHealth health = new TickHealth();
+    health.channelFailed(owners, "template helper blew up");
+    health.lookupFailed(owners, "team A: no answer");
+    health.delivered(owners, "alice");
+
+    assertEquals(DestinationOutcome.Kind.FAILED, outcomes(health).get(owners).kind());
+    assertEquals(
+        "Could not send: template helper blew up",
+        outcomes(health).get(owners).status().getLastFailedReason());
+  }
+
   // Its reason starts like one, but a target that could not be reached earlier in the tick failed.
   @Test
   void unreachableEarlierInThisTickStillCountsAsAFailure() {

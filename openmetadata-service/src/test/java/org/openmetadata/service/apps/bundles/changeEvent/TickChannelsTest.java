@@ -104,6 +104,27 @@ class TickChannelsTest {
     }
   }
 
+  // A channel that throws before its sends are done fails each of its destinations.
+  @Test
+  void aChannelWhosePreparationThrowsFailsEachOfItsDestinations() throws Exception {
+    Destination<ChangeEvent> first = publisherOf(webhookDestination());
+    Destination<ChangeEvent> second = publisherOf(webhookDestination());
+    when(first.prepare(any(), any()))
+        .thenThrow(new IllegalStateException("template helper blew up"));
+
+    Delivery delivery = deliverThrough(List.of(first, second));
+
+    assertEquals(0, delivery.delivered());
+    assertEquals(1, delivery.failures().size(), "one channel, one failure");
+    for (Destination<ChangeEvent> destination : List.of(first, second)) {
+      SubscriptionStatus status = statusOf(destination);
+      assertEquals(SubscriptionStatus.Status.FAILED, status.getStatus());
+      assertTrue(
+          status.getLastFailedReason().contains("template helper blew up"),
+          status.getLastFailedReason());
+    }
+  }
+
   private static void assertFailedUntried(
       Delivery delivery, Destination<ChangeEvent> untried, String why) {
     assertEquals(1, delivery.failures().size(), "nothing went out through it, so it failed");
