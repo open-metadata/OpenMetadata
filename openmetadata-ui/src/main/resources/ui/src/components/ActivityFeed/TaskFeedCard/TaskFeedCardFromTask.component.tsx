@@ -18,7 +18,7 @@ import {
   Card as CoreCard,
   Owner,
   Tooltip,
-  Typography as CoreTypography,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
@@ -174,9 +174,9 @@ const TaskFeedCardFromTask = ({
 
     if (columnName) {
       return (
-        <CoreTypography className="p-r-xss column-name">
+        <Typography className="p-r-xss column-name">
           {columnName} {t('label.in-lowercase')}
-        </CoreTypography>
+        </Typography>
       );
     }
 
@@ -201,21 +201,21 @@ const TaskFeedCardFromTask = ({
             data-testid="redirect-task-button-link"
             type="link"
             onClick={handleTaskLinkClick}>
-            <CoreTypography className="m-r-xss task-details-id">{`#${taskDisplayId} `}</CoreTypography>
+            <Typography className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography>
 
-            <CoreTypography className="m-r-xss  m-r-xss task-details-entity-link">
+            <Typography className="m-r-xss  m-r-xss task-details-entity-link">
               {t(TASK_ENTITY_TYPES[task.type] ?? 'label.task')}
-            </CoreTypography>
+            </Typography>
 
             {taskColumnName}
 
-            <CoreTypography
+            <Typography
               className="break-all header-link text-sm"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
-            </CoreTypography>
+            </Typography>
 
-            <CoreTypography className="p-l-xss text-sm entity-type">{`(${entityType})`}</CoreTypography>
+            <Typography className="p-l-xss text-sm entity-type">{`(${entityType})`}</Typography>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -444,7 +444,7 @@ const TaskFeedCardFromTask = ({
             {taskLinkTitleElement}
           </div>
           <div className="tw:-mt-2">
-            <CoreTypography>
+            <Typography>
               <UserPopOverCard
                 key={task.createdBy?.name}
                 userName={task.createdBy?.name ?? ''}>
@@ -468,7 +468,7 @@ const TaskFeedCardFromTask = ({
                   </span>
                 </Tooltip>
               )}
-            </CoreTypography>
+            </Typography>
           </div>
         </Box>
         <div className="w-full">
