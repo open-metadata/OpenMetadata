@@ -390,126 +390,118 @@ test('My Data Widget', async ({ page, persona, testUser }) => {
   });
 });
 
-// Tagged into the serial `Data Insight` project: DataInsight.spec.ts also needs
-// the single owner-chart KPI slot, so the two must not run concurrently.
-test(
-  'KPI Widget',
-  { tag: '@data-insight' },
-  async ({ page, persona, kpiIds }) => {
-    test.slow(true);
+test('KPI Widget', async ({ page, persona, kpiIds }) => {
+  test.slow(true);
 
-    const kpi = await test.step('Add KPI', async () => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      try {
-        await deleteSeededKpisOnChart(apiContext, 'owner');
-      } finally {
-        await afterAction();
-      }
-
-      await waitForAllLoadersToDisappear(page);
-
-      await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-      await page.getByRole('menuitem', { name: 'KPIs' }).click();
-
-      await page.getByTestId('add-kpi-btn').click();
-      const createdKpi = await addKpi(page, {
-        ...KPI_DATA[1],
-        displayName: `Widget Owner ${uuid()}`,
-      });
-      kpiIds.push(createdKpi.id);
-
-      return createdKpi;
-    });
-
-    await redirectToHomePage(page);
+  const kpi = await test.step('Add KPI', async () => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await deleteSeededKpisOnChart(apiContext, 'owner');
+    } finally {
+      await afterAction();
+    }
 
     await waitForAllLoadersToDisappear(page);
 
-    const widgetKey = 'KnowledgePanel.KPI';
+    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
-    await waitForLandingPageWidget(page, widgetKey);
+    await page.getByTestId('add-kpi-btn').click();
+    const createdKpi = await addKpi(page, {
+      ...KPI_DATA[1],
+      displayName: `Widget Owner ${uuid()}`,
+    });
+    kpiIds.push(createdKpi.id);
 
-    await test.step('Test widget header and navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await verifyWidgetHeaderNavigation(
-        page,
-        widgetKey,
-        'KPI',
-        '/data-insights/kpi'
+    return createdKpi;
+  });
+
+  await redirectToHomePage(page);
+
+  await waitForAllLoadersToDisappear(page);
+
+  const widgetKey = 'KnowledgePanel.KPI';
+
+  await waitForLandingPageWidget(page, widgetKey);
+
+  await test.step('Test widget header and navigation', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await verifyWidgetHeaderNavigation(
+      page,
+      widgetKey,
+      'KPI',
+      '/data-insights/kpi'
+    );
+  });
+
+  await test.step('Test widget footer navigation', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    await verifyWidgetFooterViewMore(page, {
+      widgetKey,
+      link: 'data-insights/kpi',
+    });
+  });
+
+  await test.step('Test widget loads KPI data correctly', async () => {
+    const kpiListResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        response.request().method() === 'GET' &&
+        url.pathname === '/api/v1/kpi' &&
+        url.searchParams.get('fields') === 'dataInsightChart'
       );
     });
 
-    await test.step('Test widget footer navigation', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-      await verifyWidgetFooterViewMore(page, {
-        widgetKey,
-        link: 'data-insights/kpi',
-      });
-    });
+    const kpiResultsResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/kpi/${encodeURIComponent(kpi.fullyQualifiedName)}/kpiResult`
+    );
 
-    await test.step('Test widget loads KPI data correctly', async () => {
-      const kpiListResponse = page.waitForResponse((response) => {
-        const url = new URL(response.url());
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
 
-        return (
-          response.request().method() === 'GET' &&
-          url.pathname === '/api/v1/kpi' &&
-          url.searchParams.get('fields') === 'dataInsightChart'
-        );
-      });
+    const widget = await waitForLandingPageWidget(page, widgetKey);
 
-      const kpiResultsResponse = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'GET' &&
-          new URL(response.url()).pathname ===
-            `/api/v1/kpi/${encodeURIComponent(
-              kpi.fullyQualifiedName
-            )}/kpiResult`
-      );
+    const list = await okJson<{ data: { id: string }[] }>(
+      await kpiListResponse,
+      'Widget KPI list'
+    );
+    expect(list.data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: kpi.id })])
+    );
+    const results = await okJson<{ results: unknown[] }>(
+      await kpiResultsResponse,
+      `Widget results for ${kpi.fullyQualifiedName}`
+    );
+    expect(results.results.length).toBeGreaterThan(0);
 
-      await redirectToHomePage(page);
-      await waitForAllLoadersToDisappear(page);
+    // Wait for skeleton loader to disappear
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-      const widget = await waitForLandingPageWidget(page, widgetKey);
+    // Check if the KPI widget content is visible
+    const kpiWidgetContent = widget.locator('[data-testid="kpi-widget"]');
 
-      const list = await okJson<{ data: { id: string }[] }>(
-        await kpiListResponse,
-        'Widget KPI list'
-      );
-      expect(list.data).toEqual(
-        expect.arrayContaining([expect.objectContaining({ id: kpi.id })])
-      );
-      const results = await okJson<{ results: unknown[] }>(
-        await kpiResultsResponse,
-        `Widget results for ${kpi.fullyQualifiedName}`
-      );
-      expect(results.results.length).toBeGreaterThan(0);
+    await expect(kpiWidgetContent).toBeVisible();
 
-      // Wait for skeleton loader to disappear
-      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    const kpiChart = widget.locator('.recharts-responsive-container');
+    await expect(kpiChart).toBeVisible();
+    await expect(
+      kpiChart.locator('.recharts-area').filter({
+        has: page.locator(`[fill="url(#gradient-${kpi.name})"]`),
+      })
+    ).toBeVisible();
+  });
 
-      // Check if the KPI widget content is visible
-      const kpiWidgetContent = widget.locator('[data-testid="kpi-widget"]');
-
-      await expect(kpiWidgetContent).toBeVisible();
-
-      const kpiChart = widget.locator('.recharts-responsive-container');
-      await expect(kpiChart).toBeVisible();
-      await expect(
-        kpiChart.locator('.recharts-area').filter({
-          has: page.locator(`[fill="url(#gradient-${kpi.name})"]`),
-        })
-      ).toBeVisible();
-    });
-
-    await test.step('Test widget customization', async () => {
-      await waitForAllLoadersToDisappear(page);
-      await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
-      await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
-    });
-  }
-);
+  await test.step('Test widget customization', async () => {
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
 
 test('Total Data Assets Widget', async ({ page, persona }) => {
   test.slow(true);

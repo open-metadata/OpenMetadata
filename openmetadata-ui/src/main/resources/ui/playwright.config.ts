@@ -390,10 +390,6 @@ export default defineConfig({
       dependencies: ['data-insight-application'],
       grep: combineGrep(/@data-insight/),
       teardown: 'entity-data-teardown',
-      // One KPI per Data Insight chart is shared server state; these specs
-      // must not hold a chart slot at the same time.
-      fullyParallel: false,
-      workers: 1,
     },
     {
       name: 'Knowledge Graph',
