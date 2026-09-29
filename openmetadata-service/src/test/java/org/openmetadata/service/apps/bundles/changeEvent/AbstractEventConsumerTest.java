@@ -664,6 +664,41 @@ class AbstractEventConsumerTest {
         1, consumer.capturedFailures.size(), "handleFailedEvent invoked for the failing type");
   }
 
+  // A channel none of whose destinations can be used sent nothing: the event failed, and the
+  // reason says it was never tried.
+  @Test
+  void aChannelOfOnlyUnusableDestinationsCountsAsFailedWithItsReason() throws Exception {
+    RealPublishConsumer consumer = newRealConsumerWithMetrics();
+    Destination<ChangeEvent> unusable =
+        AlertFactory.getAlert(
+            eventSubscription,
+            new SubscriptionDestination()
+                .withId(UUID.randomUUID())
+                .withType(SubscriptionType.WEBHOOK)
+                .withEnabled(true)
+                .withConfig(
+                    new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com"))));
+    UUID unusableId = UUID.randomUUID();
+    consumer.destinationMap = new LinkedHashMap<>(Map.of(unusableId, unusable));
+    ChangeEvent event = createMockChangeEvent();
+    Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(unusableId));
+
+    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
+      alertUtil
+          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .thenReturn(events);
+      consumer.publishEvents(events);
+    }
+
+    assertTrue(consumer.ledger.pending().delivered().isEmpty());
+    assertEquals(0, consumer.ledger.pending().successEvents());
+    assertEquals(1, consumer.ledger.pending().failedEvents());
+    assertEquals(1, consumer.capturedFailures.size());
+    assertTrue(
+        consumer.capturedFailures.getFirst().getMessage().contains("Not attempted: "),
+        consumer.capturedFailures.getFirst().getMessage());
+  }
+
   // A destination nothing can be sent through never joins its channel: the others of that
   // channel are still sent, wherever it stands among them.
   @Test
