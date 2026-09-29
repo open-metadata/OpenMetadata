@@ -388,7 +388,9 @@ test.describe('Task Workflow Tests', () => {
       await waitForPageLoaded(page);
 
       // Navigate to Tasks tab
-      const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+      const tasksTab = page
+        .getByTestId('global-setting-left-panel')
+        .getByRole('button', { name: /tasks/i });
       if (await tasksTab.isVisible()) {
         await tasksTab.click();
         await waitForPageLoaded(page);
@@ -460,7 +462,9 @@ test.describe('Task Workflow Tests', () => {
         await waitForPageLoaded(page);
 
         // Navigate to Tasks tab
-        const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+        const tasksTab = page
+          .getByTestId('global-setting-left-panel')
+          .getByRole('button', { name: /tasks/i });
         if (await tasksTab.isVisible()) {
           await tasksTab.click();
           await waitForPageLoaded(page);

@@ -624,7 +624,11 @@ def assign_lane_within_budget(
     units: list[Unit], lane: str, mode: str
 ) -> list[list[Unit]]:
     count = shard_count(units, lane, mode)
-    _, maximum = lane_bounds(lane, mode)
+    # The targeted cap is where a PR's lane starts, not a ceiling: a PR that
+    # touches helpers nearly every spec imports selects a whole side lane, and
+    # growing to the full-mode bound beats failing the plan. Everyday targeted
+    # PRs never need more, so their shard count is unchanged.
+    _, maximum = lane_bounds(lane, "full")
     workers = LANE_WORKERS.get(lane, 3)
     budget_ms = shard_budget_ms_for_lane(lane)
     while True:

@@ -2393,14 +2393,18 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
       );
     };
 
+    // The popover takes focus on open, so its keydowns bubble (via the portal)
+    // to the rdg EditCell, which closes the editor on Enter / navigates on Tab.
     return (
-      <TierCard
-        currentTier={value}
-        popoverProps={{ open: true }}
-        updateTier={handleChange}
-        onClose={() => onClose(false)}>
-        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-      </TierCard>
+      <KeyDownStopPropagationWrapper>
+        <TierCard
+          open
+          currentTier={value}
+          updateTier={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </TierCard>
+      </KeyDownStopPropagationWrapper>
     );
   };
 };
@@ -2494,10 +2498,8 @@ const getCsvDomainsEditor: CSVEditorFactory = ({ entityType, options }) => {
       <DomainSelectableList
         hasPermission
         multiple
-        getPopupContainer={() => document.body}
         popoverProps={{ open: true }}
         selectedDomain={domains}
-        wrapInButton={false}
         onUpdate={(domain) => handleChange(domain as EntityReference[])}>
         <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
       </DomainSelectableList>

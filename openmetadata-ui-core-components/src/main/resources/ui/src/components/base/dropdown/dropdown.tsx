@@ -70,10 +70,15 @@ const DropdownItem = ({
         <div
           className={cx(
             'tw:relative tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:px-2.5 tw:py-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-            !state.isDisabled && 'tw:group-hover:bg-primary_hover',
-            state.isFocused && 'tw:bg-primary_hover',
-            state.isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
-            state.isSelected && 'tw:bg-active'
+            // Selected matches the sidebar's selected nav item and keeps its
+            // tint under hover/focus, like the sidebar does.
+            state.isSelected
+              ? 'tw:bg-brand-primary'
+              : cx(
+                  !state.isDisabled && 'tw:group-hover:bg-primary_hover',
+                  state.isFocused && 'tw:bg-primary_hover'
+                ),
+            state.isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
           )}>
           {showCheckbox && (
             <CheckboxBase
@@ -91,6 +96,8 @@ const DropdownItem = ({
                 'tw:size-4 tw:shrink-0 tw:stroke-[2.25px]',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
+                  : state.isSelected
+                  ? 'tw:text-fg-brand-secondary_alt'
                   : 'tw:text-fg-quaternary'
               )}
             />
@@ -99,8 +106,13 @@ const DropdownItem = ({
           <span
             className={cx(
               'tw:grow tw:truncate tw:text-sm',
-              state.isDisabled ? 'tw:text-disabled' : 'tw:text-secondary',
-              state.isFocused && 'tw:text-secondary_hover'
+              state.isDisabled
+                ? 'tw:text-disabled'
+                : state.isSelected
+                ? 'tw:text-brand-secondary'
+                : state.isFocused
+                ? 'tw:text-secondary_hover'
+                : 'tw:text-secondary'
             )}>
             {label ||
               (typeof children === 'function' ? children(state) : children)}

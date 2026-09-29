@@ -72,12 +72,16 @@ const TierWidget = () => {
 
   const tierEditControl = tier ? (
     <WidgetEditButton
+      aria-expanded={isEditing}
+      aria-haspopup="dialog"
       data-testid="edit-tier"
       title={t('label.edit-entity', { entity: t('label.tier') })}
       onClick={() => setIsEditing(true)}
     />
   ) : (
     <WidgetPlusButton
+      aria-expanded={isEditing}
+      aria-haspopup="dialog"
       data-testid="add-tier"
       title={t('label.add-entity', { entity: t('label.tier') })}
       onClick={() => setIsEditing(true)}
@@ -103,17 +107,15 @@ const TierWidget = () => {
     <TierCard
       currentTier={tier?.tagFQN}
       footerActionButtonsClassName="p-x-md"
-      popoverProps={{
-        open: isEditing,
-        onOpenChange: (visible: boolean) => {
-          if (!visible) {
-            setIsEditing(false);
-          }
-        },
-      }}
+      open={isEditing}
       tierCardClassName="tier-widget-popover"
       updateTier={handleTierUpdate}
-      onClose={() => setIsEditing(false)}>
+      onClose={() => setIsEditing(false)}
+      onOpenChange={(visible: boolean) => {
+        if (!visible) {
+          setIsEditing(false);
+        }
+      }}>
       {tier && <div data-testid="tier-selector-display">{tierDisplay}</div>}
     </TierCard>
   );

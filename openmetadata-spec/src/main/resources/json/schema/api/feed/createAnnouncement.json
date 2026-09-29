@@ -18,6 +18,11 @@
       "description": "Announcement content in Markdown format.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "type": {
+      "description": "Severity/category of the announcement, used to style it in the UI.",
+      "$ref": "../../entity/feed/announcement.json#/definitions/announcementType",
+      "default": "Information"
+    },
     "entityLink": {
       "description": "Link to the entity this announcement is about.",
       "$ref": "../../type/basic.json#/definitions/entityLink"

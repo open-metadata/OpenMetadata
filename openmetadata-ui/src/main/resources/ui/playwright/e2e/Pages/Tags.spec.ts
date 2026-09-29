@@ -538,7 +538,10 @@ test('Search tag using classification display name should work', async ({
 
   await table.visitEntityPage(page);
 
-  const initialQueryResponse = page.waitForResponse('**/api/v1/search/query?*');
+  // The picker loads its tag list on first open, so this is the open's own request.
+  const initialQueryResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*index=tag*'
+  );
 
   const displayNameTrigger = page
     .getByTestId('KnowledgePanel.Tags')
@@ -547,7 +550,8 @@ test('Search tag using classification display name should work', async ({
     .first();
 
   await openClassificationTagPicker(page, displayNameTrigger);
-  await initialQueryResponse;
+
+  expect((await initialQueryResponse).status()).toBe(200);
 
   const tagSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(
