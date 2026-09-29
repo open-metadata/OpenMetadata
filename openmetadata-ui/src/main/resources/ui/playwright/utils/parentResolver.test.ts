@@ -12,8 +12,10 @@
  */
 import { APIRequestContext, expect, test } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { readFileSync, rmSync } from 'fs';
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
+import path from 'path';
 import { resolveParents } from '../support/entity/ParentResolver';
 import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../support/entity/service/MessagingServiceClass';
@@ -25,6 +27,9 @@ import { TopicClass } from '../support/entity/TopicClass';
 const startFakeApi = async () => {
   const posts: string[] = [];
   const existing = new Set<string>();
+  // Per-GET response delays, consumed in order — lets a test force one
+  // caller's existence check to finish after another caller's rebuild.
+  const getDelaysMs: number[] = [];
   const server: Server = createServer((request, response) => {
     let body = '';
     request.on('data', (chunk) => (body += chunk));
@@ -38,10 +43,13 @@ const startFakeApi = async () => {
         if (request.method === 'DELETE') {
           existing.delete(byName);
         }
-        response.writeHead(found ? 200 : 404, {
-          'Content-Type': 'application/json',
-        });
-        response.end('{}');
+        const delay = request.method === 'GET' ? getDelaysMs.shift() ?? 0 : 0;
+        setTimeout(() => {
+          response.writeHead(found ? 200 : 404, {
+            'Content-Type': 'application/json',
+          });
+          response.end('{}');
+        }, delay);
 
         return;
       }
@@ -66,10 +74,24 @@ const startFakeApi = async () => {
   return {
     posts,
     existing,
+    getDelaysMs,
     server,
     baseURL: `http://127.0.0.1:${port}`,
   };
 };
+
+// SharedInfra records runtime-built chains next to the seeded file; drop this
+// process's record so a later local teardown doesn't try to delete fakes.
+const runtimeFile = path.join(
+  __dirname,
+  '..',
+  'output',
+  `shared-infra.runtime-${process.pid}.json`
+);
+
+test.afterAll(() => {
+  rmSync(runtimeFile, { force: true });
+});
 
 test.describe('resolveParents', () => {
   let api: Awaited<ReturnType<typeof startFakeApi>>;
@@ -163,6 +185,35 @@ test.describe('resolveParents', () => {
       '/api/v1/services/messagingServices',
     ]);
     expect(second.parents.service?.name).not.toBe(first.parents.service?.name);
+  });
+
+  test('concurrent callers on a stale chain rebuild it once', async () => {
+    const key = `unit-${randomUUID()}`;
+    const first = await resolveParents(apiContext, 'messaging', {}, key);
+    api.existing.delete(first.parents.service?.fullyQualifiedName ?? '');
+
+    // The second caller's check returns only after the first caller has
+    // rebuilt and stored the chain — it must adopt that chain, not delete it.
+    api.getDelaysMs.push(0, 500);
+
+    const [a, b] = await Promise.all([
+      resolveParents(apiContext, 'messaging', {}, key),
+      resolveParents(apiContext, 'messaging', {}, key),
+    ]);
+
+    expect(api.posts).toHaveLength(2);
+    expect(b.parents).toEqual(a.parents);
+  });
+
+  test('chains built at runtime are recorded for teardown', async () => {
+    const key = `unit-${randomUUID()}`;
+    const { parents } = await resolveParents(apiContext, 'messaging', {}, key);
+
+    const recorded = JSON.parse(readFileSync(runtimeFile, 'utf-8'));
+
+    expect(
+      recorded[`messaging:${key}`].parents.service.fullyQualifiedName
+    ).toBe(parents.service?.fullyQualifiedName);
   });
 
   test('deleting an owned override lets the next create own it again', async () => {

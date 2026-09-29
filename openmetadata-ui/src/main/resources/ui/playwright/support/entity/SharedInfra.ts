@@ -27,8 +27,9 @@
  * import, so test workers resolve shared parents with one existence check
  * instead of creating them.
  *
- * OWNERSHIP. Shared parents belong to setup/teardown: `reset()` deletes them
- * from `entity-data.teardown.ts`. A leaf in shared mode records no owned
+ * OWNERSHIP. Shared parents belong to setup/teardown: `reset()` deletes the
+ * seeded chains and every chain a worker built at runtime, from
+ * `entity-data.teardown.ts`. A leaf in shared mode records no owned
  * parent, so its `delete()` removes only itself.
  */
 
@@ -46,13 +47,19 @@ import {
 } from './ParentChain';
 
 const OUTPUT_FILENAME = 'shared-infra.json';
+// Chains a worker builds at runtime (unseeded slots, rebuilds of a vanished
+// chain) are recorded per process so teardown can delete them too; one file
+// per process avoids cross-process write races on a shared file.
+const RUNTIME_FILE_PATTERN = /^shared-infra\.runtime-\d+\.json$/;
 
 // ponytail: hard cap instead of eviction — evicting a live shared chain would
 // orphan every leaf under it. Slots are (kind × key); real usage is ~20.
 const MAX_SHARED_SLOTS = 64;
 
-const outputFilePath = (): string =>
-  path.join(__dirname, '..', '..', 'output', OUTPUT_FILENAME);
+const outputDir = (): string => path.join(__dirname, '..', '..', 'output');
+const outputFilePath = (): string => path.join(outputDir(), OUTPUT_FILENAME);
+const runtimeFilePath = (): string =>
+  path.join(outputDir(), `shared-infra.runtime-${process.pid}.json`);
 
 const slotId = (kind: ChainKind, key: string) => `${kind}:${key}`;
 
@@ -66,6 +73,7 @@ export class SharedInfra {
   // Only used by the process that builds a chain: de-dupes concurrent
   // first-time callers. Workers hit `slots` directly after loadResponseData().
   private static inFlight = new Map<string, Promise<ParentSnapshot>>();
+  private static builtHere = new Map<string, PersistedSlot>();
 
   static async parents(
     apiContext: APIRequestContext,
@@ -77,6 +85,12 @@ export class SharedInfra {
     if (cached) {
       if (await this.chainExists(apiContext, cached)) {
         return cached.parents;
+      }
+      // Another caller may have replaced the stale slot while this one was
+      // checking it; use theirs rather than deleting it and building a third.
+      const current = this.slots.get(id);
+      if (current && current !== cached) {
+        return current.parents;
       }
       this.slots.delete(id);
     }
@@ -98,7 +112,10 @@ export class SharedInfra {
 
     try {
       const parents = await pending;
-      this.slots.set(id, { kind, parents });
+      if (this.slots.get(id)?.parents !== parents) {
+        this.slots.set(id, { kind, parents });
+        this.recordBuilt(id, { kind, parents });
+      }
 
       return parents;
     } finally {
@@ -135,6 +152,15 @@ export class SharedInfra {
     return false;
   }
 
+  private static recordBuilt(id: string, slot: PersistedSlot) {
+    this.builtHere.set(id, slot);
+    fs.mkdirSync(outputDir(), { recursive: true });
+    fs.writeFileSync(
+      runtimeFilePath(),
+      JSON.stringify(Object.fromEntries(this.builtHere), null, 2)
+    );
+  }
+
   static saveResponseData(): void {
     const filePath = outputFilePath();
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -147,26 +173,7 @@ export class SharedInfra {
 
   /** Runs on import. A missing or unreadable file means "nothing seeded yet". */
   static loadResponseData(): void {
-    const filePath = outputFilePath();
-    if (!fs.existsSync(filePath)) {
-      return;
-    }
-    try {
-      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as Record<
-        string,
-        PersistedSlot
-      >;
-      // Skip anything not in the current slot shape (e.g. a file written by
-      // an older layout), so it can neither resolve nor be "reset".
-      this.slots = new Map(
-        Object.entries(data).filter(
-          ([, slot]) => slot?.kind in CHAINS && Boolean(slot.parents?.service)
-        )
-      );
-    } catch {
-      // Partially written or from an older format — the setup project
-      // rewrites it on its next run.
-    }
+    this.slots = new Map(readSlots(outputFilePath()));
   }
 
   /**
@@ -175,23 +182,57 @@ export class SharedInfra {
    * setup starts clean.
    */
   static async reset(apiContext: APIRequestContext): Promise<void> {
-    this.loadResponseData();
-
-    await Promise.allSettled(
-      Array.from(this.slots.values()).map(async ({ kind, parents }) => {
+    const runtimeFiles = fs.existsSync(outputDir())
+      ? fs
+          .readdirSync(outputDir())
+          .filter((name) => RUNTIME_FILE_PATTERN.test(name))
+          .map((name) => path.join(outputDir(), name))
+      : [];
+    const urls = new Set<string>();
+    for (const file of [outputFilePath(), ...runtimeFiles]) {
+      for (const [, { kind, parents }] of readSlots(file)) {
         const url = serviceDeletePath(kind, parents);
         if (url) {
-          await deleteFixtureEntity(
-            apiContext,
-            `${url}?recursive=true&hardDelete=true`
-          );
+          urls.add(url);
         }
-      })
+      }
+    }
+
+    await Promise.allSettled(
+      Array.from(urls).map((url) =>
+        deleteFixtureEntity(apiContext, `${url}?recursive=true&hardDelete=true`)
+      )
     );
 
     this.slots.clear();
     this.inFlight.clear();
-    fs.rmSync(outputFilePath(), { force: true });
+    this.builtHere.clear();
+    for (const file of [outputFilePath(), ...runtimeFiles]) {
+      fs.rmSync(file, { force: true });
+    }
+  }
+}
+
+/**
+ * Slots from one persisted file. Anything not in the current shape (a file
+ * from an older layout, a partial write) is skipped, so it can neither
+ * resolve nor be "reset".
+ */
+function readSlots(filePath: string): Array<[string, PersistedSlot]> {
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as Record<
+      string,
+      PersistedSlot
+    >;
+
+    return Object.entries(data).filter(
+      ([, slot]) => slot?.kind in CHAINS && Boolean(slot.parents?.service)
+    );
+  } catch {
+    return [];
   }
 }
 
