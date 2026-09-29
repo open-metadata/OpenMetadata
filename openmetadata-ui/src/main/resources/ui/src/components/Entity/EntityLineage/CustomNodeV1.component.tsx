@@ -330,6 +330,7 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const onColumnLineageEdit =
     isNodeEditable && onSceneLineageEdit ? handleColumnLineageEdit : undefined;
+  const hasLineageNodeMenu = Boolean(isNodeEditable && onSceneLineageEdit);
 
   const handleEntityClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -458,7 +459,10 @@ const CustomNodeV1 = (props: NodeProps) => {
           <div className="lineage-node-badge" />
         </div>
       )}
-      <div className="lineage-node-content">
+      <div
+        className={classNames('lineage-node-content', {
+          'has-lineage-node-menu': hasLineageNodeMenu,
+        })}>
         <SceneDrillButton
           label={sceneDrillLabel}
           node={sceneNode}

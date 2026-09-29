@@ -36,7 +36,11 @@ const LineageNodeMenu = ({
       onClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}>
       <Dropdown.Root>
-        <Dropdown.DotsButton data-testid="lineage-node-menu" ref={triggerRef} />
+        <Dropdown.DotsButton
+          className="tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center"
+          data-testid="lineage-node-menu"
+          ref={triggerRef}
+        />
         <Dropdown.Popover>
           <Dropdown.Menu
             aria-label={t('label.lineage-options')}

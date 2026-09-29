@@ -73,6 +73,9 @@
     .lineage-node-content {
       min-height: 66px;
 
+      // No .has-lineage-node-menu offset needed here: Layer-band scene nodes
+      // are never editable (canEditScene excludes LineageBand.Layer), so
+      // LineageNodeMenu never renders alongside this drill button variant.
       .lineage-scene-drill-button {
         top: 50%;
         right: 14px;
@@ -225,6 +228,16 @@
       .lineage-scene-drill-button {
         opacity: 1;
       }
+    }
+
+    // The node ⋮ menu (LineageNodeMenu) renders inline in .label-container's
+    // top-right, flush with the node edge — same spot the absolutely
+    // positioned drill button occupies. Shift the drill button clear of it:
+    // 24px menu width + enough gap that a small measurement drift still
+    // doesn't put the two back into each other's hit area (see custom-node.less
+    // review from the lineage-inline-editing node-menu task).
+    &.has-lineage-node-menu .lineage-scene-drill-button {
+      right: 34px;
     }
 
     .label-container {

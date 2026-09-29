@@ -1361,5 +1361,44 @@ describe('CustomNodeV1', () => {
 
       expect(screen.queryByTestId('lineage-node-menu')).not.toBeInTheDocument();
     });
+
+    it('keeps the drill button clear of the node menu via a modifier class', () => {
+      const { container, rerender } = render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component
+            {...nodeProps({
+              isNodeEditable: true,
+              onSceneLineageEdit: jest.fn(),
+              sceneNode: { isExpandable: true },
+              onSceneDrill: jest.fn(),
+            })}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(container.querySelector('.lineage-node-content')).toHaveClass(
+        'has-lineage-node-menu'
+      );
+      expect(screen.getByTestId('lineage-node-menu')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'label.zoom-in' })
+      ).toBeInTheDocument();
+
+      rerender(
+        <ReactFlowProvider>
+          <CustomNodeV1Component
+            {...nodeProps({
+              isNodeEditable: false,
+              sceneNode: { isExpandable: true },
+              onSceneDrill: jest.fn(),
+            })}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(container.querySelector('.lineage-node-content')).not.toHaveClass(
+        'has-lineage-node-menu'
+      );
+    });
   });
 });
