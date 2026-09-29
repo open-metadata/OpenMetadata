@@ -5,12 +5,14 @@ import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
 import { ChevronDown } from '@untitledui/icons';
-import type { FC, ReactNode, Ref, RefAttributes } from 'react';
+import type { FC, HTMLAttributes, ReactNode, Ref, RefAttributes } from 'react';
 import { createContext, isValidElement } from 'react';
 import type { SelectProps as AriaSelectProps } from 'react-aria-components';
 import {
   Button as AriaButton,
+  Header as AriaHeader,
   ListBox as AriaListBox,
+  ListBoxSection as AriaListBoxSection,
   Select as AriaSelect,
   SelectValue as AriaSelectValue,
 } from 'react-aria-components';
@@ -47,11 +49,15 @@ export const SelectEmptyState = ({
   </div>
 );
 
+type SelectLabelWeight = 'regular' | 'semibold';
+
 interface SelectProps
   extends Omit<AriaSelectProps<SelectItemType>, 'children' | 'items'>,
     RefAttributes<HTMLDivElement>,
     SelectCommonProps {
   items?: SelectItemType[];
+  /** Weight of the item label, in both the trigger and the list. */
+  labelWeight?: SelectLabelWeight;
   popoverClassName?: string;
   icon?: FC | ReactNode;
   children: ReactNode | ((item: SelectItemType) => ReactNode);
@@ -61,6 +67,7 @@ interface SelectValueProps {
   isOpen: boolean;
   size: 'sm' | 'md';
   fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  labelWeight: SelectLabelWeight;
   isFocused: boolean;
   isDisabled: boolean;
   placeholder?: string;
@@ -79,6 +86,7 @@ const SelectValue = ({
   isDisabled,
   size,
   fontSize,
+  labelWeight,
   placeholder,
   icon,
   ref,
@@ -127,7 +135,8 @@ const SelectValue = ({
                   <p
                     className={cx(
                       'tw:truncate tw:text-primary',
-                      fontSizeClass[fontSize]
+                      fontSizeClass[fontSize],
+                      labelWeight === 'semibold' && 'tw:font-semibold'
                     )}>
                     {state.selectedItem?.label}
                   </p>
@@ -170,6 +179,7 @@ const SelectValue = ({
 export const SelectContext = createContext<{
   size: 'sm' | 'md';
   fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  labelWeight?: SelectLabelWeight;
 }>({
   fontSize: 'sm',
   size: 'sm',
@@ -183,6 +193,7 @@ const Select = ({
   children,
   items,
   label,
+  labelWeight = 'regular',
   hint,
   tooltip,
   emptyState,
@@ -190,7 +201,7 @@ const Select = ({
   ...rest
 }: SelectProps) => {
   return (
-    <SelectContext.Provider value={{ fontSize, size }}>
+    <SelectContext.Provider value={{ fontSize, size, labelWeight }}>
       <AriaSelect
         {...rest}
         className={(state) =>
@@ -209,11 +220,14 @@ const Select = ({
 
             <SelectValue
               {...state}
-              {...{ size, fontSize, placeholder }}
+              {...{ size, fontSize, labelWeight, placeholder }}
               icon={icon}
             />
 
-            <Popover className={rest.popoverClassName} size={size}>
+            <Popover
+              isDismissable
+              className={rest.popoverClassName}
+              size={size}>
               <AriaListBox
                 className="tw:size-full tw:outline-hidden"
                 items={items}
@@ -232,11 +246,18 @@ const Select = ({
   );
 };
 
+export type SelectSectionHeaderProps = HTMLAttributes<HTMLElement> &
+  RefAttributes<HTMLElement>;
+
 const _Select = Select as typeof Select & {
   ComboBox: typeof ComboBox;
   Item: typeof SelectItem;
+  Section: typeof AriaListBoxSection;
+  SectionHeader: FC<SelectSectionHeaderProps>;
 };
 _Select.ComboBox = ComboBox;
 _Select.Item = SelectItem;
+_Select.Section = AriaListBoxSection;
+_Select.SectionHeader = AriaHeader as FC<SelectSectionHeaderProps>;
 
 export { _Select as Select };

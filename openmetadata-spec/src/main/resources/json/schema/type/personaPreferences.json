@@ -34,6 +34,10 @@
       "type": "string",
       "enum": ["classic", "AI"],
       "default": "classic"
+    },
+    "defaultLandingPage": {
+      "description": "Route path users of this persona land on after signing in to the Classic app mode (e.g. `/explore`). Unset means Home (My Data).",
+      "type": "string"
     }
   },
   "required": ["personaId", "personaName"],

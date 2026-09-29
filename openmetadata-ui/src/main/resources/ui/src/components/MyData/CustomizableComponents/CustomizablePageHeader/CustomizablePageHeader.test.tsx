@@ -255,9 +255,9 @@ describe('CustomizablePageHeader', () => {
       ).toBeInTheDocument();
     });
 
-    it('uses app-mode subheader key when pageFqn is "app-mode"', () => {
+    it('uses general-preferences subheader key when pageFqn is "general-preferences"', () => {
       (useRequiredParams as jest.Mock).mockReturnValue({
-        pageFqn: 'app-mode',
+        pageFqn: 'general-preferences',
       });
 
       render(
@@ -267,7 +267,9 @@ describe('CustomizablePageHeader', () => {
       );
 
       expect(
-        screen.getByTestId('message.customize-your-app-mode-subheader')
+        screen.getByTestId(
+          'message.customize-your-general-preferences-subheader'
+        )
       ).toBeInTheDocument();
     });
 

@@ -34,9 +34,9 @@ describe('PersonaClassBase', () => {
       const icons = instance.getEntityIcons();
 
       expect(icons['navigation']).toBeDefined();
-      expect(icons['app-mode']).toBeDefined();
       expect(icons['govern']).toBeDefined();
       expect(icons['dataAssets']).toBeDefined();
+      expect(icons['general-preferences']).toBeDefined();
       expect(icons[PageType.Table]).toBeDefined();
       expect(icons[PageType.Glossary]).toBeDefined();
     });
@@ -47,12 +47,12 @@ describe('PersonaClassBase', () => {
   });
 
   describe('getCustomizePageCategories', () => {
-    it('returns navigation, app-mode, askCollateSidebar, home-page, data-marketplace, governance, and data-assets categories', () => {
+    it('returns navigation, general-preferences, askCollateSidebar, home-page, data-marketplace, governance, and data-assets categories', () => {
       const categories = instance.getCustomizePageCategories();
 
       expect(categories.map((category) => category.key)).toEqual([
         'navigation',
-        'app-mode',
+        'general-preferences',
         'askCollateSidebar',
         PageType.LandingPage,
         PageType.DataMarketplace,

@@ -34,10 +34,7 @@ import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { UICustomization } from '../../generated/system/ui/uiCustomization';
-import {
-  AppMode,
-  PersonaPreferences,
-} from '../../generated/type/personaPreferences';
+import { PersonaPreferences } from '../../generated/type/personaPreferences';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -49,7 +46,9 @@ import { getPersonaByName } from '../../rest/PersonaAPI';
 import { docStoreQueryKey } from '../../rest/queries/docStoreQuery';
 import {
   normalizePersonaDocument,
+  PersonaGeneralPreferences,
   updatePersonaDocumentPage,
+  updatePersonaGeneralPreferences,
 } from '../../utils/CustomizePage/PersonaPage.utils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getOwnHandler } from '../../utils/RecordUtils';
@@ -72,10 +71,12 @@ const CustomizeGlossaryTermDetailPage = withSuspenseFallback(
   )
 );
 
-const SettingsAppModePage = withSuspenseFallback(
+const PersonaGeneralPreferencesPage = withSuspenseFallback(
   lazy(() =>
-    import('../SettingsAppModePage/SettingsAppModePage').then((m) => ({
-      default: m.SettingsAppModePage,
+    import(
+      '../platform/persona/PersonaGeneralPreferencesPage/PersonaGeneralPreferencesPage'
+    ).then((m) => ({
+      default: m.PersonaGeneralPreferencesPage,
     }))
   )
 );
@@ -94,7 +95,9 @@ interface CustomizePageRenderContext {
   onNavigationSave: (
     uiNavigation: UICustomization['navigation']
   ) => Promise<void>;
-  onAppModeSave: (appMode: AppMode) => Promise<void>;
+  onGeneralPreferencesSave: (
+    preferences: PersonaGeneralPreferences
+  ) => Promise<void>;
   onBackgroundColorUpdate: (color?: string) => Promise<void>;
 }
 
@@ -131,7 +134,7 @@ const getCustomizePageContent = (
     backgroundColor,
     onSaveLayout,
     onNavigationSave,
-    onAppModeSave,
+    onGeneralPreferencesSave,
     onBackgroundColorUpdate,
   } = ctx;
 
@@ -161,10 +164,10 @@ const getCustomizePageContent = (
         onSave={onNavigationSave}
       />
     ),
-    'app-mode': () => (
-      <SettingsAppModePage
+    'general-preferences': () => (
+      <PersonaGeneralPreferencesPage
         personaDetails={personaDetails}
-        onSave={onAppModeSave}
+        onSave={onGeneralPreferencesSave}
       />
     ),
     askCollateSidebar: () => <CustomizeAppModeSidebarPage />,
@@ -406,33 +409,21 @@ const CustomizablePageContent = () => {
     }
   };
 
-  const handleAppModeSave = async (appMode: AppMode) => {
-    if (!document) {
+  const handleGeneralPreferencesSave = async (
+    preferences: PersonaGeneralPreferences
+  ) => {
+    if (!document || !personaDetails) {
       return;
     }
     try {
       let response: Document;
       const newDoc = cloneDeep(document);
-      const existing = (newDoc.data.personaPreferences ??
-        []) as PersonaPreferences[];
-      const match = existing.find(
-        (persona) => persona.personaId === personaDetails?.id
-      );
 
-      newDoc.data.personaPreferences = match
-        ? existing.map((persona) =>
-            persona.personaId === personaDetails?.id
-              ? { ...persona, appMode }
-              : persona
-          )
-        : [
-            ...existing,
-            {
-              personaId: personaDetails?.id ?? '',
-              personaName: personaDetails?.name ?? '',
-              appMode,
-            },
-          ];
+      newDoc.data.personaPreferences = updatePersonaGeneralPreferences(
+        (newDoc.data.personaPreferences ?? []) as PersonaPreferences[],
+        personaDetails,
+        preferences
+      );
 
       if (document.id) {
         const jsonPatch = compare(document, newDoc);
@@ -548,7 +539,7 @@ const CustomizablePageContent = () => {
     backgroundColor,
     onSaveLayout: handlePageCustomizeSave,
     onNavigationSave: handleNavigationSave,
-    onAppModeSave: handleAppModeSave,
+    onGeneralPreferencesSave: handleGeneralPreferencesSave,
     onBackgroundColorUpdate: handleBackgroundColorUpdate,
   });
 };

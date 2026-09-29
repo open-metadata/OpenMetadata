@@ -33,7 +33,7 @@ export const SelectItem = ({
   children,
   ...props
 }: SelectItemProps) => {
-  const { fontSize, size } = useContext(SelectContext);
+  const { fontSize, size, labelWeight } = useContext(SelectContext);
 
   const labelOrChildren =
     label || (typeof children === 'string' ? children : '');
@@ -99,6 +99,7 @@ export const SelectItem = ({
                   ? 'tw:text-brand-secondary'
                   : 'tw:text-primary',
                 fontSizeClass[fontSize],
+                labelWeight === 'semibold' && 'tw:font-semibold',
                 state.isDisabled && 'tw:text-disabled'
               )}
               slot="label">

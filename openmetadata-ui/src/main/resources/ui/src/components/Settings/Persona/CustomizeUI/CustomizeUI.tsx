@@ -31,9 +31,7 @@ export const CustomizeUI = () => {
   const categories = useMemo(
     () =>
       getCustomizePageCategories().filter(
-        (category) =>
-          !['app-mode', 'askCollateSidebar'].includes(category.key) ||
-          hasNonDefaultMode
+        (category) => category.key !== 'askCollateSidebar' || hasNonDefaultMode
       ),
     [hasNonDefaultMode]
   );

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button, Dialog, DialogTrigger, Modal } from 'react-aria-components';
 import { describe, expect, it } from 'vitest';
@@ -56,4 +56,143 @@ describe('Select in a modal', () => {
       await waitFor(() => expect(trigger).toHaveFocus());
     }
   );
+});
+
+describe('Select sections', () => {
+  it('groups options under their section headers', async () => {
+    const user = userEvent.setup();
+    render(
+      <Select aria-label="Landing page">
+        <Select.Section aria-label="General">
+          <Select.SectionHeader>General</Select.SectionHeader>
+          <Select.Item id="home" label="Home" />
+        </Select.Section>
+        <Select.Section aria-label="Govern">
+          <Select.SectionHeader>Govern</Select.SectionHeader>
+          <Select.Item id="glossary" label="Glossary" />
+        </Select.Section>
+      </Select>
+    );
+
+    await user.click(screen.getByRole('button', { name: /Landing page/ }));
+
+    const govern = await screen.findByRole('group', { name: 'Govern' });
+
+    expect(govern).toHaveTextContent('Govern');
+    expect(govern).toContainElement(
+      screen.getByRole('option', { name: 'Glossary' })
+    );
+    expect(govern).not.toContainElement(
+      screen.getByRole('option', { name: 'Home' })
+    );
+  });
+});
+
+describe('Select labelWeight', () => {
+  const renderSelect = (props: {
+    labelWeight?: 'regular' | 'semibold';
+    defaultSelectedKey?: string;
+  }) =>
+    render(
+      <Select aria-label="Landing page" {...props}>
+        <Select.Item id="home" label="Home" supportingText="/my-data" />
+        <Select.Item
+          id="glossary"
+          label="Glossary"
+          supportingText="/glossary"
+        />
+      </Select>
+    );
+
+  const getTrigger = () => screen.getByRole('button', { name: /Landing page/ });
+
+  it('bolds the selected label, not its supporting text, in the trigger', () => {
+    renderSelect({ labelWeight: 'semibold', defaultSelectedKey: 'home' });
+
+    expect(within(getTrigger()).getByText('Home')).toHaveClass(
+      'tw:font-semibold'
+    );
+    expect(within(getTrigger()).getByText('/my-data')).not.toHaveClass(
+      'tw:font-semibold'
+    );
+  });
+
+  it('bolds item labels, not their supporting text, in the list', async () => {
+    const user = userEvent.setup();
+    renderSelect({ labelWeight: 'semibold' });
+
+    await user.click(getTrigger());
+    const option = await screen.findByRole('option', { name: /Glossary/ });
+
+    expect(within(option).getByText('Glossary')).toHaveClass(
+      'tw:font-semibold'
+    );
+    expect(within(option).getByText('/glossary')).not.toHaveClass(
+      'tw:font-semibold'
+    );
+  });
+
+  it('keeps the regular weight by default', () => {
+    renderSelect({ defaultSelectedKey: 'home' });
+
+    expect(within(getTrigger()).getByText('Home')).not.toHaveClass(
+      'tw:font-semibold'
+    );
+  });
+});
+
+describe('Select dismissal', () => {
+  const renderSelect = () =>
+    render(
+      <>
+        <p>Outside</p>
+        <Select aria-label="Landing page">
+          <Select.Item id="home" label="Home" />
+          <Select.Item id="glossary" label="Glossary" />
+        </Select>
+      </>
+    );
+
+  const openList = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: /Landing page/ }));
+    await screen.findByRole('listbox');
+  };
+
+  it('closes without a selection when clicking outside the list', async () => {
+    const user = userEvent.setup();
+    renderSelect();
+    await openList(user);
+
+    await user.click(screen.getByText('Outside'));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    );
+  });
+
+  it('closes when the trigger is clicked again', async () => {
+    const user = userEvent.setup();
+    renderSelect();
+    await openList(user);
+
+    await user.click(screen.getByRole('button', { name: /Landing page/ }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    );
+  });
+
+  it('still commits a selection made inside the list', async () => {
+    const user = userEvent.setup();
+    renderSelect();
+    await openList(user);
+
+    await user.click(screen.getByRole('option', { name: 'Glossary' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Landing page/ })
+      ).toHaveTextContent('Glossary')
+    );
+  });
 });

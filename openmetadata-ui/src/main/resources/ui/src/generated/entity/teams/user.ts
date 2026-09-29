@@ -576,6 +576,11 @@ export interface PersonaPreferences {
      */
     appMode?: AppMode;
     /**
+     * Route path users of this persona land on after signing in to the Classic app mode (e.g.
+     * `/explore`). Unset means Home (My Data).
+     */
+    defaultLandingPage?: string;
+    /**
      * User's personal customizations for the landing page.
      */
     landingPageSettings?: LandingPageSettings;

@@ -11,8 +11,27 @@
  *  limitations under the License.
  */
 
+import { isUndefined, omit, omitBy } from 'lodash';
+import { DEFAULT_APP_MODE } from '../../constants/appMode.constants';
+import {
+  DEFAULT_LANDING_PAGE,
+  LANDING_PAGE_SECTIONS,
+} from '../../constants/platform/personaLandingPage.constants';
+import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { Document } from '../../generated/entity/docStore/document';
+import { Persona } from '../../generated/entity/teams/persona';
 import { Page } from '../../generated/system/ui/page';
+import { PersonaPreferences } from '../../generated/type/personaPreferences';
+
+export type PersonaGeneralPreferences = Pick<
+  PersonaPreferences,
+  'appMode' | 'defaultLandingPage'
+>;
+
+const GENERAL_PREFERENCE_KEYS: Array<keyof PersonaGeneralPreferences> = [
+  'appMode',
+  'defaultLandingPage',
+];
 
 const getPageEntries = (document?: Document | null): unknown[] | undefined => {
   const pages = document?.data?.pages as unknown;
@@ -94,4 +113,81 @@ export const updatePersonaDocumentPage = (
       pages: updatedPages,
     },
   };
+};
+
+export const getPersonaPreferences = (
+  document: Document | null | undefined,
+  personaId: string | undefined
+): PersonaPreferences | undefined =>
+  (
+    document?.data?.personaPreferences as PersonaPreferences[] | undefined
+  )?.find((entry) => entry.personaId === personaId);
+
+/**
+ * Replaces the persona's general preferences. An undefined field is removed
+ * rather than stored, so "no value" keeps meaning "fall through to the next
+ * default" (see `resolveEffectiveAppMode` and `resolvePersonaLandingPage`).
+ */
+export const updatePersonaGeneralPreferences = (
+  preferences: PersonaPreferences[],
+  persona: Pick<Persona, 'id' | 'name'>,
+  changes: PersonaGeneralPreferences
+): PersonaPreferences[] => {
+  const values = omitBy(changes, isUndefined);
+  const hasEntry = preferences.some((entry) => entry.personaId === persona.id);
+
+  if (!hasEntry) {
+    return Object.keys(values).length
+      ? [
+          ...preferences,
+          { personaId: persona.id, personaName: persona.name, ...values },
+        ]
+      : preferences;
+  }
+
+  return preferences.map((entry) =>
+    entry.personaId === persona.id
+      ? { ...omit(entry, GENERAL_PREFERENCE_KEYS), ...values }
+      : entry
+  );
+};
+
+export const isLandingPageOption = (path?: string): path is string =>
+  LANDING_PAGE_SECTIONS.some((section) =>
+    section.options.some((option) => option.path === path)
+  );
+
+/**
+ * Where a user of this persona lands after signing in. Only paths from the
+ * curated option list are honoured, so a stale or hand-edited value falls
+ * back to Home instead of navigating somewhere unexpected.
+ */
+export const resolvePersonaLandingPage = (
+  document: Document | null | undefined,
+  personaId: string | undefined
+): string => {
+  const path = getPersonaPreferences(document, personaId)?.defaultLandingPage;
+
+  return isLandingPageOption(path) ? path : DEFAULT_LANDING_PAGE;
+};
+
+/**
+ * Where a fresh sign-in lands. Only Classic honours the persona's default
+ * landing page: the AI shell owns `/`, and many Classic pages don't exist in
+ * its route tree. Home keeps routing to `/`, as it did before this setting.
+ */
+export const getSignInLandingPath = (
+  appMode: string,
+  document: Document | null | undefined,
+  personaId: string | undefined
+): string => {
+  if (appMode !== DEFAULT_APP_MODE) {
+    return APP_ROUTER_ROUTES.HOME;
+  }
+
+  const landingPage = resolvePersonaLandingPage(document, personaId);
+
+  return landingPage === DEFAULT_LANDING_PAGE
+    ? APP_ROUTER_ROUTES.HOME
+    : landingPage;
 };

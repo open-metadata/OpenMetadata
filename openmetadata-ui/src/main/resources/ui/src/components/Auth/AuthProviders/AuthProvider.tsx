@@ -38,6 +38,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import {
   APP_ROUTER_ROUTES as ROUTES,
   REDIRECT_PATHNAME,
@@ -47,6 +48,7 @@ import {
   AuthenticationConfiguration,
   ClientType,
 } from '../../../generated/configuration/authenticationConfiguration';
+import { Document } from '../../../generated/entity/docStore/document';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
 import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
@@ -68,6 +70,7 @@ import {
   setAppDefaultMode,
   translatePreferenceMode,
   translateWireMode,
+  useAppModeStore,
   writeAppMode,
 } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -93,6 +96,7 @@ import {
   prepareUserProfileFromClaims,
   validateAuthFieldsDetailed,
 } from '../../../utils/AuthProvider.util';
+import { getSignInLandingPath } from '../../../utils/CustomizePage/PersonaPage.utils';
 import { clearPersonaSession } from '../../../utils/PersonaSessionUtils';
 import {
   clearOidcToken,
@@ -140,6 +144,23 @@ const userAPIQueryFields = [
 
 const isEmailVerifyField = 'isEmailVerified';
 
+const fetchPersonaDoc = (user: User): Promise<Document | undefined> => {
+  const personaFqn = personaDocFqn(user.defaultPersona ?? null);
+
+  return personaFqn
+    ? getDocumentByFQN(personaFqn).catch(() => undefined)
+    : Promise.resolve(undefined);
+};
+
+/**
+ * Set when {@link hydrateAndResolveAppMode} ran the persona lookup, so later
+ * sign-in steps can reuse its doc — including a missing one — instead of
+ * fetching it again. Absent when the lookup was skipped.
+ */
+interface PersonaLookup {
+  personaDoc?: Document;
+}
+
 /**
  * Boot-time app-mode plumbing, run once `currentUser` is known (both the
  * returning-session path and the fresh-login path need it). Fetches the
@@ -162,7 +183,9 @@ const isEmailVerifyField = 'isEmailVerified';
  * asynchronously after boot — there is no post-boot resolver anymore, so
  * the write below is final rather than provisional.
  */
-const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
+const hydrateAndResolveAppMode = async (
+  user: User
+): Promise<PersonaLookup | undefined> => {
   const [prefsRes, appConfig] = await Promise.all([
     getUserPreferences(user.id).catch(() => ({ preferences: [] })),
     getAppConfiguration().catch(() => null),
@@ -188,7 +211,7 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   //      persona/preference chain — the sibling's active choice wins.
   const existingSession = readAppModeSession();
   if (existingSession?.mode && existingSession.source !== 'boot') {
-    return;
+    return undefined;
   }
   const hint = readAppModeHint();
   if (isAppModeHintFresh(hint) && hint?.mode) {
@@ -197,7 +220,7 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
     // reload and skips re-writing the hint (no self-leak).
     writeAppMode(hint.mode, null, { source: 'boot' });
 
-    return;
+    return undefined;
   }
 
   // `appMode` off the wire is the preference's WIRE token ("classic" /
@@ -214,10 +237,7 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   // pays no persona-doc round-trip. Best-effort — a failed fetch or a
   // persona with no forced `appMode` yields `null` and the chain falls
   // through to userPref / tenant default.
-  const personaFqn = personaDocFqn(user.defaultPersona ?? null);
-  const personaDoc = personaFqn
-    ? await getDocumentByFQN(personaFqn).catch(() => undefined)
-    : undefined;
+  const personaDoc = await fetchPersonaDoc(user);
   const personaMode = resolvePersonaAppMode(
     personaDoc,
     user.defaultPersona?.id
@@ -235,6 +255,23 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
     personaMode,
     { source: 'boot' }
   );
+
+  return { personaDoc };
+};
+
+// Reuses the persona doc the app-mode step fetched; fetches it only when that
+// step was skipped and the landing page can actually apply (Classic mode).
+const resolveSignInLandingPath = async (
+  user: User,
+  personaLookup: PersonaLookup | undefined
+): Promise<string> => {
+  const appMode = useAppModeStore.getState().currentMode;
+  const personaDoc =
+    personaLookup || appMode !== DEFAULT_APP_MODE
+      ? personaLookup?.personaDoc
+      : await fetchPersonaDoc(user);
+
+  return getSignInLandingPath(appMode, personaDoc, user.defaultPersona?.id);
 };
 
 let requestInterceptor: number | null = null;
@@ -379,14 +416,19 @@ export const AuthProvider = ({
     navigate(ROUTES.SIGNIN);
   }, []);
 
-  const handledVerifiedUser = () => {
-    if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      // Route to `/` and let the (mode-specific) route tree render its
-      // own landing page. Rendering in place at `/` is provider-agnostic
-      // and lets non-default app modes (e.g. AskCollate's AI) own their
-      // own landing page without racing an early client-side redirect.
-      navigate(ROUTES.HOME);
+  const handledVerifiedUser = async (
+    user: User,
+    personaLookup: PersonaLookup | undefined
+  ) => {
+    if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
+      return;
     }
+    // Default to `/` and let the (mode-specific) route tree render its own
+    // landing page. Rendering in place at `/` is provider-agnostic and lets
+    // non-default app modes (e.g. AskCollate's AI) own their own landing
+    // page without racing an early client-side redirect. A deep link stored
+    // before sign-in still wins: PermissionProvider redirects to it next.
+    navigate(await resolveSignInLandingPath(user, personaLookup));
   };
 
   /**
@@ -575,9 +617,9 @@ export const AuthProvider = ({
         if (res) {
           const userDetails = await checkIfUpdateRequired(res, newUser);
           setCurrentUser(userDetails);
-          await hydrateAndResolveAppMode(userDetails);
+          const personaLookup = await hydrateAndResolveAppMode(userDetails);
 
-          handledVerifiedUser();
+          await handledVerifiedUser(userDetails, personaLookup);
         }
       } catch (error) {
         const err = error as AxiosError;

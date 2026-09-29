@@ -1,0 +1,233 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { Persona } from '../../../../generated/entity/teams/persona';
+import {
+  AppMode,
+  PersonaPreferences,
+} from '../../../../generated/type/personaPreferences';
+import { useCustomizeStore } from '../../../CustomizablePage/CustomizeStore';
+import { PersonaGeneralPreferencesPage } from './PersonaGeneralPreferencesPage';
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock(
+  '../../../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader',
+  () => ({
+    CustomizablePageHeader: ({
+      onSave,
+      onReset,
+      disableSave,
+    }: {
+      onSave: () => void;
+      onReset: () => void;
+      disableSave: boolean;
+    }) => (
+      <div>
+        <button data-testid="save-btn" disabled={disableSave} onClick={onSave}>
+          save
+        </button>
+        <button data-testid="reset-btn" onClick={onReset}>
+          reset
+        </button>
+      </div>
+    ),
+  })
+);
+
+jest.mock('../../../../components/PageLayoutV1/PageLayoutV1', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
+jest.mock(
+  '../../../../components/common/NavigationBlocker/NavigationBlocker',
+  () => ({
+    NavigationBlocker: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+  })
+);
+
+const personaId = 'persona-1';
+const persona = { id: personaId, name: 'analytics' } as Persona;
+
+const seedDoc = (
+  preferences: Pick<PersonaPreferences, 'appMode' | 'defaultLandingPage'> = {}
+) => {
+  useCustomizeStore.setState({
+    document: {
+      id: 'doc-1',
+      name: 'persona.analytics',
+      fullyQualifiedName: 'persona.analytics',
+      entityType: 'persona',
+      data: {
+        personaPreferences: [
+          { personaId, personaName: 'analytics', ...preferences },
+        ],
+      },
+    } as never,
+  });
+};
+
+const renderPage = (onSave = jest.fn().mockResolvedValue(undefined)) => {
+  render(
+    <PersonaGeneralPreferencesPage personaDetails={persona} onSave={onSave} />
+  );
+
+  return onSave;
+};
+
+const getRadio = (value: string) =>
+  within(screen.getByTestId(`app-mode-option-${value}`)).getByRole(
+    'radio'
+  ) as HTMLInputElement;
+
+const getLandingPageTrigger = () =>
+  within(screen.getByTestId('default-landing-page-select')).getByRole('button');
+
+describe('PersonaGeneralPreferencesPage', () => {
+  beforeEach(() => {
+    seedDoc();
+  });
+
+  describe('App Mode', () => {
+    it('renders No default, Classic and AI options', () => {
+      renderPage();
+
+      expect(getRadio('null')).toBeInTheDocument();
+      expect(getRadio(AppMode.Classic)).toBeInTheDocument();
+      expect(getRadio(AppMode.AI)).toBeInTheDocument();
+    });
+
+    it('selects the persisted appMode on mount', () => {
+      seedDoc({ appMode: AppMode.AI });
+      renderPage();
+
+      expect(getRadio(AppMode.AI).checked).toBe(true);
+    });
+
+    it('selects No default when the persona has no appMode', () => {
+      renderPage();
+
+      expect(getRadio('null').checked).toBe(true);
+      expect(getRadio(AppMode.Classic).checked).toBe(false);
+    });
+
+    it('never shows the unavailable placeholder (AI always available in OSS)', () => {
+      renderPage();
+
+      expect(
+        screen.queryByTestId('app-mode-unavailable-placeholder')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Default Landing Page', () => {
+    it('shows Home when the persona has no landing page', () => {
+      renderPage();
+
+      expect(getLandingPageTrigger()).toHaveTextContent('label.home-my-data');
+      expect(getLandingPageTrigger()).toHaveTextContent('/my-data');
+    });
+
+    it('shows the persisted landing page', () => {
+      seedDoc({ defaultLandingPage: '/glossary' });
+      renderPage();
+
+      expect(getLandingPageTrigger()).toHaveTextContent('label.glossary');
+    });
+
+    it('lists the options under their section headers', async () => {
+      renderPage();
+
+      fireEvent.click(getLandingPageTrigger());
+      const govern = await screen.findByRole('group', { name: 'label.govern' });
+
+      expect(
+        within(govern).getByRole('option', { name: /label\.glossary/ })
+      ).toBeInTheDocument();
+      expect(
+        within(govern).queryByRole('option', { name: /label\.explore/ })
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Save and reset', () => {
+    it('disables save until something changes', () => {
+      seedDoc({ appMode: AppMode.AI, defaultLandingPage: '/explore' });
+      renderPage();
+
+      expect(
+        (screen.getByTestId('save-btn') as HTMLButtonElement).disabled
+      ).toBe(true);
+    });
+
+    it('saves the selected app mode and keeps Home as unset', () => {
+      const onSave = renderPage();
+
+      fireEvent.click(getRadio(AppMode.AI));
+      fireEvent.click(screen.getByTestId('save-btn'));
+
+      expect(onSave).toHaveBeenCalledWith({
+        appMode: AppMode.AI,
+        defaultLandingPage: undefined,
+      });
+    });
+
+    it('saves a chosen landing page', async () => {
+      const onSave = renderPage();
+
+      fireEvent.click(getLandingPageTrigger());
+      fireEvent.click(
+        await screen.findByRole('option', {
+          name: /label\.data-product-plural/,
+        })
+      );
+      fireEvent.click(screen.getByTestId('save-btn'));
+
+      expect(onSave).toHaveBeenCalledWith({
+        appMode: undefined,
+        defaultLandingPage: '/dataProduct',
+      });
+    });
+
+    it('saves No default as an unset app mode', () => {
+      seedDoc({ appMode: AppMode.AI });
+      const onSave = renderPage();
+
+      fireEvent.click(getRadio('null'));
+      fireEvent.click(screen.getByTestId('save-btn'));
+
+      expect(onSave).toHaveBeenCalledWith({
+        appMode: undefined,
+        defaultLandingPage: undefined,
+      });
+    });
+
+    it('reset returns both settings to their defaults', () => {
+      seedDoc({ appMode: AppMode.AI, defaultLandingPage: '/glossary' });
+      renderPage();
+
+      fireEvent.click(screen.getByTestId('reset-btn'));
+
+      expect(getRadio('null').checked).toBe(true);
+      expect(getLandingPageTrigger()).toHaveTextContent('label.home-my-data');
+    });
+  });
+});
