@@ -74,7 +74,7 @@ final class UnservedDestination implements Destination<ChangeEvent> {
   @Override
   public void close() {}
 
-  private String reason() {
+  String reason() {
     return reason;
   }
 }

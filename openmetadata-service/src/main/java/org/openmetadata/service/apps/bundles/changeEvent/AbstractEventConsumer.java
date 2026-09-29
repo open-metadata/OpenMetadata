@@ -43,6 +43,7 @@ import org.openmetadata.service.events.subscription.AlertTelemetry;
 import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -183,9 +184,11 @@ public abstract class AbstractEventConsumer
     List<EventPublisherException> failures = new ArrayList<>();
     for (List<Destination<ChangeEvent>> sameChannel : destinationsByChannel.values()) {
       List<Destination<ChangeEvent>> served = servedAmong(sameChannel);
-      if (!served.isEmpty()) {
-        sendToDestinationType(event, served, resolver).ifPresent(failures::add);
-      }
+      Optional<EventPublisherException> failure =
+          served.isEmpty()
+              ? Optional.of(notAttempted(event, sameChannel.getFirst()))
+              : sendToDestinationType(event, served, resolver);
+      failure.ifPresent(failures::add);
     }
     recordSendFailures(event, failures);
     int successCount = destinationsByChannel.size() - failures.size();
@@ -193,6 +196,17 @@ public abstract class AbstractEventConsumer
   }
 
   private record EventDeliveryResult(boolean delivered, int successCount, int failedCount) {}
+
+  // Nothing could be sent through the channel, so the event did not go out: it failed, and the
+  // reason says it was never tried.
+  private static EventPublisherException notAttempted(
+      ChangeEvent event, Destination<ChangeEvent> unserved) {
+    return new EventPublisherException(
+        CatalogExceptionMessage.eventPublisherFailedToPublish(
+            unserved.getSubscriptionDestination().getType(),
+            "Not attempted: " + ((UnservedDestination) unserved).reason()),
+        Pair.of(unserved.getSubscriptionDestination().getId(), event));
+  }
 
   // A destination nothing can be sent through never joins the others of its channel. First, it
   // would answer for them all; further down, its receivers would be sent through their publisher.
