@@ -64,6 +64,7 @@ interface AlertAiFormBaseProps
     AlertAiFormFieldsProps,
     'isViewOnly' | 'onChange' | 'showBasicFields' | 'value'
   > {
+  fieldDocDisplay?: 'popover' | 'panel';
   formId?: string;
   showHint?: boolean;
 }
