@@ -154,7 +154,7 @@ def test_invalid_and_empty_values_do_not_discard_valid_tags_or_columns(source, c
     )
     records = table_stage(source)
     assert [item for item in records if item.left] == []
-    assert 'Skipped tag [Class.bad"name]' in caplog.text
+    assert "Skipped tag 'bad\"name' in classification 'Class'" in caplog.text
     assert [item.right.tag_request.name.root for item in records if item.right] == ["Valid", "Valid"]
     assert fqns(source.get_tag_labels("table")) == ["Class.Valid"]
     assert fqns(source.get_column_tag_labels("table", {"name": "value"})) == ["ColumnClass.Valid"]

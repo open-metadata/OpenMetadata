@@ -849,24 +849,30 @@ class SnowflakeUnitTest(TestCase):
             source.engine = MagicMock()
             source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
             source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+            source.status.warnings.clear()
 
-            source.set_schema_tags_map("TEST_DATABASE")
-            # Only the tag with a value should be stored
-            self.assertEqual(len(source.schema_tags_map["TEST_SCHEMA"]), 1)
+            # Count logged warnings in the run status the way a running workflow step does
+            source._activate_handler()
+            try:
+                source.set_schema_tags_map("TEST_DATABASE")
+                mock_conn.execute.return_value = [
+                    Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="EMPTY_TAG", TAG_VALUE=""),
+                    Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="TEST_TAG", TAG_VALUE="123"),
+                ]
+                source.set_database_tags_map("TEST_DATABASE")
+            finally:
+                source._deactivate_handler()
+
+            # Only the tags with a value are stored, and each skipped one is one run warning
             self.assertEqual(
-                source.schema_tags_map["TEST_SCHEMA"][0],
-                {"tag_name": "TEST_TAG", "tag_value": "123"},
+                source.schema_tags_map["TEST_SCHEMA"],
+                [{"tag_name": "TEST_TAG", "tag_value": "123"}],
             )
-
-            mock_conn.execute.return_value = [
-                Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="EMPTY_TAG", TAG_VALUE=""),
-                Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="TEST_TAG", TAG_VALUE="123"),
-            ]
-            source.set_database_tags_map("TEST_DATABASE")
             self.assertEqual(
                 source.database_tags_map["TEST_DATABASE"],
                 [{"tag_name": "TEST_TAG", "tag_value": "123"}],
             )
+            self.assertEqual(len(source.status.warnings), 3)
 
     def test_describe_procedure_definition_reads_body_property(self):
         """DESC PROCEDURE/FUNCTION returns (property, value) rows; the definition is the `body` row's value.

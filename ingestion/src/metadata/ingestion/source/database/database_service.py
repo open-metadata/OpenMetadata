@@ -269,12 +269,13 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             # Source systems allow names the server rejects, such as the JSON values Snowflake ML Feature Store
             # sets. The tag is skipped rather than failing the run: StatusWarningHandler counts the logged
             # warning in the run status, not as a failure.
+            # %r keeps the line intact and shows the control characters that made the name invalid
             logger.warning(
-                "%sSkipped tag [%s.%s]: classification and tag names must be 1 to %d characters long and cannot"
-                " contain '\"', '>', '::' or control characters",
+                "%sSkipped tag %r in classification %r: classification and tag names must be 1 to %d characters"
+                " long and cannot contain '\"', '>', '::' or control characters",
                 f"{entity_fqn}: " if entity_fqn else "",
-                classification_name,
                 tag_name,
+                classification_name,
                 fqn.ENTITY_NAME_MAX_LENGTH,
             )
             return None

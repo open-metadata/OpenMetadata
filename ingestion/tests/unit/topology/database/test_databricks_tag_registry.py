@@ -176,7 +176,7 @@ def test_invalid_tag_does_not_discard_later_tags_or_other_queries(source, caplog
     sql_rows(source, table=[row("Class", 'bad"name'), row("Class", "Valid")], column=[row("ColumnClass", "Valid")])
     records = database_stage(source) + schema_stage(source) + table_stage(source)
     assert [record for record in records if record.left] == []
-    assert 'Skipped tag [Class.bad"name]' in caplog.text
+    assert "Skipped tag 'bad\"name' in classification 'Class'" in caplog.text
     assert len([record for record in records if record.right]) == 2
     assert fqns(source.get_tag_labels("table")) == ["Class.Valid"]
     assert fqns(source.get_column_tag_labels("table", {"name": "column"})) == ["ColumnClass.Valid"]

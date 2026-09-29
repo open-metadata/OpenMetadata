@@ -310,7 +310,8 @@ def test_unnameable_tag_is_skipped_with_a_warning(source, status, classification
     assert status.failures == []
     [message] = _warning_messages(status)
     assert message.startswith("svc.db.schema.table: ")
-    assert tag_name in message
+    assert "\n" not in message
+    assert repr(tag_name) in message
 
 
 @pytest.mark.parametrize(

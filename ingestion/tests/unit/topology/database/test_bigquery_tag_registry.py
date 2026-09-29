@@ -225,7 +225,7 @@ def test_invalid_definition_does_not_discard_other_labels(source, caplog):
     source.client.get_table.return_value.labels = {"bad": 'invalid"name', "env": "prod"}
     records = schema_stage(source) + table_stage(source)
     assert [record for record in records if record.left] == []
-    assert 'Skipped tag [bad.invalid"name]' in caplog.text
+    assert "Skipped tag 'invalid\"name' in classification 'bad'" in caplog.text
     assert definitions([record for record in records if record.right]) == {("env", "prod")}
     assert fqns(source.get_tag_labels("my_table")) == ["env.prod"]
 

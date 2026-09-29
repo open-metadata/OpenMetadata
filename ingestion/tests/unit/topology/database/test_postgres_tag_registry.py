@@ -102,7 +102,7 @@ def test_invalid_policy_does_not_discard_later_valid_policy(source, caplog):
     set_rows(source, [(1, 'bad"name', "db", "schema", "first"), (1, "Valid", "db", "schema", "first")])
     records = list(source._process_stage(source.topology.databaseSchema.stages[0], "schema"))
     assert [record for record in records if record.left] == []
-    assert 'Skipped tag [PostgresPolicyTags.bad"name]' in caplog.text
+    assert "Skipped tag 'bad\"name' in classification 'PostgresPolicyTags'" in caplog.text
     assert [record.right.tag_request.name.root for record in records if record.right] == ["Valid"]
     assert labels(source, "first") == ["PostgresPolicyTags.Valid"]
 
