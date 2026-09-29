@@ -109,18 +109,17 @@ const PreferenceRow = ({
   <Card.Content className="tw:py-5">
     <Grid colGap="6" rowGap="4">
       <Grid.Item span={8}>
-        <Box direction="col" gap={1}>
+        <Box className="tw:gap-1.5" direction="col">
           <Typography
             as="h3"
             className="not-prose tw:m-0 tw:text-primary"
-            size="text-md"
+            size="text-sm"
             weight="semibold">
             {title}
           </Typography>
           <Typography
             as="p"
-            className="not-prose tw:text-tertiary"
-            size="text-sm">
+            className="not-prose tw:text-[13px] tw:leading-normal tw:text-tertiary">
             {description}
           </Typography>
         </Box>
@@ -242,22 +241,22 @@ export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
           <Box
             className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:py-4"
             direction="col"
-            gap={6}>
+            gap={4}>
             <Box direction="col" gap={4}>
               <Breadcrumbs divider="slash" items={breadcrumbs} size="md" />
-              <Box direction="col" gap={1}>
+              <Box className="tw:gap-1.5" direction="col">
                 <Typography
                   as="h1"
                   className="not-prose tw:m-0 tw:text-primary"
                   data-testid="customize-page-title"
-                  size="display-xs"
+                  size="text-xl"
                   weight="semibold">
                   {t('label.app-layout')}
                 </Typography>
                 <Typography
                   as="p"
                   className="not-prose tw:text-tertiary"
-                  size="text-md">
+                  size="text-sm">
                   <Transi18next
                     i18nKey="message.customize-your-app-layout-subheader"
                     renderElement={<Link to={personaPath} />}
@@ -293,7 +292,7 @@ export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
                         <Typography
                           as="span"
                           className="tw:text-tertiary"
-                          size="text-sm">
+                          size="text-xs">
                           {t(option.hintKey)}
                         </Typography>
                       }
@@ -302,8 +301,8 @@ export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
                         <Typography
                           as="span"
                           className="tw:text-primary"
-                          size="text-md"
-                          weight="semibold">
+                          size="text-sm"
+                          weight="medium">
                           {t(option.labelKey)}
                         </Typography>
                       }
@@ -321,7 +320,7 @@ export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
                 <Select
                   aria-label={t('label.default-landing-page')}
                   data-testid="default-landing-page-select"
-                  fontSize="md"
+                  fontSize="sm"
                   labelWeight="semibold"
                   selectedKey={landingPage}
                   size="md"
@@ -368,7 +367,7 @@ export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
                       <Typography
                         as="span"
                         className="tw:text-primary"
-                        size="text-md"
+                        size="text-sm"
                         weight="medium">
                         {t(labelKey)}
                       </Typography>
@@ -409,6 +408,7 @@ export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
                   <Box className="tw:px-5 tw:py-3">
                     <Dropdown.Root>
                       <Button
+                        className="tw:text-[13px] tw:leading-5"
                         color="link-color"
                         data-testid="add-view-mode-page"
                         iconLeading={Plus}
@@ -471,9 +471,8 @@ export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
             justify="between">
             <Typography
               as="span"
-              className="tw:text-secondary"
-              data-testid="save-status"
-              size="text-md">
+              className="tw:text-[13px] tw:leading-5 tw:text-tertiary"
+              data-testid="save-status">
               {disableSave
                 ? t('message.all-changes-saved')
                 : t('message.unsaved-changes')}

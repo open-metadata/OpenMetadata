@@ -41,13 +41,13 @@ export const styles = sortCx({
     group:
       'tw:gap-1 tw:rounded-[10px] tw:bg-secondary_alt tw:p-1 tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',
     root: [
-      'tw:group/button-group tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:rounded-md tw:font-semibold tw:whitespace-nowrap tw:text-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+      'tw:group/button-group tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:rounded-md tw:font-medium tw:whitespace-nowrap tw:text-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
       'tw:hover:text-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
       'tw:disabled:cursor-not-allowed tw:disabled:text-disabled',
-      'tw:selected:bg-primary_alt tw:selected:text-secondary tw:selected:shadow-sm',
+      'tw:selected:bg-primary_alt tw:selected:text-primary tw:selected:shadow-sm',
     ].join(' '),
     sizes: {
-      sm: 'tw:gap-1.5 tw:px-3 tw:py-1 tw:text-sm',
+      sm: 'tw:gap-1.5 tw:px-3 tw:py-1 tw:text-[13px] tw:leading-5',
       md: 'tw:gap-1.5 tw:px-3.5 tw:py-1.5 tw:text-sm',
       lg: 'tw:gap-2 tw:px-4 tw:py-2 tw:text-md',
     },
