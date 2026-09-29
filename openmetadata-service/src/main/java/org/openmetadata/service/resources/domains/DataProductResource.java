@@ -73,6 +73,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ODPSConverter;
 
 @Slf4j
@@ -1846,7 +1847,14 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       String domainFqn,
       String strategy) {
     DataProduct imported = buildDataProductFromODPS(odps, languageCode, domainFqn);
-    DataProduct existing = findExistingByName(imported.getName());
+    // Match by the raw ODPS productID first: export writes the entity FQN there, so a
+    // product whose name is not a slug (e.g. "Customer 360" created via UI/API, which
+    // is a valid entityName) still round-trips instead of duplicating. Fall back to the
+    // sanitized name for a fresh import whose productID does not exist yet.
+    DataProduct existing = findExistingByName(ODPSConverter.selectProductId(odps, languageCode));
+    if (existing == null) {
+      existing = findExistingByName(imported.getName());
+    }
     DataProduct finalProduct;
     if (existing == null) {
       finalProduct = imported;
@@ -1870,8 +1878,15 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       // owners/domains/experts/reviewers/certification/tags from the existing
       // product; these are lazy fields that come back null unless requested, so
       // a sparse load would wipe them (and drop the required domain) on merge.
-      return repository.getByName(null, name, repository.getFields(EXPORT_FIELDS));
-    } catch (EntityNotFoundException ignored) {
+      // DataProduct FQNs are stored quoted (quoteFqn=false), so a dotted name —
+      // common now that identity comes from productID (e.g. `com.acme.orders`, or
+      // the FQN toODPS writes back into productID) — is persisted as `"a.b"`.
+      // Quote the lookup so it matches; a name with no dots is returned as-is.
+      return repository.getByName(
+          null, FullyQualifiedName.quoteName(name), repository.getFields(EXPORT_FIELDS));
+    } catch (EntityNotFoundException | IllegalArgumentException ignored) {
+      // Not found, or a raw productID that isn't a valid entity name (e.g. contains
+      // "::") — treat both as "no existing product" so the import creates one.
       return null;
     }
   }
