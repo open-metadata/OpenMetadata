@@ -176,7 +176,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'roles-add': [...base, rolesItem, { id: 'current', label: addRole }],
       [ROLES_DETAIL]: [...base, rolesItem, { id: 'current', label: roleName }],
       policies: [...base, { id: 'current', label: policiesLabel }],
-      POLICIES_ADD: [
+      [POLICIES_ADD]: [
         ...base,
         policiesItem,
         { id: 'current', label: addPolicy },
@@ -199,7 +199,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'roles-add': RolesIcon,
       [ROLES_DETAIL]: RolesIcon,
       policies: PoliciesIcon,
-      POLICIES_ADD: PoliciesIcon,
+      [POLICIES_ADD]: PoliciesIcon,
       [POLICIES_DETAIL]: PoliciesIcon,
       'permission-debugger': AccessControlIcon,
       'audit-logs': AuditLogsIcon,
@@ -211,7 +211,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'roles-add': addRole,
       [ROLES_DETAIL]: roleName,
       policies: policiesLabel,
-      POLICIES_ADD: addPolicy,
+      [POLICIES_ADD]: addPolicy,
       [POLICIES_DETAIL]: policyName,
       'permission-debugger': debuggerLabel,
       'audit-logs': auditLogsLabel,
@@ -223,7 +223,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'roles-add': t('message.page-sub-header-for-roles'),
       [ROLES_DETAIL]: t('message.page-sub-header-for-roles'),
       policies: t('message.page-sub-header-for-policies'),
-      POLICIES_ADD: t('message.page-sub-header-for-policies'),
+      [POLICIES_ADD]: t('message.page-sub-header-for-policies'),
       [POLICIES_DETAIL]: t('message.page-sub-header-for-policies'),
       'permission-debugger': t(
         'message.page-sub-header-for-permission-debugger'
