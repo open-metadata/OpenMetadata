@@ -3437,6 +3437,7 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/Permissions/DomainPermissions.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
+        "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/GlossaryImportExport.spec.ts"
       ]
     },
@@ -8435,8 +8436,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertyListItem.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/CustomProperties.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts"
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
       ]
     },
     {
@@ -8452,8 +8452,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/CustomProperties.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts"
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
       ]
     },
     {
