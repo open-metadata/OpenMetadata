@@ -12,15 +12,15 @@
  */
 
 import {
-  Box,
-  FeaturedIcon,
-  Toggle,
-  Typography,
+    Box,
+    FeaturedIcon,
+    Toggle,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Hint } from '@openmetadata/ui-core-components/icons';
 import { Settings02 } from '@untitledui/icons';
-import type { Key } from 'react';
 import { AxiosError } from 'axios';
+import type { Key } from 'react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
@@ -44,15 +44,17 @@ import CustomPropertiesLandingPage from './CustomPropertiesLandingPage';
 import { CRUMB } from './CustomPropertiesPanel.constants';
 import { CustomPropertiesSubView } from './CustomPropertiesPanel.types';
 import {
-  getBreadcrumbItems,
-  getPageTitle,
-  parseCustomPropertiesHash,
-  viewToSubPath,
+    getBreadcrumbItems,
+    getPageTitle,
+    parseCustomPropertiesHash,
+    viewToSubPath
 } from './CustomPropertiesPanel.utils';
 
 interface CustomPropertiesPanelProps {
   onHeaderChange?: (overrides: ProfileHeaderOverride) => void;
 }
+
+const HASH_TAB = 'custom-properties';
 
 const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
   onHeaderChange,
@@ -129,7 +131,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
-        setHash('custom-properties');
+        setHash(HASH_TAB);
       });
   }, [parsedHash, setHash]);
 
@@ -150,7 +152,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
           type: 'add',
           entityType: prev.entityType,
         };
-        setHash('custom-properties', viewToSubPath(next));
+        setHash(HASH_TAB, viewToSubPath(next));
 
         return next;
       }
@@ -168,7 +170,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
             entityType: prev.entityType,
             property,
           };
-          setHash('custom-properties', viewToSubPath(next));
+          setHash(HASH_TAB, viewToSubPath(next));
 
           return next;
         }
@@ -186,7 +188,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
           type: 'detail',
           entityType: prev.entityType,
         };
-        setHash('custom-properties', viewToSubPath(next));
+        setHash(HASH_TAB, viewToSubPath(next));
 
         return next;
       }
@@ -206,7 +208,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
       Object.keys(permissions).length > 0 &&
       !hasTypeViewPermission
     ) {
-      setHash('custom-properties');
+      setHash(HASH_TAB);
     }
   }, [subView.type, permissions, hasTypeViewPermission, setHash]);
 
@@ -264,7 +266,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
   const handleBreadcrumbAction = useCallback(
     (id: Key) => {
       if (id === CRUMB.WORKSPACE || id === CRUMB.LANDING) {
-        setHash('custom-properties');
+        setHash(HASH_TAB);
       } else if (
         id === CRUMB.DETAIL &&
         (subView.type === 'add' || subView.type === 'edit')
@@ -274,7 +276,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
           entityType: subView.entityType,
         };
         setSubView(next);
-        setHash('custom-properties', viewToSubPath(next));
+        setHash(HASH_TAB, viewToSubPath(next));
       }
     },
     [subView, setHash]

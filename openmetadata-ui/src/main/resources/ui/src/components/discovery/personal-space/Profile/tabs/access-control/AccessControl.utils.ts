@@ -16,12 +16,15 @@ import { uniqBy } from 'lodash';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { Function } from '../../../../../../generated/type/function';
 import {
-  getEntityDetailsPath,
-  getPolicyWithFqnPath,
-  getRoleWithFqnPath,
-  getTeamsWithFqnPath,
+    getEntityDetailsPath,
+    getPolicyWithFqnPath,
+    getRoleWithFqnPath,
+    getTeamsWithFqnPath
 } from '../../../../../../utils/RouterUtils';
 import type { AccessControlView } from './AccessControl.types';
+
+const PATH_ROLES = 'roles';
+const PATH_POLICIES = 'policies';
 
 export const buildConditionOptions = (fns: Function[]): SelectItemType[] =>
   uniqBy(
@@ -38,7 +41,7 @@ export function hashSubPathToView(subPath: string): AccessControlView {
 
   const parts = subPath.split('/');
 
-  if (parts[0] === 'roles') {
+  if (parts[0] === PATH_ROLES) {
     if (!parts[1]) {
       return { type: 'roles' };
     }
@@ -54,7 +57,7 @@ export function hashSubPathToView(subPath: string): AccessControlView {
     };
   }
 
-  if (parts[0] === 'policies') {
+  if (parts[0] === PATH_POLICIES) {
     if (!parts[1]) {
       return { type: 'policies' };
     }
@@ -88,17 +91,17 @@ export function viewToSubPath(
     case 'landing':
       return undefined;
     case 'roles':
-      return 'roles';
+      return PATH_ROLES;
     case 'roles-add':
-      return 'roles/add';
+      return `${PATH_ROLES}/add`;
     case 'roles-detail':
-      return `roles/${view.fqn}`;
+      return `${PATH_ROLES}/${view.fqn}`;
     case 'policies':
-      return 'policies';
+      return PATH_POLICIES;
     case 'policies-add':
-      return 'policies/add';
+      return `${PATH_POLICIES}/add`;
     case 'policies-detail':
-      return `policies/${view.fqn}`;
+      return `${PATH_POLICIES}/${view.fqn}`;
     case 'permission-debugger':
       return 'permission-debugger';
     case 'audit-logs':

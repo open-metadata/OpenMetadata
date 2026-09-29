@@ -14,10 +14,10 @@
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { Button } from '@openmetadata/ui-core-components';
 import {
-  AuditLogs as AuditLogsIcon,
-  PermissionDebugger as AccessControlIcon,
-  Policy as PoliciesIcon,
-  Role as RolesIcon,
+    AuditLogs as AuditLogsIcon,
+    PermissionDebugger as AccessControlIcon,
+    Policy as PoliciesIcon,
+    Role as RolesIcon
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import type { Key } from 'react';
@@ -43,8 +43,10 @@ import AccessControlRolesPanel from './AccessControlRolesPanel';
 
 export type { AccessControlView };
 
+const HASH_TAB = 'access-control';
 const ROLES_DETAIL = 'roles-detail' as const;
 const POLICIES_DETAIL = 'policies-detail' as const;
+const POLICIES_ADD = 'policies-add' as const;
 
 interface AccessControlPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
@@ -64,7 +66,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
 
   const onNavigate = useCallback(
     (nextView: AccessControlView) => {
-      setHash('access-control', viewToSubPath(nextView));
+      setHash(HASH_TAB, viewToSubPath(nextView));
     },
     [setHash]
   );
@@ -121,7 +123,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
   }, [view.type, permissionsLoaded, canAddRole, onNavigate]);
 
   useEffect(() => {
-    if (view.type === 'policies-add' && permissionsLoaded && !canAddPolicy) {
+    if (view.type === POLICIES_ADD && permissionsLoaded && !canAddPolicy) {
       onNavigate({ type: 'policies' });
     }
   }, [view.type, permissionsLoaded, canAddPolicy, onNavigate]);
@@ -157,7 +159,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       id: 'settings',
       label: settingsLabel,
     };
-    const acItem: BreadcrumbItemType = { id: 'access-control', label: acLabel };
+    const acItem: BreadcrumbItemType = { id: HASH_TAB, label: acLabel };
     const rolesItem: BreadcrumbItemType = { id: 'roles', label: rolesLabel };
     const policiesItem: BreadcrumbItemType = {
       id: 'policies',
@@ -174,7 +176,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'roles-add': [...base, rolesItem, { id: 'current', label: addRole }],
       [ROLES_DETAIL]: [...base, rolesItem, { id: 'current', label: roleName }],
       policies: [...base, { id: 'current', label: policiesLabel }],
-      'policies-add': [
+      POLICIES_ADD: [
         ...base,
         policiesItem,
         { id: 'current', label: addPolicy },
@@ -197,7 +199,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'roles-add': RolesIcon,
       [ROLES_DETAIL]: RolesIcon,
       policies: PoliciesIcon,
-      'policies-add': PoliciesIcon,
+      POLICIES_ADD: PoliciesIcon,
       [POLICIES_DETAIL]: PoliciesIcon,
       'permission-debugger': AccessControlIcon,
       'audit-logs': AuditLogsIcon,
@@ -209,7 +211,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'roles-add': addRole,
       [ROLES_DETAIL]: roleName,
       policies: policiesLabel,
-      'policies-add': addPolicy,
+      POLICIES_ADD: addPolicy,
       [POLICIES_DETAIL]: policyName,
       'permission-debugger': debuggerLabel,
       'audit-logs': auditLogsLabel,
@@ -221,7 +223,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'roles-add': t('message.page-sub-header-for-roles'),
       [ROLES_DETAIL]: t('message.page-sub-header-for-roles'),
       policies: t('message.page-sub-header-for-policies'),
-      'policies-add': t('message.page-sub-header-for-policies'),
+      POLICIES_ADD: t('message.page-sub-header-for-policies'),
       [POLICIES_DETAIL]: t('message.page-sub-header-for-policies'),
       'permission-debugger': t(
         'message.page-sub-header-for-permission-debugger'
@@ -230,7 +232,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
     };
 
     const onBreadcrumbAction = (id: Key) => {
-      if (id === 'access-control') {
+      if (id === HASH_TAB) {
         onNavigate({ type: 'landing' });
       } else if (id === 'roles') {
         onNavigate({ type: 'roles' });
@@ -258,7 +260,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
             color="primary"
             data-testid="add-policy"
             size="sm"
-            onPress={() => onNavigate({ type: 'policies-add' })}>
+            onPress={() => onNavigate({ type: POLICIES_ADD })}>
             {addPolicy}
           </Button>
         );
@@ -345,7 +347,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       return <AccessControlPoliciesPanel onNavigate={onNavigate} />;
     }
 
-    if (view.type === 'policies-add') {
+    if (view.type === POLICIES_ADD) {
       return <AccessControlAddPolicyForm onNavigate={onNavigate} />;
     }
 
