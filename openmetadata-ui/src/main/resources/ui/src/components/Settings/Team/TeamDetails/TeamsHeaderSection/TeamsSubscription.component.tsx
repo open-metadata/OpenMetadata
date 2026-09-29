@@ -41,6 +41,7 @@ import './teams-subscription.less';
 const TeamsSubscription = ({
   subscription,
   hasEditPermission,
+  hideLabel = false,
   updateTeamSubscription,
 }: TeamsSubscriptionProps) => {
   const [form] = useForm();
@@ -145,9 +146,11 @@ const TeamsSubscription = ({
       className="teams-subscription-container d-flex flex-col gap-2"
       data-testid="teams-subscription">
       <div className="d-flex gap-1 items-center teams-subscription-label-container">
-        <Typography.Text className="right-panel-label text-sm font-medium subscription-label">
-          {`${t('label.subscription')}`}
-        </Typography.Text>
+        {!hideLabel && (
+          <Typography.Text className="right-panel-label text-sm font-medium subscription-label">
+            {`${t('label.subscription')}`}
+          </Typography.Text>
+        )}
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
           <Tooltip
             title={t('label.edit-entity', {
