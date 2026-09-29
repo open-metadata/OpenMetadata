@@ -205,6 +205,17 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    */
   S searchBuilderV2(Q queryBuilder, H highlightBuilder, int fromOffset, int size);
 
+  /**
+   * Whether {@code query} should be parsed as a Lucene expression rather than as literal text.
+   *
+   * <p>Carrying Lucene syntax is not enough on its own — the expression also has to be one Lucene
+   * can parse, or the search fails outright instead of returning results. A partially typed {@code
+   * revenue (draft} is the common case. See {@link LuceneQuerySyntax}.
+   */
+  default boolean shouldParseAsLuceneSyntax(String query) {
+    return containsQuerySyntax(query) && LuceneQuerySyntax.isWellFormed(query);
+  }
+
   default boolean containsQuerySyntax(String query) {
     if (query == null || query.isEmpty()) {
       return false;

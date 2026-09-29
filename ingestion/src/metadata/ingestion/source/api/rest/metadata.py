@@ -52,6 +52,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 DEFAULT_TAG = "default"
+OPENAPI_OPERATION_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch", "trace"})
 
 
 class RestSource(ApiServiceSource):
@@ -108,13 +109,25 @@ class RestSource(ApiServiceSource):
     def _path_collection_names(self, json_response: dict) -> set[str]:
         """Tag names referenced by operations under ``paths``."""
         collections_set: set[str] = set()
-        for methods in (json_response.get("paths") or {}).values():
-            if not isinstance(methods, dict):
-                continue
-            for info in methods.values():
-                if isinstance(info, dict):
-                    collections_set.update(tag for tag in info.get("tags") or [] if isinstance(tag, str))
+        for _, _, info in self._iter_path_operations(json_response):
+            tags = info.get("tags")
+            if isinstance(tags, list):
+                collections_set.update(tag for tag in tags if isinstance(tag, str))
         return collections_set
+
+    @staticmethod
+    def _iter_path_operations(json_response: dict) -> Iterable[tuple[str, str, dict]]:
+        """Yield only OpenAPI Operation Objects from the document's Path Items."""
+        paths = json_response.get("paths")
+        if not isinstance(paths, dict):
+            return
+
+        for path, path_item in paths.items():
+            if not isinstance(path, str) or not isinstance(path_item, dict):
+                continue
+            for method_type, info in path_item.items():
+                if method_type in OPENAPI_OPERATION_METHODS and isinstance(info, dict):
+                    yield path, method_type, info
 
     def _derive_collections(self) -> list[RESTCollection]:
         """Derive every collection the document describes.
@@ -246,19 +259,17 @@ class RestSource(ApiServiceSource):
 
     def _filter_collection_endpoints(self, collection: RESTCollection) -> dict | None:
         """filter endpoints related to specific collection"""
-        try:
-            filtered_paths = {}
-            for path, methods in self.json_response.get("paths", {}).items():
-                for method_type, info in methods.items():  # noqa: B007, PERF102
-                    if (
-                        collection.name.root == DEFAULT_TAG and not info.get("tags")
-                    ) or collection.name.root in info.get("tags", []):
-                        filtered_paths.update({path: methods})
-                    break
-            return filtered_paths  # noqa: TRY300
-        except Exception as err:  # noqa: F841
+        if not isinstance(self.json_response, dict) or not isinstance(self.json_response.get("paths"), dict):
             logger.warning(f"Error while filtering endpoints for collection {collection.name.root}")
             return None
+
+        filtered_paths = {}
+        for path, method_type, info in self._iter_path_operations(self.json_response):
+            tags = info.get("tags")
+            operation_tags = {tag for tag in tags if isinstance(tag, str)} if isinstance(tags, list) else set()
+            if (collection.name.root == DEFAULT_TAG and not operation_tags) or collection.name.root in operation_tags:
+                filtered_paths.setdefault(path, {})[method_type] = info
+        return filtered_paths
 
     def _prepare_endpoint_data(self, path, method_type, info, collection) -> RESTEndpoint | None:
         try:

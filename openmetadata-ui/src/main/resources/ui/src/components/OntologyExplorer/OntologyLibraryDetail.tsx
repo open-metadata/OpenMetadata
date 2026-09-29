@@ -45,6 +45,131 @@ interface OntologyLibraryDetailProps {
   onTargetGlossaryChange: (name: string) => void;
 }
 
+interface OntologyLibraryInstallPanelProps {
+  activeAction?: OntologyLibraryAction;
+  canInstall: boolean;
+  canPreview: boolean;
+  installedResult?: OntologyPackInstallResult;
+  pack: OntologyPackManifest;
+  previewResult?: OntologyPackInstallResult;
+  targetGlossaryName: string;
+  onInstall: () => void;
+  onOpenGlossary: () => void;
+  onPreview: () => void;
+  onTargetGlossaryChange: (name: string) => void;
+}
+
+const OntologyLibraryInstallPanel = ({
+  activeAction,
+  canInstall,
+  canPreview,
+  installedResult,
+  pack,
+  previewResult,
+  targetGlossaryName,
+  onInstall,
+  onOpenGlossary,
+  onPreview,
+  onTargetGlossaryChange,
+}: OntologyLibraryInstallPanelProps) => {
+  const { t } = useTranslation();
+
+  if (pack.bundled && canInstall) {
+    return (
+      <Card size="lg">
+        <Card.Header
+          subtitle={t('message.ontology-pack-install-description')}
+          title={t('label.install-to-new-glossary')}
+        />
+        <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+          <Input
+            inputDataTestId="ontology-pack-target-glossary"
+            label={t('label.glossary-name')}
+            placeholder={t('message.ontology-pack-glossary-placeholder')}
+            value={targetGlossaryName}
+            onChange={onTargetGlossaryChange}
+          />
+
+          {previewResult ? (
+            <Alert
+              title={t('message.ontology-pack-dry-run-success')}
+              variant="success">
+              {t('message.ontology-pack-import-counts', {
+                concepts: previewResult.conceptCount,
+                relationships: previewResult.relationshipCount,
+              })}
+            </Alert>
+          ) : null}
+
+          {installedResult ? (
+            <Alert
+              rightContent={
+                <Button
+                  color="secondary-success"
+                  data-testid="ontology-pack-open-graph"
+                  iconTrailing={ArrowRight}
+                  size="sm"
+                  onPress={onOpenGlossary}>
+                  {t('label.open-graph')}
+                </Button>
+              }
+              title={t('message.ontology-pack-installed-success')}
+              variant="success">
+              {installedResult.targetGlossaryName}
+            </Alert>
+          ) : null}
+
+          <div className="tw:flex tw:justify-end tw:gap-3">
+            <Button
+              color="secondary"
+              data-testid="ontology-pack-dry-run"
+              isDisabled={!canPreview || Boolean(activeAction)}
+              isLoading={activeAction === 'dry-run'}
+              size="sm"
+              onPress={onPreview}>
+              {t('label.dry-run')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="ontology-pack-install"
+              isDisabled={!previewResult || Boolean(activeAction)}
+              isLoading={activeAction === 'install'}
+              size="sm"
+              onPress={onInstall}>
+              {t('label.install')}
+            </Button>
+          </div>
+        </Card.Content>
+      </Card>
+    );
+  }
+
+  if (pack.bundled) {
+    return (
+      <Alert title={t('message.no-permission-for-action')} variant="warning" />
+    );
+  }
+
+  return (
+    <Alert
+      rightContent={
+        <Button
+          color="secondary"
+          href={pack.sourceUrl}
+          iconTrailing={ArrowUpRight}
+          rel="noreferrer"
+          size="sm"
+          target="_blank">
+          {t('label.source')}
+        </Button>
+      }
+      title={t('message.ontology-pack-external-title')}
+      variant="warning">
+      {t('message.ontology-pack-external-description')}
+    </Alert>
+  );
+};
+
 const OntologyLibraryDetail = ({
   activeAction,
   canInstall,
@@ -238,95 +363,19 @@ const OntologyLibraryDetail = ({
             </Card.Content>
           </Card>
 
-          {pack.bundled && canInstall ? (
-            <Card size="lg">
-              <Card.Header
-                subtitle={t('message.ontology-pack-install-description')}
-                title={t('label.install-to-new-glossary')}
-              />
-              <Card.Content className="tw:flex tw:flex-col tw:gap-4">
-                <Input
-                  inputDataTestId="ontology-pack-target-glossary"
-                  label={t('label.glossary-name')}
-                  placeholder={t('message.ontology-pack-glossary-placeholder')}
-                  value={targetGlossaryName}
-                  onChange={onTargetGlossaryChange}
-                />
-
-                {previewResult ? (
-                  <Alert
-                    title={t('message.ontology-pack-dry-run-success')}
-                    variant="success">
-                    {t('message.ontology-pack-import-counts', {
-                      concepts: previewResult.conceptCount,
-                      relationships: previewResult.relationshipCount,
-                    })}
-                  </Alert>
-                ) : null}
-
-                {installedResult ? (
-                  <Alert
-                    rightContent={
-                      <Button
-                        color="secondary-success"
-                        data-testid="ontology-pack-open-graph"
-                        iconTrailing={ArrowRight}
-                        size="sm"
-                        onPress={onOpenGlossary}>
-                        {t('label.open-graph')}
-                      </Button>
-                    }
-                    title={t('message.ontology-pack-installed-success')}
-                    variant="success">
-                    {installedResult.targetGlossaryName}
-                  </Alert>
-                ) : null}
-
-                <div className="tw:flex tw:justify-end tw:gap-3">
-                  <Button
-                    color="secondary"
-                    data-testid="ontology-pack-dry-run"
-                    isDisabled={!canPreview || Boolean(activeAction)}
-                    isLoading={activeAction === 'dry-run'}
-                    size="sm"
-                    onPress={onPreview}>
-                    {t('label.dry-run')}
-                  </Button>
-                  <Button
-                    color="primary"
-                    data-testid="ontology-pack-install"
-                    isDisabled={!previewResult || Boolean(activeAction)}
-                    isLoading={activeAction === 'install'}
-                    size="sm"
-                    onPress={onInstall}>
-                    {t('label.install')}
-                  </Button>
-                </div>
-              </Card.Content>
-            </Card>
-          ) : pack.bundled ? (
-            <Alert
-              title={t('message.no-permission-for-action')}
-              variant="warning"
-            />
-          ) : (
-            <Alert
-              rightContent={
-                <Button
-                  color="secondary"
-                  href={pack.sourceUrl}
-                  iconTrailing={ArrowUpRight}
-                  rel="noreferrer"
-                  size="sm"
-                  target="_blank">
-                  {t('label.source')}
-                </Button>
-              }
-              title={t('message.ontology-pack-external-title')}
-              variant="warning">
-              {t('message.ontology-pack-external-description')}
-            </Alert>
-          )}
+          <OntologyLibraryInstallPanel
+            activeAction={activeAction}
+            canInstall={canInstall}
+            canPreview={canPreview}
+            installedResult={installedResult}
+            pack={pack}
+            previewResult={previewResult}
+            targetGlossaryName={targetGlossaryName}
+            onInstall={onInstall}
+            onOpenGlossary={onOpenGlossary}
+            onPreview={onPreview}
+            onTargetGlossaryChange={onTargetGlossaryChange}
+          />
         </div>
       </div>
     </div>

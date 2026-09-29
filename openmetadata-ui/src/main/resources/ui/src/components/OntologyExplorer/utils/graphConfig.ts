@@ -133,58 +133,54 @@ export function truncateNodeLabelByWidth(label: string, width: number): string {
   );
 }
 
-export function getLayoutConfig(
-  layoutType: LayoutType | LayoutEngineType,
+function getNonModelViewLayoutConfig(
+  engineType: LayoutEngineType,
   nodeCount: number,
-  options: GetOntologyLayoutConfigOptions
+  isDataMode: boolean,
+  isHierarchyMode: boolean,
+  baseNodeSize: (d?: LayoutNodeLike) => [number, number]
 ): LayoutConfig {
-  const { hasCombos, isDataMode, isModelView, isHierarchyMode } = options;
-
-  const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
-
-  const engineType: LayoutEngineType =
-    layoutType === LayoutEngine.Dagre || layoutType === LayoutEngine.Circular
-      ? layoutType
-      : toLayoutEngineType(layoutType as LayoutType);
-
-  if (!isModelView) {
-    if (engineType === LayoutEngine.Dagre) {
-      const baseSep = isHierarchyMode
-        ? HIERARCHY_DAGRE_NODE_SEP
-        : DAGRE_NODE_SEP;
-      const baseRank = isHierarchyMode
-        ? HIERARCHY_DAGRE_RANK_SEP
-        : DAGRE_RANK_SEP;
-
-      return {
-        type: LayoutEngine.Dagre,
-        animation: false,
-        rankdir: 'TB',
-        nodesep: adaptiveSpacing(baseSep, nodeCount),
-        ranksep: adaptiveSpacing(baseRank, nodeCount),
-        preventOverlap: true,
-        nodeSize: baseNodeSize,
-      };
-    }
-
-    if (isDataMode && engineType === LayoutEngine.Circular) {
-      return { type: 'preset', animation: false };
-    }
-
-    if (engineType === LayoutEngine.Circular) {
-      return {
-        type: LayoutEngine.Circular,
-        animation: false,
-        nodeSize: baseNodeSize,
-        nodeSpacing: MIN_NODE_SPACING,
-      };
-    }
+  if (engineType === LayoutEngine.Dagre) {
+    const baseSep = isHierarchyMode ? HIERARCHY_DAGRE_NODE_SEP : DAGRE_NODE_SEP;
+    const baseRank = isHierarchyMode
+      ? HIERARCHY_DAGRE_RANK_SEP
+      : DAGRE_RANK_SEP;
 
     return {
-      type: engineType,
+      type: LayoutEngine.Dagre,
+      animation: false,
+      rankdir: 'TB',
+      nodesep: adaptiveSpacing(baseSep, nodeCount),
+      ranksep: adaptiveSpacing(baseRank, nodeCount),
+      preventOverlap: true,
+      nodeSize: baseNodeSize,
     };
   }
 
+  if (isDataMode && engineType === LayoutEngine.Circular) {
+    return { type: 'preset', animation: false };
+  }
+
+  if (engineType === LayoutEngine.Circular) {
+    return {
+      type: LayoutEngine.Circular,
+      animation: false,
+      nodeSize: baseNodeSize,
+      nodeSpacing: MIN_NODE_SPACING,
+    };
+  }
+
+  return {
+    type: engineType,
+  };
+}
+
+function getModelViewLayoutConfig(
+  engineType: LayoutEngineType,
+  nodeCount: number,
+  hasCombos: boolean,
+  baseNodeSize: (d?: LayoutNodeLike) => [number, number]
+): LayoutConfig {
   if (engineType === LayoutEngine.Dagre) {
     return {
       type: 'antv-dagre',
@@ -206,4 +202,36 @@ export function getLayoutConfig(
   return {
     type: engineType,
   };
+}
+
+export function getLayoutConfig(
+  layoutType: LayoutType | LayoutEngineType,
+  nodeCount: number,
+  options: GetOntologyLayoutConfigOptions
+): LayoutConfig {
+  const { hasCombos, isDataMode, isModelView, isHierarchyMode } = options;
+
+  const baseNodeSize = (d?: LayoutNodeLike) => getNodeSize(d);
+
+  const engineType: LayoutEngineType =
+    layoutType === LayoutEngine.Dagre || layoutType === LayoutEngine.Circular
+      ? layoutType
+      : toLayoutEngineType(layoutType as LayoutType);
+
+  if (!isModelView) {
+    return getNonModelViewLayoutConfig(
+      engineType,
+      nodeCount,
+      isDataMode,
+      isHierarchyMode,
+      baseNodeSize
+    );
+  }
+
+  return getModelViewLayoutConfig(
+    engineType,
+    nodeCount,
+    hasCombos,
+    baseNodeSize
+  );
 }

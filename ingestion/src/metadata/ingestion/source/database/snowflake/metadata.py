@@ -21,8 +21,8 @@ from typing import cast
 
 import sqlalchemy.types as sqltypes
 import sqlparse
-from sqlalchemy import event, text
 from sqlalchemy import exc as sa_exc
+from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
 
@@ -37,7 +37,6 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedureType,
 )
 from metadata.generated.schema.entity.data.table import (
-    Column,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     Table,
@@ -86,6 +85,9 @@ from metadata.ingestion.source.database.snowflake.constants import (
     SNOWFLAKE_TAG_DESCRIPTION,
     TABLE_TYPE_URL_MAP,
 )
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
+)
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
     SnowflakeStoredProcedure,
@@ -109,7 +111,6 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
-    set_session_tag_query,
 )
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
     build_metric_request,
@@ -308,25 +309,6 @@ class SnowflakeSource(
 
         return self._org_name
 
-    def set_session_query_tag(self) -> None:
-        """
-        Register a pool event on the engine so that every connection
-        checked out from the pool gets the QUERY_TAG set automatically.
-        In SA 2.0, each engine.connect() may return a different pooled
-        connection, so setting the tag on a single connection is not enough.
-
-        Called after set_inspector() which creates a new engine per database,
-        so we register the event on the current self.engine.
-        """
-        if self.service_connection.queryTag:
-            query_tag = self.service_connection.queryTag
-
-            @event.listens_for(self.engine, "connect")
-            def _set_query_tag(dbapi_connection, connection_record):
-                cursor = dbapi_connection.cursor()
-                cursor.execute(set_session_tag_query(query_tag))
-                cursor.close()
-
     def set_partition_details(self) -> None:
         self.partition_details.clear()
         with self.engine.connect() as conn:
@@ -350,10 +332,33 @@ class SnowflakeSource(
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
         with self.engine.connect() as conn:
+            quoted_database_name = self.engine.dialect.identifier_preparer.quote_identifier(
+                fqn.unquote_name(database_name)
+            )
             self.external_location_map = {
                 (row.database_name, row.schema_name, row.name): row.location
-                for row in conn.execute(text(SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)))
+                for row in conn.execute(
+                    text(SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=quoted_database_name))
+                )
             }
+
+    def is_tag_value_ingestible(self, tag_name: str, tag_value: str | None, target: str) -> bool:
+        """
+        Return whether a Snowflake tag value can become an OpenMetadata tag, recording a warning when not.
+
+        Empty values carry no tag, and values with a double quote (e.g. JSON payloads) cannot be
+        expressed as a tag FQN, so both are skipped instead of failing the run.
+        """
+        reason = None
+        if not tag_value:
+            reason = "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
+        elif '"' in tag_value:
+            reason = "TAG_VALUE contains a double quote, which is not supported in tag names."
+        if reason:
+            message = f"Skipping tag '{tag_name}' for '{target}' - {reason}"
+            logger.warning(message)
+            self.status.warning(f"{tag_name}.{tag_value}", message)
+        return reason is None
 
     def set_schema_tags_map(self, database_name: str) -> None:
         """Fetch and store all schema-level tags for the current database"""
@@ -366,17 +371,13 @@ class SnowflakeSource(
                 for row in conn.execute(
                     text(
                         SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
-                            database_name=database_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {"database_name": fqn.unquote_name(database_name)},
                 ):
                     schema_name = row.SCHEMA_NAME
-                    if not row.TAG_VALUE:
-                        logger.warning(
-                            f"Skipping tag '{row.TAG_NAME}' for schema '{schema_name}' - "
-                            "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
-                        )
+                    if not self.is_tag_value_ingestible(row.TAG_NAME, row.TAG_VALUE, schema_name):
                         continue
                     if schema_name not in self.schema_tags_map:
                         self.schema_tags_map[schema_name] = []
@@ -397,12 +398,14 @@ class SnowflakeSource(
                 for row in conn.execute(
                     text(
                         SNOWFLAKE_FETCH_DATABASE_TAGS.format(
-                            database_name=database_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {"database_name": fqn.unquote_name(database_name)},
                 ):
                     db_name = row.DATABASE_NAME
+                    if not self.is_tag_value_ingestible(row.TAG_NAME, row.TAG_VALUE, db_name):
+                        continue
                     if db_name not in self.database_tags_map:
                         self.database_tags_map[db_name] = []
                     self.database_tags_map[db_name].append({"tag_name": row.TAG_NAME, "tag_value": row.TAG_VALUE})
@@ -520,7 +523,6 @@ class SnowflakeSource(
         for database_name in self._filtered_database_names():
             try:
                 self.set_inspector(database_name=database_name)
-                self.set_session_query_tag()
                 self.set_partition_details()
                 self.set_schema_description_map()
                 self.set_database_description_map()
@@ -624,25 +626,29 @@ class SnowflakeSource(
                 result = self.connection.execute(
                     text(
                         SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                            database_name=self.context.get().database,
-                            schema_name=schema_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {
+                        "database_name": self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                        "schema_name": schema_name,
+                    },
                 )
 
             except Exception as exc:
                 try:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error fetching tags {exc}. Trying with quoted names")
+                    logger.warning("Error fetching tags %s. Retrying with unquoted context names", exc)
                     result = self.connection.execute(
                         text(
                             SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                                database_name=f'"{self.context.get().database}"',
-                                schema_name=f'"{self.context.get().database_schema}"',
-                                account_usage=self.service_connection.accountUsageSchema,
+                                account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                             )
-                        )
+                        ),
+                        {
+                            "database_name": fqn.unquote_name(self.context.get().database),  # pyright: ignore[reportAttributeAccessIssue]
+                            "schema_name": fqn.unquote_name(self.context.get().database_schema),  # pyright: ignore[reportAttributeAccessIssue]
+                        },
                     )
                 except Exception as inner_exc:
                     logger.debug(traceback.format_exc())
@@ -663,30 +669,19 @@ class SnowflakeSource(
                 fqn_elements = [name for name in row[2:] if name]
 
                 # row[0] = TAG_NAME, row[1] = TAG_VALUE
-                if not row[1]:
-                    logger.warning(
-                        f"Skipping tag '{row[0]}' for '{'.'.join(fqn_elements)}' - "
-                        "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
-                    )
+                if not self.is_tag_value_ingestible(row[0], row[1], ".".join(fqn_elements)):
                     continue
 
                 entity_fqn = fqn._build(self.context.get().database_service, *fqn_elements)  # pyright: ignore[reportAttributeAccessIssue]
                 try:
-                    classification = self.tag_canonicalizer.classification(
-                        row[0], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                    tag = self.define_tag(
+                        classification_name=row[0],
+                        tag_name=row[1],
+                        classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
+                        tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                     )
-                    tag = self.tag_canonicalizer.tag(
-                        classification.name, row[1], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
-                    )
-
-                    self.tags_registry.attach(
-                        scope_fqn=schema_fqn,
-                        entity_fqn=entity_fqn,
-                        classification_name=classification.name,
-                        tag_name=tag.name,
-                        classification_description=classification.description,
-                        tag_description=tag.description,
-                    )
+                    if tag is not None:
+                        self.attach_tag(entity_fqn=entity_fqn, tag=tag)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     yield Either(
@@ -702,23 +697,14 @@ class SnowflakeSource(
             if schema_name in self.schema_tags_map:
                 for tag_info in self.schema_tags_map[schema_name]:
                     try:
-                        classification = self.tag_canonicalizer.classification(
-                            tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                        tag = self.define_tag(
+                            classification_name=tag_info["tag_name"],
+                            tag_name=tag_info["tag_value"],
+                            classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
+                            tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                         )
-                        tag = self.tag_canonicalizer.tag(
-                            classification.name,
-                            tag_info["tag_value"],
-                            default_tag_description=SNOWFLAKE_TAG_DESCRIPTION,
-                        )
-
-                        self.tags_registry.attach(
-                            scope_fqn=schema_fqn,
-                            entity_fqn=schema_fqn,
-                            classification_name=classification.name,
-                            tag_name=tag.name,
-                            classification_description=classification.description,
-                            tag_description=tag.description,
-                        )
+                        if tag is not None:
+                            self.attach_tag(entity_fqn=schema_fqn, tag=tag)
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
                         yield Either(
@@ -729,7 +715,6 @@ class SnowflakeSource(
                             ),
                             right=None,
                         )
-            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yield database-level tags for the topology."""
@@ -750,21 +735,14 @@ class SnowflakeSource(
         )
         for tag_info in self.database_tags_map[database_name]:
             try:
-                classification = self.tag_canonicalizer.classification(
-                    tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                tag = self.define_tag(
+                    classification_name=tag_info["tag_name"],
+                    tag_name=tag_info["tag_value"],
+                    classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
+                    tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                 )
-                tag = self.tag_canonicalizer.tag(
-                    classification.name, tag_info["tag_value"], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
-                )
-
-                self.tags_registry.attach(
-                    scope_fqn=database_fqn,
-                    entity_fqn=database_fqn,
-                    classification_name=classification.name,
-                    tag_name=tag.name,
-                    classification_description=classification.description,
-                    tag_description=tag.description,
-                )
+                if tag is not None:
+                    self.attach_tag(entity_fqn=database_fqn, tag=tag)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 yield Either(
@@ -775,7 +753,6 @@ class SnowflakeSource(
                     ),
                     right=None,
                 )
-        yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def _get_table_names_and_types(
         self, schema_name: str, table_type: TableType = TableType.Regular
@@ -982,7 +959,7 @@ class SnowflakeSource(
                         query.format(
                             database_name=self.context.get().database,
                             schema_name=self.context.get().database_schema,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
                     )
                 ):
@@ -1029,8 +1006,11 @@ class SnowflakeSource(
                         )
                     )
                 )
-                rows = res.all()
-                return rows[0]._mapping["body"] if rows else ""
+                # DESC returns one (property, value) row per attribute, not a `body` column
+                return next(
+                    (row._mapping["value"] for row in res if str(row._mapping["property"]).lower() == "body"),
+                    "",
+                )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Error fetching stored procedure definition: {exc}")
@@ -1132,8 +1112,11 @@ class SnowflakeSource(
         ``threads=True`` and each worker walks a different schema: at the default
         capacity of 2 a shared cache would thrash, every worker evicting the
         others' schema. Bounded because a schema with very many semantic objects
-        would otherwise be retained for the whole database run (``info_cache``
-        only clears between databases).
+        would otherwise be retained for the whole database run.
+
+        Entries are keyed by database *and* schema: the cache outlives a single
+        database (with ``threads=1`` every database runs on the same thread), and
+        the same schema name in two databases holds different semantic views.
         """
         if not hasattr(self._semantic_catalog_local, "cache"):
             self._semantic_catalog_local.cache = LRUCache(SEMANTIC_CATALOG_CACHE_SIZE)
@@ -1147,8 +1130,12 @@ class SnowflakeSource(
         the bulk query with errno 90030, signalling the per-view fallback.
         """
         cache = self._semantic_catalog_cache()
-        if schema in cache:
-            return cache.get(schema)
+        # The bulk query reads the current database's information_schema, so a
+        # schema-only key would hand a later database's same-named schema the
+        # catalog of an earlier one.
+        cache_key = fqn._build(self.context.get().database, schema)  # pyright: ignore[reportAttributeAccessIssue]
+        if cache_key in cache:
+            return cache.get(cache_key)
 
         catalog: SemanticCatalog | None = {}
         try:
@@ -1171,7 +1158,7 @@ class SnowflakeSource(
 
         # The ``None`` 90030 sentinel is cached too, so we do not re-run the bulk
         # query for every view in the schema just to fail again.
-        cache.put(schema, catalog)
+        cache.put(cache_key, catalog)
         return catalog
 
     def _execute_semantic_query(self, query: str) -> list[tuple]:
@@ -1267,8 +1254,10 @@ class SnowflakeSource(
         # For streams, we will use source table/view's columns
         # since stream does not define columns separately in Snowflake
         if table_type == TableType.Stream:
+            quoted_schema = self.engine.dialect.identifier_preparer.quote_identifier(fqn.unquote_name(schema_name))
             cursor = self.connection.execute(
-                text(SNOWFLAKE_GET_STREAM.format(stream_name=table_name, schema=schema_name))
+                text(SNOWFLAKE_GET_STREAM.format(schema=quoted_schema)),
+                {"stream_name": table_name},
             )
             try:
                 result = cursor.fetchone()
@@ -1324,6 +1313,8 @@ class SnowflakeSource(
         To fetch the view definition, we have followed an optimised approach
         i.e. fetching view definition of all the views in schema storing it
         in cache and using the same cache to fetch the view definition.
+        That cached text is the CREATE statement as submitted, so with includeDDL
+        each view's GET_DDL is fetched instead, same as for tables.
 
         To fetch definition for other types of tables, we have used the
         get_ddl method, since this method only accepts string literal as arguments
@@ -1339,7 +1330,9 @@ class SnowflakeSource(
         try:
             schema_definition = None
             if table_type in (TableType.View, TableType.MaterializedView):
-                schema_definition = inspector.get_view_definition(table_name, schema_name)
+                schema_definition = inspector.get_view_definition(
+                    table_name, schema_name, include_ddl=self.source_config.includeDDL
+                )
             elif table_type == TableType.Stream:
                 schema_definition = inspector.get_stream_definition(self.connection, table_name, schema_name)
             elif table_type == TableType.SemanticView:
@@ -1366,7 +1359,7 @@ class SnowflakeSource(
         return self.life_cycle_query.format(
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
-            account_usage=self.service_connection.accountUsageSchema,
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
         )
 
     def get_owner_ref(self, table_name: str) -> EntityReferenceList | None:
@@ -1396,40 +1389,6 @@ class SnowflakeSource(
             if self._get_classification_name(tag) == classification_name:
                 return True
         return False
-
-    def get_database_tag_labels(self, database_name: str) -> list[TagLabel] | None:
-        """Return tags for the database entity from registry."""
-        database_fqn = cast(
-            "str",
-            fqn.build(
-                self.metadata,
-                entity_type=Database,
-                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                database_name=database_name,
-            ),
-        )
-        return self.tags_registry.labels_for(database_fqn) or None
-
-    def get_column_tag_labels(self, table_name: str, column: dict) -> list[TagLabel] | None:
-        """Return tags for a column entity from the registry.
-
-        Column tags don't inherit from parent entities (table/schema/database)
-        — those have separate semantic meaning at their own level. Direct
-        lookup is sufficient.
-        """
-        col_fqn = cast(
-            "str",
-            fqn.build(
-                self.metadata,
-                entity_type=Column,
-                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
-                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
-                table_name=table_name,
-                column_name=column["name"],
-            ),
-        )
-        return self.tags_registry.labels_for(col_fqn) or None
 
     def get_schema_tag_labels(self, schema_name: str) -> list[TagLabel] | None:
         """

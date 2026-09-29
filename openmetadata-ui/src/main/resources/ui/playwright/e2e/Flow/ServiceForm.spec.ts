@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { APIRequestContext } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SERVICE_TYPE } from '../../constant/service';
 import {
@@ -27,6 +25,7 @@ import {
 } from '../../constant/serviceForm';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
@@ -92,28 +91,12 @@ test.describe(
     });
 
     test.describe('Superset', () => {
-      // Create the Certificate file for upload
-      const testCertPath = path.join(__dirname, '..', 'output', CERT_FILE);
-
-      test.beforeAll(() => {
-        const fixturesDir = path.dirname(testCertPath);
-        if (!fs.existsSync(fixturesDir)) {
-          fs.mkdirSync(fixturesDir, { recursive: true });
-        }
-
-        fs.writeFileSync(testCertPath, CERT_FILE);
-      });
-
-      test.afterAll(() => {
-        if (fs.existsSync(testCertPath)) {
-          fs.unlinkSync(testCertPath);
-        }
-      });
-
       test('Verify form selects are working properly', async ({ page }) => {
         test.slow();
 
-        await page.goto('/dashboardServices/add-service');
+        await page.goto('/dashboardServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Superset');
 
@@ -227,7 +210,9 @@ test.describe(
       test('Verify SSL cert upload with long filename and UI overflow handling', async ({
         page,
       }) => {
-        await page.goto('/dashboardServices/add-service');
+        await page.goto('/dashboardServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Superset');
 
@@ -241,15 +226,26 @@ test.describe(
           .click();
 
         // Upload the test certificate file
-        const fileInput1 = page.locator(
-          '[data-field-name="caCertificate"] input[type="file"]'
+        const caCertificateField = page.locator(
+          '[data-field-name="caCertificate"]'
         );
-        await fileInput1.setInputFiles(testCertPath);
+        // main's locator, this branch's in-memory file. Uploading a buffer
+        // keeps the name the assertion below checks under this test's control
+        // and needs no temp file on disk, so there is nothing to write in a
+        // hook or clean up afterwards.
+        await caCertificateField.locator('input[type="file"]').setInputFiles({
+          name: CERT_FILE,
+          mimeType: 'application/x-pem-file',
+          buffer: Buffer.from(CERT_FILE),
+        });
 
-        // Wait for file upload to complete
+        // An attached credential is represented by its chip, not by its content
+        // in the paste box — the two would otherwise show the same secret twice.
+        // The chip carrying the (very long) file name is what has to survive
+        // without overflowing.
         await expect(
-          page.locator('[id="root/connection/sslConfig/caCertificate"]')
-        ).toHaveValue(CERT_FILE);
+          caCertificateField.getByTestId('credential-file-name')
+        ).toHaveText(CERT_FILE);
 
         // Verify the certificate content is sent correctly.
         const testConnectionResponse1 = page.waitForResponse(
@@ -277,7 +273,9 @@ test.describe(
       }) => {
         test.slow();
 
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'BigQuery');
@@ -295,7 +293,9 @@ test.describe(
         await databaseService.create(apiContext);
         await afterAction();
 
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Databricks');
 
@@ -327,7 +327,9 @@ test.describe(
       test('Verify if string input inside oneOf config works properly', async ({
         page,
       }) => {
-        await page.goto('/dashboardServices/add-service');
+        await page.goto('/dashboardServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Looker');
@@ -562,7 +564,9 @@ test.describe(
       test('should show service name error and not open modal when test connection clicked without service name', async ({
         page,
       }) => {
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Mysql');
@@ -585,7 +589,9 @@ test.describe(
       test('should include service name in missing required field count shown on test connection card', async ({
         page,
       }) => {
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Mysql');
@@ -601,7 +607,9 @@ test.describe(
       test('should focus the service name input when test connection is clicked without a name', async ({
         page,
       }) => {
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Mysql');

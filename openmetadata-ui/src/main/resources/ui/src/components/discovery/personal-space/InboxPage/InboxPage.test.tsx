@@ -55,30 +55,28 @@ jest.mock('@openmetadata/ui-core-components', () => {
     EmptyPlaceholder: ({ title }: { title?: ReactNode }) => (
       <div data-testid="inbox-empty">{title}</div>
     ),
+    PageLayout: {
+      PageHeader: ({
+        footer,
+        icon,
+        title,
+        variant,
+      }: {
+        footer?: ReactNode;
+        icon?: ReactNode;
+        title?: ReactNode;
+        variant?: string;
+      }) => (
+        <div data-testid="inbox-header" data-variant={variant}>
+          {icon}
+          {title}
+          {footer}
+        </div>
+      ),
+    },
     Tabs,
   };
 });
-
-jest.mock('components/common/HeaderShell/HeaderShell.component', () => ({
-  __esModule: true,
-  default: ({
-    leading,
-    title,
-    footer,
-    variant,
-  }: {
-    leading?: ReactNode;
-    title?: ReactNode;
-    footer?: ReactNode;
-    variant?: string;
-  }) => (
-    <div data-testid="inbox-header" data-variant={variant}>
-      {leading}
-      {title}
-      {footer}
-    </div>
-  ),
-}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

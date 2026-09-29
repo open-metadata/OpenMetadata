@@ -66,10 +66,12 @@ export function computeGraphSearchHighlight(
   const highlightedGlossaryIds = new Set<string>();
 
   nodes.forEach((n) => {
-    if (
+    const matchesNodeIdentity =
       textMatches(query, n.id) ||
       textMatches(query, n.label) ||
-      textMatches(query, n.originalLabel) ||
+      textMatches(query, n.originalLabel);
+    if (
+      matchesNodeIdentity ||
       textMatches(query, n.fullyQualifiedName) ||
       textMatches(query, n.description)
     ) {
@@ -78,13 +80,12 @@ export function computeGraphSearchHighlight(
   });
 
   glossaries.forEach((g) => {
-    if (
-      g.id &&
-      (textMatches(query, g.name) ||
-        textMatches(query, g.displayName) ||
-        textMatches(query, g.fullyQualifiedName) ||
-        textMatches(query, g.description))
-    ) {
+    const matchesGlossaryText =
+      textMatches(query, g.name) ||
+      textMatches(query, g.displayName) ||
+      textMatches(query, g.fullyQualifiedName) ||
+      textMatches(query, g.description);
+    if (g.id && matchesGlossaryText) {
       highlightedGlossaryIds.add(g.id);
     }
   });

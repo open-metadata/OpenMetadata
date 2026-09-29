@@ -210,14 +210,14 @@ function ObservabilityAlertsTable({
     </Box>
   );
 
+  const emptyOrErrorPlaceholder = hasResourcePermissionError
+    ? errorStatePlaceholder
+    : emptyStatePlaceholder;
+
   return (
     <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:outline-0">
       {isAlertsEmpty ? (
-        hasResourcePermissionError ? (
-          errorStatePlaceholder
-        ) : (
-          emptyStatePlaceholder
-        )
+        emptyOrErrorPlaceholder
       ) : (
         <>
           <div className="tw:border-b tw:border-secondary">

@@ -861,14 +861,6 @@
       <artifactId>quartz</artifactId>
       <version>${quartz.version}</version>
     </dependency>
-    <!-- Needed for Quartz -->
-    <!-- 0.14.1 natively depends on mchange-commons-java 0.6.1 (clears
-         SNYK-JAVA-COMMCHANGE-17796416); avoids the 0.12.0-under-0.6.1 API mismatch. -->
-    <dependency>
-      <groupId>com.mchange</groupId>
-      <artifactId>c3p0</artifactId>
-      <version>0.14.1</version>
-    </dependency>
     <dependency>
       <groupId>com.fasterxml.woodstox</groupId>
       <artifactId>woodstox-core</artifactId>
@@ -1079,8 +1071,8 @@
          introduced in titanium 1.5.0; pinning 1.4.0 here let the integration
          test `GlossaryOntologyExportIT.testExportGlossaryAsJsonLd` blow up
          with NoClassDefFoundError com/apicatalog/rdf/api/RdfConsumerException
-         on every Jena JSON-LD export. Jena 5.6.0's parent pom uses 1.7.0; we
-         match that. -->
+         on every Jena JSON-LD export. Jena's parent pom pins 1.7.0 (verified
+         unchanged from 5.6.0 through 6.2.0); we match that. -->
     <dependency>
       <groupId>com.apicatalog</groupId>
       <artifactId>titanium-json-ld</artifactId>

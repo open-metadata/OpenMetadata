@@ -27,69 +27,32 @@ import {
 import { ReactComponent as GenericIcon } from '../assets/svg/webhook.svg';
 import { SubscriptionCategory } from '../generated/events/eventSubscription';
 
+const ALERT_DESTINATION_CATEGORY_ICONS = {
+  Teams: TeamIcon,
+  Users: UserIcon,
+  Admins: AdminIcon,
+  Assignees: AssigneeIcon,
+  Mentions: MentionIcon,
+  GChat: GChatIcon,
+  Slack: SlackIcon,
+  Email: MailOutlined,
+  MsTeams: MSTeamsIcon,
+  Followers: FollowingIcon,
+  Webhook: GenericIcon,
+  Owners: OwnerIcon,
+};
+
 export const getAlertDestinationCategoryIcons = (type: string) => {
-  let Icon;
+  const Icon =
+    ALERT_DESTINATION_CATEGORY_ICONS[
+      type as keyof typeof ALERT_DESTINATION_CATEGORY_ICONS
+    ];
 
-  switch (type) {
-    case 'Teams':
-      Icon = TeamIcon;
-
-      break;
-    case 'Users':
-      Icon = UserIcon;
-
-      break;
-    case 'Admins':
-      Icon = AdminIcon;
-
-      break;
-    case 'Assignees':
-      Icon = AssigneeIcon;
-
-      break;
-    case 'Mentions':
-      Icon = MentionIcon;
-
-      break;
-    case 'GChat':
-      Icon = GChatIcon;
-
-      break;
-    case 'Slack':
-      Icon = SlackIcon;
-
-      break;
-    case 'Email':
-      Icon = MailOutlined;
-
-      break;
-
-    case 'MsTeams':
-      Icon = MSTeamsIcon;
-
-      break;
-
-    case 'Followers':
-      Icon = FollowingIcon;
-
-      break;
-
-    case 'Webhook':
-      Icon = GenericIcon;
-
-      break;
-
-    case 'Owners':
-      Icon = OwnerIcon;
-
-      break;
+  if (isNil(Icon)) {
+    return null;
   }
 
-  if (!isNil(Icon)) {
-    return <Icon height={16} width={16} />;
-  }
-
-  return null;
+  return <Icon height={16} width={16} />;
 };
 
 export const checkIfDestinationIsInternal = (destinationName: string) => {

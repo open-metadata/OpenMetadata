@@ -27,10 +27,11 @@ const UPSTREAM = require('./upstream-palette.json').palette; // canon-hex -> --c
 const OUT = path.join(UI, 'specs/tokens/tailwind-utility-reference.md');
 
 const SEMANTIC = {
-  Background: ['bg-primary', 'bg-secondary', 'bg-tertiary', 'bg-quaternary', 'bg-disabled', 'bg-overlay', 'bg-brand-primary', 'bg-brand-solid', 'bg-error-primary', 'bg-warning-primary', 'bg-success-primary'],
-  Text: ['text-primary', 'text-secondary', 'text-tertiary', 'text-quaternary', 'text-disabled', 'text-placeholder', 'text-white', 'text-brand-primary', 'text-error-primary', 'text-warning-primary', 'text-success-primary'],
-  Border: ['border-primary', 'border-secondary', 'border-tertiary', 'border-disabled', 'border-error', 'border-brand'],
+  Background: ['bg-page', 'bg-canvas', 'bg-surface', 'bg-raised', 'bg-overlay-surface', 'bg-primary', 'bg-secondary', 'bg-tertiary', 'bg-quaternary', 'bg-disabled', 'bg-overlay', 'bg-brand-primary', 'bg-brand-solid', 'bg-error-primary', 'bg-warning-primary', 'bg-success-primary'],
+  Text: ['text-primary', 'text-secondary', 'text-tertiary', 'text-quaternary', 'text-disabled', 'text-placeholder', 'text-link', 'text-link-hover', 'text-white', 'text-brand-primary', 'text-error-primary', 'text-warning-primary', 'text-success-primary'],
+  Border: ['border-primary', 'border-secondary', 'border-tertiary', 'border-subtle', 'border-hover', 'border-disabled', 'border-error', 'border-brand', 'border-brand-subtle', 'border-error-subtle', 'border-warning-subtle', 'border-success-subtle'],
   Foreground: ['text-fg-brand-primary', 'text-fg-error-primary', 'text-fg-warning-primary', 'text-fg-success-primary'],
+  Elevation: ['shadow-card', 'shadow-raised', 'shadow-overlay'],
 };
 
 const SPACING = [
@@ -54,7 +55,7 @@ function main() {
     '`globals.css`. The go-forward styling system: UntitledUI components + ' +
     'Tailwind (`tw:` prefix). Never hardcode a value — use these utilities. ' +
     'The Antd/Less `--om-*` layer ([token-reference.md](./token-reference.md)) is legacy.\n\n' +
-    '## Semantic color utilities (prefer these — they adapt to dark mode)\n\n';
+    '## Semantic utilities (prefer these — they adapt to dark mode)\n\n';
   for (const [group, list] of Object.entries(SEMANTIC)) {
     md += `**${group}:** ` + list.map((u) => `\`tw:${u}\``).join(', ') + '\n\n';
   }

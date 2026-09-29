@@ -12,7 +12,9 @@
  */
 @import '../../../styles/variables.less';
 
-@markdown-bg-color: var(--om-legacy-color-f8f8fa);
+// Semantic surface so inline code, table headers and callouts follow dark mode
+// (the legacy #f8f8fa alias has no dark value).
+@markdown-bg-color: var(--om-color-bg-secondary);
 
 .service-doc-panel {
   .service-doc-panel-focused {
@@ -109,7 +111,8 @@
 
       code {
         display: block;
-        padding: var(--om-space-15) var(--om-space-40) var(--om-space-15) var(--om-space-15);
+        padding: var(--om-space-15) var(--om-space-40) var(--om-space-15)
+          var(--om-space-15);
         overflow: auto;
         border-radius: var(--om-radius-lg);
         border-bottom: 2px solid @border-color;
@@ -181,7 +184,8 @@
     .admonition {
       border-radius: var(--om-radius-lg);
       border-left: 8px solid var(--om-legacy-color-afafc1);
-      padding: var(--om-space-16) var(--om-space-16) var(--om-space-16) var(--om-space-48) !important;
+      padding: var(--om-space-16) var(--om-space-16) var(--om-space-16)
+        var(--om-space-48) !important;
       background-color: @markdown-bg-color;
       position: relative;
       margin: var(--om-space-10) var(--om-space-24);

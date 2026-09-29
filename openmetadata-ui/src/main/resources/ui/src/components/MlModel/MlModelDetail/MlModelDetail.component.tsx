@@ -11,31 +11,34 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table, Tabs, Typography } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -44,13 +47,10 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   updateCertificationTag,
@@ -63,11 +63,27 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { MlModelDetailProp } from './MlModelDetail.interface';
+
+// Storage/image-repository values come from ingestion; only http(s) URLs are
+// rendered as links, anything else (e.g. `s3://`, `javascript:`) as plain text.
+const renderExternalUrl = (value: string) => {
+  const safeUrl = getSafeHttpUrl(value);
+
+  return safeUrl ? (
+    <a href={safeUrl} rel="noopener noreferrer" target="_blank">
+      {value}
+    </a>
+  ) : (
+    value
+  );
+};
+
 const MlModelDetail: FC<MlModelDetailProp> = ({
   updateMlModelDetailsState,
   mlModelDetail,
@@ -93,40 +109,43 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     FEED_COUNT_INITIAL_DATA
   );
 
-  const [mlModelPermissions, setMlModelPermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
-
-  const { getEntityPermission } = usePermissionProvider();
-
   const mlModelName = useMemo(
     () => getEntityName(mlModelDetail),
     [mlModelDetail]
   );
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const entityPermission = await getEntityPermission(
-        ResourceEntity.ML_MODEL,
-        mlModelDetail.id
-      );
-      setMlModelPermissions(entityPermission);
-    } catch {
+  // Single useEntityPermissions call, by id — no genuine cycle here (contrast a fetch-owning
+  // page's two-call pattern): like PipelineDetails.component.tsx, this component already
+  // receives {@code mlModelDetail} (and therefore {@code mlModelDetail.deleted}) as a prop
+  // from its first render, so there is no ordering constraint requiring a separate
+  // pre-`deleted` call. The old component never gated rendering on a permission-loading flag
+  // either (it rendered immediately with deny-all permissions, then re-rendered once the
+  // fetch resolved) — this hook call preserves that by not consuming `isLoading`.
+  const {
+    permissions: mlModelPermissions, // children consume the raw OperationPermission prop
+    error: permissionsError,
+    hasViewAccess,
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.ML_MODEL,
+    { id: mlModelDetail.id },
+    { deleted: Boolean(mlModelDetail.deleted) }
+  );
+
+  useEffect(() => {
+    if (permissionsError) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.ml-model'),
         })
       );
     }
-  }, [mlModelDetail.id, getEntityPermission, setMlModelPermissions]);
+  }, [permissionsError]);
 
-  useEffect(() => {
-    if (mlModelDetail.id) {
-      fetchResourcePermission();
-    }
-  }, [mlModelDetail.id]);
-
-  const { isFollowing, deleted } = useMemo(() => {
+  const { isFollowing } = useMemo(() => {
     return {
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
@@ -162,11 +181,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [decodedMlModelFqn]);
 
   useEffect(() => {
-    if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
+    if (hasViewAccess) {
       fetchTaskCounts();
       fetchActivityCount();
     }
-  }, [mlModelPermissions, decodedMlModelFqn]);
+  }, [hasViewAccess, decodedMlModelFqn]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -259,25 +278,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         title: t('label.storage'),
         dataIndex: 'storage',
         key: 'storage',
-        render: (value: string) => {
-          return (
-            <a href={value} rel="noreferrer" target="_blank">
-              {value}
-            </a>
-          );
-        },
+        render: renderExternalUrl,
       },
       {
         title: t('label.image-repository'),
         dataIndex: 'imageRepository',
         key: 'imageRepository',
-        render: (value: string) => {
-          return (
-            <a href={value} rel="noreferrer" target="_blank">
-              {value}
-            </a>
-          );
-        },
+        render: renderExternalUrl,
       },
     ];
 
@@ -328,42 +335,15 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [mlModelDetail, mlModelStoreColumn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
-  );
-
-  const {
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(mlModelPermissions, Operation.EditTags) &&
-        !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          mlModelPermissions,
-          Operation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          mlModelPermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          mlModelPermissions,
-          Operation.EditLineage
-        ) && !deleted,
-      viewAllPermission: mlModelPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        mlModelPermissions,
-        Operation.ViewCustomFields
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.ML_MODEL_SERVICES,
+          getPartialNameFromTableFQN(decodedMlModelFqn, [FqnPart.Service])
+        )
       ),
-    }),
-    [mlModelPermissions, deleted]
+    [decodedMlModelFqn]
   );
 
   const tabs = useMemo(() => {
@@ -438,8 +418,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   return (
     <PageLayoutV1 pageTitle={mlModelName}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -458,7 +438,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Mlmodel>
           customizedPage={customizedPage}
           data={mlModelDetail}
@@ -466,28 +446,42 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           permissions={mlModelPermissions}
           type={EntityType.MLMODEL}
           onUpdate={onMlModelUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
 
       <LimitWrapper resource="mlmodel">
         <></>

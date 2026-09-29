@@ -24,10 +24,6 @@ import {
   SubscriptionCategory,
   type EventSubscription,
 } from '../generated/events/eventSubscription';
-import type {
-  ModifiedCreateEventSubscription,
-  ModifiedEventSubscription,
-} from '../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
@@ -35,7 +31,11 @@ import {
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
 } from './Alerts/AlertsUtilPure';
-import type { HandleAlertSaveProps } from './AlertsClassBase.interface';
+import type {
+  HandleAlertSaveProps,
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from './AlertsClassBase.interface';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { t } from './i18next/LocalUtil';
@@ -43,6 +43,11 @@ import { showSuccessToast } from './ToastUtils';
 
 export interface AddAlertFormWidgetProps {
   formRef: FormInstance<ModifiedCreateEventSubscription>;
+  /**
+   * Current form values from a caller that keeps them in state (the AI alert modal).
+   * When set, read these instead of watching formRef.
+   */
+  values?: ModifiedCreateEventSubscription;
   alertDetails?: ModifiedEventSubscription;
   templates?: NotificationTemplate[];
   loading?: boolean;
@@ -198,8 +203,9 @@ class AlertsClassBase {
         alertDetails = await createAlertAPI(finalData);
       }
 
+      const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
       showSuccessToast(
-        t(`server.${'create'}-entity-success`, {
+        t(`server.${action}-entity-success`, {
           entity: t('label.alert-plural'),
         })
       );

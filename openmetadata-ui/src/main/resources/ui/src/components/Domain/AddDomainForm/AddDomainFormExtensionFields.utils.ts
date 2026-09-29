@@ -64,42 +64,28 @@ export const getExtensionPropertyNameFromFormKey = (formKey: string) => {
     : formKey;
 };
 
+const EXTENSION_FIELD_KIND_MAP: Record<string, ExtensionFieldKind> = {
+  'date-cp': 'date',
+  'dateTime-cp': 'dateTime',
+  duration: 'duration',
+  email: 'email',
+  enum: 'enum',
+  entityReference: 'reference',
+  entityReferenceList: 'reference',
+  [HYPERLINK_TYPE_CUSTOM_PROPERTY]: 'hyperlink',
+  integer: 'number',
+  number: 'number',
+  markdown: 'markdown',
+  sqlQuery: 'sqlQuery',
+  [TABLE_TYPE_CUSTOM_PROPERTY]: 'table',
+  'time-cp': 'time',
+  timeInterval: 'timeInterval',
+  timestamp: 'timestamp',
+  string: 'text',
+};
+
 export const getExtensionFieldKind = (
   propertyTypeName?: string
-): ExtensionFieldKind => {
-  switch (propertyTypeName) {
-    case 'date-cp':
-      return 'date';
-    case 'dateTime-cp':
-      return 'dateTime';
-    case 'duration':
-      return 'duration';
-    case 'email':
-      return 'email';
-    case 'enum':
-      return 'enum';
-    case 'entityReference':
-    case 'entityReferenceList':
-      return 'reference';
-    case HYPERLINK_TYPE_CUSTOM_PROPERTY:
-      return 'hyperlink';
-    case 'integer':
-    case 'number':
-      return 'number';
-    case 'markdown':
-      return 'markdown';
-    case 'sqlQuery':
-      return 'sqlQuery';
-    case TABLE_TYPE_CUSTOM_PROPERTY:
-      return 'table';
-    case 'time-cp':
-      return 'time';
-    case 'timeInterval':
-      return 'timeInterval';
-    case 'timestamp':
-      return 'timestamp';
-    case 'string':
-    default:
-      return 'text';
-  }
-};
+): ExtensionFieldKind =>
+  (propertyTypeName ? EXTENSION_FIELD_KIND_MAP[propertyTypeName] : undefined) ??
+  'text';

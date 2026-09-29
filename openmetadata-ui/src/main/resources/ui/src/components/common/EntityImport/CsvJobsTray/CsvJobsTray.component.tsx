@@ -394,16 +394,22 @@ export const CsvJobsTray = () => {
       : t('label.exporting-entity-plural', { entity: entityLabel });
   };
 
-  const renderJobSubLine = (job: CsvAsyncJob) => {
+  const renderActiveJobSubLine = (job: CsvAsyncJob) => {
     const total = job.total ?? 0;
     const progress = job.progress ?? 0;
     const percent = getJobPercent(job);
 
+    return total > 0
+      ? `${progress} ${t('label.of-lowercase')} ${total} · ${percent}%`
+      : job.message ?? t('message.import-data-in-progress');
+  };
+
+  const renderJobSubLine = (job: CsvAsyncJob) => {
     if (ACTIVE_STATUSES.includes(job.status)) {
-      return total > 0
-        ? `${progress} ${t('label.of-lowercase')} ${total} · ${percent}%`
-        : job.message ?? t('message.import-data-in-progress');
+      return renderActiveJobSubLine(job);
     }
+
+    const total = job.total ?? 0;
 
     if (job.status === 'COMPLETED') {
       return total > 0
@@ -513,6 +519,11 @@ export const CsvJobsTray = () => {
               const percent = getJobPercent(job);
               const variant = getStatusVariant(job.status);
               const KindIcon = getKindIcon(job.operation);
+              const nonRunningIcon = downloadedJobIds.has(job.jobId) ? (
+                <Check size={16} />
+              ) : (
+                <KindIcon size={16} />
+              );
 
               return (
                 <div
@@ -521,13 +532,9 @@ export const CsvJobsTray = () => {
                   key={job.jobId}>
                   <div className="csv-jobs-tray-item-row">
                     <span className="csv-jobs-tray-kind-icon">
-                      {variant === 'running' ? (
-                        renderStatusIcon(job)
-                      ) : downloadedJobIds.has(job.jobId) ? (
-                        <Check size={16} />
-                      ) : (
-                        <KindIcon size={16} />
-                      )}
+                      {variant === 'running'
+                        ? renderStatusIcon(job)
+                        : nonRunningIcon}
                     </span>
                     <div className="csv-jobs-tray-body">
                       <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-1.5">

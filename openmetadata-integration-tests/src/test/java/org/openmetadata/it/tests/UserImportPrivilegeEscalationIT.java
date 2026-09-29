@@ -200,8 +200,8 @@ public class UserImportPrivilegeEscalationIT {
             .create(
                 new CreateTeam()
                     .withName("csvimpteam_" + suffix + ns.shortPrefix())
-                    .withTeamType(CreateTeam.TeamType.DEPARTMENT));
-    assertEquals(CreateTeam.TeamType.DEPARTMENT.value(), team.getTeamType().value());
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    assertEquals(CreateTeam.TeamType.GROUP.value(), team.getTeamType().value());
     return team;
   }
 }

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   CREATE_TEST_CASE_POLICY,
@@ -25,6 +25,7 @@ import {
   VIEW_ALL_TEST_CASE_POLICY,
 } from '../../../constant/dataQualityPermissions';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
@@ -313,6 +314,16 @@ test.describe(
         permissionsPromise,
         tablePermissionsPromise,
       ]);
+
+      // The list response resolving is not the same as its rows being on
+      // screen. Most tests below reach straight for `action-dropdown-<name>`,
+      // which exists only once that row has rendered, so gate it here instead
+      // of leaving each of them to race the render. Every caller is a user who
+      // can see the test case; the negative cases are about the controls on
+      // the row, never the row itself.
+      await expect(
+        page.getByTestId(table.testCasesResponseData[0].name)
+      ).toBeVisible();
     };
 
     test.describe('Standard Roles (Negative Scenarios)', () => {
@@ -595,7 +606,8 @@ test.describe(
         const testCaseDetailsPromise =
           waitForTestCaseDetailsResponse(viewBasicPage);
         await viewBasicPage.goto(
-          `/test-case/${encodeURIComponent(testCaseFqn)}`
+          `/test-case/${encodeURIComponent(testCaseFqn)}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await testCaseDetailsPromise;
         await verifyTestCaseLastRunBanner(viewBasicPage, 'not-run-yet');
@@ -604,9 +616,11 @@ test.describe(
           viewBasicPage.getByTestId('entity-page-header')
         ).toBeVisible();
 
+        // Target the header's definition link: the configuration card renders the
+        // same name once the definition loads, so matching by text is ambiguous.
         await expect(
-          viewBasicPage.getByText(/Table Row Count To Be Between/i)
-        ).toBeVisible();
+          viewBasicPage.getByTestId('test-definition-name')
+        ).toHaveText(/Table Row Count To Be Between/i);
       });
     });
 

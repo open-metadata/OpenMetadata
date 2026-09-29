@@ -22,6 +22,9 @@ import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryException;
 import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.QueryParseException;
+import org.apache.jena.sparql.modify.request.UpdateDeleteWhere;
+import org.apache.jena.sparql.modify.request.UpdateModify;
+import org.apache.jena.update.Update;
 import org.apache.jena.update.UpdateException;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
@@ -52,6 +55,15 @@ public final class RdfSparqlService {
         : inferredQuery(query.sparql(), format, inference.externalName);
   }
 
+  /**
+   * Runs an already-validated SELECT as SPARQL JSON, bypassing any configured default inference so
+   * results reflect exactly the projected dataset.
+   */
+  public String selectJsonWithoutInference(final String sparql) {
+    return SparqlQueryLimits.requireBoundedOutput(
+        repository.executeSparqlQueryDirect(sparql, ResultFormat.JSON.mediaType));
+  }
+
   public void update(final String sparql) {
     requireQuery(sparql, "SPARQL update body is required");
     SparqlQueryLimits.requireBoundedText(sparql);
@@ -63,7 +75,22 @@ public final class RdfSparqlService {
           "Invalid SPARQL UPDATE: " + exception.getMessage(), exception);
     }
     federationGuard.enforceUpdate(request);
+    requireSingleWhereBearingOperation(request);
     repository.executeSparqlUpdate(sparql);
+  }
+
+  private static void requireSingleWhereBearingOperation(UpdateRequest request) {
+    long whereBearingOperations =
+        request.getOperations().stream().filter(RdfSparqlService::hasWhereClause).count();
+    if (whereBearingOperations > 1) {
+      throw new IllegalArgumentException(
+          "SPARQL UPDATE accepts at most one WHERE-bearing operation per request; "
+              + "combine patterns with VALUES or UNION, or submit separate requests");
+    }
+  }
+
+  private static boolean hasWhereClause(Update update) {
+    return update instanceof UpdateModify || update instanceof UpdateDeleteWhere;
   }
 
   private QueryResult inferredQuery(String sparql, ResultFormat format, String inferenceLevel) {

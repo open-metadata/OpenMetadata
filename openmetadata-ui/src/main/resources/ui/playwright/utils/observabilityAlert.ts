@@ -34,7 +34,12 @@ import {
   visitEditAlertPage,
   waitForRecentEventsToFinishExecution,
 } from './alert';
-import { clickOutside, descriptionBox, redirectToHomePage } from './common';
+import {
+  clickOutside,
+  fillDescriptionBox,
+  getDescriptionBox,
+  redirectToHomePage,
+} from './common';
 import {
   ensureAccordionExpanded,
   selectComboBoxOption,
@@ -470,8 +475,8 @@ export const editObservabilityAlert = async ({
   await visitEditAlertPage(page, alertDetails, false);
 
   // Update description
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(ALERT_UPDATED_DESCRIPTION);
+  await getDescriptionBox(page).clear();
+  await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
 
   // Update source
   await page.click('[data-testid="source-select"]');
@@ -725,10 +730,12 @@ export const createCommonObservabilityAlert = async ({
 export const checkAlertConfigDetails = async ({
   page,
   sourceName,
+  destinationEndpoint,
   tableName,
 }: {
   page: Page;
   sourceName: string;
+  destinationEndpoint: string;
   tableName: string;
 }) => {
   // Verify alert configs
@@ -749,7 +756,7 @@ export const checkAlertConfigDetails = async ({
     page.getByTestId('destination-category-select-0').getByRole('combobox')
   ).toHaveValue('Slack');
   await expect(page.getByTestId('endpoint-input-field-0')).toHaveValue(
-    'https://slack.com'
+    destinationEndpoint
   );
 };
 
@@ -757,11 +764,13 @@ export const checkAlertFlowForWithoutPermissionUser = async ({
   page,
   alertDetails,
   sourceName,
+  destinationEndpoint,
   table,
 }: {
   page: Page;
   alertDetails: AlertDetails;
   sourceName: string;
+  destinationEndpoint: string;
   table: TableClass;
 }) => {
   await visitObservabilityAlertPage(page);
@@ -792,6 +801,7 @@ export const checkAlertFlowForWithoutPermissionUser = async ({
   await checkAlertConfigDetails({
     page,
     sourceName,
+    destinationEndpoint,
     tableName: table.entity.name,
   });
   await checkRecentEventDetails({
@@ -806,12 +816,14 @@ export const checkAlertDetailsForWithPermissionUser = async ({
   page,
   alertDetails,
   sourceName,
+  destinationEndpoint,
   table,
   user,
 }: {
   page: Page;
   alertDetails: AlertDetails;
   sourceName: string;
+  destinationEndpoint: string;
   table: TableClass;
   user: UserClass;
 }) => {
@@ -834,6 +846,7 @@ export const checkAlertDetailsForWithPermissionUser = async ({
   await checkAlertConfigDetails({
     page,
     sourceName,
+    destinationEndpoint,
     tableName: table.entity.name,
   });
   await checkRecentEventDetails({

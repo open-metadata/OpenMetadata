@@ -22,9 +22,15 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      # Development default only. Production needs 2-3x the live dataset size
-      # because TDB2 compaction creates a replacement dataset before deleting the old one.
+      # Development default only. Production sizing: >= 2 datasets x live size x 2.5.
+      # Two datasets because blue/green rebuilds keep an a/b alternate alongside the
+      # serving one; x2.5 because TDB2 compaction builds a full replacement copy
+      # before deleting the old generation.
       storage: 10Gi
+  # Development default only. TDB2 commits are fsync/IOPS-bound (journal write per
+  # transaction) — production must use an SSD-backed class with provisioned IOPS
+  # (pd-ssd, gp3 with IOPS set, or local NVMe). A network-HDD "standard" class is
+  # the single most common cause of slow RDF indexing.
   storageClassName: standard
 ---
 apiVersion: apps/v1
@@ -43,6 +49,11 @@ spec:
       labels:
         app: openmetadata-fuseki
     spec:
+      # The image runs as the non-root 'fuseki' user (uid/gid 1000); fsGroup makes
+      # the PVC writable. Volumes created by the older root-running image need a
+      # one-time `chown -R 1000:1000 /fuseki-data`.
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: fuseki
           image: openmetadata/fuseki-rdf:latest
@@ -62,16 +73,25 @@ spec:
                   name: fuseki-secrets
                   key: openmetadata-password
             - name: JVM_ARGS
-              value: "-Xmx4g -Xms2g"
+              # Equal min/max heap keeps the page-cache budget predictable; GC logs
+              # rotate on the data volume for post-incident diagnosis.
+              value: "-Xms4g -Xmx4g -Xlog:gc*:file=/fuseki-data/gc.log:time,uptime:filecount=3,filesize=10m"
           volumeMounts:
             - name: fuseki-data
               mountPath: /fuseki-data
           resources:
             # TDB2 memory-maps indexes outside the JVM heap. Keep the heap modest
-            # and reserve container memory for the OS page cache.
+            # and reserve container memory for the OS page cache: memory limit
+            # should exceed -Xmx by the page-cache headroom (roughly the hot
+            # index working set — for two blue/green datasets budget both).
+            #
+            # CPU request equals the limit deliberately: with a low request the
+            # scheduler over-packs the node and CFS throttling stretches request
+            # latency during bulk indexing — and every millisecond of a write
+            # request happens inside TDB2's single writer lock.
             requests:
               memory: "4Gi"
-              cpu: "500m"
+              cpu: "2000m"
             limits:
               memory: "8Gi"
               cpu: "2000m"

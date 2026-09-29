@@ -69,6 +69,9 @@ logger = ingestion_logger()
 
 GRAFANA_TAG_CATEGORY = "GrafanaTags"
 
+# Datasources whose query language is not SQL, so there is nothing to hand to the lineage parser
+NON_SQL_DATASOURCE_TYPES = frozenset({"prometheus", "elasticsearch"})
+
 
 class GrafanaSource(DashboardServiceSource):
     """
@@ -109,23 +112,23 @@ class GrafanaSource(DashboardServiceSource):
         for ds in datasources:
             self.datasources[ds.uid] = ds
             self.datasources[ds.name] = ds
-        logger.info(f"Found {len(datasources)} datasources")
+        logger.info("Found %s datasources", len(datasources))
 
-    def get_dashboards_list(self) -> list[dict] | None:
+    def get_dashboards_list(self) -> list[GrafanaSearchResult] | None:
         """Get list of dashboards"""
         dashboards_list = self.client.search_dashboards()
         return dashboards_list  # noqa: RET504
 
-    def get_dashboard_name(self, dashboard: dict) -> str:
+    def get_dashboard_name(self, dashboard: GrafanaSearchResult) -> str:
         """Get dashboard name"""
         return dashboard.uid
 
-    def get_dashboard_details(self, dashboard: dict) -> GrafanaDashboardResponse | None:
+    def get_dashboard_details(self, dashboard: GrafanaSearchResult) -> GrafanaDashboardResponse | None:
         """Get detailed dashboard information"""
         try:
             return self.client.get_dashboard(dashboard.uid)
         except Exception as exc:
-            logger.warning(f"Failed to get dashboard details for {dashboard['uid']}: {exc}")
+            logger.warning("Failed to get dashboard details for %s: %s", dashboard.uid, exc)
             return None
 
     def get_owner_ref(self, dashboard_details: GrafanaDashboardResponse) -> EntityReferenceList | None:
@@ -135,7 +138,7 @@ class GrafanaSource(DashboardServiceSource):
                 # Try to get user by email if available
                 return self.metadata.get_reference_by_email(dashboard_details.meta.createdBy)
         except Exception as err:
-            logger.debug(f"Could not fetch owner data: {err}")
+            logger.debug("Could not fetch owner data: %s", err)
         return None
 
     def yield_dashboard(self, dashboard_details: GrafanaDashboardResponse) -> Iterable[Either[CreateDashboardRequest]]:
@@ -188,6 +191,25 @@ class GrafanaSource(DashboardServiceSource):
                 )
             )
 
+    @staticmethod
+    def _flatten_panels(
+        panels: list[GrafanaPanel],
+    ) -> list[GrafanaPanel]:
+        """Flatten top-level panels, recursing into collapsed row panels.
+
+        When a Grafana row is collapsed the API moves child panels from the
+        top-level ``dashboard.panels`` list into the row panel's own ``panels``
+        field.  Expanded rows keep their children at the top level, so in that
+        case the row's ``panels`` list is empty and nothing extra is yielded.
+        """
+        result: list[GrafanaPanel] = []
+        for panel in panels or []:
+            if panel.type == "row" and panel.collapsed and panel.panels:
+                result.extend(panel.panels)
+            else:
+                result.append(panel)
+        return result
+
     def yield_dashboard_chart(
         self, dashboard_details: GrafanaDashboardResponse
     ) -> Iterable[Either[CreateChartRequest]]:
@@ -195,7 +217,7 @@ class GrafanaSource(DashboardServiceSource):
         if not dashboard_details.dashboard.panels:
             return
 
-        for panel in dashboard_details.dashboard.panels:
+        for panel in self._flatten_panels(dashboard_details.dashboard.panels):
             try:
                 # Skip row panels and panels without visualizations
                 if panel.type in ["row", "text"]:
@@ -262,8 +284,8 @@ class GrafanaSource(DashboardServiceSource):
             if not to_entity:
                 return
 
-            # Extract lineage from panels
-            for panel in dashboard_details.dashboard.panels:
+            # Extract lineage from panels (including those inside collapsed rows)
+            for panel in self._flatten_panels(dashboard_details.dashboard.panels):
                 if not panel.targets:
                     continue
 
@@ -378,7 +400,7 @@ class GrafanaSource(DashboardServiceSource):
 
         except Exception as exc:
             hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
-            logger.debug(f"{hash_prefix}Error processing panel lineage: {exc}")
+            logger.debug("%sError processing panel lineage: %s", hash_prefix, exc)
             logger.error(traceback.format_exc())
 
     def _extract_datasource_name(self, target: GrafanaTarget, panel: GrafanaPanel) -> str | None:
@@ -400,29 +422,18 @@ class GrafanaSource(DashboardServiceSource):
 
             return None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error extracting datasource name: {exc}")
+            logger.debug("Error extracting datasource name: %s", exc)
             return None
 
     def _extract_sql_query(self, target: GrafanaTarget, datasource: GrafanaDatasource) -> str | None:
-        """Extract SQL query from target based on datasource type"""
-        try:
-            # Handle different datasource types
-            if datasource.type in [
-                "mysql",
-                "grafana-postgresql-datasource",
-                "mssql",
-                "clickhouse",
-            ]:
-                return target.rawSql or target.query
-            elif datasource.type in ["prometheus", "elasticsearch"]:  # noqa: RET505
-                # Prometheus and Elasticsearch queries aren't SQL
-                return None
-            else:
-                # Try generic query field
-                return target.query
-        except Exception as exc:
-            logger.debug(f"Error extracting SQL query: {exc}")
+        """Extract the SQL statement a panel target runs, if it runs one at all"""
+        # SQL plugins are an open set (trino, athena, redshift, ...) and they do not agree on
+        # where they keep the statement - rawSql, rawSQL, or plain query for older ones. So
+        # read every datasource's raw SQL field rather than allow-listing types, which is what
+        # dropped Trino panels before (#23997), and only skip the languages that are not SQL.
+        if datasource.type in NON_SQL_DATASOURCE_TYPES:
             return None
+        return target.raw_sql or target.query
 
     def _map_panel_type_to_chart_type(self, panel_type: str) -> str:
         """Map Grafana panel types to OpenMetadata chart types"""

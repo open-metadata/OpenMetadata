@@ -18,6 +18,7 @@ import { UIThemePreference } from '../generated/configuration/uiThemePreference'
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { StorageServiceType } from '../generated/entity/services/storageService';
 import { ServicesType } from '../interface/service.interface';
 import {
@@ -35,11 +36,26 @@ const AGENTS_CARD_CLASSNAME =
 const INGESTION_TABLE_CLASSNAME = 'tw:relative tw:py-8';
 
 describe('getSupportedPipelineTypes', () => {
-  it('should return only return metadata pipeline types if config is undefined', () => {
-    const serviceDetails = {};
+  it('should return metadata pipeline type for a connectionless non-Spark service', () => {
+    const serviceDetails = {
+      id: '',
+      name: 'airflow_service',
+      serviceType: PipelineServiceType.Airflow,
+    };
     const result = getSupportedPipelineTypes(serviceDetails as ServicesType);
 
     expect(result).toEqual([PipelineType.Metadata]);
+  });
+
+  it('should not return pull ingestion types for a connectionless Spark service', () => {
+    const serviceDetails = {
+      id: '',
+      name: 'spark_openlineage',
+      serviceType: PipelineServiceType.Spark,
+    };
+    const result = getSupportedPipelineTypes(serviceDetails as ServicesType);
+
+    expect(result).toEqual([]);
   });
 
   it('should return supported pipeline types based on config', () => {

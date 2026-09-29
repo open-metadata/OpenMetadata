@@ -15,6 +15,7 @@ import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Persona } from '../../../../../generated/entity/teams/persona';
@@ -37,6 +38,17 @@ const personaToRef = (persona: Persona): EntityReference => ({
   displayName: persona.displayName,
   fullyQualifiedName: persona.fullyQualifiedName,
 });
+
+const mergeFetchedPersonas =
+  (list: Persona[]) =>
+  (prev: Record<string, EntityReference>): Record<string, EntityReference> => {
+    const next = { ...prev };
+    list.forEach((persona) => {
+      next[persona.id] = personaToRef(persona);
+    });
+
+    return next;
+  };
 
 interface PersonaRowProps {
   userData: User;
@@ -75,14 +87,7 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
       .then((res) => {
         const list = res ?? [];
         setPersonaResults(list);
-        setFetchedById((prev) => {
-          const next = { ...prev };
-          list.forEach((persona) => {
-            next[persona.id] = personaToRef(persona);
-          });
-
-          return next;
-        });
+        setFetchedById(mergeFetchedPersonas(list));
       })
       .catch((err) => showErrorToast(err as AxiosError));
   }, []);
@@ -150,6 +155,19 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
     await updateUserDetails({ personas: selectedPersonas }, 'personas');
   };
 
+  const handleItemCleared = useCallback(
+    (key: Key) => setDraftPersonaIds((prev) => prev.filter((id) => id !== key)),
+    []
+  );
+
+  const handleItemInserted = useCallback(
+    (key: Key) =>
+      setDraftPersonaIds((prev) =>
+        prev.includes(key as string) ? prev : [...prev, key as string]
+      ),
+    []
+  );
+
   return (
     <InlineEditCard
       canEdit={canEdit}
@@ -174,14 +192,8 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
             />
           )}
           selectedItems={selectedItems}
-          onItemCleared={(key) =>
-            setDraftPersonaIds((prev) => prev.filter((id) => id !== key))
-          }
-          onItemInserted={(key) =>
-            setDraftPersonaIds((prev) =>
-              prev.includes(key as string) ? prev : [...prev, key as string]
-            )
-          }
+          onItemCleared={handleItemCleared}
+          onItemInserted={handleItemInserted}
           onSearchChange={searchPersonasDebounced}>
           {(item) => (
             <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>

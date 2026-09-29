@@ -170,6 +170,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String ONTOLOGY_EDGE_ID_NAMESPACE = "ontology:";
   private static final int ONTOLOGY_RELATION_CANDIDATE_MULTIPLIER = 5;
   private static final int MAX_ONTOLOGY_RELATION_CANDIDATES = 2500;
+  private static final Comparator<TermRelation> TERM_RELATION_ORDER =
+      Comparator.comparing((TermRelation relation) -> relation.getTerm().getFullyQualifiedName())
+          .thenComparing(TermRelation::getRelationType);
 
   private final TermRelationMetadataCodec termRelationMetadataCodec =
       new TermRelationMetadataCodec();
@@ -879,7 +882,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     for (EntityRelationshipRecord record : toRecords) {
       relations.add(buildTermRelation(record));
     }
-    relations.sort(Comparator.comparing(tr -> tr.getTerm().getFullyQualifiedName()));
+    relations.sort(TERM_RELATION_ORDER);
     return relations;
   }
 
@@ -1308,7 +1311,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                     rel.getTerm() != null
                         && rel.getTerm().getId() != null
                         && rel.getTerm().getId().equals(termRef.getId())
-                        && relationType.equals(relationTypeOrDefault(rel)));
+                        && isEquivalentRelationType(relationType, relationTypeOrDefault(rel)));
     if (!exists) {
       List<TermRelation> updatedRelations =
           new ArrayList<>(listOrEmpty(original.getRelatedTerms()));
@@ -1345,7 +1348,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private boolean matchesRelation(TermRelation relation, UUID targetTermId, String relationType) {
     boolean hasTarget =
         relation.getTerm() != null && targetTermId.equals(relation.getTerm().getId());
-    boolean hasType = relationType == null || relationType.equals(relationTypeOrDefault(relation));
+    boolean hasType =
+        relationType == null
+            || isEquivalentRelationType(relationType, relationTypeOrDefault(relation));
     return hasTarget && hasType;
   }
 
@@ -1476,6 +1481,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   private String getInverseRelationType(String relationType) {
     return relationshipTypeResolver.inverseName(relationType);
+  }
+
+  private boolean isEquivalentRelationType(String typeA, String typeB) {
+    if (typeA.equals(typeB)) {
+      return true;
+    }
+    return typeB.equals(safeInverseName(typeA)) || typeA.equals(safeInverseName(typeB));
+  }
+
+  private String safeInverseName(String relationType) {
+    try {
+      return getInverseRelationType(relationType);
+    } catch (BadRequestException ignored) {
+      return null;
+    }
   }
 
   private String computeCanonicalRelationType(UUID fromId, UUID toId, String relationType) {
@@ -1881,6 +1901,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
 
         searchRepository.updateEntity(ref);
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -1894,6 +1915,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
 
       searchRepository.updateEntity(term.getEntityReference());
+      RdfUpdater.updateEntity(term);
     }
 
     // Add Failed And Suceess Request
@@ -1953,6 +1975,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
 
     success.add(new BulkResponse().withRequest(columnRef));
@@ -2161,6 +2184,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -2200,6 +2224,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (!dryRun) {
       // Update the parent table's search index
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
   }
 
@@ -2495,44 +2520,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return JsonUtils.readObjects(jsons, GlossaryTerm.class);
   }
 
-  protected void updateTaskWithNewReviewers(GlossaryTerm term) {
-    term =
-        Entity.getEntityByName(
-            Entity.GLOSSARY_TERM,
-            term.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers,parent,glossary",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        term.getFullyQualifiedName(),
-        new ArrayList<>(resolveEffectiveReviewers(term)),
-        term.getUpdatedBy());
-  }
-
-  private List<EntityReference> resolveEffectiveReviewers(GlossaryTerm term) {
-    if (!nullOrEmpty(term.getReviewers())) {
-      return term.getReviewers();
-    }
-
-    if (term.getParent() != null) {
-      GlossaryTerm parentTerm =
-          Entity.getEntity(
-              term.getParent().withType(GLOSSARY_TERM), "reviewers", Include.NON_DELETED);
-      if (!nullOrEmpty(parentTerm.getReviewers())) {
-        return parentTerm.getReviewers();
-      }
-    }
-
-    if (term.getGlossary() != null) {
-      Glossary glossary = Entity.getEntity(term.getGlossary(), "reviewers", Include.NON_DELETED);
-      if (!nullOrEmpty(glossary.getReviewers())) {
-        return glossary.getReviewers();
-      }
-    }
-
-    return List.of();
-  }
-
   private void fetchAndSetRelatedTerms(List<GlossaryTerm> entities, Fields fields) {
     if (!fields.contains("relatedTerms") || entities.isEmpty()) {
       return;
@@ -2598,7 +2585,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     for (List<TermRelation> relations : relatedTermsMap.values()) {
-      relations.sort(Comparator.comparing(tr -> tr.getTerm().getFullyQualifiedName()));
+      relations.sort(TERM_RELATION_ORDER);
     }
 
     if (!relatedTermsMap.isEmpty()) {

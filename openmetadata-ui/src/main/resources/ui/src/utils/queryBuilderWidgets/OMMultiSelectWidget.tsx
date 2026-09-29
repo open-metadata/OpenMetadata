@@ -17,6 +17,7 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
+import { QUERY_BUILDER_VALUE_POPOVER_CLASS } from '../queryBuilder/types';
 
 const toSelectItems = (
   listValues: MultiSelectWidgetProps['listValues']
@@ -55,71 +56,80 @@ const OMMultiSelectWidget = ({
     [JSON.stringify(listValues ?? null)]
   );
 
-  // Accumulate every fetched option in a bounded, id-keyed map. Async results
-  // are additive: a later fetch — the eager default ('') seed, or a transient
-  // empty value react-aria emits on focus/blur — can only ADD entries, never
-  // drop the option the user just searched for. That makes the widget immune to
-  // the order in which react-aria fires searches, which under load caused the
-  // list to snap back to the unfiltered default catalogue mid-selection (the
-  // server did return the typed option; the default reload simply overwrote it).
-  // The list is shown unfiltered (see filterOption below), so once the typed
-  // option has been fetched it stays selectable regardless of later fetches.
+  // Label cache for picked values, not the option list: an id the current search
+  // no longer returns still has to render as its name.
   const ASYNC_ITEM_CAP = 500;
   const [asyncItemMap, setAsyncItemMap] = useState<Map<string, SelectItemType>>(
     () => new Map()
   );
+
+  // Offer only the latest fetch: keeping every option ever fetched left the whole
+  // catalogue on screen while the search narrowed server-side.
+  const [asyncResultIds, setAsyncResultIds] = useState<string[]>([]);
   const asyncItems = useMemo(
-    () => Array.from(asyncItemMap.values()),
-    [asyncItemMap]
+    () =>
+      asyncResultIds
+        .map((id) => asyncItemMap.get(id))
+        .filter((item): item is SelectItemType => Boolean(item)),
+
+    [asyncResultIds, asyncItemMap]
   );
   const allItems = isAsync ? asyncItems : staticItems;
 
   const selectedItems = useMemo(
     () =>
       valueArray.map(
-        (id) => allItems.find((item) => item.id === id) ?? { id, label: id }
+        (id) =>
+          (isAsync
+            ? asyncItemMap.get(id)
+            : staticItems.find((item) => item.id === id)) ?? { id, label: id }
       ),
 
-    [valueArray.join(','), allItems]
+    [valueArray.join(','), isAsync, asyncItemMap, staticItems]
   );
+
+  // A slower earlier fetch must not overwrite the newest results.
+  const latestRequestRef = useRef(0);
 
   const loadAsync = useCallback(
     async (search: string) => {
       if (!asyncFetch) {
         return;
       }
+      const requestId = ++latestRequestRef.current;
       const result = await asyncFetch(search);
+      if (requestId !== latestRequestRef.current) {
+        return;
+      }
       const fetched = (result.values as ListItem[]).map((item) => ({
         id: String(item.value),
         label: String(item.title ?? item.value),
       }));
-      if (fetched.length === 0) {
-        return;
-      }
-      setAsyncItemMap((prev) => {
-        const next = new Map(prev);
-        fetched.forEach((item) => {
-          // Re-insert so the entry counts as most-recently-seen for eviction.
-          next.delete(item.id);
-          next.set(item.id, item);
-        });
-        while (next.size > ASYNC_ITEM_CAP) {
-          const oldest = next.keys().next().value;
-          if (oldest === undefined) {
-            break;
+      if (fetched.length > 0) {
+        setAsyncItemMap((prev) => {
+          const next = new Map(prev);
+          fetched.forEach((item) => {
+            // Re-insert so the entry counts as most-recently-seen for eviction.
+            next.delete(item.id);
+            next.set(item.id, item);
+          });
+          while (next.size > ASYNC_ITEM_CAP) {
+            const oldest = next.keys().next().value;
+            if (oldest === undefined) {
+              break;
+            }
+            next.delete(oldest);
           }
-          next.delete(oldest);
-        }
 
-        return next;
-      });
+          return next;
+        });
+      }
+      setAsyncResultIds(fetched.map((item) => item.id));
     },
     [asyncFetch]
   );
 
-  // Seed the default catalogue once when async search activates so the list has
-  // options before the user types. Results accumulate, so this can never
-  // clobber a query already in progress.
+  // Seed the default catalogue once when async search activates so the list has options before the user types.
   const didSeedRef = useRef(false);
 
   useEffect(() => {
@@ -132,9 +142,14 @@ const OMMultiSelectWidget = ({
   const handleItemInserted = useCallback(
     (key: Key) => {
       setValue([...valueArray, String(key)]);
+      // Picking clears the input without reporting a search, so restore the
+      // unfiltered catalogue — otherwise a second value means typing again.
+      if (isAsync) {
+        loadAsync('');
+      }
     },
 
-    [valueArray.join(','), setValue]
+    [valueArray.join(','), setValue, isAsync, loadAsync]
   );
 
   const handleItemCleared = useCallback(
@@ -147,28 +162,30 @@ const OMMultiSelectWidget = ({
   );
 
   return (
-    <Autocomplete
-      isDisabled={readonly}
-      items={allItems}
-      placeholder={placeholder ?? 'Select'}
-      selectedItems={selectedItems}
-      onItemCleared={handleItemCleared}
-      onItemInserted={handleItemInserted}
-      // Results are filtered server-side, so keep the built-in client filter
-      // off (filterOption: () => true) — the option label need not literally
-      // contain the raw query (e.g. an owner's display name vs the typed value),
-      // and client-filtering it would wrongly hide valid server matches. The
-      // accumulated result set keeps the typed option present regardless of any
-      // later default ('') fetch, so the list always still contains it.
-      {...(isAsync
-        ? { filterOption: () => true, onSearchChange: loadAsync }
-        : {})}>
-      {(item) => (
-        <Autocomplete.Item id={item.id} key={item.id}>
-          {item.label}
-        </Autocomplete.Item>
-      )}
-    </Autocomplete>
+    // `tw:contents` keeps the wrapper out of layout: it is a test handle and nothing else.
+    <div
+      className="tw:contents"
+      data-testid="advanced-search-value-multiselect">
+      <Autocomplete
+        isDisabled={readonly}
+        items={allItems}
+        placeholder={placeholder ?? 'Select'}
+        popoverClassName={QUERY_BUILDER_VALUE_POPOVER_CLASS}
+        selectedItems={selectedItems}
+        onItemCleared={handleItemCleared}
+        onItemInserted={handleItemInserted}
+        // Filtered server-side, so keep the client filter off: a label need not contain the raw query (an owner's
+        // display name vs the typed value), and client-filtering would hide valid server matches.
+        {...(isAsync
+          ? { filterOption: () => true, onSearchChange: loadAsync }
+          : {})}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    </div>
   );
 };
 

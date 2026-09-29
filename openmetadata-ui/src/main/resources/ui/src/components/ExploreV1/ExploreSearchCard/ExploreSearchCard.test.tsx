@@ -53,6 +53,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
 }));
 jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn().mockReturnValue(''),
+  renderHighlightedText: jest.fn((text) => text ?? ''),
   highlightEntityNameAndDescription: jest.fn((source, highlight) => {
     if (!highlight) {
       return source;
@@ -88,40 +89,58 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
-jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
-  DomainDisplay: jest
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest
+    .fn()
+    .mockImplementation(({ markdown }) => (
+      <span data-testid="previewer">{markdown}</span>
+    ))
+);
+
+jest.mock('../../common/DomainTags/DomainTags', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockReturnValue(<div data-testid="domain-display">Domain Display</div>),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Breadcrumbs: jest.fn(({ items = [] }) => (
-    <nav data-testid="breadcrumbs">
-      {items.map(
-        (item: {
-          id: string;
-          label: string;
-          href: string;
-          icon?: (props: { className?: string }) => ReactElement;
-        }) => {
-          const Icon = item.icon;
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
 
-          return (
-            <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
-              {Icon && (
-                <span data-testid="breadcrumb-icon">
-                  <Icon className="breadcrumb-icon" />
-                </span>
-              )}
-              {item.label}
-            </a>
-          );
-        }
-      )}
-    </nav>
-  )),
-  Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
-}));
+  return {
+    // StatusBadge renders the core Badge; keep the real one (a plain span).
+    Badge: actual.Badge,
+    Breadcrumbs: jest.fn(({ items = [] }) => (
+      <nav data-testid="breadcrumbs">
+        {items.map(
+          (item: {
+            id: string;
+            label: string;
+            href: string;
+            icon?: (props: { className?: string }) => ReactElement;
+          }) => {
+            const Icon = item.icon;
+
+            return (
+              <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
+                {Icon && (
+                  <span data-testid="breadcrumb-icon">
+                    <Icon className="breadcrumb-icon" />
+                  </span>
+                )}
+                {item.label}
+              </a>
+            );
+          }
+        )}
+      </nav>
+    )),
+    Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+    Owner: jest.fn().mockReturnValue(null),
+    toOwnerRef: actual.toOwnerRef,
+    toOwnerRefs: actual.toOwnerRefs,
+  };
+});
 
 const baseSource: ExploreSearchCardProps['source'] = {
   id: 'base-1',
@@ -168,7 +187,7 @@ describe('ExploreSearchCard - Domain section', () => {
     jest.clearAllMocks();
   });
 
-  it('renders  DomainDisplay component', () => {
+  it('renders the domain chips', () => {
     renderCard({
       domains: [{ id: '1', fullyQualifiedName: 'domain.test', type: 'domain' }],
     });
@@ -544,7 +563,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'test-table',
         displayName: 'Test Table',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -570,7 +590,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       expect.objectContaining({
         name: 'test-table',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -598,7 +619,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       expect.objectContaining({
         description: 'This is a test description',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -627,7 +649,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'name',
         displayName: 'Display Name',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -661,7 +684,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         displayName: 'Highlighted Display',
         description: 'Highlighted description text',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -687,7 +711,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'test-table',
         description: 'Test description',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -725,6 +750,53 @@ describe('ExploreSearchCard - Highlight functionality', () => {
     );
 
     expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ExploreSearchCard - Description markdown stripping', () => {
+  it('strips markdown syntax from description before rendering', () => {
+    renderCard({
+      description: '**bold text** and `code` and [link](http://example.com)',
+    });
+
+    const body = screen.getByTestId('table-body');
+
+    expect(body).toHaveTextContent('bold text and code and link');
+    expect(body).not.toHaveTextContent('**bold text**');
+    expect(body).not.toHaveTextContent('`code`');
+  });
+
+  it('renders plain text description as-is', () => {
+    renderCard({ description: 'Simple plain text description' });
+
+    expect(screen.getByTestId('table-body')).toHaveTextContent(
+      'Simple plain text description'
+    );
+  });
+
+  it('preserves search highlight spans after stripping markdown', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={{
+            description: [
+              'bold text and <span class="text-highlighter">code</span> and link',
+            ],
+          }}
+          source={{
+            ...baseSource,
+            description:
+              '**bold text** and `code` and [link](http://example.com)',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    const body = screen.getByTestId('table-body');
+
+    expect(body).toHaveTextContent('code');
+    expect(body).not.toHaveTextContent('**bold text**');
   });
 });
 

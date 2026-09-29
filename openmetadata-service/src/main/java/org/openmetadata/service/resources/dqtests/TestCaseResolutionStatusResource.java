@@ -387,7 +387,10 @@ public class TestCaseResolutionStatusResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseResolutionStatus.class)))
+                    schema = @Schema(implementation = TestCaseResolutionStatus.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test case failure status for instance {id} is not found")
       })
   public TestCaseResolutionStatus get(
       @Context SecurityContext securityContext,
@@ -395,7 +398,7 @@ public class TestCaseResolutionStatusResource
           @PathParam("id")
           UUID testCaseResolutionStatusId) {
     TestCaseResolutionStatus testCaseResolutionStatus =
-        repository.getById(testCaseResolutionStatusId);
+        repository.getByIdOrNotFound(testCaseResolutionStatusId);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,
@@ -615,7 +618,7 @@ public class TestCaseResolutionStatusResource
                       }))
           JsonPatch patch) {
 
-    TestCaseResolutionStatus testCaseResolutionStatus = repository.getById(id);
+    TestCaseResolutionStatus testCaseResolutionStatus = repository.getByIdOrNotFound(id);
     TestCase testCase =
         Entity.getEntityByName(
             Entity.TEST_CASE,

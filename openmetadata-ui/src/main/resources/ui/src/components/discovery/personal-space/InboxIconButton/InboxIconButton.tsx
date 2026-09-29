@@ -78,12 +78,14 @@ const InboxIconButton: React.FC = () => {
   const unreadActivityCount = useUnreadInboxActivity();
   const pendingCount = openTaskCount + unreadActivityCount;
 
-  const badgeLabel =
-    pendingCount > 99
-      ? '99+'
-      : pendingCount > 0
-      ? `${pendingCount}`
-      : undefined;
+  let badgeLabel: string | undefined;
+  if (pendingCount > 99) {
+    badgeLabel = '99+';
+  } else if (pendingCount > 0) {
+    badgeLabel = `${pendingCount}`;
+  } else {
+    badgeLabel = undefined;
+  }
 
   const isActive =
     pathname === PERSONAL_SPACE_ROUTES.INBOX ||
@@ -111,7 +113,11 @@ const InboxIconButton: React.FC = () => {
           {isActive ? (
             <InboxIconActive height={20} width={20} />
           ) : (
-            <InboxIconDefault height={20} width={20} />
+            <InboxIconDefault
+              className="tw:text-fg-quaternary"
+              height={20}
+              width={20}
+            />
           )}
 
           {badgeLabel && (

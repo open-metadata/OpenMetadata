@@ -30,7 +30,7 @@ class TestSnowflakeQueryLogEntry(TestCase):
         )
 
         executed_query = str(mock_session.execute.call_args[0][0])
-        assert 'SNOWFLAKE.ACCOUNT_USAGE."QUERY_HISTORY"' in executed_query
+        assert '"SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"' in executed_query
 
     def test_get_for_table_uses_custom_account_usage_schema(self):
         """Verify query uses custom accountUsageSchema when specified"""
@@ -52,8 +52,29 @@ class TestSnowflakeQueryLogEntry(TestCase):
         )
 
         executed_query = str(mock_session.execute.call_args[0][0])
-        assert f'{custom_schema}."QUERY_HISTORY"' in executed_query
+        assert '"MY_DATABASE"."MY_SCHEMA"."QUERY_HISTORY"' in executed_query
         assert "SNOWFLAKE.ACCOUNT_USAGE" not in executed_query
+
+    def test_get_for_table_quotes_account_usage_schema(self):
+        mock_session = MagicMock()
+        mock_session.execute.return_value = []
+        account_usage = 'GOVERNANCE."ACCOUNT_USAGE""; DROP TABLE secret; --"'
+        service_connection = SnowflakeConnection(
+            username="test_user",
+            account="test_account",
+            warehouse="test_warehouse",
+            accountUsageSchema=account_usage,
+        )
+
+        SnowflakeQueryLogEntry.get_for_table(
+            session=mock_session,
+            tablename="my_table",
+            service_connection_config=service_connection,
+        )
+
+        executed_query = str(mock_session.execute.call_args.args[0])
+        assert '"GOVERNANCE"."ACCOUNT_USAGE""; DROP TABLE secret; --"."QUERY_HISTORY"' in executed_query
+        assert account_usage not in executed_query
 
     def test_get_for_table_query_filters_by_tablename(self):
         """Verify query filters by the specified table name"""

@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DATA_ASSETS_SORT } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
@@ -52,12 +52,13 @@ test.describe(
           .getByTestId('search-input')
           .fill(filter.toLowerCase());
         await dataAssetDropdownRequest;
-        await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
-        await page
-          .getByTestId(`${filter.toLowerCase()}-checkbox`)
-          .waitFor({ state: 'visible' });
-
-        await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
+        const filterRow = page
+          .getByTestId('drop-down-menu')
+          .getByTestId(filter.toLowerCase());
+        await filterRow.waitFor({ state: 'visible' });
+        if ((await filterRow.getAttribute('aria-checked')) !== 'true') {
+          await filterRow.click();
+        }
         await clickUpdateButtonIfVisible(page);
         await page.keyboard.press('Escape');
 

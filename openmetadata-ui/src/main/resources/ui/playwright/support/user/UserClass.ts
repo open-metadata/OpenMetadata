@@ -17,7 +17,11 @@ import {
   DATA_STEWARD_RULES,
   SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import {
   disableEtagConditionalReads,
   generateRandomUsername,
@@ -150,7 +154,7 @@ export class UserClass {
     this.responseData = await okJson(response, 'UserClass.patch');
 
     return {
-      entity: response.body,
+      entity: this.responseData,
     };
   }
 
@@ -240,7 +244,8 @@ export class UserClass {
       await this.dataStewardTeam?.delete(apiContext);
     }
 
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=${hardDelete}`
     );
 
@@ -274,25 +279,29 @@ export class UserClass {
       await suppressWelcomeScreen(page, this.responseData?.name ?? userName);
     }
 
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     try {
-      await page.waitForURL('**/signin', { timeout: 5000 });
+      await page.waitForURL('**/signin', {
+        waitUntil: 'domcontentloaded',
+        timeout: 5000,
+      });
     } catch {
       await page.context().clearCookies();
-      await page.goto('/signin');
-      await page.waitForURL('**/signin');
+      await page.goto('/signin', { waitUntil: 'domcontentloaded' });
+      await page.waitForURL('**/signin', { waitUntil: 'domcontentloaded' });
     }
     await page.waitForLoadState('domcontentloaded');
-    const emailInput = page.locator('input[id="email"]');
+    const emailInput = page.locator('input[name="email"]');
     await emailInput.waitFor({ state: 'visible' });
     await emailInput.fill(userName);
-    await page.locator('#email').press('Tab');
-    await page.fill('input[id="password"]', password);
+    await emailInput.press('Tab');
+    await page.fill('input[name="password"]', password);
     const loginRes = page.waitForResponse('/api/v1/auth/login');
     await page.getByTestId('login').click();
     await loginRes;
     await page
       .waitForURL((url) => !url.pathname.includes('/signin'), {
+        waitUntil: 'domcontentloaded',
         timeout: 60000,
       })
       .catch(() => undefined);
@@ -338,7 +347,9 @@ export class UserClass {
         response.url().includes('/api/v1/users/logout') &&
         response.request().method() === 'POST'
     );
-    const waitSigninNavigation = page.waitForURL('**/signin');
+    const waitSigninNavigation = page.waitForURL('**/signin', {
+      waitUntil: 'domcontentloaded',
+    });
 
     // Block analytics collect calls to prevent 401 errors that cause
     // page context to close in fast environments (AUT)

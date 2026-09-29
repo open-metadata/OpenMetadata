@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { SERVICE_TYPE } from '../../constant/service';

@@ -16,12 +16,10 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, lowerCase } from 'lodash';
 import React from 'react';
-import {
-  ExploreSearchIndex,
-  SearchHitCounts,
-} from '../components/Explore/ExplorePage.interface';
+import { SearchHitCounts } from '../components/Explore/ExplorePage.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { Aggregations, SearchResponse } from '../interface/search.interface';
 import {
   QueryFilterInterface,
@@ -210,6 +208,35 @@ export const fetchEntityData = async ({
   const isNlqSearch = isNLPRequestEnabled && !isEmpty(searchQueryParam);
   const searchRequest = isNlqSearch ? nlqSearch : searchQuery;
 
+  const runSearchWithoutQueryParam = async () => {
+    // If no searchQueryParam, make searchAPICall with current searchIndex
+    const searchPayload = {
+      query: '',
+      searchIndex,
+      queryFilter: combinedQueryFilter,
+      sortField: sortValue,
+      sortOrder: sortOrder,
+      pageNumber: page,
+      pageSize: size,
+      includeDeleted: showDeleted,
+      trackTotalHits: true,
+      explain: showRankingDetails,
+      excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
+    };
+
+    try {
+      const res = await searchRequest(searchPayload);
+      setSearchResults(res as SearchResponse<ExploreSearchIndex>);
+      setUpdatedAggregations(res.aggregations);
+    } catch (error) {
+      if (isElasticsearchError(error)) {
+        setShowIndexNotFoundAlert(true);
+      } else {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
   try {
     if (searchQueryParam) {
       const countPayload = {
@@ -349,32 +376,7 @@ export const fetchEntityData = async ({
         }
       }
     } else {
-      // If no searchQueryParam, make searchAPICall with current searchIndex
-      const searchPayload = {
-        query: '',
-        searchIndex,
-        queryFilter: combinedQueryFilter,
-        sortField: sortValue,
-        sortOrder: sortOrder,
-        pageNumber: page,
-        pageSize: size,
-        includeDeleted: showDeleted,
-        trackTotalHits: true,
-        explain: showRankingDetails,
-        excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
-      };
-
-      try {
-        const res = await searchRequest(searchPayload);
-        setSearchResults(res as SearchResponse<ExploreSearchIndex>);
-        setUpdatedAggregations(res.aggregations);
-      } catch (error) {
-        if (isElasticsearchError(error)) {
-          setShowIndexNotFoundAlert(true);
-        } else {
-          showErrorToast(error as AxiosError);
-        }
-      }
+      await runSearchWithoutQueryParam();
     }
 
     return true;

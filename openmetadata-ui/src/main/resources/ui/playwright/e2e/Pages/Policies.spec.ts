@@ -34,7 +34,9 @@ import {
 import {
   closeFirstPopupAlert,
   descriptionBox,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
@@ -76,10 +78,20 @@ const addRule = async (
   // Click on condition combobox
   await page.locator('[data-testid="condition"]').click();
 
-  // Select condition
+  // Select condition. The listener goes up first because typing the condition validates it too,
+  // so the response can arrive before the option is clicked.
   const conditionResponse = page.waitForResponse(
     '/api/v1/policies/validation/condition/*'
   );
+
+  // Type the condition to filter the list. The options are built from every policy function's
+  // examples and the dropdown is virtualized, so an option far enough down the list is not in the
+  // DOM to be clicked - which is what happens whenever a new function is added.
+  await page
+    .locator(
+      '[data-testid="condition"] > .ant-select-selector .ant-select-selection-search-input'
+    )
+    .fill(RULE_DETAILS.condition);
   await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
   await conditionResponse;
 
@@ -97,8 +109,6 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
-      test.slow(true);
-
       await redirectToHomePage(page);
       await settingClick(page, GlobalSettingOptions.POLICIES);
       await waitForAllLoadersToDisappear(page);
@@ -137,7 +147,7 @@ test.describe(
         });
 
         // Enter description
-        await page.locator(descriptionBox).nth(0).fill(DESCRIPTION);
+        await getDescriptionBox(page).nth(0).fill(DESCRIPTION);
 
         // Enter rule name
         await addRule(page, RULE_NAME, RULE_DESCRIPTION, 1);
@@ -147,7 +157,7 @@ test.describe(
           POLICY_NAME
         );
 
-        await page.getByText(RULE_NAME, { exact: true }).isVisible();
+        await expect(page.getByText(RULE_NAME, { exact: true })).toBeVisible();
 
         // Verify policy description
         await expect(
@@ -191,9 +201,7 @@ test.describe(
         // Click on edit description
         await page.locator('[data-testid="edit-description"]').click();
 
-        await page
-          .locator(descriptionBox)
-          .fill(`${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
+        await fillDescriptionBox(page, `${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
 
         // Click on save
         await page.locator('[data-testid="save"]').click();
@@ -228,7 +236,7 @@ test.describe(
         await addRule(page, NEW_RULE_NAME, NEW_RULE_DESCRIPTION, 0);
 
         // Validate added rule
-        await page.getByText(RULE_NAME, { exact: true }).isVisible();
+        await expect(page.getByText(RULE_NAME, { exact: true })).toBeVisible();
 
         // Verify other details
         await page.getByText(RULE_NAME, { exact: true }).click();
@@ -269,7 +277,9 @@ test.describe(
         await expect(page).toHaveURL(new RegExp(POLICY_NAME));
 
         // Verify the rule name is updated
-        await page.getByText(UPDATED_RULE_NAME, { exact: true }).isVisible();
+        await expect(
+          page.getByText(UPDATED_RULE_NAME, { exact: true })
+        ).toBeVisible();
       });
 
       await test.step('Delete new rule', async () => {
@@ -398,7 +408,7 @@ test.describe(
 
       await policy.create(apiContext, policyRules);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 

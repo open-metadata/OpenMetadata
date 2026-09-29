@@ -117,6 +117,7 @@ const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  createdDataProducts.length = 0;
   test.slow(true);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -221,10 +222,9 @@ test.describe(
         await teamsSearchBar.fill(teamName);
         await searchUser;
 
-        const ownerItem = page.getByRole('listitem', {
-          name: teamName,
-          exact: true,
-        });
+        const ownerItem = page
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: teamName });
 
         await ownerItem.waitFor({ state: 'visible' });
         await ownerItem.click();
@@ -232,7 +232,7 @@ test.describe(
           `/api/v1/${entity.endpoint}/*`
         );
         await page
-          .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
+          .locator('[data-testid="owner-select-teams-panel"]')
           .getByTestId('selectable-list-update-btn')
           .click();
         await patchRequest;
@@ -250,7 +250,7 @@ test.describe(
         await assignDomain(page, domain.responseData);
         await assignDomain(page, domain2.responseData, false);
 
-        await expect(page.getByTestId('domain-count-button')).toBeVisible();
+        await expect(page.getByTestId('show-all-domains')).toBeVisible();
 
         // Add Multiple DataProduct, since default single select is off
         if (!entityName.includes('Service')) {
@@ -400,7 +400,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Database description.');
 
         // Verify Owners
@@ -412,7 +412,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         // Verify Tags
@@ -544,7 +544,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Database Schema description.');
 
         // Verify Owners
@@ -557,7 +557,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         await page.getByTestId('column-display-name').click();
@@ -683,7 +683,7 @@ test.describe(
         );
 
         await expect(
-          page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
+          page.locator(`td ${descriptionBoxReadOnly}`)
         ).toContainText('Playwright Table description');
 
         // Go to Table Page
@@ -694,9 +694,11 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         // Verify Domain
-        await expect(page.getByTestId('domain-link')).toContainText(
-          domain.responseData.displayName
-        );
+        await expect(
+          page.getByTestId(
+            `domain-tag-${domain.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
 
         // Verify Owners
         await expect(
@@ -708,7 +710,7 @@ test.describe(
         ).toBeVisible();
 
         await expect(
-          page.getByRole('link', { name: team.responseData?.['displayName'] })
+          page.getByTestId(team.responseData?.['displayName'])
         ).toBeVisible();
 
         // Verify Tags
@@ -771,7 +773,8 @@ test.describe(
         await page.goto(
           `/glossary/${encodeURIComponent(
             testGlossaryTerm.responseData.fullyQualifiedName
-          )}`
+          )}`,
+          { waitUntil: 'domcontentloaded' }
         );
 
         // Wait for page to be fully loaded
@@ -782,16 +785,18 @@ test.describe(
         await page.getByTestId('add-domain').click();
         await waitForAllLoadersToDisappear(page);
 
-        // Verify checkboxes ARE visible (multi-select mode)
+        // Verify checkboxes ARE present (multi-select mode)
         await expect(
-          page.locator('.domain-selectable-tree .ant-tree-checkbox').first()
-        ).toBeVisible();
+          page
+            .getByTestId('domain-selectable-tree-popover')
+            .locator('[data-testid^="checkbox-"]')
+        ).not.toHaveCount(0);
 
         // Close the selector by clicking cancel btn
-        await page.getByTestId('cancelAssociatedTag').click();
+        await page.getByTestId('close-btn').click();
 
         // Wait for domain selector to be fully closed
-        await page.getByTestId('domain-selectable-tree').waitFor({
+        await page.getByTestId('domain-selectable-tree-search').waitFor({
           state: 'detached',
         });
 
@@ -804,14 +809,14 @@ test.describe(
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links
         await expect(
-          page
-            .getByTestId('domain-link')
-            .filter({ hasText: testDomain1.data.displayName })
+          page.getByTestId(
+            `domain-tag-${testDomain1.responseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
         await expect(
-          page
-            .getByTestId('domain-link')
-            .filter({ hasText: testDomain2.data.displayName })
+          page.getByTestId(
+            `domain-tag-${testDomain2.responseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
       } finally {
         await testGlossaryTerm.delete(apiContext);

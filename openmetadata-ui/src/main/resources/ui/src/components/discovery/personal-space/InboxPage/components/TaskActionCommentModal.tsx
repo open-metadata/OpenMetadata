@@ -20,11 +20,19 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { TestCaseFailureReasonType } from '../../../../../generated/tests/testCaseResolutionStatus';
 import TaskAssigneeSelect from './TaskAssigneeSelect';
+
+type TFunc = ReturnType<typeof useTranslation>['t'];
 
 export interface TaskActionValues {
   comment: string;
@@ -60,6 +68,141 @@ const ROOT_CAUSE_OPTIONS = [
   TestCaseFailureReasonType.OutOfBounds,
   TestCaseFailureReasonType.Other,
 ].map((reason) => ({ id: reason, label: reason }));
+
+interface TaskAssigneeFieldProps {
+  show: boolean;
+  isLoading: boolean;
+  touched: boolean;
+  isMissing: boolean;
+  selected?: EntityReference;
+  t: TFunc;
+  onChange: (next?: EntityReference) => void;
+}
+
+// Each field owns its show/hint/isInvalid branching so those decisions don't
+// add to the parent modal's cyclomatic complexity.
+const TaskAssigneeField = ({
+  show,
+  isLoading,
+  touched,
+  isMissing,
+  selected,
+  t,
+  onChange,
+}: TaskAssigneeFieldProps) => {
+  if (!show) {
+    return null;
+  }
+
+  const isInvalid = touched && isMissing;
+  const hint = isInvalid
+    ? t('message.field-text-is-required', { fieldText: t('label.assign-to') })
+    : undefined;
+
+  return (
+    <TaskAssigneeSelect
+      hint={hint}
+      isDisabled={isLoading}
+      isInvalid={isInvalid}
+      selected={selected}
+      onChange={onChange}
+    />
+  );
+};
+
+interface TaskRootCauseFieldProps {
+  show: boolean;
+  isLoading: boolean;
+  touched: boolean;
+  isMissing: boolean;
+  rootCause?: string;
+  t: TFunc;
+  onChange: (key?: string) => void;
+}
+
+const TaskRootCauseField = ({
+  show,
+  isLoading,
+  touched,
+  isMissing,
+  rootCause,
+  t,
+  onChange,
+}: TaskRootCauseFieldProps) => {
+  if (!show) {
+    return null;
+  }
+
+  const isInvalid = touched && isMissing;
+  const hint = isInvalid
+    ? t('message.field-text-is-required', { fieldText: t('label.reason') })
+    : undefined;
+
+  return (
+    <Select
+      isRequired
+      data-testid="task-action-root-cause"
+      hint={hint}
+      isDisabled={isLoading}
+      isInvalid={isInvalid}
+      items={ROOT_CAUSE_OPTIONS}
+      label={t('label.reason')}
+      placeholder={t('label.please-select-entity', {
+        entity: t('label.reason'),
+      })}
+      selectedKey={rootCause ?? null}
+      onSelectionChange={(key) => onChange(key ? String(key) : undefined)}>
+      {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+    </Select>
+  );
+};
+
+interface TaskCommentFieldProps {
+  show: boolean;
+  isLoading: boolean;
+  touched: boolean;
+  isMissing: boolean;
+  requiredMessage?: string;
+  commentLabel?: string;
+  comment: string;
+  t: TFunc;
+  onChange: (next: string) => void;
+}
+
+const TaskCommentField = ({
+  show,
+  isLoading,
+  touched,
+  isMissing,
+  requiredMessage,
+  commentLabel,
+  comment,
+  t,
+  onChange,
+}: TaskCommentFieldProps) => {
+  if (!show) {
+    return null;
+  }
+
+  const isInvalid = touched && isMissing;
+  const hint = isInvalid ? requiredMessage : undefined;
+  const resolvedLabel = commentLabel ?? t('label.comment');
+
+  return (
+    <TextArea
+      data-testid="task-action-comment"
+      hint={hint}
+      isDisabled={isLoading}
+      isInvalid={isInvalid}
+      isRequired={Boolean(requiredMessage)}
+      label={resolvedLabel}
+      placeholder={t('label.enter-entity', { entity: resolvedLabel })}
+      rows={4}
+      value={comment}
+      onChange={onChange}
+    />
+  );
+};
 
 /**
  * Shared modal for task actions that cannot resolve on a click alone: a
@@ -98,12 +241,32 @@ const TaskActionCommentModal: React.FC<TaskActionCommentModalProps> = ({
     }
   }, [open]);
 
-  const isCommentMissing =
-    showComment && Boolean(requiredMessage) && !comment.trim();
-  const isRootCauseMissing = showRootCause && !rootCause;
-  const isAssigneeMissing = showAssignee && !assignee;
-  const isIncomplete =
-    isCommentMissing || isRootCauseMissing || isAssigneeMissing;
+  const {
+    isCommentMissing,
+    isRootCauseMissing,
+    isAssigneeMissing,
+    isIncomplete,
+  } = useMemo(() => {
+    const commentMissing =
+      showComment && Boolean(requiredMessage) && !comment.trim();
+    const rootCauseMissing = showRootCause && !rootCause;
+    const assigneeMissing = showAssignee && !assignee;
+
+    return {
+      isCommentMissing: commentMissing,
+      isRootCauseMissing: rootCauseMissing,
+      isAssigneeMissing: assigneeMissing,
+      isIncomplete: commentMissing || rootCauseMissing || assigneeMissing,
+    };
+  }, [
+    showComment,
+    requiredMessage,
+    comment,
+    showRootCause,
+    rootCause,
+    showAssignee,
+    assignee,
+  ]);
 
   const handleClose = useCallback(() => {
     if (!isLoading) {
@@ -162,75 +325,44 @@ const TaskActionCommentModal: React.FC<TaskActionCommentModalProps> = ({
 
             <Dialog.Content>
               <div className="tw:flex tw:flex-col tw:gap-4">
-                {showAssignee && (
-                  <TaskAssigneeSelect
-                    hint={
-                      touched.assignee && isAssigneeMissing
-                        ? t('message.field-text-is-required', {
-                            fieldText: t('label.assign-to'),
-                          })
-                        : undefined
-                    }
-                    isDisabled={isLoading}
-                    isInvalid={touched.assignee && isAssigneeMissing}
-                    selected={assignee}
-                    onChange={(next) => {
-                      setTouched((prev) => ({ ...prev, assignee: true }));
-                      setAssignee(next);
-                    }}
-                  />
-                )}
-                {showRootCause && (
-                  <Select
-                    isRequired
-                    data-testid="task-action-root-cause"
-                    hint={
-                      touched.rootCause && isRootCauseMissing
-                        ? t('message.field-text-is-required', {
-                            fieldText: t('label.reason'),
-                          })
-                        : undefined
-                    }
-                    isDisabled={isLoading}
-                    isInvalid={touched.rootCause && isRootCauseMissing}
-                    items={ROOT_CAUSE_OPTIONS}
-                    label={t('label.reason')}
-                    placeholder={t('label.please-select-entity', {
-                      entity: t('label.reason'),
-                    })}
-                    selectedKey={rootCause ?? null}
-                    onSelectionChange={(key) => {
-                      setTouched((prev) => ({ ...prev, rootCause: true }));
-                      setRootCause(key ? String(key) : undefined);
-                    }}>
-                    {(item) => (
-                      <Select.Item id={item.id}>{item.label}</Select.Item>
-                    )}
-                  </Select>
-                )}
-                {showComment && (
-                  <TextArea
-                    data-testid="task-action-comment"
-                    hint={
-                      touched.comment && isCommentMissing
-                        ? requiredMessage
-                        : undefined
-                    }
-                    isDisabled={isLoading}
-                    isInvalid={touched.comment && isCommentMissing}
-                    isRequired={Boolean(requiredMessage)}
-                    label={commentLabel ?? t('label.comment')}
-                    placeholder={t('label.enter-entity', {
-                      entity: commentLabel ?? t('label.comment'),
-                    })}
-                    rows={4}
-                    value={comment}
-                    onChange={(next) => {
-                      setTouched((prev) => ({ ...prev, comment: true }));
-                      setComment(next);
-                    }}
-                  />
-                )}
+                <TaskAssigneeField
+                  isLoading={isLoading}
+                  isMissing={isAssigneeMissing}
+                  selected={assignee}
+                  show={showAssignee}
+                  t={t}
+                  touched={Boolean(touched.assignee)}
+                  onChange={(next) => {
+                    setTouched((prev) => ({ ...prev, assignee: true }));
+                    setAssignee(next);
+                  }}
+                />
+                <TaskRootCauseField
+                  isLoading={isLoading}
+                  isMissing={isRootCauseMissing}
+                  rootCause={rootCause}
+                  show={showRootCause}
+                  t={t}
+                  touched={Boolean(touched.rootCause)}
+                  onChange={(next) => {
+                    setTouched((prev) => ({ ...prev, rootCause: true }));
+                    setRootCause(next);
+                  }}
+                />
+                <TaskCommentField
+                  comment={comment}
+                  commentLabel={commentLabel}
+                  isLoading={isLoading}
+                  isMissing={isCommentMissing}
+                  requiredMessage={requiredMessage}
+                  show={showComment}
+                  t={t}
+                  touched={Boolean(touched.comment)}
+                  onChange={(next) => {
+                    setTouched((prev) => ({ ...prev, comment: true }));
+                    setComment(next);
+                  }}
+                />
               </div>
             </Dialog.Content>
 

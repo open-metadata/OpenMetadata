@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import {
   WidgetEditButton,
   WidgetPlusButton,
@@ -34,9 +35,15 @@ export const DomainTypeWidget = () => {
   const [editDomainType, setEditDomainType] = useState(false);
   const { t } = useTranslation();
 
+  // Named-flag derivation (Task 8 prop-contract migration): `permissions` is the raw
+  // OperationPermission from useGenericContext(). No `deleted` argument: `Domain` has no
+  // `deleted` field (confirmed against the generated type) and the old code never gated on
+  // one. Maps the raw, EditAll-only `permissions.EditAll` read onto `canEditAll` — the same
+  // value, per PermissionDerivation.ts's "EditAll-only" mapping rule (not a prioritization
+  // change; see DomainExpertWidget.tsx's identical case in this batch).
   const { editAllPermission } = useMemo(
     () => ({
-      editAllPermission: permissions.EditAll,
+      editAllPermission: getDerivedPermissionFlags(permissions).canEditAll,
     }),
     [permissions]
   );

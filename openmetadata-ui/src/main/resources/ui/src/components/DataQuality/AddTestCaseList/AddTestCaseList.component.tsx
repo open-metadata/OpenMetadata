@@ -50,7 +50,11 @@ import { TestCaseType } from '../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import {
+  AddTestCaseListFilter,
+  getListTestCaseBySearch,
+  ListTestCaseParamsBySearch,
+} from '../../../rest/testAPI';
 import {
   COLUMN_AGGREGATE_FIELD,
   getColumnNameFromColumnFilterKey,
@@ -62,6 +66,7 @@ import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { isNearScrollBottom } from '../../../utils/ScrollUtils';
 import { replacePlus } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -74,6 +79,83 @@ import {
   normalizeSelectedTestProp,
   seedSelectedFromExistingTest,
 } from './AddTestCaseListForm.utils';
+
+const getSelectionFlags = ({
+  loadedItemIds,
+  isLoadedRowSelected,
+  selectAll,
+  totalCount,
+  itemsLength,
+}: {
+  loadedItemIds: string[];
+  isLoadedRowSelected: (id: string) => boolean;
+  selectAll: boolean;
+  totalCount: number;
+  itemsLength: number;
+}) => {
+  const allLoadedSelected =
+    loadedItemIds.length > 0 &&
+    loadedItemIds.every((id) => isLoadedRowSelected(id));
+
+  return {
+    allLoadedSelected,
+    showSelectAllTotalLink:
+      !selectAll &&
+      totalCount > itemsLength &&
+      allLoadedSelected &&
+      itemsLength > 0,
+  };
+};
+
+const buildTestCaseSearchParams = ({
+  searchText,
+  page,
+  filterColumns,
+  filterTables,
+  filterStatus,
+  filterTestType,
+  testCaseParams,
+}: {
+  searchText?: string;
+  page: number;
+  filterColumns: string[];
+  filterTables: string[];
+  filterStatus?: TestCaseStatus;
+  filterTestType: TestCaseType;
+  testCaseParams?: ListTestCaseParamsBySearch;
+}): ListTestCaseParamsBySearch => {
+  // `q` must stay free text: /v1/dataQuality/testCases/search/list parses it as a literal
+  // term, so scoping filters travel as first-class params via `testCaseParams`. With no
+  // search text `q` is omitted rather than sent as `*` — a lone asterisk is no longer a
+  // match-all wildcard, it is a literal asterisk that matches nothing.
+  const q = searchText || undefined;
+
+  const columnNamesFromKeys =
+    filterColumns.length > 0
+      ? (filterColumns
+          .map((k) => getColumnNameFromColumnFilterKey(k))
+          .filter(Boolean) as string[])
+      : [];
+  const columnName =
+    columnNamesFromKeys.length > 0 ? columnNamesFromKeys[0] : undefined;
+  const filterTable = filterTables[0];
+  const entityLink = filterTable ? `<#E::table::${filterTable}>` : undefined;
+
+  const requestParams = {
+    q,
+    limit: PAGE_SIZE_MEDIUM,
+    offset: (page - 1) * PAGE_SIZE_MEDIUM,
+    testCaseStatus: filterStatus,
+    testCaseType:
+      filterTestType === TestCaseType.all ? undefined : filterTestType,
+    // includeAllTests=true: prefix-match entityFQN so column tests
+    // under the selected table are included.
+    ...(entityLink && { entityLink, includeAllTests: true }),
+    ...(columnName && { columnName }),
+  };
+
+  return { ...testCaseParams, ...requestParams };
+};
 
 export const AddTestCaseList = ({
   onCancel,
@@ -185,10 +267,6 @@ export const AddTestCaseList = ({
     return normalized;
   }, [selectedTest]);
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-  };
-
   const fetchTableData = useCallback(async (search = WILD_CARD_CHAR) => {
     setIsTableOptionsLoading(true);
     try {
@@ -270,38 +348,15 @@ export const AddTestCaseList = ({
     }) => {
       try {
         setIsLoading(true);
-        // `q` must stay free text: /v1/dataQuality/testCases/search/list parses it as a literal
-        // term, so scoping filters travel as first-class params via `testCaseParams`. With no
-        // search text `q` is omitted rather than sent as `*` — a lone asterisk is no longer a
-        // match-all wildcard, it is a literal asterisk that matches nothing.
-        const q = searchText || undefined;
-
-        const columnNamesFromKeys =
-          filterColumns.length > 0
-            ? (filterColumns
-                .map((k) => getColumnNameFromColumnFilterKey(k))
-                .filter(Boolean) as string[])
-            : [];
-        const columnName =
-          columnNamesFromKeys.length > 0 ? columnNamesFromKeys[0] : undefined;
-        const filterTable = filterTables[0];
-        const entityLink = filterTable
-          ? `<#E::table::${filterTable}>`
-          : undefined;
-
-        const requestParams = {
-          q,
-          limit: PAGE_SIZE_MEDIUM,
-          offset: (page - 1) * PAGE_SIZE_MEDIUM,
-          testCaseStatus: filterStatus,
-          testCaseType:
-            filterTestType === TestCaseType.all ? undefined : filterTestType,
-          // includeAllTests=true: prefix-match entityFQN so column tests
-          // under the selected table are included.
-          ...(entityLink && { entityLink, includeAllTests: true }),
-          ...(columnName && { columnName }),
-        };
-        const mergedParams = { ...testCaseParams, ...requestParams };
+        const mergedParams = buildTestCaseSearchParams({
+          searchText,
+          page,
+          filterColumns,
+          filterTables,
+          filterStatus,
+          filterTestType,
+          testCaseParams,
+        });
 
         const testCaseResponse = await getListTestCaseBySearch(mergedParams);
 
@@ -347,11 +402,34 @@ export const AddTestCaseList = ({
     ]
   );
 
+  // Snapshot of the active search/filter, shaped for the bulk `selectAll` payload so
+  // the backend resolves "all N" to the filtered subset (not every test case). Mirrors
+  // the mapping in buildTestCaseSearchParams.
+  const activeFilter = useMemo<AddTestCaseListFilter>(() => {
+    const filterTable = filterTables[0];
+    const entityLink = filterTable ? `<#E::table::${filterTable}>` : undefined;
+    const columnName =
+      filterColumns.length > 0
+        ? getColumnNameFromColumnFilterKey(filterColumns[0]) || undefined
+        : undefined;
+
+    return {
+      ...(searchTerm && { q: searchTerm }),
+      ...(filterStatus && { testCaseStatus: filterStatus }),
+      ...(filterTestType !== TestCaseType.all && {
+        testCaseType: filterTestType,
+      }),
+      ...(entityLink && { entityLink, includeAllTests: true }),
+      ...(columnName && { columnName }),
+    };
+  }, [searchTerm, filterStatus, filterTestType, filterTables, filterColumns]);
+
   const buildSubmitPayload = useCallback((): {
     selectAll: boolean;
     includeIds: string[];
     excludeIds: string[];
     testCases: TestCase[];
+    filter?: AddTestCaseListFilter;
   } => {
     if (selectAll) {
       return {
@@ -359,6 +437,7 @@ export const AddTestCaseList = ({
         includeIds: [],
         excludeIds: [...excludedIds],
         testCases: [],
+        filter: activeFilter,
       };
     }
     const cases = [...(selectedItems?.values() ?? [])];
@@ -369,7 +448,7 @@ export const AddTestCaseList = ({
       excludeIds: [],
       testCases: cases,
     };
-  }, [selectAll, excludedIds, selectedItems]);
+  }, [selectAll, excludedIds, selectedItems, activeFilter]);
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -377,17 +456,15 @@ export const AddTestCaseList = ({
       selectAll: sa,
       includeIds,
       excludeIds: excl,
+      filter,
     } = buildSubmitPayload();
-    await onSubmit?.({ selectAll: sa, includeIds, excludeIds: excl });
+    await onSubmit?.({ selectAll: sa, includeIds, excludeIds: excl, filter });
     setIsLoading(false);
   };
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
-      if (
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500 &&
-        items.length < totalCount
-      ) {
+      if (isNearScrollBottom(e.currentTarget) && items.length < totalCount) {
         !isLoading &&
           fetchTestCases({
             searchText: searchTerm,
@@ -418,10 +495,29 @@ export const AddTestCaseList = ({
         includeIds: [],
         excludeIds: [...excluded],
         testCases: [],
+        filter: activeFilter,
       });
     },
-    [onChange]
+    [onChange, activeFilter]
   );
+
+  // A global "select all" means "all of the current filter". When the search or
+  // filters change it must not silently carry over — reset it so the emitted
+  // selection stays consistent with what the list shows (matters for the
+  // create-suite flow, which persists the emitted payload).
+  const resetGlobalSelection = useCallback(() => {
+    if (!selectAll) {
+      return;
+    }
+    setSelectAll(false);
+    setExcludedIds(new Set());
+    emitPartialSelection(selectedItems);
+  }, [selectAll, selectedItems, emitPartialSelection]);
+
+  const handleSearch = (value: string) => {
+    resetGlobalSelection();
+    setSearchTerm(value);
+  };
 
   const loadedItemIds = useMemo(
     () => items.map((i) => i.id).filter(Boolean) as string[],
@@ -438,15 +534,13 @@ export const AddTestCaseList = ({
     [items, isLoadedRowSelected]
   );
 
-  const allLoadedSelected =
-    loadedItemIds.length > 0 &&
-    loadedItemIds.every((id) => isLoadedRowSelected(id));
-
-  const showSelectAllTotalLink =
-    !selectAll &&
-    totalCount > items.length &&
-    allLoadedSelected &&
-    items.length > 0;
+  const { allLoadedSelected, showSelectAllTotalLink } = getSelectionFlags({
+    loadedItemIds,
+    isLoadedRowSelected,
+    selectAll,
+    totalCount,
+    itemsLength: items.length,
+  });
 
   const handlePageSelectAllCheckbox = useCallback(
     (e: CheckboxChangeEvent) => {
@@ -517,12 +611,7 @@ export const AddTestCaseList = ({
           nextExcluded.add(id);
         }
         setExcludedIds(nextExcluded);
-        onChange?.({
-          selectAll: true,
-          includeIds: [],
-          excludeIds: [...nextExcluded],
-          testCases: [],
-        });
+        emitFullSelection(nextExcluded);
       } else if (selectedItems.has(id)) {
         const selectedItemMap = new Map<string, TestCase>();
         selectedItems.forEach(
@@ -553,7 +642,7 @@ export const AddTestCaseList = ({
         });
       }
     },
-    [selectAll, selectedItems, items, excludedIds, onChange]
+    [selectAll, selectedItems, items, excludedIds, onChange, emitFullSelection]
   );
 
   useEffect(() => {
@@ -645,7 +734,7 @@ export const AddTestCaseList = ({
 
                 return (
                   <Space
-                    className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
+                    className="m-b-md border rounded-4 p-sm cursor-pointer tw:bg-primary"
                     direction="vertical"
                     onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">
@@ -716,6 +805,7 @@ export const AddTestCaseList = ({
 
   const handleFilterChange = useCallback(
     (values: SearchDropdownOption[], searchKey: AddTestCaseListFilterKey) => {
+      resetGlobalSelection();
       switch (searchKey) {
         case AddTestCaseListFilterKey.Status: {
           setFilterStatus(values[0]?.key as TestCaseStatus | undefined);
@@ -741,7 +831,7 @@ export const AddTestCaseList = ({
         }
       }
     },
-    []
+    [resetGlobalSelection]
   );
 
   const filterOptions = useMemo(

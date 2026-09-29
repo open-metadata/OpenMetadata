@@ -91,6 +91,19 @@ jest.mock('../../../utils/RouterUtils', () => ({
     .mockReturnValue('/table/sample_data.ecommerce_db.shopify.dim.shop'),
 }));
 
+jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () => ({
+  __esModule: true,
+  default: ({
+    displayName,
+    userName,
+    children,
+  }: {
+    displayName?: string;
+    userName?: string;
+    children?: ReactNode;
+  }) => <span>{displayName || userName || children}</span>,
+}));
+
 const Wrapper = ({ children }: { children: ReactNode }) => (
   <MemoryRouter>{children}</MemoryRouter>
 );

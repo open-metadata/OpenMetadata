@@ -40,10 +40,6 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def create_session(self):
-        super().create_session()
-        self.set_session_tag(self.session)
-
     def _compute_system_metrics(
         self,
         metrics: type[System],

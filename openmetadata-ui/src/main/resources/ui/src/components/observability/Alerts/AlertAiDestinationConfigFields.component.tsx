@@ -20,12 +20,15 @@ import {
   Button,
   Checkbox,
   Input,
+  Label,
   PasswordInput,
+  RadioButton,
+  RadioGroup,
   Select,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Settings01 } from '@untitledui/icons';
+import { Plus, Settings01, Trash01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -33,10 +36,12 @@ import { useTranslation } from 'react-i18next';
 import { DESTINATION_TYPE_BASED_PLACEHOLDERS } from '../../../constants/Alerts.constants';
 import { EMAIL_REG_EX } from '../../../constants/regex.constants';
 import {
+  HTTPMethod,
   SubscriptionCategory,
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
+import { ModifiedWebhookConfig } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
   ALERT_AI_FORM_CLASS_NAMES,
   ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER,
@@ -47,6 +52,7 @@ import {
   getValidationPath,
   isWebhookDestination,
   updateAlertAiValue,
+  WebhookDestinationType,
 } from './AlertAiFormFieldsPureUtils';
 import {
   AlertAiSearchOption,
@@ -248,6 +254,36 @@ const TeamUserSelectInput = ({
     return () => document.removeEventListener('click', handleOutsideClick);
   }, []);
 
+  const optionsContent = isEmpty(options) ? (
+    <Typography
+      as="p"
+      className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectEmptyText}
+      size="text-sm">
+      {t('label.no-teams-or-users')}
+    </Typography>
+  ) : (
+    options.map(({ label, value }) => (
+      <Button
+        noTextPadding
+        className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionButton}
+        color="tertiary"
+        data-testid={`team-user-option-${value}`}
+        key={value}
+        onPress={() => handleOptionClick(value)}>
+        <Checkbox
+          data-testid={`${label}-option-checkbox`}
+          isSelected={selectedOptions.includes(value)}
+        />
+        <Typography
+          as="span"
+          className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionLabel}
+          data-testid={`${label}-option-label`}>
+          {label}
+        </Typography>
+      </Button>
+    ))
+  );
+
   return (
     <div className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectRoot}>
       <div
@@ -316,38 +352,8 @@ const TeamUserSelectInput = ({
                 <Skeleton height={24} variant="rounded" />
                 <Skeleton height={24} variant="rounded" />
               </div>
-            ) : isEmpty(options) ? (
-              <Typography
-                as="p"
-                className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectEmptyText}
-                size="text-sm">
-                {t('label.no-teams-or-users')}
-              </Typography>
             ) : (
-              options.map(({ label, value }) => (
-                <Button
-                  noTextPadding
-                  className={
-                    ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionButton
-                  }
-                  color="tertiary"
-                  data-testid={`team-user-option-${value}`}
-                  key={value}
-                  onPress={() => handleOptionClick(value)}>
-                  <Checkbox
-                    data-testid={`${label}-option-checkbox`}
-                    isSelected={selectedOptions.includes(value)}
-                  />
-                  <Typography
-                    as="span"
-                    className={
-                      ALERT_AI_FORM_CLASS_NAMES.teamUserSelectOptionLabel
-                    }
-                    data-testid={`${label}-option-label`}>
-                    {label}
-                  </Typography>
-                </Button>
-              ))
+              optionsContent
             )}
           </div>
         </div>
@@ -364,102 +370,221 @@ const TeamUserSelectInput = ({
   );
 };
 
-/** Renders destination-specific configuration fields based on the selected destination type. */
-const AlertAiDestinationConfigFields = ({
+interface DestinationFieldsCommonProps {
+  destination: AlertAiDestinationItemProps['destination'];
+  isViewOnly?: boolean;
+  name: number;
+  getConfigError: (...path: (string | number)[]) => string | undefined;
+  updateDestinationConfig: (
+    path: (string | number)[],
+    nextValue: unknown
+  ) => void;
+}
+
+const EmailDestinationFields = ({
   destination,
   isViewOnly,
   name,
-  onChange,
-  validationErrors,
-  value,
-}: Pick<
-  AlertAiDestinationItemProps,
-  | 'destination'
-  | 'isViewOnly'
-  | 'name'
-  | 'onChange'
-  | 'validationErrors'
-  | 'value'
->) => {
+  getConfigError,
+  updateDestinationConfig,
+}: DestinationFieldsCommonProps) => {
+  const receivers = getStringArrayValue(destination?.config?.receivers);
+  const receiversError = getConfigError('receivers');
+
+  return (
+    <div
+      className={classNames(
+        ALERT_AI_FORM_CLASS_NAMES.field,
+        ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
+      )}>
+      <EmailTagInput
+        hint={receiversError}
+        isDisabled={isViewOnly}
+        isInvalid={Boolean(receiversError)}
+        name={name}
+        value={receivers}
+        onChange={(nextReceivers) =>
+          updateDestinationConfig(['receivers'], nextReceivers)
+        }
+      />
+    </div>
+  );
+};
+
+const TeamOrUserDestinationFields = ({
+  destination,
+  destinationType,
+  isViewOnly,
+  name,
+  getConfigError,
+  updateDestinationConfig,
+}: DestinationFieldsCommonProps & {
+  destinationType: SubscriptionCategory | SubscriptionType | undefined;
+}) => {
   const { t } = useTranslation();
-  const destinationType = destination?.destinationType;
-  const authType = destination?.config?.authType?.type;
-  const getConfigError = (...path: (string | number)[]) =>
-    validationErrors?.[
-      getValidationPath('destinations', name, 'config', ...path)
-    ];
+  const receivers = getStringArrayValue(destination?.config?.receivers);
+  const receiversError = getConfigError('receivers');
+  const isTeams = destinationType === SubscriptionCategory.Teams;
 
-  /** Applies nested config updates under the current destination item. */
-  const updateDestinationConfig = (
-    path: (string | number)[],
-    nextValue: unknown
-  ) => {
-    updateAlertAiValue(
-      value,
-      onChange,
-      ['destinations', name, 'config', ...path],
-      nextValue
+  return (
+    <div
+      className={classNames(
+        ALERT_AI_FORM_CLASS_NAMES.field,
+        ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
+      )}>
+      <TeamUserSelectInput
+        destinationNumber={name}
+        entityType={
+          isTeams ? t('label.team-lowercase') : t('label.user-lowercase')
+        }
+        hint={receiversError}
+        isDisabled={isViewOnly}
+        value={receivers}
+        onChange={(nextReceivers) =>
+          updateDestinationConfig(['receivers'], nextReceivers)
+        }
+        onSearch={isTeams ? getAlertAiTeamOptions : getAlertAiUserOptions}
+      />
+    </div>
+  );
+};
+
+interface KeyValueListProps {
+  getConfigError: DestinationFieldsCommonProps['getConfigError'];
+  isViewOnly?: boolean;
+  name: number;
+  onChange: (entries: { key: string; value: string }[]) => void;
+  type: keyof Pick<ModifiedWebhookConfig, 'headers' | 'queryParams'>;
+  value: { key: string; value: string }[];
+}
+
+/** Controlled key/value list for webhook headers and query params — mirrors the classic KeyValueList without RHF. */
+const KeyValueList = ({
+  getConfigError,
+  isViewOnly,
+  name,
+  onChange,
+  type,
+  value: entries,
+}: KeyValueListProps) => {
+  const { t } = useTranslation();
+  const isHeaders = type === 'headers';
+  const testIdPrefix = isHeaders ? 'header' : 'query-param';
+  const updateEntry = (index: number, field: 'key' | 'value', next: string) =>
+    onChange(
+      entries.map((entry, i) =>
+        i === index ? { ...entry, [field]: next } : entry
+      )
     );
-  };
 
-  if (destinationType === SubscriptionType.Email) {
-    const receivers = getStringArrayValue(destination?.config?.receivers);
-    const receiversError = getConfigError('receivers');
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-2">
+      <div className="tw:flex tw:items-center tw:justify-between">
+        <Typography as="span" size="text-sm" weight="medium">
+          {isHeaders
+            ? t('label.header-plural')
+            : t('label.query-parameter-plural')}
+        </Typography>
+        {!isViewOnly && (
+          <Button
+            aria-label={t('label.add')}
+            color="secondary"
+            data-testid={`add-${testIdPrefix}-button-${name}`}
+            iconLeading={Plus}
+            size="xs"
+            onPress={() => onChange([...entries, { key: '', value: '' }])}
+          />
+        )}
+      </div>
+      {entries.map((entry, index) => (
+        // Entries have no stable id; index keys match the classic useFieldArray order.
+        // eslint-disable-next-line react/no-array-index-key
+        <div className="tw:flex tw:items-start tw:gap-2" key={index}>
+          <div className="tw:grid tw:flex-1 tw:grid-cols-2 tw:gap-2">
+            {(['key', 'value'] as const).map((field) => (
+              <Input
+                aria-label={t(`label.${field}`)}
+                data-testid={`${testIdPrefix}-${field}-input-${name}-${index}`}
+                hint={getConfigError(type, index, field)}
+                isDisabled={isViewOnly}
+                isInvalid={Boolean(getConfigError(type, index, field))}
+                key={field}
+                placeholder={t(`label.${field}`)}
+                size="sm"
+                value={entry[field] ?? ''}
+                onChange={(next) => updateEntry(index, field, next)}
+              />
+            ))}
+          </div>
+          {!isViewOnly && (
+            <Button
+              aria-label={t('label.remove')}
+              color="secondary"
+              data-testid={`remove-${testIdPrefix}-button-${name}-${index}`}
+              iconLeading={Trash01}
+              size="xs"
+              onPress={() => onChange(entries.filter((_, i) => i !== index))}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 
-    return (
-      <div
-        className={classNames(
-          ALERT_AI_FORM_CLASS_NAMES.field,
-          ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
-        )}>
-        <EmailTagInput
-          hint={receiversError}
-          isDisabled={isViewOnly}
-          isInvalid={Boolean(receiversError)}
+/** Webhook request headers, query params, and HTTP method — the rest of the classic advanced config. */
+const WebhookRequestFields = ({
+  destination,
+  getConfigError,
+  isViewOnly,
+  name,
+  updateDestinationConfig,
+}: DestinationFieldsCommonProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {(['headers', 'queryParams'] as const).map((type) => (
+        <KeyValueList
+          getConfigError={getConfigError}
+          isViewOnly={isViewOnly}
+          key={type}
           name={name}
-          value={receivers}
-          onChange={(nextReceivers) =>
-            updateDestinationConfig(['receivers'], nextReceivers)
-          }
+          type={type}
+          value={destination?.config?.[type] ?? []}
+          onChange={(entries) => updateDestinationConfig([type], entries)}
         />
-      </div>
-    );
-  }
+      ))}
+      <RadioGroup
+        className="tw:flex tw:flex-col tw:gap-1.5"
+        data-testid={`http-method-${name}`}
+        isDisabled={isViewOnly}
+        value={destination?.config?.httpMethod ?? HTTPMethod.Post}
+        onChange={(next) => updateDestinationConfig(['httpMethod'], next)}>
+        <Label>{t('label.http-method')}</Label>
+        <div className="tw:flex tw:gap-4">
+          {[HTTPMethod.Post, HTTPMethod.Put].map((method) => (
+            <RadioButton key={method} label={method} value={method} />
+          ))}
+        </div>
+      </RadioGroup>
+    </>
+  );
+};
 
-  if (
-    destinationType === SubscriptionCategory.Teams ||
-    destinationType === SubscriptionCategory.Users
-  ) {
-    const receivers = getStringArrayValue(destination?.config?.receivers);
-    const receiversError = getConfigError('receivers');
-    const isTeams = destinationType === SubscriptionCategory.Teams;
-
-    return (
-      <div
-        className={classNames(
-          ALERT_AI_FORM_CLASS_NAMES.field,
-          ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
-        )}>
-        <TeamUserSelectInput
-          destinationNumber={name}
-          entityType={
-            isTeams ? t('label.team-lowercase') : t('label.user-lowercase')
-          }
-          hint={receiversError}
-          isDisabled={isViewOnly}
-          value={receivers}
-          onChange={(nextReceivers) =>
-            updateDestinationConfig(['receivers'], nextReceivers)
-          }
-          onSearch={isTeams ? getAlertAiTeamOptions : getAlertAiUserOptions}
-        />
-      </div>
-    );
-  }
-
-  if (!isWebhookDestination(destinationType)) {
-    return null;
-  }
+const WebhookDestinationFields = ({
+  authType,
+  destination,
+  destinationType,
+  isViewOnly,
+  name,
+  getConfigError,
+  updateDestinationConfig,
+}: DestinationFieldsCommonProps & {
+  authType: Type | undefined;
+  destinationType: WebhookDestinationType;
+}) => {
+  const { t } = useTranslation();
 
   return (
     <>
@@ -604,12 +729,101 @@ const AlertAiDestinationConfigFields = ({
                     />
                   </>
                 )}
+                <WebhookRequestFields
+                  destination={destination}
+                  getConfigError={getConfigError}
+                  isViewOnly={isViewOnly}
+                  name={name}
+                  updateDestinationConfig={updateDestinationConfig}
+                />
               </div>
             </AccordionPanel>
           </AccordionItem>
         </Accordion>
       </div>
     </>
+  );
+};
+
+/** Renders destination-specific configuration fields based on the selected destination type. */
+const AlertAiDestinationConfigFields = ({
+  destination,
+  isViewOnly,
+  name,
+  onChange,
+  validationErrors,
+  value,
+}: Pick<
+  AlertAiDestinationItemProps,
+  | 'destination'
+  | 'isViewOnly'
+  | 'name'
+  | 'onChange'
+  | 'validationErrors'
+  | 'value'
+>) => {
+  const destinationType = destination?.destinationType;
+  const authType = destination?.config?.authType?.type;
+  const getConfigError = (...path: (string | number)[]) =>
+    validationErrors?.[
+      getValidationPath('destinations', name, 'config', ...path)
+    ];
+
+  /** Applies nested config updates under the current destination item. */
+  const updateDestinationConfig = (
+    path: (string | number)[],
+    nextValue: unknown
+  ) => {
+    updateAlertAiValue(
+      value,
+      onChange,
+      ['destinations', name, 'config', ...path],
+      nextValue
+    );
+  };
+
+  if (destinationType === SubscriptionType.Email) {
+    return (
+      <EmailDestinationFields
+        destination={destination}
+        getConfigError={getConfigError}
+        isViewOnly={isViewOnly}
+        name={name}
+        updateDestinationConfig={updateDestinationConfig}
+      />
+    );
+  }
+
+  if (
+    destinationType === SubscriptionCategory.Teams ||
+    destinationType === SubscriptionCategory.Users
+  ) {
+    return (
+      <TeamOrUserDestinationFields
+        destination={destination}
+        destinationType={destinationType}
+        getConfigError={getConfigError}
+        isViewOnly={isViewOnly}
+        name={name}
+        updateDestinationConfig={updateDestinationConfig}
+      />
+    );
+  }
+
+  if (!isWebhookDestination(destinationType)) {
+    return null;
+  }
+
+  return (
+    <WebhookDestinationFields
+      authType={authType}
+      destination={destination}
+      destinationType={destinationType}
+      getConfigError={getConfigError}
+      isViewOnly={isViewOnly}
+      name={name}
+      updateDestinationConfig={updateDestinationConfig}
+    />
   );
 };
 

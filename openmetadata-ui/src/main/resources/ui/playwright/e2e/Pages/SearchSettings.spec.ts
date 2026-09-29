@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -222,7 +223,14 @@ test.describe('Search Settings', () => {
       await highlightFieldToggle.click();
 
       // Field Weight
-      await setSliderValue(page, 'field-weight-slider', 8);
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        8,
+        0,
+        100,
+        'field-weight-value'
+      );
 
       // Match Type
       const matchTypeSelect = page.getByTestId('match-type-select');
@@ -295,7 +303,14 @@ test.describe('Search Settings', () => {
       // endpoint that serves searchSettings without deriving `highlight` greys out every toggle the
       // moment you hit Save, while the server goes on highlighting the field. Checking after a
       // reload would miss it entirely — a reload re-reads the GET, which was always annotated.
-      await setSliderValue(page, 'field-weight-slider', 7);
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        7,
+        0,
+        100,
+        'field-weight-value'
+      );
 
       const saveSettings = page.waitForResponse(
         (response) =>
@@ -422,7 +437,14 @@ test.describe('Search Settings', () => {
         `field-configuration-panel-description`
       );
       await descriptionField.click();
-      await setSliderValue(page, 'field-weight-slider', 68);
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        68,
+        0,
+        100,
+        'field-weight-value'
+      );
 
       const previewResponse = page.waitForResponse('/api/v1/search/preview');
       await page.getByTestId('highlight-field-switch').click();
@@ -434,8 +456,14 @@ test.describe('Search Settings', () => {
       );
 
       const searchInput = page.getByTestId('searchbar');
+      const searchPreviewResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/v1/search/preview') &&
+          response.request().method() === 'POST' &&
+          response.request().postDataJSON()?.query === table1.entity.name
+      );
       await searchInput.fill(table1.entity.name);
-      await previewResponse;
+      expect((await searchPreviewResponse).status()).toBe(200);
 
       await waitForAllLoadersToDisappear(page);
 
@@ -529,7 +557,16 @@ test.describe('Search Settings', () => {
         await ngramPanel.click();
 
         // Change n-gram weight to 5 and save.
-        await setSliderValue(page, 'field-weight-slider', 5);
+        await setSliderValue(
+          page,
+          'field-weight-slider',
+          5,
+          0,
+          100,
+          'field-weight-value'
+        );
+
+        await expect(page.getByTestId('save-btn')).toBeEnabled();
 
         const saveResponse = page.waitForResponse(
           (r) =>
@@ -537,7 +574,7 @@ test.describe('Search Settings', () => {
             r.request().method() === 'PUT'
         );
         await page.getByTestId('save-btn').click();
-        await saveResponse;
+        expect((await saveResponse).status()).toBe(200);
         await toastNotification(page, /Search Settings updated successfully/);
 
         // Scope the predicate to the reverted boost value so a stale post-save
@@ -559,7 +596,14 @@ test.describe('Search Settings', () => {
           return boost === initialNgramBoost;
         });
 
-        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
+        await setSliderValue(
+          page,
+          'field-weight-slider',
+          initialNgramBoost,
+          0,
+          100,
+          'field-weight-value'
+        );
 
         const revertedPreviewResponse = await revertedPreviewPromise;
         expect(revertedPreviewResponse.status()).toBe(200);
@@ -582,7 +626,7 @@ test.describe('Search Settings', () => {
 
         // Reload so the page re-fetches the restored config and triggers preview.
         const previewPromise = page.waitForResponse('/api/v1/search/preview');
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         const previewResponse = await previewPromise;
         await waitForAllLoadersToDisappear(page);
 
@@ -724,7 +768,14 @@ test.describe('Search Settings', () => {
         (await highlightToggle.getAttribute('aria-checked')) === 'true';
       await highlightToggle.click();
 
-      await setSliderValue(page, 'field-weight-slider', 15);
+      await setSliderValue(
+        page,
+        'field-weight-slider',
+        15,
+        0,
+        100,
+        'field-weight-value'
+      );
 
       const matchTypeSelect = page.getByTestId('match-type-select');
       await matchTypeSelect.click();
@@ -743,7 +794,7 @@ test.describe('Search Settings', () => {
       await saveSettings;
 
       const previewResponse = page.waitForResponse('/api/v1/search/preview');
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await previewResponse;
       await waitForAllLoadersToDisappear(page);
       await openMatchingFieldsPanel(page);
@@ -779,10 +830,14 @@ test.describe('Search Settings', () => {
         await columnCard.click();
 
         const searchInput = page.getByTestId('searchbar');
+        const previewResponse = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/search/preview') &&
+            response.request().method() === 'POST' &&
+            response.request().postDataJSON()?.query === uniqueColumnName
+        );
         await searchInput.fill(uniqueColumnName);
-
-        const previewResponse = page.waitForResponse('/api/v1/search/preview');
-        await previewResponse;
+        expect((await previewResponse).status()).toBe(200);
 
         const searchResultsContainer = page.locator(
           '.search-results-container'

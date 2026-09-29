@@ -17,7 +17,6 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   MOCK_CURRENT_TEAM,
   MOCK_MARKETING_TEAM,
@@ -27,6 +26,7 @@ import {
   importTeam,
   importUserInTeam,
 } from '../../../rest/teamsAPI';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
 import ImportTeamsPage from './ImportTeamsPage';
 
@@ -147,16 +147,37 @@ jest.mock('../../../rest/teamsAPI', () => ({
   importTeam: jest.fn(),
   importUserInTeam: jest.fn(),
 }));
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
-      Create: true,
-      EditAll: true,
-    }),
-  }),
+// ImportTeamsPage now fetches its own permission via useEntityPermissions rather than the
+// raw PermissionProvider.getEntityPermissionByFqn REST boundary — mock the hook directly
+// (TeamsPage.test.tsx pattern), since this test file's `render` never wraps a
+// QueryClientProvider.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<Record<string, boolean>> = { Create: true, EditAll: true }
+) => {
+  const permissions = overrides as never;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
+setMockPermissions();
+
 describe('ImportTeamsPage', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
   it('Component should render', async () => {
     act(() => {
       render(<ImportTeamsPage />);
@@ -169,13 +190,7 @@ describe('ImportTeamsPage', () => {
   });
 
   it('No permission Placeholder should visible, if there is no create permission', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
-        Promise.resolve({
-          Create: false,
-        })
-      ),
-    }));
+    setMockPermissions({ Create: false });
     act(() => {
       render(<ImportTeamsPage />);
     });

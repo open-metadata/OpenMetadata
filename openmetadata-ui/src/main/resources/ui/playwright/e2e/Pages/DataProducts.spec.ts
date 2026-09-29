@@ -12,6 +12,7 @@
  */
 
 import base, { expect, Page } from '@playwright/test';
+import { SearchIndex } from '../../../src/enums/search.enum';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -23,7 +24,11 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { descriptionBox, redirectToHomePage } from '../../utils/common';
+import {
+  fillDescriptionBox,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   addAssetsToDataProduct,
   createDataProductFromListPage,
@@ -41,7 +46,7 @@ import { selectTagInTagSuggestion } from '../../utils/tag';
 const user = new UserClass();
 const domain = new Domain();
 const classification = new ClassificationClass({
-  provider: 'system',
+  provider: 'user',
   mutuallyExclusive: true,
 });
 const tag = new TagClass({
@@ -71,7 +76,6 @@ const test = base.extend<{
 
 test.describe('Data Products', () => {
   test.describe.configure({ mode: 'serial' });
-  test.slow();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -126,6 +130,8 @@ test.describe('Data Products', () => {
   });
 
   test('Create Data Product and Manage Assets', async ({ page }) => {
+    // Add assets flow waits on the search API which can take >30s under CI load
+    test.slow();
     const dataProduct = new DataProduct([domain]);
     const table = new TableClass();
 
@@ -214,8 +220,10 @@ test.describe('Data Products', () => {
   });
 
   test('Search Data Products', async ({ page }) => {
-    const dataProduct1 = new DataProduct([domain]);
-    const dataProduct2 = new DataProduct([domain]);
+    // Distinct words keep this search assertion independent of fuzzy matches
+    // between the shared prefix and short hexadecimal IDs of default fixtures.
+    const dataProduct1 = new DataProduct([domain], `revenuecatalog${uuid()}`);
+    const dataProduct2 = new DataProduct([domain], `inventorycatalog${uuid()}`);
 
     await test.step('Create test data products', async () => {
       const { apiContext, afterAction } = await performAdminLogin(
@@ -232,10 +240,21 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Search for specific data product', async () => {
+      const searchResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('index') === SearchIndex.DATA_PRODUCT &&
+          url.searchParams.get('q') === dataProduct1.data.name
+        );
+      });
       await page
         .getByRole('main')
         .getByPlaceholder('Search')
         .fill(dataProduct1.data.name);
+      expect((await searchResponse).status()).toBe(200);
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByText(dataProduct1.data.displayName)).toBeVisible();
@@ -479,7 +498,7 @@ test.describe('Data Products', () => {
       await page
         .locator('#root\\/displayName')
         .fill(dataProduct.data.displayName);
-      await page.locator(descriptionBox).fill(dataProduct.data.description);
+      await fillDescriptionBox(page, dataProduct.data.description);
 
       const domainContainer = page.getByTestId('domain-select');
       await domainContainer.scrollIntoViewIfNeeded();
@@ -510,7 +529,7 @@ test.describe('Data Products', () => {
       await expect(
         page
           .getByTestId('add-domain-form')
-          .getByTestId('tags-container')
+          .getByTestId('filter-chip')
           .getByText(tag.data.displayName)
       ).toBeVisible();
     });
@@ -550,9 +569,15 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Navigate to data product details', async () => {
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      // The listing is not what this test covers; going straight to the
+      // details page avoids the sidebar click and the search-index lag.
+      await page.goto(
+        `/dataProduct/${encodeURIComponent(
+          dataProduct.responseData.fullyQualifiedName ?? dataProduct.data.name
+        )}`,
+        { waitUntil: 'domcontentloaded' }
+      );
       await waitForAllLoadersToDisappear(page);
-      await selectDataProduct(page, dataProduct.data);
     });
 
     await test.step('Data Observability tab is visible on data product page', async () => {

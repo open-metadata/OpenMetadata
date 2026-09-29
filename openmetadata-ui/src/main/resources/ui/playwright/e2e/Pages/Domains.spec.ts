@@ -39,12 +39,13 @@ import {
 } from '../../utils/assetDrawerQuickFilter';
 import {
   clickOutside,
-  descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
   visitGlossaryPage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addAssetsToDataProduct,
@@ -81,8 +82,10 @@ import {
   createAnnouncement,
   deleteAnnouncement,
   editAnnouncement,
+  escapeESReservedCharacters,
   followEntity,
   getEncodedFqn,
+  openClassificationTagPicker,
   unFollowEntity,
   validateFollowedEntityToWidget,
   waitForAllLoadersToDisappear,
@@ -118,8 +121,6 @@ const test = base.extend<{
 });
 
 test.describe('Domains', () => {
-  test.slow(true);
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
@@ -183,7 +184,7 @@ test.describe('Domains', () => {
     await page.getByTestId('add-domain').click();
     await page.getByTestId('add-domain-form').waitFor();
 
-    const description = page.locator(descriptionBox);
+    const description = getDescriptionBox(page);
     const typed = 'hello world ';
 
     await description.click();
@@ -450,6 +451,18 @@ test.describe('Domains', () => {
   });
 
   test('Rename domain', async ({ page }) => {
+    // Ran 66.7s wall against the 60s default, 17.9s of it in Before Hooks. Its
+    // 30.3s baseline leaves under 2x headroom, and shards run ~1.7x baseline, so
+    // this sits on the edge rather than having regressed -- eight tests in this
+    // file are already slow() for the same reason.
+    //
+    // The trace looks alarming and is not: a 57s "Wait for selector
+    // input[name=\"email\"]" spans most of it. That is the losing branch of the
+    // Promise.any in authenticateAdminPage, left running once the sidebar won,
+    // and it costs nothing. The helper's own comment warns about reading it as a
+    // login stall.
+    test.slow();
+
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
@@ -464,8 +477,14 @@ test.describe('Domains', () => {
     await expect(manageButton).toBeVisible();
     await manageButton.click();
 
+    // The manage menu is an Ant dropdown, and pressing an item while it is
+    // still scaling puts mousedown and mouseup in different places, so no
+    // click is synthesised -- the item just takes focus and the dialog that
+    // was supposed to follow never opens. Same failure signature as the
+    // subdomain delete race fixed in DataProductAndSubdomains.spec.ts.
     const renameButton = page.getByTestId('rename-button-title');
     await expect(renameButton).toBeVisible();
+    await waitForAntdPopupToSettle(page);
     await renameButton.click();
 
     const displayNameInput = page.locator('#displayName');
@@ -553,13 +572,6 @@ test.describe('Domains', () => {
 
       await selectDomain(page, domain.data);
 
-      // const selectSubDomainRes = page.waitForResponse(
-      //   '/api/v1/search/query?q=&index=domain*'
-      // );
-      // await page.getByTestId('subdomains').getByText('Sub Domains').click();
-      // await selectSubDomainRes;
-      // await verifyDomain(page, subDomain.data, domain.data, false);
-
       const subDomainApiRes1 = page.waitForResponse(
         '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
       );
@@ -592,6 +604,7 @@ test.describe('Domains', () => {
   test('Should clear assets from data products after deletion of data product in Domain', async ({
     page,
   }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain({
@@ -774,6 +787,7 @@ test.describe('Domains', () => {
   });
 
   test('Verify domain and subdomain asset count accuracy', async ({ page }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const { assets: domainAssets, assetCleanup: domainAssetCleanup } =
@@ -905,6 +919,14 @@ test.describe('Domains', () => {
   test('Verify domain data products count includes subdomain data products', async ({
     page,
   }) => {
+    // Four sequential verification steps, each with its own reload: the domain's
+    // data-product tab, the subdomain's, the tab after deleting the subdomain,
+    // and a deeply nested subdomain. The trace for merge_group run 33955229584
+    // shows those steps summing to ~65s, so it overruns the 60s default and is
+    // cut off mid-way through the last one. Per-test, like the other budgets
+    // #32360 kept — the rest of the describe stays on the default.
+    test.slow();
+
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const domainDataProduct = new DataProduct([domain]);
@@ -1164,42 +1186,41 @@ test.describe('Domains', () => {
     }
   });
 
-  test(
-    'Verify domain tags and glossary terms',
-    { tag: '@quarantine' },
-    async ({ page }) => {
-      const { afterAction, apiContext } = await getApiContext(page);
-      const domain = new Domain();
-      try {
-        await domain.create(apiContext);
-        await page.reload();
-        await sidebarClick(page, SidebarItem.DOMAIN);
-        await waitForAllLoadersToDisappear(page);
-        await selectDomain(page, domain.data);
-        await waitForAllLoadersToDisappear(page);
+  test('Verify domain tags and glossary terms', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    try {
+      await domain.create(apiContext);
+      await page.reload();
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
+      await selectDomain(page, domain.data);
+      await waitForAllLoadersToDisappear(page);
 
-        await addTagsAndGlossaryToDomain(page, {
-          tagFqn: tag.responseData.fullyQualifiedName,
-          glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
-        });
+      await addTagsAndGlossaryToDomain(page, {
+        tagFqn: tag.responseData.fullyQualifiedName,
+        glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+        glossaryTermName:
+          glossaryTerm.responseData.displayName ??
+          glossaryTerm.responseData.name,
+      });
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.DOMAIN);
-        await waitForAllLoadersToDisappear(page);
-        await selectDomain(page, domain.data);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
+      await selectDomain(page, domain.data);
 
-        // Verify tag is visible
-        await expect(
-          page.locator(
-            `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
-          )
-        ).toBeVisible();
-      } finally {
-        await domain.delete(apiContext);
-        await afterAction();
-      }
+      // Verify tag is visible
+      await expect(
+        page.locator(
+          `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
+        )
+      ).toBeVisible();
+    } finally {
+      await domain.delete(apiContext);
+      await afterAction();
     }
-  );
+  });
 
   test('Create domain with tags using TagSuggestion', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
@@ -1228,7 +1249,7 @@ test.describe('Domains', () => {
         await expect(
           page
             .getByTestId('add-domain-form')
-            .getByTestId('tags-container')
+            .getByTestId('filter-chip')
             .getByText(tag.data.displayName)
         ).toBeVisible();
       });
@@ -1283,7 +1304,7 @@ test.describe('Domains', () => {
         await expect(
           page
             .getByTestId('add-domain-form')
-            .getByTestId('tags-container')
+            .getByTestId('filter-chip')
             .getByText(tag.data.displayName)
         ).toBeVisible();
       });
@@ -1324,6 +1345,9 @@ test.describe('Domains', () => {
       await addTagsAndGlossaryToDomain(page, {
         tagFqn: tag.responseData.fullyQualifiedName,
         glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+        glossaryTermName:
+          glossaryTerm.responseData.displayName ??
+          glossaryTerm.responseData.name,
         isDomain: false,
       });
     } finally {
@@ -1346,12 +1370,15 @@ test.describe('Domains', () => {
 
       await page.reload();
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('all-domains-selector').click();
+      await page
+        .getByTestId('domain-dropdown-search')
+        .waitFor({ state: 'visible' });
+      await page.getByTestId('tree-node-All Domains').click();
 
-      await page.getByTestId('domain-dropdown').click();
-
-      await expect(page.getByTestId('all-domains-selector')).toHaveClass(
-        /selected-node/
+      // Picking "All Domains" clears the active scope back to the default,
+      // which the navbar trigger reflects as the "All Domains" label.
+      await expect(page.getByTestId('domain-dropdown')).toContainText(
+        'All Domains'
       );
     } finally {
       await domain.delete(apiContext);
@@ -1360,6 +1387,7 @@ test.describe('Domains', () => {
   });
 
   test('Verify redirect path on data product delete', async ({ page }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const dataProduct = new DataProduct([domain]);
@@ -1704,8 +1732,6 @@ test.describe('Domains', () => {
 });
 
 test.describe('Domain Rename Comprehensive Tests', () => {
-  test.slow(true);
-
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -1980,9 +2006,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
         subDomain
       );
 
-      // Navigate to domain
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain.data);
+      // Navigate to domain directly by URL. Going through the sidebar +
+      // search-backed listing is flaky: the just-created domain can be missing
+      // from the eventually-consistent search index when the row is clicked.
+      const domainFqn =
+        domain.responseData.fullyQualifiedName ?? domain.responseData.name;
+      await page.goto(`/domain/${encodeURIComponent(domainFqn)}`);
+      await waitForAllLoadersToDisappear(page);
 
       // Verify data products count before rename
       await verifyDataProductsCount(page, 2);
@@ -2083,6 +2113,9 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await addTagsAndGlossaryToDomain(page, {
         tagFqn: testTag.responseData.fullyQualifiedName,
         glossaryTermFqn: testGlossaryTerm.responseData.fullyQualifiedName,
+        glossaryTermName:
+          testGlossaryTerm.responseData.displayName ??
+          testGlossaryTerm.responseData.name,
       });
 
       // Verify tag is visible before rename
@@ -2134,6 +2167,15 @@ test.describe('Domain Rename Comprehensive Tests', () => {
   test('Rename domain with assets (tables, topics, dashboards) preserves associations', async ({
     page,
   }) => {
+    // Seeds three assets, renames the domain twice and re-verifies the
+    // associations after each rename, which does not fit the 60s default. It was
+    // covered by the describe-scope test.slow(true) that #32360 removed; the
+    // per-test measurements that drove that change did not include this describe,
+    // and it has since timed out at exactly 60000ms in every merge_group run,
+    // ejecting four unrelated PRs across six runs. Per-test, not blanket — the
+    // rest of the describe keeps the default budget.
+    test.slow();
+
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
@@ -2474,6 +2516,9 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await addTagsAndGlossaryToDomain(page, {
         tagFqn: testTag.responseData.fullyQualifiedName,
         glossaryTermFqn: testGlossaryTerm.responseData.fullyQualifiedName,
+        glossaryTermName:
+          testGlossaryTerm.responseData.displayName ??
+          testGlossaryTerm.responseData.name,
       });
 
       // Verify all relationships before rename
@@ -2727,8 +2772,6 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 });
 
 test.describe('Domains Rbac', () => {
-  test.slow(true);
-
   let domain1: Domain;
   let domain2: Domain;
   let domain3: Domain;
@@ -2836,8 +2879,6 @@ test.describe('Domains Rbac', () => {
 });
 
 test.describe('Data Consumer Domain Ownership', () => {
-  test.slow(true);
-
   let classification: ClassificationClass;
   let tag: TagClass;
   let glossary: Glossary;
@@ -2926,6 +2967,9 @@ test.describe('Data Consumer Domain Ownership', () => {
       await addTagsAndGlossaryToDomain(dataConsumerPage, {
         tagFqn: tag.responseData.fullyQualifiedName,
         glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+        glossaryTermName:
+          glossaryTerm.responseData.displayName ??
+          glossaryTerm.responseData.name,
         isDomain: false,
       });
     });
@@ -2935,8 +2979,6 @@ test.describe('Data Consumer Domain Ownership', () => {
 });
 
 test.describe('Domain Access with hasDomain() Rule', () => {
-  test.slow(true);
-
   let testResources: {
     testUser: UserClass;
     mainDomain: Domain;
@@ -3004,8 +3046,6 @@ test.describe('Domain Access with hasDomain() Rule', () => {
 });
 
 test.describe('Domain Access with noDomain() Rule', () => {
-  test.slow(true);
-
   let testResources: {
     testUser: UserClass;
     mainDomain: Domain;
@@ -3252,7 +3292,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
@@ -3296,24 +3336,43 @@ test.describe('Domain Tree View Functionality', () => {
         state: 'visible',
       });
 
-      await page
-        .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
-        .click();
-      const input = page.locator(
-        '[data-testid="tags-container"] #tagsForm_tags'
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
       );
-      await input.click();
-      await input.fill(testTag.responseData.fullyQualifiedName);
+
+      const searchTagResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response
+            .url()
+            .includes(
+              encodeURIComponent(
+                escapeESReservedCharacters(
+                  testTag.responseData.fullyQualifiedName
+                )
+              )
+            ) &&
+          response.request().method() === 'GET'
+      );
       await page
-        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+        .getByTestId('classification-tag-picker-search')
+        .fill(testTag.responseData.fullyQualifiedName);
+      await searchTagResponse;
+
+      await page
+        .getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`)
         .click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
       const updateResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/domains/') &&
           response.request().method() === 'PATCH'
       );
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await updateResponse;
 
       await testTag.visitPage(page);
@@ -3334,7 +3393,7 @@ test.describe('Domain Tree View Functionality', () => {
 
       await page.getByTestId('assets').click();
       await responsePromise;
-      await page.locator('.ant-tabs-tab-active:has-text("Assets")').waitFor();
+      await page.getByRole('tab', { name: 'Assets', selected: true }).waitFor();
       await waitForAllLoadersToDisappear(page);
 
       expect(apiRequestUrl).not.toBeNull();
@@ -3353,8 +3412,6 @@ test.describe('Domain Tree View Functionality', () => {
 });
 
 test.describe('Domain asset dryRun — add confirmation', () => {
-  test.slow(true);
-
   const openDomainAssetsAddModal = async (page: Page, domain: Domain) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
@@ -3614,8 +3671,6 @@ test.describe('Domain asset dryRun — add confirmation', () => {
 });
 
 test.describe('Domain assets — glossary and inherited glossary term', () => {
-  test.slow(true);
-
   let assetDomain: Domain;
   let assetGlossary: Glossary;
   let inheritedTerm: GlossaryTerm;
@@ -3713,7 +3768,7 @@ test.describe('Domain description editor popups', () => {
     await page.getByTestId('add-domain').click();
     await page.getByTestId('add-domain-form').waitFor();
 
-    const description = page.locator(descriptionBox);
+    const description = getDescriptionBox(page);
     await description.click();
 
     await test.step('Slash command inserts an image block', async () => {

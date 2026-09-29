@@ -32,6 +32,12 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useListData } from 'react-stately';
 import { useWorkflowModeContext } from '../../../../../contexts/WorkflowModeContext';
+import { WorkflowTriggerFields } from '../../../../../generated/type/workflowTriggerFields';
+import {
+  fqnsToGlossaryTags,
+  glossaryTagsToFqns,
+} from '../../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../../../common/GlossaryTermPicker/GlossaryTermPicker';
 import { CONDITION_BUILDER_WORKFLOW_TRIGGER_FIELDS } from './ConditionBuilder.constants';
 import type {
   ConditionBuilderOption,
@@ -55,6 +61,31 @@ interface ConditionBuilderValueControlProps {
   readonly values: string[];
   onChange: (values: string[]) => void;
 }
+
+// These fields hold glossary-term FQNs, so they get the tree picker.
+const GLOSSARY_TERM_CONDITION_FIELDS: string[] = [
+  WorkflowTriggerFields.Glossary,
+  WorkflowTriggerFields.RelatedTerms,
+];
+
+const isGlossaryTermConditionField = (
+  fieldDef: ConditionFieldDefinition | undefined
+): boolean =>
+  Boolean(fieldDef && GLOSSARY_TERM_CONDITION_FIELDS.includes(fieldDef.value));
+
+const resolveMultiSelectItems = (
+  hasFetchOptions: boolean,
+  loading: boolean,
+  asyncOptions: ConditionBuilderOption[],
+  staticOptions: ConditionBuilderOption[]
+): SelectItemType[] => {
+  let sourceOptions = staticOptions;
+  if (hasFetchOptions) {
+    sourceOptions = loading ? [] : asyncOptions;
+  }
+
+  return sourceOptions.map((o) => ({ id: o.value, label: o.label }));
+};
 
 function ConditionBuilderValueControl(
   props: Readonly<ConditionBuilderValueControlProps>
@@ -162,6 +193,18 @@ function ConditionBuilderValueControl(
     );
   }
 
+  if (isGlossaryTermConditionField(fieldDef)) {
+    return (
+      <GlossaryTermPicker
+        data-testid={dataTestId}
+        disabled={disabled}
+        placeholder={placeholder}
+        value={fqnsToGlossaryTags(values)}
+        onChange={(terms) => onChange(glossaryTagsToFqns(terms))}
+      />
+    );
+  }
+
   if (isText) {
     const textValue = values.join(', ');
 
@@ -183,9 +226,12 @@ function ConditionBuilderValueControl(
   }
 
   const options = hasFetchOptions ? asyncOptions : staticOptions;
-  const items: SelectItemType[] = (
-    hasFetchOptions ? (loading ? [] : asyncOptions) : staticOptions
-  ).map((o) => ({ id: o.value, label: o.label }));
+  const items: SelectItemType[] = resolveMultiSelectItems(
+    hasFetchOptions,
+    loading,
+    asyncOptions,
+    staticOptions
+  );
 
   return (
     <Autocomplete

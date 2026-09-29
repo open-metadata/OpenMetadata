@@ -71,7 +71,8 @@ const DATA_PRODUCT_SLA = {
 const fillContractDetailsForm = async (
   page: Page,
   contractName: string,
-  description: string
+  description: string,
+  status?: 'Draft' | 'In Review' | 'Approved'
 ) => {
   await page.getByTestId('contract-name').fill(contractName);
   await page.fill('.om-block-editor[contenteditable="true"]', description);
@@ -82,6 +83,14 @@ const fillContractDetailsForm = async (
   await firstOwner.click();
 
   await expect(page.getByTestId('user-tag')).toBeVisible();
+
+  if (status) {
+    await page.getByTestId('contract-status').click();
+    await expect(
+      page.locator(`.contract-status-dropdown [title="${status}"]`)
+    ).toBeVisible();
+    await page.locator(`.contract-status-dropdown [title="${status}"]`).click();
+  }
 };
 
 const fillTermsOfServiceForm = async (page: Page, termsContent: string) => {
@@ -98,16 +107,16 @@ const fillSemanticsForm = async (
   await page.fill('#semantics_0_name', semanticsData.name);
   await page.fill('#semantics_0_description', semanticsData.description);
 
-  const ruleLocator = page.locator('.group').nth(0);
+  const ruleLocator = page.getByTestId('query-builder-group-card').nth(0);
   await selectOption(
     page,
-    ruleLocator.locator('.group--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     semanticsData.rules[0].field,
     true
   );
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator'),
+    ruleLocator.getByTestId('advanced-search-operator-select'),
     semanticsData.rules[0].operator
   );
 
@@ -440,7 +449,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DATA_PRODUCT_CONTRACT_DETAILS.name,
-        DATA_PRODUCT_CONTRACT_DETAILS.description
+        DATA_PRODUCT_CONTRACT_DETAILS.description,
+        'Approved'
       );
     });
 
@@ -565,7 +575,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         `dp_partial_${uuid()}`,
-        'Data Product contract for partial inheritance'
+        'Data Product contract for partial inheritance',
+        'Approved'
       );
     });
 
@@ -683,7 +694,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         `dp_sla_edit_test_${uuid()}`,
-        'Data Product contract with SLA for edit test'
+        'Data Product contract with SLA for edit test',
+        'Approved'
       );
     });
 
@@ -813,7 +825,7 @@ test.describe('Data Contract Inheritance', () => {
 
     await test.step('Verify asset now has its own SLA (no inherited icon)', async () => {
       // Reload to get fresh data
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       // Verify SLA section exists using the correct test ID
@@ -860,7 +872,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await fillTermsOfServiceForm(page, DP_CONTRACT_DETAILS.termsOfService);
@@ -1000,7 +1013,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1069,7 +1083,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1150,7 +1165,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await saveContract(page);
@@ -1250,7 +1266,8 @@ test.describe('Data Contract Inheritance', () => {
       await fillContractDetailsForm(
         page,
         DP_CONTRACT_DETAILS.name,
-        DP_CONTRACT_DETAILS.description
+        DP_CONTRACT_DETAILS.description,
+        'Approved'
       );
 
       await fillTermsOfServiceForm(page, DP_CONTRACT_DETAILS.termsOfService);
@@ -1347,7 +1364,7 @@ test.describe('Data Contract Inheritance', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Refresh the page to ensure we get the latest contract state
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       // Verify the inherited contract from Data Product is now displayed

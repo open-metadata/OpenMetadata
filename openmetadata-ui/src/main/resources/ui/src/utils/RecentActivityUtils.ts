@@ -27,13 +27,14 @@ export const arraySorterByKey = <T extends object>(
   const sortOrder = sortDescending ? -1 : 1;
 
   return (elementOne: T, elementTwo: T) => {
-    return (
-      (elementOne[key] < elementTwo[key]
-        ? -1
-        : elementOne[key] > elementTwo[key]
-        ? 1
-        : 0) * sortOrder
-    );
+    let comparison = 0;
+    if (elementOne[key] < elementTwo[key]) {
+      comparison = -1;
+    } else if (elementOne[key] > elementTwo[key]) {
+      comparison = 1;
+    }
+
+    return comparison * sortOrder;
   };
 };
 

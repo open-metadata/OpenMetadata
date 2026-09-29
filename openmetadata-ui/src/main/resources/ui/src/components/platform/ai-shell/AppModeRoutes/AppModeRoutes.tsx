@@ -20,11 +20,10 @@ import Loader from '../../../common/Loader/Loader';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { useAppModeRoutesFallback } from '../appModeExtensions';
 import { AppShell } from '../AppShell';
-import KeepAliveRoutes, {
-  KeepAliveRoute,
-} from '../KeepAliveRoutes/KeepAliveRoutes';
+import KeepAliveRoutes from '../KeepAliveRoutes/KeepAliveRoutes';
 import { useAllAppModules } from '../sharedAppModules';
 import { useSyncActiveModule } from '../state/useActiveModule';
+import { resolveAppModuleRoutes } from './AppModeRoutes.utils';
 
 // The app-mode shell owns its own /404 so an unknown URL lands on the branded
 // AI not-found page (testid `ai-not-found-page`) instead of the fallback
@@ -65,7 +64,11 @@ export const AppModeRoutes = () => {
   // redirected to /404 — destroying a deep link or reload. Hold the route table
   // (chrome stays, content shows a loader) until the apps fetch settles so the
   // requested URL survives and resolves against the complete table.
-  const { isLoading: isApplicationsLoading } = useApplicationsProvider() ?? {};
+  const {
+    isLoading: isApplicationsLoading,
+    extensionRegistry,
+    contributionsVersion,
+  } = useApplicationsProvider() ?? {};
 
   // The catch-all page route table. Mirrors how the classic `AppContainer`
   // renders its content: the same `applicationRoutesClass.getRouteElements()`
@@ -76,16 +79,24 @@ export const AppModeRoutes = () => {
   // ROUTES.HOME rule. A plugin-contributed fallback still takes precedence.
   const RouteElements = applicationRoutesClass.getRouteElements();
 
-  const routes: KeepAliveRoute[] = useMemo(
-    () =>
-      modules.flatMap((m) =>
-        m.routes.map((route) => ({
-          element: route.element,
-          path: route.path,
-          children: route.children,
-        }))
-      ),
-    [modules]
+  // A module that owns a `resolveRoutes` resolver (e.g. `connectionsModule`)
+  // is resolved through it, splicing in any routes plugins contributed to
+  // that module's extension point (e.g. Collate's AgentJob detail route via
+  // `EXTENSION_POINTS.CONNECTIONS_ROUTES`); every other module falls back to
+  // its static `routes` array unchanged. See `AppModeRoutes.utils.ts`.
+  //
+  // `contributionsVersion` is deliberately a memo dep even though it is not
+  // passed to `resolveAppModuleRoutes`: `extensionRegistry` is one mutable
+  // instance for the app's lifetime, so its identity never changes when a
+  // plugin's `contributeExtensions` mutates it — a memo keyed only on
+  // `[modules, extensionRegistry]` would compute once, before any
+  // contribution has run, and then never again. `contributionsVersion`
+  // (bumped by `ApplicationsProvider` right after registration) is the
+  // signal that a contribution has actually landed, forcing exactly one
+  // recompute with the up-to-date registry contents.
+  const routes = useMemo(
+    () => resolveAppModuleRoutes(modules, extensionRegistry),
+    [modules, extensionRegistry, contributionsVersion]
   );
 
   return (

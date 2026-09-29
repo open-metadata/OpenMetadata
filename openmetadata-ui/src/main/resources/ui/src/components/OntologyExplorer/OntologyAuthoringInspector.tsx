@@ -12,7 +12,7 @@
  */
 
 import { Badge, Button, Input } from '@openmetadata/ui-core-components';
-import { Edit03, Plus, SearchMd } from '@untitledui/icons';
+import { Edit, Search } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -23,18 +23,18 @@ import {
   ConceptMappingType,
 } from '../../generated/entity/data/glossaryTerm';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
-import { EntityReference } from '../../generated/entity/type';
-import {
-  getGlossaryTermAssets,
-  patchGlossaryTerm,
-} from '../../rest/glossaryAPI';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useOntologyTermDetails } from './hooks/useOntologyTermDetails';
 import { OntologyConceptAttributes } from './OntologyConceptAttributes.component';
+import { OntologyConceptDataAssets } from './OntologyConceptDataAssets';
 import { OntologyConceptRealization } from './OntologyConceptRealization.component';
 import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
+import {
+  InspectorAddButton,
+  InspectorSectionHeading,
+} from './OntologyInspectorSection';
 import { isTermNode, isValidUUID } from './utils/graphBuilders';
 import { getEffectiveRelationColor } from './utils/graphStyles';
 
@@ -49,7 +49,7 @@ interface OntologyAuthoringInspectorProps {
     toId: string,
     relationType: string
   ) => Promise<void>;
-  readonly onShowDataAssets: () => void;
+  readonly onAssetsChange?: () => void;
   readonly onRequestEdit?: () => void;
   readonly onShowFullDetails?: () => void;
 }
@@ -60,10 +60,9 @@ interface InspectorRelation {
   readonly relationName: string;
 }
 
-const ASSET_PREVIEW_LIMIT = 3;
 const EXTERNAL_SCHEME_SUGGESTIONS = ['schema', 'wikidata', 'fibo', 'snomed'];
 const SearchInputIcon = ({ className }: { className?: string }) => (
-  <SearchMd aria-hidden="true" className={className} />
+  <Search aria-hidden="true" className={className} />
 );
 
 function toConceptSlug(label: string): string {
@@ -81,56 +80,6 @@ const MAPPING_BADGE_COLORS: Record<
   [ConceptMappingType.SameAs]: 'success',
 };
 
-interface SectionHeadingProps {
-  readonly count: number;
-  readonly label: string;
-}
-
-const SectionHeading = ({ count, label }: SectionHeadingProps) => (
-  <div className="tw:mb-2.5 tw:flex tw:items-center tw:gap-2">
-    <h3 className="tw:m-0 tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:text-primary">
-      {label}
-    </h3>
-    <span className="tw:rounded-full tw:border tw:border-secondary tw:bg-tertiary tw:px-2 tw:py-px tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary">
-      {count}
-    </span>
-  </div>
-);
-
-interface AddButtonProps {
-  readonly isDisabled: boolean;
-  readonly isPrimary?: boolean;
-  readonly label: string;
-  readonly testId: string;
-  readonly onClick: () => void;
-}
-
-const AddButton = ({
-  isDisabled,
-  isPrimary = false,
-  label,
-  testId,
-  onClick,
-}: AddButtonProps) => (
-  <Button
-    noTextPadding
-    className={classNames(
-      'tw:mt-2 tw:flex tw:w-full tw:items-center tw:justify-center tw:gap-1 tw:rounded-[9px] tw:border tw:border-dashed tw:bg-primary tw:px-2.5 tw:py-[9px] tw:*:data-icon:size-3',
-      'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold',
-      isPrimary
-        ? 'tw:border-brand tw:text-brand-tertiary'
-        : 'tw:border-primary tw:text-secondary',
-      isDisabled && 'tw:cursor-not-allowed tw:opacity-50'
-    )}
-    color="tertiary"
-    data-testid={testId}
-    iconLeading={Plus}
-    isDisabled={isDisabled}
-    onClick={onClick}>
-    {label}
-  </Button>
-);
-
 const OntologyAuthoringInspector = ({
   edges,
   isEditable,
@@ -138,15 +87,13 @@ const OntologyAuthoringInspector = ({
   nodes,
   relationTypes,
   onCreateRelation,
-  onShowDataAssets,
+  onAssetsChange,
   onRequestEdit,
   onShowFullDetails,
 }: OntologyAuthoringInspectorProps) => {
   const { t } = useTranslation();
   const termId = node.termId ?? node.id;
   const { setTermDetails, termDetails } = useOntologyTermDetails(termId);
-  const [assets, setAssets] = useState<EntityReference[]>([]);
-  const [assetTotal, setAssetTotal] = useState(node.assetCount ?? 0);
   const [isAddingRelationship, setIsAddingRelationship] = useState(false);
   const [selectedRelationType, setSelectedRelationType] = useState('');
   const [targetSearch, setTargetSearch] = useState('');
@@ -157,29 +104,6 @@ const OntologyAuthoringInspector = ({
   );
   const [mappingIri, setMappingIri] = useState('');
   const [isSavingMapping, setIsSavingMapping] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setAssets([]);
-    setAssetTotal(node.assetCount ?? 0);
-
-    if (!isValidUUID(termId)) {
-      return () => controller.abort();
-    }
-
-    getGlossaryTermAssets(termId, ASSET_PREVIEW_LIMIT, 0, controller.signal)
-      .then((response) => {
-        setAssets(response.data);
-        setAssetTotal(response.paging.total);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setAssets([]);
-        }
-      });
-
-    return () => controller.abort();
-  }, [node.assetCount, termId]);
 
   useEffect(() => {
     setIsAddingRelationship(false);
@@ -196,9 +120,13 @@ const OntologyAuthoringInspector = ({
       ),
     [relationTypes]
   );
-  const relations = useMemo<InspectorRelation[]>(
-    () =>
-      edges.flatMap((edge) => {
+  const relations = useMemo<InspectorRelation[]>(() => {
+    // Both edges of an inverse pair (partOf / hasPart) read as the same
+    // relationship from this node, so list it once.
+    const listed = new Set<string>();
+
+    return edges
+      .flatMap((edge) => {
         if (edge.from === node.id) {
           return [
             {
@@ -226,9 +154,21 @@ const OntologyAuthoringInspector = ({
         }
 
         return [];
-      }),
-    [edges, node.id, nodes, relationTypeMap]
-  );
+      })
+      .filter((relation) => {
+        const otherEnd =
+          relation.edge.from === node.id
+            ? relation.edge.to
+            : relation.edge.from;
+        const key = `${otherEnd}|${relation.relationName}`;
+        if (listed.has(key)) {
+          return false;
+        }
+        listed.add(key);
+
+        return true;
+      });
+  }, [edges, node.id, nodes, relationTypeMap]);
   const targetNodes = useMemo(() => {
     const normalizedSearch = targetSearch.trim().toLocaleLowerCase();
 
@@ -368,6 +308,36 @@ const OntologyAuthoringInspector = ({
     );
   };
 
+  const renderRelationTypeGroup = (group: {
+    label: string;
+    types: RelationshipType[];
+  }) =>
+    group.types.length ? (
+      <div className="tw:flex tw:flex-col tw:gap-1.5" key={group.label}>
+        <span className="tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
+          {group.label}
+        </span>
+        <div className="tw:flex tw:flex-wrap tw:gap-1.5">
+          {group.types.map((type) => (
+            <Button
+              color="secondary"
+              data-testid={`authoring-relation-type-${type.name}`}
+              key={type.name}
+              size="sm"
+              onPress={() => setSelectedRelationType(type.name)}>
+              <span
+                className="tw:size-1.5 tw:rounded-full"
+                style={{
+                  backgroundColor: getEffectiveRelationColor(type.name, type),
+                }}
+              />
+              {type.displayName || type.name}
+            </Button>
+          ))}
+        </div>
+      </div>
+    ) : null;
+
   const renderRelationshipDraft = () => (
     <div
       className="tw:mt-2 tw:flex tw:flex-col tw:gap-2.5 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-secondary tw:p-3"
@@ -425,36 +395,7 @@ const OntologyAuthoringInspector = ({
               label: t('label.custom'),
               types: relationTypes.filter((type) => !type.systemDefined),
             },
-          ].map((group) =>
-            group.types.length ? (
-              <div className="tw:flex tw:flex-col tw:gap-1.5" key={group.label}>
-                <span className="tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
-                  {group.label}
-                </span>
-                <div className="tw:flex tw:flex-wrap tw:gap-1.5">
-                  {group.types.map((type) => (
-                    <Button
-                      color="secondary"
-                      data-testid={`authoring-relation-type-${type.name}`}
-                      key={type.name}
-                      size="sm"
-                      onPress={() => setSelectedRelationType(type.name)}>
-                      <span
-                        className="tw:size-1.5 tw:rounded-full"
-                        style={{
-                          backgroundColor: getEffectiveRelationColor(
-                            type.name,
-                            type
-                          ),
-                        }}
-                      />
-                      {type.displayName || type.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ) : null
-          )}
+          ].map(renderRelationTypeGroup)}
         </div>
       )}
       <Button
@@ -551,49 +492,42 @@ const OntologyAuthoringInspector = ({
     );
   };
 
-  return (
-    <aside
-      className="tw:z-4 tw:h-full tw:w-[300px] tw:shrink-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-primary tw:p-[18px]"
-      data-testid="ontology-authoring-inspector">
-      <div className="tw:mb-2 tw:flex tw:items-center tw:justify-between tw:gap-2">
-        <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.08em] tw:text-quaternary tw:uppercase">
-          {t('label.concept')}
-        </span>
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
-          {onShowFullDetails ? (
-            <Button
-              noTextPadding
-              className="tw:border-0 tw:bg-transparent tw:p-0 tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-secondary"
-              color="tertiary"
-              data-testid="ontology-concept-full-details"
-              onClick={onShowFullDetails}>
-              {t('label.view-detail-plural')}
-            </Button>
-          ) : null}
-          {!isEditable && onRequestEdit ? (
-            <Button
-              noTextPadding
-              className={classNames(
-                'tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:px-2 tw:py-1',
-                'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary'
-              )}
-              color="tertiary"
-              data-testid="ontology-concept-edit"
-              iconLeading={Edit03}
-              onClick={onRequestEdit}>
-              {t('label.edit')}
-            </Button>
-          ) : null}
-        </div>
-      </div>
-      <h2 className="tw:m-0 tw:font-body tw:text-[17px] tw:leading-[1.25] tw:font-bold tw:text-primary">
-        {node.originalLabel ?? node.label}
-      </h2>
-      <p className="tw:mb-3 tw:mt-[3px] tw:truncate tw:font-mono tw:text-[11px] tw:leading-normal tw:font-normal tw:text-quaternary">
-        {node.fullyQualifiedName}
-      </p>
+  const renderHeaderActions = () => (
+    <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
+      {onShowFullDetails ? (
+        <Button
+          noTextPadding
+          className="tw:border-0 tw:bg-transparent tw:p-0 tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-secondary"
+          color="tertiary"
+          data-testid="ontology-concept-full-details"
+          onClick={onShowFullDetails}>
+          {t('label.view-detail-plural')}
+        </Button>
+      ) : null}
+      {!isEditable && onRequestEdit ? (
+        <Button
+          noTextPadding
+          className={classNames(
+            'tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:px-2 tw:py-1',
+            'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary'
+          )}
+          color="tertiary"
+          data-testid="ontology-concept-edit"
+          iconLeading={Edit}
+          onClick={onRequestEdit}>
+          {t('label.edit')}
+        </Button>
+      ) : null}
+    </div>
+  );
 
-      {isValidUUID(termId) ? (
+  const renderTermSections = () => {
+    if (!isValidUUID(termId)) {
+      return null;
+    }
+
+    return (
+      <>
         <OntologyConceptAttributes
           showEditControls
           attributes={termDetails?.attributes ?? []}
@@ -603,9 +537,6 @@ const OntologyAuthoringInspector = ({
           variant="inspector"
           onTermUpdate={setTermDetails}
         />
-      ) : null}
-
-      {isValidUUID(termId) ? (
         <OntologyConceptRealization
           isEditMode={isEditable}
           realizations={termDetails?.realizedIn ?? []}
@@ -613,11 +544,32 @@ const OntologyAuthoringInspector = ({
           variant="inspector"
           onTermUpdate={setTermDetails}
         />
-      ) : null}
+      </>
+    );
+  };
+
+  return (
+    <aside
+      className="tw:z-4 tw:h-full tw:w-[300px] tw:shrink-0 tw:overflow-y-auto tw:border-l tw:border-secondary tw:bg-primary tw:p-[18px]"
+      data-testid="ontology-authoring-inspector">
+      <div className="tw:mb-2 tw:flex tw:items-center tw:justify-between tw:gap-2">
+        <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.08em] tw:text-quaternary tw:uppercase">
+          {t('label.concept')}
+        </span>
+        {renderHeaderActions()}
+      </div>
+      <h2 className="tw:m-0 tw:font-body tw:text-[17px] tw:leading-[1.25] tw:font-bold tw:text-primary">
+        {node.originalLabel ?? node.label}
+      </h2>
+      <p className="tw:mb-3 tw:mt-[3px] tw:truncate tw:font-mono tw:text-[11px] tw:leading-normal tw:font-normal tw:text-quaternary">
+        {node.fullyQualifiedName}
+      </p>
+
+      {renderTermSections()}
 
       <div className="tw:my-[15px] tw:h-px tw:bg-secondary" />
       <section data-testid="authoring-relationships">
-        <SectionHeading
+        <InspectorSectionHeading
           count={relations.length}
           label={t('label.relationship-plural')}
         />
@@ -627,7 +579,7 @@ const OntologyAuthoringInspector = ({
         {isAddingRelationship ? (
           renderRelationshipDraft()
         ) : (
-          <AddButton
+          <InspectorAddButton
             isPrimary
             isDisabled={!isEditable}
             label={t('label.add-entity', {
@@ -641,7 +593,7 @@ const OntologyAuthoringInspector = ({
 
       <div className="tw:my-[15px] tw:h-px tw:bg-secondary" />
       <section data-testid="authoring-mappings">
-        <SectionHeading
+        <InspectorSectionHeading
           count={conceptMappings.length}
           label={t('label.mapping-plural')}
         />
@@ -665,7 +617,7 @@ const OntologyAuthoringInspector = ({
         {isAddingMapping ? (
           renderMappingDraft()
         ) : (
-          <AddButton
+          <InspectorAddButton
             isDisabled={!isEditable || !isValidUUID(termId)}
             label={t('label.add-mapping')}
             testId="authoring-add-mapping"
@@ -675,60 +627,13 @@ const OntologyAuthoringInspector = ({
       </section>
 
       <div className="tw:my-[15px] tw:h-px tw:bg-secondary" />
-      <section data-testid="authoring-data-assets">
-        <SectionHeading
-          count={assetTotal}
-          label={t('label.data-asset-plural')}
-        />
-        <div className="tw:flex tw:flex-col tw:gap-[7px]">
-          {assets.map((asset) => {
-            const assetName =
-              asset.displayName ??
-              asset.name ??
-              asset.fullyQualifiedName ??
-              asset.id;
-
-            return (
-              <div
-                className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-2.5 tw:py-2"
-                data-testid={`authoring-asset-${asset.id}`}
-                key={asset.id}>
-                <img
-                  alt={asset.type}
-                  className="tw:size-3.5 tw:shrink-0 tw:object-contain"
-                  height={14}
-                  src={serviceUtilClassBase.getServiceTypeLogo({
-                    entityType: asset.type,
-                  })}
-                  width={14}
-                />
-                <div className="tw:min-w-0 tw:flex-1">
-                  <div className="tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
-                    {assetName}
-                  </div>
-                  <div className="tw:truncate tw:font-body tw:text-[10px] tw:leading-normal tw:font-normal tw:text-quaternary">
-                    {asset.type}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {assetTotal > assets.length ? (
-          <Button
-            noTextPadding
-            className={classNames(
-              'tw:mt-2 tw:w-full tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-2.5 tw:py-2',
-              'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-tertiary'
-            )}
-            color="tertiary"
-            data-testid="authoring-more-assets"
-            onClick={onShowDataAssets}>
-            +{assetTotal - assets.length} {t('label.more-lowercase')}{' '}
-            {t('label.data-asset-lowercase-plural')}
-          </Button>
-        ) : null}
-      </section>
+      <OntologyConceptDataAssets
+        initialCount={node.assetCount}
+        isEditMode={isEditable}
+        term={termDetails}
+        termId={termId}
+        onAssetsChange={onAssetsChange}
+      />
     </aside>
   );
 };

@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.ws.rs.core.Response;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -104,8 +105,17 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
     String result;
-    // check if value does not start with 'config:' only String can have password annotation
-    if (Boolean.FALSE.equals(isSecret(value))) {
+    if (isEmptySecret(value)) {
+      // Clearing a credential means removing it. Writing the NULL_SECRET_STRING placeholder instead
+      // would make consumers read the literal "null" back as if it were the secret.
+      if (store) {
+        deleteSecret(fieldSecretId);
+      }
+      result = null;
+      // A plain value: store it and hand back a reference. Anything already prefixed with
+      // SECRET_FIELD_PREFIX is a reference to an existing secret and falls through untouched.
+    } else if (Boolean.FALSE.equals(isSecret(value))) {
+      rejectReservedPlaceholder(fieldName, value);
       if (store) {
         upsertSecret(fieldSecretId, value);
       }
@@ -114,6 +124,58 @@ public abstract class ExternalSecretsManager extends SecretsManager {
       result = value;
     }
     return result;
+  }
+
+  /**
+   * Refuses a credential whose value is the {@link #NULL_SECRET_STRING} placeholder. {@link
+   * #getSecretValue} reads that payload back as absent so services saved before this was fixed heal
+   * themselves, which means we cannot also return it as a credential. Rejecting the save keeps the
+   * only ambiguous payload out of the vault — every "null" still stored is then unambiguously
+   * legacy — and tells the user at the point they can act, rather than accepting a value that would
+   * disappear on the next read.
+   */
+  private void rejectReservedPlaceholder(String fieldName, String value) {
+    if (NULL_SECRET_STRING.equals(value)) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST,
+          String.format(
+              "Field [%s] cannot be set to \"%s\": that value is reserved as the placeholder older "
+                  + "versions wrote for a cleared credential, so it would be read back as no "
+                  + "credential at all. Clear the field to remove it, or use a different value.",
+              fieldName, NULL_SECRET_STRING));
+    }
+  }
+
+  /**
+   * Resolves a {@code secret:/...} reference, mapping the {@link #NULL_SECRET_STRING} placeholder
+   * written by older versions back to an absent value. Services saved before this was fixed still
+   * hold a secret whose payload is the literal "null", which must never be used as a credential.
+   * Reading it as absent is what cleans those services up: the connection carries null, and the
+   * next save drops the stale secret through {@link #storeValue}.
+   *
+   * <p>Nothing recorded alongside a secret distinguishes that placeholder from a credential whose
+   * real value is the four characters "null", and this mapping resolves the ambiguity in favour of
+   * the placeholder. Where that guess is wrong the credential is not merely hidden: the masker
+   * skips a null field, so the next save of the entity sends no value and the clear path above
+   * deletes the backing secret. {@link #rejectReservedPlaceholder} keeps new credentials out of
+   * that state, but a value already in the vault cannot be told apart, so this logs a warning
+   * naming the secret while there is still a save's worth of time to act on it.
+   */
+  @Override
+  public String getSecretValue(String secretWithPrefix) {
+    String secretValue = super.getSecretValue(secretWithPrefix);
+    boolean isPlaceholder = NULL_SECRET_STRING.equals(secretValue);
+    if (isPlaceholder) {
+      LOG.warn(
+          "Secret [{}] holds the reserved placeholder \"{}\" that older versions wrote for a "
+              + "cleared credential, so it is being read as no credential at all. If this field "
+              + "really was configured with \"{}\", set a different value now: the next save of "
+              + "the entity will delete the stored secret.",
+          secretWithPrefix,
+          NULL_SECRET_STRING,
+          NULL_SECRET_STRING);
+    }
+    return isPlaceholder ? null : secretValue;
   }
 
   public void upsertSecret(String secretName, String secretValue) {
@@ -142,6 +204,33 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     } else {
       storeSecret(secretName, secretValue);
     }
+  }
+
+  /**
+   * Removes a secret from the external backend, tolerating one that is already gone so clearing a
+   * credential that was never stored is not an error. Deliberately does not probe with {@link
+   * #existSecret} first: that read reports any failure as "absent", which would silently skip the
+   * delete and orphan the secret while the entity says the credential is gone.
+   */
+  public void deleteSecret(String secretName) {
+    throttle();
+    try {
+      deleteSecretInternal(secretName);
+    } catch (RuntimeException e) {
+      if (!isNotFoundInCauseChain(e)) {
+        throw deleteFailure(secretName, e);
+      }
+      LOG.debug(
+          "Secret [{}] is already absent from {}", secretName, getSecretsManagerProvider().value());
+    }
+  }
+
+  private SecretsManagerException deleteFailure(String secretName, RuntimeException cause) {
+    return new SecretsManagerException(
+        String.format(
+            "Failed to delete secret [%s] from %s: %s",
+            secretName, getSecretsManagerProvider().value(), exceptionMessage(cause)),
+        cause);
   }
 
   private SecretsManagerException upsertFailure(String secretName, RuntimeException cause) {
@@ -211,6 +300,10 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   }
 
   public String cleanNullOrEmpty(String secretValue) {
-    return Objects.isNull(secretValue) || secretValue.isEmpty() ? NULL_SECRET_STRING : secretValue;
+    return isEmptySecret(secretValue) ? NULL_SECRET_STRING : secretValue;
+  }
+
+  private static boolean isEmptySecret(String secretValue) {
+    return Objects.isNull(secretValue) || secretValue.isEmpty();
   }
 }

@@ -38,17 +38,16 @@ import {
   QUERY_SORT_OPTIONS,
 } from '../../../constants/Query.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import {
   getQueryById,
   patchQueries,
@@ -69,17 +68,16 @@ import DatePicker, {
   RangePickerProps,
 } from '../../common/DatePicker/DatePicker';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SortingDropDown from '../../Explore/SortingDropDown';
 import PaginationComponent from '../../PaginationComponent/PaginationComponent';
-import SearchDropdown from '../../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
 import {
   FetchFilteredQueriesType,
   QueryFilterType,
-  QueryVote,
   TableQueriesProp,
 } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
@@ -579,7 +577,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                 <Col span={24}>
                   <Space className="justify-between w-full">
                     <Space size={16}>
-                      <SearchDropdown
+                      <FilterSelectDropdown
                         hideCounts
                         isSuggestionsLoading={isOwnerLoading}
                         label={t('label.owner')}
@@ -591,7 +589,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                         onSearch={handleOwnerSearch}
                       />
 
-                      <SearchDropdown
+                      <FilterSelectDropdown
                         hideCounts
                         isSuggestionsLoading={isTagsLoading}
                         label={t('label.tag')}

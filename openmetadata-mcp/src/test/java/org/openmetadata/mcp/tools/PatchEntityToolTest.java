@@ -3,20 +3,25 @@ package org.openmetadata.mcp.tools;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response;
 import java.security.Principal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,15 +30,22 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 
@@ -59,6 +71,56 @@ class PatchEntityToolTest {
   @AfterEach
   void clearImpersonationContext() {
     ImpersonationContext.clear();
+  }
+
+  /**
+   * A patch answers with the patched entity, which makes it a read too, so the per-entity
+   * visibility rule runs before the write.
+   */
+  @Test
+  void execute_refusesToPatchAnotherUsersPrivateMemory() {
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    ContextMemory memory =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withName("bobs-private-note")
+            .withFullyQualifiedName("bobs-private-note")
+            .withAnswer("the secret answer")
+            .withOwners(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType(Entity.USER)
+                        .withName("bob")
+                        .withFullyQualifiedName("bob")))
+            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.CONTEXT_MEMORY);
+    params.put("fqn", "bobs-private-note");
+    params.put("patch", "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"x\"}]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+          .thenReturn(repository);
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.CONTEXT_MEMORY), eq("bobs-private-note"), anyString(), any()))
+          .thenReturn(memory);
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
+
+      assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+          .isInstanceOf(ForbiddenException.class);
+    }
+
+    verify(repository, never()).patch(any(), anyString(), any(), any(), any(), any(), any());
   }
 
   @Test

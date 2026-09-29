@@ -34,6 +34,7 @@ import {
   toastNotification,
   uuid,
   visitGlossaryPage,
+  waitForAntdModalToSettle,
 } from '../../utils/common';
 import {
   selectDataProduct,
@@ -50,8 +51,6 @@ test.describe(
   'Long Description Visibility',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     let domain: Domain;
     let dataProductData: DataProduct['data'];
     let glossary: Glossary;
@@ -67,7 +66,7 @@ test.describe(
         const adminPage = await browser.newPage({
           storageState: 'playwright/.auth/admin.json',
         });
-        await adminPage.goto('/');
+        await adminPage.goto('/', { waitUntil: 'domcontentloaded' });
         const { apiContext, afterAction } = await getApiContext(adminPage);
 
         const id = uuid();
@@ -361,6 +360,7 @@ test.describe(
         .getByRole('dialog')
         .getByRole('button', { name: 'Add' });
       await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
+      await waitForAntdModalToSettle(adminPage);
       await expect(addButton).toBeEnabled();
       await addButton.click();
 

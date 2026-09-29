@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   createNewPage,
   descriptionBox,
@@ -73,7 +73,8 @@ test.describe('TestCase Version Page', () => {
 
     await redirectToHomePage(page);
     await page.goto(
-      `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`
+      `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await waitForAllLoadersToDisappear(page);
     await verifyTestCaseLastRunBanner(page, 'not-run-yet');

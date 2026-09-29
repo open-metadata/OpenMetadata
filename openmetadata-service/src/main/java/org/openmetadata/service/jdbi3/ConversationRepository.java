@@ -31,6 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -118,7 +119,7 @@ public class ConversationRepository {
       String after,
       int requestedLimit) {
     validateTimeRange(startTs, endTs);
-    authorizeList(securityContext, authorizer);
+    authorizeList(securityContext, authorizer, entityLink);
     int limit = Math.min(requestedLimit, MAX_ROOT_PAGE_SIZE);
     ConversationFilter filter =
         buildFilter(
@@ -1141,11 +1142,36 @@ public class ConversationRepository {
         AuthorizationLogic.ALL);
   }
 
-  private void authorizeList(SecurityContext securityContext, Authorizer authorizer) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(Entity.CONVERSATION, MetadataOperation.VIEW_BASIC),
-        new ConversationResourceContext(null));
+  /**
+   * When the caller scopes the listing to one entity the target is known exactly, so the same
+   * ViewBasic that {@link #authorizeRootCreate} already demands on write is demanded on read —
+   * otherwise conversations about an entity stay readable after a policy denies access to it
+   * (issue #18158). Unscoped listings keep the resource-level check every entity listing uses.
+   *
+   * <p>A link that resolves to no entity has no permissions to honour and no conversations to
+   * hide, so the check is skipped rather than turning a previously empty page into a 404.
+   */
+  private void authorizeList(
+      SecurityContext securityContext, Authorizer authorizer, String entityLink) {
+    List<AuthRequest> requests = new ArrayList<>();
+    requests.add(
+        request(
+            Entity.CONVERSATION,
+            MetadataOperation.VIEW_BASIC,
+            new ConversationResourceContext(null)));
+    scopedTarget(entityLink).ifPresent(target -> requests.add(targetViewRequest(target)));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ALL);
+  }
+
+  private Optional<EntityReference> scopedTarget(String entityLink) {
+    if (nullOrEmpty(entityLink)) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(resolveTarget(entityLink, ALL).reference());
+    } catch (EntityNotFoundException exception) {
+      return Optional.empty();
+    }
   }
 
   private void authorizeHiddenRead(

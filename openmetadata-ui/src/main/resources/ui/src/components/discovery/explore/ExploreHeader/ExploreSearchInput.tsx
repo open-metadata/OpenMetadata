@@ -17,6 +17,7 @@ import {
   Divider,
   Input,
   SelectPopover,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
 import { isAppleDevice } from '@react-aria/utils';
 import { SearchMd } from '@untitledui/icons';
@@ -62,7 +63,7 @@ const INPUT_FIELD_CONTAINER_CLASS =
 
 const INPUT_CLASS = classNames(
   'tw:m-0 tw:w-full tw:bg-transparent tw:outline-hidden',
-  'tw:placeholder:text-sm tw:placeholder:text-tertiary',
+  'tw:placeholder:text-sm tw:placeholder:text-placeholder',
   'tw:autofill:rounded-lg tw:autofill:text-primary',
   'tw:px-3 tw:py-2 tw:pl-10 tw:text-xs tw:font-normal tw:text-primary'
 );
@@ -164,26 +165,28 @@ export const ExploreSearchInput = ({
         <div className={INPUT_CONTAINER_CLASS}>
           {isNLPEnabled && (
             <>
-              <button
-                className={`${NLP_TOGGLE_BASE_CLASS} ${
-                  isNLPActive
-                    ? NLP_TOGGLE_ACTIVE_CLASS
-                    : NLP_TOGGLE_INACTIVE_CLASS
-                }`}
-                data-testid="explore-nlp-toggle"
+              <Tooltip
                 title={
                   isNLPActive
                     ? t('message.natural-language-search-active')
                     : t('label.use-natural-language-search')
-                }
-                type="button"
-                onClick={onNLPToggle}>
-                {isNLPActive ? (
-                  <IconSuggestionsActive className="tw:size-6" />
-                ) : (
-                  <IconSuggestionsBlue className="tw:size-3.5" />
-                )}
-              </button>
+                }>
+                <button
+                  className={`${NLP_TOGGLE_BASE_CLASS} ${
+                    isNLPActive
+                      ? NLP_TOGGLE_ACTIVE_CLASS
+                      : NLP_TOGGLE_INACTIVE_CLASS
+                  }`}
+                  data-testid="explore-nlp-toggle"
+                  type="button"
+                  onClick={onNLPToggle}>
+                  {isNLPActive ? (
+                    <IconSuggestionsActive className="tw:size-6" />
+                  ) : (
+                    <IconSuggestionsBlue className="tw:size-3.5" />
+                  )}
+                </button>
+              </Tooltip>
               <Divider
                 className="tw:h-5 tw:self-center"
                 orientation="vertical"

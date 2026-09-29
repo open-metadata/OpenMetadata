@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
@@ -131,7 +131,9 @@ test.describe('Data Product Rename', () => {
     await patchResponse;
 
     // Wait for navigation to new URL (URL should change to new name)
-    await page.waitForURL(`**/dataProduct/${newName}/**`);
+    await page.waitForURL(`**/dataProduct/${newName}/**`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     // Verify the data product header shows the new name (use first() as there may be multiple elements)
     await expect(
@@ -156,7 +158,7 @@ test.describe('Data Product Rename', () => {
       .click();
 
     // Navigate back to data product and verify assets tab still shows the asset
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     await page.getByTestId('assets').click();
     await checkAssetsCount(page, 1);
@@ -304,7 +306,9 @@ test.describe('Data Product Rename', () => {
         await patchResponse;
 
         // Wait for navigation to new URL
-        await page.waitForURL(`**/dataProduct/${newName}/**`);
+        await page.waitForURL(`**/dataProduct/${newName}/**`, {
+          waitUntil: 'domcontentloaded',
+        });
 
         // Update current name for cleanup
         currentName = newName;
@@ -333,7 +337,7 @@ test.describe('Data Product Rename', () => {
         .click();
 
       // Navigate back and verify assets still there
-      await page.goBack();
+      await page.goBack({ waitUntil: 'domcontentloaded' });
       await page.getByTestId('assets').click();
       await checkAssetsCount(page, 1);
     } finally {

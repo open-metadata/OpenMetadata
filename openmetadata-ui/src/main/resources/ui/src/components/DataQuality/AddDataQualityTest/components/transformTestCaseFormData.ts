@@ -71,7 +71,12 @@ export interface TestCaseTransformContext {
 }
 
 export interface PipelinePayloadContext {
-  testSuite: TestSuite;
+  /**
+   * Only `id` is read. Callers pass `TestCase.testSuite`, which is an
+   * `EntityReference` rather than a `TestSuite`, so no wider field is safe to
+   * rely on here.
+   */
+  testSuite: Pick<TestSuite, 'id'>;
   createdTestCaseName: string;
   selectedTable?: string;
   table?: Table;
@@ -129,6 +134,7 @@ export const normalizeFormValuesForPayload = (
     selectedDefinition
   ) as FormValues['params'],
   dimensionColumns: unwrapSelectValues(values.dimensionColumns),
+  dataQualityDimension: unwrapSelectValue(values.dataQualityDimension),
   tags: normalizeTagLabels(values.tags),
   glossaryTerms: normalizeTagLabels(values.glossaryTerms),
 });
@@ -137,14 +143,7 @@ export const normalizeFormValuesForPayload = (
  * Builds a CreateTestCase payload from form values and resolved context.
  * Extracted from TestCaseFormV1.createTestCaseObj — no React, no network calls.
  */
-export const transformTestCaseFormData = (
-  values: FormValues,
-  ctx: TestCaseTransformContext
-): CreateTestCase => {
-  const columnName = ctx.selectedColumn;
-
-  const name = values.testName?.trim() || ctx.generateName?.() || '';
-
+const resolveEntityLink = (ctx: TestCaseTransformContext): string => {
   const entityFqn =
     ctx.selectedTableData?.fullyQualifiedName ||
     ctx.selectedTable ||
@@ -153,10 +152,19 @@ export const transformTestCaseFormData = (
 
   const isColumnLevel = ctx.selectedTestLevel === TestLevel.COLUMN;
 
-  const entityLink = generateEntityLink(
-    isColumnLevel ? `${entityFqn}.${columnName}` : entityFqn,
+  return generateEntityLink(
+    isColumnLevel ? `${entityFqn}.${ctx.selectedColumn}` : entityFqn,
     isColumnLevel
   );
+};
+
+export const transformTestCaseFormData = (
+  values: FormValues,
+  ctx: TestCaseTransformContext
+): CreateTestCase => {
+  const name = values.testName?.trim() || ctx.generateName?.() || '';
+
+  const entityLink = resolveEntityLink(ctx);
 
   const normalizedValues = normalizeFormValuesForPayload(
     values,
@@ -178,6 +186,11 @@ export const transformTestCaseFormData = (
         ? values.topDimensions
         : undefined,
     description: isEmpty(values.description) ? undefined : values.description,
+    // Left out when untouched so the API falls back to the test definition's
+    // dimension, which is what the field is prefilled with anyway.
+    dataQualityDimension: normalizedValues.dataQualityDimension as
+      | string
+      | undefined,
     tags: [
       ...(normalizedValues.tags ?? []),
       ...(normalizedValues.glossaryTerms ?? []),
@@ -198,9 +211,9 @@ export const buildTestSuitePipelinePayload = (
 ): CreateIngestionPipeline => {
   const selectedTestCases = normalizeSelectedTestProp(values.testCases);
 
-  const tableName = replaceAllSpacialCharWith_(
-    ctx.selectedTable ?? ctx.table?.fullyQualifiedName ?? ''
-  );
+  const tableFqn = ctx.selectedTable ?? ctx.table?.fullyQualifiedName;
+
+  const tableName = replaceAllSpacialCharWith_(tableFqn ?? '');
 
   const updatedName =
     values.pipelineName || getIngestionName(tableName, PipelineType.TestSuite);
@@ -221,7 +234,10 @@ export const buildTestSuitePipelinePayload = (
     sourceConfig: {
       config: {
         type: ConfigType.TestSuite,
-        entityFullyQualifiedName: ctx.testSuite.fullyQualifiedName,
+        // The entity under test, i.e. the table — not the test suite that holds
+        // the test cases. A suite FQN here resolves to no table and the run
+        // falls through to the logical-suite path.
+        entityFullyQualifiedName: tableFqn,
         testCases:
           values.selectAllTestCases === false
             ? [ctx.createdTestCaseName, ...selectedTestCases]
@@ -278,6 +294,16 @@ const toColumnFormSelectItems = (
   columnNames?.map((columnName) => toColumnFormSelectItem(columnName));
 
 /**
+ * The data quality dimension field is a dropdown over the dimension entities, so its RHF value
+ * is a `FormSelectItem` keyed by the dimension name — the identifier the API expects.
+ */
+export const toDataQualityDimensionItem = (
+  dimension: string | undefined,
+  label?: string
+): FormSelectItem | undefined =>
+  dimension ? { id: dimension, label: label ?? dimension } : undefined;
+
+/**
  * Builds the RHF value for a single Array-typed param from its JSON-array
  * payload string. tableDiff's `ColumnArrayField` params store each row as
  * `{ value: FormSelectItem }`; every other Array param's row is a plain-text
@@ -317,43 +343,42 @@ const buildEditArrayParamValue = (
  * classifier `ParameterFields.tsx` render logic is built on (via
  * `isSelectParam`) — so the two can't drift out of sync.
  */
+const buildEditParamFromKind = (
+  kind: ReturnType<typeof getParamPrefillKind>,
+  curr: { name?: string; value?: string },
+  isTableDiff: boolean
+): EditParamValue => {
+  switch (kind) {
+    case 'select':
+      return curr.value ? toColumnFormSelectItem(curr.value) : '';
+    case 'array':
+      return isValidJSONString(curr.value)
+        ? buildEditArrayParamValue(
+            curr.name ?? '',
+            curr.value ?? '[]',
+            isTableDiff
+          )
+        : curr.value ?? '';
+    case 'boolean':
+      return curr.value === 'true';
+    default:
+      return curr.value ?? '';
+  }
+};
+
 const buildEditParamEntry = (
   curr: { name?: string; value?: string },
   param: TestCaseParameterDefinition | undefined,
   definition: TestDefinition,
   isTableDiff: boolean
 ): EditParamValue => {
-  let result: EditParamValue;
-
   if (isTableDiff && curr.name === TABLE2) {
-    result = curr.value ? toColumnFormSelectItem(curr.value) : '';
-  } else {
-    const kind = getParamPrefillKind(definition, param);
-    switch (kind) {
-      case 'select':
-        result = curr.value ? toColumnFormSelectItem(curr.value) : '';
-
-        break;
-      case 'array':
-        result = isValidJSONString(curr.value)
-          ? buildEditArrayParamValue(
-              curr.name ?? '',
-              curr.value ?? '[]',
-              isTableDiff
-            )
-          : curr.value ?? '';
-
-        break;
-      case 'boolean':
-        result = curr.value === 'true';
-
-        break;
-      default:
-        result = curr.value ?? '';
-    }
+    return curr.value ? toColumnFormSelectItem(curr.value) : '';
   }
 
-  return result;
+  const kind = getParamPrefillKind(definition, param);
+
+  return buildEditParamFromKind(kind, curr, isTableDiff);
 };
 
 /**
@@ -451,6 +476,12 @@ export const buildEditDefaults = (
     dimensionColumns: toColumnFormSelectItems(
       testCase.dimensionColumns
     ) as never,
+    // Test cases created before dimensions could be set on them carry none, so
+    // fall back to the dimension of their test definition — the effective one.
+    dataQualityDimension: toDataQualityDimensionItem(
+      testCase.dataQualityDimension?.name ?? definition.dataQualityDimension,
+      testCase.dataQualityDimension?.displayName
+    ),
     testTypeId: {
       id: testCase.testDefinition?.fullyQualifiedName ?? '',
       label: testCase.testDefinition?.fullyQualifiedName ?? '',

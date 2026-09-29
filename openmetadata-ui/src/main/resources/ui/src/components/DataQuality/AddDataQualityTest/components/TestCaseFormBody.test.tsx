@@ -28,7 +28,10 @@ import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
+import {
+  getTableDetailsByFQN,
+  getTableProfilerConfig,
+} from '../../../../rest/tableAPI';
 import {
   getListTestCaseBySearch,
   getListTestDefinitions,
@@ -49,11 +52,22 @@ jest.mock('../../../../rest/searchAPI', () => ({
 
 jest.mock('../../../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest.fn(),
+  getTableProfilerConfig: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../../rest/testAPI', () => ({
   getListTestDefinitions: jest.fn(),
   getListTestCaseBySearch: jest.fn(),
+}));
+
+jest.mock('../../../../rest/dataQualityDimensionAPI', () => ({
+  getDataQualityDimensions: jest.fn().mockResolvedValue({
+    data: [
+      { id: 'dim-1', name: 'Accuracy', displayName: 'Accuracy' },
+      { id: 'dim-2', name: 'Timeliness', displayName: 'Timeliness' },
+    ],
+    paging: { total: 2 },
+  }),
 }));
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
@@ -91,10 +105,10 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
 }));
 
 jest.mock(
-  '../../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1',
+  '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval',
   () =>
     jest.fn().mockImplementation(({ onChange }) => (
-      <div data-testid="schedule-interval-v1">
+      <div data-testid="schedule-interval">
         <button
           data-testid="schedule-change-btn"
           onClick={() => onChange?.('0 0 * * *')}>
@@ -127,6 +141,8 @@ const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
 const mockGetTableDetailsByFQN = getTableDetailsByFQN as jest.MockedFunction<
   typeof getTableDetailsByFQN
 >;
+const mockGetTableProfilerConfig =
+  getTableProfilerConfig as jest.MockedFunction<typeof getTableProfilerConfig>;
 const mockGetListTestDefinitions =
   getListTestDefinitions as jest.MockedFunction<typeof getListTestDefinitions>;
 const mockGetListTestCaseBySearch =
@@ -226,6 +242,7 @@ describe('TestCaseFormBody', () => {
     formRef = undefined;
     mockSearchQuery.mockResolvedValue(SEARCH_RESPONSE as never);
     mockGetTableDetailsByFQN.mockResolvedValue(SELECTED_TABLE as never);
+    mockGetTableProfilerConfig.mockResolvedValue({} as never);
     mockGetListTestDefinitions.mockResolvedValue({
       data: [TEST_DEFINITION],
       paging: { total: 1 },
@@ -388,6 +405,39 @@ describe('TestCaseFormBody', () => {
     });
 
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+  });
+
+  it('defaults the data quality dimension to the selected test definition one', async () => {
+    mockGetListTestDefinitions.mockResolvedValue({
+      data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
+      paging: { total: 1 },
+    } as never);
+
+    await act(async () => {
+      renderBody({ table: SELECTED_TABLE });
+    });
+
+    await waitFor(() => {
+      expect(mockGetListTestDefinitions).toHaveBeenCalled();
+    });
+
+    expect(
+      await screen.findByTestId('data-quality-dimension')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      formRef?.setValue('testTypeId', {
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      } as never);
+    });
+
+    await waitFor(() => {
+      expect(formRef?.getValues('dataQualityDimension')).toEqual({
+        id: 'Accuracy',
+        label: 'Accuracy',
+      });
+    });
   });
 
   it('does not expose distribution-only fields from a schema capability alone', async () => {
@@ -575,9 +625,7 @@ describe('TestCaseFormBody', () => {
     });
 
     expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('schedule-interval-v1')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('schedule-interval')).toBeInTheDocument();
     expect(await screen.findByTestId('enable-debug-log')).toBeInTheDocument();
     expect(await screen.findByTestId('raise-on-error')).toBeInTheDocument();
   });
@@ -845,6 +893,33 @@ describe('TestCaseFormBody', () => {
       expect(formRef?.getValues('dimensionColumns')).toEqual(['id']);
       expect(formRef?.getValues('topDimensions')).toBe(5);
     });
+
+    it('keeps the prefilled custom dimension instead of the test definition one', async () => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody(
+          { table: SELECTED_TABLE, isEditMode: true },
+          {
+            testLevel: TestLevel.TABLE,
+            selectedTable: TABLE_FQN,
+            dataQualityDimension: { id: 'Timeliness', label: 'Timeliness' },
+          }
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      expect(formRef?.getValues('dataQualityDimension')).toEqual({
+        id: 'Timeliness',
+        label: 'Timeliness',
+      });
+    });
   });
 
   describe('showOnlyParameter', () => {
@@ -857,6 +932,115 @@ describe('TestCaseFormBody', () => {
       expect(screen.queryByTestId('select-table-card')).not.toBeInTheDocument();
       expect(screen.queryByTestId('test-details-card')).not.toBeInTheDocument();
       expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+    });
+
+    it('keeps the dimension field, it is edited from the parameter box', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, showOnlyParameter: true });
+      });
+
+      expect(
+        await screen.findByTestId('data-quality-dimension')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('threshold preview', () => {
+    const THRESHOLD_DEFINITION = {
+      ...TEST_DEFINITION,
+      name: 'columnValuesToBeNotNull',
+      fullyQualifiedName: 'columnValuesToBeNotNull',
+      displayName: 'Column Values To Be Not Null',
+      parameterDefinition: [
+        {
+          name: 'threshold',
+          displayName: 'Failure Threshold',
+          dataType: 'NUMBER',
+        },
+        {
+          name: 'thresholdUnit',
+          displayName: 'Threshold Unit',
+          dataType: 'STRING',
+          optionValues: ['ABSOLUTE', 'PERCENTAGE'],
+        },
+      ],
+    } as unknown as TestDefinition;
+
+    const selectThresholdTest = async () => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [THRESHOLD_DEFINITION],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: 'columnValuesToBeNotNull',
+          label: 'Column Values To Be Not Null',
+        } as never);
+        formRef?.setValue('params.threshold', 50 as never);
+      });
+    };
+
+    it('notes the sample the threshold is measured on, read from the real response shape', async () => {
+      // GET /tables/{id}/tableProfilerConfig nests the sample under
+      // `profileSampleConfig.config` — reading it off the config root silently
+      // dropped the note even though the request succeeded.
+      mockGetTableProfilerConfig.mockResolvedValue({
+        tableProfilerConfig: {
+          profileSampleConfig: {
+            sampleConfigType: 'STATIC',
+            config: {
+              profileSample: 10,
+              profileSampleType: 'PERCENTAGE',
+            },
+          },
+        },
+      } as never);
+
+      await selectThresholdTest();
+
+      expect(
+        await screen.findByTestId('threshold-sampling-warning')
+      ).toBeInTheDocument();
+      expect(mockGetTableProfilerConfig).toHaveBeenCalledWith('table-id');
+    });
+
+    it('omits the note when the table is profiled in full', async () => {
+      mockGetTableProfilerConfig.mockResolvedValue({
+        tableProfilerConfig: { computeColumnMetrics: true },
+      } as never);
+
+      await selectThresholdTest();
+
+      expect(
+        await screen.findByTestId('threshold-preview')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('threshold-sampling-warning')
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not ask for the profiler config of a test without a threshold', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE });
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: TEST_DEFINITION_FQN,
+          label: 'Column Values To Be Between',
+        } as never);
+      });
+
+      expect(mockGetTableProfilerConfig).not.toHaveBeenCalled();
     });
   });
 });

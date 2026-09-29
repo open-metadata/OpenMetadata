@@ -144,6 +144,11 @@ jest.mock('../../rest/auditLogAPI', () => ({
 
 // The real range picker cannot be driven from jsdom, so expose a button that
 // hands the page a valid range and lets the export flow run end to end.
+const mockRangeDay = {
+  startOf: () => ({ valueOf: () => 1 }),
+  endOf: () => ({ valueOf: () => 2 }),
+};
+
 jest.mock('../../components/common/DatePicker/DatePicker', () => ({
   __esModule: true,
   default: {
@@ -155,13 +160,7 @@ jest.mock('../../components/common/DatePicker/DatePicker', () => ({
       <button
         data-testid="export-date-range-picker"
         type="button"
-        onClick={() => {
-          const day = {
-            startOf: () => ({ valueOf: () => 1 }),
-            endOf: () => ({ valueOf: () => 2 }),
-          };
-          onChange([day, day]);
-        }}>
+        onClick={() => onChange([mockRangeDay, mockRangeDay])}>
         range
       </button>
     ),
@@ -223,8 +222,9 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
     ));
 });
 
-jest.mock('../../components/AuditLog', () => ({
-  AuditLogFilters: jest.fn().mockImplementation(({ onFiltersChange }) => (
+jest.mock('../../components/AuditLog/AuditLogFilters.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ onFiltersChange }) => (
     <div data-testid="audit-log-filters">
       <button
         data-testid="apply-filter"
@@ -243,7 +243,11 @@ jest.mock('../../components/AuditLog', () => ({
       </button>
     </div>
   )),
-  AuditLogList: jest
+}));
+
+jest.mock('../../components/AuditLog/AuditLogList.component', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ isLoading, logs }) => (
       <div data-testid="audit-log-list">

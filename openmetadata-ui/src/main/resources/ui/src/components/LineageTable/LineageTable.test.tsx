@@ -13,14 +13,13 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
-import { LineageContextType } from '../../context/LineageProvider/LineageProvider.interface';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
+import { LineageConfig } from '../../interface/lineage.interface';
 import {
   getLineageByEntityCount,
   getLineageDataByFQN,
@@ -32,13 +31,13 @@ import {
 } from '../../utils/Lineage/LineagePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
-import { LineageConfig } from '../Entity/EntityLineage/EntityLineage.interface';
 import { ColumnLevelLineageNode } from '../Lineage/Lineage.interface';
+import { useLineageHandlers } from '../Lineage/Lineage/LineageHandlersContext';
 import LineageTable from './LineageTable';
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
 // Mock dependencies
-jest.mock('../../context/LineageProvider/LineageProvider');
+jest.mock('../Lineage/Lineage/LineageHandlersContext');
 jest.mock('../../hooks/paging/usePaging');
 jest.mock('../../hooks/useFqn');
 jest.mock('../../utils/useRequiredParams');
@@ -48,7 +47,16 @@ jest.mock('../../utils/StringUtils', () => ({
   ...jest.requireActual('../../utils/StringUtils'),
   stringToHTML: jest.fn((str: string) => str),
 }));
-jest.mock('../../hooks/useLineageStore');
+jest.mock('../../hooks/useLineageStore', () => {
+  const mockStore = jest.fn();
+
+  // getState mirrors whatever state the current mock implementation returns.
+  return {
+    useLineageStore: Object.assign(mockStore, {
+      getState: () => mockStore(),
+    }),
+  };
+});
 jest.mock('../../utils/Lineage/LineageUtils');
 jest.mock('../../utils/Lineage/LineagePureUtils');
 jest.mock('../../utils/ToastUtils', () => ({
@@ -80,8 +88,8 @@ jest.mock('../Entity/EntityLineage/CustomControls.component', () => {
   return jest.fn().mockReturnValue(<div>CustomControls</div>);
 });
 
-const mockUseLineageProvider = useLineageProvider as jest.MockedFunction<
-  typeof useLineageProvider
+const mockUseLineageHandlers = useLineageHandlers as jest.MockedFunction<
+  typeof useLineageHandlers
 >;
 const mockUseLineageStore = useLineageStore as jest.MockedFunction<
   typeof useLineageStore
@@ -196,18 +204,13 @@ describe('LineageTable', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockUseLineageProvider.mockReturnValue({
-      selectedQuickFilters: [],
-      setSelectedQuickFilters: jest.fn(),
-      lineageConfig: {
-        downstreamDepth: 2,
-        upstreamDepth: 2,
-      } as LineageConfig,
+    mockUseLineageHandlers.mockReturnValue({
       updateEntityData: jest.fn(),
-      onExportClick: jest.fn(),
-    } as unknown as LineageContextType);
+    } as unknown as ReturnType<typeof useLineageHandlers>);
 
     mockUseLineageStore.mockReturnValue({
+      selectedQuickFilters: [],
+      setSelectedQuickFilters: jest.fn(),
       lineageConfig: {
         downstreamDepth: 2,
         upstreamDepth: 2,
@@ -1033,7 +1036,7 @@ describe('LineageTable', () => {
         },
       };
 
-      mockUseLineageProvider.mockReturnValue({
+      mockUseLineageStore.mockReturnValue({
         selectedQuickFilters: [
           {
             key: 'service.name',
@@ -1049,10 +1052,8 @@ describe('LineageTable', () => {
           downstreamDepth: 2,
           upstreamDepth: 2,
         } as LineageConfig,
-        updateEntityData: jest.fn(),
-        onExportClick: jest.fn(),
-        onLineageConfigUpdate: jest.fn(),
-      } as unknown as LineageContextType);
+        setLineageConfig: jest.fn(),
+      });
 
       mockUseLineageTableState.mockReturnValue({
         ...defaultMockState,
@@ -1108,16 +1109,15 @@ describe('LineageTable', () => {
     it('should expose glossary term quick filters in column mode', async () => {
       const setSelectedQuickFilters = jest.fn();
 
-      mockUseLineageProvider.mockReturnValue({
+      mockUseLineageStore.mockReturnValue({
         selectedQuickFilters: [],
         setSelectedQuickFilters,
         lineageConfig: {
           downstreamDepth: 2,
           upstreamDepth: 2,
         } as LineageConfig,
-        updateEntityData: jest.fn(),
-        onExportClick: jest.fn(),
-      } as unknown as LineageContextType);
+        setLineageConfig: jest.fn(),
+      });
 
       mockUseLineageTableState.mockReturnValue({
         ...defaultMockState,
@@ -1136,6 +1136,100 @@ describe('LineageTable', () => {
           ])
         );
       });
+    });
+  });
+
+  describe('pagination reset on filter/search change', () => {
+    // Helper: read the latest props object passed to the (mocked)
+    // CustomControlsComponent across all re-renders.
+    const getCustomControlsProps = () => {
+      const calls = (CustomControlsComponent as unknown as jest.Mock).mock
+        .calls;
+
+      return calls[calls.length - 1][0] as {
+        onSearchValueChange?: (value: string) => void;
+        onPageReset?: () => void;
+      };
+    };
+
+    it('resets currentPage to 1 and forwards the term when the search value changes', () => {
+      const handlePageChange = jest.fn();
+      const setSearchValue = jest.fn();
+      mockUsePaging.mockReturnValue({
+        currentPage: 3,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+        searchValue: '',
+        setSearchValue,
+      });
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      const { onSearchValueChange } = getCustomControlsProps();
+      onSearchValueChange?.('narrow');
+
+      // The page must be reset before the new search term is committed, so the
+      // next fetch/slice for the narrowed set starts at page 1 (from = 0).
+      expect(handlePageChange).toHaveBeenCalledWith(1);
+      expect(setSearchValue).toHaveBeenCalledWith('narrow');
+    });
+
+    it('resets currentPage to 1 when the search value changes in column-level mode', () => {
+      const handlePageChange = jest.fn();
+      const setSearchValue = jest.fn();
+      mockUsePaging.mockReturnValue({
+        currentPage: 3,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.ColumnLevel,
+        searchValue: '',
+        setSearchValue,
+      });
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      const { onSearchValueChange } = getCustomControlsProps();
+      onSearchValueChange?.('column-term');
+
+      expect(handlePageChange).toHaveBeenCalledWith(1);
+      expect(setSearchValue).toHaveBeenCalledWith('column-term');
+    });
+
+    it('passes a page-reset handler for quick filter changes that resets currentPage to 1', () => {
+      const handlePageChange = jest.fn();
+      mockUsePaging.mockReturnValue({
+        currentPage: 3,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      const { onPageReset } = getCustomControlsProps();
+
+      expect(onPageReset).toEqual(expect.any(Function));
+
+      onPageReset?.();
+
+      expect(handlePageChange).toHaveBeenCalledWith(1);
     });
   });
 });

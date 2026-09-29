@@ -25,6 +25,7 @@ import {
   Routes,
   useLocation,
 } from 'react-router-dom';
+import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import {
   createRouteActivationStore,
   RouteActivationProvider,
@@ -292,7 +293,10 @@ export const KeepAliveRoutes = ({
               data-testid={`route-cache-${path}`}
               key={path}
               style={isActive ? ACTIVE_ROUTE_STYLE : INACTIVE_ROUTE_STYLE}>
-              {route.element}
+              {/* A hidden cached route must not write global state like the tab title. */}
+              <RouteVisibilityProvider isVisible={isActive}>
+                {route.element}
+              </RouteVisibilityProvider>
             </div>
           );
         })}

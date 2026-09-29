@@ -39,11 +39,10 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
 }));
 
 jest.mock('../../Services/AddIngestion/Steps/ScheduleInterval', () =>
-  jest.fn().mockImplementation(({ onDeploy, onBack }) => (
+  jest.fn().mockImplementation(({ onChange }) => (
     <div>
       ScheduleInterval
-      <button onClick={onDeploy}>Submit ScheduleInterval</button>
-      <button onClick={onBack}>Cancel ScheduleInterval</button>
+      <button onClick={() => onChange('0 12 * * *')}>Change schedule</button>
     </div>
   ))
 );
@@ -174,15 +173,12 @@ describe('AppSchedule component', () => {
 
     expect(screen.getByText('Modal is open')).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Submit ScheduleInterval' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Change schedule' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
 
-    expect(mockOnSave).toHaveBeenCalled();
+    expect(mockOnSave).toHaveBeenCalledWith('0 12 * * *');
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
     expect(screen.getByText('Modal is close')).toBeInTheDocument();
   });

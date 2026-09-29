@@ -19,7 +19,14 @@ import {
   Popover,
 } from '@openmetadata/ui-core-components';
 import { debounce, isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -36,27 +43,41 @@ function TeamAndUserSelectItem({
 }: Readonly<TeamAndUserSelectItemProps>) {
   const { t } = useTranslation();
   const { setValue, control } = useFormContext();
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
+  const searchVersion = useRef(0);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [options, setOptions] = useState<SelectOption[]>([]);
+
+  const focusDropdown = useCallback((element: HTMLDivElement | null) => {
+    dropdownRef.current = element;
+    // The portal can mount after the open-state effect. Focus when its content
+    // exists, without an ancestor scroll that would dismiss the popover.
+    element?.querySelector('input')?.focus({ preventScroll: true });
+  }, []);
 
   const fieldPath = `destinations.${fieldName.join('.')}`;
   const selectedOptions: string[] =
     useWatch({ name: fieldPath, control }) ?? [];
 
   const handleSearch = useCallback(
-    async (value: string) => {
+    async (value: string, version: number) => {
       try {
         setIsLoadingOptions(true);
         const results = await onSearch(value);
-        setOptions(results);
+        if (version === searchVersion.current) {
+          setOptions(results);
+        }
       } catch {
-        setOptions([]);
+        if (version === searchVersion.current) {
+          setOptions([]);
+        }
       } finally {
-        setIsLoadingOptions(false);
+        if (version === searchVersion.current) {
+          setIsLoadingOptions(false);
+        }
       }
     },
     [onSearch]
@@ -102,9 +123,15 @@ function TeamAndUserSelectItem({
 
       return;
     }
-    debouncedSearch(searchText);
+    const version = ++searchVersion.current;
+    debouncedSearch(searchText, version);
 
-    return () => debouncedSearch.cancel();
+    return () => {
+      // Invalidate in-flight results as soon as the query or picker changes,
+      // including the debounce interval before the replacement request starts.
+      searchVersion.current = version + 1;
+      debouncedSearch.cancel();
+    };
   }, [searchText, entityType, debouncedSearch, isDisabled]);
 
   useEffect(() => {
@@ -131,6 +158,45 @@ function TeamAndUserSelectItem({
         true
       );
   }, []);
+
+  let optionsContent: ReactNode;
+  if (isLoadingOptions) {
+    optionsContent = (
+      <div className="tw:space-y-1 tw:p-2">
+        {[1, 2, 3].map((i) => (
+          <div
+            className="tw:h-6 tw:animate-pulse tw:rounded tw:bg-secondary"
+            key={i}
+          />
+        ))}
+      </div>
+    );
+  } else if (isEmpty(options)) {
+    optionsContent = (
+      <p className="tw:p-2 tw:text-center tw:text-sm tw:text-tertiary">
+        {t('label.no-data-found')}
+      </p>
+    );
+  } else {
+    optionsContent = options.map(({ label, value }) => (
+      <button
+        className="tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:text-left hover:tw:bg-secondary"
+        data-testid={value}
+        key={value}
+        type="button"
+        onClick={() => handleOptionClick(value)}>
+        <Checkbox
+          data-testid={`${label}-option-checkbox`}
+          isSelected={selectedOptions.includes(value)}
+        />
+        <span
+          className="tw:truncate tw:text-sm tw:text-primary"
+          data-testid={`${label}-option-label`}>
+          {label}
+        </span>
+      </button>
+    ));
+  }
 
   return (
     <div className="tw:relative tw:w-full">
@@ -198,10 +264,8 @@ function TeamAndUserSelectItem({
         }}>
         <div
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
-          ref={dropdownRef}>
+          ref={focusDropdown}>
           <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- search box must focus when dropdown opens
-            autoFocus
             data-testid="search-input"
             inputDataTestId="search-input-field"
             placeholder={t('label.search-by-type', { type: entityType })}
@@ -209,39 +273,7 @@ function TeamAndUserSelectItem({
             onChange={(val) => setSearchText(val)}
           />
           <div className="tw:mt-2 tw:max-h-48 tw:overflow-y-auto">
-            {isLoadingOptions ? (
-              <div className="tw:space-y-1 tw:p-2">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    className="tw:h-6 tw:animate-pulse tw:rounded tw:bg-secondary"
-                    key={i}
-                  />
-                ))}
-              </div>
-            ) : isEmpty(options) ? (
-              <p className="tw:p-2 tw:text-center tw:text-sm tw:text-tertiary">
-                {t('label.no-data-found')}
-              </p>
-            ) : (
-              options.map(({ label, value }) => (
-                <button
-                  className="tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:text-left hover:tw:bg-secondary"
-                  data-testid={value}
-                  key={value}
-                  type="button"
-                  onClick={() => handleOptionClick(value)}>
-                  <Checkbox
-                    data-testid={`${label}-option-checkbox`}
-                    isSelected={selectedOptions.includes(value)}
-                  />
-                  <span
-                    className="tw:truncate tw:text-sm tw:text-primary"
-                    data-testid={`${label}-option-label`}>
-                    {label}
-                  </span>
-                </button>
-              ))
-            )}
+            {optionsContent}
           </div>
         </div>
       </Popover>

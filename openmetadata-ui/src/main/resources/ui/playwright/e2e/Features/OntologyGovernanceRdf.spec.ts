@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import {
   CreateGlossary,
@@ -21,6 +21,7 @@ import { OntologyBulkSubmission } from '../../../src/generated/api/data/ontology
 import { OntologyImpactReport } from '../../../src/generated/api/data/ontologyImpactReport';
 import { OntologyImportResult } from '../../../src/generated/api/data/ontologyImportResult';
 import { Glossary as GlossaryEntity } from '../../../src/generated/entity/data/glossary';
+import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';

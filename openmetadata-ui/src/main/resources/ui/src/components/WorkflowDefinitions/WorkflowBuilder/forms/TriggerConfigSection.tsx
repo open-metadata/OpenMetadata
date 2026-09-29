@@ -28,16 +28,23 @@ import {
 } from '../../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { TriggerConfigSectionProps } from '../../../../interface/workflow-builder-components.interface';
+import {
+  EXTENSION_FIELD_PREFIX,
+  getFieldLabel,
+} from '../../../../utils/WorkflowConfigUtils';
 import { FormField } from '../common/FormField';
 import { CronExpressionBuilder } from './CronExpressionBuilder';
 
-const getFieldLabel = (v: string): string => {
-  if (v.startsWith('extension.')) {
-    return v.slice('extension.'.length);
-  }
-
-  return v;
-};
+const getScheduleTypeDisabled = (
+  isFormDisabled: boolean,
+  lockScheduleTypeField?: boolean,
+  lockPeriodicBatchFields?: boolean,
+  lockNonIncludeExcludeFields?: boolean
+) =>
+  isFormDisabled ||
+  (lockScheduleTypeField ??
+    lockPeriodicBatchFields ??
+    lockNonIncludeExcludeFields);
 
 /** Sync a useListData instance with an external string[] value. Replaces list content to avoid duplicates. */
 const useSyncedListData = (
@@ -94,11 +101,12 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
     isFormDisabled || lockNonIncludeExcludeFields;
   const periodicBatchDisabled =
     isFormDisabled || (lockPeriodicBatchFields ?? lockNonIncludeExcludeFields);
-  const scheduleTypeDisabled =
-    isFormDisabled ||
-    (lockScheduleTypeField ??
-      lockPeriodicBatchFields ??
-      lockNonIncludeExcludeFields);
+  const scheduleTypeDisabled = getScheduleTypeDisabled(
+    isFormDisabled,
+    lockScheduleTypeField,
+    lockPeriodicBatchFields,
+    lockNonIncludeExcludeFields
+  );
   const includeExcludeDisabled = isFormDisabled;
 
   const triggerTypeOptions = [
@@ -155,10 +163,10 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
   const fieldItems = useMemo(
     () =>
       availableExcludeFields.map((v) => {
-        if (v.startsWith('extension.')) {
+        if (v.startsWith(EXTENSION_FIELD_PREFIX)) {
           return {
             id: v,
-            label: v.slice('extension.'.length),
+            label: getFieldLabel(v),
             supportingText: t('label.custom-property'),
           };
         }

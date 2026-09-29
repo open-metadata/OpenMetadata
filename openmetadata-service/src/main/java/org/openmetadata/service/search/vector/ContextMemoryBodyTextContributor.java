@@ -53,6 +53,9 @@ public final class ContextMemoryBodyTextContributor implements VectorBodyTextCon
     appendIfPresent(parts, "question", memory.getQuestion());
     appendIfPresent(parts, "answer", memory.getAnswer());
     appendIfPresent(parts, "description", memory.getDescription());
+    if (memory.getSourceFile() != null) {
+      appendIfPresent(parts, "source file", memory.getSourceFile().getName());
+    }
     return parts.isEmpty() ? "" : String.join("; ", parts);
   }
 

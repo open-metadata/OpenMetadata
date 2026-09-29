@@ -186,7 +186,7 @@ class ClientConfig(ConfigModel):
     retry: int | None = 3
     retry_wait: int | None = 30
     limit_codes: list[int] = [429]  # noqa: RUF012
-    retry_codes: list[int] = [504]  # noqa: RUF012
+    retry_codes: list[int] = [503, 504]  # noqa: RUF012
     auth_token: Callable | None = None
     access_token: str | None = None
     expires_in: int | None = None

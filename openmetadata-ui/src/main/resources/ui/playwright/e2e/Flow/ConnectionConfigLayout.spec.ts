@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { expect, Locator, Page, test } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
-import { redirectToHomePage } from '../../utils/common';
+import { expect, test } from '../../support/fixtures/base';
+import { chooseSelectOption, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 
@@ -52,13 +53,17 @@ const getGridColumnCount = async (locator: Locator) =>
         .length
   );
 
-const chooseSelectOption = async (
+const chooseConnectionOption = async (
   page: Page,
   select: Locator,
   optionName: string
 ) => {
-  await select.getByRole('button').click();
-  await page.getByRole('option', { exact: true, name: optionName }).click();
+  const trigger = select.getByRole('button');
+  const option = page
+    .locator('.core-one-of-field-select-popover')
+    .getByRole('option', { name: optionName, exact: true });
+
+  await chooseSelectOption(trigger, option);
 };
 
 const mockSuccessfulSnowflakeTestConnection = async (page: Page) => {
@@ -397,7 +402,7 @@ test.describe('Connection config layout', () => {
       )
     ).toBeHidden();
 
-    await chooseSelectOption(
+    await chooseConnectionOption(
       page,
       sampleStorageSelect,
       'Sample Data Storage Config'
@@ -452,7 +457,7 @@ test.describe('Connection config layout', () => {
       'Overwrite and storage config fields overlap'
     );
 
-    await chooseSelectOption(
+    await chooseConnectionOption(
       page,
       page.locator(
         '[data-testid^="select-widget-root/sampleDataStorageConfig/config/storageConfig__"]'

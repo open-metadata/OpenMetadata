@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -281,7 +281,7 @@ test.describe('Team Subscriptions', { tag: ['@Platform', '@Teams'] }, () => {
     });
 
     await test.step('Reload page and verify persistence', async () => {
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       await verifyWebhookIcon(page, 'generic-icon', endpoint);

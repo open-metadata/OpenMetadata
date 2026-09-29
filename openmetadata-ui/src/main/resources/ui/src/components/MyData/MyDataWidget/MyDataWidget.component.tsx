@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -47,7 +48,6 @@ import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
@@ -107,7 +107,7 @@ const MyDataWidgetInternal = ({
       extraInfo.push({
         key: 'Owner',
         value: (
-          <OwnerLabel
+          <Owner
             isCompactView={false}
             owners={(item.owners as EntityReference[]) ?? []}
             showLabel={false}

@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   createNewPage,
   fullUuid,
@@ -109,7 +110,9 @@ async function waitForColumnInGridIndex(
         );
 
         if (!response.ok()) {
-          return 0;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const body = await response.json();
@@ -261,8 +264,8 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       );
 
       await page.getByRole('button', { name: 'Asset Type' }).click();
-      await page.getByRole('menuitem', { name: 'Table' }).click();
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'Table' }).click();
+      await page.getByTestId('update-btn').click();
 
       const apiRequest = await apiCallPromise;
       expect(apiRequest.url()).toContain('entityTypes=table');
@@ -273,10 +276,16 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     await test.step('Navigate to page with metadataStatus in URL', async () => {
       const dataReq = waitForGridRequest(page);
       await page.goto(
-        `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`
+        `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`,
+        { waitUntil: 'domcontentloaded' }
       );
       await dataReq;
       await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify the grid survived the load', async () => {
+      // A render crash swaps the page for the error boundary, so assert the grid is still mounted.
+      await expect(page.getByTestId('column-grid-container')).toBeVisible();
     });
 
     await test.step('Verify filter chip is restored', async () => {
@@ -357,7 +366,9 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       // Use waitForRequest (not waitForResponse) so we don't depend on response
       // status code — the UI filter chip is driven by URL params, not response data.
       const dataReq = waitForGridRequest(page);
-      await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`);
+      await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`, {
+        waitUntil: 'domcontentloaded',
+      });
       await dataReq;
       await waitForAllLoadersToDisappear(page);
     });
@@ -469,7 +480,8 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       await page.goto(
         `${COLUMN_BULK_OPERATIONS_URL}?service.displayName.keyword=${encodeURIComponent(
           'sample_data'
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await dataReq;
       await waitForAllLoadersToDisappear(page);

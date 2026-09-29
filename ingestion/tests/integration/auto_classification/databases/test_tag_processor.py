@@ -164,7 +164,16 @@ def test_it_returns_the_expected_classifications(
             reason=Contains("Detected by `SpacyRecognizer`"),
         ),
     ]
-    assert address_column.tags == []
+    # SpacyRecognizer reads a street name as a PERSON in 2 of the 8 rows and as a LOCATION in 3.
+    # Neither survived the old sample-size average; scoring on the strongest single match means a
+    # column of postal addresses is now flagged, which is what it is.
+    assert address_column.tags == [
+        IsInstance(TagLabel)
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains("Detected by `SpacyRecognizer`"),
+        ),
+    ]
     assert dwh_x20_column.tags == [
         IsInstance(TagLabel)
         & HasAttributes(
@@ -181,12 +190,7 @@ def test_it_returns_the_expected_classifications(
             reason=Contains("Detected by `ValidatedDateRecognizer`", "Patterns matched:"),
         ),
     ]
-    # SpacyRecognizer's DATE_TIME entity flags 4-digit year-like integers
-    # regardless of column type or semantics. Tracked separately: #29083.
-    assert academic_year_code_column.tags == [
-        IsInstance(TagLabel)
-        & HasAttributes(
-            tagFQN=HasAttributes(root="PII.NonSensitive"),
-            reason=Contains("Detected by `SpacyRecognizer`"),
-        ),
-    ]
+    # SpacyRecognizer's DATE_TIME entity flags 4-digit year-like integers regardless of column
+    # type or semantics (#29083); date_time_patcher now drops them because a bare year names no
+    # month or day.
+    assert academic_year_code_column.tags == []

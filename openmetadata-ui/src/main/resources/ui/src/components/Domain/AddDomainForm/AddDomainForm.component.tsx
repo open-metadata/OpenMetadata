@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 import {
-  Autocomplete,
   Avatar,
   Box,
   Button,
-  Dot,
   FieldProp,
   FieldTypes,
   FormField,
   FormItemLabel,
-  FormSelectItem,
   getField,
   HintText,
   HookForm,
@@ -38,8 +35,8 @@ import {
 } from '../../../constants/DataProduct.constants';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   CreateDataProduct,
@@ -63,12 +60,6 @@ import {
   IntakeFormField,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../../generated/type/tagLabel';
 import { searchDomains } from '../../../rest/domainAPI';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
@@ -82,16 +73,15 @@ import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferen
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import GlossaryTermTreeSelect from '../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import {
   AVAILABLE_ICONS,
   DEFAULT_DATA_PRODUCT_ICON,
   DEFAULT_DOMAIN_ICON,
-} from '../../common/IconPicker';
+} from '../../common/IconPicker/IconPicker.constants';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import {
@@ -166,19 +156,46 @@ const normalizeExtensionForApi = (
   return normalized;
 };
 
+const applyDataProductFields = (
+  dataProduct: CreateDataProduct,
+  formData: DomainFormValues,
+  parentDomain?: Domain
+): void => {
+  const domainRef = formData.domains?.value as EntityReference | undefined;
+  if (domainRef?.fullyQualifiedName) {
+    dataProduct.domains = [domainRef.fullyQualifiedName];
+  } else if (parentDomain?.fullyQualifiedName) {
+    dataProduct.domains = [parentDomain.fullyQualifiedName];
+  }
+  if (formData.dataProductType?.value) {
+    dataProduct.dataProductType = formData.dataProductType
+      .value as DataProductType;
+  }
+  if (formData.visibility?.value) {
+    dataProduct.visibility = formData.visibility.value as Visibility;
+  }
+  if (formData.portfolioPriority?.value) {
+    dataProduct.portfolioPriority = formData.portfolioPriority
+      .value as PortfolioPriority;
+  }
+  // Collate-only: no field means the property is never sent.
+  if (domainClassBase.getReviewersField()) {
+    dataProduct.reviewers = formData.reviewers.map(
+      (item) => item.value as EntityReference
+    );
+  }
+};
+
 export const transformDomainFormData = (
   formData: DomainFormValues,
   type: DomainFormType,
   parentDomain?: Domain
 ): CreateDomain | CreateDataProduct => {
-  const tags = formData.tags.map((item) => item.value as TagLabel);
+  const tags = formData.tags;
   const expertsList = formData.experts.map(
     (item) => item.value as EntityReference
   );
   const ownersList = formData.owners.map(
-    (item) => item.value as EntityReference
-  );
-  const reviewersList = formData.reviewers.map(
     (item) => item.value as EntityReference
   );
 
@@ -222,67 +239,13 @@ export const transformDomainFormData = (
   } as CreateDomain | CreateDataProduct;
 
   if (type === DomainFormType.DATA_PRODUCT) {
-    const dataProduct = data as CreateDataProduct;
-    const domainRef = formData.domains?.value as EntityReference | undefined;
-    if (domainRef?.fullyQualifiedName) {
-      dataProduct.domains = [domainRef.fullyQualifiedName];
-    } else if (parentDomain?.fullyQualifiedName) {
-      dataProduct.domains = [parentDomain.fullyQualifiedName];
-    }
-    if (formData.dataProductType?.value) {
-      dataProduct.dataProductType = formData.dataProductType
-        .value as DataProductType;
-    }
-    if (formData.visibility?.value) {
-      dataProduct.visibility = formData.visibility.value as Visibility;
-    }
-    if (formData.portfolioPriority?.value) {
-      dataProduct.portfolioPriority = formData.portfolioPriority
-        .value as PortfolioPriority;
-    }
-    dataProduct.reviewers = reviewersList;
+    applyDataProductFields(data as CreateDataProduct, formData, parentDomain);
   } else {
     delete (data as CreateDomain & { domains?: unknown }).domains;
   }
 
   return data;
 };
-
-const createTagLabel = ({
-  description,
-  displayName,
-  name,
-  source,
-  style,
-  tagFQN,
-}: {
-  description?: string;
-  displayName?: string;
-  name?: string;
-  source: TagSource;
-  style?: TagLabel['style'];
-  tagFQN: string;
-}): TagLabel => ({
-  description,
-  displayName,
-  labelType: LabelType.Manual,
-  name,
-  source,
-  state: State.Confirmed,
-  style,
-  tagFQN,
-});
-
-const mapTagLabelToOption = (tagLabel: TagLabel): DomainFormSelectItem => ({
-  id: tagLabel.tagFQN,
-  label:
-    getTagDisplay(tagLabel.displayName || tagLabel.name) || tagLabel.tagFQN,
-  supportingText: tagLabel.displayName || tagLabel.name,
-  icon: tagLabel.style?.color ? (
-    <Dot size="sm" style={{ color: tagLabel.style.color }} />
-  ) : undefined,
-  value: tagLabel,
-});
 
 const mapEntityReferenceToOption = (
   reference: EntityReference
@@ -291,6 +254,24 @@ const mapEntityReferenceToOption = (
   label: getEntityName(reference),
   supportingText: reference.fullyQualifiedName || reference.type,
   value: reference,
+});
+
+// Built once at module scope, never per render. DomainType is an enum, so this
+// list can never change — but rebuilding it inside the component handed `Select`
+// a new `items` array on every render, and a new collection identity makes
+// react-aria tear down and remount the open listbox. The option the user (or
+// Playwright) is mid-click on is detached underneath them: the merge-queue trace
+// for "Create domains and add assets" shows the Aggregate option going
+// "not stable" and then "detached from the DOM", retrying until the test timed
+// out. `dataProductTypeOptions` just below was already memoized; this was not.
+const DOMAIN_TYPE_OPTIONS = Object.keys(DomainType).map((key) => {
+  const domainTypeValue = DomainType[key as keyof typeof DomainType];
+
+  return {
+    label: domainTypeValue,
+    id: domainTypeValue,
+    value: domainTypeValue,
+  };
 });
 
 const AddDomainForm = ({
@@ -304,7 +285,6 @@ const AddDomainForm = ({
 }: AddDomainFormProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const [tagOptions, setTagOptions] = useState<DomainFormSelectItem[]>([]);
   const [domainOptions, setDomainOptions] = useState<DomainFormSelectItem[]>(
     []
   );
@@ -370,12 +350,12 @@ const AddDomainForm = ({
       return;
     }
     setCustomPropertiesLoaded(false);
-    const entityTypeApiName =
-      targetEntityType === TargetEntityType.DataProduct
-        ? 'dataProduct'
-        : targetEntityType === TargetEntityType.Domain
-        ? 'domain'
-        : 'glossaryTerm';
+    let entityTypeApiName = 'glossaryTerm';
+    if (targetEntityType === TargetEntityType.DataProduct) {
+      entityTypeApiName = 'dataProduct';
+    } else if (targetEntityType === TargetEntityType.Domain) {
+      entityTypeApiName = 'domain';
+    }
     getCustomPropertiesByEntityType(entityTypeApiName)
       .then((props) => {
         if (!cancelled) {
@@ -437,16 +417,6 @@ const AddDomainForm = ({
         field.fieldPath.startsWith('extension.')
     );
   }, [intakeForm]);
-
-  const domainTypeOptions = Object.keys(DomainType).map((key) => {
-    const domainTypeValue = DomainType[key as keyof typeof DomainType];
-
-    return {
-      label: domainTypeValue,
-      id: domainTypeValue,
-      value: domainTypeValue,
-    };
-  });
 
   const dataProductTypeOptions = useMemo<DomainFormSelectItem[]>(
     () =>
@@ -543,42 +513,6 @@ const AddDomainForm = ({
     [type]
   );
 
-  const fetchTagOptions = useCallback(async (searchText = '') => {
-    try {
-      const response = await tagClassBase.getTags(searchText, 1, true);
-      const nextOptions = (response?.data ?? [])
-        .map((option) => {
-          const tag = option.data as {
-            description?: string;
-            displayName?: string;
-            fullyQualifiedName?: string;
-            name?: string;
-            style?: TagLabel['style'];
-          };
-
-          if (!tag?.fullyQualifiedName) {
-            return null;
-          }
-
-          return mapTagLabelToOption(
-            createTagLabel({
-              description: tag.description,
-              displayName: tag.displayName,
-              name: tag.name,
-              source: TagSource.Classification,
-              style: tag.style,
-              tagFQN: tag.fullyQualifiedName,
-            })
-          );
-        })
-        .filter((option): option is DomainFormSelectItem => option !== null);
-
-      setTagOptions(nextOptions);
-    } catch {
-      setTagOptions([]);
-    }
-  }, []);
-
   const fetchDomainOptions = useCallback(async (searchText = '') => {
     try {
       const domains = await searchDomains(searchText, 1);
@@ -672,10 +606,6 @@ const AddDomainForm = ({
     }
   }, []);
 
-  const handleTagFocus = useCallback(() => {
-    void fetchTagOptions();
-  }, [fetchTagOptions]);
-
   const handleDomainFocus = useCallback(() => {
     void fetchDomainOptions();
   }, [fetchDomainOptions]);
@@ -683,12 +613,6 @@ const AddDomainForm = ({
   const handleUserTeamFocus = useCallback(() => {
     void fetchUserTeamOptions();
   }, [fetchUserTeamOptions]);
-
-  const debouncedTagSearch = useMemo(
-    () =>
-      debounce((searchText: string) => void fetchTagOptions(searchText), 250),
-    [fetchTagOptions]
-  );
 
   const debouncedDomainSearch = useMemo(
     () =>
@@ -710,11 +634,10 @@ const AddDomainForm = ({
 
   useEffect(
     () => () => {
-      debouncedTagSearch.cancel();
       debouncedDomainSearch.cancel();
       debouncedUserTeamSearch.cancel();
     },
-    [debouncedDomainSearch, debouncedTagSearch, debouncedUserTeamSearch]
+    [debouncedDomainSearch, debouncedUserTeamSearch]
   );
 
   useEffect(() => {
@@ -833,34 +756,6 @@ const AddDomainForm = ({
     type: FieldTypes.COLOR_PICKER,
   };
 
-  const tagsField: FieldProp = applyIntakeFormRequired({
-    id: 'root/tags',
-    label: t('label.tag-plural'),
-    name: 'tags',
-    placeholder: t('label.select-field', { field: t('label.tag-plural') }),
-    props: {
-      'data-testid': 'tags-container',
-      filterOption: () => true,
-      multiple: true,
-      onFocus: handleTagFocus,
-      onSearchChange: (searchText: string) => debouncedTagSearch(searchText),
-      options: tagOptions,
-      renderItem: (item: FormSelectItem) => (
-        <Autocomplete.Item
-          avatarUrl={item.avatarUrl}
-          data-testid={`tag-option-${item.id}`}
-          icon={item.icon}
-          id={item.id}
-          isDisabled={item.isDisabled}
-          key={item.id}
-          label={item.label}
-          supportingText={item.supportingText}
-        />
-      ),
-    },
-    type: FieldTypes.TAG_SUGGESTION,
-  });
-
   const domainTypeField: FieldProp = applyIntakeFormRequired({
     label: t('label.domain-type'),
     name: 'domainType',
@@ -868,7 +763,7 @@ const AddDomainForm = ({
       entity: t('label.domain-type'),
     }),
     props: {
-      options: domainTypeOptions,
+      options: DOMAIN_TYPE_OPTIONS,
       size: 'sm',
       fontSize: 'sm',
     },
@@ -939,23 +834,21 @@ const AddDomainForm = ({
     type: FieldTypes.USER_TEAM_SELECT,
   });
 
-  const reviewersField: FieldProp = applyIntakeFormRequired({
-    id: 'root/reviewers',
-    label: t('label.reviewer-plural'),
-    name: 'reviewers',
-    placeholder: t('label.select-field', {
-      field: t('label.reviewer-plural'),
-    }),
-    props: {
-      filterOption: () => true,
-      multiple: true,
-      onFocus: handleUserTeamFocus,
-      onSearchChange: (searchText: string) =>
-        debouncedUserTeamSearch(searchText),
-      options: userTeamOptions,
-    },
-    type: FieldTypes.USER_TEAM_SELECT_INPUT,
-  });
+  const baseReviewersField = domainClassBase.getReviewersField();
+  const reviewersField: FieldProp | null = baseReviewersField
+    ? applyIntakeFormRequired({
+        ...baseReviewersField,
+        props: {
+          ...baseReviewersField.props,
+          filterOption: () => true,
+          multiple: true,
+          onFocus: handleUserTeamFocus,
+          onSearchChange: (searchText: string) =>
+            debouncedUserTeamSearch(searchText),
+          options: userTeamOptions,
+        },
+      })
+    : null;
 
   const dataProductTypeField: FieldProp = applyIntakeFormRequired({
     id: 'root/dataProductType',
@@ -1037,6 +930,38 @@ const AddDomainForm = ({
     [onSubmit]
   );
 
+  const renderConditionalSections = () => (
+    <>
+      {isDomain && (
+        <div data-testid="domainType">{getField(domainTypeField)}</div>
+      )}
+
+      {isDataProduct && !parentDomain && (
+        <div data-testid="domain-select">{getField(domainField)}</div>
+      )}
+
+      {isDataProduct && (
+        <>
+          <div>{getField(dataProductTypeField)}</div>
+          <div>{getField(visibilityField)}</div>
+          <div>{getField(portfolioPriorityField)}</div>
+        </>
+      )}
+
+      <div>{getField(ownersField)}</div>
+      <div>{getField(expertsField)}</div>
+      {isDataProduct && reviewersField && <div>{getField(reviewersField)}</div>}
+
+      {customPropertiesLoaded && (
+        <AddDomainFormExtensionFields
+          control={form.control}
+          customProperties={customProperties}
+          formFields={extensionFormFields}
+        />
+      )}
+    </>
+  );
+
   return (
     <HookForm
       className="tw:flex tw:flex-col tw:gap-6 tw:**:data-[testid=form-item-label]:font-medium"
@@ -1085,13 +1010,44 @@ const AddDomainForm = ({
           </Box>
         )}
       </FormField>
-      <div>{getField(tagsField)}</div>
+      <FormField
+        control={form.control}
+        name="tags"
+        rules={{
+          validate: (v) => {
+            const msg = intakeFormRequiredMessage('tags');
+
+            return msg && !v?.length ? msg : true;
+          },
+        }}>
+        {({ field, fieldState }) => (
+          <Box
+            aria-invalid={fieldState.invalid || undefined}
+            className="tw:gap-1.5"
+            direction="col">
+            <TagSelector
+              className="tw:w-full"
+              data-testid="tags-input"
+              label={t('label.tag-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.tag-plural'),
+              })}
+              required={Boolean(intakeFormRequiredMessage('tags'))}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+            {fieldState.error?.message && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
       <FormField
         control={form.control}
         name="glossaryTerms"
         rules={glossaryTermsRequiredRule}>
         {({ field }) => (
-          <GlossaryTermTreeSelect
+          <GlossaryTermPicker
             data-testid="glossary-terms"
             label={t('label.glossary-term-plural')}
             placeholder={t('label.select-field', {
@@ -1103,33 +1059,7 @@ const AddDomainForm = ({
         )}
       </FormField>
 
-      {isDomain && (
-        <div data-testid="domainType">{getField(domainTypeField)}</div>
-      )}
-
-      {isDataProduct && !parentDomain && (
-        <div data-testid="domain-select">{getField(domainField)}</div>
-      )}
-
-      {isDataProduct && (
-        <>
-          <div>{getField(dataProductTypeField)}</div>
-          <div>{getField(visibilityField)}</div>
-          <div>{getField(portfolioPriorityField)}</div>
-        </>
-      )}
-
-      <div>{getField(ownersField)}</div>
-      <div>{getField(expertsField)}</div>
-      {isDataProduct && <div>{getField(reviewersField)}</div>}
-
-      {customPropertiesLoaded && (
-        <AddDomainFormExtensionFields
-          control={form.control}
-          customProperties={customProperties}
-          formFields={extensionFormFields}
-        />
-      )}
+      {renderConditionalSections()}
 
       {!isFormInDialog && (
         <Box data-testid="cta-buttons" gap={4} justify="end">
