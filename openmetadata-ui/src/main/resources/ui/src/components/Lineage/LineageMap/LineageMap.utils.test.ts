@@ -26,6 +26,7 @@ import {
   getBreadcrumbSceneRequest,
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
+  getDeleteKeyAction,
   getDrillBand,
   getLensRootLabelKey,
   getParentSceneRequest,
@@ -600,5 +601,53 @@ describe('LineageMap utils', () => {
     );
 
     expect(subtitle).toBe('service · 25 tables');
+  });
+});
+
+describe('getDeleteKeyAction', () => {
+  const keyEvent = (key: string, target: HTMLElement = document.body) =>
+    ({ key, target } as unknown as KeyboardEvent);
+
+  it('returns node for Delete with a selected node', () => {
+    expect(
+      getDeleteKeyAction(keyEvent('Delete'), {
+        canEdit: true,
+        hasSelectedNode: true,
+        hasSelectedEdge: false,
+      })
+    ).toBe('node');
+  });
+
+  it('returns edge for Backspace with only a selected edge', () => {
+    expect(
+      getDeleteKeyAction(keyEvent('Backspace'), {
+        canEdit: true,
+        hasSelectedNode: false,
+        hasSelectedEdge: true,
+      })
+    ).toBe('edge');
+  });
+
+  it('ignores keys typed in inputs', () => {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+
+    expect(
+      getDeleteKeyAction(keyEvent('Delete', input), {
+        canEdit: true,
+        hasSelectedNode: true,
+        hasSelectedEdge: false,
+      })
+    ).toBeUndefined();
+  });
+
+  it('ignores everything without edit permission', () => {
+    expect(
+      getDeleteKeyAction(keyEvent('Delete'), {
+        canEdit: false,
+        hasSelectedNode: true,
+        hasSelectedEdge: false,
+      })
+    ).toBeUndefined();
   });
 });

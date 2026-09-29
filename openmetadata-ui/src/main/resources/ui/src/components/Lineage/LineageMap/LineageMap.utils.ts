@@ -580,6 +580,37 @@ export const getBreadcrumbSceneRequest = (
   };
 };
 
+export type DeleteKeyAction = 'node' | 'edge';
+
+export interface DeleteKeyActionContext {
+  canEdit: boolean;
+  hasSelectedNode: boolean;
+  hasSelectedEdge: boolean;
+}
+
+export const getDeleteKeyAction = (
+  event: KeyboardEvent,
+  { canEdit, hasSelectedNode, hasSelectedEdge }: DeleteKeyActionContext
+): DeleteKeyAction | undefined => {
+  if (!canEdit || (event.key !== 'Delete' && event.key !== 'Backspace')) {
+    return undefined;
+  }
+
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    target.closest('input, textarea, [contenteditable="true"]')
+  ) {
+    return undefined;
+  }
+
+  if (hasSelectedNode) {
+    return 'node';
+  }
+
+  return hasSelectedEdge ? 'edge' : undefined;
+};
+
 export const getParentSceneRequest = (
   scene: LineageScene
 ): LineageSceneRequest | undefined => {

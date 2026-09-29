@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "ਉਪਭੋਗਤਾਵਾਂ ਲਈ ਕੋਈ ਡਿਫਾਲਟ ਸ਼ਖਸੀਅਤ ਸੈੱਟ ਨਹੀਂ ਕੀਤੀ ਜਾਵੇਗੀ",
     "remove-edge-between-source-and-target": "آیا مطمئن هستید که می‌خواهید لبه بین \"{{sourceDisplayName}} و {{targetDisplayName}}\" را حذف کنید؟",
     "remove-lineage-edge": "حذف لبه نسبت.",
+    "remove-lineage-node": "آیا {{entity}} از شجره داده حذف شود؟ تمام یال‌های شجره داده قابل مشاهده در اینجا حذف خواهند شد.",
     "rename-entity": "نام و نمایش نام برای {{entity}} را تغییر دهید.",
     "request-approval-message": "درخواست تأیید برای",
     "request-approval-notification": "تأیید مورد نیاز برای",

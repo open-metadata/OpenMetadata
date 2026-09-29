@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "사용자에게 기본 페르소나가 설정되지 않습니다",
     "remove-edge-between-source-and-target": "\"{{sourceDisplayName}}와(과) {{targetDisplayName}}\" 사이의 엣지를 제거하시겠습니까?",
     "remove-lineage-edge": "계보 엣지 제거",
+    "remove-lineage-node": "{{entity}}을(를) 계보에서 제거하시겠습니까? 여기에 표시된 모든 계보 엣지가 삭제됩니다.",
     "rename-entity": "{{entity}}의 이름과 표시 이름을 변경합니다.",
     "request-approval-message": "다음에 대한 승인 요청:",
     "request-approval-notification": "승인 필요：",

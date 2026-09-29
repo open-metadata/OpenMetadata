@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "لن يتم تعيين أي شخصية افتراضية لأي مستخدمين",
     "remove-edge-between-source-and-target": "هل أنت متأكد أنك تريد إزالة الحافة بين \"{{sourceDisplayName}} و {{targetDisplayName}}\"؟.",
     "remove-lineage-edge": "إزالة حافة السلالة",
+    "remove-lineage-node": "إزالة {{entity}} من سلسلة البيانات؟ سيتم حذف جميع حواف سلسلة البيانات المرئية هنا.",
     "rename-entity": "إعادة تسمية الاسم واسم العرض لـ {{entity}}.",
     "request-approval-message": "طلب موافقة لـ",
     "request-approval-notification": "مطلوب الموافقة لـ",

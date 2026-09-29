@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "Non se establecerá ningunha persona predeterminada para os usuarios",
     "remove-edge-between-source-and-target": "Estás seguro de que queres eliminar a conexión entre \"{{sourceDisplayName}} e {{targetDisplayName}}\"?",
     "remove-lineage-edge": "Eliminar conexión de liñaxe",
+    "remove-lineage-node": "Eliminar {{entity}} da liñaxe? Eliminaranse todas as conexións de liñaxe visibles aquí.",
     "rename-entity": "Renomea o Nome e o Nome de Visualización para o {{entity}}.",
     "request-approval-message": "Solicitude de aprobación para",
     "request-approval-notification": "Aprobación requirida para",

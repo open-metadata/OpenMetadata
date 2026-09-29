@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "將不會為任何使用者設定預設角色",
     "remove-edge-between-source-and-target": "您確定要移除 \"{{sourceDisplayName}} 和 {{targetDisplayName}}\" 之間的邊緣嗎？",
     "remove-lineage-edge": "移除血緣邊緣",
+    "remove-lineage-node": "要從血緣關係中移除 {{entity}} 嗎?此處可見的所有血緣邊都將被刪除。",
     "rename-entity": "重新命名 {{entity}} 的名稱和顯示名稱。",
     "request-approval-message": "請求核准",
     "request-approval-notification": "需要批准：",

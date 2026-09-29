@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "Kullanıcılar için varsayılan kişilik ayarlanmayacak",
     "remove-edge-between-source-and-target": "\"{{sourceDisplayName}} ve {{targetDisplayName}}\" arasındaki kenarı kaldırmak istediğinizden emin misiniz?.",
     "remove-lineage-edge": "Veri soyu kenarını kaldır",
+    "remove-lineage-node": "{{entity}} veri soyundan kaldırılsın mı? Burada görünen tüm veri soyu kenarları silinecek.",
     "rename-entity": "{{entity}} için Adı ve Görünen Adı yeniden adlandırın.",
     "request-approval-message": "için onay talebi",
     "request-approval-notification": "Onay gerekli:",

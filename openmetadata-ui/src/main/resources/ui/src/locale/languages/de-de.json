@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "Keine Standard-Persona wird für Benutzer gesetzt",
     "remove-edge-between-source-and-target": "Sind Sie sicher, dass Sie die Verbindung zwischen \"{{sourceDisplayName}} und {{targetDisplayName}}\" entfernen möchten?",
     "remove-lineage-edge": "Verbindungslinie entfernen",
+    "remove-lineage-node": "{{entity}} aus der Abstammung entfernen? Alle hier sichtbaren Abstammungsverbindungen werden gelöscht.",
     "rename-entity": "Benennen Sie den Namen und die Anzeigebezeichnung für das {{entity}} um.",
     "request-approval-message": "Genehmigungsanfrage für",
     "request-approval-notification": "Genehmigung erforderlich für",

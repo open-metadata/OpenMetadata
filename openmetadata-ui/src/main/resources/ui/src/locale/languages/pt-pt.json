@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "Nenhuma persona predefinida será definida para os utilizadores",
     "remove-edge-between-source-and-target": "Tem certeza de que deseja remover a aresta entre \"{{sourceDisplayName}} e {{targetDisplayName}}\"?",
     "remove-lineage-edge": "Remover aresta de linhagem",
+    "remove-lineage-node": "Remover {{entity}} da linhagem? Todas as ligações de linhagem visíveis aqui serão eliminadas.",
     "rename-entity": "Renomear o Nome e o Nome de Exibição para {{entity}}.",
     "request-approval-message": "Pedido de aprovação para",
     "request-approval-notification": "Aprovação necessária para",

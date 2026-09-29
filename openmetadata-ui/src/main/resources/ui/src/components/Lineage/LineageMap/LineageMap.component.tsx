@@ -99,6 +99,7 @@ import {
   addLineageHandler,
   removeLineageHandler,
 } from '../../../utils/EntityLineagePureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import {
   onAddPipelineClick,
@@ -118,15 +119,16 @@ import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from '../Lineage.interface';
 import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
+import LineageNodeDeleteModal from '../LineageNodeDeleteModal/LineageNodeDeleteModal';
 import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import LineageSkeleton from '../LineageSkeleton.component';
-import type { LineageSceneRequest } from './LineageMap.utils';
 import {
   buildLineagePathHighlightIndex,
   getBandLabelKey,
   getBreadcrumbSceneRequest,
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
+  getDeleteKeyAction,
   getDrillBand,
   getLensRootLabelKey,
   getParentSceneRequest,
@@ -136,6 +138,7 @@ import {
   getSceneOriginFocus,
   getSceneRequestFromSearch,
   getSceneSearch,
+  type LineageSceneRequest,
 } from './LineageMap.utils';
 import {
   buildConnectPayload,
@@ -984,6 +987,11 @@ const LineageMapCanvas = ({
   const [pendingFitNodeIds, setPendingFitNodeIds] = useState<string[]>();
   const [miniMapVisible, setMiniMapVisible] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [nodePendingDelete, setNodePendingDelete] = useState<{
+    id: string;
+    name: string;
+  }>();
+  const [isDeletingNode, setIsDeletingNode] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const [sceneCache] = useState(() => new LineageSceneCache());
@@ -1003,8 +1011,10 @@ const LineageMapCanvas = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const {
     lineageMutationTick,
+    openDeleteModal,
     platformView,
     selectedColumn,
+    selectedEdge,
     selectedNode,
     selectedQuickFilters,
     setActiveLayer,
@@ -1325,6 +1335,32 @@ const LineageMapCanvas = ({
     [refetchCurrentScene, setSelectedEdge, setSelectedNode, t]
   );
 
+  const requestNodeDelete = useCallback((node: { id: string }) => {
+    const flowNode = nodesRef.current.find(
+      (candidate) => candidate.id === node.id
+    );
+    if (!flowNode) {
+      return;
+    }
+    setNodePendingDelete({
+      id: node.id,
+      name: getEntityName(flowNode.data.node),
+    });
+  }, []);
+
+  const confirmNodeDelete = useCallback(async () => {
+    if (!nodePendingDelete) {
+      return;
+    }
+    setIsDeletingNode(true);
+    try {
+      await removeSceneNode(nodePendingDelete);
+    } finally {
+      setIsDeletingNode(false);
+      setNodePendingDelete(undefined);
+    }
+  }, [nodePendingDelete, removeSceneNode]);
+
   const prefetchAdjacentBands = useMemo(
     () =>
       debounce((currentScene: LineageScene) => {
@@ -1482,7 +1518,7 @@ const LineageMapCanvas = ({
           sceneDrillLabel: t('label.zoom-in'),
           onSceneColumnHover: handleSceneColumnHover,
           onSceneColumnSelect: handleSceneColumnSelect,
-          onSceneNodeRemove: removeSceneNode,
+          onSceneNodeRemove: requestNodeDelete,
           isNodeRemovable: isRemovableSceneNode(node, scene.edges, nodeById),
           isRootNode: Boolean(node.isOrigin || node.isFocus),
           hasOutgoers: false,
@@ -1499,7 +1535,7 @@ const LineageMapCanvas = ({
         // Guard against both stale layout runs (isMounted) and spurious
         // re-layouts triggered while a newer fetch is still in flight
         // (pendingFetchRef). Without the pendingFetchRef check, deps like
-        // removeSceneNode changing simultaneously with a fetchScene call can
+        // requestNodeDelete changing simultaneously with a fetchScene call can
         // re-run this effect against the old scene; if that layout finishes
         // before the HTTP response, setLoading(false) fires prematurely and
         // waitForAllLoadersToDisappear returns before the new graph is ready.
@@ -1530,7 +1566,7 @@ const LineageMapCanvas = ({
     handleSceneColumnHover,
     handleSceneColumnSelect,
     handleSceneNodeSelect,
-    removeSceneNode,
+    requestNodeDelete,
     scene,
     setColumnsHavingLineage,
     setColumnsInCurrentPages,
@@ -2047,7 +2083,7 @@ const LineageMapCanvas = ({
           label: (
             <>
               <LineageNodeRemoveButton
-                onRemove={() => removeSceneNode({ id: nodeId })}
+                onRemove={() => requestNodeDelete({ id: nodeId })}
               />
               <NodeSuggestions
                 entityType={droppedEntityType}
@@ -2058,7 +2094,7 @@ const LineageMapCanvas = ({
           node: temporaryLineageNode,
           nodeWidth: NODE_WIDTH,
           onSceneDrill: handleDrill,
-          onSceneNodeRemove: removeSceneNode,
+          onSceneNodeRemove: requestNodeDelete,
           sceneBand: scene.band,
           sceneDrillLabel: t('label.zoom-in'),
           sceneNode: temporarySceneNode,
@@ -2076,7 +2112,7 @@ const LineageMapCanvas = ({
       handleDrill,
       handleNewNodeSelect,
       reactFlowInstance,
-      removeSceneNode,
+      requestNodeDelete,
       scene,
       t,
     ]
@@ -2084,32 +2120,41 @@ const LineageMapCanvas = ({
 
   useEffect(() => {
     const handleDeleteKey = (event: KeyboardEvent) => {
-      if (
-        !canEditScene ||
-        !selectedNode ||
-        (event.key !== 'Delete' && event.key !== 'Backspace')
-      ) {
+      const action = getDeleteKeyAction(event, {
+        canEdit: canEditScene,
+        hasSelectedNode: Boolean(selectedNode),
+        hasSelectedEdge: Boolean(selectedEdge),
+      });
+      if (!action) {
         return;
       }
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        target.closest('input, textarea, [contenteditable="true"]')
-      ) {
+      event.preventDefault();
+      if (action === 'node') {
+        const selectedFlowNode = nodesRef.current.find(
+          (node) => node.data.node === selectedNode
+        );
+        if (selectedFlowNode) {
+          requestNodeDelete(selectedFlowNode);
+        }
+
         return;
       }
-      const selectedFlowNode = nodesRef.current.find(
-        (node) => node.data.node === selectedNode
-      );
-      if (selectedFlowNode) {
-        event.preventDefault();
-        removeSceneNode(selectedFlowNode);
+      if (selectedEdge?.data?.isColumnLineage) {
+        onColumnEdgeRemove();
+      } else {
+        openDeleteModal();
       }
     };
     window.addEventListener('keydown', handleDeleteKey);
 
     return () => window.removeEventListener('keydown', handleDeleteKey);
-  }, [canEditScene, removeSceneNode, selectedNode]);
+  }, [
+    canEditScene,
+    openDeleteModal,
+    requestNodeDelete,
+    selectedEdge,
+    selectedNode,
+  ]);
 
   const handleCanvasMouseMove = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -2271,6 +2316,13 @@ const LineageMapCanvas = ({
         <LineageMapOnboardingDialog
           open={showOnboarding}
           onClose={handleOnboardingClose}
+        />
+        <LineageNodeDeleteModal
+          isDeleting={isDeletingNode}
+          isOpen={Boolean(nodePendingDelete)}
+          nodeName={nodePendingDelete?.name ?? ''}
+          onCancel={() => setNodePendingDelete(undefined)}
+          onConfirm={confirmNodeDelete}
         />
         <Panel position="bottom-right">
           <LineageControlButtons

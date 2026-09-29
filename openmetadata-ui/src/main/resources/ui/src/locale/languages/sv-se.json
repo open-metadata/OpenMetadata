@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "Ingen standardpersona kommer att ställas in för några användare",
     "remove-edge-between-source-and-target": "Är du säker på att du vill ta bort kanten mellan \"{{sourceDisplayName}} och {{targetDisplayName}}\"?.",
     "remove-lineage-edge": "Ta bort härkomstkant",
+    "remove-lineage-node": "Ta bort {{entity}} från härkomsten? Alla härkomstkanter som syns här kommer att raderas.",
     "rename-entity": "Byt namn på namnet och visningsnamnet för {{entity}}.",
     "request-approval-message": "Godkännandebegäran för",
     "request-approval-notification": "Godkännande krävs för",

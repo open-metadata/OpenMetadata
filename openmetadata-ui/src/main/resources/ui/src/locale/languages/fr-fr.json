@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "Aucune persona par défaut ne sera définie pour les utilisateurs",
     "remove-edge-between-source-and-target": "Etes-vous sûr de vouloir supprimer le lien entre \"{{sourceDisplayName}} et {{targetDisplayName}}\" ?",
     "remove-lineage-edge": "Supprimer une arête de lignée",
+    "remove-lineage-node": "Supprimer {{entity}} du lignage ? Toutes les arêtes de lignage visibles ici seront supprimées.",
     "rename-entity": "Renommer le nom et le nom d'affichage pour {{entity}}.",
     "request-approval-message": "Demande de validation pour",
     "request-approval-notification": "Approbation requise pour",

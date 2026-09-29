@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "ユーザーにはデフォルトペルソナが設定されません",
     "remove-edge-between-source-and-target": "「{{sourceDisplayName}}」と「{{targetDisplayName}}」の接続を削除してもよろしいですか？",
     "remove-lineage-edge": "リネージ接続を削除",
+    "remove-lineage-node": "{{entity}} をリネージから削除しますか?ここに表示されているすべてのリネージエッジが削除されます。",
     "rename-entity": "{{entity}} の名前と表示名を変更します。",
     "request-approval-message": "承認リクエスト：",
     "request-approval-notification": "承認が必要です：",

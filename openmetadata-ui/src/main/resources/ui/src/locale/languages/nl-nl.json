@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "Er wordt geen standaard persona ingesteld voor gebruikers",
     "remove-edge-between-source-and-target": "Weet je zeker dat je de verbinding tussen \"{{sourceDisplayName}} en {{targetDisplayName}}\" wilt verwijderen?",
     "remove-lineage-edge": "Verwijder lineageverbinding",
+    "remove-lineage-node": "{{entity}} uit de herkomst verwijderen? Alle hier zichtbare herkomstverbindingen worden verwijderd.",
     "rename-entity": "Hernoem de naam en weergavenaam voor de {{entity}}.",
     "request-approval-message": "Goedkeuringsverzoek voor",
     "request-approval-notification": "Goedkeuring vereist voor",

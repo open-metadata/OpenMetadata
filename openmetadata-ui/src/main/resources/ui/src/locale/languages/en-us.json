@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "No default persona will be set for any users",
     "remove-edge-between-source-and-target": "Are you sure you want to remove the edge between \"{{sourceDisplayName}} and {{targetDisplayName}}\"?.",
     "remove-lineage-edge": "Remove lineage edge",
+    "remove-lineage-node": "Remove {{entity}} from lineage? All its lineage edges visible here will be deleted.",
     "rename-entity": "Rename the Name and Display Name for the {{entity}}.",
     "request-approval-message": "Approval request for",
     "request-approval-notification": "Approval required for",

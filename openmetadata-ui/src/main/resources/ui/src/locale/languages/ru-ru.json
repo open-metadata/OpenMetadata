@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "Персона по умолчанию не будет установлена для пользователей",
     "remove-edge-between-source-and-target": "Вы уверены, что хотите удалить связь между \"{{sourceDisplayName}} и {{targetDisplayName}}\"?",
     "remove-lineage-edge": "Удалить связь между объектами",
+    "remove-lineage-node": "Удалить {{entity}} из происхождения? Все видимые здесь связи происхождения будут удалены.",
     "rename-entity": "Измените имя и отображаемое имя для объекта «{{entity}}».",
     "request-approval-message": "Задача на согласование для",
     "request-approval-notification": "Требуется одобрение для",

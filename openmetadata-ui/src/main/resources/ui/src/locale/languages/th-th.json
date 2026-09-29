@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "จะไม่มีบุคลิกภาพเริ่มต้นสำหรับผู้ใช้",
     "remove-edge-between-source-and-target": "คุณแน่ใจหรือไม่ว่าต้องการลบขอบระหว่าง \"{{sourceDisplayName}}\" และ \"{{targetDisplayName}}\"?",
     "remove-lineage-edge": "ลบขอบลำดับชั้น",
+    "remove-lineage-node": "ลบ {{entity}} ออกจากลำดับชั้นหรือไม่? ขอบลำดับชั้นทั้งหมดที่แสดงที่นี่จะถูกลบ",
     "rename-entity": "เปลี่ยนชื่อและชื่อแสดงสำหรับ {{entity}}",
     "request-approval-message": "คำขออนุมัติสำหรับ",
     "request-approval-notification": "ต้องการการอนุมัติสำหรับ",

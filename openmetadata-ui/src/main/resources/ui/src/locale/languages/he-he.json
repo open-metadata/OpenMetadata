@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "לא תוגדר פרסונה ברירת המחדל למשתמשים",
     "remove-edge-between-source-and-target": "האם אתה בטוח שברצונך להסיר את הקשת בין \"{{sourceDisplayName}} ו-{{targetDisplayName}}\"?",
     "remove-lineage-edge": "הסר קישוריות",
+    "remove-lineage-node": "להסיר את {{entity}} מהשורשים? כל הקישורים הנראים כאן יימחקו.",
     "rename-entity": "שנה את השם והשם לתצוגה של {{entity}}.",
     "request-approval-message": "בקשת אישור עבור",
     "request-approval-notification": "נדרש אישור עבור",

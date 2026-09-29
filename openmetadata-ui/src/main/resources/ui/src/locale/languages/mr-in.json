@@ -4790,6 +4790,7 @@
     "remove-default-persona-description": "वापरकर्त्यांसाठी कोणतेही डीफॉल्ट व्यक्तिमत्व सेट केले जाणार नाही",
     "remove-edge-between-source-and-target": "\"{{sourceDisplayName}} आणि {{targetDisplayName}}\" यांच्यातील काठ काढायचे आहे का?.",
     "remove-lineage-edge": "वंशावळ काठ काढा",
+    "remove-lineage-node": "{{entity}} वंशावळीतून काढायचे का? येथे दिसणारे सर्व वंशावळ कडा हटवले जातील.",
     "rename-entity": "{{entity}} साठी नाव आणि प्रदर्शन नाव बदला.",
     "request-approval-message": "मंजुरी विनंती",
     "request-approval-notification": "मान्यता आवश्यक आहे",
