@@ -153,10 +153,6 @@
           "default": 50,
           "title": "Sample Data Rows Count"
         },
-        "sampleDataStorageConfig": {
-          "title": "Storage Config for Sample Data",
-          "$ref": "../services/connections/connectionBasicType.json#/definitions/sampleDataStorageConfig"
-        },
         "randomizedSample": {
           "description": "Whether to randomize the sample data or not.",
           "type": "boolean",

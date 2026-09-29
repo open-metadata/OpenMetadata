@@ -82,7 +82,6 @@ const AUTH_FIELD_NAMES = new Set([
 const NESTED_FOCUS_FIELDS = new Set([
   'connectionOptions',
   'connectionArguments',
-  'sampleDataStorageConfig',
   'policyAgentConfig',
 ]);
 const LINEAGE_FIELDS = new Set(['useAccessHistory', 'accessHistoryChunkSize']);
