@@ -66,8 +66,8 @@ class SelfDrivenDeliveryTest {
 
     verify(webhook).sendTo(any(), any());
     verify(slack).sendTo(any(), any());
-    assertEquals(2, consumer.delivery.channels());
-    assertEquals(1, consumer.delivery.succeeded());
+    assertEquals(1, consumer.delivery.delivered());
+    assertEquals(1, consumer.delivery.failures().size());
     assertEquals(1, ledger.pending().successEvents());
     assertEquals(1, ledger.pending().failedEvents());
     Map<UUID, SubscriptionStatus> health = healthReportedTo(ledger, alert);
@@ -93,7 +93,7 @@ class SelfDrivenDeliveryTest {
     @Override
     protected void doInit(JobExecutionContext context) {
       delivery = channels().deliver(WORK);
-      recordDelivery(delivery.succeeded(), delivery.failures().size());
+      recordDelivery(delivery.delivered(), delivery.failures().size());
     }
 
     @Override

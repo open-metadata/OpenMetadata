@@ -18,20 +18,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * What one event's delivery came to: how many channels it went through and, for each channel that
- * failed, the destination it failed on and why. Counting it and recording the failure belong to
- * the caller.
+ * What one event's delivery came to: how many channels delivered it and, for each channel that
+ * failed, the destination it failed on and why. A channel that could not try, or found nobody to
+ * send to, failed, and its reason says it was not attempted. Counting it and recording the failure
+ * belong to the caller.
  */
-public record Delivery(int channels, List<Failure> failures) {
+public record Delivery(int delivered, List<Failure> failures) {
 
   public record Failure(UUID destinationId, String reason) {}
 
   public Delivery {
     failures = List.copyOf(failures);
-  }
-
-  public int succeeded() {
-    return channels - failures.size();
   }
 
   public boolean anyFailed() {

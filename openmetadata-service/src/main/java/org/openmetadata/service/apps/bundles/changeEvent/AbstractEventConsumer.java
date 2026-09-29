@@ -180,7 +180,7 @@ public abstract class AbstractEventConsumer
     Delivery delivery = channelsOfThisTick().deliver(event, destinationIds);
     recordSendFailures(event, delivery);
     return new EventDeliveryResult(
-        delivery.succeeded() > 0, delivery.succeeded(), delivery.failures().size());
+        delivery.delivered() > 0, delivery.delivered(), delivery.failures().size());
   }
 
   private record EventDeliveryResult(boolean delivered, int successCount, int failedCount) {}

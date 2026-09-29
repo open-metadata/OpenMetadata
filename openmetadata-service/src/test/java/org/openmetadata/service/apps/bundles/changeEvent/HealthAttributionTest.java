@@ -31,6 +31,7 @@ import org.openmetadata.service.events.subscription.ledger.HealthStreak;
 
 class HealthAttributionTest {
   private static final String MAIL_SERVER_OFF = "the mail server is not enabled";
+  private static final String NO_OWNERS = "no Owners with a Slack address";
   private final UUID owners = UUID.randomUUID();
 
   @Test
@@ -105,6 +106,34 @@ class HealthAttributionTest {
 
     assertEquals(SubscriptionStatus.Status.FAILED, status.getStatus());
     assertEquals("Not attempted: the mail server is not enabled", status.getLastFailedReason());
+  }
+
+  // Nobody to send to in the whole tick reads not attempted, with why, and starts no streak.
+  @Test
+  void aTickThatReachedNobodyReadsNotAttempted() {
+    TickHealth health = new TickHealth();
+    health.nobodyToSendTo(owners, NO_OWNERS);
+    health.nobodyToSendTo(owners, NO_OWNERS);
+
+    Map<UUID, DestinationOutcome> outcomes = new HashMap<>();
+    health.reportTo(outcomes::put);
+    DestinationOutcome outcome = outcomes.get(owners);
+
+    assertEquals(DestinationOutcome.Kind.NOT_ATTEMPTED, outcome.kind());
+    assertEquals(Cause.NO_RECIPIENT, outcome.cause());
+    assertEquals("Not attempted: " + NO_OWNERS, outcome.status().getLastFailedReason());
+    assertEquals(0, HealthStreak.after(null, outcome).getConsecutiveFailedTicks());
+  }
+
+  // It is the weakest outcome: one event that reached someone is enough to read delivered.
+  @Test
+  void aTickThatReachedSomeoneReadsActiveWhateverElseFoundNobody() {
+    TickHealth health = new TickHealth();
+    health.nobodyToSendTo(owners, NO_OWNERS);
+    health.delivered(owners, "alice");
+    health.nobodyToSendTo(owners, NO_OWNERS);
+
+    assertEquals(SubscriptionStatus.Status.ACTIVE, reported(health).get(owners).getStatus());
   }
 
   @Test

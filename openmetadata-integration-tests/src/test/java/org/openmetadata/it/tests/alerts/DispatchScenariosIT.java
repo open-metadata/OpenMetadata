@@ -184,8 +184,37 @@ class DispatchScenariosIT {
     }
   }
 
+  // Nothing can be sent through an endpoint the platform refuses: each event failed, with the
+  // reason that it was never tried.
+  @Test
+  void anAlertWhoseOnlyEndpointIsRefusedCountsEachEventAsFailed(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          createAlert(
+              ns,
+              "dispatch_only_refused_endpoint",
+              List.of(AlertFixtures.external(WEBHOOK, receiver.url("/refused"))));
+      QuietAlert.settle(alert);
+      alert
+          .getDestinations()
+          .getFirst()
+          .withConfig(new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com")));
+      AlertFixtures.writeBehindTheServer(alert);
+
+      FixtureEvents.insert(FixtureEvents.tableEvents());
+      DirectTick.run(alert);
+
+      assertTrue(receiver.received().isEmpty());
+      AlertMetrics counted = counters(alert);
+      assertEquals(0, counted.getSuccessEvents(), "nothing was sent");
+      assertEquals(0, deliveredEvents(alert));
+      assertEquals(EVENTS_ABOUT_THE_TABLE, counted.getFailedEvents(), "each event failed");
+      assertEveryFailureUntried(alert, "its stored configuration is not usable");
+    }
+  }
+
   // A mail server that is off is not the destination failing: tick after tick it reads the same
-  // reason, and no failure streak builds up.
+  // reason, and no failure streak builds up. Each event it did not send failed, with that reason.
   @Test
   void mailServerOffIsNotAttemptedTickAfterTickWithoutAStreak(TestNamespace ns) {
     SubscriptionDestination email =
@@ -207,6 +236,22 @@ class DispatchScenariosIT {
     assertEquals(
         "Not attempted: the mail server is not enabled", health.getStatus().getLastFailedReason());
     assertEquals(0, health.getConsecutiveFailedTicks());
+    AlertMetrics counted = counters(alert);
+    assertEquals(0, counted.getSuccessEvents(), "not attempted is not sent");
+    assertEquals(0, deliveredEvents(alert));
+    assertEquals(3 * EVENTS_ABOUT_THE_TABLE, counted.getFailedEvents(), "each event failed");
+    assertEveryFailureUntried(alert, "the mail server is not enabled");
+  }
+
+  // The fixture reuses its events' ids, so rows are compared by reason, never counted per tick.
+  private static void assertEveryFailureUntried(EventSubscription alert, String why) {
+    List<JsonNode> failures = failures(alert);
+    assertFalse(failures.isEmpty(), "what it did not send is on record as failed");
+    failures.forEach(
+        failure ->
+            assertTrue(
+                failure.get("reason").asText().contains("Not attempted: " + why),
+                failure.toString()));
   }
 
   // An Email destination saved with fields of another shape is sent as configured: it reads what
@@ -267,14 +312,15 @@ class DispatchScenariosIT {
             .allMatch(body -> TABLE_FQN.equals(body.get("entityFullyQualifiedName").asText())),
         "a webhook receives the event as it is");
 
-    // Five channels per matching event, and the mail server that is off counts as delivered.
+    // Four channels delivered each matching event. The mail server is off, so email could not
+    // try: each event also failed there, with that reason.
     AlertMetrics after = counters(alert);
     assertEquals(EVENTS_READ, after.getTotalEvents() - before.getTotalEvents());
     assertEquals(
-        EVENTS_ABOUT_THE_TABLE * alert.getDestinations().size(),
+        EVENTS_ABOUT_THE_TABLE * HTTP_CHANNELS.size(),
         after.getSuccessEvents() - before.getSuccessEvents());
-    assertEquals(0, after.getFailedEvents() - before.getFailedEvents());
-    assertTrue(failures(alert).isEmpty());
+    assertEquals(EVENTS_ABOUT_THE_TABLE, after.getFailedEvents() - before.getFailedEvents());
+    assertEveryFailureUntried(alert, "the mail server is not enabled");
     assertEquals(EVENTS_ABOUT_THE_TABLE, deliveredEvents(alert));
 
     List<SubscriptionStatus> status = statusOfEachDestination(alert);

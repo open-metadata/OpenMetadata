@@ -37,10 +37,16 @@ public record DestinationOutcome(Kind kind, Cause cause, SubscriptionStatus stat
     CHANNEL_UNAVAILABLE,
     CHANNEL_NOT_REGISTERED,
     CONFIGURATION_UNUSABLE,
-    FILE_MISSING
+    FILE_MISSING,
+    NO_RECIPIENT
   }
 
   private static final String NOT_ATTEMPTED = "Not attempted: ";
+
+  /** How a reason reads wherever it was not attempted: on the destination and on the event. */
+  public static String notAttemptedReason(String why) {
+    return NOT_ATTEMPTED + why;
+  }
 
   public static DestinationOutcome delivered(SubscriptionStatus status) {
     return new DestinationOutcome(Kind.DELIVERED, Cause.NONE, status);
@@ -55,7 +61,7 @@ public record DestinationOutcome(Kind kind, Cause cause, SubscriptionStatus stat
         new SubscriptionStatus()
             .withStatus(SubscriptionStatus.Status.FAILED)
             .withLastFailedAt(at)
-            .withLastFailedReason(NOT_ATTEMPTED + why)
+            .withLastFailedReason(notAttemptedReason(why))
             .withTimestamp(at);
     return new DestinationOutcome(Kind.NOT_ATTEMPTED, cause, status);
   }

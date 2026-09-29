@@ -17,15 +17,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -65,14 +68,15 @@ final class ChannelDispatch {
   }
 
   /**
-   * Empty when the channel delivered the event or was not attempted, otherwise the one failure
-   * recorded for it.
+   * Delivered, or the one failure recorded for the channel. A channel that cannot try fails the
+   * event with its reason, and its destinations read not attempted.
    */
-  Optional<EventPublisherException> send(ChangeEvent event, EventContent content)
-      throws EventPublisherException {
+  ChannelResult send(ChangeEvent event, EventContent content) throws EventPublisherException {
     Optional<NotAttempted> notAttempted = whyNotAttempted(content);
     notAttempted.ifPresent(this::notAttemptedByAll);
-    return notAttempted.isEmpty() ? sendToTargets(event, content) : Optional.empty();
+    return notAttempted.isEmpty()
+        ? sendToTargets(event, content)
+        : ChannelResult.Failed.notAttempted(firstDestination(), notAttempted.get().why());
   }
 
   private record NotAttempted(Cause cause, String why) {}
@@ -98,26 +102,86 @@ final class ChannelDispatch {
             id -> health.notAttempted(id, channel.id(), notAttempted.cause(), notAttempted.why()));
   }
 
-  private Optional<EventPublisherException> sendToTargets(ChangeEvent event, EventContent content)
+  private ChannelResult sendToTargets(ChangeEvent event, EventContent content)
       throws EventPublisherException {
     Destination<ChangeEvent> first = publishers.values().iterator().next();
     TargetResolver.Resolved resolved = resolve(event, first);
-    Failures failures = new Failures();
     resolved.failedLookups().forEach(health::lookupFailed);
+    tellWhoReachedNobody(resolved);
+    boolean nobodyToSendTo = resolved.targets().isEmpty() && resolved.failedLookups().isEmpty();
+    return nobodyToSendTo
+        ? ChannelResult.Failed.notAttempted(firstDestination(), nobodyAmong(destinations()))
+        : sendToEachTarget(event, content, first, resolved);
+  }
+
+  private ChannelResult sendToEachTarget(
+      ChangeEvent event,
+      EventContent content,
+      Destination<ChangeEvent> first,
+      TargetResolver.Resolved resolved)
+      throws EventPublisherException {
+    Failures failures = new Failures();
     resolved.failedLookups().forEach(failures::add);
     if (!resolved.targets().isEmpty()) {
       Object prepared = first.prepare(event, content);
       sendToEach(resolved.targets(), prepared).forEach(outcome -> record(outcome, failures));
     }
-    return failures.asOneFailure(event, first, resolved.targets().size());
+    return failures
+        .asOneFailure(event, first, resolved.targets().size())
+        .<ChannelResult>map(ChannelResult.Failed::of)
+        .orElse(ChannelResult.DELIVERED);
+  }
+
+  // A destination that produced no target for this event reached nobody with it. One whose lookup
+  // failed says so instead.
+  private void tellWhoReachedNobody(TargetResolver.Resolved resolved) {
+    Set<UUID> reachedSomeone =
+        resolved.targets().stream()
+            .flatMap(target -> target.origins().stream())
+            .collect(Collectors.toSet());
+    destinations().stream()
+        .filter(destination -> !reachedSomeone.contains(destination.getId()))
+        .filter(destination -> !resolved.failedLookups().containsKey(destination.getId()))
+        .forEach(
+            destination ->
+                health.nobodyToSendTo(destination.getId(), nobodyAmong(List.of(destination))));
+  }
+
+  // The lookup leaves out anyone the channel has no address for, so this reads true both when the
+  // event has nobody in those categories and when none of them can be reached on this channel.
+  private static String nobodyAmong(List<SubscriptionDestination> destinations) {
+    String who =
+        destinations.stream()
+            .map(ChannelDispatch::audienceOf)
+            .distinct()
+            .collect(Collectors.joining(" or "));
+    String type = destinations.getFirst().getType().value();
+    return String.format("no %s with %s %s address", who, articleFor(type), type);
+  }
+
+  private static String audienceOf(SubscriptionDestination destination) {
+    SubscriptionCategory category = destination.getCategory();
+    return category == null || category == SubscriptionCategory.EXTERNAL
+        ? "recipients"
+        : category.value();
+  }
+
+  private static String articleFor(String word) {
+    return "AEIOU".indexOf(Character.toUpperCase(word.charAt(0))) >= 0 ? "an" : "a";
+  }
+
+  private List<SubscriptionDestination> destinations() {
+    return publishers.values().stream().map(Destination::getSubscriptionDestination).toList();
+  }
+
+  private SubscriptionDestination firstDestination() {
+    return destinations().getFirst();
   }
 
   private TargetResolver.Resolved resolve(ChangeEvent event, Destination<ChangeEvent> first) {
-    List<SubscriptionDestination> destinations =
-        publishers.values().stream().map(Destination::getSubscriptionDestination).toList();
     return first.requiresRecipients()
-        ? resolver.resolve(event, destinations)
-        : TargetResolver.themselves(destinations);
+        ? resolver.resolve(event, destinations())
+        : TargetResolver.themselves(destinations());
   }
 
   private record Outcome(Target target, Exception failure, SubscriptionStatus left) {}

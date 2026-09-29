@@ -46,7 +46,9 @@ class TickChannelsTest {
 
     Delivery delivery = deliverThrough(List.of(unserved));
 
-    assertTrue(delivery.failures().isEmpty());
+    assertEquals(0, delivery.delivered(), "not attempted is not delivered");
+    assertFailedUntried(
+        delivery, unserved, "The channel not.registered.here is not registered on this server");
     SubscriptionStatus status = statusOf(unserved);
     assertEquals(SubscriptionStatus.Status.FAILED, status.getStatus());
     assertEquals(
@@ -67,7 +69,8 @@ class TickChannelsTest {
 
     Delivery delivery = deliverThrough(List.of(unusable));
 
-    assertTrue(delivery.failures().isEmpty());
+    assertEquals(0, delivery.delivered());
+    assertFailedUntried(delivery, unusable, "its stored configuration is not usable");
     assertTrue(
         statusOf(unusable)
             .getLastFailedReason()
@@ -75,7 +78,8 @@ class TickChannelsTest {
   }
 
   // Before, the first destination of a channel answered for all of them: an unusable one first
-  // silenced the rest, and one further down was sent through as if it were usable.
+  // silenced the rest, and one further down was sent through as if it were usable. Now the usable
+  // one is sent, and the unusable one fails the event for itself.
   @Test
   void anUnusableDestinationCostsOnlyItself() throws Exception {
     for (boolean unusableFirst : List.of(true, false)) {
@@ -89,8 +93,8 @@ class TickChannelsTest {
           deliverThrough(unusableFirst ? List.of(unusable, usable) : List.of(usable, unusable));
 
       verify(usable).sendTo(any(), any());
-      assertEquals(1, delivery.channels(), "both are one channel, counted once");
-      assertTrue(delivery.failures().isEmpty());
+      assertEquals(1, delivery.delivered(), "the usable one delivered");
+      assertFailedUntried(delivery, unusable, "its stored configuration is not usable");
       assertEquals(SubscriptionStatus.Status.ACTIVE, statusOf(usable).getStatus());
       assertTrue(
           statusOf(unusable)
@@ -98,6 +102,14 @@ class TickChannelsTest {
               .startsWith("Not attempted: its stored configuration is not usable"),
           statusOf(unusable).getLastFailedReason());
     }
+  }
+
+  private static void assertFailedUntried(
+      Delivery delivery, Destination<ChangeEvent> untried, String why) {
+    assertEquals(1, delivery.failures().size(), "nothing went out through it, so it failed");
+    Delivery.Failure failure = delivery.failures().getFirst();
+    assertEquals(untried.getSubscriptionDestination().getId(), failure.destinationId());
+    assertTrue(failure.reason().contains("Not attempted: " + why), failure.reason());
   }
 
   private Delivery deliverThrough(List<Destination<ChangeEvent>> destinations) {

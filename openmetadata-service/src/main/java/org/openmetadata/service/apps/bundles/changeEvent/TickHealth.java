@@ -33,8 +33,8 @@ import org.openmetadata.service.events.subscription.ledger.DestinationOutcome.Ca
  * to the targets it produced: every one delivered is delivered, and a failure is a failure, saying
  * how many of how many recipients failed and naming the first. A failure outranks a lookup that
  * failed, which outranks not being attempted, and nothing learned later in the tick erases a
- * failure. A destination that produced no target in this tick says nothing, so its health stays
- * what it was.
+ * failure. Finding nobody to send to is the weakest: a destination that reached anyone in the tick
+ * reads delivered, and one that reached nobody at all reads not attempted, with why.
  */
 final class TickHealth {
 
@@ -46,6 +46,7 @@ final class TickHealth {
     private String lookupFailure;
     private Cause notAttemptedCause;
     private String notAttemptedBecause;
+    private String nobodyBecause;
     private long lastSuccess;
   }
 
@@ -90,6 +91,14 @@ final class TickHealth {
     notAttemptedChannels.putIfAbsent(channelId, why);
   }
 
+  /** The destination had nobody to send an event to. A delivery in the same tick outranks it. */
+  void nobodyToSendTo(UUID destinationId, String why) {
+    Tally tally = tallyOf(destinationId);
+    if (tally.nobodyBecause == null) {
+      tally.nobodyBecause = why;
+    }
+  }
+
   void lookupFailed(UUID destinationId, String reason) {
     Tally tally = tallyOf(destinationId);
     if (tally.lookupFailure == null) {
@@ -126,12 +135,20 @@ final class TickHealth {
   }
 
   private static DestinationOutcome notAttemptedOrDelivered(Tally tally) {
-    return tally.notAttemptedBecause == null
+    boolean reachedNobody = tally.lastSuccess == 0 && tally.nobodyBecause != null;
+    return tally.notAttemptedBecause == null && !reachedNobody
         ? DestinationOutcome.delivered(
             AlertUtil.buildSubscriptionStatus(
                 ACTIVE, tally.lastSuccess, null, null, null, tally.lastSuccess, tally.lastSuccess))
-        : DestinationOutcome.notAttempted(
-            tally.notAttemptedCause, tally.notAttemptedBecause, System.currentTimeMillis());
+        : notAttempted(tally);
+  }
+
+  private static DestinationOutcome notAttempted(Tally tally) {
+    boolean channelLevel = tally.notAttemptedBecause != null;
+    return DestinationOutcome.notAttempted(
+        channelLevel ? tally.notAttemptedCause : Cause.NO_RECIPIENT,
+        channelLevel ? tally.notAttemptedBecause : tally.nobodyBecause,
+        System.currentTimeMillis());
   }
 
   // Failed before awaiting retry: an endpoint that answered with an error was at least reached.

@@ -554,9 +554,10 @@ class AbstractEventConsumerTest {
         "Event recorded once for the (event, subscription)");
   }
 
-  // #25312: empty recipients (destination requires them, none resolved) is a successful no-op send.
+  // Nobody to send to (the destination requires recipients and none resolved) sends nothing: the
+  // event failed, and the reason says it was never tried.
   @Test
-  void testEmptyRecipientsIsNoOpSuccessAndRecorded() throws Exception {
+  void testEmptyRecipientsFailsWithItsReason() throws Exception {
     RealPublishConsumer consumer = newRealConsumerWithMetrics();
     Destination<ChangeEvent> slack = mockDestination(SubscriptionType.SLACK, true);
     UUID id = UUID.randomUUID();
@@ -578,11 +579,13 @@ class AbstractEventConsumerTest {
     }
 
     verify(slack, never()).sendMessage(any(), any());
-    assertEquals(
-        1,
-        (consumer.ledger.pending().delivered()).size(),
-        "Empty recipients is a no-op success and still recorded");
-    assertEquals(1, consumer.ledger.pending().successEvents());
+    assertTrue(consumer.ledger.pending().delivered().isEmpty(), "nothing went out");
+    assertEquals(0, consumer.ledger.pending().successEvents());
+    assertEquals(1, consumer.ledger.pending().failedEvents());
+    assertEquals(1, consumer.capturedFailures.size());
+    assertTrue(
+        consumer.capturedFailures.getFirst().getMessage().contains("Not attempted: no "),
+        consumer.capturedFailures.getFirst().getMessage());
   }
 
   // #25312: destinations that don't require recipients always send.

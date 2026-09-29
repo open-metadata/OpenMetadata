@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -33,7 +32,8 @@ import org.openmetadata.service.notifications.recipients.RecipientResolver;
 
 /**
  * An alert's channels for one tick. A destination nothing can be sent through is not attempted,
- * with its own reason, and never joins its channel. The others are sent through their channel
+ * with its own reason, never joins its channel, and fails the event. The others are sent through
+ * their channel
  * together, so a person several of them name is reached once. Each channel is isolated from the
  * others, and what an event renders is rendered once for all of them.
  */
@@ -61,22 +61,23 @@ final class TickChannels implements ChannelDelivery {
   }
 
   /**
-   * Counted by channel, as a delivery always has been: a channel whose destinations were not
-   * attempted counts, and one that failed counts once, however many of its destinations failed.
+   * Counted by channel, as a delivery always has been: a channel that failed counts once, however
+   * many of its destinations failed. Nothing went out through a channel that could not try, so it
+   * failed too, and so did the unusable destinations of a channel, once, with their reason.
    */
   Delivery deliver(ChangeEvent event, Set<UUID> destinationIds) {
     List<Destination<ChangeEvent>> enabled = enabledAmong(destinationIds);
-    enabled.stream()
-        .filter(UnservedDestination.class::isInstance)
-        .map(UnservedDestination.class::cast)
-        .forEach(this::notAttempted);
     EventContent content = new EventContent(event, alert);
+    int delivered = 0;
     List<Delivery.Failure> failures = new ArrayList<>();
-    servedByChannel(enabled)
-        .forEach(
-            (channel, group) ->
-                sendThrough(channel, group, event, content).ifPresent(failures::add));
-    return new Delivery(channelsAmong(enabled), failures);
+    for (List<Destination<ChangeEvent>> group : servedByChannel(enabled).values()) {
+      switch (sendThrough(group, event, content)) {
+        case ChannelResult.Delivered ignored -> delivered++;
+        case ChannelResult.Failed failed -> failures.add(failed.failure());
+      }
+    }
+    unservedByChannel(enabled).values().forEach(unserved -> failures.add(notAttempted(unserved)));
+    return new Delivery(delivered, failures);
   }
 
   // In the order the alert declares them: that order decides which destination sends first.
@@ -88,61 +89,67 @@ final class TickChannels implements ChannelDelivery {
         .toList();
   }
 
-  private void notAttempted(UnservedDestination unserved) {
-    String channelId = ChannelResolution.of(unserved.getSubscriptionDestination()).channelId();
-    health.notAttempted(destinationIdOf(unserved), channelId, unserved.cause(), unserved.reason());
+  private Delivery.Failure notAttempted(List<UnservedDestination> ofOneChannel) {
+    ofOneChannel.forEach(this::notAttempted);
+    UnservedDestination first = ofOneChannel.getFirst();
+    return ChannelResult.Failed.notAttempted(first.getSubscriptionDestination(), first.reason())
+        .failure();
   }
 
-  private static Map<Channel, List<Destination<ChangeEvent>>> servedByChannel(
+  private void notAttempted(UnservedDestination unserved) {
+    health.notAttempted(
+        destinationIdOf(unserved), channelIdOf(unserved), unserved.cause(), unserved.reason());
+  }
+
+  private static Map<String, List<UnservedDestination>> unservedByChannel(
+      List<Destination<ChangeEvent>> enabled) {
+    return enabled.stream()
+        .filter(UnservedDestination.class::isInstance)
+        .map(UnservedDestination.class::cast)
+        .collect(
+            Collectors.groupingBy(
+                TickChannels::channelIdOf, LinkedHashMap::new, Collectors.toList()));
+  }
+
+  private static String channelIdOf(Destination<ChangeEvent> destination) {
+    return ChannelResolution.of(destination.getSubscriptionDestination()).channelId();
+  }
+
+  // By the id of the channel that serves each one; the channel itself is found where a failure
+  // to find it costs only its own destinations.
+  private static Map<String, List<Destination<ChangeEvent>>> servedByChannel(
       List<Destination<ChangeEvent>> enabled) {
     return enabled.stream()
         .filter(destination -> !(destination instanceof UnservedDestination))
         .collect(
             Collectors.groupingBy(
-                TickChannels::servingChannel, LinkedHashMap::new, Collectors.toList()));
+                TickChannels::channelIdOf, LinkedHashMap::new, Collectors.toList()));
   }
 
-  private static int channelsAmong(List<Destination<ChangeEvent>> enabled) {
-    return (int)
-        enabled.stream()
-            .map(destination -> ChannelResolution.of(destination.getSubscriptionDestination()))
-            .map(ChannelResolution::channelId)
-            .distinct()
-            .count();
-  }
-
-  private Optional<Delivery.Failure> sendThrough(
-      Channel channel,
-      List<Destination<ChangeEvent>> group,
-      ChangeEvent event,
-      EventContent content) {
+  // Anything that throws costs this channel for this event, never the rest of the batch.
+  private ChannelResult sendThrough(
+      List<Destination<ChangeEvent>> group, ChangeEvent event, EventContent content) {
+    ChannelResult result;
     try {
-      return new ChannelDispatch(channel, group, resolver, health)
-          .send(event, content)
-          .map(TickChannels::failureOf);
+      result =
+          new ChannelDispatch(servingChannel(group.getFirst()), group, resolver, health)
+              .send(event, content);
     } catch (EventPublisherException e) {
       LOG.error("Failed to send alert: {}", e.getMessage());
-      return Optional.of(failureOf(e));
+      result = ChannelResult.Failed.of(e);
     } catch (RuntimeException e) {
-      // Anything unexpected costs this channel for this event, never the rest of the batch.
       LOG.error("Unexpected error sending alert for change event {}", event.getId(), e);
-      return Optional.of(unexpectedFailure(group, e));
+      result = unexpectedFailure(group, e);
     }
+    return result;
   }
 
-  private static Delivery.Failure unexpectedFailure(
+  private static ChannelResult.Failed unexpectedFailure(
       List<Destination<ChangeEvent>> group, RuntimeException cause) {
-    return new Delivery.Failure(
-        destinationIdOf(group.getFirst()),
-        String.format("Unexpected error while sending: %s", cause.getMessage()));
-  }
-
-  private static Delivery.Failure failureOf(EventPublisherException failure) {
-    UUID destinationId =
-        failure.getChangeEventWithSubscription() == null
-            ? null
-            : failure.getChangeEventWithSubscription().getLeft();
-    return new Delivery.Failure(destinationId, failure.getMessage());
+    return new ChannelResult.Failed(
+        new Delivery.Failure(
+            destinationIdOf(group.getFirst()),
+            String.format("Unexpected error while sending: %s", cause.getMessage())));
   }
 
   // A destination that has a publisher was built through the channel that serves it.
