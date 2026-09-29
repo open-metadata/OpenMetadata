@@ -46,8 +46,8 @@ const baseProps = {
 // react-aria-components popovers only open on a full pointer-event sequence
 // (pointerdown/pointerup), which `fireEvent.click` does not synthesize —
 // `@testing-library/user-event` is required to actually open the Select /
-// ComboBox popovers. `data-testid` on `Select`/`Select.ComboBox` lands on
-// the wrapper `<div>` (or nowhere, for ComboBox) rather than the clickable
+// ComboBox popovers. The testids sit on wrapper `<div>`s (Select's own, and
+// one the popover adds around the ComboBox) rather than on the clickable
 // trigger, so triggers are queried by role within that wrapper instead.
 const openTypeSelect = async (user: ReturnType<typeof userEvent.setup>) => {
   const wrapper = screen.getByTestId('add-lineage-type-select');
@@ -70,7 +70,12 @@ const searchEntity = async (
   user: ReturnType<typeof userEvent.setup>,
   text: string
 ) => {
-  await user.type(screen.getByRole('combobox'), text);
+  await user.type(
+    within(screen.getByTestId('add-lineage-entity-input')).getByRole(
+      'combobox'
+    ),
+    text
+  );
   await act(async () => jest.advanceTimersByTime(300));
 };
 

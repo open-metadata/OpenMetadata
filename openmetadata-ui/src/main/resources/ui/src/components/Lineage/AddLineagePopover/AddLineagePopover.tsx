@@ -184,34 +184,37 @@ const AddLineagePopover = ({
           {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
         </Select>
         {type && (
-          <Select.ComboBox
-            allowsEmptyCollection
-            inputValue={query}
-            isDisabled={isSubmitting}
-            items={entityItems}
-            label={t('label.search-entity', { entity: t('label.entity') })}
-            size="sm"
-            onInputChange={(text) => {
-              setQuery(text);
-              search(type, text);
-            }}
-            onSelectionChange={(key) => {
-              const picked = hits.find((searchHit) => searchHit.id === key);
-              if (!picked) {
-                return;
-              }
-              setEntity(picked);
-              setQuery(getEntityName(picked));
-              if (!isColumnTarget) {
-                void submit(picked);
-              }
-            }}>
-            {(item) => (
-              <Select.Item id={item.id} supportingText={item.supportingText}>
-                {item.label}
-              </Select.Item>
-            )}
-          </Select.ComboBox>
+          // Select.ComboBox drops data-testid, so the wrapper carries it.
+          <div data-testid="add-lineage-entity-input">
+            <Select.ComboBox
+              allowsEmptyCollection
+              inputValue={query}
+              isDisabled={isSubmitting}
+              items={entityItems}
+              label={t('label.search-entity', { entity: t('label.entity') })}
+              size="sm"
+              onInputChange={(text) => {
+                setQuery(text);
+                search(type, text);
+              }}
+              onSelectionChange={(key) => {
+                const picked = hits.find((searchHit) => searchHit.id === key);
+                if (!picked) {
+                  return;
+                }
+                setEntity(picked);
+                setQuery(getEntityName(picked));
+                if (!isColumnTarget) {
+                  void submit(picked);
+                }
+              }}>
+              {(item) => (
+                <Select.Item id={item.id} supportingText={item.supportingText}>
+                  {item.label}
+                </Select.Item>
+              )}
+            </Select.ComboBox>
+          </div>
         )}
         {isColumnTarget && entity && (
           <Select
