@@ -306,24 +306,6 @@ export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
 });
 
 /**
- * Split across two named booleans so neither expression exceeds
- * sonarjs/expression-complexity, and kept out of CustomNodeV1 so its operators
- * do not count against that component's cyclomatic-complexity budget.
- */
-export function shouldShowNodeRemoveButton({
-  isRootNode,
-  isNodeRemovable,
-}: {
-  isSelected: boolean;
-  isRootNode: boolean;
-  isNodeRemovable: boolean;
-}) {
-  const isRemovableSelection = false;
-
-  return isRemovableSelection && !isRootNode && isNodeRemovable;
-}
-
-/**
  * Dark swaps the static grey node/badge/handle borders (custom-node.less
  * `@lineage-border`) for border-primary. A variable rather than a border class so
  * the less hover/highlight/tracing states keep winning over it.

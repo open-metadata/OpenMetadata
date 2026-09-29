@@ -214,6 +214,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       );
     }),
   Button: jest.requireActual('@openmetadata/ui-core-components').Button,
+  Dropdown: jest.requireActual('@openmetadata/ui-core-components').Dropdown,
   Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
   Typography: jest
     .fn()
@@ -1321,6 +1322,44 @@ describe('CustomNodeV1', () => {
         expect(visibleColumns).not.toContain('col1');
         expect(visibleColumns).not.toContain('col11');
       });
+    });
+  });
+
+  describe('LineageNodeMenu', () => {
+    const nodeProps = (dataOverrides: Record<string, unknown>) => ({
+      ...mockNodeDataProps,
+      data: {
+        ...mockNodeDataProps.data,
+        ...dataOverrides,
+      },
+    });
+
+    it('shows the node menu only when editable', () => {
+      const { rerender } = render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component
+            {...nodeProps({
+              isNodeEditable: true,
+              onSceneLineageEdit: jest.fn(),
+            })}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(screen.getByTestId('lineage-node-menu')).toBeInTheDocument();
+
+      rerender(
+        <ReactFlowProvider>
+          <CustomNodeV1Component
+            {...nodeProps({
+              isNodeEditable: false,
+              onSceneLineageEdit: jest.fn(),
+            })}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(screen.queryByTestId('lineage-node-menu')).not.toBeInTheDocument();
     });
   });
 });

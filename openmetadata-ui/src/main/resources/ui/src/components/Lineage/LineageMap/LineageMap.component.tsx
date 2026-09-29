@@ -65,6 +65,7 @@ import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import {
   LineageBand,
   LineageLens,
@@ -117,6 +118,11 @@ import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButt
 import LineageLayers from '../../Entity/EntityLineage/LineageLayers/LineageLayers';
 import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import AddLineagePopover from '../AddLineagePopover/AddLineagePopover';
+import {
+  AddLineageSelection,
+  LineageEditRequest,
+} from '../AddLineagePopover/AddLineagePopover.interface';
 import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from '../Lineage.interface';
 import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
@@ -132,6 +138,7 @@ import {
   getDeleteKeyAction,
   getDrillBand,
   getLensRootLabelKey,
+  getLineageEditColumnPair,
   getParentSceneRequest,
   getSceneFocus,
   getSceneLevelLabelKey,
@@ -139,6 +146,7 @@ import {
   getSceneOriginFocus,
   getSceneRequestFromSearch,
   getSceneSearch,
+  useCloseOnViewportMove,
   type LineageSceneRequest,
 } from './LineageMap.utils';
 import {
@@ -241,8 +249,10 @@ interface SceneFlowNodeData {
   onSceneColumnSelect?: (columnFqn?: string) => void;
   isNewNode?: boolean;
   isNodeRemovable?: boolean;
+  isNodeEditable?: boolean;
   label?: ReactNode;
   onSceneNodeRemove?: (node: { id: string }) => void;
+  onSceneLineageEdit?: (request: LineageEditRequest) => void;
 }
 
 interface SceneNodeBounds {
@@ -983,6 +993,8 @@ const LineageMapCanvas = ({
     name: string;
   }>();
   const [isDeletingNode, setIsDeletingNode] = useState(false);
+  const [lineageEditRequest, setLineageEditRequest] =
+    useState<LineageEditRequest>();
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const [sceneCache] = useState(() => new LineageSceneCache());
@@ -1339,6 +1351,10 @@ const LineageMapCanvas = ({
     });
   }, []);
 
+  const handleSceneLineageEdit = useCallback((request: LineageEditRequest) => {
+    setLineageEditRequest(request);
+  }, []);
+
   const confirmNodeDelete = useCallback(async () => {
     if (!nodePendingDelete) {
       return;
@@ -1511,6 +1527,8 @@ const LineageMapCanvas = ({
           onSceneColumnSelect: handleSceneColumnSelect,
           onSceneNodeRemove: requestNodeDelete,
           isNodeRemovable: isRemovableSceneNode(node, scene.edges, nodeById),
+          isNodeEditable: canEditScene && isEditableSceneNode(node),
+          onSceneLineageEdit: handleSceneLineageEdit,
           isRootNode: Boolean(node.isOrigin || node.isFocus),
           hasOutgoers: false,
           hasIncomers: false,
@@ -1556,6 +1574,7 @@ const LineageMapCanvas = ({
     handleDrill,
     handleSceneColumnHover,
     handleSceneColumnSelect,
+    handleSceneLineageEdit,
     handleSceneNodeSelect,
     requestNodeDelete,
     scene,
@@ -1691,6 +1710,15 @@ const LineageMapCanvas = ({
       scene,
       updateRequest,
     ]
+  );
+
+  const closeLineageEditRequest = useCallback(
+    () => setLineageEditRequest(undefined),
+    []
+  );
+  const handleMoveStart = useCloseOnViewportMove(
+    Boolean(lineageEditRequest),
+    closeLineageEditRequest
   );
 
   const handleBreadcrumbFocus = useCallback(
@@ -1929,6 +1957,41 @@ const LineageMapCanvas = ({
       }
     },
     [refetchCurrentScene, setIsCreatingEdge, setSelectedEdge, setSelectedNode]
+  );
+
+  const handleAddLineageSubmit = useCallback(
+    async ({ entity: picked, columnFqn }: AddLineageSelection) => {
+      const request = lineageEditRequest;
+      const currentNode = nodesRef.current.find(
+        (node) => node.id === request?.nodeId
+      );
+      const current = currentNode
+        ? getRealEntityRef(currentNode.data.sceneNode)
+        : undefined;
+      if (!request || !current) {
+        return false;
+      }
+      const isUpstream = request.direction === LineageDirection.Upstream;
+      const columnPair = getLineageEditColumnPair(
+        isUpstream,
+        request.columnFqn,
+        columnFqn
+      );
+
+      return isUpstream
+        ? createLineageEdge(picked, current, columnPair)
+        : createLineageEdge(current, picked, columnPair);
+    },
+    [createLineageEdge, lineageEditRequest]
+  );
+
+  const currentEditEntityId = useMemo(
+    () =>
+      getRealEntityRef(
+        nodesRef.current.find((node) => node.id === lineageEditRequest?.nodeId)
+          ?.data.sceneNode
+      )?.id,
+    [lineageEditRequest]
   );
 
   const handleConnect = useCallback(
@@ -2269,6 +2332,7 @@ const LineageMapCanvas = ({
         onDrop={handleDrop}
         onInit={setReactFlowInstance}
         onMove={handleMove}
+        onMoveStart={handleMoveStart}
         onNodeClick={handleNodeClick}
         onNodesChange={(changes) =>
           setNodes((currentNodes) => applyNodeChanges(changes, currentNodes))
@@ -2316,6 +2380,12 @@ const LineageMapCanvas = ({
           nodeName={nodePendingDelete?.name ?? ''}
           onCancel={() => setNodePendingDelete(undefined)}
           onConfirm={confirmNodeDelete}
+        />
+        <AddLineagePopover
+          excludeEntityId={currentEditEntityId}
+          request={lineageEditRequest}
+          onClose={closeLineageEditRequest}
+          onSubmit={handleAddLineageSubmit}
         />
         <Panel position="bottom-right">
           <LineageControlButtons

@@ -33,13 +33,12 @@ import {
 } from '../../../generated/api/lineage/lineageScene';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
-import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
+import LineageNodeMenu from '../../Lineage/LineageNodeMenu/LineageNodeMenu';
 import './custom-node.less';
 import {
   getCollapseHandle,
   getExpandHandle,
   getNodeClassNames,
-  shouldShowNodeRemoveButton,
 } from './CustomNode.utils';
 import {
   ExpandCollapseHandlesProps,
@@ -197,8 +196,7 @@ const SceneDrillButton = ({
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
 
-  const { onNodeCollapse, removeNodeHandler, loadChildNodesHandler } =
-    useLineageHandlers();
+  const { onNodeCollapse, loadChildNodesHandler } = useLineageHandlers();
   const dataQualityLineage = useLineageStore((s) => s.dataQualityLineage);
 
   const {
@@ -231,6 +229,8 @@ const CustomNodeV1 = (props: NodeProps) => {
     onSceneColumnSelect,
     onSceneNodeRemove,
     isNodeRemovable = true,
+    isNodeEditable,
+    onSceneLineageEdit,
   } = data;
 
   // sync expand state based on column layer active
@@ -290,12 +290,6 @@ const CustomNodeV1 = (props: NodeProps) => {
         Boolean(sceneNode) && sceneBand === LineageBand.Layer,
     }
   );
-  const showRemoveButton = shouldShowNodeRemoveButton({
-    isSelected,
-    isRootNode: Boolean(isRootNode),
-    isNodeRemovable,
-  });
-
   const onExpand = useCallback(
     (direction: LineageDirection, depth = 1) => {
       loadChildNodesHandler(node, direction, depth);
@@ -317,15 +311,6 @@ const CustomNodeV1 = (props: NodeProps) => {
     setNodeFilterState(node.id, !showColumnsWithLineageOnly);
   }, [showColumnsWithLineageOnly, setNodeFilterState, node.id]);
 
-  const handleNodeRemove = useCallback(() => {
-    if (onSceneNodeRemove) {
-      onSceneNodeRemove(props);
-
-      return;
-    }
-    removeNodeHandler(props);
-  }, [onSceneNodeRemove, props, removeNodeHandler]);
-
   const handleEntityClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
@@ -341,18 +326,28 @@ const CustomNodeV1 = (props: NodeProps) => {
 
     return (
       <>
-        <LineageNodeLabelV1
-          isChildrenListExpanded={columnsExpanded}
-          isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
-          node={node}
-          toggleColumnsList={toggleColumnsExpanded}
-          toggleOnlyShowColumnsWithLineageFilterActive={
-            toggleShowColumnsWithLineageOnly
-          }
-          onEntityClick={onSceneNodeSelect ? handleEntityClick : undefined}
-        />
-        {showRemoveButton && (
-          <LineageNodeRemoveButton onRemove={handleNodeRemove} />
+        <div className="tw:min-w-0 tw:flex-1">
+          <LineageNodeLabelV1
+            isChildrenListExpanded={columnsExpanded}
+            isOnlyShowColumnsWithLineageFilterActive={
+              showColumnsWithLineageOnly
+            }
+            node={node}
+            toggleColumnsList={toggleColumnsExpanded}
+            toggleOnlyShowColumnsWithLineageFilterActive={
+              toggleShowColumnsWithLineageOnly
+            }
+            onEntityClick={onSceneNodeSelect ? handleEntityClick : undefined}
+          />
+        </div>
+        {isNodeEditable && onSceneLineageEdit && (
+          <LineageNodeMenu
+            canDelete={Boolean(isNodeRemovable) && !isRootNode}
+            onDelete={() => onSceneNodeRemove?.(props)}
+            onEdit={(direction, triggerRef) =>
+              onSceneLineageEdit({ nodeId: props.id, direction, triggerRef })
+            }
+          />
         )}
       </>
     );
@@ -365,9 +360,13 @@ const CustomNodeV1 = (props: NodeProps) => {
     columnsExpanded,
     showColumnsWithLineageOnly,
     toggleShowColumnsWithLineageOnly,
-    handleNodeRemove,
     toggleColumnsExpanded,
-    showRemoveButton,
+    isNodeEditable,
+    onSceneLineageEdit,
+    isNodeRemovable,
+    isRootNode,
+    onSceneNodeRemove,
+    props,
   ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
@@ -443,7 +442,9 @@ const CustomNodeV1 = (props: NodeProps) => {
           node={sceneNode}
           onDrill={onSceneDrill}
         />
-        <div className="label-container tw:bg-surface">{nodeLabel}</div>
+        <div className="label-container tw:flex tw:items-start tw:justify-between tw:bg-surface">
+          {nodeLabel}
+        </div>
         <NodeHandles
           expandCollapseHandles={handlesElement}
           id={id}

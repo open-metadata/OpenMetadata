@@ -13,6 +13,7 @@
 
 import type { TFunction } from 'i18next';
 import Qs from 'qs';
+import { useCallback } from 'react';
 import {
   LineageBand,
   LineageLens,
@@ -657,4 +658,33 @@ export const getParentSceneRequest = (
   }
 
   return undefined;
+};
+
+/**
+ * ReactFlow's `onMoveStart` handler: closes an open edit popover as soon as the
+ * user starts panning/zooming, since its trigger anchor moves with the canvas.
+ */
+export const useCloseOnViewportMove = (isOpen: boolean, close: () => void) =>
+  useCallback(() => {
+    if (isOpen) {
+      close();
+    }
+  }, [isOpen, close]);
+
+/**
+ * Kept out of LineageMap.component.tsx so the upstream/downstream branch does
+ * not nest inside the "both FQNs present" branch (sonarjs/no-nested-conditional).
+ */
+export const getLineageEditColumnPair = (
+  isUpstream: boolean,
+  requestColumnFqn?: string,
+  pickedColumnFqn?: string
+): { fromColumn: string; toColumn: string } | undefined => {
+  if (!requestColumnFqn || !pickedColumnFqn) {
+    return undefined;
+  }
+
+  return isUpstream
+    ? { fromColumn: pickedColumnFqn, toColumn: requestColumnFqn }
+    : { fromColumn: requestColumnFqn, toColumn: pickedColumnFqn };
 };

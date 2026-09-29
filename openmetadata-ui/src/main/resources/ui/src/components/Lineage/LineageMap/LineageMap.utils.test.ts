@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { renderHook } from '@testing-library/react';
 import type { TFunction } from 'i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -36,6 +37,7 @@ import {
   getSceneOriginFocus,
   getSceneRequestFromSearch,
   getSceneSearch,
+  useCloseOnViewportMove,
 } from './LineageMap.utils';
 
 describe('scene focus validation', () => {
@@ -649,5 +651,23 @@ describe('getDeleteKeyAction', () => {
         hasSelectedEdge: false,
       })
     ).toBeUndefined();
+  });
+});
+
+describe('useCloseOnViewportMove', () => {
+  it('closes the popover when the viewport starts moving', () => {
+    const close = jest.fn();
+    const { result } = renderHook(() => useCloseOnViewportMove(true, close));
+    result.current();
+
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing when closed', () => {
+    const close = jest.fn();
+    const { result } = renderHook(() => useCloseOnViewportMove(false, close));
+    result.current();
+
+    expect(close).not.toHaveBeenCalled();
   });
 });
