@@ -60,11 +60,8 @@ const ExpandableCard = ({
       data-testid={dataTestId}>
       <div
         className={classNames(
-          'expandable-card-header tw:flex tw:min-h-12 tw:items-center tw:rounded-xl tw:bg-secondary tw:px-6 tw:text-sm tw:font-medium tw:text-black/85 tw:dark:text-primary',
-          {
-            'tw:-mb-px tw:border-b tw:border-black/6 tw:dark:border-secondary':
-              !isExpanded,
-          }
+          'expandable-card-header tw:flex tw:min-h-12 tw:items-center tw:px-6 tw:text-sm tw:font-medium tw:text-primary',
+          { 'tw:-mb-px tw:border-b tw:border-secondary': !isExpanded }
         )}>
         <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-4">
           {title}
