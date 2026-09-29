@@ -1,6 +1,8 @@
 package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
@@ -95,6 +97,39 @@ class AlertTickOutcomesIT {
     }
   }
 
+  // A tick whose commit fails came back all the same: only one that never does was interrupted.
+  @Test
+  void aTickWhoseCommitFailsIsNotInterrupted(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          webhookAlert(ns, "commit_fails", FailingCommitConsumer.class.getName(), receiver);
+      QuietAlert.settle(alert);
+      FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
+
+      tickWhoseCommitFails(alert);
+
+      assertNull(
+          AlertFixtures.dao()
+              .getSubscriberExtension(alert.getId().toString(), LedgerKeys.IN_PROGRESS));
+    }
+  }
+
+  @Test
+  void failedCommitsNeverSetAnEventAside(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          webhookAlert(ns, "commit_recovers", FailingCommitConsumer.class.getName(), receiver);
+      QuietAlert.settle(alert);
+      noteInterruptedTicks(alert, 5);
+      FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
+
+      tickWhoseCommitFails(alert);
+      DirectTick.run(alert);
+
+      assertTrue(failuresOf(alert).isEmpty(), "nothing is set aside as interrupted");
+    }
+  }
+
   @Test
   void interruptedTicksCommitAfterEveryEvent(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
@@ -160,6 +195,16 @@ class AlertTickOutcomesIT {
       TestNamespace ns, String name, String className, RecordingReceiver receiver) {
     return AlertFixtures.tableAlert(
         ns, name, className, List.of(AlertFixtures.external(WEBHOOK, receiver.url("/webhook"))));
+  }
+
+  // The failure is the commit's, and it still reaches the caller.
+  private static void tickWhoseCommitFails(EventSubscription alert) {
+    FailingCommitConsumer.fail(alert.getId());
+    try {
+      assertThrows(IllegalStateException.class, () -> DirectTick.run(alert));
+    } finally {
+      FailingCommitConsumer.recover(alert.getId());
+    }
   }
 
   private static void noteInterruptedTicks(EventSubscription alert, int attempts) {

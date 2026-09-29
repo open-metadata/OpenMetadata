@@ -424,9 +424,13 @@ public abstract class AbstractEventConsumer
   }
 
   private void finishTick(JobExecutionContext context) {
-    reportDestinationStatus();
-    commit(context);
-    ledger.clearOpeningNote();
+    try {
+      reportDestinationStatus();
+      commit(context);
+    } finally {
+      // However the commit ends, this tick came back: only one that never does was interrupted.
+      ledger.clearOpeningNote();
+    }
   }
 
   // Publishers leave their outcome on the destination they sent through. The alert was read from

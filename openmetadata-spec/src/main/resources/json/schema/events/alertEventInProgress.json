@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/events/alertEventInProgress.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AlertEventInProgress",
-  "description": "A note an alert writes before it reads events and clears when it commits. It counts the ticks in a row that opened at one position and never committed, so an event that stops the server every time can be set aside.",
+  "description": "A note an alert writes before it reads events and clears when the tick ends, however it ends. It counts the ticks in a row that opened at one position and never came back, so an event that stops the server every time can be set aside.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.events.AlertEventInProgress",
   "properties": {
@@ -12,7 +12,7 @@
       "existingJavaType": "Long"
     },
     "attempts": {
-      "description": "Ticks in a row that opened at this position and did not commit.",
+      "description": "Ticks in a row that opened at this position and never came back.",
       "type": "integer"
     },
     "timestamp": {
