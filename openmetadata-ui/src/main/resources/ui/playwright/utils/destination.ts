@@ -27,7 +27,9 @@ const selectOwnedOption = async ({
   page,
 }: SelectOwnedOptionArgs) => {
   await control.focus();
-  let listboxId = '';
+  // Index-keyed destination rows remount on every form-value write, tearing down
+  // the open listbox mid-click ("element detached from the DOM"). Reopen and
+  // re-resolve the listbox on every attempt so a torn-down popover can recover.
   await expect(async () => {
     if ((await control.getAttribute('aria-expanded')) !== 'true') {
       await open();
@@ -35,15 +37,12 @@ const selectOwnedOption = async ({
     await expect(control).toHaveAttribute('aria-expanded', 'true', {
       timeout: 2_000,
     });
-    listboxId = (await control.getAttribute('aria-controls')) ?? '';
+    const listboxId = (await control.getAttribute('aria-controls')) ?? '';
     expect(listboxId).toBeTruthy();
-  }).toPass({ timeout: 10_000 });
-  const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
-  // Index-keyed destination rows remount on every form-value write, tearing down
-  // the open listbox mid-click ("element detached from the DOM"). Retry the click
-  // until the option lands and the overlay closes.
-  await expect(async () => {
-    await listbox.getByRole('option', { exact: true, name: optionName }).click();
+    const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
+    await listbox
+      .getByRole('option', { exact: true, name: optionName })
+      .click({ timeout: 2_000 });
     // The exiting overlay still owns focus until it unmounts. Opening the next
     // picker during that transition can restore focus into the old control.
     await expect(listbox).toBeHidden({ timeout: 2_000 });
