@@ -12,7 +12,7 @@
  */
 
 import { Box, EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
-import { Lock01 as Lock } from '@openmetadata/ui-core-components/icons';
+import { Lock01 } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -535,7 +535,7 @@ function ServiceVersionPage() {
                 }}
               />
             }
-            icon={<Lock className="tw:text-secondary" />}
+            icon={<Lock01 className="tw:text-secondary" />}
             title={t('label.access-denied')}
           />
         </div>

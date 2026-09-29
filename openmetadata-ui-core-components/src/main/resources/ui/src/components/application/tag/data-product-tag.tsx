@@ -12,7 +12,7 @@
  */
 import { cx } from '@/utils/cx';
 import { CSSProperties, FC, MouseEvent } from 'react';
-import { Package as DataProduct } from '../../../icons/Package';
+import { Package } from '../../../icons/Package';
 import { Badge, BadgeWithButton } from '../../base/badges/badges';
 import { TagChipContent } from './tag-chip-content';
 import {
@@ -25,7 +25,7 @@ import { EntityTagProps } from './tag.types';
 /**
  * Data product tag — shadowed badge with NO background, 1px border on 3 sides,
  * and a prominent 4px left accent at full colour opacity.
- * Default icon: DataProduct. Color defaults to DEFAULT_TAG_COLOR. Tint colors (border/
+ * Default icon: Package. Color defaults to DEFAULT_TAG_COLOR. Tint colors (border/
  * left-accent/text/close-icon) are computed in CSS via color-mix() off the
  * --tag-color custom property — see styles/globals.css.
  */
@@ -49,7 +49,7 @@ export const DataProductTag: FC<EntityTagProps> = ({
   const content = (
     <TagChipContent
       defaultIcon={
-        <DataProduct
+        <Package
           className="tag-color-text"
           height={ICON_PX[size]}
           width={ICON_PX[size]}

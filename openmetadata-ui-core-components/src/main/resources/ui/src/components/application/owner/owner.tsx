@@ -12,7 +12,7 @@
  */
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { User01 as Owners } from '../../../icons/User01';
+import { User01 } from '../../../icons/User01';
 import { Popover, PopoverTrigger } from '../popover/popover';
 import { OwnerAvatarStack } from './owner-avatar-stack';
 import { OwnerChip } from './owner-chip';
@@ -62,7 +62,7 @@ export const Owner = ({
           className={cx('tw:flex tw:items-center tw:gap-1', className)}
           data-testid={dataTestId}>
           {!showDashPlaceholder && (
-            <Owners
+            <User01
               className="tw:size-4 tw:shrink-0 tw:text-quaternary"
               data-testid="no-owner-icon"
             />
@@ -129,7 +129,7 @@ export const Owner = ({
         data-testid={dataTestId}>
         {/* Matches the legacy NoOwnerFound placeholder: a user glyph the app
             asserts on (data-testid="no-owner-icon") for the empty compact state. */}
-        <Owners
+        <User01
           className="tw:size-4 tw:shrink-0 tw:text-quaternary"
           data-testid="no-owner-icon"
         />

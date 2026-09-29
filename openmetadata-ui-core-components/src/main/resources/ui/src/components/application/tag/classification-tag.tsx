@@ -12,7 +12,7 @@
  */
 import { cx } from '@/utils/cx';
 import { CSSProperties, FC, MouseEvent } from 'react';
-import { Tag01 as Tag } from '../../../icons/Tag01';
+import { Tag01 } from '../../../icons/Tag01';
 import { Badge, BadgeWithButton } from '../../base/badges/badges';
 import { TagChipContent } from './tag-chip-content';
 import {
@@ -24,7 +24,7 @@ import { EntityTagProps } from './tag.types';
 
 /**
  * Classification tag chip — rounded-md badge with tinted background and border.
- * Default icon: Tag (classification). Color defaults to DEFAULT_TAG_COLOR. Tint colors
+ * Default icon: Tag01 (classification). Color defaults to DEFAULT_TAG_COLOR. Tint colors
  * (border/background/text/close-icon) are computed in CSS via color-mix() off
  * the --tag-color custom property — see styles/globals.css.
  */
@@ -48,7 +48,7 @@ export const ClassificationTag: FC<EntityTagProps> = ({
   const content = (
     <TagChipContent
       defaultIcon={
-        <Tag
+        <Tag01
           className="tag-color-text"
           height={ICON_PX[size]}
           width={ICON_PX[size]}

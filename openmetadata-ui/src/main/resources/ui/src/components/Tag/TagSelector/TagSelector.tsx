@@ -17,7 +17,7 @@ import {
   FormItemLabel,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Tag01 as Tag } from '@openmetadata/ui-core-components/icons';
+import { Tag01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import {
   FC,
@@ -50,7 +50,7 @@ const resultToOption = (result: RawTagResult): FilterSelectOption => {
       <Icon iconValue={style.iconURL} size={16} />
     </Suspense>
   ) : (
-    <Tag height={16} width={16} />
+    <Tag01 height={16} width={16} />
   );
 
   return { value: result.value, label, textValue: label, icon };
