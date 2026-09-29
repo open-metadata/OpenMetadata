@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { setDomain } from '../../utils/domainPicker';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -52,7 +53,6 @@ import {
   searchDataProductOptions,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { assignDomainWidget } from '../../utils/domain';
 import {
   addOwner,
   assignGlossaryTerm,
@@ -175,7 +175,7 @@ test.describe(
         });
 
         // Single Domain Add Check
-        await assignDomainWidget(page, domain.responseData);
+        await setDomain(page, domain.responseData);
 
         // Exclude this check at Service Level Entities
         if (!entityName.includes('Service')) {
@@ -284,7 +284,7 @@ test.describe(
         });
 
         // Assign first domain (single-select mode)
-        await assignDomainWidget(page, testDomain1.responseData);
+        await setDomain(page, testDomain1.responseData);
 
         // Verify first domain is visible
         await expect(
@@ -294,7 +294,9 @@ test.describe(
         ).toBeVisible();
 
         // Assign second domain (should REPLACE first, not add to it)
-        await assignDomainWidget(page, testDomain2.responseData, false, true);
+        await setDomain(page, testDomain2.responseData, {
+          trigger: 'edit-domain',
+        });
 
         // Verify second domain is visible
         await expect(
@@ -397,7 +399,7 @@ test.describe(
       await authenticateAdminPage(page);
       await crossTable.visitEntityPage(page);
 
-      await assignDomainWidget(page, assetDomain.responseData);
+      await setDomain(page, assetDomain.responseData);
 
       await page
         .getByTestId('KnowledgePanel.DataProducts')

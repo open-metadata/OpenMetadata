@@ -46,7 +46,6 @@ import {
   selectOptionWithRetry,
   uuid,
 } from './common';
-import { DomainPickerTarget, selectDomainInPicker } from './domainPicker';
 import {
   addOwner,
   escapeESReservedCharacters,
@@ -255,42 +254,6 @@ export const removeCertificationFromWidget = async (
   await clickOutside(page);
 
   await expect(page.getByTestId('add-certification')).toBeVisible();
-};
-
-export const assignDomainWidget = async (
-  page: Page,
-  domain: DomainPickerTarget,
-  multiSelect = false,
-  isUpdate = false
-) => {
-  await openWidgetEditor(page, 'add-domain', 'edit-domain', isUpdate);
-  await waitForAllLoadersToDisappear(page);
-
-  await selectDomainInPicker(page, domain, { multiSelect });
-
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).toBeVisible();
-};
-
-export const removeDomainWidget = async (
-  page: Page,
-  domain: DomainPickerTarget
-) => {
-  // Removing implies a domain is already assigned, so the widget shows edit.
-  await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
-  await waitForAllLoadersToDisappear(page);
-
-  // Clicking the selected node deselects it; the single-select picker commits
-  // that on the click itself.
-  await selectDomainInPicker(page, domain, {
-    multiSelect: false,
-    clearSearch: true,
-  });
-
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).not.toBeVisible();
 };
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {

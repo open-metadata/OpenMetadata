@@ -41,7 +41,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { DomainPickerTarget, selectDomainInPicker } from './domainPicker';
+import { setDomain } from './domainPicker';
 import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
@@ -627,18 +627,6 @@ export const fillGlossaryTermDetails = async (
   await page
     .locator('.glossary-term-picker-popover')
     .waitFor({ state: 'detached' });
-};
-
-export const fillDomainDetails = async (
-  page: Page,
-  domains: DomainPickerTarget
-) => {
-  await page.keyboard.press('Enter');
-  await page.click('[data-testid="domain-selectable-tree-search"]');
-
-  // Bulk edit stages the whole sheet and saves it later, so there is no PATCH
-  // to wait for on this cell.
-  await selectDomainInPicker(page, domains, { awaitPatch: false });
 };
 
 const openActiveCellPopover = async (
@@ -1350,7 +1338,16 @@ export const fillRowDetails = async (
   }
 
   await selectActiveRowCellByColumn(page, 'domains');
-  await fillDomainDetails(page, row.domains);
+  // The grid cell opens its picker on Enter, and bulk edit stages the whole
+  // sheet, so there is no PATCH for this cell to wait on.
+  await setDomain(page, row.domains, {
+    trigger: async () => {
+      await page.keyboard.press('Enter');
+      await page.click('[data-testid="domain-selectable-tree-search"]');
+    },
+    awaitPatch: false,
+    verify: 'none',
+  });
 
   if (customPropertyRecord && Object.keys(customPropertyRecord).length > 0) {
     await selectActiveRowCellByColumn(page, 'extension');

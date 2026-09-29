@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { setDomain } from '../../utils/domainPicker';
 import {
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTIC_OPERATIONS,
@@ -25,10 +26,8 @@ import { performAdminLogin } from '../../utils/admin';
 import { selectOption, selectRange } from '../../utils/advancedSearch';
 import {
   assignDataProduct,
-  assignSingleSelectDomain,
   redirectToHomePage,
   removeDataProduct,
-  removeSingleSelectDomain,
 } from '../../utils/common';
 import {
   clickEditContractButton,
@@ -1020,7 +1019,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
 
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData);
 
       await performInitialStepForRules(page);
     });
@@ -1070,8 +1069,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with Is condition should failed', async () => {
-      await removeSingleSelectDomain(page, domain1.responseData);
-      await assignSingleSelectDomain(page, domain2.responseData);
+      await setDomain(page, domain1.responseData, { verify: 'cleared' });
+      await setDomain(page, domain2.responseData);
 
       await triggerContractValidation(page, contractId);
 
@@ -1102,7 +1101,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData);
 
       await performInitialStepForRules(page);
     });
@@ -1152,8 +1151,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with IsNot condition should failed', async () => {
-      await removeSingleSelectDomain(page, domain1.responseData);
-      await assignSingleSelectDomain(page, domain2.responseData);
+      await setDomain(page, domain1.responseData, { verify: 'cleared' });
+      await setDomain(page, domain2.responseData);
 
       await triggerContractValidation(page, contractId);
 
@@ -1185,7 +1184,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
 
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData);
 
       await performInitialStepForRules(page);
     });
@@ -1235,8 +1234,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with AnyIn condition should failed', async () => {
-      await removeSingleSelectDomain(page, domain1.responseData);
-      await assignSingleSelectDomain(page, domain2.responseData);
+      await setDomain(page, domain1.responseData, { verify: 'cleared' });
+      await setDomain(page, domain2.responseData);
 
       await triggerContractValidation(page, contractId);
 
@@ -1267,7 +1266,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain2.responseData);
+      await setDomain(page, domain2.responseData);
       await performInitialStepForRules(page);
     });
 
@@ -1316,8 +1315,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with NotIn condition should failed', async () => {
-      await removeSingleSelectDomain(page, domain2.responseData);
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain2.responseData, { verify: 'cleared' });
+      await setDomain(page, domain1.responseData);
 
       await triggerContractValidation(page, contractId);
 
@@ -1348,7 +1347,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData);
       await performInitialStepForRules(page);
     });
 
@@ -1391,7 +1390,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with IsSet condition should failed', async () => {
-      await removeSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData, { verify: 'cleared' });
 
       await triggerContractValidation(page, contractId);
 
@@ -1464,7 +1463,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
 
     await test.step('Domain with IsNotSet condition should failed', async () => {
-      await assignSingleSelectDomain(page, domain1.responseData);
+      await setDomain(page, domain1.responseData);
 
       await triggerContractValidation(page, contractId);
 
@@ -1585,7 +1584,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     });
 
     await test.step('Non-Correct entity version should failed', async () => {
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
 
       await triggerContractValidation(page, contractId);
 
@@ -1707,7 +1706,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     });
 
     await test.step('Contract with is_not condition for version should failed', async () => {
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
 
       await triggerContractValidation(page, contractId);
 
@@ -2089,7 +2088,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[0].responseData,
       ]);
@@ -2184,7 +2183,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[1].responseData,
       ]);
@@ -2279,7 +2278,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[1].responseData,
       ]);
@@ -2372,7 +2371,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[1].responseData,
       ]);
@@ -2500,7 +2499,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     await test.step('Open contract section and start adding contract', async () => {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[1].responseData,
       ]);
@@ -2632,7 +2631,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
 
       await assignDataProduct(page, domain.responseData, [
         createdDataProducts[1].responseData,

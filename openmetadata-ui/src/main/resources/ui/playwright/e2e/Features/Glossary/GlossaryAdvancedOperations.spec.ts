@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { setDomain } from '../../../utils/domainPicker';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../../support/entity/Entity.interface';
@@ -24,7 +25,6 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
-import { assignDomainWidget, removeDomainWidget } from '../../../utils/domain';
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
@@ -401,8 +401,11 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await assignDomainWidget(page, domain.responseData);
-      await removeDomainWidget(page, domain.responseData);
+      await setDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData, {
+        trigger: 'edit-domain',
+        verify: 'chip-gone',
+      });
     } finally {
       await glossary.delete(apiContext);
       await domain.delete(apiContext);
@@ -425,8 +428,8 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await assignDomainWidget(page, domain1.responseData);
-      await assignDomainWidget(page, domain2.responseData, false, true);
+      await setDomain(page, domain1.responseData);
+      await setDomain(page, domain2.responseData, { trigger: 'edit-domain' });
     } finally {
       await glossary.delete(apiContext);
       await domain1.delete(apiContext);

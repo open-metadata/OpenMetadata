@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { setDomain } from './domainPicker';
 import { GlobalSettingOptions } from '../constant/settings';
 import { Domain } from '../support/domain/Domain';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
@@ -18,7 +19,6 @@ import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  assignDomain,
   descriptionBox,
   fillDescriptionBox,
   getApiContext,
@@ -780,7 +780,7 @@ export const executionOnOwnerTeam = async (
   await expect(page.getByTestId('edit-team-subscription')).toBeVisible();
   await expect(page.getByTestId('edit-team-type-icon')).toBeVisible();
 
-  await assignDomain(page, data.domain.responseData);
+  await setDomain(page, data.domain.responseData);
 
   await addMultiOwner({
     page,
@@ -822,7 +822,7 @@ export const executionOnOwnerGroupTeam = async (
   await expect(page.getByTestId('edit-team-subscription')).toBeVisible();
   await expect(page.getByTestId('edit-team-type-icon')).not.toBeVisible();
 
-  await assignDomain(page, data.domain.responseData);
+  await setDomain(page, data.domain.responseData);
 
   await addEmailTeam(page, data.email);
 

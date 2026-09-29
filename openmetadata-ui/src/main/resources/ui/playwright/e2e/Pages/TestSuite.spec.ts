@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Route } from '@playwright/test';
+import { setDomain } from '../../utils/domainPicker';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { Domain } from '../../support/domain/Domain';
 import { BundleTestSuiteClass } from '../../support/entity/BundleTestSuiteClass';
@@ -27,11 +28,9 @@ import {
 } from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
-  removeSingleSelectDomain,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -375,9 +374,9 @@ test(
     });
 
     await test.step('Domain Add, Update and Remove', async () => {
-      await assignSingleSelectDomain(page, domain1.responseData);
-      await assignSingleSelectDomain(page, domain2.responseData);
-      await removeSingleSelectDomain(page, domain2.responseData, true);
+      await setDomain(page, domain1.responseData);
+      await setDomain(page, domain2.responseData);
+      await setDomain(page, domain2.responseData, { verify: 'cleared' });
     });
 
     await test.step('User as Owner assign, update & delete for test suite', async () => {

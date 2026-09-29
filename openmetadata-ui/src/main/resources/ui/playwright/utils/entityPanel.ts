@@ -19,7 +19,6 @@ import {
   openGlossaryPicker,
   searchGlossaryPicker,
 } from './glossaryPicker';
-import { selectDomainInPicker } from './domainPicker';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 import { ENTITY_PATH } from '../support/entity/Entity.interface';
@@ -381,26 +380,6 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await applyGlossaryPicker(page);
 };
 
-export const editDomain = async (page: Page, domainName: string) => {
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-  const domainsSection = summaryPanel.locator('.domains-section');
-
-  await domainsSection
-    .locator('[data-testid="add-domain"]')
-    .scrollIntoViewIfNeeded();
-  await page.getByTestId('add-domain').waitFor({ state: 'visible' });
-  await page.locator('[data-testid="add-domain"]').click();
-
-  // The panel renders no FQN, so the picker matches on the visible name.
-  const patchResponse = await selectDomainInPicker(
-    page,
-    { name: domainName },
-    { multiSelect: false }
-  );
-
-  expect(patchResponse?.status()).toBe(200);
-};
-
 export const verifyDeletedEntityNotVisible = async (
   page: Page,
   entityName: string,
@@ -550,25 +529,6 @@ export const removeOwnerFromPanel = async (
   }
 
   await patchPromise;
-};
-
-export const removeDomainFromPanel = async (page: Page, domainName: string) => {
-  await page.getByTestId('add-domain').waitFor({ state: 'visible' });
-
-  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
-  await page.getByTestId('add-domain').click({ force: true });
-
-  // Clicking the selected node deselects it. This panel's picker commits on
-  // select, like `editDomain` above.
-  //
-  // The removed `getByRole('button', { name: 'Update' })` fallback was already
-  // dead: the staged footer's confirm button is labelled "Apply"/"Apply (N)",
-  // never "Update", so `isVisible()` could not be true.
-  await selectDomainInPicker(
-    page,
-    { name: domainName },
-    { multiSelect: false }
-  );
 };
 
 export const assignTierToPanel = async (page: Page, tierName: string) => {

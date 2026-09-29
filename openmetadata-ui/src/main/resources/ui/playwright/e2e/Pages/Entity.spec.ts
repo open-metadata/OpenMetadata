@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page, Request } from '@playwright/test';
+import { setDomain } from '../../utils/domainPicker';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
@@ -39,13 +40,11 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
-  removeSingleSelectDomain,
   resolveDescriptionBox,
   toastNotification,
   uuid,
@@ -196,10 +195,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           false
         );
 
-        await assignSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
+        await setDomain(page, EntityDataClass.domain1.responseData);
         await verifyDomainPropagation(
           page,
           EntityDataClass.domain1.responseData,
@@ -216,10 +212,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           },
           false
         );
-        await removeSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
+        await setDomain(page, EntityDataClass.domain1.responseData, {
+          verify: 'cleared',
+        });
       }
     });
 

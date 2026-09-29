@@ -26,7 +26,6 @@ import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
-import { DomainPickerTarget, selectDomainInPicker } from './domainPicker';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
@@ -642,106 +641,6 @@ export const visitOwnProfilePage = async (page: Page) => {
   await page.getByRole('link', { name: 'View Profile' }).click();
   await userResponse;
   await clickOutside(page);
-};
-
-export const assignDomain = async (
-  page: Page,
-  domain: DomainPickerTarget,
-  checkSelectedDomain = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  await selectDomainInPicker(page, domain);
-
-  if (checkSelectedDomain) {
-    // The header shows one chip plus a "+ N More" toggle once several domains
-    // are assigned, so the individual chip is only on screen while there is one.
-    const hasMultipleDomains = await page
-      .getByTestId('show-all-domains')
-      .isVisible();
-    if (hasMultipleDomains) {
-      await expect(page.getByTestId('show-all-domains')).toBeVisible();
-    } else {
-      await expect(
-        page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-      ).toContainText(domain.displayName ?? domain.name);
-    }
-  }
-};
-
-export const assignSingleSelectDomain = async (
-  page: Page,
-  domain: DomainPickerTarget
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  // Selecting commits and closes the picker; wait for it to fully detach so a
-  // subsequent reopen (e.g. removeSingleSelectDomain) does not race the close.
-  await selectDomainInPicker(page, domain, {
-    multiSelect: false,
-    waitForClose: true,
-  });
-
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).toContainText(domain.displayName ?? domain.name);
-};
-
-export const updateDomain = async (page: Page, domain: DomainPickerTarget) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  await selectDomainInPicker(page, domain, { clearSearch: true });
-
-  // The header layout shows one chip plus a "+ N More" toggle; expanding it
-  // reveals the newly added domain chip inline.
-  const showMore = page.getByTestId('show-all-domains');
-  await expect(showMore).toBeVisible();
-  await showMore.click();
-
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).toBeVisible();
-};
-
-export const removeDomain = async (
-  page: Page,
-  domain: DomainPickerTarget,
-  showDashPlaceholder = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  // Clicking an already-selected node deselects it, so the same sequence that
-  // assigns a domain also removes it.
-  await selectDomainInPicker(page, domain);
-
-  await expect(page.getByTestId('no-domain-text')).toContainText(
-    showDashPlaceholder ? '--' : 'No Domains'
-  );
-};
-
-export const removeSingleSelectDomain = async (
-  page: Page,
-  domain: DomainPickerTarget,
-  showDashPlaceholder = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  // Deselecting commits and closes the picker; wait for it to fully detach so
-  // a subsequent reopen does not race the close animation.
-  await selectDomainInPicker(page, domain, {
-    multiSelect: false,
-    clearSearch: true,
-    waitForClose: true,
-  });
-
-  await expect(page.getByTestId('no-domain-text')).toContainText(
-    showDashPlaceholder ? '--' : 'No Domains'
-  );
 };
 
 export const assignDataProduct = async (

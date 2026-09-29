@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { setDomain } from '../../utils/domainPicker';
 import { SERVICE_TYPE } from '../../constant/service';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -49,13 +50,12 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
-  assignDomain,
   descriptionBoxReadOnly,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { addAssetsToDataProduct, assignDomainWidget } from '../../utils/domain';
+import { addAssetsToDataProduct } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -247,8 +247,8 @@ test.describe(
           ).toBeVisible();
         }
 
-        await assignDomain(page, domain.responseData);
-        await assignDomain(page, domain2.responseData, false);
+        await setDomain(page, domain.responseData);
+        await setDomain(page, domain2.responseData, { verify: 'none' });
 
         await expect(page.getByTestId('show-all-domains')).toBeVisible();
 
@@ -801,10 +801,12 @@ test.describe(
         });
 
         // Assign first domain (multi-select mode)
-        await assignDomainWidget(page, testDomain1.responseData, true);
+        await setDomain(page, testDomain1.responseData);
 
         // Assign second domain (should ADD to first, not replace)
-        await assignDomainWidget(page, testDomain2.responseData, true, true);
+        await setDomain(page, testDomain2.responseData, {
+          trigger: 'edit-domain',
+        });
 
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links
@@ -888,7 +890,7 @@ test.describe(
       await crossTable.visitEntityPage(page);
 
       // Asset belongs to assetDomain only.
-      await assignDomain(page, assetDomain.responseData);
+      await setDomain(page, assetDomain.responseData);
 
       // The Data Product from productDomain can be assigned even though the
       // asset is in assetDomain, because the domain validation rule is disabled

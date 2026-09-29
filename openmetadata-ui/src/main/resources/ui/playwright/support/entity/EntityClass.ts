@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { setDomain } from '../../utils/domainPicker';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
 import { deleteFixtureEntity } from '../../utils/apiResponse';
 import {
   assignDataProduct,
-  assignSingleSelectDomain,
   getApiContext,
   removeDataProduct,
-  removeSingleSelectDomain,
 } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
@@ -130,17 +129,17 @@ export class EntityClass {
     dataProduct2: DataProduct['responseData'],
     dataProduct3: DataProduct['responseData']
   ) {
-    await assignSingleSelectDomain(page, domain1);
+    await setDomain(page, domain1);
     await assignDataProduct(page, domain1, [dataProduct1]);
     await assignDataProduct(page, domain1, [dataProduct2], 'Edit');
     await removeDataProduct(page, dataProduct1);
     await removeDataProduct(page, dataProduct2);
-    await removeSingleSelectDomain(page, domain1);
+    await setDomain(page, domain1, { verify: 'cleared' });
 
-    await assignSingleSelectDomain(page, domain2);
+    await setDomain(page, domain2);
     await assignDataProduct(page, domain2, [dataProduct3]);
     await removeDataProduct(page, dataProduct3);
-    await removeSingleSelectDomain(page, domain2);
+    await setDomain(page, domain2, { verify: 'cleared' });
   }
 
   async owner(
