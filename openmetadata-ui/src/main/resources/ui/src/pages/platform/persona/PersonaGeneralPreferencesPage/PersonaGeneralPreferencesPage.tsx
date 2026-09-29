@@ -13,15 +13,22 @@
 
 import {
   Box,
+  Button,
+  ButtonGroup,
+  ButtonGroupItem,
+  ButtonUtility,
   Card,
   Divider,
+  Dropdown,
   Grid,
   RadioButton,
   RadioGroup,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Delete, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { isEmpty, isEqual, omit } from 'lodash';
 import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -32,9 +39,19 @@ import {
   DEFAULT_LANDING_PAGE,
   LANDING_PAGE_SECTIONS,
 } from '../../../../constants/platform/personaLandingPage.constants';
+import {
+  DEFAULT_PAGE_VIEW_MODE,
+  PAGE_VIEW_MODE_LABEL_KEYS,
+  ViewModePage,
+  VIEW_MODE_PAGES,
+} from '../../../../constants/platform/personaViewMode.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { Persona } from '../../../../generated/entity/teams/persona';
-import { AppMode } from '../../../../generated/type/personaPreferences';
+import {
+  AppMode,
+  DefaultViewModes,
+  PageViewMode,
+} from '../../../../generated/type/personaPreferences';
 import {
   getPersonaPreferences,
   PersonaGeneralPreferences,
@@ -116,9 +133,13 @@ export const PersonaGeneralPreferencesPage = ({
   // install-gate.
   const hasNonDefaultMode = true;
 
-  const persistedAppMode =
-    getPersonaPreferences(document, personaDetails?.id)?.appMode ??
-    NO_DEFAULT_VALUE;
+  const persistedPreferences = getPersonaPreferences(
+    document,
+    personaDetails?.id
+  );
+  const persistedAppMode = persistedPreferences?.appMode ?? NO_DEFAULT_VALUE;
+  const persistedViewModes: DefaultViewModes =
+    persistedPreferences?.defaultViewModes ?? {};
   const persistedLandingPage = resolvePersonaLandingPage(
     document,
     personaDetails?.id
@@ -126,9 +147,21 @@ export const PersonaGeneralPreferencesPage = ({
 
   const [selectedMode, setSelectedMode] = useState<string>(persistedAppMode);
   const [landingPage, setLandingPage] = useState(persistedLandingPage);
+  const [viewModes, setViewModes] = useState(persistedViewModes);
+
+  const configuredPages = VIEW_MODE_PAGES.filter(({ page }) => viewModes[page]);
+  const addablePages = VIEW_MODE_PAGES.filter(({ page }) => !viewModes[page]);
 
   const disableSave =
-    selectedMode === persistedAppMode && landingPage === persistedLandingPage;
+    selectedMode === persistedAppMode &&
+    landingPage === persistedLandingPage &&
+    isEqual(viewModes, persistedViewModes);
+
+  const setPageViewMode = (page: ViewModePage, view: PageViewMode) =>
+    setViewModes((prev) => ({ ...prev, [page]: view }));
+
+  const removePageViewMode = (page: ViewModePage) =>
+    setViewModes((prev) => omit(prev, page));
 
   const handleSave = async () => {
     await onSave({
@@ -138,12 +171,14 @@ export const PersonaGeneralPreferencesPage = ({
           : (selectedMode as AppMode),
       defaultLandingPage:
         landingPage === DEFAULT_LANDING_PAGE ? undefined : landingPage,
+      defaultViewModes: isEmpty(viewModes) ? undefined : viewModes,
     });
   };
 
   const handleReset = () => {
     setSelectedMode(NO_DEFAULT_VALUE);
     setLandingPage(DEFAULT_LANDING_PAGE);
+    setViewModes({});
   };
 
   if (!hasNonDefaultMode) {
@@ -256,6 +291,119 @@ export const PersonaGeneralPreferencesPage = ({
                   </Select.Section>
                 ))}
               </Select>
+            </PreferenceRow>
+
+            <Divider />
+
+            <PreferenceRow
+              description={t('message.view-mode-description')}
+              title={t('label.view-mode')}>
+              <Box
+                className="tw:rounded-xl tw:border tw:border-secondary"
+                data-testid="view-mode-pages"
+                direction="col">
+                {configuredPages.map(({ page, labelKey, views }) => (
+                  <Box
+                    align="center"
+                    className="tw:border-b tw:border-secondary tw:px-5 tw:py-3"
+                    data-testid={`view-mode-row-${page}`}
+                    gap={4}
+                    justify="between"
+                    key={page}>
+                    <Typography
+                      as="span"
+                      className="tw:text-primary"
+                      size="text-md"
+                      weight="medium">
+                      {t(labelKey)}
+                    </Typography>
+                    <Box align="center" gap={3}>
+                      <ButtonGroup
+                        disallowEmptySelection
+                        aria-label={t(labelKey)}
+                        selectedKeys={[viewModes[page] as PageViewMode]}
+                        size="sm"
+                        variant="segmented"
+                        onSelectionChange={(keys) =>
+                          setPageViewMode(
+                            page,
+                            Array.from(keys)[0] as PageViewMode
+                          )
+                        }>
+                        {views.map((view) => (
+                          <ButtonGroupItem
+                            data-testid={`view-mode-${page}-${view}`}
+                            id={view}
+                            key={view}>
+                            {t(PAGE_VIEW_MODE_LABEL_KEYS[view])}
+                          </ButtonGroupItem>
+                        ))}
+                      </ButtonGroup>
+                      <ButtonUtility
+                        color="tertiary"
+                        data-testid={`remove-view-mode-${page}`}
+                        icon={Delete}
+                        tooltip={t('label.remove-entity', {
+                          entity: t(labelKey),
+                        })}
+                        onClick={() => removePageViewMode(page)}
+                      />
+                    </Box>
+                  </Box>
+                ))}
+                <Box className="tw:px-5 tw:py-3">
+                  <Dropdown.Root>
+                    <Button
+                      color="link-color"
+                      data-testid="add-view-mode-page"
+                      iconLeading={Plus}
+                      isDisabled={isEmpty(addablePages)}
+                      size="md">
+                      {t('label.add-entity', { entity: t('label.page') })}
+                    </Button>
+                    <Dropdown.Popover
+                      className="tw:w-80"
+                      placement="bottom left">
+                      <Dropdown.Menu
+                        selectionMode="none"
+                        onAction={(page) =>
+                          setPageViewMode(
+                            page as ViewModePage,
+                            DEFAULT_PAGE_VIEW_MODE
+                          )
+                        }>
+                        <Dropdown.Section>
+                          <Dropdown.SectionHeader className="tw:px-4 tw:pt-2 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
+                            {t('label.select-entity', {
+                              entity: t('label.page'),
+                            })}
+                          </Dropdown.SectionHeader>
+                          {addablePages.map(({ page, labelKey, views }) => (
+                            <Dropdown.Item
+                              data-testid={`add-view-mode-page-${page}`}
+                              id={page}
+                              key={page}
+                              textValue={t(labelKey)}>
+                              <span className="tw:flex tw:justify-between tw:gap-4">
+                                <span className="tw:text-md tw:text-primary">
+                                  {t(labelKey)}
+                                </span>
+                                <span className="tw:text-tertiary">
+                                  {views
+                                    .map((view) =>
+                                      t(PAGE_VIEW_MODE_LABEL_KEYS[view])
+                                    )
+                                    .join(' · ')}
+                                </span>
+                              </span>
+                            </Dropdown.Item>
+                          ))}
+                        </Dropdown.Section>
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown.Root>
+                </Box>
+              </Box>
             </PreferenceRow>
           </Card>
         </Box>

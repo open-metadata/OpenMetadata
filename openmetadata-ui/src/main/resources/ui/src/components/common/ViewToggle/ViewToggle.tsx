@@ -15,12 +15,11 @@ import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
 import { Grid01, Menu01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/data-flow.svg';
+// The persona's saved default view is this same enum, so a page can open
+// straight in it.
+import { PageViewMode as ViewMode } from '../../../generated/type/personaPreferences';
 
-export enum ViewMode {
-  Table = 'table',
-  Card = 'card',
-  Tree = 'tree',
-}
+export { ViewMode };
 
 interface ViewToggleProps {
   value: ViewMode;

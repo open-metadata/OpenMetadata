@@ -37,6 +37,7 @@ import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -217,7 +218,9 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const personaView = usePersonaViewMode('dataProducts');
+  const [selectedView, setView] = useState<ViewMode>();
+  const view = selectedView ?? personaView;
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const dataProductColumns: ColumnDef[] = useMemo(

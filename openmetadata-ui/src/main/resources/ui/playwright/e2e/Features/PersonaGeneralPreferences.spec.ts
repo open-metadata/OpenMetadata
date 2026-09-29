@@ -15,6 +15,7 @@
  * A persona's `personaPreferences[].defaultLandingPage` decides where its
  * users land after a fresh sign-in — in Classic mode only. The AI shell owns
  * `/`, so an AI persona keeps landing there whatever the landing page says.
+ * Its `defaultViewModes` decide which layout each view-toggle page opens in.
  */
 
 import { APIRequestContext, Browser, Page } from '@playwright/test';
@@ -25,7 +26,8 @@ import { createNewPage } from '../../utils/common';
 
 interface PersonaPreferenceSeed {
   appMode?: 'classic' | 'AI';
-  defaultLandingPage: string;
+  defaultLandingPage?: string;
+  defaultViewModes?: Record<string, 'table' | 'card' | 'tree'>;
 }
 
 interface SeededPersona {
@@ -93,7 +95,7 @@ const assignDefaultPersona = async (
 const signInWithPersona = async (
   browser: Browser,
   preferences: PersonaPreferenceSeed,
-  assertLanding: (page: Page) => Promise<void>
+  assertLanding: (page: Page, user: UserClass) => Promise<void>
 ): Promise<void> => {
   const { apiContext, afterAction } = await createNewPage(browser);
   const user = new UserClass();
@@ -111,7 +113,7 @@ const signInWithPersona = async (
     const page = await context.newPage();
     try {
       await user.login(page);
-      await assertLanding(page);
+      await assertLanding(page, user);
     } finally {
       await context.close();
     }
@@ -141,6 +143,28 @@ test.describe('Persona default landing page', { tag: ['@Platform'] }, () => {
     );
   });
 
+  test('a Classic persona lands there again after logging out and back in', async ({
+    browser,
+  }) => {
+    test.slow();
+
+    await signInWithPersona(
+      browser,
+      { appMode: 'classic', defaultLandingPage: '/glossary' },
+      async (page, user) => {
+        // Load the app on another page first, then sign back in without a
+        // page load — the way a user does after an in-app logout.
+        await page.goto('/explore');
+        await user.logout(page);
+        await page.locator('input[name="email"]').fill(user.data.email);
+        await page.locator('input[name="password"]').fill(user.data.password);
+        await page.getByTestId('login').click();
+
+        await expect(page).toHaveURL(/\/glossary(\?|#|$)/);
+      }
+    );
+  });
+
   test('an AI persona keeps landing at "/" whatever its landing page', async ({
     browser,
   }) => {
@@ -154,6 +178,35 @@ test.describe('Persona default landing page', { tag: ['@Platform'] }, () => {
         await expect(page.getByTestId('ask-sidebar')).toBeVisible();
 
         expect(new URL(page.url()).pathname).toBe('/');
+      }
+    );
+  });
+});
+
+test.describe('Persona default view mode', { tag: ['@Platform'] }, () => {
+  test('pages open in the view the persona picked', async ({ browser }) => {
+    test.slow();
+
+    await signInWithPersona(
+      browser,
+      {
+        appMode: 'classic',
+        defaultViewModes: { domains: 'tree', dataProducts: 'card' },
+      },
+      async (page) => {
+        await page.goto('/domain');
+
+        await expect(page.getByTestId('tree-view-toggle')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
+
+        await page.goto('/dataProduct');
+
+        await expect(page.getByTestId('card-view-toggle')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
       }
     );
   });

@@ -15,6 +15,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import {
   AppMode,
+  PageViewMode,
   PersonaPreferences,
 } from '../../../../generated/type/personaPreferences';
 import { useCustomizeStore } from '../../../CustomizablePage/CustomizeStore';
@@ -68,7 +69,10 @@ const personaId = 'persona-1';
 const persona = { id: personaId, name: 'analytics' } as Persona;
 
 const seedDoc = (
-  preferences: Pick<PersonaPreferences, 'appMode' | 'defaultLandingPage'> = {}
+  preferences: Pick<
+    PersonaPreferences,
+    'appMode' | 'defaultLandingPage' | 'defaultViewModes'
+  > = {}
 ) => {
   useCustomizeStore.setState({
     document: {
@@ -100,6 +104,14 @@ const getRadio = (value: string) =>
 
 const getLandingPageTrigger = () =>
   within(screen.getByTestId('default-landing-page-select')).getByRole('button');
+
+const getViewOption = (page: string, view: string) =>
+  within(screen.getByTestId(`view-mode-row-${page}`)).getByRole('radio', {
+    name: view,
+  });
+
+const openAddPageMenu = () =>
+  fireEvent.click(screen.getByTestId('add-view-mode-page'));
 
 describe('PersonaGeneralPreferencesPage', () => {
   beforeEach(() => {
@@ -168,6 +180,92 @@ describe('PersonaGeneralPreferencesPage', () => {
     });
   });
 
+  describe('View Mode', () => {
+    it('shows each configured page with its saved view', () => {
+      seedDoc({ defaultViewModes: { domains: PageViewMode.Tree } });
+      renderPage();
+
+      expect(getViewOption('domains', 'label.tree')).toBeChecked();
+      expect(getViewOption('domains', 'label.table')).not.toBeChecked();
+      expect(
+        screen.queryByTestId('view-mode-row-dataProducts')
+      ).not.toBeInTheDocument();
+    });
+
+    it('offers Tree only on Domains', () => {
+      seedDoc({
+        defaultViewModes: {
+          domains: PageViewMode.Table,
+          dataProducts: PageViewMode.Card,
+        },
+      });
+      renderPage();
+
+      expect(
+        within(screen.getByTestId('view-mode-row-dataProducts')).queryByRole(
+          'radio',
+          { name: 'label.tree' }
+        )
+      ).not.toBeInTheDocument();
+      expect(getViewOption('domains', 'label.tree')).toBeInTheDocument();
+    });
+
+    it('lists only pages that are not configured yet', async () => {
+      seedDoc({ defaultViewModes: { domains: PageViewMode.Tree } });
+      renderPage();
+
+      openAddPageMenu();
+
+      expect(
+        await screen.findByRole('menuitem', {
+          name: /label\.sub-domain-plural/,
+        })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('menuitem', { name: /^label\.domain-plural/ })
+      ).not.toBeInTheDocument();
+    });
+
+    it('saves added, changed and removed pages', async () => {
+      seedDoc({
+        defaultViewModes: {
+          domains: PageViewMode.Table,
+          dataProducts: PageViewMode.Card,
+        },
+      });
+      const onSave = renderPage();
+
+      openAddPageMenu();
+      fireEvent.click(
+        await screen.findByRole('menuitem', {
+          name: /label\.learning-resources/,
+        })
+      );
+      fireEvent.click(getViewOption('domains', 'label.tree'));
+      fireEvent.click(screen.getByTestId('remove-view-mode-dataProducts'));
+      fireEvent.click(screen.getByTestId('save-btn'));
+
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultViewModes: {
+            domains: PageViewMode.Tree,
+            learningResources: PageViewMode.Table,
+          },
+        })
+      );
+    });
+
+    it('saves no view modes once every page is removed', () => {
+      seedDoc({ defaultViewModes: { domains: PageViewMode.Card } });
+      const onSave = renderPage();
+
+      fireEvent.click(screen.getByTestId('remove-view-mode-domains'));
+      fireEvent.click(screen.getByTestId('save-btn'));
+
+      expect(onSave.mock.calls[0][0].defaultViewModes).toBeUndefined();
+    });
+  });
+
   describe('Save and reset', () => {
     it('disables save until something changes', () => {
       seedDoc({ appMode: AppMode.AI, defaultLandingPage: '/explore' });
@@ -220,14 +318,21 @@ describe('PersonaGeneralPreferencesPage', () => {
       });
     });
 
-    it('reset returns both settings to their defaults', () => {
-      seedDoc({ appMode: AppMode.AI, defaultLandingPage: '/glossary' });
+    it('reset returns every setting to its default', () => {
+      seedDoc({
+        appMode: AppMode.AI,
+        defaultLandingPage: '/glossary',
+        defaultViewModes: { domains: PageViewMode.Tree },
+      });
       renderPage();
 
       fireEvent.click(screen.getByTestId('reset-btn'));
 
       expect(getRadio('null').checked).toBe(true);
       expect(getLandingPageTrigger()).toHaveTextContent('label.home-my-data');
+      expect(
+        screen.queryByTestId('view-mode-row-domains')
+      ).not.toBeInTheDocument();
     });
   });
 });

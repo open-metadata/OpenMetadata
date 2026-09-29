@@ -17,20 +17,29 @@ import {
   DEFAULT_LANDING_PAGE,
   LANDING_PAGE_SECTIONS,
 } from '../../constants/platform/personaLandingPage.constants';
+import {
+  DEFAULT_PAGE_VIEW_MODE,
+  ViewModePage,
+  VIEW_MODE_PAGES,
+} from '../../constants/platform/personaViewMode.constants';
 import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { Page } from '../../generated/system/ui/page';
-import { PersonaPreferences } from '../../generated/type/personaPreferences';
+import {
+  PageViewMode,
+  PersonaPreferences,
+} from '../../generated/type/personaPreferences';
 
 export type PersonaGeneralPreferences = Pick<
   PersonaPreferences,
-  'appMode' | 'defaultLandingPage'
+  'appMode' | 'defaultLandingPage' | 'defaultViewModes'
 >;
 
 const GENERAL_PREFERENCE_KEYS: Array<keyof PersonaGeneralPreferences> = [
   'appMode',
   'defaultLandingPage',
+  'defaultViewModes',
 ];
 
 const getPageEntries = (document?: Document | null): unknown[] | undefined => {
@@ -190,4 +199,21 @@ export const getSignInLandingPath = (
   return landingPage === DEFAULT_LANDING_PAGE
     ? APP_ROUTER_ROUTES.HOME
     : landingPage;
+};
+
+/**
+ * The view a page opens in for users of this persona. A stored view the page
+ * doesn't offer (e.g. Tree outside Domains) falls back to Table.
+ */
+export const resolvePersonaViewMode = (
+  document: Document | null | undefined,
+  personaId: string | undefined,
+  page: ViewModePage
+): PageViewMode => {
+  const view = getPersonaPreferences(document, personaId)?.defaultViewModes?.[
+    page
+  ];
+  const offered = VIEW_MODE_PAGES.find((option) => option.page === page);
+
+  return view && offered?.views.includes(view) ? view : DEFAULT_PAGE_VIEW_MODE;
 };

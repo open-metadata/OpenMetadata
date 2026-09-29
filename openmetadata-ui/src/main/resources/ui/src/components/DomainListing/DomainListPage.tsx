@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -137,7 +138,9 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     loading: domainListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const personaView = usePersonaViewMode('domains');
+  const [selectedView, setView] = useState<ViewMode>();
+  const view = selectedView ?? personaView;
   const isTreeView = view === ViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 

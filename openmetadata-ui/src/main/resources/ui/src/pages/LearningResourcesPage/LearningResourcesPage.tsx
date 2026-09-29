@@ -55,6 +55,7 @@ import {
   MAX_VISIBLE_TAGS,
   PAGE_IDS,
 } from '../../constants/Learning.constants';
+import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { LearningResource } from '../../rest/learningResourceAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { useLearningResourceActions } from './hooks/useLearningResourceActions';
@@ -132,7 +133,9 @@ export const LearningResourcesPage: React.FC = () => {
     handlePlayerClose,
   } = useLearningResourceActions({ onRefetch: refetch });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const personaView = usePersonaViewMode('learningResources');
+  const [selectedView, setView] = useState<ViewMode>();
+  const view = selectedView ?? personaView;
 
   const [searchInputValue, setSearchInputValue] = useState(searchText);
 

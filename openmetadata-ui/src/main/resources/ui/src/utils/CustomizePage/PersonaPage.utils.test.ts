@@ -15,6 +15,7 @@ import { Document } from '../../generated/entity/docStore/document';
 import { Page, PageType } from '../../generated/system/ui/page';
 import {
   AppMode,
+  PageViewMode,
   PersonaPreferences,
 } from '../../generated/type/personaPreferences';
 import {
@@ -22,6 +23,7 @@ import {
   getSignInLandingPath,
   normalizePersonaDocument,
   resolvePersonaLandingPage,
+  resolvePersonaViewMode,
   updatePersonaDocumentPage,
   updatePersonaGeneralPreferences,
 } from './PersonaPage.utils';
@@ -43,14 +45,19 @@ const createDocument = (pages: unknown[]): Document => ({
   name: 'test',
 });
 
-const createLandingPageDocument = (defaultLandingPage?: string): Document => ({
+const createPreferencesDocument = (
+  preferences: Partial<PersonaPreferences>
+): Document => ({
   ...createDocument([]),
   data: {
     personaPreferences: [
-      { personaId: 'persona-1', personaName: 'analytics', defaultLandingPage },
+      { personaId: 'persona-1', personaName: 'analytics', ...preferences },
     ],
   },
 });
+
+const createLandingPageDocument = (defaultLandingPage?: string) =>
+  createPreferencesDocument({ defaultLandingPage });
 
 describe('PersonaPage utilities', () => {
   it('finds a valid page after invalid legacy entries', () => {
@@ -250,5 +257,39 @@ describe('getSignInLandingPath', () => {
         'persona-1'
       )
     ).toBe('/');
+  });
+});
+
+describe('resolvePersonaViewMode', () => {
+  const document = createPreferencesDocument({
+    defaultViewModes: {
+      domains: PageViewMode.Tree,
+      dataProducts: PageViewMode.Card,
+      subDomains: PageViewMode.Tree,
+    },
+  });
+
+  it('returns the view saved for the page', () => {
+    expect(resolvePersonaViewMode(document, 'persona-1', 'domains')).toBe(
+      PageViewMode.Tree
+    );
+    expect(resolvePersonaViewMode(document, 'persona-1', 'dataProducts')).toBe(
+      PageViewMode.Card
+    );
+  });
+
+  it('falls back to Table when the page does not offer the saved view', () => {
+    expect(resolvePersonaViewMode(document, 'persona-1', 'subDomains')).toBe(
+      PageViewMode.Table
+    );
+  });
+
+  it('falls back to Table when nothing is saved for the page', () => {
+    expect(
+      resolvePersonaViewMode(document, 'persona-1', 'learningResources')
+    ).toBe(PageViewMode.Table);
+    expect(resolvePersonaViewMode(undefined, 'persona-1', 'domains')).toBe(
+      PageViewMode.Table
+    );
   });
 });

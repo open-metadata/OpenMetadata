@@ -35,6 +35,24 @@ export const styles = sortCx({
     icon: 'tw:pointer-events-none tw:text-fg-quaternary tw:transition-[inherit] tw:group-hover/button-group:text-fg-quaternary_hover tw:group-disabled/button-group:text-fg-disabled_subtle',
   },
 
+  // Same look as the Tabs `button-border` list: items sit in a gray track and
+  // the selected one is raised.
+  segmented: {
+    group:
+      'tw:gap-1 tw:rounded-[10px] tw:bg-secondary_alt tw:p-1 tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',
+    root: [
+      'tw:group/button-group tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:rounded-md tw:font-semibold tw:whitespace-nowrap tw:text-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+      'tw:hover:text-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+      'tw:disabled:cursor-not-allowed tw:disabled:text-disabled',
+      'tw:selected:bg-primary_alt tw:selected:text-secondary tw:selected:shadow-sm',
+    ].join(' '),
+    sizes: {
+      sm: 'tw:gap-1.5 tw:px-3 tw:py-1 tw:text-sm',
+      md: 'tw:gap-1.5 tw:px-3.5 tw:py-1.5 tw:text-sm',
+      lg: 'tw:gap-2 tw:px-4 tw:py-2 tw:text-md',
+    },
+  },
+
   sizes: {
     sm: {
       root: 'tw:gap-1.5 tw:px-3.5 tw:py-2 tw:text-sm tw:not-last:pr-[calc(calc(theme(--spacing)*3.5)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-3 tw:data-icon-only:p-2',
@@ -52,8 +70,12 @@ export const styles = sortCx({
 });
 
 type ButtonSize = keyof typeof styles.sizes;
+type ButtonGroupVariant = 'default' | 'segmented';
 
-const ButtonGroupContext = createContext<{ size: ButtonSize }>({ size: 'md' });
+const ButtonGroupContext = createContext<{
+  size: ButtonSize;
+  variant: ButtonGroupVariant;
+}>({ size: 'md', variant: 'default' });
 
 interface ButtonGroupItemProps
   extends ToggleButtonProps,
@@ -79,14 +101,19 @@ export const ButtonGroupItem = ({
     );
   }
 
-  const { size } = context;
+  const { size, variant } = context;
 
   const isIcon = (IconLeading || IconTrailing) && !children;
 
   return (
     <AriaToggleButton
       {...otherProps}
-      className={cx(styles.common.root, styles.sizes[size].root, className)}
+      className={cx(
+        variant === 'segmented'
+          ? cx(styles.segmented.root, styles.segmented.sizes[size])
+          : cx(styles.common.root, styles.sizes[size].root),
+        className
+      )}
       data-icon-leading={IconLeading ? true : undefined}
       data-icon-only={isIcon ? true : undefined}>
       {isReactComponent(IconLeading) && (
@@ -112,22 +139,28 @@ interface ButtonGroupProps
   extends Omit<ToggleButtonGroupProps, 'orientation'>,
     RefAttributes<HTMLDivElement> {
   size?: ButtonSize;
+  /** `segmented` renders the items as a pill track instead of joined buttons. */
+  variant?: ButtonGroupVariant;
   className?: string;
 }
 
 export const ButtonGroup = ({
   children,
   size = 'md',
+  variant = 'default',
   className,
   ...otherProps
 }: ButtonGroupProps) => {
-  const contextValue = useMemo(() => ({ size }), [size]);
+  const contextValue = useMemo(() => ({ size, variant }), [size, variant]);
 
   return (
     <ButtonGroupContext.Provider value={contextValue}>
       <AriaToggleButtonGroup
         className={cx(
-          'tw:relative tw:z-0 tw:inline-flex tw:w-max tw:-space-x-px tw:rounded-lg tw:shadow-xs',
+          'tw:relative tw:z-0 tw:inline-flex tw:w-max',
+          variant === 'segmented'
+            ? styles.segmented.group
+            : 'tw:-space-x-px tw:rounded-lg tw:shadow-xs',
           className
         )}
         selectionMode="single"
