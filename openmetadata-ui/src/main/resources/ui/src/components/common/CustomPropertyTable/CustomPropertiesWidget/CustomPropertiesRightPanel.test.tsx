@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import { CustomPropertiesRightPanel } from './CustomPropertiesRightPanel';
+import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.types';
 
 const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
@@ -37,6 +38,28 @@ const renderPanel = (hasEditPermissions = true, viewAllPath?: string) =>
       hasEditPermissions={hasEditPermissions}
       properties={properties}
       viewAllPath={viewAllPath}
+      onExtensionUpdate={jest.fn()}
+      onValueSave={jest.fn()}
+    />,
+    { wrapper: MemoryRouter }
+  );
+
+const renderWidget = (
+  widgetSettings: Partial<CustomPropertiesWidgetSettings>
+) =>
+  render(
+    <CustomPropertiesRightPanel
+      hasEditPermissions
+      extension={{ owner_team: 'Data Platform' }}
+      properties={properties}
+      widgetSettings={{
+        displayMode: 'all',
+        propertyNames: [],
+        showHeader: true,
+        size: 'small',
+        propertyLayout: [],
+        ...widgetSettings,
+      }}
       onExtensionUpdate={jest.fn()}
       onValueSave={jest.fn()}
     />,
@@ -179,6 +202,66 @@ describe('CustomPropertiesRightPanel', () => {
     expect(
       screen.queryByTestId('custom-properties-widget-view-all')
     ).not.toBeInTheDocument();
+  });
+
+  it('renders every property as a small row by default', () => {
+    renderWidget({});
+
+    expect(
+      screen.getByTestId('custom-property-owner_team-row')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('custom-property-cost_center-row')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('custom-property-owner_team-card')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders large layout items as cards and the rest as rows', () => {
+    renderWidget({
+      propertyLayout: [{ name: 'cost_center', width: 'full', size: 'large' }],
+    });
+
+    const largeCard = screen.getByTestId('custom-property-cost_center-card');
+
+    expect(
+      within(largeCard).getByTestId('add-value-button')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('custom-property-owner_team-row')
+    ).toBeInTheDocument();
+  });
+
+  it('renders large cards by default in a large widget', () => {
+    renderWidget({
+      size: 'large',
+      propertyLayout: [{ name: 'owner_team', width: 'full', size: 'small' }],
+    });
+
+    expect(
+      screen.getByTestId('custom-property-cost_center-card')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('custom-property-owner_team-row')
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the chosen sizes when the widget header is hidden', () => {
+    renderWidget({
+      showHeader: false,
+      propertyLayout: [{ name: 'owner_team', width: 'half', size: 'large' }],
+    });
+
+    expect(
+      screen.getByTestId('custom-properties-widget-cards')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('custom-property-owner_team-card')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('custom-property-cost_center-row')
+    ).toBeInTheDocument();
   });
 
   it('hides the edit icon without edit permission', () => {

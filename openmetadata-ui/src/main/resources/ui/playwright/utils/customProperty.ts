@@ -221,6 +221,15 @@ const fillCoreDateTimePicker = async (
 };
 
 /**
+ * Edit action of a tab card or widget row: the pencil when the property has a
+ * value, or the large card's "No value yet" button (e.g. "Set duration").
+ */
+export const getCustomPropertyEditButton = (container: Locator) =>
+  container
+    .getByTestId('edit-icon')
+    .or(container.getByTestId('add-value-button'));
+
+/**
  * Opens the custom property edit modal from a tab card or a widget row and
  * returns the modal, which portals to document.body outside the container.
  */
@@ -228,7 +237,7 @@ export const openCustomPropertyEditModal = async (
   page: Page,
   container: Locator
 ) => {
-  const editButton = container.getByTestId('edit-icon');
+  const editButton = getCustomPropertyEditButton(container);
   await editButton.scrollIntoViewIfNeeded();
   // Background async-delete notifications stack as toasts at bottom-center and
   // intercept the click; force skips the actionability check but the event
@@ -242,6 +251,14 @@ export const openCustomPropertyEditModal = async (
 
   return editModal;
 };
+
+/**
+ * Closes a select/combobox listbox left open in the edit modal, which would
+ * otherwise cover the footer. The open combobox aria-hides the rest of the
+ * modal, hence includeHidden.
+ */
+export const closeEditModalListbox = (editModal: Locator) =>
+  editModal.getByRole('heading', { includeHidden: true }).click();
 
 /**
  * Enters `value` in the edit modal's editor for `propertyType` and saves.
@@ -295,9 +312,8 @@ export const fillCustomPropertyEditModal = async (data: {
         .getByRole('combobox');
       await enumInput.fill(value);
       await page.getByRole('option', { name: value, exact: true }).click();
-      // Multi-select keeps the listbox open over the footer; close it. The
-      // open combobox aria-hides the rest of the modal, hence includeHidden.
-      await editModal.getByRole('heading', { includeHidden: true }).click();
+      // Multi-select keeps the listbox open over the footer.
+      await closeEditModalListbox(editModal);
 
       break;
     }
@@ -377,9 +393,8 @@ export const fillCustomPropertyEditModal = async (data: {
         await searchEntity;
         await page.getByRole('option').getByTestId(val).click();
       }
-      // The results listbox stays open over the footer; close it. The open
-      // combobox aria-hides the rest of the modal, hence includeHidden.
-      await editModal.getByRole('heading', { includeHidden: true }).click();
+      // The results listbox stays open over the footer.
+      await closeEditModalListbox(editModal);
 
       break;
     }

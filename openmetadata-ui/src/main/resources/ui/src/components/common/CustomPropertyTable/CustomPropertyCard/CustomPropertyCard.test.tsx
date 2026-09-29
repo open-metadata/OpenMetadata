@@ -117,20 +117,38 @@ describe('CustomPropertyCard', () => {
     expect(screen.getByTestId('value-input')).toBeInTheDocument();
   });
 
-  it('shows the empty state with the edit icon when there is no value', async () => {
+  it('shows the empty state with a type-specific add button instead of the edit icon', async () => {
     const { onValueSave } = renderCard({ value: undefined });
 
     expect(screen.getByTestId('no-data')).toHaveTextContent(
       'label.no-value-yet'
     );
-    expect(screen.getByTestId('property-value')).not.toContainElement(
-      screen.getByTestId('edit-icon')
-    );
+    expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
 
-    await user.click(screen.getByTestId('edit-icon'));
+    const addButton = screen.getByTestId('add-value-button');
+
+    expect(addButton).toHaveTextContent('label.add-text');
+    expect(screen.getByTestId('property-value')).toContainElement(addButton);
+
+    await user.click(addButton);
     await user.type(screen.getByTestId('value-input'), 'New{Enter}');
 
     expect(onValueSave).toHaveBeenCalledWith(expect.anything(), 'New');
+  });
+
+  it('labels the add button after the property type', () => {
+    renderCard({ property: createProperty('duration'), value: undefined });
+
+    expect(screen.getByTestId('add-value-button')).toHaveTextContent(
+      'label.set-duration'
+    );
+  });
+
+  it('shows the edit icon and no add button when the property has a value', () => {
+    renderCard();
+
+    expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-value-button')).not.toBeInTheDocument();
   });
 
   it('hides edit controls without edit permission', () => {
@@ -141,6 +159,7 @@ describe('CustomPropertyCard', () => {
     renderCard({ hasEditPermissions: false, value: undefined });
 
     expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('add-value-button')).not.toBeInTheDocument();
   });
 
   it('blocks an invalid email and shows the validation message', async () => {
@@ -164,7 +183,7 @@ describe('CustomPropertyCard', () => {
       value: undefined,
     });
 
-    await user.click(screen.getByTestId('edit-icon'));
+    await user.click(screen.getByTestId('add-value-button'));
     await user.type(
       screen.getByTestId('timestamp-input'),
       '1758542400000{Enter}'
@@ -193,7 +212,7 @@ describe('CustomPropertyCard', () => {
   it('opens a Set modal for a property without a value', async () => {
     renderCard({ value: undefined });
 
-    await user.click(screen.getByTestId('edit-icon'));
+    await user.click(screen.getByTestId('add-value-button'));
 
     expect(screen.getByTestId('custom-property-edit-modal')).toHaveTextContent(
       'label.set-entity'

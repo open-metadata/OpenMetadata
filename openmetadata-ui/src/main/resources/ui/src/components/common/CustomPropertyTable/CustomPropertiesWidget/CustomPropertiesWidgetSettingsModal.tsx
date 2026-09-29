@@ -18,17 +18,26 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.types';
-import { isCustomPropertiesWidgetSettingsValid } from './CustomPropertiesWidget.utils';
+import {
+  CustomPropertiesWidgetSettings,
+  CustomPropertiesWidgetStyle,
+} from './CustomPropertiesWidget.types';
+import {
+  getWidgetStyle,
+  isCustomPropertiesWidgetSettingsValid,
+} from './CustomPropertiesWidget.utils';
 import { CustomPropertiesWidgetSettingsForm } from './CustomPropertiesWidgetSettingsForm';
 
-const MODAL_WIDTH = 640;
+const MODAL_WIDTH = 760;
 
 interface CustomPropertiesWidgetSettingsModalProps {
   entityType?: string;
   settings: CustomPropertiesWidgetSettings;
   onCancel: () => void;
-  onSave: (settings: CustomPropertiesWidgetSettings) => void;
+  onSave: (
+    settings: CustomPropertiesWidgetSettings,
+    style: CustomPropertiesWidgetStyle
+  ) => void;
 }
 
 export const CustomPropertiesWidgetSettingsModal = ({
@@ -39,6 +48,7 @@ export const CustomPropertiesWidgetSettingsModal = ({
 }: CustomPropertiesWidgetSettingsModalProps) => {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(settings);
+  const [style, setStyle] = useState(() => getWidgetStyle(settings));
   const title = t('label.configure-entity', {
     entity: t('label.custom-property-plural'),
   });
@@ -57,8 +67,10 @@ export const CustomPropertiesWidgetSettingsModal = ({
           <Dialog.Content>
             <CustomPropertiesWidgetSettingsForm
               entityType={entityType}
+              style={style}
               value={draft}
               onChange={setDraft}
+              onStyleChange={setStyle}
             />
           </Dialog.Content>
           <Dialog.Footer>
@@ -70,7 +82,7 @@ export const CustomPropertiesWidgetSettingsModal = ({
               data-testid="save-widget-settings"
               isDisabled={!isCustomPropertiesWidgetSettingsValid(draft)}
               size="md"
-              onPress={() => onSave(draft)}>
+              onPress={() => onSave(draft, style)}>
               {t('label.save')}
             </Button>
           </Dialog.Footer>

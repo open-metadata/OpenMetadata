@@ -266,7 +266,8 @@ export const CustomizeTabWidget = () => {
 
   const handleWidgetConfigChange = (
     widgetKey: string,
-    config: WidgetConfig['config']
+    config: WidgetConfig['config'],
+    width?: number
   ) => {
     updateCurrentPage({
       ...currentPage,
@@ -275,7 +276,9 @@ export const CustomizeTabWidget = () => {
           ? {
               ...item,
               layout: tabLayouts.map((widget) =>
-                widget.i === widgetKey ? { ...widget, config } : widget
+                widget.i === widgetKey
+                  ? { ...widget, config, w: width ?? widget.w }
+                  : widget
               ),
             }
           : item

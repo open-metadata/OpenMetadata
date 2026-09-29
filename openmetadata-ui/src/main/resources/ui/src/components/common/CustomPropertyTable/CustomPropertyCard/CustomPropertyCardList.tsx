@@ -134,10 +134,11 @@ export const CustomPropertyCardList = ({
 
         {visibleProperties.length ? (
           // Raw grid instead of core Grid: Grid.Item spans are inline styles and
-          // cannot collapse to one column on narrow screens. Dense flow backfills
-          // the gap a full-width card would otherwise leave beside a half card.
+          // cannot collapse to one column on narrow screens. No dense flow: cards
+          // keep their order, so a half card between two full ones leaves its
+          // row half empty instead of pulling a later card up beside it.
           // items-start: expanding one card grows only that card, not its row.
-          <div className="tw:grid tw:grid-flow-row-dense tw:grid-cols-1 tw:items-start tw:gap-4 tw:lg:grid-cols-2">
+          <div className="tw:grid tw:grid-cols-1 tw:items-start tw:gap-4 tw:lg:grid-cols-2">
             {visibleProperties.map(({ property, width }) => (
               <div
                 className={

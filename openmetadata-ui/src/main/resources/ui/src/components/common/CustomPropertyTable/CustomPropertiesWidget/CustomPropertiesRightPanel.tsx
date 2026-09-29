@@ -30,8 +30,14 @@ import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import WidgetCard from '../../WidgetCard/WidgetCard';
 import { CustomPropertyCard } from '../CustomPropertyCard/CustomPropertyCard';
 import { matchesPropertySearch } from '../CustomPropertyCard/CustomPropertyCard.utils';
-import { CUSTOM_PROPERTIES_WIDGET_MAX_HEIGHT } from './CustomPropertiesWidget.constants';
-import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.types';
+import {
+  CUSTOM_PROPERTIES_WIDGET_DEFAULT_SIZE,
+  CUSTOM_PROPERTIES_WIDGET_MAX_HEIGHT,
+} from './CustomPropertiesWidget.constants';
+import {
+  CustomPropertiesWidgetSettings,
+  LaidOutCustomProperty,
+} from './CustomPropertiesWidget.types';
 import {
   applyPropertyLayout,
   getWidgetDefaultWidth,
@@ -116,6 +122,50 @@ export const CustomPropertiesRightPanel = ({
     setIsSearchOpen(false);
   };
 
+  // Small rows sit flush inside the widget card; without the header they need
+  // their own border. Large items are full cards in both cases.
+  const defaultSize =
+    widgetSettings?.size ?? CUSTOM_PROPERTIES_WIDGET_DEFAULT_SIZE;
+
+  const renderItem = (
+    { property, width, size = defaultSize }: LaidOutCustomProperty,
+    isBordered: boolean
+  ) => {
+    const spanClass = { 'tw:col-span-2': width === 'full' };
+
+    if (size === 'small') {
+      return (
+        <CustomPropertyListItem
+          className={classNames(spanClass, {
+            'tw:rounded-xl tw:border tw:border-secondary tw:bg-primary':
+              isBordered,
+          })}
+          hasEditPermissions={hasEditPermissions}
+          key={property.name}
+          property={property}
+          value={extension?.[property.name]}
+          onValueSave={onValueSave}
+        />
+      );
+    }
+
+    return (
+      <li
+        className={classNames('tw:min-w-0', spanClass, {
+          'tw:px-4 tw:py-2': !isBordered,
+        })}
+        key={property.name}>
+        <CustomPropertyCard
+          hasEditPermissions={hasEditPermissions}
+          isCompact={width === 'half'}
+          property={property}
+          value={extension?.[property.name]}
+          onValueSave={onValueSave}
+        />
+      </li>
+    );
+  };
+
   if (isVersionView) {
     return (
       <WidgetCard
@@ -159,26 +209,12 @@ export const CustomPropertiesRightPanel = ({
 
   if (widgetSettings && !widgetSettings.showHeader) {
     return (
-      <div
-        className="tw:grid tw:grid-flow-row-dense tw:grid-cols-1 tw:items-start tw:gap-4 tw:overflow-y-auto tw:sm:grid-cols-2"
+      <ul
+        className="tw:m-0 tw:grid tw:list-none tw:grid-cols-2 tw:items-start tw:gap-4 tw:overflow-y-auto tw:p-0"
         data-testid="custom-properties-widget-cards"
         style={scrollStyle}>
-        {laidOut.map(({ property, width }) => (
-          <div
-            className={classNames('tw:min-w-0', {
-              'tw:sm:col-span-2': width === 'full',
-            })}
-            key={property.name}>
-            <CustomPropertyCard
-              hasEditPermissions={hasEditPermissions}
-              isCompact={width === 'half'}
-              property={property}
-              value={extension?.[property.name]}
-              onValueSave={onValueSave}
-            />
-          </div>
-        ))}
-      </div>
+        {laidOut.map((item) => renderItem(item, true))}
+      </ul>
     );
   }
 
@@ -245,19 +281,10 @@ export const CustomPropertiesRightPanel = ({
       title={t('label.custom-property-plural')}>
       {visibleItems.length ? (
         <ul
-          className="tw:m-0 tw:grid tw:list-none tw:grid-flow-row-dense tw:grid-cols-2 tw:overflow-y-auto tw:p-0"
+          className="tw:m-0 tw:grid tw:list-none tw:grid-cols-2 tw:overflow-y-auto tw:p-0"
           data-testid="custom-properties-widget-list"
           style={scrollStyle}>
-          {visibleItems.map(({ property, width }) => (
-            <CustomPropertyListItem
-              className={width === 'full' ? 'tw:col-span-2' : undefined}
-              hasEditPermissions={hasEditPermissions}
-              key={property.name}
-              property={property}
-              value={extension?.[property.name]}
-              onValueSave={onValueSave}
-            />
-          ))}
+          {visibleItems.map((item) => renderItem(item, false))}
         </ul>
       ) : (
         <Typography

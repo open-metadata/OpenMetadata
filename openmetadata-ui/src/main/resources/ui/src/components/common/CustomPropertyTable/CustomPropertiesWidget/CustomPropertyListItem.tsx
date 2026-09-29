@@ -13,7 +13,7 @@
 import { Badge, Box } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { useState } from 'react';
+import { ReactNode, Ref, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -29,6 +29,9 @@ import { getPropertyValueSummary } from './CustomPropertyListItem.utils';
 
 interface CustomPropertyListItemProps {
   className?: string;
+  /** Controls after the type badge, e.g. persona-editor layout controls. */
+  actions?: ReactNode;
+  itemRef?: Ref<HTMLLIElement>;
   property: CustomProperty;
   value: unknown;
   hasEditPermissions: boolean;
@@ -38,6 +41,8 @@ interface CustomPropertyListItemProps {
 /** Compact row of the Custom Properties side widget. */
 export const CustomPropertyListItem = ({
   className,
+  actions,
+  itemRef,
   property,
   value,
   hasEditPermissions,
@@ -96,7 +101,8 @@ export const CustomPropertyListItem = ({
         'tw:group tw:flex tw:min-w-0 tw:items-start tw:gap-3 tw:px-4 tw:py-3 tw:hover:bg-secondary',
         className
       )}
-      data-testid={`custom-property-${property.name}-row`}>
+      data-testid={`custom-property-${property.name}-row`}
+      ref={itemRef}>
       <span
         aria-hidden
         className={`tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg ${
@@ -124,6 +130,7 @@ export const CustomPropertyListItem = ({
           {t(meta.labelKey)}
         </Badge>
         {renderAction()}
+        {actions}
       </Box>
       {isEditing && (
         <CustomPropertyEditModal

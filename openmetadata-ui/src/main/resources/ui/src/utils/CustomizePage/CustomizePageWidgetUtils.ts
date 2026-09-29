@@ -71,10 +71,11 @@ export const getAddWidgetHandler =
       newWidgetData.fullyQualifiedName
     );
     // Height is measured from content (DynamicHeightWidget), so the picked size is
-    // kept as explicit meta for widgets to render against. Only small/large exist.
+    // kept as explicit meta for widgets to render against. Only small/large exist;
+    // widths past large (a full-width widget) count as large.
     const config = {
       ...extraConfig,
-      size: widgetWidth === WidgetWidths.large ? 'large' : 'small',
+      size: widgetWidth >= WidgetWidths.large ? 'large' : 'small',
     };
 
     if (

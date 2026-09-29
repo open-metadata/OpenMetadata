@@ -76,12 +76,14 @@ import {
 } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
+  closeEditModalListbox,
   createCustomPropertyForEntity,
   CustomProperty,
   CustomPropertyTypeByName,
   deleteCreatedProperty,
   editCreatedProperty,
   fillCustomPropertyEditModal,
+  getCustomPropertyEditButton,
   openCustomPropertiesTab,
   openCustomPropertyEditModal,
   setValueForProperty,
@@ -768,7 +770,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          const editButton = container.getByTestId('edit-icon');
+          const editButton = getCustomPropertyEditButton(container);
           await editButton.scrollIntoViewIfNeeded();
           await expect(editButton).toBeVisible();
           await expect(editButton).toBeEnabled();
@@ -850,8 +852,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          await container.getByTestId('edit-icon').scrollIntoViewIfNeeded();
-          await container.getByTestId('edit-icon').click();
+          const editButton = getCustomPropertyEditButton(container);
+          await editButton.scrollIntoViewIfNeeded();
+          await editButton.click();
 
           // Move to a new paragraph at the end, then insert a table via slash command
           const editor = getDescriptionBox(page);
@@ -875,7 +878,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const container = page.locator(
             `[data-testid="custom-property-${propertyName}-card"]`
           );
-          const editButton = container.getByTestId('edit-icon');
+          const editButton = getCustomPropertyEditButton(container);
           await editButton.scrollIntoViewIfNeeded();
           await expect(editButton).toBeVisible();
           await expect(editButton).toBeEnabled();
@@ -935,6 +938,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           .getByRole('button')
           .click();
         await expect(enumSelect).not.toContainText('medium');
+        // Removing a tag focuses the combobox, whose listbox covers Save.
+        await closeEditModalListbox(removeValueModal);
 
         const patchValue2 = page.waitForResponse(isTablePatch);
         await removeValueModal.getByTestId('inline-save-btn').click();
@@ -964,10 +969,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             state: 'detached',
           });
 
-          await page
-            .getByTestId(`custom-property-${durationPropertyName}-card`)
-            .getByTestId('edit-icon')
-            .click();
+          await getCustomPropertyEditButton(
+            page.getByTestId(`custom-property-${durationPropertyName}-card`)
+          ).click();
 
           await page.getByTestId('duration-input').fill(durationPropertyValue);
 

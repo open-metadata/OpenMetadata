@@ -12,7 +12,7 @@
  */
 import { BadgeColors } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
-import { FC } from 'react';
+import { FC, ReactNode } from 'react';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import type { CustomPropertyLayoutItem } from '../CustomPropertiesWidget/CustomPropertiesWidget.types';
 
@@ -64,6 +64,8 @@ export interface CustomPropertyTypeMeta {
   icon: FC<{ className?: string }>;
   color: CustomPropertyTypeColor;
   labelKey: string;
+  /** Label of the large card's "No value yet" button, e.g. "Set duration". */
+  emptyActionLabelKey: string;
   isWide?: boolean;
 }
 
@@ -72,6 +74,8 @@ export type CustomPropertySortMode = 'name' | 'type' | 'value';
 export interface CustomPropertyCardProps {
   /** Half-width card: fixed collapsed height, one-line description and value. */
   isCompact?: boolean;
+  /** Controls at the end of the title row, e.g. persona-editor layout controls. */
+  headerActions?: ReactNode;
   property: CustomProperty;
   value: unknown;
   hasEditPermissions: boolean;

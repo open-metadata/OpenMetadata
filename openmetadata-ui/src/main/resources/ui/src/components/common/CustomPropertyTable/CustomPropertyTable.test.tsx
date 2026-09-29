@@ -206,7 +206,7 @@ describe('Test CustomProperty Table Component', () => {
       );
     });
 
-    await user.click(await screen.findByTestId('edit-icon'));
+    await user.click(await screen.findByTestId('add-value-button'));
     await user.type(screen.getByTestId('value-input'), 'Data Platform{Enter}');
 
     await waitFor(() =>

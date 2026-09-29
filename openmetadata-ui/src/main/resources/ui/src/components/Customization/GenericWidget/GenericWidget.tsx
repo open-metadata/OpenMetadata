@@ -10,10 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
-import { Settings } from '@openmetadata/ui-core-components/icons';
-import { Button, Space } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  DotsGrid,
+  MinusCircle,
+  Settings,
+} from '@openmetadata/ui-core-components/icons';
 import { noop, startCase } from 'lodash';
 import { useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,9 +37,16 @@ import { getGlossaryChildTermsForCustomization } from '../../../utils/CustomizeG
 import { getDummyDataByPage } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { CustomPropertiesWidgetSettings } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.types';
+import { CUSTOM_PROPERTIES_WIDGET_GRID_WIDTH } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.constants';
+import {
+  CustomPropertiesWidgetSettings,
+  CustomPropertiesWidgetStyle,
+} from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.types';
 import { getCustomPropertiesWidgetSettings } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.utils';
-import { CustomPropertiesWidgetPreview } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidgetPreview';
+import {
+  CustomPropertiesWidgetEditor,
+  CustomPropertiesWidgetHeaderInfo,
+} from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidgetEditor';
 import { CustomPropertiesWidgetSettingsModal } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidgetSettingsModal';
 import { resolveWidgetKey } from '../../DataAssets/CommonWidgets/CommonWidgets.utils';
 import type { EntityUnion } from '../../Explore/ExplorePage.interface';
@@ -51,11 +65,30 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   const isConfigurable =
     isCustomPropertiesWidget && Boolean(props.handleWidgetConfigChange);
 
-  const handleSettingsSave = (settings: CustomPropertiesWidgetSettings) => {
-    props.handleWidgetConfigChange?.(props.widgetKey, {
-      ...props.widgetConfig?.config,
-      ...settings,
-    });
+  const entityType = getEntityTypeFromPageType(currentPageType);
+  const customPropertiesSettings = useMemo(
+    () => getCustomPropertiesWidgetSettings(props.widgetConfig?.config),
+    [props.widgetConfig?.config]
+  );
+
+  const saveCustomPropertiesSettings = (
+    settings: CustomPropertiesWidgetSettings,
+    width?: number
+  ) =>
+    props.handleWidgetConfigChange?.(
+      props.widgetKey,
+      { ...props.widgetConfig?.config, ...settings },
+      width
+    );
+
+  const handleSettingsSave = (
+    settings: CustomPropertiesWidgetSettings,
+    style: CustomPropertiesWidgetStyle
+  ) => {
+    saveCustomPropertiesSettings(
+      settings,
+      CUSTOM_PROPERTIES_WIDGET_GRID_WIDTH[style]
+    );
     setIsSettingsOpen(false);
   };
   const handleRemoveClick = () => {
@@ -106,57 +139,70 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   return (
     // Light values reproduce the antd inner Card this replaced.
     <Card className="tw:h-full tw:overflow-visible tw:border-utility-gray-blue-100 tw:pb-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle">
-      <div className="tw:-mb-px tw:flex tw:min-h-12 tw:items-center tw:rounded-xl tw:bg-utility-gray-100 tw:px-6 tw:font-medium tw:text-black/85 tw:dark:text-primary">
-        <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-3 tw:text-sm tw:leading-[1.5715]">
-          <Space>
-            <Button
-              className="drag-widget-icon"
-              data-testid="drag-widget-button"
-              icon={<HolderOutlined size={16} />}
-              size="small"
+      <Box
+        align="center"
+        className="tw:-mb-px tw:min-h-12 tw:rounded-xl tw:bg-utility-gray-100 tw:px-4 tw:py-2"
+        gap={2}>
+        {/* Grid drag handle: react-grid-layout starts a drag on mousedown here. */}
+        <span
+          aria-hidden
+          className="drag-widget-icon tw:flex tw:shrink-0 tw:cursor-grab tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:p-1.5 tw:text-fg-quaternary tw:active:cursor-grabbing"
+          data-testid="drag-widget-button">
+          <DotsGrid className="tw:size-4" />
+        </span>
+        <Typography
+          className="tw:min-w-0 tw:truncate tw:font-medium tw:text-primary"
+          size="text-sm">
+          {widgetName}
+        </Typography>
+        <Box align="center" className="tw:ml-auto tw:shrink-0" gap={2}>
+          {isCustomPropertiesWidget && (
+            <CustomPropertiesWidgetHeaderInfo
+              entityType={entityType}
+              settings={customPropertiesSettings}
             />
-            {widgetName}
-          </Space>
-        </div>
-        {(isConfigurable || props.handleRemoveWidget) && (
-          <div className="tw:ml-auto tw:flex tw:items-center tw:gap-1 tw:py-[13.5px] tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary">
-            {isConfigurable && (
-              <ButtonUtility
-                color="tertiary"
-                data-testid="widget-settings-button"
-                icon={Settings}
-                size="xs"
-                tooltip={t('label.configure-entity', { entity: widgetName })}
-                onClick={() => setIsSettingsOpen(true)}
-              />
-            )}
-            {props.handleRemoveWidget && (
-              <Button
-                data-testid="remove-widget-button"
-                icon={<MinusCircleOutlined size={16} />}
-                size="small"
-                onClick={handleRemoveClick}
-              />
-            )}
-          </div>
-        )}
-      </div>
-      <div className="tw:pointer-events-none tw:max-h-[calc(100%-48px)] tw:overflow-y-auto tw:px-6 tw:py-4">
-        {isCustomPropertiesWidget ? (
-          <CustomPropertiesWidgetPreview
-            config={props.widgetConfig?.config}
-            entityType={getEntityTypeFromPageType(currentPageType)}
+          )}
+          {props.handleRemoveWidget && (
+            <ButtonUtility
+              color="secondary"
+              data-testid="remove-widget-button"
+              icon={MinusCircle}
+              size="xs"
+              tooltip={t('label.remove-entity', {
+                entity: t('label.widget'),
+              })}
+              onClick={handleRemoveClick}
+            />
+          )}
+          {isConfigurable && (
+            <ButtonUtility
+              color="secondary"
+              data-testid="widget-settings-button"
+              icon={Settings}
+              size="xs"
+              tooltip={t('label.configure-entity', { entity: widgetName })}
+              onClick={() => setIsSettingsOpen(true)}
+            />
+          )}
+        </Box>
+      </Box>
+      {isCustomPropertiesWidget ? (
+        <div className="tw:max-h-[calc(100%-48px)] tw:overflow-y-auto tw:p-4">
+          <CustomPropertiesWidgetEditor
+            entityType={entityType}
+            settings={customPropertiesSettings}
+            onChange={saveCustomPropertiesSettings}
           />
-        ) : (
-          cardContent
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="tw:pointer-events-none tw:max-h-[calc(100%-48px)] tw:overflow-y-auto tw:px-6 tw:py-4">
+          {cardContent}
+        </div>
+      )}
       {isSettingsOpen && (
         <CustomPropertiesWidgetSettingsModal
-          entityType={getEntityTypeFromPageType(currentPageType)}
-          settings={getCustomPropertiesWidgetSettings(
-            props.widgetConfig?.config
-          )}
+          entityType={entityType}
+          settings={customPropertiesSettings}
           onCancel={() => setIsSettingsOpen(false)}
           onSave={handleSettingsSave}
         />

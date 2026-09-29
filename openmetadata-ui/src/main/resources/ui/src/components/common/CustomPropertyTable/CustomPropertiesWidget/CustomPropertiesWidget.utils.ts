@@ -10,16 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TFunction } from 'i18next';
 import { isArray, isPlainObject, keyBy } from 'lodash';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import { getPropertyTypeMeta } from '../CustomPropertyCard/CustomPropertyCard.utils';
 import {
   CUSTOM_PROPERTIES_DISPLAY_MODES,
   CUSTOM_PROPERTIES_WIDGET_DEFAULT_LIMIT,
+  CUSTOM_PROPERTIES_WIDGET_STYLE_LABEL,
   DEFAULT_CUSTOM_PROPERTIES_WIDGET_SETTINGS,
 } from './CustomPropertiesWidget.constants';
 import {
   CustomPropertiesWidgetSettings,
+  CustomPropertiesWidgetStyle,
+  CustomPropertyCardSize,
   CustomPropertyLayoutItem,
   CustomPropertyLayoutWidth,
   LaidOutCustomProperty,
@@ -27,6 +31,7 @@ import {
 } from './CustomPropertiesWidget.types';
 
 const LAYOUT_WIDTHS: CustomPropertyLayoutWidth[] = ['half', 'full'];
+const CARD_SIZES: CustomPropertyCardSize[] = ['small', 'large'];
 
 const isOneOf = <T extends string>(
   value: unknown,
@@ -38,16 +43,22 @@ const isLayoutItem = (item: unknown): item is CustomPropertyLayoutItem =>
   typeof (item as CustomPropertyLayoutItem).name === 'string' &&
   isOneOf((item as CustomPropertyLayoutItem).width, LAYOUT_WIDTHS);
 
-/** Reads a stored property layout, dropping malformed entries. */
+/** Reads a stored property layout, dropping malformed entries and sizes. */
 export const parsePropertyLayout = (
   propertyLayout: unknown
 ): CustomPropertyLayoutItem[] =>
-  isArray(propertyLayout) ? propertyLayout.filter(isLayoutItem) : [];
+  isArray(propertyLayout)
+    ? propertyLayout
+        .filter(isLayoutItem)
+        .map(({ name, width, size }) =>
+          isOneOf(size, CARD_SIZES) ? { name, width, size } : { name, width }
+        )
+    : [];
 
 /**
- * Orders properties by a persona layout and attaches their width. Properties
- * missing from the layout (added after it was saved) keep their relative order
- * at the end, with the fallback width.
+ * Orders properties by a persona layout and attaches their width and size.
+ * Properties missing from the layout (added after it was saved) keep their
+ * relative order at the end, with the fallback width and no size.
  */
 export const applyPropertyLayout = (
   properties: CustomProperty[],
@@ -57,35 +68,42 @@ export const applyPropertyLayout = (
   const position = new Map(
     propertyLayout.map((item, index) => [item.name, index])
   );
-  const widthByName = new Map(
-    propertyLayout.map((item) => [item.name, item.width])
-  );
+  const itemByName = new Map(propertyLayout.map((item) => [item.name, item]));
   const rank = (property: CustomProperty) =>
     position.get(property.name) ?? Number.MAX_SAFE_INTEGER;
 
   return [...properties]
     .sort((a, b) => rank(a) - rank(b))
-    .map((property) => ({
-      property,
-      width: widthByName.get(property.name) ?? getDefaultWidth(property),
-    }));
+    .map((property) => {
+      const item = itemByName.get(property.name);
+
+      return {
+        property,
+        width: item?.width ?? getDefaultWidth(property),
+        ...(item?.size && { size: item.size }),
+      };
+    });
 };
 
 export const toPropertyLayout = (
   items: LaidOutCustomProperty[]
 ): CustomPropertyLayoutItem[] =>
-  items.map(({ property, width }) => ({ name: property.name, width }));
+  items.map(({ property, width, size }) => ({
+    name: property.name,
+    width,
+    ...(size && { size }),
+  }));
 
 /**
  * Reads the widget settings from a persona layout item's free-form config.
  * Layouts saved before the widget was configurable carry no such keys and
- * resolve to the defaults (first five properties, header shown).
+ * resolve to the defaults (first five properties, header shown, small).
  */
 export const getCustomPropertiesWidgetSettings = (
   config?: Record<string, unknown>
 ): CustomPropertiesWidgetSettings => {
   const defaults = DEFAULT_CUSTOM_PROPERTIES_WIDGET_SETTINGS;
-  const { displayMode, propertyNames, showHeader, propertyLayout } =
+  const { displayMode, propertyNames, showHeader, size, propertyLayout } =
     config ?? {};
 
   return {
@@ -97,6 +115,7 @@ export const getCustomPropertiesWidgetSettings = (
       : defaults.propertyNames,
     showHeader:
       typeof showHeader === 'boolean' ? showHeader : defaults.showHeader,
+    size: isOneOf(size, CARD_SIZES) ? size : defaults.size,
     propertyLayout: parsePropertyLayout(propertyLayout),
   };
 };
@@ -162,3 +181,100 @@ export const moveLayoutItem = <T>(
 
   return next;
 };
+
+/** Stored widgets carry no style of their own: their card size decides it. */
+export const getWidgetStyle = ({
+  size,
+}: CustomPropertiesWidgetSettings): CustomPropertiesWidgetStyle =>
+  size === 'large' ? 'fullWidth' : 'preview';
+
+/**
+ * Full width shows a card per property; preview shows one-line rows. A preview
+ * is one column wide, so its properties all take the full row.
+ */
+export const withWidgetStyle = (
+  settings: CustomPropertiesWidgetSettings,
+  style: CustomPropertiesWidgetStyle
+): CustomPropertiesWidgetSettings =>
+  style === 'fullWidth'
+    ? { ...settings, size: 'large' }
+    : {
+        ...settings,
+        size: 'small',
+        propertyLayout: settings.propertyLayout.map((item) => ({
+          ...item,
+          width: 'full',
+        })),
+      };
+
+/**
+ * The widget's picked properties, in stored order. Widgets that never picked
+ * any (new, first-five or show-all) start from the first few.
+ */
+export const getSelectedPropertyNames = (
+  properties: CustomProperty[],
+  settings: CustomPropertiesWidgetSettings
+): string[] =>
+  settings.displayMode === 'selected' || settings.propertyNames.length
+    ? settings.propertyNames
+    : selectWidgetProperties(properties, {
+        ...settings,
+        displayMode: 'default',
+      }).map(({ name }) => name);
+
+/**
+ * Puts a reordered subset back into the full list: items outside the subset
+ * keep their slots, the subset fills its own slots in its new order.
+ */
+export const reorderSubset = <T>(
+  items: T[],
+  isInSubset: (item: T) => boolean,
+  reorderedSubset: T[]
+): T[] => {
+  let next = 0;
+
+  return items.map((item) =>
+    isInSubset(item) ? reorderedSubset[next++] : item
+  );
+};
+
+/** The widget layout stores order and width; its style sets the card size. */
+export const toWidgetPropertyLayout = (
+  items: LaidOutCustomProperty[]
+): CustomPropertyLayoutItem[] =>
+  items.map(({ property, width }) => ({ name: property.name, width }));
+
+/**
+ * Layout after the shown properties were rearranged in place: they come first
+ * in their new order, entries of properties not shown keep their place after.
+ */
+export const mergeShownPropertyLayout = (
+  shown: LaidOutCustomProperty[],
+  previous: CustomPropertyLayoutItem[]
+): CustomPropertyLayoutItem[] => {
+  const shownNames = new Set(shown.map(({ property }) => property.name));
+
+  return [
+    ...toWidgetPropertyLayout(shown),
+    ...previous.filter(({ name }) => !shownNames.has(name)),
+  ];
+};
+
+/** Small cards take half a row, large ones the full row. */
+export const countCardSizes = (items: LaidOutCustomProperty[]) => {
+  const large = items.filter(({ width }) => width === 'full').length;
+
+  return { small: items.length - large, large };
+};
+
+/** Footer line of the Add Widget dialog, e.g. "6 properties · Full width". */
+export const getWidgetSummary = (
+  properties: CustomProperty[],
+  settings: CustomPropertiesWidgetSettings,
+  style: CustomPropertiesWidgetStyle,
+  t: TFunction
+): string =>
+  t('message.custom-properties-widget-summary', {
+    count: selectWidgetProperties(properties, settings).length,
+    style: t(CUSTOM_PROPERTIES_WIDGET_STYLE_LABEL[style]),
+  });

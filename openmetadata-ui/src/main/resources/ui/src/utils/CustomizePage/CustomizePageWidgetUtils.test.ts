@@ -56,6 +56,12 @@ describe('getAddWidgetHandler', () => {
     ).toEqual({ size: 'large' });
   });
 
+  it('records a width past large, such as full width, as large', () => {
+    expect(addDescription(8, 'other-widget')?.config).toEqual({
+      size: 'large',
+    });
+  });
+
   it('records the picked small size on the new widget', () => {
     expect(addDescription(WidgetWidths.small, 'other-widget')?.config).toEqual({
       size: 'small',

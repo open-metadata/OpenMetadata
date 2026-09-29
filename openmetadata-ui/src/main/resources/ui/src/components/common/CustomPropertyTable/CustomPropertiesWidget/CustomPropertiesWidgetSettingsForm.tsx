@@ -10,157 +10,150 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Checkbox,
-  RadioButton,
-  RadioGroup,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { useMemo } from 'react';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useEntityTypeCustomProperties } from '../../../../hooks/useEntityTypeCustomProperties';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Loader from '../../Loader/Loader';
-import { CUSTOM_PROPERTIES_WIDGET_DEFAULT_LIMIT } from './CustomPropertiesWidget.constants';
 import {
-  CustomPropertiesDisplayMode,
   CustomPropertiesWidgetSettings,
+  CustomPropertiesWidgetStyle,
 } from './CustomPropertiesWidget.types';
-import {
-  applyPropertyLayout,
-  getWidgetDefaultWidth,
-  selectWidgetProperties,
-  toPropertyLayout,
-} from './CustomPropertiesWidget.utils';
-import { CustomPropertyLayoutEditor } from './CustomPropertyLayoutEditor';
+import { withWidgetStyle } from './CustomPropertiesWidget.utils';
+import { CustomPropertiesWidgetStylePicker } from './CustomPropertiesWidgetStylePicker';
+import { CustomPropertyPicker } from './CustomPropertyPicker';
+
+type StepState = 'disabled' | 'active' | 'done';
+
+const STEP_BADGE_CLASS: Record<StepState, string> = {
+  disabled: 'tw:bg-secondary tw:text-quaternary',
+  active: 'tw:bg-brand-primary tw:text-brand-secondary',
+  done: 'tw:bg-brand-solid tw:text-primary_on-brand',
+};
+
+interface SettingsStepProps {
+  step: number;
+  state: StepState;
+  title: string;
+  description: string;
+  children: ReactNode;
+}
+
+const SettingsStep = ({
+  step,
+  state,
+  title,
+  description,
+  children,
+}: SettingsStepProps) => (
+  <Box
+    className={classNames({ 'tw:opacity-60': state === 'disabled' })}
+    direction="col"
+    gap={4}>
+    <Box align="start" gap={3}>
+      <span
+        aria-hidden
+        className={classNames(
+          'tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:text-xs tw:font-semibold',
+          STEP_BADGE_CLASS[state]
+        )}>
+        {step}
+      </span>
+      <Box direction="col" gap={1}>
+        {/* Plain heading: Typography's prose styles size h3 at 20px. */}
+        <h3 className="tw:m-0 tw:text-sm tw:font-semibold tw:text-primary">
+          {title}
+        </h3>
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {description}
+        </Typography>
+      </Box>
+    </Box>
+    <div className="tw:pl-9">{children}</div>
+  </Box>
+);
 
 interface CustomPropertiesWidgetSettingsFormProps {
   entityType?: string;
+  /** Unset until a new widget's style is picked; the property step waits for it. */
+  style?: CustomPropertiesWidgetStyle;
   value: CustomPropertiesWidgetSettings;
+  onStyleChange: (style: CustomPropertiesWidgetStyle) => void;
   onChange: (value: CustomPropertiesWidgetSettings) => void;
 }
 
+/** Two steps: how the widget sits on the tab, then which properties it shows. */
 export const CustomPropertiesWidgetSettingsForm = ({
   entityType,
+  style,
   value,
+  onStyleChange,
   onChange,
 }: CustomPropertiesWidgetSettingsFormProps) => {
   const { t } = useTranslation();
   const { customProperties, isLoading } =
     useEntityTypeCustomProperties(entityType);
+  const hasStyle = Boolean(style);
 
-  const layoutItems = useMemo(
-    () =>
-      applyPropertyLayout(
-        selectWidgetProperties(customProperties, value),
-        value.propertyLayout,
-        getWidgetDefaultWidth
-      ),
-    [customProperties, value]
-  );
+  const handleStyleChange = (nextStyle: CustomPropertiesWidgetStyle) => {
+    onStyleChange(nextStyle);
+    onChange(withWidgetStyle(value, nextStyle));
+  };
 
-  const toggleProperty = (name: string, isSelected: boolean) =>
-    onChange({
-      ...value,
-      // Appending keeps the order in which properties were picked, which is
-      // the order the widget shows them in.
-      propertyNames: isSelected
-        ? [...value.propertyNames, name]
-        : value.propertyNames.filter((selected) => selected !== name),
-    });
+  const renderProperties = () => {
+    if (isLoading) {
+      return <Loader size="small" />;
+    }
+
+    if (customProperties.length === 0) {
+      return (
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {t('message.no-custom-properties-defined')}
+        </Typography>
+      );
+    }
+
+    return (
+      <CustomPropertyPicker
+        isDisabled={!hasStyle}
+        properties={customProperties}
+        value={value}
+        onChange={onChange}
+      />
+    );
+  };
+
+  let propertiesHint = t('message.choose-widget-style-first');
+  if (style === 'preview') {
+    propertiesHint = t('message.custom-properties-pick-hint');
+  } else if (style === 'fullWidth') {
+    propertiesHint = t('message.custom-properties-pick-and-size-hint');
+  }
 
   return (
     <Box
       data-testid="custom-properties-widget-settings"
       direction="col"
-      gap={5}>
-      <Box direction="col" gap={3}>
-        <Typography className="tw:font-medium tw:text-secondary" size="text-sm">
-          {t('label.properties-to-show')}
-        </Typography>
-        <RadioGroup
-          aria-label={t('label.properties-to-show')}
-          className="tw:gap-3"
-          value={value.displayMode}
-          onChange={(displayMode) =>
-            onChange({
-              ...value,
-              displayMode: displayMode as CustomPropertiesDisplayMode,
-            })
-          }>
-          <RadioButton
-            data-testid="display-mode-default"
-            label={t('label.first-count-property-plural', {
-              count: CUSTOM_PROPERTIES_WIDGET_DEFAULT_LIMIT,
-            })}
-            value="default"
-          />
-          <RadioButton
-            data-testid="display-mode-all"
-            label={t('label.all-entity', {
-              entity: t('label.property-plural'),
-            })}
-            value="all"
-          />
-          <RadioButton
-            data-testid="display-mode-selected"
-            label={t('label.selected-property-plural')}
-            value="selected"
-          />
-        </RadioGroup>
-        {value.displayMode === 'selected' && (
-          <Box
-            className="tw:max-h-60 tw:overflow-y-auto tw:rounded-lg tw:border tw:border-secondary tw:p-3"
-            data-testid="custom-property-checkbox-list"
-            direction="col"
-            gap={2}>
-            {isLoading && <Loader size="small" />}
-            {!isLoading && customProperties.length === 0 && (
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {t('message.no-custom-properties-defined')}
-              </Typography>
-            )}
-            {customProperties.map((property) => (
-              <Checkbox
-                data-testid={`custom-property-checkbox-${property.name}`}
-                isSelected={value.propertyNames.includes(property.name)}
-                key={property.name}
-                label={getEntityName(property)}
-                onChange={(isSelected) =>
-                  toggleProperty(property.name, isSelected)
-                }
-              />
-            ))}
-          </Box>
-        )}
-      </Box>
-      {layoutItems.length > 0 && (
-        <Box direction="col" gap={2}>
-          <Typography
-            className="tw:font-medium tw:text-secondary"
-            size="text-sm">
-            {t('label.layout')}
-          </Typography>
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('message.custom-property-layout-hint')}
-          </Typography>
-          <CustomPropertyLayoutEditor
-            items={layoutItems}
-            onChange={(items) =>
-              onChange({ ...value, propertyLayout: toPropertyLayout(items) })
-            }
-          />
-        </Box>
-      )}
-      <Toggle
-        data-testid="custom-properties-widget-show-header"
-        hint={t('message.custom-properties-widget-header-hint')}
-        isSelected={value.showHeader}
-        label={t('label.show-widget-header')}
-        onChange={(showHeader) => onChange({ ...value, showHeader })}
-      />
+      gap={6}>
+      <SettingsStep
+        description={t('message.custom-properties-widget-style-description')}
+        state={hasStyle ? 'done' : 'active'}
+        step={1}
+        title={t('label.widget-style')}>
+        <CustomPropertiesWidgetStylePicker
+          value={style}
+          onChange={handleStyleChange}
+        />
+      </SettingsStep>
+      <Divider />
+      <SettingsStep
+        description={propertiesHint}
+        state={hasStyle ? 'active' : 'disabled'}
+        step={2}
+        title={t('label.property-plural')}>
+        {renderProperties()}
+      </SettingsStep>
     </Box>
   );
 };

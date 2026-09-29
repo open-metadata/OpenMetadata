@@ -31,7 +31,10 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
 import { UserClass } from '../support/user/UserClass';
 import { clickOutside, redirectToHomePage } from './common';
-import { addCustomPropertiesForEntity } from './customProperty';
+import {
+  addCustomPropertiesForEntity,
+  getCustomPropertyEditButton,
+} from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
 
@@ -290,19 +293,15 @@ export const testCommonOperations = async (
     await customPropertiesLocator.click();
     if (effect === 'allow') {
       await expect(
-        testUserPage
-          .locator('[data-testid="custom-properties-card"]')
-          .first()
-          .getByTestId('edit-icon')
-          .first()
+        getCustomPropertyEditButton(
+          testUserPage.locator('[data-testid="custom-properties-card"]').first()
+        ).first()
       ).toBeVisible();
     } else {
       await expect(
-        testUserPage
-          .locator('[data-testid="custom-properties-card"]')
-          .first()
-          .getByTestId('edit-icon')
-          .first()
+        getCustomPropertyEditButton(
+          testUserPage.locator('[data-testid="custom-properties-card"]').first()
+        ).first()
       ).not.toBeVisible();
     }
   }

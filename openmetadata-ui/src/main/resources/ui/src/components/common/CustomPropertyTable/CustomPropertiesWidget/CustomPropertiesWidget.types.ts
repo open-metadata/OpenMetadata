@@ -14,12 +14,23 @@ import { CustomProperty } from '../../../../generated/type/customProperty';
 
 export type CustomPropertiesDisplayMode = 'default' | 'all' | 'selected';
 
+/**
+ * How the widget sits on the tab. Preview is a narrow list of rows next to the
+ * tab content; full width spans the tab with a card per property.
+ */
+export type CustomPropertiesWidgetStyle = 'preview' | 'fullWidth';
+
 export type CustomPropertyLayoutWidth = 'half' | 'full';
 
-/** Position (array order) and width of one property in a persona layout. */
+/** Small is a one-line row with an edit button; large is the full card. */
+export type CustomPropertyCardSize = 'small' | 'large';
+
+/** Position (array order), width and size of one property in a persona layout. */
 export interface CustomPropertyLayoutItem {
   name: string;
   width: CustomPropertyLayoutWidth;
+  /** Only the widget stores a size; the Custom Properties tab is always large. */
+  size?: CustomPropertyCardSize;
 }
 
 /** Where a dragged layout tile lands: before or after the tile at `index`. */
@@ -32,6 +43,7 @@ export interface LayoutDropTarget {
 export interface LaidOutCustomProperty {
   property: CustomProperty;
   width: CustomPropertyLayoutWidth;
+  size?: CustomPropertyCardSize;
 }
 
 /** Per-instance settings of the persona Custom Properties widget. */
@@ -40,6 +52,11 @@ export interface CustomPropertiesWidgetSettings {
   /** Only read when displayMode is 'selected'. */
   propertyNames: string[];
   showHeader: boolean;
-  /** Order and width of the shown properties; unlisted ones follow, full width. */
+  /**
+   * The widget's grid size, picked when it is added. It is also the card size
+   * of every property the layout does not size itself.
+   */
+  size: CustomPropertyCardSize;
+  /** Order, width and size of the shown properties; unlisted ones follow, full width. */
   propertyLayout: CustomPropertyLayoutItem[];
 }

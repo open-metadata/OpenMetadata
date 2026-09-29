@@ -10,156 +10,99 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Badge,
-  ButtonUtility,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import {
-  Collapse,
-  DotsGrid,
-  Expand,
-} from '@openmetadata/ui-core-components/icons';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { isEqual } from 'lodash';
-import { useRef, useState } from 'react';
-import { useDrag, useDrop } from 'react-dnd';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { TYPE_ICON_TILE_CLASS } from '../CustomPropertyCard/CustomPropertyCard.constants';
-import { getPropertyTypeMeta } from '../CustomPropertyCard/CustomPropertyCard.utils';
+import { CustomPropertyCard } from '../CustomPropertyCard/CustomPropertyCard';
 import {
+  CustomPropertyLayoutWidth,
   LaidOutCustomProperty,
   LayoutDropTarget,
 } from './CustomPropertiesWidget.types';
-import {
-  getLayoutDropIndex,
-  moveLayoutItem,
-} from './CustomPropertiesWidget.utils';
+import { moveLayoutItem } from './CustomPropertiesWidget.utils';
+import { LayoutDragHandle, LayoutDropIndicator } from './LayoutDragParts';
+import { useLayoutItemDrag, useLayoutReorder } from './useLayoutReorder';
 
-const DRAG_TYPE = 'CUSTOM_PROPERTY_LAYOUT_ITEM';
+const DRAG_TYPE = 'CUSTOM_PROPERTY_LAYOUT_CARD';
+// Below the smallest core tab size: the switch sits in the card's title row.
+const SIZE_TAB_CLASS = 'tw:px-2 tw:py-1 tw:text-xs';
+const NO_VALUE = undefined;
+const noopSave = async () => undefined;
 
-interface DragItem {
-  index: number;
-}
-
-// Insertion line in the grid gap: beside half tiles (they share a row),
-// above or below full tiles (they stack).
-const DROP_INDICATOR_CLASS = {
-  half: {
-    before: 'tw:inset-y-0 tw:-left-1.5 tw:w-0.5',
-    after: 'tw:inset-y-0 tw:-right-1.5 tw:w-0.5',
-  },
-  full: {
-    before: 'tw:inset-x-0 tw:-top-1.5 tw:h-0.5',
-    after: 'tw:inset-x-0 tw:-bottom-1.5 tw:h-0.5',
-  },
-} as const;
-
-interface LayoutTileProps {
+interface LayoutCardProps {
   item: LaidOutCustomProperty;
   index: number;
   dropSide?: LayoutDropTarget['side'];
   onHover: (fromIndex: number, target: LayoutDropTarget) => void;
   onDragEnd: () => void;
-  onToggleWidth: (index: number) => void;
+  onWidthChange: (index: number, width: CustomPropertyLayoutWidth) => void;
 }
 
-const LayoutTile = ({
-  item,
+/** A property card, without a value, with its size switch and drag handle. */
+const LayoutCard = ({
+  item: { property, width },
   index,
   dropSide,
   onHover,
   onDragEnd,
-  onToggleWidth,
-}: LayoutTileProps) => {
+  onWidthChange,
+}: LayoutCardProps) => {
   const { t } = useTranslation();
-  const tileRef = useRef<HTMLDivElement>(null);
-  const { property, width } = item;
-  const meta = getPropertyTypeMeta(property.propertyType.name);
-  const TypeIcon = meta.icon;
-  const isFull = width === 'full';
-  const propertyLabel = getEntityName(property);
-
-  const [{ isDragging }, drag, preview] = useDrag({
-    type: DRAG_TYPE,
-    item: { index },
-    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-    end: onDragEnd,
+  const isHalf = width === 'half';
+  const { itemRef, handleRef, isDragging } = useLayoutItemDrag<HTMLLIElement>({
+    dragType: DRAG_TYPE,
+    index,
+    axis: isHalf ? 'x' : 'y',
+    onHover,
+    onDragEnd,
   });
-
-  const [, drop] = useDrop<DragItem>({
-    accept: DRAG_TYPE,
-    hover: (dragged, monitor) => {
-      const rect = tileRef.current?.getBoundingClientRect();
-      const pointer = monitor.getClientOffset();
-      if (!rect || !pointer) {
-        return;
-      }
-      const isBefore = isFull
-        ? pointer.y < rect.top + rect.height / 2
-        : pointer.x < rect.left + rect.width / 2;
-      onHover(dragged.index, { index, side: isBefore ? 'before' : 'after' });
-    },
-  });
-
-  preview(drop(tileRef));
 
   return (
-    <div
-      className={classNames(
-        'tw:relative tw:flex tw:min-w-0 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:bg-primary tw:py-2.5 tw:pr-3 tw:pl-1.5',
-        isDragging
-          ? 'tw:border-dashed tw:border-brand tw:opacity-50'
-          : 'tw:border-secondary',
-        { 'tw:col-span-2': isFull }
-      )}
+    <li
+      className={classNames('tw:relative tw:min-w-0', {
+        'tw:col-span-2': !isHalf,
+        'tw:opacity-50': isDragging,
+      })}
       data-testid={`layout-item-${property.name}`}
-      ref={tileRef}>
-      {/* Pointer-only handle; the tile's width button stays keyboard reachable. */}
-      <span
-        aria-hidden
-        className="tw:flex tw:shrink-0 tw:cursor-grab tw:rounded tw:p-1 tw:text-fg-quaternary tw:hover:bg-secondary tw:hover:text-fg-secondary tw:active:cursor-grabbing"
-        data-testid={`layout-item-${property.name}-handle`}
-        ref={(node) => {
-          drag(node);
-        }}>
-        <DotsGrid className="tw:size-4" />
-      </span>
-      <span
-        aria-hidden
-        className={`tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg ${
-          TYPE_ICON_TILE_CLASS[meta.color]
-        }`}>
-        <TypeIcon className="tw:size-4" />
-      </span>
-      <Typography
-        className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-medium tw:text-primary"
-        size="text-xs">
-        {propertyLabel}
-      </Typography>
-      <Badge color={meta.color} size="sm" type="color">
-        {t(meta.labelKey)}
-      </Badge>
-      <ButtonUtility
-        color="tertiary"
-        data-testid={`layout-item-${property.name}-width`}
-        icon={isFull ? Collapse : Expand}
-        size="xs"
-        tooltip={t(isFull ? 'label.half-width' : 'label.full-width')}
-        onClick={() => onToggleWidth(index)}
+      ref={itemRef}>
+      <CustomPropertyCard
+        hasEditPermissions={false}
+        headerActions={
+          <Box align="center" className="tw:shrink-0" gap={2}>
+            <Tabs
+              className="tw:w-auto"
+              data-testid={`layout-item-${property.name}-size`}
+              selectedKey={width}
+              onSelectionChange={(key) =>
+                onWidthChange(index, key as CustomPropertyLayoutWidth)
+              }>
+              <Tabs.List
+                aria-label={t('label.size')}
+                className="tw:rounded-lg tw:p-0.5"
+                size="sm"
+                type="button-border">
+                <Tabs.Item className={SIZE_TAB_CLASS} id="half">
+                  {t('label.small')}
+                </Tabs.Item>
+                <Tabs.Item className={SIZE_TAB_CLASS} id="full">
+                  {t('label.large')}
+                </Tabs.Item>
+              </Tabs.List>
+            </Tabs>
+            <LayoutDragHandle
+              isBordered
+              dataTestId={`layout-item-${property.name}-handle`}
+              handleRef={handleRef}
+            />
+          </Box>
+        }
+        isCompact={isHalf}
+        property={property}
+        value={NO_VALUE}
+        onValueSave={noopSave}
       />
-      {dropSide && (
-        <span
-          aria-hidden
-          className={classNames(
-            'tw:pointer-events-none tw:absolute tw:rounded-full tw:bg-brand-solid',
-            DROP_INDICATOR_CLASS[width][dropSide]
-          )}
-          data-testid="layout-drop-indicator"
-        />
-      )}
-    </div>
+      {dropSide && <LayoutDropIndicator side={dropSide} width={width} />}
+    </li>
   );
 };
 
@@ -169,66 +112,42 @@ interface CustomPropertyLayoutEditorProps {
 }
 
 /**
- * Two-column arrangement of custom properties. Drag a tile by its handle; a
- * line shows where it will land and the order changes only on drop, so the
- * grid does not reflow under the pointer. The width button makes a tile span
- * one or both columns.
+ * Two-column arrangement of property cards, edited in place. Drag a card by
+ * its handle; a line shows where it will land. Cards keep their order: a
+ * small card dropped between two large ones stays half width in its own row.
  */
 export const CustomPropertyLayoutEditor = ({
   items,
   onChange,
 }: CustomPropertyLayoutEditorProps) => {
-  const [dropTarget, setDropTarget] = useState<LayoutDropTarget>();
+  const { dropTarget, handleHover, clearDropTarget, containerRef } =
+    useLayoutReorder(DRAG_TYPE, (fromIndex, toIndex) =>
+      onChange(moveLayoutItem(items, fromIndex, toIndex))
+    );
 
-  const handleHover = (fromIndex: number, target: LayoutDropTarget) => {
-    const next =
-      getLayoutDropIndex(fromIndex, target) === undefined ? undefined : target;
-    setDropTarget((current) => (isEqual(current, next) ? current : next));
-  };
-
-  const clearDropTarget = () => setDropTarget(undefined);
-
-  // The grid is the drop zone, so a drop in the gap between tiles still lands.
-  const [, drop] = useDrop<DragItem>({
-    accept: DRAG_TYPE,
-    drop: (dragged) => {
-      const toIndex = dropTarget
-        ? getLayoutDropIndex(dragged.index, dropTarget)
-        : undefined;
-      if (toIndex !== undefined) {
-        onChange(moveLayoutItem(items, dragged.index, toIndex));
-      }
-      clearDropTarget();
-    },
-  });
-
-  const handleToggleWidth = (index: number) =>
+  const handleWidthChange = (index: number, width: CustomPropertyLayoutWidth) =>
     onChange(
       items.map((item, itemIndex) =>
-        itemIndex === index
-          ? { ...item, width: item.width === 'full' ? 'half' : 'full' }
-          : item
+        itemIndex === index ? { ...item, width } : item
       )
     );
 
   return (
-    <div
-      className="tw:grid tw:grid-flow-row-dense tw:grid-cols-2 tw:gap-3"
+    <ul
+      className="tw:m-0 tw:grid tw:list-none tw:grid-cols-2 tw:items-start tw:gap-3 tw:p-0"
       data-testid="custom-property-layout-editor"
-      ref={(node) => {
-        drop(node);
-      }}>
+      ref={containerRef}>
       {items.map((item, index) => (
-        <LayoutTile
+        <LayoutCard
           dropSide={dropTarget?.index === index ? dropTarget.side : undefined}
           index={index}
           item={item}
           key={item.property.name}
           onDragEnd={clearDropTarget}
           onHover={handleHover}
-          onToggleWidth={handleToggleWidth}
+          onWidthChange={handleWidthChange}
         />
       ))}
-    </div>
+    </ul>
   );
 };

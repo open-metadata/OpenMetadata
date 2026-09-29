@@ -10,19 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TAB_GRID_MAX_COLUMNS } from '../../../../constants/CustomizeWidgets.constants';
 import {
   CustomPropertiesDisplayMode,
   CustomPropertiesWidgetSettings,
+  CustomPropertiesWidgetStyle,
+  CustomPropertyCardSize,
 } from './CustomPropertiesWidget.types';
 
 /** Number of properties the widget shows when it has not been configured. */
 export const CUSTOM_PROPERTIES_WIDGET_DEFAULT_LIMIT = 5;
+
+export const CUSTOM_PROPERTIES_WIDGET_DEFAULT_SIZE: CustomPropertyCardSize =
+  'small';
 
 export const DEFAULT_CUSTOM_PROPERTIES_WIDGET_SETTINGS: CustomPropertiesWidgetSettings =
   {
     displayMode: 'default',
     propertyNames: [],
     showHeader: true,
+    size: CUSTOM_PROPERTIES_WIDGET_DEFAULT_SIZE,
     propertyLayout: [],
   };
 
@@ -34,3 +41,28 @@ export const CUSTOM_PROPERTIES_DISPLAY_MODES: CustomPropertiesDisplayMode[] = [
 
 /** Max height in px of the widget list; taller lists scroll inside it. */
 export const CUSTOM_PROPERTIES_WIDGET_MAX_HEIGHT = 400;
+
+export const CUSTOM_PROPERTIES_WIDGET_STYLES: CustomPropertiesWidgetStyle[] = [
+  'preview',
+  'fullWidth',
+];
+
+/**
+ * Grid columns the widget spans for each style. Preview matches the side
+ * widgets of the default layouts; full width spans the whole tab.
+ */
+export const CUSTOM_PROPERTIES_WIDGET_GRID_WIDTH: Record<
+  CustomPropertiesWidgetStyle,
+  number
+> = {
+  preview: 2,
+  fullWidth: TAB_GRID_MAX_COLUMNS,
+};
+
+export const CUSTOM_PROPERTIES_WIDGET_STYLE_LABEL: Record<
+  CustomPropertiesWidgetStyle,
+  string
+> = {
+  preview: 'label.preview',
+  fullWidth: 'label.full-width',
+};

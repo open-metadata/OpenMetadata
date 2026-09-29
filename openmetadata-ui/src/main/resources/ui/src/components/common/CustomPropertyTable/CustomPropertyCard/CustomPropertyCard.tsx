@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useState } from 'react';
@@ -53,6 +60,7 @@ const HEADER_BADGE_CLASS =
 
 export const CustomPropertyCard = ({
   isCompact = false,
+  headerActions,
   property,
   value,
   hasEditPermissions,
@@ -94,14 +102,31 @@ export const CustomPropertyCard = ({
       const hint = getEmptyHint?.(property, t);
 
       return (
-        <Box data-testid="no-data" direction="col">
-          <Typography className="tw:text-secondary" size="text-sm">
-            {t('label.no-value-yet')}
-          </Typography>
-          {hint && (
-            <Typography className="tw:text-tertiary" size="text-xs">
-              {hint}
+        <Box align="center" gap={3} justify="between">
+          <Box className="tw:min-w-0" data-testid="no-data" direction="col">
+            <Typography className="tw:text-secondary" size="text-sm">
+              {t('label.no-value-yet')}
             </Typography>
+            {hint && (
+              <Typography
+                className={classNames('tw:text-tertiary', {
+                  'tw:truncate': isCompact,
+                })}
+                size="text-xs">
+                {hint}
+              </Typography>
+            )}
+          </Box>
+          {hasEditPermissions && (
+            <Button
+              className="tw:shrink-0"
+              color="secondary"
+              data-testid="add-value-button"
+              iconLeading={Plus}
+              size="sm"
+              onPress={startEditing}>
+              {t(meta.emptyActionLabelKey)}
+            </Button>
           )}
         </Box>
       );
@@ -177,13 +202,14 @@ export const CustomPropertyCard = ({
               </Typography>
             )}
           </Box>
-          {hasEditPermissions && (
+          {hasEditPermissions && !isEmptyValue && (
             <WidgetEditButton
               data-testid="edit-icon"
               title={t('label.edit-entity', { entity: propertyLabel })}
               onClick={startEditing}
             />
           )}
+          {headerActions}
         </Box>
         <div className="tw:min-w-0" data-testid="property-value">
           {renderBody()}

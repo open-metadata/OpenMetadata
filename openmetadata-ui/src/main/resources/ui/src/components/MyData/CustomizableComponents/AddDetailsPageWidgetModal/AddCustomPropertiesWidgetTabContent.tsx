@@ -10,26 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  ButtonGroup,
-  ButtonGroupItem,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CommonWidgetType } from '../../../../constants/CustomizeWidgets.constants';
+import { useEntityTypeCustomProperties } from '../../../../hooks/useEntityTypeCustomProperties';
 import {
-  CommonWidgetType,
-  GridSizes,
-} from '../../../../constants/CustomizeWidgets.constants';
-import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
-import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPagePureUtils';
-import { DEFAULT_CUSTOM_PROPERTIES_WIDGET_SETTINGS } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.constants';
-import { CustomPropertiesWidgetSettings } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.types';
-import { isCustomPropertiesWidgetSettingsValid } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.utils';
+  CUSTOM_PROPERTIES_WIDGET_GRID_WIDTH,
+  DEFAULT_CUSTOM_PROPERTIES_WIDGET_SETTINGS,
+} from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.constants';
+import {
+  CustomPropertiesWidgetSettings,
+  CustomPropertiesWidgetStyle,
+} from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.types';
+import {
+  getWidgetSummary,
+  isCustomPropertiesWidgetSettingsValid,
+} from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.utils';
 import { CustomPropertiesWidgetSettingsForm } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidgetSettingsForm';
+import { AddWidgetPanel } from './AddWidgetPanel';
 
 interface AddCustomPropertiesWidgetTabContentProps {
   entityType?: string;
@@ -40,6 +38,7 @@ interface AddCustomPropertiesWidgetTabContentProps {
     widgetSize: number,
     settings: CustomPropertiesWidgetSettings
   ) => void;
+  onCancel: () => void;
 }
 
 export const AddCustomPropertiesWidgetTabContent = ({
@@ -47,60 +46,33 @@ export const AddCustomPropertiesWidgetTabContent = ({
   maxGridSizeSupport,
   widget,
   onAdd,
+  onCancel,
 }: AddCustomPropertiesWidgetTabContentProps) => {
   const { t } = useTranslation();
+  const { customProperties } = useEntityTypeCustomProperties(entityType);
+  const [style, setStyle] = useState<CustomPropertiesWidgetStyle>();
   const [settings, setSettings] = useState(
     DEFAULT_CUSTOM_PROPERTIES_WIDGET_SETTINGS
   );
-  const [gridSize, setGridSize] = useState<GridSizes>(widget.data.gridSizes[0]);
-  const widgetSize = WidgetWidths[gridSize];
+  const widgetSize = style && CUSTOM_PROPERTIES_WIDGET_GRID_WIDTH[style];
   const canAdd =
-    isCustomPropertiesWidgetSettingsValid(settings) &&
-    widgetSize <= maxGridSizeSupport;
+    widgetSize !== undefined &&
+    widgetSize <= maxGridSizeSupport &&
+    isCustomPropertiesWidgetSettingsValid(settings);
 
   return (
-    <Box data-testid="custom-properties-widget-content" direction="col" gap={5}>
-      <Box direction="col" gap={2}>
-        <Typography className="tw:font-medium tw:text-secondary" size="text-sm">
-          {t('label.size')}
-        </Typography>
-        <ButtonGroup
-          disallowEmptySelection
-          aria-label={t('label.size')}
-          data-testid="size-selector-button"
-          selectedKeys={new Set([gridSize])}
-          size="sm"
-          onSelectionChange={(keys) => {
-            const [key] = [...keys];
-            if (key) {
-              setGridSize(key as GridSizes);
-            }
-          }}>
-          {widget.data.gridSizes.map((size) => (
-            <ButtonGroupItem
-              data-testid={`${size}-size-selector`}
-              id={size}
-              key={size}>
-              {getWidgetWidthLabelFromKey(size)}
-            </ButtonGroupItem>
-          ))}
-        </ButtonGroup>
-      </Box>
+    <AddWidgetPanel
+      canAdd={canAdd}
+      summary={style && getWidgetSummary(customProperties, settings, style, t)}
+      onAdd={() => widgetSize && onAdd(widget, widgetSize, settings)}
+      onCancel={onCancel}>
       <CustomPropertiesWidgetSettingsForm
         entityType={entityType}
+        style={style}
         value={settings}
         onChange={setSettings}
+        onStyleChange={setStyle}
       />
-      <Box justify="end">
-        <Button
-          data-testid="add-widget-button"
-          iconLeading={Plus}
-          isDisabled={!canAdd}
-          size="sm"
-          onPress={() => onAdd(widget, widgetSize, settings)}>
-          {t('label.add')}
-        </Button>
-      </Box>
-    </Box>
+    </AddWidgetPanel>
   );
 };

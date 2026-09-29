@@ -358,7 +358,7 @@ describe('Custom property renderers', () => {
     it('adds and deletes rows and drops empty rows on save', async () => {
       const { onValueSave } = renderCard(property, undefined);
 
-      await user.click(screen.getByTestId('edit-icon'));
+      await user.click(screen.getByTestId('add-value-button'));
       await user.type(screen.getByTestId('column-0'), 'order_id');
       await user.click(screen.getByTestId('add-new-row'));
       await user.click(screen.getByTestId('add-new-row'));
@@ -469,7 +469,7 @@ describe('Custom property renderers', () => {
         undefined
       );
 
-      await user.click(screen.getByTestId('edit-icon'));
+      await user.click(screen.getByTestId('add-value-button'));
       await user.click(screen.getByTestId('time-interval-preset-today'));
       await user.click(screen.getByTestId('inline-save-btn'));
 

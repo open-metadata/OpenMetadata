@@ -218,6 +218,7 @@ export {
   FilterLines,
   Hash02,
   Hourglass01,
+  InfoCircle,
   Link01,
   List,
   Mail01,
