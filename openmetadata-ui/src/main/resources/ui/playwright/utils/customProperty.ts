@@ -295,8 +295,9 @@ export const fillCustomPropertyEditModal = async (data: {
         .getByRole('combobox');
       await enumInput.fill(value);
       await page.getByRole('option', { name: value, exact: true }).click();
-      // Multi-select keeps the listbox open over the footer; close it.
-      await editModal.getByRole('heading').click();
+      // Multi-select keeps the listbox open over the footer; close it. The
+      // open combobox aria-hides the rest of the modal, hence includeHidden.
+      await editModal.getByRole('heading', { includeHidden: true }).click();
 
       break;
     }
@@ -376,8 +377,9 @@ export const fillCustomPropertyEditModal = async (data: {
         await searchEntity;
         await page.getByRole('option').getByTestId(val).click();
       }
-      // The results listbox stays open over the footer; close it.
-      await editModal.getByRole('heading').click();
+      // The results listbox stays open over the footer; close it. The open
+      // combobox aria-hides the rest of the modal, hence includeHidden.
+      await editModal.getByRole('heading', { includeHidden: true }).click();
 
       break;
     }
