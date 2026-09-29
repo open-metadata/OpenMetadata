@@ -23,7 +23,8 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { insertActivityEventForTest } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { okJson, settleAll } from '../../utils/apiResponse';
+import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
   addAndVerifyWidget,
   removeAndVerifyWidget,
@@ -61,6 +62,7 @@ type WidgetTestFixtures = {
   page: Page;
   testUser: UserClass;
   persona: PersonaClass;
+  kpiIds: string[];
 };
 
 // Issue #31407. Every test here rewrites the whole `persona.<name>` layout document
@@ -70,6 +72,17 @@ type WidgetTestFixtures = {
 // user has to be per test as well: the layout is resolved from
 // `currentUser.defaultPersona`, which is a single field on the user.
 const test = base.extend<WidgetTestFixtures>({
+  kpiIds: async ({ page }, use) => {
+    const ids: string[] = [];
+    await use(ids);
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await deleteKpiRequest(apiContext, ids);
+    } finally {
+      await afterAction();
+    }
+  },
   testUser: async ({ browser }, use) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const user = new UserClass();
@@ -146,54 +159,38 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
 
-  // Set adminUser as owner for entities created by entityDetails config
-  // Only domains and glossaries from entityDetails typically support owners
-  const entitiesToPatch = [];
-
-  // Since creationConfig has entityDetails: true, these entities are created:
-  // domains, glossaries, users, teams, tags, classifications
-  // Only domains and glossaries support ownership
-
-  entitiesToPatch.push(
-    { entity: EntityDataClass.domain1, endpoint: 'domains' },
-    { entity: EntityDataClass.domain2, endpoint: 'domains' },
-    { entity: EntityDataClass.glossary1, endpoint: 'glossaries' },
-    { entity: EntityDataClass.glossary2, endpoint: 'glossaries' }
-  );
-
-  // Patch entities with owner in parallel
-  const ownerPatchPromises = entitiesToPatch.map(
-    async ({ entity, endpoint }) => {
-      // Check for the appropriate id property based on entity type
-      const entityId = (entity as Domain).responseData?.id;
-
-      if (entityId) {
-        try {
-          await apiContext.patch(`/api/v1/${endpoint}/${entityId}`, {
-            data: [
-              {
-                op: 'add',
-                path: '/owners',
-                value: [
-                  {
-                    id: adminUser.responseData.id,
-                    type: 'user',
-                  },
-                ],
-              },
-            ],
-            headers: {
-              'Content-Type': 'application/json-patch+json',
-            },
-          });
-        } catch {
-          // Some entities may not support owners, skip silently
-        }
+  await settleAll(
+    [
+      { entity: EntityDataClass.domain1, endpoint: 'domains' },
+      { entity: EntityDataClass.domain2, endpoint: 'domains' },
+      { entity: EntityDataClass.glossary1, endpoint: 'glossaries' },
+      { entity: EntityDataClass.glossary2, endpoint: 'glossaries' },
+    ].map(async ({ entity, endpoint }) => {
+      const entityId = entity.responseData.id;
+      if (!entityId) {
+        throw new Error(
+          'Widget fixture is missing its ' + endpoint + ' entity ID'
+        );
       }
-    }
+      const response = await apiContext.patch(
+        '/api/v1/' + endpoint + '/' + entityId,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/owners',
+              value: [{ id: adminUser.responseData.id, type: 'user' }],
+            },
+          ],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }
+      );
+      await okJson(
+        response,
+        'Widget fixture owner for ' + endpoint + '/' + entityId
+      );
+    })
   );
-
-  await Promise.allSettled(ownerPatchPromises);
 
   // Create test domain first
   await testDomain.create(apiContext);
@@ -213,9 +210,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
       `Customize widgets activity ${index}`
     );
   }
-
-  // Delete all existing KPIs before running the test
-  await deleteKpiRequest(apiContext);
 
   await afterAction();
 });
@@ -392,17 +386,23 @@ test('My Data Widget', async ({ page, persona, testUser }) => {
   });
 });
 
-test('KPI Widget', async ({ page, persona }) => {
+test('KPI Widget', async ({ page, persona, kpiIds }) => {
   test.slow(true);
 
-  await test.step('Add KPI', async () => {
+  const kpi = await test.step('Add KPI', async () => {
     await waitForAllLoadersToDisappear(page);
 
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
     await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
     await page.getByTestId('add-kpi-btn').click();
-    await addKpi(page, KPI_DATA[1]);
+    const createdKpi = await addKpi(page, {
+      ...KPI_DATA[1],
+      displayName: `Widget Owner ${uuid()}`,
+    });
+    kpiIds.push(createdKpi.id);
+
+    return createdKpi;
   });
 
   await redirectToHomePage(page);
@@ -433,18 +433,21 @@ test('KPI Widget', async ({ page, persona }) => {
   });
 
   await test.step('Test widget loads KPI data correctly', async () => {
-    // Wait for the KPI list API to be called
-    const kpiListResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/kpi') &&
-        response.url().includes('fields=dataInsightChart')
-    );
+    const kpiListResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
 
-    // Wait for KPI results API to be called
+      return (
+        response.request().method() === 'GET' &&
+        url.pathname === '/api/v1/kpi' &&
+        url.searchParams.get('fields') === 'dataInsightChart'
+      );
+    });
+
     const kpiResultsResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/kpi/') &&
-        response.url().includes('/kpiResult')
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/kpi/${encodeURIComponent(kpi.fullyQualifiedName)}/kpiResult`
     );
 
     await redirectToHomePage(page);
@@ -452,8 +455,18 @@ test('KPI Widget', async ({ page, persona }) => {
 
     const widget = await waitForLandingPageWidget(page, widgetKey);
 
-    await kpiListResponse;
-    await kpiResultsResponse;
+    const list = await okJson<{ data: { id: string }[] }>(
+      await kpiListResponse,
+      'Widget KPI list'
+    );
+    expect(list.data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: kpi.id })])
+    );
+    const results = await okJson<{ results: unknown[] }>(
+      await kpiResultsResponse,
+      `Widget results for ${kpi.fullyQualifiedName}`
+    );
+    expect(results.results.length).toBeGreaterThan(0);
 
     // Wait for skeleton loader to disappear
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
@@ -463,22 +476,13 @@ test('KPI Widget', async ({ page, persona }) => {
 
     await expect(kpiWidgetContent).toBeVisible();
 
-    // The KPI widget settles into exactly one terminal state — a rendered chart
-    // or an empty state — and both mount a frame or two after the skeleton
-    // clears (recharts measures its container on a debounced ResizeObserver
-    // tick before it paints). Reading `isVisible()` the instant the skeleton
-    // disappears can observe neither node yet and fail a run that just needed
-    // one more frame, so wait for whichever one arrives with a web-first
-    // assertion instead of a pair of point-in-time reads.
     const kpiChart = widget.locator('.recharts-responsive-container');
-    const kpiEmptyState = widget.locator('[data-testid="widget-empty-state"]');
-
-    await expect(kpiChart.or(kpiEmptyState)).toBeVisible();
-
-    if (await kpiChart.isVisible()) {
-      // Chart rendered — verify its area path painted too.
-      await expect(widget.locator('.recharts-area')).toBeVisible();
-    }
+    await expect(kpiChart).toBeVisible();
+    await expect(
+      kpiChart.locator('.recharts-area').filter({
+        has: page.locator(`[fill="url(#gradient-${kpi.name})"]`),
+      })
+    ).toBeVisible();
   });
 
   await test.step('Test widget customization', async () => {

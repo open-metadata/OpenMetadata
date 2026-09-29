@@ -109,6 +109,8 @@ test.describe(
     let adminId = '';
 
     test.beforeAll('Setup entities and articles', async ({ browser }) => {
+      test.setTimeout(3 * 60 * 1000);
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       const adminResponse = await apiContext.get(
@@ -151,7 +153,7 @@ test.describe(
 
       await Promise.all(
         createdArticleFqns.map((fqn) =>
-          waitForSearchIndexed(apiContext, fqn, 'page')
+          waitForSearchIndexed(apiContext, fqn, 'page', { timeout: 90_000 })
         )
       );
 
