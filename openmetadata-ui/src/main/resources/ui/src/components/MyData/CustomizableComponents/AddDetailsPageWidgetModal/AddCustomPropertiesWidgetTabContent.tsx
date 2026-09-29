@@ -12,34 +12,19 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CommonWidgetType } from '../../../../constants/CustomizeWidgets.constants';
 import { useEntityTypeCustomProperties } from '../../../../hooks/useEntityTypeCustomProperties';
 import {
   CUSTOM_PROPERTIES_WIDGET_GRID_WIDTH,
   DEFAULT_CUSTOM_PROPERTIES_WIDGET_SETTINGS,
 } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.constants';
-import {
-  CustomPropertiesWidgetSettings,
-  CustomPropertiesWidgetStyle,
-} from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.types';
+import { CustomPropertiesWidgetStyle } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.interface';
 import {
   getWidgetSummary,
   isCustomPropertiesWidgetSettingsValid,
 } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.utils';
 import { CustomPropertiesWidgetSettingsForm } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidgetSettingsForm';
+import { AddCustomPropertiesWidgetTabContentProps } from './AddCustomPropertiesWidgetTabContent.interface';
 import { AddWidgetPanel } from './AddWidgetPanel';
-
-interface AddCustomPropertiesWidgetTabContentProps {
-  entityType?: string;
-  maxGridSizeSupport: number;
-  widget: CommonWidgetType;
-  onAdd: (
-    widget: CommonWidgetType,
-    widgetSize: number,
-    settings: CustomPropertiesWidgetSettings
-  ) => void;
-  onCancel: () => void;
-}
 
 export const AddCustomPropertiesWidgetTabContent = ({
   entityType,

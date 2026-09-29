@@ -14,12 +14,12 @@ import { Box, Tabs } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { CustomPropertyCard } from '../CustomPropertyCard/CustomPropertyCard';
-import {
-  CustomPropertyLayoutWidth,
-  LaidOutCustomProperty,
-  LayoutDropTarget,
-} from './CustomPropertiesWidget.types';
+import { CustomPropertyLayoutWidth } from './CustomPropertiesWidget.interface';
 import { moveLayoutItem } from './CustomPropertiesWidget.utils';
+import {
+  CustomPropertyLayoutEditorProps,
+  LayoutCardProps,
+} from './CustomPropertyLayoutEditor.interface';
 import { LayoutDragHandle, LayoutDropIndicator } from './LayoutDragParts';
 import { useLayoutItemDrag, useLayoutReorder } from './useLayoutReorder';
 
@@ -28,15 +28,6 @@ const DRAG_TYPE = 'CUSTOM_PROPERTY_LAYOUT_CARD';
 const SIZE_TAB_CLASS = 'tw:px-2 tw:py-1 tw:text-xs';
 const NO_VALUE = undefined;
 const noopSave = async () => undefined;
-
-interface LayoutCardProps {
-  item: LaidOutCustomProperty;
-  index: number;
-  dropSide?: LayoutDropTarget['side'];
-  onHover: (fromIndex: number, target: LayoutDropTarget) => void;
-  onDragEnd: () => void;
-  onWidthChange: (index: number, width: CustomPropertyLayoutWidth) => void;
-}
 
 /** A property card, without a value, with its size switch and drag handle. */
 const LayoutCard = ({
@@ -105,11 +96,6 @@ const LayoutCard = ({
     </li>
   );
 };
-
-interface CustomPropertyLayoutEditorProps {
-  items: LaidOutCustomProperty[];
-  onChange: (items: LaidOutCustomProperty[]) => void;
-}
 
 /**
  * Two-column arrangement of property cards, edited in place. Drag a card by

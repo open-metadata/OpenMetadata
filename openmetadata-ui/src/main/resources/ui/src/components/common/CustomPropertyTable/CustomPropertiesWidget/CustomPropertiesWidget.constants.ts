@@ -16,7 +16,7 @@ import {
   CustomPropertiesWidgetSettings,
   CustomPropertiesWidgetStyle,
   CustomPropertyCardSize,
-} from './CustomPropertiesWidget.types';
+} from './CustomPropertiesWidget.interface';
 
 /** Number of properties the widget shows when it has not been configured. */
 export const CUSTOM_PROPERTIES_WIDGET_DEFAULT_LIMIT = 5;

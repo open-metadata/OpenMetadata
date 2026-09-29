@@ -32,7 +32,7 @@ import {
   CustomPropertySortMode,
   CustomPropertyTypeColor,
   CustomPropertyTypeMeta,
-} from './CustomPropertyCard.types';
+} from './CustomPropertyCard.interface';
 
 export const DEFAULT_PROPERTY_TYPE_META: CustomPropertyTypeMeta = {
   icon: Type01,

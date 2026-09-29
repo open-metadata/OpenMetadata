@@ -15,7 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { CustomProperty } from '../../../../generated/type/customProperty';
-import { LaidOutCustomProperty } from './CustomPropertiesWidget.types';
+import { LaidOutCustomProperty } from './CustomPropertiesWidget.interface';
 import { CustomPropertyLayoutEditor } from './CustomPropertyLayoutEditor';
 
 const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });

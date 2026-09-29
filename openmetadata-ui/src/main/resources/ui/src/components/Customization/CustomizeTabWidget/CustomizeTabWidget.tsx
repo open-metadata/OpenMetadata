@@ -51,7 +51,7 @@ import { getColumnLockedDragHandlers } from '../../../utils/CustomizePage/GridLa
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { CustomPropertiesTabLayoutSection } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesTabLayoutSection';
-import { CustomPropertyLayoutItem } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.types';
+import { CustomPropertyLayoutItem } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.interface';
 import { parsePropertyLayout } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.utils';
 import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
 import { resolveWidgetKey } from '../../DataAssets/CommonWidgets/CommonWidgets.utils';

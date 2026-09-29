@@ -19,7 +19,7 @@ import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
-} from '../CustomPropertyCard.types';
+} from '../CustomPropertyCard.interface';
 
 const RichTextEditor = withSuspenseFallback(
   lazy(() => import('../../../RichTextEditor/RichTextEditor'))

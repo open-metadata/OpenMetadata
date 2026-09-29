@@ -14,7 +14,7 @@ import {
   HYPERLINK_TYPE_CUSTOM_PROPERTY,
   TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../../constants/CustomProperty.constants';
-import { CustomPropertyRenderer } from './CustomPropertyCard.types';
+import { CustomPropertyRenderer } from './CustomPropertyCard.interface';
 import { datePropertyRenderer } from './renderers/DatePropertyValue';
 import { entityReferencePropertyRenderer } from './renderers/EntityReferencePropertyValue';
 import { enumPropertyRenderer } from './renderers/EnumPropertyValue';

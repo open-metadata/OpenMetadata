@@ -12,7 +12,7 @@
  */
 import { useMemo } from 'react';
 import { useEntityTypeCustomProperties } from '../../../../hooks/useEntityTypeCustomProperties';
-import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.types';
+import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.interface';
 import {
   applyPropertyLayout,
   getWidgetDefaultWidth,

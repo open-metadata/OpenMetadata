@@ -23,7 +23,7 @@ import {
 import {
   CustomPropertySortMode,
   CustomPropertyTypeMeta,
-} from './CustomPropertyCard.types';
+} from './CustomPropertyCard.interface';
 
 const getRows = (value: unknown): unknown[] | undefined => {
   if (isPlainObject(value)) {

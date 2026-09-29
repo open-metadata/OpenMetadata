@@ -27,7 +27,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { WidgetEditButton } from '../../WidgetActionButton/WidgetActionButton';
 import { TYPE_ICON_TILE_CLASS } from './CustomPropertyCard.constants';
-import { CustomPropertyCardProps } from './CustomPropertyCard.types';
+import { CustomPropertyCardProps } from './CustomPropertyCard.interface';
 import {
   getPropertyItemCount,
   getPropertyTypeMeta,

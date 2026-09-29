@@ -23,19 +23,13 @@ import { SearchLg } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CustomProperty } from '../../../../generated/type/customProperty';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { TYPE_ICON_TILE_CLASS } from '../CustomPropertyCard/CustomPropertyCard.constants';
 import {
   getPropertyTypeMeta,
   matchesPropertySearch,
 } from '../CustomPropertyCard/CustomPropertyCard.utils';
-import {
-  CustomPropertiesDisplayMode,
-  CustomPropertiesWidgetSettings,
-  LaidOutCustomProperty,
-  LayoutDropTarget,
-} from './CustomPropertiesWidget.types';
+import { LaidOutCustomProperty } from './CustomPropertiesWidget.interface';
 import {
   applyPropertyLayout,
   getSelectedPropertyNames,
@@ -44,24 +38,15 @@ import {
   reorderSubset,
   toWidgetPropertyLayout,
 } from './CustomPropertiesWidget.utils';
+import {
+  CustomPropertyPickerProps,
+  PickerRowProps,
+  PickerTab,
+} from './CustomPropertyPicker.interface';
 import { LayoutDragHandle, LayoutDropIndicator } from './LayoutDragParts';
 import { useLayoutItemDrag, useLayoutReorder } from './useLayoutReorder';
 
 const DRAG_TYPE = 'CUSTOM_PROPERTY_PICKER_ITEM';
-
-/** The tab is the widget's display mode. */
-type PickerTab = Extract<CustomPropertiesDisplayMode, 'all' | 'selected'>;
-
-interface PickerRowProps {
-  item: LaidOutCustomProperty;
-  index: number;
-  isChecked: boolean;
-  isDisabled: boolean;
-  dropSide?: LayoutDropTarget['side'];
-  onToggle: (name: string, isChecked: boolean) => void;
-  onHover: (fromIndex: number, target: LayoutDropTarget) => void;
-  onDragEnd: () => void;
-}
 
 const PickerRow = ({
   item: { property },
@@ -129,13 +114,6 @@ const PickerRow = ({
     </li>
   );
 };
-
-interface CustomPropertyPickerProps {
-  properties: CustomProperty[];
-  value: CustomPropertiesWidgetSettings;
-  isDisabled?: boolean;
-  onChange: (value: CustomPropertiesWidgetSettings) => void;
-}
 
 /**
  * Picks and orders the widget's properties. Selected ticks them one by one

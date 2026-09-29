@@ -27,14 +27,18 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@openmetadata/ui-core-components/icons';
-import { ComponentProps, FormEvent, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TimeIntervalType } from '../../CustomPropertyTable.interface';
 import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
-} from '../CustomPropertyCard.types';
+} from '../CustomPropertyCard.interface';
+import {
+  CalendarDateValue,
+  CalendarRange,
+} from './TimeIntervalPropertyValue.interface';
 import {
   DateTimeParts,
   formatDurationText,
@@ -77,8 +81,6 @@ const PERCENT = 100;
 
 // @internationalized/date resolves to different patch versions in the app and
 // in ui-core-components, so TypeScript sees two nominal DateValue types.
-type CalendarRange = NonNullable<ComponentProps<typeof RangeCalendar>['value']>;
-type CalendarDateValue = CalendarRange['start'];
 
 const toCalendarDate = ({ year, month, day }: DateTimeParts) =>
   new CalendarDate(year, month, day) as unknown as CalendarDateValue;

@@ -13,12 +13,12 @@
 import { isEqual } from 'lodash';
 import { useRef, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { LayoutDropTarget } from './CustomPropertiesWidget.types';
+import { LayoutDropTarget } from './CustomPropertiesWidget.interface';
 import { getLayoutDropIndex } from './CustomPropertiesWidget.utils';
-
-interface DragItem {
-  index: number;
-}
+import {
+  DragItem,
+  UseLayoutItemDragOptions,
+} from './useLayoutReorder.interface';
 
 /**
  * Drop state of a reorderable list or grid. The container is the drop zone,
@@ -66,16 +66,6 @@ export const useLayoutReorder = (
 
   return { dropTarget, handleHover, clearDropTarget, containerRef };
 };
-
-interface UseLayoutItemDragOptions {
-  dragType: string;
-  index: number;
-  /** Items side by side compare the pointer on x, stacked items on y. */
-  axis: 'x' | 'y';
-  isDisabled?: boolean;
-  onHover: (fromIndex: number, target: LayoutDropTarget) => void;
-  onDragEnd: () => void;
-}
 
 /** Drag source and hover target of one item; drag starts from `handleRef`. */
 export const useLayoutItemDrag = <T extends HTMLElement>({

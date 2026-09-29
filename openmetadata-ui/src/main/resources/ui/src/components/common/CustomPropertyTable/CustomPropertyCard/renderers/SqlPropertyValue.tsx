@@ -22,7 +22,7 @@ import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
-} from '../CustomPropertyCard.types';
+} from '../CustomPropertyCard.interface';
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../../Database/SchemaEditor/SchemaEditor'))

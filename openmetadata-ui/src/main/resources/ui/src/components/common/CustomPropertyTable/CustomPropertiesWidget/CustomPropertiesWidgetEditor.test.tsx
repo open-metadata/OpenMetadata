@@ -16,7 +16,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import { DEFAULT_CUSTOM_PROPERTIES_WIDGET_SETTINGS } from './CustomPropertiesWidget.constants';
-import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.types';
+import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.interface';
 import {
   CustomPropertiesWidgetEditor,
   CustomPropertiesWidgetHeaderInfo,

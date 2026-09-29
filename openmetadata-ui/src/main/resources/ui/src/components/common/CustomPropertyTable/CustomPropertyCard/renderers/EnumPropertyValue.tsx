@@ -24,7 +24,7 @@ import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
-} from '../CustomPropertyCard.types';
+} from '../CustomPropertyCard.interface';
 import { PropertyValueChip } from '../PropertyValueChip';
 
 const toValueList = (value: unknown): string[] =>

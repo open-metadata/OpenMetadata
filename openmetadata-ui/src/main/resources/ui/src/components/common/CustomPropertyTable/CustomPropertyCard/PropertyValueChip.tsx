@@ -12,15 +12,7 @@
  */
 import { Badge } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { FC, ReactNode } from 'react';
-
-interface PropertyValueChipProps {
-  icon?: FC<{ className?: string }>;
-  /** Single line with an ellipsis instead of wrapping. */
-  isTruncated?: boolean;
-  children: ReactNode;
-  'data-testid'?: string;
-}
+import { PropertyValueChipProps } from './PropertyValueChip.interface';
 
 /**
  * Design value chip: 26px tall, 16px leading icon. Core BadgeWithIcon fixes its

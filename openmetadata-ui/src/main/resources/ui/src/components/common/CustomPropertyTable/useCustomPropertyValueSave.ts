@@ -12,14 +12,10 @@
  */
 import { isUndefined } from 'lodash';
 import { useCallback } from 'react';
-import { EntityReference } from '../../../generated/entity/type';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { buildUpdatedExtension } from '../../../utils/CustomProperty.utils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-
-type EntityWithExtension = Omit<EntityReference, 'type'> & {
-  extension?: Record<string, unknown>;
-};
+import { EntityWithExtension } from './useCustomPropertyValueSave.interface';
 
 /** Persists custom property values through the entity page's GenericProvider. */
 export const useCustomPropertyValueSave = <T extends EntityWithExtension>() => {

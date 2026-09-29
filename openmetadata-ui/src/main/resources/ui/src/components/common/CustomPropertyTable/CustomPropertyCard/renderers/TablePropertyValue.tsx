@@ -26,14 +26,8 @@ import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
-} from '../CustomPropertyCard.types';
-
-type TableRow = Record<string, string>;
-
-interface EditableRow {
-  key: number;
-  values: TableRow;
-}
+} from '../CustomPropertyCard.interface';
+import { EditableRow, TableRow } from './TablePropertyValue.interface';
 
 const getColumns = (config: unknown): string[] =>
   (config as Config | undefined)?.columns ?? [];

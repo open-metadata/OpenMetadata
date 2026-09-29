@@ -13,9 +13,9 @@
 import { DotsGrid } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
-  CustomPropertyLayoutWidth,
-  LayoutDropTarget,
-} from './CustomPropertiesWidget.types';
+  LayoutDragHandleProps,
+  LayoutDropIndicatorProps,
+} from './LayoutDragParts.interface';
 
 // Insertion line in the gap: beside half-width items (they share a row),
 // above or below full-width items (they stack).
@@ -29,11 +29,6 @@ const DROP_INDICATOR_CLASS = {
     after: 'tw:inset-x-0 tw:-bottom-1.5 tw:h-0.5',
   },
 } as const;
-
-interface LayoutDropIndicatorProps {
-  width: CustomPropertyLayoutWidth;
-  side: LayoutDropTarget['side'];
-}
 
 /** Line where a dragged item lands; its parent must be `tw:relative`. */
 export const LayoutDropIndicator = ({
@@ -49,13 +44,6 @@ export const LayoutDropIndicator = ({
     data-testid="layout-drop-indicator"
   />
 );
-
-interface LayoutDragHandleProps {
-  dataTestId?: string;
-  isBordered?: boolean;
-  isDisabled?: boolean;
-  handleRef: (node: HTMLElement | null) => void;
-}
 
 /**
  * Pointer-only drag handle: reordering has no keyboard path, so the handle is

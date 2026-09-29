@@ -13,9 +13,8 @@
 import { Badge, Box } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { ReactNode, Ref, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CustomProperty } from '../../../../generated/type/customProperty';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { WidgetEditButton } from '../../WidgetActionButton/WidgetActionButton';
@@ -25,18 +24,8 @@ import {
   isPropertyValueEmpty,
 } from '../CustomPropertyCard/CustomPropertyCard.utils';
 import { CustomPropertyEditModal } from '../CustomPropertyCard/CustomPropertyEditModal';
+import { CustomPropertyListItemProps } from './CustomPropertyListItem.interface';
 import { getPropertyValueSummary } from './CustomPropertyListItem.utils';
-
-interface CustomPropertyListItemProps {
-  className?: string;
-  /** Controls after the type badge, e.g. persona-editor layout controls. */
-  actions?: ReactNode;
-  itemRef?: Ref<HTMLLIElement>;
-  property: CustomProperty;
-  value: unknown;
-  hasEditPermissions: boolean;
-  onValueSave: (property: CustomProperty, value: unknown) => Promise<void>;
-}
 
 /** Compact row of the Custom Properties side widget. */
 export const CustomPropertyListItem = ({

@@ -20,7 +20,7 @@ import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
-} from '../CustomPropertyCard.types';
+} from '../CustomPropertyCard.interface';
 
 const HyperlinkPropertyView = ({ value, isCompact }: PropertyViewProps) => {
   const hyperlink = value as Hyperlink;

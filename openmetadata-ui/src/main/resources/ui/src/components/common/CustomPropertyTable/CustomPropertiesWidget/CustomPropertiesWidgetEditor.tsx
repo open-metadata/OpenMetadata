@@ -15,17 +15,19 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../Loader/Loader';
 import { CUSTOM_PROPERTIES_WIDGET_STYLE_LABEL } from './CustomPropertiesWidget.constants';
-import {
-  CustomPropertiesWidgetSettings,
-  LaidOutCustomProperty,
-  LayoutDropTarget,
-} from './CustomPropertiesWidget.types';
+import { LaidOutCustomProperty } from './CustomPropertiesWidget.interface';
 import {
   countCardSizes,
   getWidgetStyle,
   mergeShownPropertyLayout,
   moveLayoutItem,
 } from './CustomPropertiesWidget.utils';
+import {
+  CustomPropertiesWidgetEditorProps,
+  CustomPropertiesWidgetHeaderInfoProps,
+  EditorRowProps,
+  PreviewRowListProps,
+} from './CustomPropertiesWidgetEditor.interface';
 import { CustomPropertyLayoutEditor } from './CustomPropertyLayoutEditor';
 import { CustomPropertyListItem } from './CustomPropertyListItem';
 import { LayoutDragHandle, LayoutDropIndicator } from './LayoutDragParts';
@@ -35,14 +37,6 @@ import { useLayoutItemDrag, useLayoutReorder } from './useLayoutReorder';
 const DRAG_TYPE = 'CUSTOM_PROPERTY_WIDGET_ROW';
 const NO_VALUE = undefined;
 const noopSave = async () => undefined;
-
-interface EditorRowProps {
-  item: LaidOutCustomProperty;
-  index: number;
-  dropSide?: LayoutDropTarget['side'];
-  onHover: (fromIndex: number, target: LayoutDropTarget) => void;
-  onDragEnd: () => void;
-}
 
 /** Preview style: one-line rows, reordered by their handle. */
 const EditorRow = ({
@@ -85,11 +79,6 @@ const EditorRow = ({
   );
 };
 
-interface PreviewRowListProps {
-  items: LaidOutCustomProperty[];
-  onChange: (items: LaidOutCustomProperty[]) => void;
-}
-
 const PreviewRowList = ({ items, onChange }: PreviewRowListProps) => {
   const { dropTarget, handleHover, clearDropTarget, containerRef } =
     useLayoutReorder(DRAG_TYPE, (fromIndex, toIndex) =>
@@ -113,12 +102,6 @@ const PreviewRowList = ({ items, onChange }: PreviewRowListProps) => {
     </ul>
   );
 };
-
-interface CustomPropertiesWidgetEditorProps {
-  entityType?: string;
-  settings: CustomPropertiesWidgetSettings;
-  onChange: (settings: CustomPropertiesWidgetSettings) => void;
-}
 
 /**
  * Persona-editor body of the Custom Properties widget: the entity type's
@@ -167,11 +150,6 @@ export const CustomPropertiesWidgetEditor = ({
     </div>
   );
 };
-
-interface CustomPropertiesWidgetHeaderInfoProps {
-  entityType?: string;
-  settings: CustomPropertiesWidgetSettings;
-}
 
 /** Style badge and, for full width, how many cards are small and large. */
 export const CustomPropertiesWidgetHeaderInfo = ({

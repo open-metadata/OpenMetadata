@@ -12,33 +12,24 @@
  */
 import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useEntityTypeCustomProperties } from '../../../../hooks/useEntityTypeCustomProperties';
 import Loader from '../../Loader/Loader';
-import {
-  CustomPropertiesWidgetSettings,
-  CustomPropertiesWidgetStyle,
-} from './CustomPropertiesWidget.types';
+import { CustomPropertiesWidgetStyle } from './CustomPropertiesWidget.interface';
 import { withWidgetStyle } from './CustomPropertiesWidget.utils';
+import {
+  CustomPropertiesWidgetSettingsFormProps,
+  SettingsStepProps,
+  StepState,
+} from './CustomPropertiesWidgetSettingsForm.interface';
 import { CustomPropertiesWidgetStylePicker } from './CustomPropertiesWidgetStylePicker';
 import { CustomPropertyPicker } from './CustomPropertyPicker';
-
-type StepState = 'disabled' | 'active' | 'done';
 
 const STEP_BADGE_CLASS: Record<StepState, string> = {
   disabled: 'tw:bg-secondary tw:text-quaternary',
   active: 'tw:bg-brand-primary tw:text-brand-secondary',
   done: 'tw:bg-brand-solid tw:text-primary_on-brand',
 };
-
-interface SettingsStepProps {
-  step: number;
-  state: StepState;
-  title: string;
-  description: string;
-  children: ReactNode;
-}
 
 const SettingsStep = ({
   step,
@@ -73,15 +64,6 @@ const SettingsStep = ({
     <div className="tw:pl-9">{children}</div>
   </Box>
 );
-
-interface CustomPropertiesWidgetSettingsFormProps {
-  entityType?: string;
-  /** Unset until a new widget's style is picked; the property step waits for it. */
-  style?: CustomPropertiesWidgetStyle;
-  value: CustomPropertiesWidgetSettings;
-  onStyleChange: (style: CustomPropertiesWidgetStyle) => void;
-  onChange: (value: CustomPropertiesWidgetSettings) => void;
-}
 
 /** Two steps: how the widget sits on the tab, then which properties it shows. */
 export const CustomPropertiesWidgetSettingsForm = ({

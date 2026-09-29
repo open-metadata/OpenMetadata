@@ -36,7 +36,7 @@ import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
-} from '../CustomPropertyCard.types';
+} from '../CustomPropertyCard.interface';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ENTITY_REFERENCE_LIST = 'entityReferenceList';

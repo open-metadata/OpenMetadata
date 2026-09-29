@@ -11,17 +11,9 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
-import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-interface CollapsibleChipListProps<T> {
-  items: T[];
-  /** Upper bound on chips shown while collapsed. */
-  visibleCount?: number;
-  getKey: (item: T) => string;
-  renderItem: (item: T) => ReactNode;
-  'data-testid'?: string;
-}
+import { CollapsibleChipListProps } from './CollapsibleChipList.interface';
 
 /**
  * Chips that collapse to a single line: as many as fit, then a "+N more"

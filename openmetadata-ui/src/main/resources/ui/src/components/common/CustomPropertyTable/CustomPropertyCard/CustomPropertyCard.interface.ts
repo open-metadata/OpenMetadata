@@ -14,7 +14,7 @@ import { BadgeColors } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { FC, ReactNode } from 'react';
 import { CustomProperty } from '../../../../generated/type/customProperty';
-import type { CustomPropertyLayoutItem } from '../CustomPropertiesWidget/CustomPropertiesWidget.types';
+import type { CustomPropertyLayoutItem } from '../CustomPropertiesWidget/CustomPropertiesWidget.interface';
 
 export interface PropertyViewProps {
   property: CustomProperty;

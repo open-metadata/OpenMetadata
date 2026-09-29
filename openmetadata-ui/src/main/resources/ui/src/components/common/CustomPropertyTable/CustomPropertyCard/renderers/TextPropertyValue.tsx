@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Box, Input } from '@openmetadata/ui-core-components';
-import { TFunction } from 'i18next';
 import { isNil, toNumber } from 'lodash';
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,18 +22,10 @@ import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
-} from '../CustomPropertyCard.types';
+} from '../CustomPropertyCard.interface';
 import { getPropertyTypeMeta } from '../CustomPropertyCard.utils';
 import { PropertyValueChip } from '../PropertyValueChip';
-
-interface TextFieldConfig {
-  testId: string;
-  inputType: 'text' | 'number' | 'email';
-  getPlaceholder: (t: TFunction) => string;
-  getHint?: (t: TFunction) => string;
-  validate?: (value: string, t: TFunction) => string | undefined;
-  toSavedValue?: (value: string) => unknown;
-}
+import { TextFieldConfig } from './TextPropertyValue.interface';
 
 const EMAIL_MIN_LENGTH = 6;
 const EMAIL_MAX_LENGTH = 127;

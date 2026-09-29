@@ -37,7 +37,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
 import { CustomProperty } from '../../../generated/type/customProperty';
-import type { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget/CustomPropertiesWidget.types';
+import type { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget/CustomPropertiesWidget.interface';
 
 export type ExtentionEntities = {
   [EntityType.TABLE]: Table;

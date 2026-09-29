@@ -19,26 +19,13 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  CustomPropertiesWidgetSettings,
-  CustomPropertiesWidgetStyle,
-} from './CustomPropertiesWidget.types';
-import {
   getWidgetStyle,
   isCustomPropertiesWidgetSettingsValid,
 } from './CustomPropertiesWidget.utils';
 import { CustomPropertiesWidgetSettingsForm } from './CustomPropertiesWidgetSettingsForm';
+import { CustomPropertiesWidgetSettingsModalProps } from './CustomPropertiesWidgetSettingsModal.interface';
 
 const MODAL_WIDTH = 760;
-
-interface CustomPropertiesWidgetSettingsModalProps {
-  entityType?: string;
-  settings: CustomPropertiesWidgetSettings;
-  onCancel: () => void;
-  onSave: (
-    settings: CustomPropertiesWidgetSettings,
-    style: CustomPropertiesWidgetStyle
-  ) => void;
-}
 
 export const CustomPropertiesWidgetSettingsModal = ({
   entityType,

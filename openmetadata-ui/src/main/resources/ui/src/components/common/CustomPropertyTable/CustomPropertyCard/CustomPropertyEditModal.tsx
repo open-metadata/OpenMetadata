@@ -18,22 +18,13 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CustomProperty } from '../../../../generated/type/customProperty';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPropertyTypeMeta } from './CustomPropertyCard.utils';
+import { CustomPropertyEditModalProps } from './CustomPropertyEditModal.interface';
 import { getPropertyRenderer } from './CustomPropertyRenderers';
 
 const MODAL_WIDTH = 560;
 const WIDE_MODAL_WIDTH = 960;
-
-interface CustomPropertyEditModalProps {
-  property: CustomProperty;
-  value: unknown;
-  isNewValue: boolean;
-  isSaving: boolean;
-  onSave: (value: unknown) => void;
-  onCancel: () => void;
-}
 
 export const CustomPropertyEditModal = ({
   property,

@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-
-interface AddWidgetPanelProps {
-  children: ReactNode;
-  /** Left of the footer buttons: what will be added, or why it cannot be. */
-  summary?: ReactNode;
-  canAdd: boolean;
-  onAdd: () => void;
-  onCancel: () => void;
-}
+import { AddWidgetPanelProps } from './AddWidgetPanel.interface';
 
 /** One widget's pane in the Add Widget dialog: scrolling body, fixed footer. */
 export const AddWidgetPanel = ({

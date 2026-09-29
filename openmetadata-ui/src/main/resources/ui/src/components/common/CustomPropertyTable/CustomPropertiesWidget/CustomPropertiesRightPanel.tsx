@@ -25,19 +25,16 @@ import classNames from 'classnames';
 import { Fragment, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { CustomProperty } from '../../../../generated/type/customProperty';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import WidgetCard from '../../WidgetCard/WidgetCard';
 import { CustomPropertyCard } from '../CustomPropertyCard/CustomPropertyCard';
 import { matchesPropertySearch } from '../CustomPropertyCard/CustomPropertyCard.utils';
+import { CustomPropertiesRightPanelProps } from './CustomPropertiesRightPanel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET_DEFAULT_SIZE,
   CUSTOM_PROPERTIES_WIDGET_MAX_HEIGHT,
 } from './CustomPropertiesWidget.constants';
-import {
-  CustomPropertiesWidgetSettings,
-  LaidOutCustomProperty,
-} from './CustomPropertiesWidget.types';
+import { LaidOutCustomProperty } from './CustomPropertiesWidget.interface';
 import {
   applyPropertyLayout,
   getWidgetDefaultWidth,
@@ -49,19 +46,6 @@ const PropertyValue = withSuspenseFallback(
     import('../PropertyValue').then((m) => ({ default: m.PropertyValue }))
   )
 );
-
-interface CustomPropertiesRightPanelProps {
-  properties: CustomProperty[];
-  extension?: Record<string, unknown>;
-  versionDataKeys?: string[];
-  widgetSettings?: CustomPropertiesWidgetSettings;
-  /** Link to the Custom Properties tab, set when the widget hides properties. */
-  viewAllPath?: string;
-  hasEditPermissions: boolean;
-  isVersionView?: boolean;
-  onExtensionUpdate: (extension?: Record<string, unknown>) => Promise<void>;
-  onValueSave: (property: CustomProperty, value: unknown) => Promise<void>;
-}
 
 /** Custom properties rendered as a side widget (right panel or persona tab). */
 export const CustomPropertiesRightPanel = ({

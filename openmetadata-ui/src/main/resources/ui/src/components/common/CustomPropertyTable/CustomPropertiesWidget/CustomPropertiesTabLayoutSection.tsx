@@ -15,19 +15,13 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useEntityTypeCustomProperties } from '../../../../hooks/useEntityTypeCustomProperties';
 import Loader from '../../Loader/Loader';
-import { CustomPropertyLayoutItem } from './CustomPropertiesWidget.types';
+import { CustomPropertiesTabLayoutSectionProps } from './CustomPropertiesTabLayoutSection.interface';
 import {
   applyPropertyLayout,
   getTabDefaultWidth,
   toPropertyLayout,
 } from './CustomPropertiesWidget.utils';
 import { CustomPropertyLayoutEditor } from './CustomPropertyLayoutEditor';
-
-interface CustomPropertiesTabLayoutSectionProps {
-  entityType?: string;
-  propertyLayout: CustomPropertyLayoutItem[];
-  onChange: (propertyLayout: CustomPropertyLayoutItem[]) => void;
-}
 
 /** Persona-editor body of the Custom Properties tab: arrange its cards. */
 export const CustomPropertiesTabLayoutSection = ({

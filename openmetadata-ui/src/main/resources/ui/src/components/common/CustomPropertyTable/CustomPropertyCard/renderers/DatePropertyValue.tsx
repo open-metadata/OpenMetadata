@@ -13,16 +13,17 @@
 import { CalendarDate } from '@internationalized/date';
 import { Box, DatePicker, TimePicker } from '@openmetadata/ui-core-components';
 import { DateTime } from 'luxon';
-import { ComponentProps, FormEvent, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatCustomPropertyDateTime } from '../../../../../utils/CustomProperty.utils';
 import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
-} from '../CustomPropertyCard.types';
+} from '../CustomPropertyCard.interface';
 import { getPropertyTypeMeta } from '../CustomPropertyCard.utils';
 import { PropertyValueChip } from '../PropertyValueChip';
+import { PickerDate } from './DatePropertyValue.interface';
 import {
   DateParts,
   fromDateTimeEditState,
@@ -34,7 +35,6 @@ const TIME_CP = 'time-cp';
 
 // @internationalized/date resolves to different patch versions in the app and
 // in ui-core-components, so TypeScript sees two nominal DateValue types.
-type PickerDate = NonNullable<ComponentProps<typeof DatePicker>['value']>;
 
 const toPickerDate = ({ year, month, day }: DateParts) =>
   new CalendarDate(year, month, day) as unknown as PickerDate;

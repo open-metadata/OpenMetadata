@@ -24,7 +24,8 @@ import {
   CUSTOM_PROPERTIES_WIDGET_STYLES,
   CUSTOM_PROPERTIES_WIDGET_STYLE_LABEL,
 } from './CustomPropertiesWidget.constants';
-import { CustomPropertiesWidgetStyle } from './CustomPropertiesWidget.types';
+import { CustomPropertiesWidgetStyle } from './CustomPropertiesWidget.interface';
+import { CustomPropertiesWidgetStylePickerProps } from './CustomPropertiesWidgetStylePicker.interface';
 
 const STYLE_TEXT_KEYS: Record<
   CustomPropertiesWidgetStyle,
@@ -100,11 +101,6 @@ const StyleIllustration = ({
     </div>
   );
 };
-
-interface CustomPropertiesWidgetStylePickerProps {
-  value?: CustomPropertiesWidgetStyle;
-  onChange: (style: CustomPropertiesWidgetStyle) => void;
-}
 
 export const CustomPropertiesWidgetStylePicker = ({
   value,

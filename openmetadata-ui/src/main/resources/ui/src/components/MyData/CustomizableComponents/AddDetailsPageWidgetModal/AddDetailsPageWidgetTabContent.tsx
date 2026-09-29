@@ -18,23 +18,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  CommonWidgetType,
-  GridSizes,
-} from '../../../../constants/CustomizeWidgets.constants';
+import { GridSizes } from '../../../../constants/CustomizeWidgets.constants';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPagePureUtils';
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
+import { AddDetailsPageWidgetTabContentProps } from './AddDetailsPageWidgetTabContent.interface';
 import { AddWidgetPanel } from './AddWidgetPanel';
-
-interface AddDetailsPageWidgetTabContentProps {
-  maxGridSizeSupport: number;
-  widget: CommonWidgetType;
-  onAdd: (widget: CommonWidgetType, widgetSize: number) => void;
-  onCancel: () => void;
-}
 
 /** Pane of a plain widget: pick its size, preview it, add it. */
 export const AddDetailsPageWidgetTabContent = ({

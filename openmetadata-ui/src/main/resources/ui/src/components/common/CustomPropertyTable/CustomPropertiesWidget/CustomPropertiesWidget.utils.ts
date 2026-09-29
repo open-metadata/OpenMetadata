@@ -28,7 +28,7 @@ import {
   CustomPropertyLayoutWidth,
   LaidOutCustomProperty,
   LayoutDropTarget,
-} from './CustomPropertiesWidget.types';
+} from './CustomPropertiesWidget.interface';
 
 const LAYOUT_WIDTHS: CustomPropertyLayoutWidth[] = ['half', 'full'];
 const CARD_SIZES: CustomPropertyCardSize[] = ['small', 'large'];

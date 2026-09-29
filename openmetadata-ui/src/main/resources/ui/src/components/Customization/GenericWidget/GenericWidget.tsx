@@ -41,7 +41,7 @@ import { CUSTOM_PROPERTIES_WIDGET_GRID_WIDTH } from '../../common/CustomProperty
 import {
   CustomPropertiesWidgetSettings,
   CustomPropertiesWidgetStyle,
-} from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.types';
+} from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.interface';
 import { getCustomPropertiesWidgetSettings } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.utils';
 import {
   CustomPropertiesWidgetEditor,

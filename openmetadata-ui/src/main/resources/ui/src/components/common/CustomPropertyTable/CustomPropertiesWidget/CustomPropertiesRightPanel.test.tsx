@@ -15,7 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import { CustomPropertiesRightPanel } from './CustomPropertiesRightPanel';
-import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.types';
+import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.interface';
 
 const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 

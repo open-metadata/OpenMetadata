@@ -25,22 +25,18 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CustomPropertyLayoutItem } from '../CustomPropertiesWidget/CustomPropertiesWidget.types';
+import { CustomPropertyLayoutItem } from '../CustomPropertiesWidget/CustomPropertiesWidget.interface';
 import {
   applyPropertyLayout,
   getTabDefaultWidth,
 } from '../CustomPropertiesWidget/CustomPropertiesWidget.utils';
 import { CustomPropertyCard } from './CustomPropertyCard';
 import { SORT_OPTIONS } from './CustomPropertyCard.constants';
-import {
-  CustomPropertyCardListProps,
-  CustomPropertySortMode,
-} from './CustomPropertyCard.types';
+import { CustomPropertyCardListProps } from './CustomPropertyCard.interface';
 import { filterAndSortProperties } from './CustomPropertyCard.utils';
+import { CardListSortMode } from './CustomPropertyCardList.interface';
 
 const EMPTY_LAYOUT: CustomPropertyLayoutItem[] = [];
-
-type CardListSortMode = CustomPropertySortMode | 'layout';
 
 const LAYOUT_SORT_OPTION = { id: 'layout', labelKey: 'label.default' } as const;
 
