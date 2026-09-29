@@ -32,7 +32,11 @@ const E2E_ID_TOKEN_KEY = '__OM_E2E_SSO_TEST_ID_TOKEN__';
 const OIDC_PROVIDERS = ['google', 'okta', 'auth0'];
 
 const switchToPublicClient = async (page: Page) => {
-  const publicRadio = page.getByRole('radio', { name: /public/i }).first();
+  // Exact-match the label so we don't rely on `.first()` (banned by
+  // `om-playwright/no-positional-locator`). The client-type toggle
+  // renders "Public" and "Confidential"; the anchored regex
+  // uniquely picks the Public radio.
+  const publicRadio = page.getByRole('radio', { name: /^public$/i });
   await publicRadio.click();
   await expect(publicRadio).toBeChecked();
 };
@@ -42,7 +46,11 @@ const injectTestIdToken = (page: Page) =>
     (window as unknown as Record<string, string>)[key] = 'e2e-fake-id-token';
   }, E2E_ID_TOKEN_KEY);
 
-test.describe('SSO Test Login', () => {
+// Tagged so the SSO nightly's Basic leg (`--grep @basic`) enrols this
+// spec — it only needs an authenticated admin (default Basic auth is
+// fine) and now runs under the `sso-auth` project exclusively (see
+// playwright.config.ts `sso-auth.testMatch`).
+test.describe('SSO Test Login', { tag: ['@sso', '@basic'] }, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await enableSSOEditMode(page);
