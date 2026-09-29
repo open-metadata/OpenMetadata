@@ -103,5 +103,11 @@ class OntologyAiResourceTest {
       invocationCount++;
       throw new AssertionError("Disabled routes must not invoke the AI provider");
     }
+
+    @Override
+    public Completion<MemoryTermCandidate> deriveTermsFromMemories(final MemoryTermPrompt prompt) {
+      invocationCount++;
+      throw new AssertionError("Disabled routes must not invoke the AI provider");
+    }
   }
 }

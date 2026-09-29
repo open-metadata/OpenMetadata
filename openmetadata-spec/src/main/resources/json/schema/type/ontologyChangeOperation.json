@@ -62,6 +62,23 @@
     "term": {
       "$ref": "../entity/data/glossaryTerm.json"
     },
+    "sourceMemoryIds": {
+      "description": "Published context memories that support this AI suggestion.",
+      "type": "array",
+      "items": { "$ref": "basic.json#/definitions/uuid" },
+      "uniqueItems": true
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "modelId": {
+      "type": "string"
+    },
     "state": {
       "$ref": "#/definitions/state"
     }

@@ -31,13 +31,20 @@ export interface OntologyChangeOperation {
      * Version used for optimistic concurrency. Omitted for create operations.
      */
     baseVersion?:  number;
+    confidence?:   number;
     id:            string;
     mapping?:      ConceptMapping;
+    modelId?:      string;
     operationType: OperationType;
+    rationale?:    string;
     relationship?: OntologyRelationship;
-    state:         OperationState;
-    targetId?:     string;
-    term?:         GlossaryTerm;
+    /**
+     * Published context memories that support this AI suggestion.
+     */
+    sourceMemoryIds?: string[];
+    state:            OperationState;
+    targetId?:        string;
+    term?:            GlossaryTerm;
 }
 
 /**

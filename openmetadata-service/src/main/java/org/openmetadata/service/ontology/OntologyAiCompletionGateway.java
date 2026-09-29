@@ -25,6 +25,8 @@ public interface OntologyAiCompletionGateway {
 
   Completion<DomainConceptCandidate> generateDomainDraft(DomainPrompt prompt);
 
+  Completion<MemoryTermCandidate> deriveTermsFromMemories(MemoryTermPrompt prompt);
+
   record Completion<T>(String modelId, List<T> items) {
     public Completion {
       items = List.copyOf(items);
@@ -53,6 +55,10 @@ public interface OntologyAiCompletionGateway {
 
   record DomainPrompt(String glossary, String description, int maxConcepts) {}
 
+  record MemoryTermPrompt(String glossary, List<MemoryContext> memories, int maxTerms) {}
+
+  record MemoryContext(UUID id, String question, String answer, String summary) {}
+
   record RelationshipCandidate(
       UUID sourceTermId,
       UUID targetTermId,
@@ -74,4 +80,12 @@ public interface OntologyAiCompletionGateway {
 
   record DomainConceptCandidate(
       String name, String displayName, String description, String parentName) {}
+
+  record MemoryTermCandidate(
+      UUID sourceMemoryId,
+      String name,
+      String displayName,
+      String description,
+      double confidence,
+      String rationale) {}
 }
