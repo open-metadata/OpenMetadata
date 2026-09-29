@@ -501,7 +501,23 @@ public abstract class AbstractEventConsumer
 
   private void finishTick(JobExecutionContext context) {
     commitThisTick(context);
+    restartTimetableIfBehind(context);
     runAgainAtOnceIfStoppedForTime(context);
+  }
+
+  // A tick that ended past its alert's next slot restarts the timetable, so the next run comes one
+  // poll interval after this one ended rather than once per slot it missed.
+  private void restartTimetableIfBehind(JobExecutionContext context) {
+    if (context != null) {
+      try {
+        AlertJobs.restartIfBehind(context);
+      } catch (SchedulerException | RuntimeException e) {
+        LOG.warn(
+            "Alert {} could not restart its timetable; the misfire scan fires it",
+            eventSubscription.getName(),
+            e);
+      }
+    }
   }
 
   // However the commit ends, this tick came back: only one that never does was interrupted.

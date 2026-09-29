@@ -156,15 +156,67 @@ class EventSubscriptionSchedulerTest {
   }
 
   @Test
-  @DisplayName("Quartz treats a trigger as misfired after five seconds")
-  void testQuartzPropertiesUseFiveSecondMisfireThreshold() {
+  @DisplayName("A trigger waiting for a free thread stays acquirable for ten minutes")
+  void testQuartzPropertiesKeepAWaitingTriggerAcquirable() {
     Properties quartz =
         EventSubscriptionScheduler.quartzProperties(database(ConnectionType.MYSQL.label));
 
     assertEquals(
-        "5000",
+        "600000",
         quartz.get("org.quartz.jobStore.misfireThreshold"),
-        "The misfire handler rescans at this period, so a late poller waits at most this long");
+        "Far above a time budget plus one slow event, so an alert that waits keeps its turn");
+  }
+
+  @Test
+  @DisplayName("An alert whose tick ended past its next slot runs one interval after that tick")
+  void testLateAlertTriggerRestartsOneIntervalAfterTheTick() {
+    EventSubscription subscription = subscription(60);
+    OperableTrigger stored = (OperableTrigger) AlertJobs.trigger(subscription);
+    stored.setNextFireTime(new Date(NOW - Duration.ofMinutes(3).toMillis()));
+
+    SimpleTrigger restarted =
+        (SimpleTrigger) AlertJobs.restarted(stored, subscription, NOW).orElseThrow();
+
+    assertEquals(new Date(NOW + 60_000L), restarted.getStartTime());
+    assertEquals(stored.getKey(), restarted.getKey());
+    assertEquals(60_000L, restarted.getRepeatInterval());
+    assertEquals(
+        SimpleTrigger.MISFIRE_INSTRUCTION_RESCHEDULE_NOW_WITH_EXISTING_REPEAT_COUNT,
+        restarted.getMisfireInstruction());
+  }
+
+  @Test
+  @DisplayName("An alert whose next slot is still ahead keeps its timetable")
+  void testOnTimeAlertTriggerIsLeftAlone() {
+    EventSubscription subscription = subscription(60);
+    OperableTrigger stored = (OperableTrigger) AlertJobs.trigger(subscription);
+    stored.setNextFireTime(new Date(NOW + 30_000L));
+
+    assertTrue(AlertJobs.restarted(stored, subscription, NOW).isEmpty());
+  }
+
+  @Test
+  @DisplayName("A switched-off or deleted alert is not restarted")
+  void testAlertWithNothingToScheduleIsNotRestarted() {
+    EventSubscription subscription = subscription(60);
+    OperableTrigger stored = (OperableTrigger) AlertJobs.trigger(subscription);
+    stored.setNextFireTime(new Date(NOW - 60_000L));
+
+    assertTrue(AlertJobs.restarted(stored, subscription.withEnabled(false), NOW).isEmpty());
+    assertTrue(AlertJobs.restarted(stored, null, NOW).isEmpty());
+    assertTrue(AlertJobs.restarted(null, subscription(60), NOW).isEmpty());
+  }
+
+  @Test
+  @DisplayName("The audit log consumer runs one interval after a run that ended past its slot")
+  void testLateAuditLogTriggerRestartsOneIntervalAfterTheRun() {
+    OperableTrigger stored =
+        (OperableTrigger)
+            AuditLogSchedule.restarted(behindBy(Duration.ofMinutes(2)), NOW).orElseThrow();
+
+    assertEquals(new Date(NOW + 5_000L), stored.getStartTime());
+    assertEquals(auditTriggerKey(), stored.getKey());
+    assertTrue(AuditLogSchedule.restarted(aheadBy(Duration.ofSeconds(3)), NOW).isEmpty());
   }
 
   @Test
@@ -301,6 +353,27 @@ class EventSubscriptionSchedulerTest {
     DataSourceFactory database = new DataSourceFactory();
     database.setDriverClass(driverClass);
     return database;
+  }
+
+  private static final long NOW = Instant.parse("2026-09-29T12:00:00Z").toEpochMilli();
+
+  private static Trigger behindBy(Duration behind) {
+    return auditTriggerNextFiringAt(NOW - behind.toMillis());
+  }
+
+  private static Trigger aheadBy(Duration ahead) {
+    return auditTriggerNextFiringAt(NOW + ahead.toMillis());
+  }
+
+  private static Trigger auditTriggerNextFiringAt(long at) {
+    OperableTrigger trigger =
+        (OperableTrigger)
+            TriggerBuilder.newTrigger()
+                .withIdentity(auditTriggerKey())
+                .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(5))
+                .build();
+    trigger.setNextFireTime(new Date(at));
+    return trigger;
   }
 
   private static EventSubscription subscription(int pollSeconds) {
