@@ -19,6 +19,7 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import org.jdbi.v3.core.mapper.RowMapper;
@@ -150,24 +151,47 @@ public interface EventSubscriptionDAOs {
       }
     }
 
-    @ConnectionAwareSqlUpdate(
+    /** One row of an alert's failed events: its key within the alert, the failure and its side. */
+    record FailedEventRow(String extension, String json, String source) {}
+
+    // An alert's failure rows in one batched write, as its delivered rows are. One row per key,
+    // the last, as writing them one after another would leave: Postgres rejects a rewritten
+    // multi-row INSERT that updates the same row twice.
+    default void batchUpsertFailedEvents(String alertId, List<FailedEventRow> rows) {
+      if (rows.isEmpty()) {
+        return;
+      }
+      List<FailedEventRow> lastOfEachKey =
+          pickByIndex(
+              rows, lastIndexOfEachKey(rows.stream().map(FailedEventRow::extension).toList()));
+      batchUpsertFailedEventsInternal(
+          Collections.nCopies(lastOfEachKey.size(), alertId),
+          lastOfEachKey.stream().map(FailedEventRow::extension).toList(),
+          lastOfEachKey.stream().map(FailedEventRow::json).toList(),
+          lastOfEachKey.stream().map(FailedEventRow::source).toList());
+    }
+
+    // VALUES(json), not :json: a placeholder in the update clause stops the MySQL driver from
+    // sending the batch as one statement.
+    @Transaction
+    @ConnectionAwareSqlBatch(
         value =
             "INSERT INTO consumers_dlq(id, extension, json, source) "
                 + "VALUES (:id, :extension, :json, :source) "
-                + "ON DUPLICATE KEY UPDATE json = :json, source = :source",
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json), source = VALUES(source)",
         connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
+    @ConnectionAwareSqlBatch(
         value =
             "INSERT INTO consumers_dlq(id, extension, json, source) "
-                + "VALUES (:id, :extension, (:json :: jsonb), :source) "
+                + "VALUES (:id, :extension, CAST(:json AS jsonb), :source) "
                 + "ON CONFLICT (id, extension) "
                 + "DO UPDATE SET json = EXCLUDED.json, source = EXCLUDED.source",
         connectionType = POSTGRES)
-    void upsertFailedEvent(
-        @Bind("id") String id,
-        @Bind("extension") String extension,
-        @BindJson("json") String json,
-        @Bind("source") String source);
+    void batchUpsertFailedEventsInternal(
+        @Bind("id") List<String> alertIds,
+        @Bind("extension") List<String> extensions,
+        @BindJson("json") List<String> jsonList,
+        @Bind("source") List<String> sources);
 
     // Batch insert for successful events - reduces connection pool contention
     // from N connections to 1 when processing multiple events.
@@ -195,9 +219,18 @@ public interface EventSubscriptionDAOs {
 
     static List<Integer> distinctLastIndexes(
         List<String> changeEventIds, List<String> eventSubscriptionIds) {
-      LinkedHashMap<String, Integer> lastIndexByKey = new LinkedHashMap<>();
+      List<String> keys = new ArrayList<>(changeEventIds.size());
       for (int i = 0; i < changeEventIds.size(); i++) {
-        lastIndexByKey.put(changeEventIds.get(i) + "|" + eventSubscriptionIds.get(i), i);
+        keys.add(changeEventIds.get(i) + "|" + eventSubscriptionIds.get(i));
+      }
+      return lastIndexOfEachKey(keys);
+    }
+
+    /** The index of the last occurrence of each key, in the order the keys first appear. */
+    static List<Integer> lastIndexOfEachKey(List<String> keys) {
+      LinkedHashMap<String, Integer> lastIndexByKey = new LinkedHashMap<>();
+      for (int i = 0; i < keys.size(); i++) {
+        lastIndexByKey.put(keys.get(i), i);
       }
       return new ArrayList<>(lastIndexByKey.values());
     }
