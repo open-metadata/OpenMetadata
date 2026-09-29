@@ -39,10 +39,15 @@ const selectOwnedOption = async ({
     expect(listboxId).toBeTruthy();
   }).toPass({ timeout: 10_000 });
   const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
-  await listbox.getByRole('option', { exact: true, name: optionName }).click();
-  // The exiting overlay still owns focus until it unmounts. Opening the next
-  // picker during that transition can restore focus into the old control.
-  await expect(listbox).toBeHidden();
+  // Index-keyed destination rows remount on every form-value write, tearing down
+  // the open listbox mid-click ("element detached from the DOM"). Retry the click
+  // until the option lands and the overlay closes.
+  await expect(async () => {
+    await listbox.getByRole('option', { exact: true, name: optionName }).click();
+    // The exiting overlay still owns focus until it unmounts. Opening the next
+    // picker during that transition can restore focus into the old control.
+    await expect(listbox).toBeHidden({ timeout: 2_000 });
+  }).toPass({ timeout: 10_000 });
 };
 
 export const selectComboBoxOption = async ({

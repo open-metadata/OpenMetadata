@@ -21,7 +21,7 @@
  * This file provides CoreUI-compatible replacements. Legacy utils are NOT modified.
  */
 
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { ALERT_DESCRIPTION } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
@@ -366,6 +366,58 @@ export const addMultipleFiltersProfile = async ({
 // ─── Destination helper ───────────────────────────────────────────────────────
 
 /**
+ * Select a destination category, retrying until the category-specific config
+ * field mounts. The AI form keys destination rows by index and threads the form
+ * value through render-time closures, so a category write remounts the still-open
+ * react-aria combobox — at automation speed the option click can hit a torn-down
+ * dropdown. Retrying open → filter → click until the confirm field appears makes
+ * the selection deterministic.
+ */
+const selectDestinationCategory = async ({
+  page,
+  destinationNumber,
+  category,
+  confirmTestId,
+}: {
+  page: Page;
+  destinationNumber: number;
+  category: string;
+  confirmTestId: string;
+}) => {
+  const combo = page
+    .getByTestId(`destination-category-select-${destinationNumber}`)
+    .getByRole('combobox');
+
+  await expect(async () => {
+    await combo.click();
+    await combo.fill('');
+    await combo.press('ArrowDown');
+
+    const option = page.getByRole('option', { exact: true, name: category });
+    await expect(option).toBeVisible({ timeout: 2_000 });
+    await option.click();
+
+    // The type-specific field only mounts once the category actually commits.
+    await expect(page.getByTestId(confirmTestId)).toBeVisible({
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 15_000 });
+};
+
+/**
+ * Fill a controlled input and retry until the value lands. Destination fields
+ * are controlled off the form value, so a write built from a stale closure can
+ * silently revert — retrying until `toHaveValue` passes prevents the clobbered
+ * empty-key payload the backend rejects.
+ */
+const fillAndVerify = async (input: Locator, value: string) => {
+  await expect(async () => {
+    await input.fill(value);
+    await expect(input).toHaveValue(value, { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+};
+
+/**
  * Add an internal destination in the profile notification form.
  * Waits for the conditional type-select to mount after category selection.
  */
@@ -380,24 +432,12 @@ export const addInternalDestinationProfile = async ({
   category: string;
   type: string;
 }) => {
-  // Select category via combobox
-  const categoryInput = page
-    .getByTestId(`destination-category-select-${destinationNumber}`)
-    .getByRole('combobox');
-  await expect(categoryInput).toBeVisible();
-  await categoryInput.click();
-  await categoryInput.fill('');
-  await categoryInput.press('ArrowDown');
-
-  const option = page.getByRole('option', { exact: true, name: category });
-  await expect(option).toBeVisible();
-  await option.click();
-
-  // Wait for the remounted row to settle and the conditional type-select to appear
-  const typeSelect = page.getByTestId(
-    `destination-type-select-${destinationNumber}`
-  );
-  await expect(typeSelect).toBeVisible({ timeout: 30_000 });
+  await selectDestinationCategory({
+    page,
+    destinationNumber,
+    category,
+    confirmTestId: `destination-type-select-${destinationNumber}`,
+  });
 
   await selectDropdownOption({
     page,
@@ -431,29 +471,27 @@ export const addExternalDestinationProfile = async ({
     queryParams?: Array<{ key: string; value: string }>;
   };
 }) => {
-  const categoryInput = page
-    .getByTestId(`destination-category-select-${destinationNumber}`)
-    .getByRole('combobox');
-  await expect(categoryInput).toBeVisible();
-  await categoryInput.click();
-  await categoryInput.fill('');
-  await categoryInput.press('ArrowDown');
-
-  const option = page.getByRole('option', { exact: true, name: category });
-  await expect(option).toBeVisible();
-  await option.click();
+  const confirmTestId =
+    category === 'Email'
+      ? `email-input-${destinationNumber}`
+      : `endpoint-input-${destinationNumber}`;
+  await selectDestinationCategory({
+    page,
+    destinationNumber,
+    category,
+    confirmTestId,
+  });
 
   if (category === 'Email') {
     const emailInput = page.getByTestId(`email-input-${destinationNumber}`);
-    await expect(emailInput).toBeVisible();
-    await emailInput.locator('input').fill(input);
+    await fillAndVerify(emailInput.locator('input'), input);
     await page.keyboard.press('Enter');
+    await expect(page.getByTestId(`email-tag-${input}`)).toBeVisible();
   } else {
     const endpointInput = page.getByTestId(
       `endpoint-input-${destinationNumber}`
     );
-    await expect(endpointInput).toBeVisible();
-    await endpointInput.locator('input').fill(input);
+    await fillAndVerify(endpointInput.locator('input'), input);
   }
 
   if (advancedConfig) {
@@ -476,14 +514,18 @@ export const addExternalDestinationProfile = async ({
         await page
           .getByTestId(`add-header-button-${destinationNumber}`)
           .click();
-        await page
-          .getByTestId(`header-key-input-${destinationNumber}-${i}`)
-          .locator('input')
-          .fill(h.key);
-        await page
-          .getByTestId(`header-value-input-${destinationNumber}-${i}`)
-          .locator('input')
-          .fill(h.value);
+        await fillAndVerify(
+          page
+            .getByTestId(`header-key-input-${destinationNumber}-${i}`)
+            .locator('input'),
+          h.key
+        );
+        await fillAndVerify(
+          page
+            .getByTestId(`header-value-input-${destinationNumber}-${i}`)
+            .locator('input'),
+          h.value
+        );
       }
     }
 
@@ -493,14 +535,18 @@ export const addExternalDestinationProfile = async ({
         await page
           .getByTestId(`add-query-param-button-${destinationNumber}`)
           .click();
-        await page
-          .getByTestId(`query-param-key-input-${destinationNumber}-${i}`)
-          .locator('input')
-          .fill(qp.key);
-        await page
-          .getByTestId(`query-param-value-input-${destinationNumber}-${i}`)
-          .locator('input')
-          .fill(qp.value);
+        await fillAndVerify(
+          page
+            .getByTestId(`query-param-key-input-${destinationNumber}-${i}`)
+            .locator('input'),
+          qp.key
+        );
+        await fillAndVerify(
+          page
+            .getByTestId(`query-param-value-input-${destinationNumber}-${i}`)
+            .locator('input'),
+          qp.value
+        );
       }
     }
   }

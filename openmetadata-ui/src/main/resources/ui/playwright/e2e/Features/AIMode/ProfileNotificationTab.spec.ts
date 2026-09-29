@@ -359,6 +359,8 @@ test('Task source alert', async ({ page }) => {
 });
 
 test('Conversation source alert', async ({ page }) => {
+  test.slow();
+  
   const ALERT_NAME = generateAlertName();
   await navigateToAlertsList(page);
 

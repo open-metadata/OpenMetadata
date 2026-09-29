@@ -168,7 +168,7 @@ export const runTextFormattingTest = async (
     await page.keyboard.type('Italic text');
 
     await expect(page.getByText('Italic text')).toBeVisible();
-    await page.getByText('Italic text').selectText();
+    await selectLastWord(page, 2, editor);
     await applyTextFormatting(page, 'italic');
 
     await expect(page.getByText('Italic text')).toBeVisible();
@@ -180,7 +180,7 @@ export const runTextFormattingTest = async (
     await page.keyboard.type('inline code');
 
     await expect(page.getByText('inline code')).toBeVisible();
-    await page.getByText('inline code').selectText();
+    await selectLastWord(page, 2, editor);
     await applyTextFormatting(page, 'code');
 
     await expect(page.getByText('inline code')).toBeVisible();

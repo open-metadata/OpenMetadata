@@ -82,7 +82,7 @@ test.describe(
         await page
           .getByTestId('profile-content-header')
           .getByLabel('Breadcrumb')
-          .getByText('Access Control', { exact: true })
+          .getByRole('link', { name: 'Access Control', exact: true })
           .click();
         await landingVisible;
         await waitForAllLoadersToDisappear(page);
@@ -100,7 +100,7 @@ test.describe(
         await page
           .getByTestId('profile-content-header')
           .getByLabel('Breadcrumb')
-          .getByText('Access Control', { exact: true })
+          .getByRole('link', { name: 'Access Control', exact: true })
           .click();
         await landingVisible;
         await waitForAllLoadersToDisappear(page);
@@ -120,7 +120,7 @@ test.describe(
         await page
           .getByTestId('profile-content-header')
           .getByLabel('Breadcrumb')
-          .getByText('Access Control', { exact: true })
+          .getByRole('link', { name: 'Access Control', exact: true })
           .click();
         await landingVisible;
         await waitForAllLoadersToDisappear(page);
