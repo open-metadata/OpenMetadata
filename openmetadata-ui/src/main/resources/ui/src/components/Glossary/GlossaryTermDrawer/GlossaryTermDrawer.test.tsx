@@ -201,14 +201,7 @@ describe('GlossaryTermDrawer', () => {
     expect(showErrorToast).toHaveBeenCalled();
   });
 
-  it('shows a duplicate-name rejection on the name field', async () => {
-    onSave.mockRejectedValue({
-      response: {
-        status: 400,
-        data: { message: 'Entity with name Revenue already exists' },
-      },
-    });
-
+  const submitNewTerm = async () => {
     renderWithQueryClient(
       <GlossaryTermDrawer
         editMode={false}
@@ -224,11 +217,50 @@ describe('GlossaryTermDrawer', () => {
       target: { value: 'Money in' },
     });
     fireEvent.click(screen.getByTestId('save-glossary-term'));
+  };
+
+  it('shows a duplicate-name rejection on the name field', async () => {
+    onSave.mockRejectedValue({
+      response: {
+        status: 400,
+        data: { message: 'Entity with name Revenue already exists' },
+      },
+    });
+
+    await submitNewTerm();
 
     expect(
-      await screen.findByText('Entity with name Revenue already exists')
+      await screen.findByText('server.entity-already-exist')
     ).toBeInTheDocument();
     expect(showErrorToast).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('shows a mutually-exclusive tag rejection on the tags field', async () => {
+    const message =
+      'Tag labels PII.Sensitive and PII.NonSensitive are mutually exclusive';
+    onSave.mockRejectedValue({ response: { status: 400, data: { message } } });
+
+    await submitNewTerm();
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('toasts any other save failure', async () => {
+    onSave.mockRejectedValue({
+      response: { status: 500, data: { message: 'Server exploded' } },
+    });
+
+    await submitNewTerm();
+
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(
+        expect.anything(),
+        'server.add-entity-error'
+      )
+    );
+
     expect(onCancel).not.toHaveBeenCalled();
   });
 

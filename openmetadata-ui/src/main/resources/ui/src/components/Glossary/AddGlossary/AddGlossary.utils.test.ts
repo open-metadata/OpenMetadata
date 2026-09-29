@@ -14,6 +14,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import {
+  getOwnersOrCurrentUser,
   GLOSSARY_FORM_DEFAULTS,
   hasOwnerRuleViolation,
   toEntityReferenceOption,
@@ -98,6 +99,22 @@ describe('transformGlossaryFormData', () => {
     expect(payload.owners).toEqual([{ id: 'me', type: 'user' }]);
     expect(payload.domains).toBeUndefined();
     expect(payload.mutuallyExclusive).toBe(false);
+  });
+});
+
+describe('getOwnersOrCurrentUser', () => {
+  it('keeps chosen owners', () => {
+    expect(getOwnersOrCurrentUser([team('t1')], 'me')).toEqual([team('t1')]);
+  });
+
+  it('falls back to the current user when no owner is chosen', () => {
+    expect(getOwnersOrCurrentUser([], 'me')).toEqual([
+      { id: 'me', type: EntityType.USER },
+    ]);
+  });
+
+  it('never builds an owner without an id', () => {
+    expect(getOwnersOrCurrentUser([], undefined)).toEqual([]);
   });
 });
 

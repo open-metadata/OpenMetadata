@@ -43,12 +43,17 @@ export const toEntityReferences = (
   options: EntityReferenceOption[] = []
 ): EntityReference[] => options.map((option) => option.value);
 
-// The API requires an owner; the creator owns an entity nobody was assigned to.
+// With no owner picked, the creator becomes the owner.
 export const getOwnersOrCurrentUser = (
   owners: EntityReference[],
   currentUserId?: string
-): EntityReference[] =>
-  owners.length > 0 ? owners : [{ id: currentUserId ?? '', type: 'user' }];
+): EntityReference[] => {
+  if (owners.length > 0 || !currentUserId) {
+    return owners;
+  }
+
+  return [{ id: currentUserId, type: EntityType.USER }];
+};
 
 export const transformGlossaryFormData = (
   values: GlossaryFormValues,

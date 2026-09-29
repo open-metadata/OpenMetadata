@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { CustomProperty } from '../../../generated/entity/type';
 import {
   FieldKind,
-  IntakeForm,
   IntakeFormField,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
@@ -37,53 +37,44 @@ const isCustomPropertyField = (field: IntakeFormField) =>
   field.fieldKind === FieldKind.CustomProperty ||
   field.fieldPath.startsWith('extension.');
 
+const NO_CUSTOM_PROPERTIES: CustomProperty[] = [];
+
+const useToastOnError = (error: Error | null) => {
+  useEffect(() => {
+    if (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [error]);
+};
+
 /** Loads the glossary term intake form; skipped in edit mode since it only governs creation. */
 export const useGlossaryTermIntakeForm = (
   editMode: boolean
 ): GlossaryTermIntakeFormState => {
-  const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
-  const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
-    []
-  );
-  const [isLoaded, setIsLoaded] = useState(editMode);
-
-  useEffect(() => {
-    if (editMode) {
-      setIntakeForm(null);
-      setCustomProperties([]);
-      setIsLoaded(true);
-
-      return;
-    }
-
-    let cancelled = false;
-    setIsLoaded(false);
-
+  // Cached across opens but refetched each time, so an edited intake form still applies.
+  const intakeFormQuery = useQuery({
+    queryKey: ['glossary-term-form', 'intake-form'],
     // A missing intake form resolves to null, so any rejection is a real failure.
-    Promise.allSettled([
-      getIntakeFormByEntityType(TargetEntityType.GlossaryTerm),
+    queryFn: () => getIntakeFormByEntityType(TargetEntityType.GlossaryTerm),
+    enabled: !editMode,
+  });
+  const customPropertiesQuery = useQuery({
+    queryKey: ['glossary-term-form', 'custom-properties'],
+    queryFn: () =>
       getCustomPropertiesByEntityType(TargetEntityType.GlossaryTerm),
-    ]).then(([formResult, propertiesResult]) => {
-      if (cancelled) {
-        return;
-      }
-      if (formResult.status === 'fulfilled') {
-        setIntakeForm(formResult.value);
-      } else {
-        showErrorToast(formResult.reason as AxiosError);
-      }
-      if (propertiesResult.status === 'fulfilled') {
-        setCustomProperties(propertiesResult.value ?? []);
-      } else {
-        showErrorToast(propertiesResult.reason as AxiosError);
-      }
-      setIsLoaded(true);
-    });
+    enabled: !editMode,
+  });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [editMode]);
+  useToastOnError(intakeFormQuery.error);
+  useToastOnError(customPropertiesQuery.error);
+
+  const intakeForm = editMode ? null : intakeFormQuery.data ?? null;
+  const customProperties = editMode
+    ? NO_CUSTOM_PROPERTIES
+    : customPropertiesQuery.data ?? NO_CUSTOM_PROPERTIES;
+  const isLoaded =
+    editMode ||
+    (!intakeFormQuery.isPending && !customPropertiesQuery.isPending);
 
   return useMemo(() => {
     const fields = getIntakeFormFields(intakeForm);

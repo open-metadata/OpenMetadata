@@ -10,14 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { ERROR_MESSAGE } from '../../../constants/constants';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
+import { getIsErrorMatch } from '../../../utils/APIUtils';
+import { setCreateEntityFieldError } from '../../../utils/FormDrawerUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -49,64 +52,69 @@ const GlossaryTermDrawer = ({
 }: GlossaryTermDrawerProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const termQuery = useQuery({
+    queryKey: ['glossary-term-form', 'term', glossaryTermFQN],
+    queryFn: () =>
+      getGlossaryTermByFQN(glossaryTermFQN, { fields: GLOSSARY_TERM_FIELDS }),
+    enabled: editMode,
+    // Fresh on every open, and never refetched mid-edit.
+    staleTime: Infinity,
+    gcTime: 0,
+  });
+  const glossaryTerm = termQuery.data;
+  const termFormValues = useMemo(
+    () => glossaryTerm && getGlossaryTermFormValues(glossaryTerm),
+    [glossaryTerm]
+  );
   const form = useForm<GlossaryTermFormValues>({
     defaultValues: GLOSSARY_TERM_FORM_DEFAULTS,
+    values: termFormValues,
   });
   const intake = useGlossaryTermIntakeForm(editMode);
-  const [glossaryTerm, setGlossaryTerm] = useState<GlossaryTerm>();
-  const [isTermLoading, setIsTermLoading] = useState(editMode);
 
   useEffect(() => {
-    if (!editMode) {
-      return;
+    if (termQuery.error) {
+      showErrorToast(termQuery.error as AxiosError);
+      // Saving an unloaded term would overwrite it with blank values.
+      onCancel();
     }
-
-    let cancelled = false;
-    setIsTermLoading(true);
-
-    getGlossaryTermByFQN(glossaryTermFQN, { fields: GLOSSARY_TERM_FIELDS })
-      .then((term) => {
-        if (!cancelled) {
-          setGlossaryTerm(term);
-          form.reset(getGlossaryTermFormValues(term));
-        }
-      })
-      .catch((error: AxiosError) => {
-        if (!cancelled) {
-          showErrorToast(error);
-          // Saving an unloaded term would overwrite it with blank values.
-          onCancel();
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsTermLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [editMode, form, glossaryTermFQN, onCancel]);
+  }, [termQuery.error, onCancel]);
 
   // Field errors show inline, others as a toast; rethrown to keep the drawer open.
   const mapSaveErrorToField = useCallback(
-    (error: unknown) => {
-      const response = (error as AxiosError<{ message?: string }>)?.response;
-      const message = response?.data?.message ?? '';
-
-      if (response?.status === 400 && message.includes('already exists')) {
-        form.setError('name', { type: 'server', message });
-      } else if (
-        response?.status === 400 &&
-        message.includes('mutually exclusive')
+    (error: unknown, name: string) => {
+      if (
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.mutuallyExclusive)
       ) {
-        form.setError('tags', { type: 'server', message });
-      } else {
-        showErrorToast(error as AxiosError);
+        // The server message names the conflicting tags, so it is shown as is.
+        form.setError('tags', {
+          type: 'server',
+          message: (error as AxiosError<{ message?: string }>).response?.data
+            ?.message,
+        });
+
+        return;
       }
+
+      setCreateEntityFieldError(
+        error,
+        form,
+        'name',
+        t('server.entity-already-exist', {
+          entity: t('label.glossary-term'),
+          entityPlural: t('label.glossary-term-lowercase-plural'),
+          name,
+        }),
+        editMode
+          ? t('server.entity-updating-error', {
+              entity: t('label.glossary-term-lowercase'),
+            })
+          : t('server.add-entity-error', {
+              entity: t('label.glossary-term-lowercase'),
+            })
+      );
     },
-    [form]
+    [editMode, form, t]
   );
 
   const handleSubmit = useCallback(
@@ -122,7 +130,7 @@ const GlossaryTermDrawer = ({
           })
         );
       } catch (error) {
-        mapSaveErrorToField(error);
+        mapSaveErrorToField(error, values.name);
 
         throw error;
       }
@@ -137,7 +145,7 @@ const GlossaryTermDrawer = ({
     ]
   );
 
-  const isLoading = isTermLoading || !intake.isLoaded;
+  const isLoading = (editMode && termQuery.isPending) || !intake.isLoaded;
 
   const { formDrawer } = useFormDrawerWithHook<GlossaryTermFormValues>({
     title: editMode
@@ -170,6 +178,7 @@ const GlossaryTermDrawer = ({
     ),
     onClose: onCancel,
     onSubmit: handleSubmit,
+    loading: form.formState.isSubmitting,
     submitLoading: isLoading,
   });
 

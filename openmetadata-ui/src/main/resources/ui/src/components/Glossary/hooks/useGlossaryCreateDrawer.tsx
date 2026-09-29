@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -42,11 +42,8 @@ export const useGlossaryCreateDrawer = (onCreated?: () => void) => {
   const form = useForm<GlossaryFormValues>({
     defaultValues: GLOSSARY_FORM_DEFAULTS,
   });
-  const [isLoading, setIsLoading] = useState(false);
-
   const handleSubmit = useCallback(
     async (values: GlossaryFormValues) => {
-      setIsLoading(true);
       try {
         const glossary = await addGlossaries(
           transformGlossaryFormData(values, currentUser?.id)
@@ -69,8 +66,6 @@ export const useGlossaryCreateDrawer = (onCreated?: () => void) => {
         );
 
         throw error;
-      } finally {
-        setIsLoading(false);
       }
     },
     [currentUser?.id, form, navigate, onCreated, t]
@@ -96,7 +91,7 @@ export const useGlossaryCreateDrawer = (onCreated?: () => void) => {
       ),
       onSubmit: (values: GlossaryFormValues): Promise<void> =>
         submitAndClose(values, handleSubmit, closeDrawer),
-      loading: isLoading,
+      loading: form.formState.isSubmitting,
     });
 
   // Defaults are rebuilt on every open so the active domain is always current.
