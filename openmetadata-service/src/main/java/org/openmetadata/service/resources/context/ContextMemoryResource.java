@@ -229,10 +229,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                 after));
     List<ContextMemory> visible =
         ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
-    if (visible.size() == memories.getData().size()) {
-      return memories;
-    }
-    return new ResultList<>(visible);
+    // Keep the cursor so clients can page past hidden rows.
+    return visible.size() == memories.getData().size()
+        ? memories
+        : new ResultList<>(visible).setPaging(memories.getPaging());
   }
 
   private ResultList<ContextMemory> listMemoriesFromSearch(
@@ -485,6 +485,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
+    enforceCurrentVisibility(securityContext, id);
     return listVersionsInternal(securityContext, id);
   }
 
@@ -511,7 +512,20 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Context memory version", schema = @Schema(type = "string"))
           @PathParam("version")
           String version) {
+    enforceCurrentVisibility(securityContext, id);
     return getVersionInternal(securityContext, id, version);
+  }
+
+  /** Current visibility governs every historical version. */
+  private void enforceCurrentVisibility(SecurityContext securityContext, UUID id) {
+    ContextMemory current =
+        repository.get(
+            null,
+            id,
+            getFields(ContextMemoryVisibility.guardFields(entityType, "")),
+            Include.ALL,
+            false);
+    ContextMemoryVisibility.enforceVisibility(current, securityContext);
   }
 
   @POST
