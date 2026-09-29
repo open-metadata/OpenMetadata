@@ -674,6 +674,17 @@ describe('DataAssetsHeader component', () => {
     expect(await screen.findByText('label.source-url')).toBeVisible();
   });
 
+  it('should render entity-specific header actions next to the manage menu', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        headerActions={<button data-testid="custom-header-action">Add</button>}
+      />
+    );
+
+    expect(screen.getByTestId('custom-header-action')).toBeInTheDocument();
+  });
+
   it('should not render source URL button when sourceUrl is not present', () => {
     render(<DataAssetsHeader {...mockProps} />);
 

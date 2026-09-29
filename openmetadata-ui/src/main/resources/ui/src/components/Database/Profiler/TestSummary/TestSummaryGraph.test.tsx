@@ -286,6 +286,22 @@ describe('TestSummaryGraph', () => {
     expect(screen.getByTestId('max')).toBeInTheDocument();
   });
 
+  it('should draw no legend for a single series', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseResults={[
+          {
+            ...mockProps.testCaseResults[0],
+            testResultValue: [{ name: 'rowCount', value: '9990' }],
+          },
+        ]}
+      />
+    );
+
+    expect(screen.queryByTestId('rechart-legend')).not.toBeInTheDocument();
+  });
+
   it("legend filter should update the graph's activeKeys", async () => {
     render(<TestSummaryGraph {...mockProps} />);
     const minButton = screen.getByTestId('min');
