@@ -45,7 +45,7 @@ const EditAnnouncementModal: FC<Props> = ({
     defaultValues: {
       title: announcementTitle,
       description: announcement.description,
-      type: announcement.type ?? AnnouncementType.Information,
+      type: announcement.type ?? AnnouncementType.Notice,
       color: announcement.color,
       customTypeName: announcement.customTypeName,
       startTime: announcement.startTime,

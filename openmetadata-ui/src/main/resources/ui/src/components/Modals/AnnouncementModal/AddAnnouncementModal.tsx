@@ -48,7 +48,7 @@ const AddAnnouncementModal: FC<Props> = ({
     defaultValues: {
       title: '',
       description: '',
-      type: AnnouncementType.Information,
+      type: AnnouncementType.Notice,
       // Dates start empty: a prefilled window is a schedule the author never
       // chose, and it reads as already-decided.
       startTime: null,

@@ -98,7 +98,7 @@ const END = START + 86400000;
 const baseValues: AnnouncementFormValues = {
   title: 'Test Announcement',
   description: 'Test description',
-  type: AnnouncementType.Information,
+  type: AnnouncementType.Notice,
   startTime: START,
   endTime: END,
 };
@@ -166,7 +166,7 @@ describe('AddAnnouncementModal', () => {
       entityLink: '<#E::table::test.table>',
       startTime: START,
       endTime: END,
-      type: AnnouncementType.Information,
+      type: AnnouncementType.Notice,
       color: undefined,
       customTypeName: undefined,
     });
@@ -206,7 +206,7 @@ describe('AddAnnouncementModal', () => {
     });
     submittedValues = {
       ...baseValues,
-      type: AnnouncementType.Issue,
+      type: AnnouncementType.Critical,
       color: undefined,
     };
 
@@ -218,7 +218,7 @@ describe('AddAnnouncementModal', () => {
 
     expect(mockCreateAnnouncement).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: AnnouncementType.Issue,
+        type: AnnouncementType.Critical,
         color: undefined,
       })
     );

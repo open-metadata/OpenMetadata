@@ -22,15 +22,15 @@
       "javaType": "org.openmetadata.schema.type.AnnouncementType",
       "description": "Severity/category of the announcement, used to style it in the UI.",
       "type": "string",
-      "enum": ["Information", "Warning", "Issue", "Deprecation", "Custom"],
+      "enum": ["Critical", "Notice", "Warning", "Deprecation", "Custom"],
       "javaEnums": [
-        {"name": "Information"},
+        {"name": "Critical"},
+        {"name": "Notice"},
         {"name": "Warning"},
-        {"name": "Issue"},
         {"name": "Deprecation"},
         {"name": "Custom"}
       ],
-      "default": "Information"
+      "default": "Notice"
     },
     "announcementColor": {
       "javaType": "org.openmetadata.schema.type.AnnouncementColor",
@@ -90,7 +90,7 @@
     "type": {
       "description": "Severity/category of the announcement, used to style it in the UI.",
       "$ref": "#/definitions/announcementType",
-      "default": "Information"
+      "default": "Notice"
     },
     "entityLink": {
       "description": "Link to the entity this announcement is about.",

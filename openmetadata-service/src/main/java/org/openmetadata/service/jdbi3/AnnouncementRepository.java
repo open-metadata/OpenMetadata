@@ -77,7 +77,7 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
     // Backfill the default so a type is guaranteed even when the POJO initializer is bypassed
     // (e.g. an explicit "type": null on create, or a JSON Patch that removes /type).
     if (announcement.getType() == null) {
-      announcement.setType(AnnouncementType.Information);
+      announcement.setType(AnnouncementType.Notice);
     }
     validateTypeFields(announcement);
     announcement.setStatus(deriveStatus(announcement));

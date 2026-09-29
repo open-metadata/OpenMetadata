@@ -134,7 +134,7 @@ describe('AnnouncementFeedCardBody', () => {
       description: 'Body',
       startTime: 10,
       endTime: 20,
-      type: AnnouncementType.Information,
+      type: AnnouncementType.Notice,
     };
     mockConfirmed = {
       title: announcement.displayName,

@@ -215,12 +215,12 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
   }
 
   @Test
-  void testAnnouncementTypeDefaultsToInformation(TestNamespace ns) {
+  void testAnnouncementTypeDefaultsToNotice(TestNamespace ns) {
     Announcement created = createEntity(createMinimalRequest(ns));
-    assertEquals(AnnouncementType.Information, created.getType());
+    assertEquals(AnnouncementType.Notice, created.getType());
 
     Announcement fetched = getEntity(created.getId().toString());
-    assertEquals(AnnouncementType.Information, fetched.getType());
+    assertEquals(AnnouncementType.Notice, fetched.getType());
   }
 
   @Test
@@ -242,7 +242,7 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
   }
 
   @Test
-  void testAnnouncementExplicitNullTypeBackfillsInformation(TestNamespace ns) {
+  void testAnnouncementExplicitNullTypeBackfillsNotice(TestNamespace ns) {
     long now = System.currentTimeMillis();
     CreateAnnouncement request =
         new CreateAnnouncement()
@@ -253,23 +253,23 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
             .withEndTime(now + 86400000L);
 
     Announcement created = createEntity(request);
-    assertEquals(AnnouncementType.Information, created.getType());
+    assertEquals(AnnouncementType.Notice, created.getType());
 
     Announcement fetched = getEntity(created.getId().toString());
-    assertEquals(AnnouncementType.Information, fetched.getType());
+    assertEquals(AnnouncementType.Notice, fetched.getType());
   }
 
   @Test
   void testPatchAnnouncementType(TestNamespace ns) {
     Announcement created = createEntity(createMinimalRequest(ns));
-    assertEquals(AnnouncementType.Information, created.getType());
+    assertEquals(AnnouncementType.Notice, created.getType());
 
-    created.setType(AnnouncementType.Issue);
+    created.setType(AnnouncementType.Critical);
     Announcement updated = patchEntity(created.getId().toString(), created);
-    assertEquals(AnnouncementType.Issue, updated.getType());
+    assertEquals(AnnouncementType.Critical, updated.getType());
 
     Announcement fetched = getEntity(created.getId().toString());
-    assertEquals(AnnouncementType.Issue, fetched.getType());
+    assertEquals(AnnouncementType.Critical, fetched.getType());
   }
 
   @Test
@@ -587,7 +587,7 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
         createEntity(
             new CreateAnnouncement()
                 .withName(ns.prefix("type-filter-info"))
-                .withDescription("Information announcement")
+                .withDescription("Notice announcement")
                 .withEntityLink(entityLink)
                 .withStartTime(now)
                 .withEndTime(now + 86400000L));
@@ -604,7 +604,7 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
     ListResponse<Announcement> informational =
         listEntities(
             new ListParams()
-                .addQueryParam("type", "Information")
+                .addQueryParam("type", "Notice")
                 .addQueryParam("entityLink", entityLink)
                 .setLimit(100));
     assertEquals(

@@ -111,22 +111,16 @@ export interface AnnouncementTypeConfig {
   labelKey: string;
 }
 
-/**
- * The stored enum values predate the design's vocabulary: `Issue` is what the UI
- * calls Critical and `Information` is what it calls Notice. Relabelling here rather
- * than renaming the schema keeps every announcement written before this change
- * readable, and leaves the `?type=` filter and its indexed column untouched.
- */
 export const ANNOUNCEMENT_TYPE_CONFIG: Record<
   AnnouncementType,
   AnnouncementTypeConfig
 > = {
-  [AnnouncementType.Issue]: {
+  [AnnouncementType.Critical]: {
     color: 'error',
     icon: AlertCircle,
     labelKey: 'label.critical',
   },
-  [AnnouncementType.Information]: {
+  [AnnouncementType.Notice]: {
     color: 'blue',
     icon: InfoCircle,
     labelKey: 'label.notice',
@@ -149,15 +143,15 @@ export const ANNOUNCEMENT_TYPE_CONFIG: Record<
 };
 
 /** Must match the schema's own default, which the server backfills on write. */
-export const DEFAULT_ANNOUNCEMENT_TYPE = AnnouncementType.Information;
+export const DEFAULT_ANNOUNCEMENT_TYPE = AnnouncementType.Notice;
 
 /**
  * Severity order, as the form offers them. The generated enum is alphabetical,
  * which would put Custom first.
  */
 export const ANNOUNCEMENT_TYPE_ORDER: AnnouncementType[] = [
-  AnnouncementType.Issue,
-  AnnouncementType.Information,
+  AnnouncementType.Critical,
+  AnnouncementType.Notice,
   AnnouncementType.Warning,
   AnnouncementType.Deprecation,
   AnnouncementType.Custom,

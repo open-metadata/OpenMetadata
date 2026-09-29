@@ -462,7 +462,7 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- Announcement type: stored generated column so the list API can filter by type. Rows written
--- before the field existed have no $.type and read back as the Information default.
+-- before the field existed have no $.type and read back as the Notice default.
 SET @announcement_type_column_ddl = (
   SELECT IF(
     EXISTS (
@@ -473,7 +473,7 @@ SET @announcement_type_column_ddl = (
         AND column_name = 'type'
     ),
     'SELECT 1',
-    'ALTER TABLE announcement_entity ADD COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Information'')) STORED'
+    'ALTER TABLE announcement_entity ADD COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Notice'')) STORED'
   )
 );
 PREPARE announcement_type_column_stmt FROM @announcement_type_column_ddl;

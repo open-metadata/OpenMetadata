@@ -53,7 +53,7 @@ describe('getAnnouncementTypeConfig', () => {
 
   it('should derive the colour from the type, ignoring a stored colour', () => {
     const config = getAnnouncementTypeConfig({
-      type: AnnouncementType.Issue,
+      type: AnnouncementType.Critical,
       color: AnnouncementColor.Pink,
     });
 

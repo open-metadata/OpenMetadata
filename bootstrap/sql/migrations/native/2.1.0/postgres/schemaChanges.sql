@@ -372,8 +372,8 @@ BEGIN
 END $$;
 
 -- Announcement type: stored generated column so the list API can filter by type. Rows written
--- before the field existed have no type key and read back as the Information default.
+-- before the field existed have no type key and read back as the Notice default.
 ALTER TABLE announcement_entity
   ADD COLUMN IF NOT EXISTS type character varying(32)
-  GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Information')) STORED;
+  GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Notice')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);

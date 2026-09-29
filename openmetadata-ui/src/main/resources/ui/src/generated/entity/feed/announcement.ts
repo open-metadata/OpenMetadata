@@ -280,9 +280,9 @@ export enum AnnouncementStatus {
  * Severity/category of the announcement, used to style it in the UI.
  */
 export enum AnnouncementType {
+    Critical = "Critical",
     Custom = "Custom",
     Deprecation = "Deprecation",
-    Information = "Information",
-    Issue = "Issue",
+    Notice = "Notice",
     Warning = "Warning",
 }

@@ -69,7 +69,7 @@ const Harness = ({
     defaultValues: {
       title: 'A title',
       description: 'Scheduled downtime',
-      type: AnnouncementType.Information,
+      type: AnnouncementType.Notice,
       startTime: START,
       endTime: END,
       ...defaultValues,
@@ -216,8 +216,8 @@ describe('AnnouncementForm', () => {
 
     expect(rendered).toEqual(
       [
-        AnnouncementType.Issue,
-        AnnouncementType.Information,
+        AnnouncementType.Critical,
+        AnnouncementType.Notice,
         AnnouncementType.Warning,
         AnnouncementType.Deprecation,
         AnnouncementType.Custom,

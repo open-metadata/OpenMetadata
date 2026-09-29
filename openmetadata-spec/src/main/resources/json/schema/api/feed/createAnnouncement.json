@@ -21,7 +21,7 @@
     "type": {
       "description": "Severity/category of the announcement, used to style it in the UI.",
       "$ref": "../../entity/feed/announcement.json#/definitions/announcementType",
-      "default": "Information"
+      "default": "Notice"
     },
     "color": {
       "$ref": "../../entity/feed/announcement.json#/definitions/announcementColor"
