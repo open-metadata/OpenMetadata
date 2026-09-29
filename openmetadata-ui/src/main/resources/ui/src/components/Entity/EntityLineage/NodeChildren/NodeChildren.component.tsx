@@ -47,6 +47,7 @@ const NodeChildren = ({
   isOnlyShowColumnsWithLineageFilterActive,
   onColumnHover,
   onColumnSelect,
+  onColumnLineageEdit,
 }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const {
@@ -214,6 +215,7 @@ const NodeChildren = ({
                 showDataObservabilitySummary={showDataObservabilitySummary}
                 summary={summary}
                 onColumnHover={onColumnHover}
+                onColumnLineageEdit={onColumnLineageEdit}
                 onColumnSelect={onColumnSelect}
               />
             </div>

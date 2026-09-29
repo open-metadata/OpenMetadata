@@ -20,6 +20,7 @@ import {
   useMemo,
   useState,
   type MouseEvent,
+  type RefObject,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position } from 'reactflow';
@@ -311,6 +312,25 @@ const CustomNodeV1 = (props: NodeProps) => {
     setNodeFilterState(node.id, !showColumnsWithLineageOnly);
   }, [showColumnsWithLineageOnly, setNodeFilterState, node.id]);
 
+  const handleColumnLineageEdit = useCallback(
+    (
+      columnFqn: string,
+      direction: LineageDirection,
+      triggerRef: RefObject<HTMLElement>
+    ) => {
+      onSceneLineageEdit?.({
+        nodeId: props.id,
+        columnFqn,
+        direction,
+        triggerRef,
+      });
+    },
+    [onSceneLineageEdit, props.id]
+  );
+
+  const onColumnLineageEdit =
+    isNodeEditable && onSceneLineageEdit ? handleColumnLineageEdit : undefined;
+
   const handleEntityClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
@@ -413,6 +433,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
         node={node}
         onColumnHover={onSceneColumnHover}
+        onColumnLineageEdit={onColumnLineageEdit}
         onColumnSelect={onSceneColumnSelect}
       />
     );
@@ -420,6 +441,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     columnsExpanded,
     isConnectable,
     node,
+    onColumnLineageEdit,
     onSceneColumnHover,
     onSceneColumnSelect,
     showColumnsWithLineageOnly,

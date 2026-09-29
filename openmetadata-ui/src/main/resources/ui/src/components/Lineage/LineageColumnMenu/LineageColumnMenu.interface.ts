@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,22 +11,11 @@
  *  limitations under the License.
  */
 import { RefObject } from 'react';
-import { LineageDirection } from '../../../../generated/api/lineage/lineageDirection';
-import { LineageNodeType } from '../../../../interface/lineage.interface';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 
-export interface NodeChildrenProps {
-  node: LineageNodeType;
-  isConnectable: boolean;
-  isChildrenListExpanded: boolean;
-  isOnlyShowColumnsWithLineageFilterActive?: boolean;
-  onColumnHover?: (columnFqn?: string) => void;
-  onColumnSelect?: (columnFqn?: string) => void;
-  onColumnLineageEdit?: (
-    columnFqn: string,
+export interface LineageColumnMenuProps {
+  onEdit: (
     direction: LineageDirection,
     triggerRef: RefObject<HTMLElement>
   ) => void;
 }
-
-// Re-exported because consumers outside this repository import it from this path.
-export type { EntityChildren } from '../../../../interface/lineage.interface';

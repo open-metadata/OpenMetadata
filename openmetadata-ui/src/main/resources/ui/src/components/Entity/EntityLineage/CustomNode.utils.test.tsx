@@ -270,5 +270,65 @@ describe('Custom Node Utils', () => {
       expect(onColumnHover).toHaveBeenCalledWith(undefined);
       expect(onColumnSelect).toHaveBeenCalledWith('test.column');
     });
+
+    it('does not render the column menu when onColumnLineageEdit is not passed', () => {
+      const { queryByTestId } = render(
+        <ReactFlowProvider>
+          <ColumnContent
+            isConnectable
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(queryByTestId('lineage-column-menu')).not.toBeInTheDocument();
+    });
+
+    it('renders the column menu and calls onColumnLineageEdit with the column fqn', async () => {
+      const onColumnLineageEdit = jest.fn();
+      const { getByTestId, findByText } = render(
+        <ReactFlowProvider>
+          <ColumnContent
+            isConnectable
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+            onColumnLineageEdit={onColumnLineageEdit}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(getByTestId('lineage-column-menu')).toBeInTheDocument();
+
+      fireEvent.click(getByTestId('lineage-column-menu'));
+      fireEvent.click(await findByText('label.edit-upstream'));
+
+      expect(onColumnLineageEdit).toHaveBeenCalledWith(
+        'test.column',
+        LineageDirection.Upstream,
+        expect.anything()
+      );
+    });
+
+    it('does not select the column when the column menu trigger is clicked', () => {
+      const onColumnLineageEdit = jest.fn();
+      const { getByTestId } = render(
+        <ReactFlowProvider>
+          <ColumnContent
+            isConnectable
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+            onColumnLineageEdit={onColumnLineageEdit}
+          />
+        </ReactFlowProvider>
+      );
+
+      fireEvent.click(getByTestId('lineage-column-menu'));
+
+      expect(mockSetSelectedColumn).not.toHaveBeenCalled();
+    });
   });
 });

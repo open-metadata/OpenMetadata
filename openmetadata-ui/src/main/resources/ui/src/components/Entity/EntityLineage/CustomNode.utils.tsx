@@ -14,7 +14,7 @@ import { Button } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@untitledui/icons';
 import { Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, RefObject, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
@@ -26,6 +26,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
 import { onColumnMouseEnter } from '../../../utils/Lineage/handlers/columnInteractions';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
+import LineageColumnMenu from '../../Lineage/LineageColumnMenu/LineageColumnMenu';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 const DEPTH_INDENT_PX = 16;
@@ -195,6 +196,11 @@ interface ColumnContentProps {
   className?: string;
   onColumnHover?: (columnFqn?: string) => void;
   onColumnSelect?: (columnFqn?: string) => void;
+  onColumnLineageEdit?: (
+    columnFqn: string,
+    direction: LineageDirection,
+    triggerRef: RefObject<HTMLElement>
+  ) => void;
 }
 
 const ColumnContentInner = ({
@@ -206,6 +212,7 @@ const ColumnContentInner = ({
   className = '',
   onColumnHover,
   onColumnSelect,
+  onColumnLineageEdit,
 }: ColumnContentProps) => {
   const { selectedColumn, setSelectedColumn, setTracedColumns, tracedColumns } =
     useLineageStore();
@@ -259,10 +266,20 @@ const ColumnContentInner = ({
       onMouseDown={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}>
-      <div className="custom-node-column-row">
+      <div className="custom-node-column-row tw:group">
         <div className="custom-node-name-container">
           {columnNameContentRender}
         </div>
+
+        {onColumnLineageEdit && fullyQualifiedName && (
+          <span className="lineage-column-menu tw:ml-auto tw:opacity-0 tw:group-hover:opacity-100 tw:focus-within:opacity-100">
+            <LineageColumnMenu
+              onEdit={(direction, triggerRef) =>
+                onColumnLineageEdit(fullyQualifiedName, direction, triggerRef)
+              }
+            />
+          </span>
+        )}
 
         {'constraint' in column && column.constraint && (
           <div
@@ -300,7 +317,8 @@ export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
     prev.className === next.className;
   const columnCallbacksEqual =
     prev.onColumnHover === next.onColumnHover &&
-    prev.onColumnSelect === next.onColumnSelect;
+    prev.onColumnSelect === next.onColumnSelect &&
+    prev.onColumnLineageEdit === next.onColumnLineageEdit;
 
   return coreColumnPropsEqual && renderPropsEqual && columnCallbacksEqual;
 });
