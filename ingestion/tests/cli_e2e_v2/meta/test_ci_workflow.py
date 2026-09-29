@@ -63,15 +63,16 @@ def _run_workflow(tmp_path, connector, pytest_exit=0):
     raise AssertionError("Workflow did not execute its E2E test step")
 
 
+@pytest.mark.parametrize("connector", ["mysql", "postgres"])
 @pytest.mark.parametrize("pytest_exit", [0, 1, 5])
-def test_ci_runs_the_allowed_connector_and_preserves_pytest_exit(tmp_path, pytest_exit):
-    result = _run_workflow(tmp_path, "mysql", pytest_exit)
+def test_ci_runs_the_allowed_connector_and_preserves_pytest_exit(tmp_path, connector, pytest_exit):
+    result = _run_workflow(tmp_path, connector, pytest_exit)
     assert result.returncode == pytest_exit, result.stderr
     assert json.loads((tmp_path / "ingestion/pytest-args.json").read_text()) == [
         "-v",
         "--e2e-contract-check",
-        "--junitxml=junit/test-results-v2-mysql.xml",
-        "tests/cli_e2e_v2/mysql",
+        f"--junitxml=junit/test-results-v2-{connector}.xml",
+        f"tests/cli_e2e_v2/{connector}",
     ]
 
 
