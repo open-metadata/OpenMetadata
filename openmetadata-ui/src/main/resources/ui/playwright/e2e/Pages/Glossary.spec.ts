@@ -1838,7 +1838,7 @@ test.describe('Glossary tests', () => {
         await saveGlossaryFormExpectingError(
           page,
           'glossaryTerm',
-          `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.data.name}' glossary.`
+          `Glossary Term "${glossaryTerm2.data.name}" already exists. Duplicated glossary terms are not allowed.`
         );
       });
     } finally {
@@ -1880,7 +1880,7 @@ test.describe('Glossary tests', () => {
         await saveGlossaryFormExpectingError(
           page,
           'glossaryTerm',
-          `A term with the name '${glossaryTerm2.data.name}' already exists in '${glossary1.responseData.fullyQualifiedName}' glossary.`
+          `Glossary Term "${glossaryTerm2.data.name}" already exists. Duplicated glossary terms are not allowed.`
         );
       });
     } finally {
