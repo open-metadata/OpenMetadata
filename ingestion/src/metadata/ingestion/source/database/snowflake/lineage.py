@@ -89,11 +89,13 @@ STORED_PROCEDURE_OVERLAP_DAYS = 7
 # scans, so a fixed small chunk turns a 30-second read into half an hour of overhead.
 STORED_PROCEDURE_MIN_WINDOW = timedelta(days=1)
 STORED_PROCEDURE_MAX_SPLIT_DEPTH = 4
-STORED_PROCEDURE_WINDOW_CACHE_SIZE = 64
+# Every statement a fully split window can render: the root plus both halves at each level.
+STORED_PROCEDURE_WINDOW_CACHE_SIZE = 2 ** (STORED_PROCEDURE_MAX_SPLIT_DEPTH + 1)
 
-# Snowflake reports both the client cancel (000604) and its own statement timeout (000630)
-# under SQLSTATE 57014. Only those are worth retrying on a narrower window: a permission or
-# syntax failure would fail again on every half and multiply one error into sixteen.
+# Snowflake reports both its own statement timeout (000630) and a client-side cancel
+# (000604, only when the user sets `network_timeout`) under SQLSTATE 57014. Only those are
+# worth retrying on a narrower window: a permission or syntax failure would fail again on
+# every half and multiply one error into many.
 STATEMENT_CANCELLED_SQLSTATE = "57014"
 
 EXTERNAL_STAGE_PREFIXES = ("s3://", "azure://", "gcs://", "https://")
@@ -102,14 +104,11 @@ EXTERNAL_STAGE_PREFIXES = ("s3://", "azure://", "gcs://", "https://")
 def _is_statement_cancelled(exc: Exception) -> bool:
     """
     Whether Snowflake cancelled the statement rather than rejecting it. SQLAlchemy wraps the
-    driver error, which carries the SQLSTATE on `.sqlstate`, and older driver versions leave
-    it only in the message.
+    driver error, which carries the SQLSTATE on `.sqlstate`. An error without one did not
+    come from the Snowflake server, so it is never treated as a cancel.
     """
     driver_error = getattr(exc, "orig", exc)
-    sqlstate = getattr(driver_error, "sqlstate", None)
-    if sqlstate is not None:
-        return str(sqlstate) == STATEMENT_CANCELLED_SQLSTATE
-    return STATEMENT_CANCELLED_SQLSTATE in str(exc)
+    return str(getattr(driver_error, "sqlstate", None)) == STATEMENT_CANCELLED_SQLSTATE
 
 
 LINEAGE_OBJECT_DOMAINS = {
@@ -225,8 +224,8 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
 
         `SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES` reads ACCOUNT_USAGE.QUERY_HISTORY twice and
         joins the halves by session. On a busy account with a long `queryLogDuration` that
-        read can run past a statement timeout, and Snowflake cancels it
-        (`000604 (57014): SQL execution was cancelled by the client due to a timeout`).
+        read can run past the account's STATEMENT_TIMEOUT_IN_SECONDS, and Snowflake cancels
+        it (`000630 (57014): Statement reached its statement or warehouse timeout`).
         Halving converges on a window the account can actually scan, while an account that
         reads its whole window in one go never pays for chunks it does not need. The two
         halves together cover exactly the same CALL rows as the window they replace, since

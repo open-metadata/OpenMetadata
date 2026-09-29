@@ -28,7 +28,7 @@ joinable across a split boundary, and when a cancelled statement is retried.
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from metadata.ingestion.source.database.snowflake.lineage import (
     STORED_PROCEDURE_MAX_SPLIT_DEPTH,
@@ -58,7 +58,9 @@ def _make_lineage_source(
     return src
 
 
-def _cancelled(message: str = "000604 (57014): SQL execution was cancelled by the client due to a timeout"):
+def _cancelled(
+    message: str = "000630 (57014): Statement reached its statement or warehouse timeout of 5 second(s) and was canceled.",
+):
     """A SQLAlchemy-wrapped driver error the way the Snowflake driver raises a cancel."""
     driver_error = type("_DriverError", (Exception,), {"sqlstate": "57014"})(message)
     return ProgrammingError("statement", {}, driver_error)
@@ -103,8 +105,8 @@ def test_stored_procedure_sql_bounds_both_halves_of_the_scan():
 
 
 def test_stored_procedure_sql_does_not_sort_the_whole_join():
-    """A global ORDER BY sorts the entire join output for no benefit: chunks are
-    processed concurrently, so nothing downstream can rely on the order."""
+    """A global ORDER BY sorts the entire join output for no benefit: the rows are handed
+    to a thread pool, so nothing downstream can rely on the order."""
     rendered = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
         account_usage="SNOWFLAKE.ACCOUNT_USAGE",
         start_date="2025-01-01 00:00:00",
@@ -238,3 +240,15 @@ def test_split_window_keeps_the_children_of_the_longest_call_snowflake_allows():
         _, query_upper = _query_window_bounds(half)
         reach = datetime.fromisoformat(query_upper) - datetime.fromisoformat(call_upper)
         assert reach >= snowflake_max_statement_runtime
+
+
+def test_an_error_without_a_snowflake_sqlstate_is_not_retried():
+    """Only the server's own SQLSTATE marks a cancel. A client-side error, such as a dropped
+    connection, carries none, and matching `57014` anywhere in its text would split on an
+    error that has nothing to do with the window size."""
+    start = datetime(2025, 1, 1)
+    src = _make_lineage_source(start=start, end=start + timedelta(days=60))
+    statement = next(iter(src.get_stored_procedure_sql_statements()))
+    dropped = OperationalError("statement", {}, ConnectionResetError("reset by peer after 57014 bytes"))
+
+    assert list(src.narrow_stored_procedure_statement(statement, dropped)) == []

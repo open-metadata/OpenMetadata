@@ -90,7 +90,6 @@ def test_query_tag_is_passed_to_every_driver_connection_without_mutating_config(
     assert connect_args["session_parameters"]["QUERY_TAG"] == expected_tag
     if query_tag:
         assert connect_args["session_parameters"]["STATEMENT_TIMEOUT_IN_SECONDS"] == 60
-    assert connect_args["socket_timeout"] == 600
     assert config.connectionArguments == configured_arguments
 
 
@@ -107,7 +106,6 @@ def test_absent_query_tag_does_not_create_session_parameters():
 
     connect_args = build_engine.call_args.kwargs["get_connection_args_fn"](config)
     assert "session_parameters" not in connect_args
-    assert connect_args["socket_timeout"] == 600
     assert config.connectionArguments is None
 
 
@@ -476,11 +474,11 @@ def test_account_usage_checks_quote_configured_identifier(check_name, view_name)
     assert account_usage not in statement
 
 
-def test_socket_guard_never_arms_the_driver_statement_cancel_timer():
-    """The socket guard must not be `network_timeout`: the driver arms that value as a
-    client-side cancel timer on every statement, so a query legitimately running longer
-    than it dies with `000604 (57014): SQL execution was cancelled by the client due to
-    a timeout`. Long ACCOUNT_USAGE reads on large accounts do exactly that."""
+def test_no_client_side_timeout_is_imposed_by_default():
+    """`network_timeout` doubles as a client-side cancel timer on every statement, so a
+    default would kill queries that legitimately run longer than it, with `000604 (57014):
+    SQL execution was cancelled by the client due to a timeout`. A `socket_timeout` default
+    would only loosen the driver's own 60-second per-request read timeout."""
     engine = MagicMock()
 
     with patch(
@@ -491,6 +489,7 @@ def test_socket_guard_never_arms_the_driver_statement_cancel_timer():
 
     connect_args = build_engine.call_args.kwargs["get_connection_args_fn"](_config())
     assert "network_timeout" not in connect_args
+    assert "socket_timeout" not in connect_args
 
 
 def test_user_supplied_timeouts_still_win():

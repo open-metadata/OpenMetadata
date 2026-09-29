@@ -873,19 +873,20 @@ class _WindowedSource(TestableStoredProcedureMixin):
     """A source whose query history is read in several statements, the way Snowflake
     splits its lookback window when the engine cancels a scan."""
 
-    def __init__(self, rows_by_statement, failing_statements=(), narrower_statements=None):
+    def __init__(self, rows_by_statement, failing_statements=(), narrower_statements=None, initial_statements=None):
         super().__init__()
         self._rows_by_statement = rows_by_statement
         self._failing = set(failing_statements)
         self._narrower = narrower_statements or {}
+        self._initial = list(initial_statements or rows_by_statement)
         self.executed = []
         self.engine = self._engine()
 
     def get_stored_procedure_sql_statement(self):
-        return next(iter(self._rows_by_statement))
+        return self._initial[0]
 
     def get_stored_procedure_sql_statements(self):
-        return iter([key for key in self._rows_by_statement if key not in set().union(*self._narrower.values())])
+        return iter(self._initial)
 
     def narrow_stored_procedure_statement(self, statement, exc):
         yield from self._narrower.get(statement, [])
@@ -990,6 +991,7 @@ class TestStoredProcedureStatementIsolation:
             },
             failing_statements=["whole-window"],
             narrower_statements={"whole-window": ["first-half", "second-half"]},
+            initial_statements=["whole-window"],
         )
 
         yielded = list(source.yield_stored_procedure_queries())
@@ -1014,6 +1016,7 @@ class TestStoredProcedureStatementIsolation:
                 "whole-window": ["first-half", "second-half"],
                 "first-half": ["first-quarter", "second-quarter"],
             },
+            initial_statements=["whole-window"],
         )
 
         yielded = list(source.yield_stored_procedure_queries())
@@ -1028,6 +1031,7 @@ class TestStoredProcedureStatementIsolation:
             rows_by_statement={"whole-window": [], "first-half": [], "second-half": []},
             failing_statements=["whole-window", "first-half", "second-half"],
             narrower_statements={"whole-window": ["first-half", "second-half"]},
+            initial_statements=["whole-window"],
         )
 
         assert list(source.yield_stored_procedure_queries()) == []
