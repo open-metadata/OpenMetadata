@@ -67,7 +67,10 @@ const PersonalSpaceModal: React.FC = () => {
   }, [pathname, close, hashState.tab]);
 
   return (
-    <ModalOverlay isOpen={isOpen} onOpenChange={(isOpen) => !isOpen && close()}>
+    <ModalOverlay
+      isDismissable={false}
+      isOpen={isOpen}
+      onOpenChange={(isOpen) => !isOpen && close()}>
       <Modal>
         <Dialog
           showCloseButton
