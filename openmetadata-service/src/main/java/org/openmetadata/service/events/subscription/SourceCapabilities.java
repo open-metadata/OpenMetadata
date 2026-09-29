@@ -43,7 +43,7 @@ public final class SourceCapabilities {
         request.getInput() == null ? new AlertFilteringInput() : request.getInput();
     return new AlertCapabilities()
         .withAlertType(alertType)
-        .withSources(everySource(alertType, selected, chosen, input))
+        .withSources(everySource(alertType, selected, input))
         .withFilters(filtersEverySourceSupports(chosen))
         .withTriggers(triggersAnySourceSupports(chosen))
         .withContainerEntities(union(chosen, FilterResourceDescriptor::getContainerEntities))
@@ -71,10 +71,7 @@ public final class SourceCapabilities {
   }
 
   private static List<AlertSourceCapability> everySource(
-      AlertType alertType,
-      List<String> selected,
-      List<FilterResourceDescriptor> chosen,
-      AlertFilteringInput input) {
+      AlertType alertType, List<String> selected, AlertFilteringInput input) {
     List<FilterResourceDescriptor> all =
         alertType == AlertType.OBSERVABILITY
             ? EventsSubscriptionRegistry.listObservabilityDescriptors()
@@ -88,7 +85,7 @@ public final class SourceCapabilities {
               .withKind(EventsSubscriptionRegistry.kindOf(alertType, source.getName()))
               .withSelected(isSelected);
       if (isSelected) {
-        capability.setWarning(UnreachableSource.reason(source, chosen, input));
+        capability.setWarning(UnreachableSource.reason(source, input));
       } else {
         capability.setReason(whyItCannotJoin(alertType, selected, source.getName()));
         capability.setCanJoin(capability.getReason() == null);
