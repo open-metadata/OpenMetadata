@@ -347,7 +347,7 @@ jest.mock('./DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow', () => ({
   default: () => <div data-testid="entity-meta-strip" />,
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Settings01: () => null,
 }));
 

@@ -21,7 +21,7 @@ import {
   Typography,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -147,7 +147,7 @@ const SelectServiceType = ({
 
       <div className="tw:mt-3.5">
         <Input
-          icon={SearchLg}
+          icon={Search}
           placeholder={t('label.search-for-a-connector')}
           size="md"
           value={connectorSearchTerm}

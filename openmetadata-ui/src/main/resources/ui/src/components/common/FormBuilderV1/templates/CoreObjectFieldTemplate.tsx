@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { ChevronDown, Hexagon01, Plus } from '@untitledui/icons';
+import { ChevronDown, Hexagon01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { Fragment, FunctionComponent, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';

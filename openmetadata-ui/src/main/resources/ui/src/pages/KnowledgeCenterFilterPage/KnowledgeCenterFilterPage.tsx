@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Lock } from '@openmetadata/ui-core-components/icons';
+import { Lock01 as Lock } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';

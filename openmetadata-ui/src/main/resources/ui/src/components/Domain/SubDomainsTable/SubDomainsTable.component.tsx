@@ -17,7 +17,7 @@ import {
   Input,
   PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -212,7 +212,7 @@ const SubDomainsTable = ({
           <Box align="center" direction="row" gap={5}>
             <Input
               className="tw:max-w-60"
-              icon={SearchLg}
+              icon={Search}
               placeholder={t('label.search-entity', {
                 entity: t('label.sub-domain'),
               })}

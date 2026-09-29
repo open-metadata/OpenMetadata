@@ -25,7 +25,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Eye } from '@openmetadata/ui-core-components/icons';
-import { Check, ChevronRight } from '@untitledui/icons';
+import { Check, ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, UIEvent, useMemo, useState } from 'react';

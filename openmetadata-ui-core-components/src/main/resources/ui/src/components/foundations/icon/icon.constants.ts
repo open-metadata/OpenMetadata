@@ -42,7 +42,7 @@ import {
   Passport,
   Plus,
   Rss01,
-  SearchLg,
+  Search,
   Server05,
   Shield01,
   ShoppingBag01,
@@ -53,7 +53,7 @@ import {
   UserEdit,
   Users01,
   XClose,
-} from '@untitledui/icons';
+} from '../../../icons';
 import { ComponentType } from 'react';
 
 // Map of icon names to their components
@@ -71,7 +71,7 @@ export const ICON_MAP: Record<
   Globe01: Globe01,
   Users01: Users01,
   Tag01: Tag01,
-  SearchLg: SearchLg,
+  Search: Search,
   Grid01: Grid01,
   Menu01: Menu01,
   Plus: Plus,

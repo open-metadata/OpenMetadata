@@ -17,7 +17,7 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { BookOpen01, RefreshCcw01, XClose } from '@untitledui/icons';
+import { BookOpen01, RefreshCcw01, XClose } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';

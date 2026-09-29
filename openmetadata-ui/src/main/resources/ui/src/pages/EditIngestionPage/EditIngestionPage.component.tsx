@@ -12,7 +12,7 @@
  */
 
 import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
+import { AlertTriangle as OpenIncidents } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { ServicesUpdateRequest } from 'Models';

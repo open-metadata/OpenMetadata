@@ -18,7 +18,7 @@ import {
   GridItem,
   SkeletonParagraph,
 } from '@openmetadata/ui-core-components';
-import { GridDotsOuter } from '@untitledui/icons';
+import { GridDotsOuter } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';

@@ -13,7 +13,7 @@
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 

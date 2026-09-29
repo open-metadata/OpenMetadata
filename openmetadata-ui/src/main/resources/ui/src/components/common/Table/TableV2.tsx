@@ -48,7 +48,7 @@ import {
   Table as UntitledTable,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, ChevronRight, SearchLg } from '@untitledui/icons';
+import { ChevronDown, ChevronRight, Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
 import type { ComponentProps } from 'react';
@@ -2052,7 +2052,7 @@ const TableV2 = <T extends object>(
                         (rest.locale?.emptyText as ReactNode) ?? (
                           <EmptyPlaceholder
                             icon={
-                              <SearchLg className="tw:text-fg-brand-primary" />
+                              <Search className="tw:text-fg-brand-primary" />
                             }
                             title={t('label.no-data')}
                             variant="blank"

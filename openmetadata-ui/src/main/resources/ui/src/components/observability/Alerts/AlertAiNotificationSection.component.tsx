@@ -19,7 +19,7 @@ import {
   Typography,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
-import { AlertCircle } from '@untitledui/icons';
+import { AlertCircle } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

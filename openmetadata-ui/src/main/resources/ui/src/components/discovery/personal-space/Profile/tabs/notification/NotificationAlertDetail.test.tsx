@@ -87,7 +87,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Edit: jest.fn(() => <span>edit-icon</span>),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   RefreshCw01: jest.fn(() => <span>refresh-icon</span>),
 }));
 

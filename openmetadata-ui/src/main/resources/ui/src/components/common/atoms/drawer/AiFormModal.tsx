@@ -20,7 +20,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle, Lightbulb05 } from '@untitledui/icons';
+import { CheckCircle, Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 

@@ -17,7 +17,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -317,7 +317,7 @@ const MarketplaceSearchBar = ({
               </button>
             </Tooltip>
           ) : (
-            <SearchLg className="tw:size-4 tw:text-text-tertiary" />
+            <Search className="tw:size-4 tw:text-text-tertiary" />
           )}
         </div>
         <Input

@@ -21,7 +21,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01, RefreshCcw01, Stars01 } from '@untitledui/icons';
+import { Copy01, RefreshCcw01, Stars01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import {
   ReactNode,

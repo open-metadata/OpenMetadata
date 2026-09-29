@@ -20,7 +20,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, Edit, Expand } from '@openmetadata/ui-core-components/icons';
+import { Trash01 as Delete, Edit01 as Edit, Plus as Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';

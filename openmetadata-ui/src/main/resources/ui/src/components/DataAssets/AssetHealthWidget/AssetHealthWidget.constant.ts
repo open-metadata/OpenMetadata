@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Activity, AlertTriangle, File04, Shield01 } from '@untitledui/icons';
+import { Activity, AlertTriangle, File04, Shield01 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
 import { PipelineState } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';

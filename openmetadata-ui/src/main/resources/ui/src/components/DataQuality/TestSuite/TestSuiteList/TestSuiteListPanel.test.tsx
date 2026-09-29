@@ -105,7 +105,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({ SearchLg: () => <span /> }));
+jest.mock('@openmetadata/ui-core-components/icons', () => ({ Search: () => <span /> }));
 
 jest.mock('./TestSuitesTable.component', () => ({
   TestSuitesTable: (props: {

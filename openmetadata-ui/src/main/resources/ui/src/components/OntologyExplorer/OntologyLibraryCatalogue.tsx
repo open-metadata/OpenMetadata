@@ -12,7 +12,7 @@
  */
 
 import { Button, Card } from '@openmetadata/ui-core-components';
-import { ArrowRight, ArrowUpRight, Check } from '@untitledui/icons';
+import { ArrowRight, ArrowUpRight, Check } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { KeyboardEvent, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';

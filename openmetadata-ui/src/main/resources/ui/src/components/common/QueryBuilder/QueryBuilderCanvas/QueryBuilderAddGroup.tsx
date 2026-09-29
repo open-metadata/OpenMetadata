@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown, Expand } from '@openmetadata/ui-core-components/icons';
+import { ChevronDown, Plus as Expand } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QueryBuilderAddGroupProps } from './QueryBuilderCanvas.types';

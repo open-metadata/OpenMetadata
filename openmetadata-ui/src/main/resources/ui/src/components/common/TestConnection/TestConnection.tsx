@@ -16,7 +16,7 @@ import {
   Button,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { AlertTriangle, CheckCircle, XCircle, Zap } from '@untitledui/icons';
+import { AlertTriangle, CheckCircle, XCircle, Zap } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import cx from 'classnames';
 import { isEmpty, isEqual, toNumber } from 'lodash';

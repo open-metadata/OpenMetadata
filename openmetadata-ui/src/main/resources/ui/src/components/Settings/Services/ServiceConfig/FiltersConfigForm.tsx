@@ -19,7 +19,7 @@ import {
   UiSchema,
 } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { CheckCircle } from '@untitledui/icons';
+import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isUndefined } from 'lodash';
 import {
   forwardRef,

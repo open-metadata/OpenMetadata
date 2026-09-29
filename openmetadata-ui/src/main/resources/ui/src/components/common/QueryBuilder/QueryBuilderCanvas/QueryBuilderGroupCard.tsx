@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Button } from '@openmetadata/ui-core-components';
-import { Expand } from '@openmetadata/ui-core-components/icons';
+import { Plus as Expand } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';

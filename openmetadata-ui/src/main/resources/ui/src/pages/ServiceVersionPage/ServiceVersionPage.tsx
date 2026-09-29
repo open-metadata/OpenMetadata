@@ -12,7 +12,7 @@
  */
 
 import { Box, EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
-import { Lock } from '@openmetadata/ui-core-components/icons';
+import { Lock01 as Lock } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

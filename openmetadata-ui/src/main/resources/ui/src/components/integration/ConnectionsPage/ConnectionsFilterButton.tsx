@@ -17,7 +17,7 @@ import {
   Input,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Check, ChevronDown, SearchLg } from '@untitledui/icons';
+import { Check, ChevronDown, Search } from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -203,7 +203,7 @@ export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
           <div className="tw:p-2">
             <Input
               data-testid={testId ? `${testId}-search` : undefined}
-              icon={SearchLg}
+              icon={Search}
               placeholder={t('label.search')}
               size="sm"
               value={query}

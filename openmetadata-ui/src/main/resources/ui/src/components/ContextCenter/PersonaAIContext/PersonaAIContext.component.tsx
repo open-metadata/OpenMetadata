@@ -21,7 +21,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, ClockRewind, Eye, FolderPlus, Plus } from '@untitledui/icons';
+import { Clock, ClockRewind, Eye, FolderPlus, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -17,7 +17,7 @@ import {
   FormItemLabel,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Tag } from '@openmetadata/ui-core-components/icons';
+import { Tag01 as Tag } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import {
   FC,

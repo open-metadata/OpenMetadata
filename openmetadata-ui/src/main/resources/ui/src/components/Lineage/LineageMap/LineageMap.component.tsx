@@ -22,7 +22,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowsUp, Home02, LayersThree01 } from '@untitledui/icons';
+import { ArrowsUp, Home02, LayersThree01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';

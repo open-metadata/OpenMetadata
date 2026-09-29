@@ -19,8 +19,8 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Lock } from '@openmetadata/ui-core-components/icons';
-import { Bell01, Lightbulb05 } from '@untitledui/icons';
+import { Lock01 as Lock } from '@openmetadata/ui-core-components/icons';
+import { Bell01, Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';

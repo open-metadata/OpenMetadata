@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
-import { User03 } from '@untitledui/icons';
+import { User03 } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';

@@ -20,7 +20,7 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
-import { Plus, Tag01 } from '@untitledui/icons';
+import { Plus, Tag01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {

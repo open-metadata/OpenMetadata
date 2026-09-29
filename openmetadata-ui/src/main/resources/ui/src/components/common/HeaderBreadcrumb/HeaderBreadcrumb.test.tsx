@@ -111,7 +111,7 @@ describe('Breadcrumb', () => {
     expect(homeItem.label).toBeNull();
     expect(homeItem.ariaLabel).toBe('label.home');
 
-    const { HomeLine } = jest.requireActual('@untitledui/icons');
+    const { HomeLine } = jest.requireActual('@openmetadata/ui-core-components/icons');
 
     expect(homeItem.icon).toBe(HomeLine);
     expect(homeItem.href).toBe('/');

@@ -24,7 +24,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, Edit01, FileCheck02, Trash01 } from '@untitledui/icons';
+import { ChevronDown, Edit01, FileCheck02, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

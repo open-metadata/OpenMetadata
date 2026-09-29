@@ -19,7 +19,7 @@ import {
   PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Globe01, Plus } from '@untitledui/icons';
+import { Globe01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';

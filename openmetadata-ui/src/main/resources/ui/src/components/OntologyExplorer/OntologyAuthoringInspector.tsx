@@ -12,7 +12,7 @@
  */
 
 import { Badge, Button, Input } from '@openmetadata/ui-core-components';
-import { Edit, Search } from '@openmetadata/ui-core-components/icons';
+import { Edit01 as Edit, Search } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';

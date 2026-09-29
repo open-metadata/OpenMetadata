@@ -19,7 +19,7 @@ import {
   PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, FlipBackward, Plus, Stars01 } from '@untitledui/icons';
+import { ChevronDown, FlipBackward, Plus, Stars01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';

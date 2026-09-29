@@ -21,7 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { ChevronRight, Eye } from '@untitledui/icons';
+import { ChevronRight, Eye } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';

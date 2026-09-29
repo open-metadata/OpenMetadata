@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { FilterSelect } from '@openmetadata/ui-core-components';
-import { ChevronDown, Columns01, LayoutAlt04, Table } from '@untitledui/icons';
+import { ChevronDown, Columns01, LayoutAlt04, Table } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { useMemo, useState } from 'react';

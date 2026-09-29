@@ -19,7 +19,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, PlusCircle } from '@openmetadata/ui-core-components/icons';
+import { Trash01 as Delete, PlusCircle } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';

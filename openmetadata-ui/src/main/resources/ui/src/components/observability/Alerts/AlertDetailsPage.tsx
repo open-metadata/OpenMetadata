@@ -19,7 +19,7 @@ import {
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
-import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
+import { Edit03, RefreshCw04, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { Key, ReactNode, useCallback, useMemo, useState } from 'react';

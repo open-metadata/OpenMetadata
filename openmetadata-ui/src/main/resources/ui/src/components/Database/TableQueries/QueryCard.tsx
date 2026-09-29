@@ -12,7 +12,7 @@
  */
 
 import { Card } from '@openmetadata/ui-core-components';
-import { Copy } from '@openmetadata/ui-core-components/icons';
+import { Copy01 as Copy } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';

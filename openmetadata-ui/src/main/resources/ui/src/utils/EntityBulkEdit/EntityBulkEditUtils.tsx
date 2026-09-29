@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
-import { Edit } from '@openmetadata/ui-core-components/icons';
+import { Edit01 as Edit } from '@openmetadata/ui-core-components/icons';
 import { ProfilerTabPath } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';

@@ -12,7 +12,7 @@
  */
 
 import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
+import { AlertTriangle as OpenIncidents } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

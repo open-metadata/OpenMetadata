@@ -12,7 +12,7 @@
  */
 
 import type { ButtonProps } from '@openmetadata/ui-core-components';
-import { Check, Clock, Minus, SlashCircle01, XClose } from '@untitledui/icons';
+import { Check, Clock, Minus, SlashCircle01, XClose } from '@openmetadata/ui-core-components/icons';
 import {
   TestCaseResolutionStatusTypes,
   TestCaseStatus,

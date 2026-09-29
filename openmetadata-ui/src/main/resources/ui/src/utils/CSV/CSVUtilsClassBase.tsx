@@ -23,11 +23,11 @@ import {
   Italic01,
   List,
   Plus,
-  SearchLg,
+  Search,
   Sliders02,
   Tag01,
   Type01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import Select from 'antd/lib/select';
 import { isEmpty, startCase, toString } from 'lodash';
 import {
@@ -1224,7 +1224,7 @@ const InlineBulkEditReferencePickerEditor = ({
         onMouseDown={(event) => event.stopPropagation()}>
         <div className="bulk-edit-picker-body-card">
           <div className="bulk-edit-picker-search">
-            <SearchLg size={14} />
+            <Search size={14} />
             <input
               // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
               autoFocus

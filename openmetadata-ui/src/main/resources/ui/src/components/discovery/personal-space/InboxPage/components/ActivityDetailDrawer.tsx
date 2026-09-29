@@ -22,7 +22,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Maximize02, Minimize02, Trash01, X } from '@untitledui/icons';
+import { Edit01, Maximize02, Minimize02, Trash01, X } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useState } from 'react';

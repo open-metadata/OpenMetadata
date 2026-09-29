@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Hint } from '@openmetadata/ui-core-components/icons';
-import { Settings02 } from '@untitledui/icons';
+import { Settings02 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

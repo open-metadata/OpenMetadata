@@ -26,7 +26,7 @@ import {
   Trash01,
   UploadCloud02,
   XCircle,
-} from '@untitledui/icons';
+} from '../../../icons';
 import type {
   ChangeEvent,
   ComponentProps,

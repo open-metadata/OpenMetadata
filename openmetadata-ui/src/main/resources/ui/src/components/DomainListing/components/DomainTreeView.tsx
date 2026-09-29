@@ -21,8 +21,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Domain as DomainIcon,
-  Expand,
+  Globe01 as DomainIcon,
+  Plus as Expand,
   NoSearch,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
