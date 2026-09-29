@@ -173,15 +173,21 @@ const toFiniteNumber = (value?: string) => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+export interface ParameterBounds {
+  expected?: number;
+  min?: number;
+  max?: number;
+  threshold?: number;
+}
+
 /**
- * The value the chart draws its expectation line at, with the label the mock
- * puts beside it. Returns nothing when the test states no numeric expectation,
- * so the caller renders no line rather than one at zero.
+ * The numeric bounds a test's parameters state, read by name so a parameter
+ * that is not a bound never passes for one. The chart's expectation line and
+ * the card's caption both read the test through this.
  */
-export const getThresholdReference = (
-  testCaseParameterValue: TestCaseParameterValue[],
-  latestResult?: Pick<TestCaseResult, 'maxBound'>
-): ThresholdReference | undefined => {
+export const getParameterBounds = (
+  testCaseParameterValue: TestCaseParameterValue[]
+): ParameterBounds => {
   const valuesOf = (matches: (name: string) => boolean) =>
     testCaseParameterValue.reduce<number[]>((values, parameter) => {
       const value = toFiniteNumber(parameter.value);
@@ -193,7 +199,30 @@ export const getThresholdReference = (
       return values;
     }, []);
 
-  const [expected] = valuesOf((name) => EXPECTED_VALUE_PARAMETERS.has(name));
+  const maxBounds = valuesOf((name) => MAX_BOUND_PARAMETER.test(name));
+  const minBounds = valuesOf((name) => MIN_BOUND_PARAMETER.test(name));
+  const [threshold] = valuesOf((name) => name === 'threshold');
+
+  return {
+    expected: valuesOf((name) => EXPECTED_VALUE_PARAMETERS.has(name))[0],
+    max: isEmpty(maxBounds) ? undefined : Math.max(...maxBounds),
+    min: isEmpty(minBounds) ? undefined : Math.min(...minBounds),
+    threshold,
+  };
+};
+
+/**
+ * The value the chart draws its expectation line at, with the label the mock
+ * puts beside it. Returns nothing when the test states no numeric expectation,
+ * so the caller renders no line rather than one at zero.
+ */
+export const getThresholdReference = (
+  testCaseParameterValue: TestCaseParameterValue[],
+  latestResult?: Pick<TestCaseResult, 'maxBound'>
+): ThresholdReference | undefined => {
+  const { expected, max, min, threshold } = getParameterBounds(
+    testCaseParameterValue
+  );
 
   if (!isUndefined(expected)) {
     return {
@@ -205,25 +234,16 @@ export const getThresholdReference = (
 
   // Both bounds are optional on the `*ToBeBetween` tests, so a range may be
   // one-sided. The line sits at the upper bound when there is one.
-  const maxBounds = valuesOf((name) => MAX_BOUND_PARAMETER.test(name));
-
-  if (!isEmpty(maxBounds)) {
-    return { y: Math.max(...maxBounds), labelKey: 'label.allowed-max' };
+  if (!isUndefined(max)) {
+    return { y: max, labelKey: 'label.allowed-max' };
   }
 
-  const minBounds = valuesOf((name) => MIN_BOUND_PARAMETER.test(name));
-
-  if (!isEmpty(minBounds)) {
-    return { y: Math.min(...minBounds), labelKey: 'label.allowed-min' };
+  if (!isUndefined(min)) {
+    return { y: min, labelKey: 'label.allowed-min' };
   }
 
   // `threshold` is a tolerance on most tests but the assertion itself on
   // tableCustomSQLQuery, so it is read only once nothing else supplies the line.
-  const threshold = toFiniteNumber(
-    testCaseParameterValue.find((parameter) => parameter.name === 'threshold')
-      ?.value
-  );
-
   if (!isUndefined(threshold)) {
     return {
       y: threshold,

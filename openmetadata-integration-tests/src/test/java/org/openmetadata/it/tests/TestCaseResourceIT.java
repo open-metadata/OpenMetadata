@@ -1263,6 +1263,90 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_bulkAddAllRespectsSearchFilter(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table matchingTable = createTable(ns);
+    Table otherTable = createTable(ns);
+
+    TestCase matching1 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("filtered_all_1"))
+            .forTable(matchingTable)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    TestCase matching2 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("filtered_all_2"))
+            .forTable(matchingTable)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
+            .create();
+    TestCase excluded =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("filtered_all_other"))
+            .forTable(otherTable)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Filtered "all" resolves matches from the search index, so the test cases must be
+    // indexed before the bulk add runs.
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("test cases indexed before filtered bulk add")
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                assertNotNull(queryTestCaseSearchSource(searchClient, matching1.getId()));
+                assertNotNull(queryTestCaseSearchSource(searchClient, matching2.getId()));
+                assertNotNull(queryTestCaseSearchSource(searchClient, excluded.getId()));
+              });
+    }
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_filtered_all"));
+    TestSuite logicalSuite = client.testSuites().create(suiteReq);
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("testSuiteId", logicalSuite.getId().toString());
+    request.put("mode", "all");
+    request.put(
+        "selection",
+        Map.of(
+            "filter",
+            Map.of(
+                "entityLink",
+                "<#E::table::" + matchingTable.getFullyQualifiedName() + ">",
+                "includeAllTests",
+                true)));
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/dataQuality/testCases/logicalTestCases/bulk",
+            request,
+            RequestOptions.builder().build());
+
+    Awaitility.await("only the filtered subset is added to the logical suite")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestSuite updated = client.testSuites().get(logicalSuite.getId().toString(), "tests");
+              assertNotNull(updated.getTests());
+              List<UUID> ids = updated.getTests().stream().map(ref -> ref.getId()).toList();
+              assertEquals(2, ids.size(), "only the two matching-table test cases should be added");
+              assertTrue(ids.contains(matching1.getId()));
+              assertTrue(ids.contains(matching2.getId()));
+              assertFalse(
+                  ids.contains(excluded.getId()), "test case from other table must not be added");
+            });
+  }
+
+  @Test
   void test_concurrentLogicalSuiteAddsPreserveEverySearchMembership(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();

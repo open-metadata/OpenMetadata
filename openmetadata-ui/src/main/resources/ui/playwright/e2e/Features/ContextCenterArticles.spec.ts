@@ -579,7 +579,9 @@ test.describe('Context Center Articles', () => {
       description
     );
     await expect(card.getByTestId('owner-label')).not.toBeVisible();
-    await expect(card.getByTestId('domain-link')).not.toBeVisible();
+    await expect(
+      card.locator('[data-testid^="domain-tag-"]')
+    ).not.toBeVisible();
 
     await card.click();
     await page.getByTestId('edit-domain-btn').click();
@@ -592,13 +594,12 @@ test.describe('Context Center Articles', () => {
     );
 
     await page
-      .getByTestId('domain-selectable-tree')
-      .getByTestId('searchbar')
+      .getByTestId('domain-selectable-tree-search')
       .fill(domain.responseData.name);
     await searchDomain;
 
     const domainTagSelector = page.getByTestId(
-      `tag-${domain.responseData.fullyQualifiedName}`
+      `tree-node-${domain.responseData.fullyQualifiedName}`
     );
     await domainTagSelector.waitFor({ state: 'visible' });
 
@@ -814,13 +815,12 @@ test.describe('Context Center Articles', () => {
               .includes(encodeURIComponent(domain.responseData.name as string))
         );
         await page
-          .getByTestId('domain-selectable-tree')
-          .getByTestId('searchbar')
+          .getByTestId('domain-selectable-tree-search')
           .fill(domain.responseData.name as string);
         await searchResponse;
 
         const domainTagSelector = page.getByTestId(
-          `tag-${domain.responseData.fullyQualifiedName}`
+          `tree-node-${domain.responseData.fullyQualifiedName}`
         );
         await domainTagSelector.waitFor({ state: 'visible' });
 
@@ -1600,16 +1600,24 @@ test.describe('Context Center Articles', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Editor autosave can land the data consumer's edit as one or several
-    // versions, so assert on the newest entry rather than every match.
+    // versions, and the governance workflow asynchronously bumps entityStatus
+    // as governance-bot, so the newest entry need not be the data consumer's.
+    // Pick the newest version the data consumer authored and assert on it.
     const { versions } = await versionsListRes.json();
-    const latestVersion = parseFloat(JSON.parse(versions[0]).version).toFixed(
-      1
-    );
+    const dataConsumerVersion = (versions as string[])
+      .map((entry) => JSON.parse(entry))
+      .find((entry: { updatedBy?: string }) =>
+        entry.updatedBy?.startsWith('pw-data-consumer')
+      );
+
+    expect(dataConsumerVersion).toBeDefined();
 
     await expect(
       page
         .getByTestId('versions-list-container')
-        .getByTestId(`version-entry-v${latestVersion}`)
+        .getByTestId(
+          `version-entry-v${parseFloat(dataConsumerVersion.version).toFixed(1)}`
+        )
         .getByRole('link', { name: /PW DataConsumer/i })
     ).toBeVisible();
 

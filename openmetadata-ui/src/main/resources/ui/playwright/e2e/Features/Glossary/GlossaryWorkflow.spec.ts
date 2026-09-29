@@ -77,10 +77,6 @@ test.afterAll('Cleanup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.beforeEach(async ({ page }) => {
-  await redirectToHomePage(page);
-});
-
 test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
   const glossaryNoReviewers = new Glossary();
   const glossaryWithReviewer = new Glossary();
@@ -230,10 +226,11 @@ test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
 test(
   'non-reviewer should not see approve/reject buttons',
   { tag: ['@workflow'] },
-  async ({ page, reviewer2Page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
+  async ({ browser, reviewer2Page }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     const glossary = new Glossary();
-    const termName = `TermForReview${Date.now()}`;
+    const term = new GlossaryTerm(glossary);
+    const termName = term.data.name;
 
     try {
       await glossary.create(apiContext);
@@ -252,29 +249,16 @@ test(
         },
       ]);
 
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      await openAddGlossaryTermModal(page);
-
-      await page.fill('[data-testid="name"]', termName);
-      await fillDescriptionBox(page, 'Term for review testing');
-
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      await createResponse;
-
-      await expect(
-        page.locator('[role="dialog"].edit-glossary-modal')
-      ).not.toBeVisible();
-
-      await redirectToHomePage(reviewer2Page);
+      await term.create(apiContext);
       await sidebarClick(reviewer2Page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(reviewer2Page, glossary.data.displayName);
 
       const termRow = reviewer2Page.locator(`[data-row-key*="${termName}"]`);
 
       await expect(termRow).toBeVisible();
+      await expect(termRow.locator('.status-badge')).toHaveText(
+        /^(Draft|In Review)$/
+      );
 
       const approveBtn = reviewer2Page.getByTestId(`${termName}-approve-btn`);
       const rejectBtn = reviewer2Page.getByTestId(`${termName}-reject-btn`);
@@ -336,7 +320,7 @@ test(
       const statusBadge = termRow.locator('.status-badge');
 
       await expect(async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await expect(statusBadge).toHaveText('In Review', { timeout: 5000 });
       }).toPass({ timeout: 30000 });
 
