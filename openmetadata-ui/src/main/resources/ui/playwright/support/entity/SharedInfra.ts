@@ -56,7 +56,9 @@ const RUNTIME_FILE_PATTERN = /^shared-infra\.runtime-\d+\.json$/;
 // orphan every leaf under it. Slots are (kind × key); real usage is ~20.
 const MAX_SHARED_SLOTS = 64;
 
-const outputDir = (): string => path.join(__dirname, '..', '..', 'output');
+// Overridable so unit tests can run where the workspace is mounted read-only.
+const outputDir = (): string =>
+  process.env.PW_SHARED_INFRA_DIR ?? path.join(__dirname, '..', '..', 'output');
 const outputFilePath = (): string => path.join(outputDir(), OUTPUT_FILENAME);
 const runtimeFilePath = (): string =>
   path.join(outputDir(), `shared-infra.runtime-${process.pid}.json`);

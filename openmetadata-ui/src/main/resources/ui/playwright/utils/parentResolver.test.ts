@@ -12,9 +12,10 @@
  */
 import { APIRequestContext, expect, test } from '@playwright/test';
 import { randomUUID } from 'crypto';
-import { readFileSync, rmSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync } from 'fs';
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
+import { tmpdir } from 'os';
 import path from 'path';
 import { resolveParents } from '../support/entity/ParentResolver';
 import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
@@ -80,17 +81,18 @@ const startFakeApi = async () => {
   };
 };
 
-// SharedInfra records runtime-built chains next to the seeded file; drop this
-// process's record so a later local teardown doesn't try to delete fakes.
+// SharedInfra records runtime-built chains in its output dir. Point it at a
+// scratch dir: CI mounts the workspace read-only, and a record of fake chains
+// left in playwright/output would send a later local teardown after them.
+const sharedInfraDir = mkdtempSync(path.join(tmpdir(), 'shared-infra-'));
+process.env.PW_SHARED_INFRA_DIR = sharedInfraDir;
 const runtimeFile = path.join(
-  __dirname,
-  '..',
-  'output',
+  sharedInfraDir,
   `shared-infra.runtime-${process.pid}.json`
 );
 
 test.afterAll(() => {
-  rmSync(runtimeFile, { force: true });
+  rmSync(sharedInfraDir, { recursive: true, force: true });
 });
 
 test.describe('resolveParents', () => {
