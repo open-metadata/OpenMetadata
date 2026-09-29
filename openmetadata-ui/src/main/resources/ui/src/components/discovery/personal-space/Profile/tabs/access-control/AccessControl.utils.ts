@@ -25,6 +25,8 @@ import type { AccessControlView } from './AccessControl.types';
 
 const PATH_ROLES = 'roles';
 const PATH_POLICIES = 'policies';
+const PATH_PERMISSION_DEBUGGER = 'permission-debugger';
+const PATH_AUDIT_LOGS = 'audit-logs';
 
 export const buildConditionOptions = (fns: Function[]): SelectItemType[] =>
   uniqBy(
@@ -73,11 +75,11 @@ export function hashSubPathToView(subPath: string): AccessControlView {
     };
   }
 
-  if (parts[0] === 'permission-debugger') {
+  if (parts[0] === PATH_PERMISSION_DEBUGGER) {
     return { type: 'permission-debugger' };
   }
 
-  if (parts[0] === 'audit-logs') {
+  if (parts[0] === PATH_AUDIT_LOGS) {
     return { type: 'audit-logs' };
   }
 
@@ -103,9 +105,9 @@ export function viewToSubPath(
     case 'policies-detail':
       return `${PATH_POLICIES}/${view.fqn}`;
     case 'permission-debugger':
-      return 'permission-debugger';
+      return PATH_PERMISSION_DEBUGGER;
     case 'audit-logs':
-      return 'audit-logs';
+      return PATH_AUDIT_LOGS;
     default:
       return undefined;
   }

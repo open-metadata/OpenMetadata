@@ -218,14 +218,18 @@ const AccessControlAuditLogsPanel: React.FC<
 
   useEffect(() => {
     pageCursorsRef.current = {};
-    if (currentPage <= 1 || !hashCursor) {
+    const canRestore = currentPage > 1 && hashCursor;
+
+    if (!canRestore) {
       setHashPage(1, undefined, undefined, pageSize);
-      fetchAuditLogs({ after: undefined, before: undefined }, undefined, 1);
-    } else if (hashCursorType === 'before') {
-      fetchAuditLogs({ before: hashCursor }, undefined, currentPage);
-    } else {
-      fetchAuditLogs({ after: hashCursor }, undefined, currentPage);
     }
+    fetchAuditLogs(
+      canRestore
+        ? { [hashCursorType === 'before' ? 'before' : 'after']: hashCursor }
+        : { after: undefined, before: undefined },
+      undefined,
+      canRestore ? currentPage : 1
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchAuditLogs]);
 
