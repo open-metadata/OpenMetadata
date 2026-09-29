@@ -18,11 +18,7 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { okJson } from '../../utils/apiResponse';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
-import {
-  addKpi,
-  deleteKpiRequest,
-  deleteKpisOnCharts,
-} from '../../utils/dataInsight';
+import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
@@ -60,8 +56,6 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     createdKpis.length = 0;
     metrics.length = 0;
     const { apiContext, afterAction } = await createNewPage(browser);
-
-    await deleteKpisOnCharts(apiContext, ['description', 'owner']);
 
     const metricWithDesc1 = new MetricClass();
     await metricWithDesc1.create(apiContext);

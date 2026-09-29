@@ -30,30 +30,6 @@ export const deleteKpiRequest = async (
   );
 };
 
-// The server allows one KPI per chart and the Add KPI dropdown hides charts
-// that already have one, so a seeded ("Migration ... KPI") or leaked KPI on the
-// chart makes addKpi time out. Matches charts the same way filterChartOptions does.
-export const deleteKpisOnCharts = async (
-  apiRequest: APIRequestContext,
-  charts: Array<'description' | 'owner'>
-) => {
-  const { data } = await okJson<{ data: Kpi[] }>(
-    await apiRequest.get('/api/v1/kpi?fields=dataInsightChart&limit=100'),
-    'List KPIs'
-  );
-
-  await deleteKpiRequest(
-    apiRequest,
-    data
-      .filter((kpi) =>
-        charts.some((chart) =>
-          kpi.dataInsightChart.fullyQualifiedName?.includes(chart)
-        )
-      )
-      .map((kpi) => kpi.id as string)
-  );
-};
-
 export const addKpi = async (page: Page, data: KPIData) => {
   const currentDate = new Date();
   const month =
