@@ -862,7 +862,7 @@
       "count": 8
     },
     "playwright/no-wait-for-selector": {
-      "count": 7
+      "count": 5
     }
   },
   "playwright/utils/activityAPI.ts": {
