@@ -25,6 +25,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   dismissLineageMapOnboarding,
+  expectLineageNodeVisible,
   performZoomOut,
   verifyExportLineagePNG,
   visitLineageTab,
@@ -109,16 +110,15 @@ test.describe('Entity Lineage tab', () => {
           new URL(response.url()).searchParams.get('focusFqn') === nodeFqn
       );
       await page.getByTestId(`node-suggestion-${nodeFqn}`).click();
-      await expect(page).toHaveURL(
-        (url) =>
-          url.pathname === `/lineage/table/${encodeURIComponent(nodeFqn)}`
-      );
+      await expect
+        .poll(() => new URL(page.url()).pathname)
+        .toBe(`/lineage/table/${encodeURIComponent(nodeFqn)}`);
       expect((await tableSceneResponse).ok()).toBeTruthy();
 
       await expect(
         page.locator('[data-testid="lineage-details"]')
       ).toBeVisible();
-      await expect(page.getByTestId(`lineage-node-${nodeFqn}`)).toBeVisible();
+      await expectLineageNodeVisible(page, nodeFqn);
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.LINEAGE);
@@ -137,14 +137,13 @@ test.describe('Entity Lineage tab', () => {
           new URL(response.url()).searchParams.get('focusFqn') === dbFqn
       );
       await page.getByTestId(`node-suggestion-${dbFqn}`).click();
-      await expect(page).toHaveURL(
-        (url) =>
-          url.pathname === `/lineage/database/${encodeURIComponent(dbFqn)}`
-      );
+      await expect
+        .poll(() => new URL(page.url()).pathname)
+        .toBe(`/lineage/database/${encodeURIComponent(dbFqn)}`);
       expect((await databaseSceneResponse).ok()).toBeTruthy();
 
       await expect(page.getByTestId('lineage-details')).toBeVisible();
-      await expect(page.getByTestId(`lineage-node-${schemaFqn}`)).toBeVisible();
+      await expectLineageNodeVisible(page, schemaFqn);
     }
   );
 
