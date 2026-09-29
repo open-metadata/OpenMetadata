@@ -26,6 +26,7 @@ public class PipelineIndex implements DataAssetIndex {
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
     fields.add("tasks");
+    fields.add("usageSummary");
     return java.util.Collections.unmodifiableSet(fields);
   }
 

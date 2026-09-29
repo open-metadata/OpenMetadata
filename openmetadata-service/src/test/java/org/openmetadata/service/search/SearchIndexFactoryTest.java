@@ -226,8 +226,17 @@ class SearchIndexFactoryTest {
   }
 
   @Test
-  void dashboardReindexFieldsIncludeCharts() {
-    assertReindexFields(Entity.DASHBOARD, "charts");
+  void dashboardReindexFieldsIncludeChartsAndUsageSummary() {
+    assertReindexFields(Entity.DASHBOARD, "charts", "usageSummary");
+  }
+
+  @Test
+  void usageRankedAssetReindexFieldsIncludeUsageSummary() {
+    // usageSummary is fields-gated in these repositories. A reindex dropped it, and a live usage
+    // report never landed at all: UsageRepository re-reads through updateEntity(ref), which loads
+    // only these fields, so the doc kept no usage and the usage-based ranking boosts had nothing.
+    assertReindexFields(Entity.MLMODEL, "usageSummary");
+    assertReindexFields(Entity.DATABASE_SCHEMA, "usageSummary");
   }
 
   @Test
@@ -261,8 +270,8 @@ class SearchIndexFactoryTest {
   }
 
   @Test
-  void pipelineReindexFieldsIncludeTasks() {
-    assertReindexFields(Entity.PIPELINE, "tasks");
+  void pipelineReindexFieldsIncludeTasksAndUsageSummary() {
+    assertReindexFields(Entity.PIPELINE, "tasks", "usageSummary");
   }
 
   @Test
@@ -285,6 +294,26 @@ class SearchIndexFactoryTest {
   @Test
   void userReindexFieldsIncludeTeamsAndRoles() {
     assertReindexFields(Entity.USER, "teams", "roles", "inheritedRoles");
+  }
+
+  @Test
+  void userReindexFieldsIncludeActivityTimes() {
+    // UserRepository.clearFields nulls both unless requested; the Online Users search filters on
+    // them, so after a reindex it listed nobody.
+    assertReindexFields(Entity.USER, "lastLoginTime", "lastActivityTime");
+  }
+
+  @Test
+  void contextFileReindexFieldsIncludeFolder() {
+    // The Context Center Documents page filters search on folder.id.
+    assertReindexFields(Entity.CONTEXT_FILE, "folder");
+  }
+
+  @Test
+  void contextMemoryReindexFieldsIncludeLinkedEntities() {
+    // The asset → memories listing filters search on primaryEntity.id and relatedEntities.id.
+    assertReindexFields(
+        Entity.CONTEXT_MEMORY, "primaryEntity", "relatedEntities", "sourceEntity", "sourceFile");
   }
 
   @Test
@@ -359,6 +388,13 @@ class SearchIndexFactoryTest {
     assertTrue(
         domainFields.contains(Entity.FIELD_PARENT),
         () -> "Domain reindex fields must include 'parent'; got " + domainFields);
+  }
+
+  @Test
+  void queryReindexFieldsIncludeUsers() {
+    // users is stripped from storage JSON like queryUsedIn, and the Table → Queries panel renders
+    // a query's users from its search hit.
+    assertReindexFields(Entity.QUERY, "users");
   }
 
   @Test

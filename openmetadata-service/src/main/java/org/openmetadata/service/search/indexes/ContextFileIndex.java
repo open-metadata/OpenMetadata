@@ -2,7 +2,9 @@ package org.openmetadata.service.search.indexes;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.service.Entity;
 
@@ -11,6 +13,13 @@ public class ContextFileIndex implements TaggableIndex {
 
   public ContextFileIndex(ContextFile file) {
     this.file = file;
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add("folder");
+    return Set.copyOf(fields);
   }
 
   @Override

@@ -16,9 +16,11 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
@@ -27,10 +29,20 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 
 public class ContextMemoryIndex implements TaggableIndex {
+  private static final Set<String> LINKED_ENTITY_FIELDS =
+      Set.of("primaryEntity", "relatedEntities", "sourceEntity", "sourceFile");
+
   final ContextMemory memory;
 
   public ContextMemoryIndex(ContextMemory memory) {
     this.memory = memory;
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.addAll(LINKED_ENTITY_FIELDS);
+    return Set.copyOf(fields);
   }
 
   @Override

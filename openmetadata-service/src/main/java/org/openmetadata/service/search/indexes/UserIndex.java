@@ -20,6 +20,8 @@ public class UserIndex implements SearchIndex {
     fields.add("teams");
     fields.add("roles");
     fields.add("inheritedRoles");
+    fields.add("lastLoginTime");
+    fields.add("lastActivityTime");
     return java.util.Collections.unmodifiableSet(fields);
   }
 

@@ -226,7 +226,7 @@ public class UsageRepository {
       String method, String fields, UUID entityId, String entityType, DailyCount usage) {
     MlModel mlModel = Entity.getEntity(Entity.MLMODEL, entityId, fields, Include.ALL);
     insertToUsageRepository(method, entityId, entityType, usage);
-    MlModel updated = Entity.getEntity(Entity.CHART, entityId, fields, Include.ALL);
+    MlModel updated = Entity.getEntity(Entity.MLMODEL, entityId, fields, Include.ALL);
 
     ChangeDescription change =
         getChangeDescription(
