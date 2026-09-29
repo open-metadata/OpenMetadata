@@ -176,12 +176,33 @@ jest.mock('../../../../../../constants/GlobalSettings.constants', () => ({
   },
 }));
 
+jest.mock('../../../../../../hooks/useSettingsHash', () => ({
+  useSettingsHash: jest.fn().mockReturnValue({
+    state: { tab: null, subPath: '', params: {} },
+    setHash: jest.fn(),
+    clearHash: jest.fn(),
+    updateParams: jest.fn(),
+  }),
+}));
+
+jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
+  getTypeByFQN: jest.fn(),
+}));
+
+jest.mock('../../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
 jest.mock('./CustomPropertiesPanel.utils', () => ({
   getBreadcrumbItems: jest.fn().mockReturnValue([
     { id: 'workspace', label: 'label.workspace' },
     { id: 'landing', label: 'label.custom-property-plural' },
   ]),
   getPageTitle: jest.fn().mockReturnValue('label.custom-property-plural'),
+  parseCustomPropertiesHash: jest
+    .fn()
+    .mockReturnValue({ entityFqn: null, action: 'detail' }),
+  viewToSubPath: jest.fn(),
 }));
 
 describe('CustomPropertiesPanel', () => {
