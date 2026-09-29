@@ -23,6 +23,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
@@ -999,9 +1000,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("embedding", embedding);
     // The three metric enums are mapped as real keywords, not source-only: they are cheap to index
     // and are the natural facets to filter a metric search on (granularity DAY vs MONTH).
-    // visibility/sharedWithIds carry context memory privacy onto the chunk
-    // docs: the memory visibility filter is applied to every vector query, so a chunk that does not
-    // index these is either unfilterable or invisible to its own owner.
+    // Memory privacy and lifecycle fields must be filterable on every chunk.
     for (String keyword :
         List.of(
             "parentId",
@@ -1014,7 +1013,8 @@ public class OpenSearchVectorService implements VectorIndexService {
             "unitOfMeasurement",
             "customUnitOfMeasurement",
             "visibility",
-            "sharedWithIds")) {
+            "sharedWithIds",
+            ContextMemoryIndex.FIELD_STATUS)) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
     // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact

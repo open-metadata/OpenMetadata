@@ -11,6 +11,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -366,6 +367,10 @@ public class VectorSearchQueryBuilder {
           case "visibility" -> {
             sb.append(',');
             appendFlat(sb, ContextMemorySearchVisibility.FIELD_VISIBILITY, values);
+          }
+          case ContextMemoryIndex.FIELD_STATUS -> {
+            sb.append(',');
+            appendFlat(sb, ContextMemoryIndex.FIELD_STATUS, values);
           }
             // Metric facets: semantic_search returns these on every metric result, so a caller
             // that sees "granularity": "MONTH" will reasonably filter by it.
