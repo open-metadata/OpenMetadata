@@ -86,6 +86,7 @@ describe('profileNavConfig', () => {
       'account',
       'administration',
       'workspace',
+      'application',
       'credentials',
     ]);
   });

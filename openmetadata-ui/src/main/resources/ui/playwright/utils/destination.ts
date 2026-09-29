@@ -27,14 +27,17 @@ const selectOwnedOption = async ({
   page,
 }: SelectOwnedOptionArgs) => {
   await control.focus();
-  if ((await control.getAttribute('aria-expanded')) !== 'true') {
-    await open();
-  }
-  await expect(control).toHaveAttribute('aria-expanded', 'true');
-  const listboxId = await control.getAttribute('aria-controls');
-  if (!listboxId) {
-    throw new Error('Destination popup did not expose aria-controls');
-  }
+  let listboxId = '';
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await open();
+    }
+    await expect(control).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 2_000,
+    });
+    listboxId = (await control.getAttribute('aria-controls')) ?? '';
+    expect(listboxId).toBeTruthy();
+  }).toPass({ timeout: 10_000 });
   const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
   await listbox.getByRole('option', { exact: true, name: optionName }).click();
   // The exiting overlay still owns focus until it unmounts. Opening the next
@@ -97,9 +100,12 @@ export const ensureAccordionExpanded = async (
   });
   await expect(trigger).toBeVisible();
 
-  if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
-    await trigger.click();
-  }
-
-  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click();
+    }
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 10_000 });
 };

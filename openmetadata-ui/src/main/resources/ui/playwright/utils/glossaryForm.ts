@@ -24,7 +24,7 @@
 import { expect, Locator, Page, Response } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { INVALID_NAMES, NAME_VALIDATION_ERROR } from '../constant/common';
-import { fillDescriptionBox, getDescriptionBox } from './common';
+import { dismissToasts, fillDescriptionBox, getDescriptionBox } from './common';
 import { GlossaryTermRef, pickGlossaryTermInField } from './glossaryPicker';
 
 export type GlossaryFormKind = 'glossary' | 'glossaryTerm';
@@ -502,6 +502,9 @@ export const pressGlossaryFormSave = async (
 ) => {
   const saveButton = page.getByTestId(DRAWER[kind].save);
 
+  // A toast left over from the glossary page can sit over the footer, and it
+  // never drains on its own (see dismissToasts).
+  await dismissToasts(page);
   await expect(saveButton).toBeEnabled();
   await saveButton.focus();
   await page.keyboard.press('Enter');
