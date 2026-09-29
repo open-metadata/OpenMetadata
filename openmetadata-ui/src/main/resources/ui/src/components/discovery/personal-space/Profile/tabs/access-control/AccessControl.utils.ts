@@ -76,11 +76,11 @@ export function hashSubPathToView(subPath: string): AccessControlView {
   }
 
   if (parts[0] === PATH_PERMISSION_DEBUGGER) {
-    return { type: 'permission-debugger' };
+    return { type: PATH_PERMISSION_DEBUGGER };
   }
 
   if (parts[0] === PATH_AUDIT_LOGS) {
-    return { type: 'audit-logs' };
+    return { type: PATH_AUDIT_LOGS };
   }
 
   return { type: 'landing' };
@@ -104,9 +104,9 @@ export function viewToSubPath(
       return `${PATH_POLICIES}/add`;
     case 'policies-detail':
       return `${PATH_POLICIES}/${view.fqn}`;
-    case 'permission-debugger':
+    case PATH_PERMISSION_DEBUGGER:
       return PATH_PERMISSION_DEBUGGER;
-    case 'audit-logs':
+    case PATH_AUDIT_LOGS:
       return PATH_AUDIT_LOGS;
     default:
       return undefined;

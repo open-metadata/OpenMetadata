@@ -127,6 +127,10 @@ async function walkToPageCursor(
   return { cursor, discoveredCursors };
 }
 
+function resolvePageSize(hash: number | undefined): number {
+  return hash || PAGE_SIZE_MEDIUM;
+}
+
 interface AccessControlAuditLogsPanelProps {
   /** Callback to inject action buttons into the page header. */
   onSetHeaderActions?: (actions: React.ReactNode) => void;
@@ -145,7 +149,7 @@ const AccessControlAuditLogsPanel: React.FC<
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_MEDIUM;
+  const pageSize = resolvePageSize(hashPageSize);
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [paging, setPaging] = useState<Paging>(INITIAL_PAGING);
