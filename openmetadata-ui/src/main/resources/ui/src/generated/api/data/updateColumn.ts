@@ -14,10 +14,9 @@
  * Update Column API request to update individual column metadata such as display name,
  * description, tags, and glossary terms, addressed by the column's fully qualified name.
  * This API works for the inline children of table, dashboardDataModel, topic, container,
- * mlmodel, pipeline, searchIndex, apiEndpoint and worksheet. The description and tags
- * fields apply to every type; displayName applies to every type except mlmodel; constraint
- * and removeConstraint apply to table only; extension applies to table and
- * dashboardDataModel only.
+ * mlmodel, pipeline, searchIndex, apiEndpoint and worksheet. The displayName, description
+ * and tags fields apply to every type; constraint and removeConstraint apply to table only;
+ * extension applies to table and dashboardDataModel only.
  */
 export interface UpdateColumn {
     /**
@@ -30,8 +29,7 @@ export interface UpdateColumn {
      */
     description?: string;
     /**
-     * Display Name that identifies this column name. Rejected with 400 for mlmodel features,
-     * which have no display name.
+     * Display Name that identifies this column name.
      */
     displayName?: string;
     /**
