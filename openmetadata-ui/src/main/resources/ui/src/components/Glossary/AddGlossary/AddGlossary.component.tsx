@@ -146,15 +146,15 @@ const AddGlossary = ({ form, onSubmit }: AddGlossaryProps) => {
         )}
       </FormField>
 
+      {getField(ownersField)}
+      {getField(reviewersField)}
+      {getField(domainsField)}
       {getField(
         getMutuallyExclusiveField(
           Boolean(isMutuallyExclusive),
           t('label.glossary')
         )
       )}
-      {getField(ownersField)}
-      {getField(reviewersField)}
-      {getField(domainsField)}
     </HookForm>
   );
 };

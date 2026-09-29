@@ -287,15 +287,6 @@ const AddGlossaryTermForm = ({
         )}
       </FormField>
 
-      {getField(
-        applyIntakeRequired(
-          getMutuallyExclusiveField(
-            Boolean(isMutuallyExclusive),
-            t('label.glossary-term')
-          )
-        )
-      )}
-
       <Box className="tw:gap-3" data-testid="references" direction="col">
         <Box align="center" justify="between">
           <FormItemLabel label={t('label.reference-plural')} />
@@ -356,6 +347,14 @@ const AddGlossaryTermForm = ({
 
       {getField(applyIntakeRequired(ownersField))}
       {getField(applyIntakeRequired(reviewersField))}
+      {getField(
+        applyIntakeRequired(
+          getMutuallyExclusiveField(
+            Boolean(isMutuallyExclusive),
+            t('label.glossary-term')
+          )
+        )
+      )}
 
       {!editMode && intake.isLoaded && (
         <AddDomainFormExtensionFields
