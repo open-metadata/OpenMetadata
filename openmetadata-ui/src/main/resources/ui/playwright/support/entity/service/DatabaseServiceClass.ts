@@ -123,6 +123,10 @@ export class DatabaseServiceClass extends EntityClass implements ParentNode {
     return Boolean(this.entityResponseData?.id);
   }
 
+  forget() {
+    this.entityResponseData = {} as ResponseDataType;
+  }
+
   parentSnapshot(): ParentSnapshot {
     return { service: this.entityResponseData };
   }

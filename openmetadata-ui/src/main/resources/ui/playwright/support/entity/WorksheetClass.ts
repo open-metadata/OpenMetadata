@@ -136,7 +136,7 @@ export class WorksheetClass extends EntityClass {
   // createOrFetch, not a bare POST — see FileClass.create for why: the names are
   // fixed at construction, so a retried beforeAll re-creates them and 409s.
   async create(apiContext: APIRequestContext) {
-    const { parents, ownedRootPath } = await resolveParents(
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'driveSpreadsheet',
       this.parentOverrides,
@@ -144,7 +144,7 @@ export class WorksheetClass extends EntityClass {
     );
     const service = parents.service as ResponseDataType;
     const spreadsheet = parents.spreadsheet as ResponseDataType;
-    this.ownedRootPath = ownedRootPath;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
     this.bindServiceName(service.name);
     this.serviceResponseData = service;
     this.spreadsheetResponseData = spreadsheet;

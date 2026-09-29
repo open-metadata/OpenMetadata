@@ -118,7 +118,7 @@ export class StoredProcedureClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const { parents, ownedRootPath } = await resolveParents(
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'database',
       this.parentOverrides,
@@ -134,7 +134,7 @@ export class StoredProcedureClass extends EntityClass {
       service,
     } as ResponseDataWithServiceType;
 
-    this.ownedRootPath = ownedRootPath;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
     this.bindParentNames(service, database, schema);
 
     const entity = await createOrFetch<ResponseDataWithServiceType>(

@@ -150,14 +150,14 @@ export class DashboardClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const { parents, ownedRootPath } = await resolveParents(
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'dashboard',
       { service: this.serviceOverride },
       this.sharedInfraKey
     );
     this.serviceResponseData = parents.service as ResponseDataType;
-    this.ownedRootPath = ownedRootPath;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
     this.bindServiceName(this.serviceResponseData.name);
 
     this.chartsResponseData = await createOrFetch(apiContext, {

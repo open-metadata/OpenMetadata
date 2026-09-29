@@ -227,7 +227,7 @@ export class TableClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const { parents, ownedRootPath } = await resolveParents(
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'database',
       this.parentOverrides,
@@ -243,7 +243,7 @@ export class TableClass extends EntityClass {
       service,
     } as ResponseDataWithServiceType;
 
-    this.ownedRootPath = ownedRootPath;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
     this.bindParentNames(service, database, schema);
 
     // Relationship fields on the 409 lookup: a bare fetch reports

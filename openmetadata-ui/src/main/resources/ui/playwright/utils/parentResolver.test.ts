@@ -16,24 +16,46 @@ import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
 import { resolveParents } from '../support/entity/ParentResolver';
 import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../support/entity/service/MessagingServiceClass';
+import { TopicClass } from '../support/entity/TopicClass';
 
-// Stand-in for the OpenMetadata create endpoints: every POST succeeds and
-// returns the entity with an FQN built from its parent reference.
+// Stand-in for the OpenMetadata endpoints the resolver touches: POST creates
+// an entity whose FQN is built from its parent reference, GET/DELETE by name
+// look it up or remove it. `posts` records creates only.
 const startFakeApi = async () => {
   const posts: string[] = [];
+  const existing = new Set<string>();
   const server: Server = createServer((request, response) => {
     let body = '';
     request.on('data', (chunk) => (body += chunk));
     request.on('end', () => {
+      const url = request.url ?? '';
+      const byName = decodeURIComponent(
+        url.split('/name/')[1]?.split('?')[0] ?? ''
+      );
+      if (request.method === 'GET' || request.method === 'DELETE') {
+        const found = existing.has(byName);
+        if (request.method === 'DELETE') {
+          existing.delete(byName);
+        }
+        response.writeHead(found ? 200 : 404, {
+          'Content-Type': 'application/json',
+        });
+        response.end('{}');
+
+        return;
+      }
       const data = JSON.parse(body || '{}');
       const parent = data.database ?? data.service;
-      posts.push(request.url ?? '');
+      const fullyQualifiedName = parent ? `${parent}.${data.name}` : data.name;
+      posts.push(url);
+      existing.add(fullyQualifiedName);
       response.writeHead(201, { 'Content-Type': 'application/json' });
       response.end(
         JSON.stringify({
           id: randomUUID(),
           name: data.name,
-          fullyQualifiedName: parent ? `${parent}.${data.name}` : data.name,
+          fullyQualifiedName,
         })
       );
     });
@@ -41,7 +63,12 @@ const startFakeApi = async () => {
   await new Promise<void>((resolve) => server.listen(0, resolve));
   const { port } = server.address() as AddressInfo;
 
-  return { posts, server, baseURL: `http://127.0.0.1:${port}` };
+  return {
+    posts,
+    existing,
+    server,
+    baseURL: `http://127.0.0.1:${port}`,
+  };
 };
 
 test.describe('resolveParents', () => {
@@ -122,6 +149,36 @@ test.describe('resolveParents', () => {
     );
     expect(second.parents).toEqual(first.parents);
     expect(first.ownedRootPath).toBeUndefined();
+  });
+
+  test('a cached shared chain whose parent was deleted is rebuilt', async () => {
+    const key = `unit-${randomUUID()}`;
+    const first = await resolveParents(apiContext, 'messaging', {}, key);
+    api.existing.delete(first.parents.service?.fullyQualifiedName ?? '');
+
+    const second = await resolveParents(apiContext, 'messaging', {}, key);
+
+    expect(api.posts).toEqual([
+      '/api/v1/services/messagingServices',
+      '/api/v1/services/messagingServices',
+    ]);
+    expect(second.parents.service?.name).not.toBe(first.parents.service?.name);
+  });
+
+  test('deleting an owned override lets the next create own it again', async () => {
+    const topic = new TopicClass({ service: new MessagingServiceClass() });
+
+    await topic.create(apiContext);
+    await topic.delete(apiContext);
+    await topic.create(apiContext);
+
+    expect(api.posts).toEqual([
+      '/api/v1/services/messagingServices',
+      '/api/v1/topics',
+      '/api/v1/services/messagingServices',
+      '/api/v1/topics',
+    ]);
+    expect(topic.ownedRootPath).toContain('/services/messagingServices/name/');
   });
 
   test('passing two levels is rejected', async () => {

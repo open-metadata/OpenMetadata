@@ -216,7 +216,7 @@ export class ApiEndpointClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const { parents, ownedRootPath } = await resolveParents(
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'api',
       this.parentOverrides,
@@ -225,7 +225,7 @@ export class ApiEndpointClass extends EntityClass {
     const service = parents.service as ResponseDataType;
     const collection = parents.collection as ResponseDataType;
 
-    this.ownedRootPath = ownedRootPath;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
     this.bindParentNames(service, collection);
     this.serviceResponseData = service;
     this.apiCollectionResponseData = collection as unknown as APIEndpoint;

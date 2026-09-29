@@ -28,6 +28,8 @@ export interface ResolvedParents {
   parents: ParentSnapshot;
   /** Set only when this entity created a parent; see ParentNode.rootDeletePath. */
   ownedRootPath?: string;
+  /** The override this call created, so the owner can forget() it on delete. */
+  ownedOverride?: ParentNode;
 }
 
 /**
@@ -84,11 +86,13 @@ export const resolveParents = async (
   }
 
   let ownedRootPath: string | undefined;
+  let ownedOverride: ParentNode | undefined;
   if (!override.isCreated()) {
     await (override.createAsParent
       ? override.createAsParent(apiContext)
       : override.create(apiContext));
     ownedRootPath = override.rootDeletePath();
+    ownedOverride = override;
   }
 
   const { parents, created } = await createChainLevels(apiContext, kind, {
@@ -100,5 +104,6 @@ export const resolveParents = async (
   return {
     parents,
     ownedRootPath: ownedRootPath ?? created[0]?.rootDeletePath(),
+    ownedOverride,
   };
 };

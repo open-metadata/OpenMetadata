@@ -55,6 +55,12 @@ export interface ParentNode {
    * top-most one, so one recursive delete cleans the whole owned chain.
    */
   rootDeletePath(): string;
+  /**
+   * Drop the response data after this node was deleted through an owner's
+   * recursive delete, so the next create() creates (and owns) it again
+   * instead of treating the stale data as an existing parent.
+   */
+  forget(): void;
 }
 
 export type ChainKind =
@@ -246,6 +252,10 @@ class FreshParentNode implements ParentNode {
       this.spec.collection,
       this.response?.fullyQualifiedName ?? ''
     );
+  }
+
+  forget() {
+    this.response = undefined;
   }
 }
 

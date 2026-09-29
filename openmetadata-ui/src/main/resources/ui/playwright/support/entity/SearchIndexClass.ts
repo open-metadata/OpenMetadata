@@ -142,14 +142,14 @@ export class SearchIndexClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const { parents, ownedRootPath } = await resolveParents(
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'search',
       { service: this.serviceOverride },
       this.sharedInfraKey
     );
     this.serviceResponseData = parents.service as ResponseDataType;
-    this.ownedRootPath = ownedRootPath;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
     this.service = { ...this.service, name: this.serviceResponseData.name };
     this.entity.service = this.serviceResponseData.name;
 

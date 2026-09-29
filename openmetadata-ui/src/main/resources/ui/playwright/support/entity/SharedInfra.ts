@@ -24,7 +24,8 @@
  * SCOPE. One chain per `(ChainKind, key)` slot. The setup project
  * (`entity-data.setup.ts`) builds the slots it needs and persists them to
  * `playwright/output/shared-infra.json`; every worker loads that file on
- * import, so test workers resolve shared parents with no network call.
+ * import, so test workers resolve shared parents with one existence check
+ * instead of creating them.
  *
  * OWNERSHIP. Shared parents belong to setup/teardown: `reset()` deletes them
  * from `entity-data.teardown.ts`. A leaf in shared mode records no owned
@@ -39,6 +40,7 @@ import {
   ChainKind,
   CHAINS,
   createChainLevels,
+  parentDeletePath,
   ParentSnapshot,
   serviceDeletePath,
 } from './ParentChain';
@@ -73,7 +75,10 @@ export class SharedInfra {
     const id = slotId(kind, key);
     const cached = this.slots.get(id);
     if (cached) {
-      return cached.parents;
+      if (await this.chainExists(apiContext, cached)) {
+        return cached.parents;
+      }
+      this.slots.delete(id);
     }
 
     let pending = this.inFlight.get(id);
@@ -99,6 +104,35 @@ export class SharedInfra {
     } finally {
       this.inFlight.delete(id);
     }
+  }
+
+  /**
+   * A cached chain hands out parents without a request, so a parent deleted
+   * by some other test would only surface later as a 404 on the leaf POST.
+   * Checking the deepest level (it is gone whenever anything above it is)
+   * turns that into a rebuild plus a warning that names what went missing.
+   */
+  private static async chainExists(
+    apiContext: APIRequestContext,
+    { kind, parents }: PersistedSlot
+  ): Promise<boolean> {
+    const deepest = CHAINS[kind][CHAINS[kind].length - 1];
+    const fqn = parents[deepest.level]?.fullyQualifiedName;
+    if (!fqn) {
+      return false;
+    }
+    const response = await apiContext.get(
+      parentDeletePath(deepest.collection, fqn)
+    );
+    if (response.ok()) {
+      return true;
+    }
+    console.warn(
+      `SharedInfra: shared ${kind} ${deepest.level} "${fqn}" is gone ` +
+        `(HTTP ${response.status()}); rebuilding the chain. Something deleted a shared parent.`
+    );
+
+    return false;
   }
 
   static saveResponseData(): void {

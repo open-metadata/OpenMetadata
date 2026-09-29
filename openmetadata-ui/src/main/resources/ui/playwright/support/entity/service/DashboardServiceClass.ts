@@ -167,6 +167,10 @@ export class DashboardServiceClass extends EntityClass implements ParentNode {
     return Boolean(this.entityResponseData?.id);
   }
 
+  forget() {
+    this.entityResponseData = {} as ResponseDataType;
+  }
+
   // As a parent override only the service is wanted: the default child
   // dashboard would show up in the test's own service listings and counts.
   async createAsParent(apiContext: APIRequestContext) {

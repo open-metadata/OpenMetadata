@@ -163,14 +163,14 @@ export class ContainerClass extends EntityClass {
     apiContext: APIRequestContext,
     customChildContainer?: { name: string; displayName: string }[]
   ) {
-    const { parents, ownedRootPath } = await resolveParents(
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'storage',
       { service: this.serviceOverride },
       this.sharedInfraKey
     );
     this.serviceResponseData = parents.service as ResponseDataType;
-    this.ownedRootPath = ownedRootPath;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
     this.service = { ...this.service, name: this.serviceResponseData.name };
     this.entity.service = this.serviceResponseData.name;
     this.childContainer = {

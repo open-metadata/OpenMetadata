@@ -129,7 +129,7 @@ export class FileClass extends EntityClass {
   // file with it. Treating the conflict as success and fetching the entity
   // makes create idempotent, which is what a retry needs it to be.
   async create(apiContext: APIRequestContext) {
-    const { parents, ownedRootPath } = await resolveParents(
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'driveDirectory',
       this.parentOverrides,
@@ -137,7 +137,7 @@ export class FileClass extends EntityClass {
     );
     const service = parents.service as ResponseDataType;
     const directory = parents.directory as ResponseDataType;
-    this.ownedRootPath = ownedRootPath;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
     this.bindServiceName(service.name);
     this.serviceResponseData = service;
     this.directoryResponseData = directory;

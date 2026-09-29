@@ -88,7 +88,7 @@ export class DatabaseSchemaClass extends EntityClass implements ParentNode {
   }
 
   async create(apiContext: APIRequestContext) {
-    const { parents, ownedRootPath } = await resolveParents(
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'database',
       this.parentOverrides,
@@ -100,7 +100,7 @@ export class DatabaseSchemaClass extends EntityClass implements ParentNode {
       ...parents.database,
       service,
     } as ResponseDataWithServiceType;
-    this.ownedRootPath = ownedRootPath;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
     this.bindParentNames(service.name, database.name);
 
     const entity = await createOrFetch(apiContext, {
@@ -171,6 +171,11 @@ export class DatabaseSchemaClass extends EntityClass implements ParentNode {
 
   isCreated() {
     return Boolean(this.entityResponseData?.id);
+  }
+
+  forget() {
+    this.entityResponseData = {} as typeof this.entityResponseData;
+    this.forgetOwnership();
   }
 
   parentSnapshot(): ParentSnapshot {
