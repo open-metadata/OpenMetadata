@@ -26,7 +26,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.channels.Channel;
 import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.channels.ChannelRenderer;
@@ -42,7 +41,6 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
 
   private final NotificationTemplateRepository templateRepository;
   private final NotificationTemplateProcessor templateProcessor;
-  private final Map<String, ChannelRenderer> channelRenderers = new HashMap<>();
 
   public HandlebarsNotificationMessageEngine(NotificationTemplateRepository templateRepository) {
     this.templateRepository = templateRepository;
@@ -85,17 +83,13 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
     return renderer.render(markdownContent, markdownSubject);
   }
 
-  private ChannelRenderer rendererOf(SubscriptionDestination destination) {
-    Channel channel = Channels.required(destination);
-    return channelRenderers.computeIfAbsent(
-        channel.id(),
-        id ->
-            channel
-                .newRenderer()
-                .orElseThrow(
-                    () ->
-                        new IllegalArgumentException(
-                            "Unsupported destination type: " + destination.getType())));
+  private static ChannelRenderer rendererOf(SubscriptionDestination destination) {
+    return Channels.required(destination)
+        .renderer()
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "Unsupported destination type: " + destination.getType()));
   }
 
   private Map<String, Object> buildEventContext(ChangeEvent event, EventSubscription subscription) {

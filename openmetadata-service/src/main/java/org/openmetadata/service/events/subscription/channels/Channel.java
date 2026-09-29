@@ -36,10 +36,11 @@ public interface Channel {
   }
 
   /**
-   * A renderer of its own for the caller, because one may read what it needs when it is built, as
-   * the email renderer reads its envelope. Empty for a channel that sends the event as it is.
+   * How content becomes this channel's message. Every caller shares it, alert ticks and template
+   * previews at the same time, so it must be safe to use from many threads. Empty for a channel
+   * that sends the event as it is.
    */
-  Optional<ChannelRenderer> newRenderer();
+  Optional<ChannelRenderer> renderer();
 
   /** Empty for a channel that delivers inside the server, such as the activity feed. */
   Optional<Transport> transport();

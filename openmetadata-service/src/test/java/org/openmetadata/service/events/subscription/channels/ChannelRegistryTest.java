@@ -20,13 +20,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.service.events.subscription.channels.builtin.BuiltInChannels;
+import org.openmetadata.service.notifications.channels.ChannelRenderer;
 
 class ChannelRegistryTest {
   private static final Path MAIN_SOURCES = Path.of("src/main/java/org/openmetadata/service");
@@ -50,6 +59,33 @@ class ChannelRegistryTest {
             .toList();
 
     assertEquals(List.of(), missing);
+  }
+
+  // One renderer per channel, shared by every caller at once, as the notification engine is.
+  @Test
+  void everyCallerSharesTheChannelsOneRenderer() throws Exception {
+    for (SubscriptionType type : SubscriptionType.values()) {
+      Channel channel = Channels.of(type.value()).orElseThrow();
+      Set<ChannelRenderer> seen = ConcurrentHashMap.newKeySet();
+      try (ExecutorService callers = Executors.newFixedThreadPool(8)) {
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<?>> asked = new ArrayList<>();
+        for (int caller = 0; caller < 8; caller++) {
+          asked.add(
+              callers.submit(
+                  () -> {
+                    start.await();
+                    channel.renderer().ifPresent(seen::add);
+                    return null;
+                  }));
+        }
+        start.countDown();
+        for (Future<?> answer : asked) {
+          answer.get(30, TimeUnit.SECONDS);
+        }
+      }
+      assertTrue(seen.size() <= 1, type.value() + " built " + seen.size() + " renderers");
+    }
   }
 
   @Test
