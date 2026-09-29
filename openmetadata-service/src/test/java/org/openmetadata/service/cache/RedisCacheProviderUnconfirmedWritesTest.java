@@ -15,11 +15,17 @@ package org.openmetadata.service.cache;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 
 import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisFuture;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
@@ -109,6 +115,46 @@ class RedisCacheProviderUnconfirmedWritesTest {
     provider.healthCheck();
 
     assertEquals(0L, redis.exists("om-test:e:table:2"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void writeSkippedDuringCleanupKeepsReadsDisabledUntilTheNextCleanup() throws Exception {
+    String firstKey = "om-test:first";
+    String racingKey = "om-test:racing";
+    redis.set(firstKey, "before-outage");
+    redis.set(racingKey, "before-outage");
+    pauseRedis();
+    for (int failure = 0; failure < FAILURES_TO_OPEN_BREAKER; failure++) {
+      provider.get("om-test:probe");
+    }
+    unpauseRedisIfPaused();
+    provider.healthCheck();
+    provider.healthCheck();
+    assertFalse(provider.available());
+    provider.set(firstKey, "during-outage", TTL);
+
+    RedisAsyncCommands<String, String> commands =
+        mock(RedisAsyncCommands.class, delegatesTo(connection.async()));
+    doAnswer(
+            invocation -> {
+              RedisFuture<Long> deletion = connection.async().unlink(firstKey);
+              provider.set(racingKey, "during-cleanup", TTL);
+              return deletion;
+            })
+        .when(commands)
+        .unlink(firstKey);
+    Field asyncCommands = RedisCacheProvider.class.getDeclaredField("asyncCommands");
+    asyncCommands.setAccessible(true);
+    asyncCommands.set(provider, commands);
+
+    provider.healthCheck();
+
+    assertFalse(provider.available(), "recovery must wait for the write skipped during cleanup");
+    assertEquals(Optional.empty(), provider.get(racingKey));
+    provider.healthCheck();
+    assertTrue(provider.available());
+    assertEquals(0L, redis.exists(firstKey, racingKey));
   }
 
   @Test

@@ -146,10 +146,6 @@ public class RedisCacheProvider implements CacheProvider {
       }
       deleteUnconfirmedWrites();
       recordSuccess();
-      // Clears writes skipped between the first pass and a recovery flip in recordSuccess.
-      // Skips are recorded under stateLock, which the flip also takes, so all of them are
-      // recorded by now.
-      deleteUnconfirmedWrites();
     } catch (Exception e) {
       recordFailure(e);
     }
@@ -215,10 +211,10 @@ public class RedisCacheProvider implements CacheProvider {
   /**
    * Record a successful Redis operation (real op or health-check PING). When the provider is in
    * the unavailable state, this counts toward {@link #RECOVERY_THRESHOLD}; once we've seen that
-   * many consecutive successes the flag flips back. While available, success just trims the
-   * failure-window deque. Critical that single-PING-success no longer flips us back: that
-   * caused the flapping behaviour where every health-check window let one more real op pay a
-   * timeout before going to fast-fail again.
+   * many consecutive successes and deleted every tracked write, the flag flips back. While
+   * available, success just trims the failure-window deque. Critical that single-PING-success no
+   * longer flips us back: that caused the flapping behaviour where every health-check window let
+   * one more real op pay a timeout before going to fast-fail again.
    *
    * <p>Synchronized with {@link #recordFailure(Exception)} on {@link #stateLock} so a concurrent
    * failure can't be racing with the {@code consecutiveSuccesses}/{@code available} transitions.
@@ -227,7 +223,10 @@ public class RedisCacheProvider implements CacheProvider {
     synchronized (stateLock) {
       if (!available) {
         int n = consecutiveSuccesses.incrementAndGet();
-        if (n >= RECOVERY_THRESHOLD) {
+        // Skipped writes are recorded under this lock too. If a write arrived during cleanup,
+        // keep reads disabled until the next health check deletes it. Publishing availability
+        // before a second cleanup let readers cache the stale value in that gap.
+        if (n >= RECOVERY_THRESHOLD && unconfirmedWrites.isEmpty()) {
           available = true;
           failureTimestamps.clear();
           consecutiveSuccesses.set(0);
