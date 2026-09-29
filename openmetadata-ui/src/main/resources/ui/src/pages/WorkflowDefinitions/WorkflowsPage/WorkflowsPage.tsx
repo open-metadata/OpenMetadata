@@ -370,9 +370,7 @@ const WorkflowsPage = () => {
                 ))}
               </div>
             </div>
-            <div
-              className="tw:py-3"
-              data-testid="workflows-pagination">
+            <div className="tw:py-3" data-testid="workflows-pagination">
               <NextPrevious
                 currentPage={currentPage}
                 isLoading={loading}
