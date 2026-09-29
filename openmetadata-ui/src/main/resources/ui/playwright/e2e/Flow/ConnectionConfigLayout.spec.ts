@@ -14,7 +14,7 @@
 import { Locator, Page } from '@playwright/test';
 import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { expect, test } from '../../support/fixtures/base';
-import { redirectToHomePage, selectOptionWithRetry } from '../../utils/common';
+import { chooseSelectOption, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 
@@ -53,7 +53,7 @@ const getGridColumnCount = async (locator: Locator) =>
         .length
   );
 
-const chooseSelectOption = async (
+const chooseConnectionOption = async (
   page: Page,
   select: Locator,
   optionName: string
@@ -63,7 +63,7 @@ const chooseSelectOption = async (
     .locator('.core-one-of-field-select-popover')
     .getByRole('option', { name: optionName, exact: true });
 
-  await selectOptionWithRetry(trigger, option);
+  await chooseSelectOption(trigger, option);
 };
 
 const mockSuccessfulSnowflakeTestConnection = async (page: Page) => {
@@ -402,7 +402,7 @@ test.describe('Connection config layout', () => {
       )
     ).toBeHidden();
 
-    await chooseSelectOption(
+    await chooseConnectionOption(
       page,
       sampleStorageSelect,
       'Sample Data Storage Config'
@@ -457,7 +457,7 @@ test.describe('Connection config layout', () => {
       'Overwrite and storage config fields overlap'
     );
 
-    await chooseSelectOption(
+    await chooseConnectionOption(
       page,
       page.locator(
         '[data-testid^="select-widget-root/sampleDataStorageConfig/config/storageConfig__"]'

@@ -103,6 +103,7 @@ export const toObservabilityFilterResourceDescriptor = (
     containerEntities: observabilityResource.containerEntities,
     name: resource.name,
     supportedActions: toEventFilterRules(resource.supportedActions),
+    supportedEventTypes: resource.supportedEventTypes,
     supportedFilters: toEventFilterRules(resource.supportedFilters),
   };
 };

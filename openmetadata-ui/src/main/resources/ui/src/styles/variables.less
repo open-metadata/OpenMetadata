@@ -41,8 +41,8 @@
 @green-7: #00b871;
 @green-8: #48ca9e08;
 // DARK-MODE BRIDGE: palette vars written as `var(--om-*, #hex)` below (e.g.
-// @green-9/10/12/100, @red-9/10/22, @yellow-10, @blue-13/22/500,
-// @grey-1/2/5/7/9/15/25/26/50, @green-500, @warning-100/400, @alert-*) resolve
+// @green-9/10/12/100, @red-9/10/22, @yellow-10, @blue-13/22/29/30/500,
+// @grey-1/2/5/6/7/9/15/25/26/38/50, @green-500, @warning-100/400, @alert-*) resolve
 // through an --om-* custom property so they adapt in dark. LESS color functions
 // (darken/lighten/fade/mix/tint/shade/…) CANNOT evaluate a var() — passing a
 // bridged var to one fails the build at compile time (this broke Collate's
@@ -108,7 +108,7 @@
 @orange-200: #f9dbaf;
 @orange-600: #e04f16;
 
-@purple-1: #f2edfd;
+@purple-1: var(--om-purple-1, #f2edfd);
 @purple-2: #7147e8;
 @purple-3: #a2a1ff;
 @purple-4: #efedfe80;
@@ -144,8 +144,8 @@
 @blue-26: @primary-8;
 @blue-27: #2196f3;
 @blue-28: #e3f2fd4d;
-@blue-29: #eff4fa;
-@blue-30: #d2dbeb;
+@blue-29: var(--om-blue-29, #eff4fa);
+@blue-30: var(--om-blue-30, #d2dbeb);
 @blue-31: #3a86ff;
 @blue-32: #0057e2;
 @blue-33: #eff8ff;
@@ -172,7 +172,7 @@
 @grey-3: #959595;
 @grey-4: #757575;
 @grey-5: var(--om-grey-5, #fbfbfb);
-@grey-6: #f9f9f9;
+@grey-6: var(--om-grey-6, #f9f9f9);
 @grey-7: var(--om-grey-7, #9ca3af);
 @grey-9: var(--om-grey-9, #f8f9fc);
 @grey-10: #8c8c8c;
@@ -201,7 +201,7 @@
 @grey-46: #eeeeee;
 @grey-36: #f3f4f6;
 @grey-37: #ebf5ff;
-@grey-38: #f2f3f9;
+@grey-38: var(--om-grey-38, #f2f3f9);
 @grey-40: #dbe0e7;
 @text-grey-muted: @grey-4;
 @de-active-color: #6b7280;
@@ -343,8 +343,13 @@
   100vh - 96px - @tab-height - @om-navbar-height - @size-mlg
 );
 
+// Subtracts the same zero header as @entity-details-tab-height, and for the
+// same reason: a pane as tall as the viewport leaves the page room to scroll
+// the header away, so the tabs pin to the top and only the pane scrolls on.
+// Subtracting the header kept the pane short and the header on screen.
 @incident-manager-page-height: calc(
-  100vh - 154px - @tab-height - @om-navbar-height - @size-mlg
+  100vh - @data-asset-header-height - @tab-height - @om-navbar-height -
+    @size-mlg
 );
 
 @glossary-term-page-height: calc(
@@ -484,6 +489,14 @@
 @om-rdg-header-color: #4a4a4a;
 
 @body-background: var(--tw-color-utility-gray-blue-50);
+// antd defaults compile to static near-black text / light-gray edges. Bridged
+// like the palette vars above: the fallback is antd's exact light value, and
+// .dark-mode (app.less) re-points the --om-* var. @heading-color feeds
+// @label-color, @modal-heading-color, @card-head-color, @table-header-color and
+// every antd title; @border-color-base feeds input/select/picker/button/radio
+// borders. antd runs no colour functions on either, so a var() is safe.
+@heading-color: var(--om-heading-color, rgba(0, 0, 0, 0.85));
+@border-color-base: var(--om-border-color-base, #d9d9d9);
 @component-background: var(--tw-color-bg-primary);
 // Raised surfaces (== bg-primary in light, lifted in dark).
 @btn-default-bg: var(--om-color-bg-surface);
@@ -497,6 +510,12 @@
 @menu-popup-bg: var(--om-color-bg-overlay-surface);
 @select-dropdown-bg: var(--om-color-bg-overlay-surface);
 @mentions-dropdown-bg: var(--om-color-bg-overlay-surface);
+// Selected Select/Dropdown option matches the sidebar's selected nav item (and
+// core Select/Dropdown items) in both themes.
+@select-item-selected-bg: var(--tw-color-bg-brand-primary);
+@select-item-selected-color: var(--tw-color-text-brand-secondary);
+@dropdown-selected-bg: var(--tw-color-bg-brand-primary);
+@dropdown-selected-color: var(--tw-color-text-brand-secondary);
 @calendar-bg: var(--om-color-bg-overlay-surface);
 @modal-content-bg: var(--om-color-bg-overlay-surface);
 @modal-header-bg: var(--om-color-bg-overlay-surface);

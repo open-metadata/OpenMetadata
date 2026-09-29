@@ -113,13 +113,19 @@ export const confirmationDragAndDropTeam = async (
       response.url().includes('/api/v1/teams/') &&
       response.request().method() === 'PATCH'
   );
-  const teamsListResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/teams?parentTeam=') &&
+  const teamsListResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      url.pathname === '/api/v1/teams' &&
+      url.searchParams.has('parentTeam') &&
       response.request().method() === 'GET'
-  );
-  await page.locator('.ant-modal-footer > .ant-btn-primary').click();
-  await patchResponse;
+    );
+  });
+  await page
+    .getByTestId('confirmation-modal')
+    .getByRole('button', { name: 'Confirm', exact: true })
+    .click();
+  expect((await patchResponse).status()).toBe(200);
   const teamsListResponseResult = await teamsListResponse;
 
   expect(teamsListResponseResult.status()).toBe(200);

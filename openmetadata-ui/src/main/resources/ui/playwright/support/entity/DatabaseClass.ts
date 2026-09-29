@@ -16,6 +16,7 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -197,7 +198,6 @@ export class DatabaseClass extends EntityClass {
         },
       })
     );
-
     const entity = await okJson(serviceResponse, 'DatabaseClass.patch');
 
     this.entityResponseData = entity;
@@ -244,7 +244,8 @@ export class DatabaseClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
         this.serviceResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
@@ -268,7 +269,7 @@ export class DatabaseClass extends EntityClass {
       searchTerm: this.tableResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.table.name}`,
     });
-    await page.getByRole('link', { name: owner }).isVisible();
+    await expect(page.getByRole('link', { name: owner })).toBeVisible();
   }
 
   async verifyOwnerChangeInES(page: Page, owner: string) {
@@ -280,7 +281,9 @@ export class DatabaseClass extends EntityClass {
       .getByTestId(owner);
     const tableTab = page.getByRole('menuitem', { name: 'Tables' });
 
-    await waitForSearchResult(page, searchTerm, ownerLink, tableTab);
+    await waitForSearchResult(page, searchTerm, ownerLink, tableTab, {
+      owners: [owner],
+    });
     await expect(ownerLink).toBeVisible();
   }
 
@@ -293,7 +296,9 @@ export class DatabaseClass extends EntityClass {
       const domainLink = entityCard
         .getByTestId('domain-link')
         .filter({ hasText: domain.displayName });
-      await waitForSearchResult(page, searchTerm, domainLink, tableTab);
+      await waitForSearchResult(page, searchTerm, domainLink, tableTab, {
+        domains: [domain.fullyQualifiedName ?? domain.name],
+      });
       await verifyDomainLinkInCard(entityCard, domain);
     }
 

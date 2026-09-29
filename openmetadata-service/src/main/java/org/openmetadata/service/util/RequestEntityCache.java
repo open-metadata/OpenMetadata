@@ -139,6 +139,9 @@ public final class RequestEntityCache {
   }
 
   private static <T extends EntityInterface> T get(EntityCacheKey key, Class<T> entityClass) {
+    if (FreshReadScope.isActive()) {
+      return null;
+    }
     String cachedJson;
     try (var ignored = phase("requestCacheGet")) {
       cachedJson = REQUEST_CACHE.get().get(key);
@@ -152,7 +155,7 @@ public final class RequestEntityCache {
   }
 
   private static <T extends EntityInterface> void put(EntityCacheKey key, T entity) {
-    if (entity == null) {
+    if (entity == null || FreshReadScope.isActive()) {
       return;
     }
     try (var ignored = phase("requestCacheSerialize")) {
