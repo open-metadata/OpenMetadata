@@ -53,14 +53,17 @@ const AnnouncementsWidgetV3Body = ({
   const index = Math.min(currentIndex, Math.max(total - 1, 0));
   const current = visible[index];
 
+  // Step from the rendered index, not the stored one. Dismissing the last item
+  // shrinks `visible` without moving `currentIndex`, so the two diverge and a
+  // step from the stored value lands back on the item already on screen.
   const handleStep = useCallback(
     (step: number) => {
-      setCurrentIndex((prev) =>
-        Math.min(Math.max(prev + step, 0), Math.max(total - 1, 0))
+      setCurrentIndex(
+        Math.min(Math.max(index + step, 0), Math.max(total - 1, 0))
       );
       setExpanded(false);
     },
-    [total]
+    [index, total]
   );
 
   const handleDismiss = useCallback(() => {

@@ -211,6 +211,33 @@ describe('AnnouncementsWidgetV3Body', () => {
     expect(screen.queryByText('Announcement 0')).not.toBeInTheDocument();
   });
 
+  it('pages back on the first click after the last announcement is dismissed', () => {
+    render(
+      <AnnouncementsWidgetV3Body
+        announcements={mockAnnouncements}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+
+    expect(screen.getByText('Announcement 2')).toBeInTheDocument();
+
+    // Dismissing the last one shrinks the list under the stored index, so the
+    // render clamps back to Announcement 1 while the stored index stays at 2.
+    fireEvent.click(screen.getByTestId('banner-dismiss'));
+
+    expect(screen.getByText('Announcement 1')).toBeInTheDocument();
+
+    // One click, not two: stepping from the stored index would land on
+    // Announcement 1 again and the arrow would look inert.
+    fireEvent.click(screen.getByTestId('announcement-prev-btn'));
+
+    expect(screen.getByText('Announcement 0')).toBeInTheDocument();
+    expect(screen.queryByText('Announcement 1')).not.toBeInTheDocument();
+  });
+
   it('renders nothing once every announcement is dismissed', () => {
     render(
       <AnnouncementsWidgetV3Body
