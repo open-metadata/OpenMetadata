@@ -17,7 +17,7 @@ import {
   TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
-import { TaskResolutionType, TaskStatusGroup } from '../../../../rest/tasksAPI';
+import { TaskResolutionType } from '../../../../rest/tasksAPI';
 import { isTaskOpen } from './inbox.utils';
 import { getTaskTypeKey } from './taskDetail.utils';
 
@@ -110,9 +110,10 @@ export const filterTasksByTypes = (tasks: Task[], keys: string[]): Task[] =>
     : tasks.filter((task) => keys.includes(getTaskTypeKey(task)));
 
 /**
- * The Status filter's options. "Pending approval" is the viewer's own queue —
- * derived from who holds the task, not a backend status — and the rest group
- * the backend statuses the way the queue reads them.
+ * How the queue reads a task's status. "Pending approval" is the viewer's own
+ * queue — derived from who holds the task, not a backend status — and the rest
+ * group the backend statuses. Open (not yet picked up) is classified but never
+ * offered as a filter: the Open tab already covers it.
  */
 export enum TaskStatusBucket {
   Open = 'open',
@@ -122,28 +123,13 @@ export enum TaskStatusBucket {
   Rejected = 'rejected',
 }
 
-export const TASK_STATUS_BUCKET_OPTIONS: {
-  value: TaskStatusBucket;
-  labelKey: string;
-}[] = [
-  { value: TaskStatusBucket.Open, labelKey: 'label.open' },
-  {
-    value: TaskStatusBucket.PendingApproval,
-    labelKey: 'label.pending-approval',
-  },
-  { value: TaskStatusBucket.InReview, labelKey: 'label.in-review' },
-  { value: TaskStatusBucket.Approved, labelKey: 'label.approved' },
-  { value: TaskStatusBucket.Rejected, labelKey: 'label.rejected' },
-];
-
-/** The queue opens on work still in flight. */
-export const DEFAULT_TASK_STATUS_BUCKETS: TaskStatusBucket[] = [
-  TaskStatusBucket.Open,
-  TaskStatusBucket.PendingApproval,
-  TaskStatusBucket.InReview,
-];
-
-const OPEN_BUCKETS = new Set<TaskStatusBucket>(DEFAULT_TASK_STATUS_BUCKETS);
+export const TASK_STATUS_BUCKET_LABEL_KEY: Record<TaskStatusBucket, string> = {
+  [TaskStatusBucket.Open]: 'label.open',
+  [TaskStatusBucket.PendingApproval]: 'label.pending-approval',
+  [TaskStatusBucket.InReview]: 'label.in-review',
+  [TaskStatusBucket.Approved]: 'label.approved',
+  [TaskStatusBucket.Rejected]: 'label.rejected',
+};
 
 const OUTCOME_BUCKET: Partial<Record<TaskStatus, TaskStatusBucket>> = {
   [TaskStatus.Approved]: TaskStatusBucket.Approved,
@@ -199,24 +185,4 @@ export const filterTasksByStatus = (
 
     return bucket !== undefined && chosen.has(bucket);
   });
-};
-
-/**
- * The server-side status group that covers the chosen options, so the list
- * fetches only what the filter can show. Approved spans both groups — an
- * approved access request stays open until granted — so it fetches all.
- */
-export const getStatusGroupForBuckets = (
-  buckets: TaskStatusBucket[]
-): TaskStatusGroup | undefined => {
-  if (buckets.length === 0) {
-    return undefined;
-  }
-  if (buckets.every((bucket) => OPEN_BUCKETS.has(bucket))) {
-    return TaskStatusGroup.Open;
-  }
-
-  return buckets.every((bucket) => bucket === TaskStatusBucket.Rejected)
-    ? TaskStatusGroup.Closed
-    : undefined;
 };

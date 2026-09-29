@@ -83,10 +83,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 import { Task, TaskType } from '../../../../../generated/entity/tasks/task';
-import {
-  DEFAULT_TASK_STATUS_BUCKETS,
-  TaskStatusBucket,
-} from '../taskList.utils';
+import { TaskStatusBucket } from '../taskList.utils';
 import InboxTaskListToolbar from './InboxTaskListToolbar';
 
 const TASKS = [
@@ -96,7 +93,9 @@ const TASKS = [
 ] as unknown as Task[];
 
 const props = {
-  statusFilter: DEFAULT_TASK_STATUS_BUCKETS,
+  statusTabs: <div data-testid="status-filter" />,
+  statusOptions: [TaskStatusBucket.PendingApproval, TaskStatusBucket.InReview],
+  statusFilter: [],
   onStatusFilterChange: jest.fn(),
   search: '',
   onSearchChange: jest.fn(),
@@ -186,36 +185,10 @@ describe('InboxTaskListToolbar', () => {
     );
   });
 
-  it('offers the five statuses, in order, with the open ones chosen', () => {
+  it('heads the list with the status control', () => {
     render(<InboxTaskListToolbar {...props} />);
 
-    const statusFilter = screen.getByTestId('inbox-tasks-status-filter');
-
-    expect(
-      Array.from(statusFilter.querySelectorAll('button')).map(
-        (option) => option.textContent
-      )
-    ).toEqual([
-      'label.open',
-      'label.pending-approval',
-      'label.in-review',
-      'label.approved',
-      'label.rejected',
-    ]);
-    expect(statusFilter).toHaveAttribute(
-      'data-selected',
-      'open,pending-approval,in-review'
-    );
-  });
-
-  it('reports a chosen status', () => {
-    render(<InboxTaskListToolbar {...props} />);
-
-    fireEvent.click(screen.getByTestId('inbox-tasks-status-filter-approved'));
-
-    expect(props.onStatusFilterChange).toHaveBeenCalledWith([
-      TaskStatusBucket.Approved,
-    ]);
+    expect(screen.getByTestId('status-filter')).toBeInTheDocument();
   });
 
   // The trigger reads "Group: Type" while the menu rows stay bare.
@@ -232,5 +205,29 @@ describe('InboxTaskListToolbar', () => {
     render(<InboxTaskListToolbar {...props} tasks={[]} />);
 
     expect(screen.getByTestId('inbox-tasks-type-filter')).toBeEmptyDOMElement();
+  });
+
+  it('offers only the statuses the tab can hold', () => {
+    render(<InboxTaskListToolbar {...props} />);
+
+    const statusFilter = screen.getByTestId('inbox-tasks-status-filter');
+
+    expect(
+      Array.from(statusFilter.querySelectorAll('button')).map(
+        (option) => option.textContent
+      )
+    ).toEqual(['label.pending-approval', 'label.in-review']);
+  });
+
+  it('reports a chosen status', () => {
+    render(<InboxTaskListToolbar {...props} />);
+
+    fireEvent.click(
+      screen.getByTestId('inbox-tasks-status-filter-pending-approval')
+    );
+
+    expect(props.onStatusFilterChange).toHaveBeenCalledWith([
+      TaskStatusBucket.PendingApproval,
+    ]);
   });
 });

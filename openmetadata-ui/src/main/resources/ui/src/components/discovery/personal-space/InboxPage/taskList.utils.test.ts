@@ -22,7 +22,6 @@ import {
   filterTasksByStatus,
   filterTasksByTypes,
   formatEntityType,
-  getStatusGroupForBuckets,
   getTaskStatusBucket,
   groupTasksByType,
   isApproveTransition,
@@ -217,17 +216,5 @@ describe('filterTasksByStatus', () => {
 
   it('keeps every task, even those under no option, with nothing chosen', () => {
     expect(filterTasksByStatus(tasks, [], new Set())).toHaveLength(3);
-  });
-});
-
-describe('getStatusGroupForBuckets', () => {
-  it.each([
-    [[TaskStatusBucket.Open, TaskStatusBucket.PendingApproval], 'open'],
-    [[TaskStatusBucket.Rejected], 'closed'],
-    [[TaskStatusBucket.Approved], undefined],
-    [[TaskStatusBucket.Open, TaskStatusBucket.Rejected], undefined],
-    [[], undefined],
-  ])('fetches %o from %s', (buckets, group) => {
-    expect(getStatusGroupForBuckets(buckets)).toBe(group);
   });
 });

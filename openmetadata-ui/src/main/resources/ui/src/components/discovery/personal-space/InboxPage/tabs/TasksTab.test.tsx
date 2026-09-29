@@ -29,6 +29,16 @@ let resolvedPayload: Record<string, unknown> = {};
 
 jest.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+  // The badge totals come from React Query; return static totals so tests stay
+  // synchronous. The fetch/dedup itself is the library's concern — the component
+  // contract we assert is that mutations invalidate the counts cache.
+  useQueries: () => [{ data: 0 }, { data: 0 }, { data: 0 }],
+}));
+
+let mockCurrentUserIds: ReadonlySet<string> = new Set();
+
+jest.mock('../useCurrentUserIds', () => ({
+  useCurrentUserIds: () => mockCurrentUserIds,
 }));
 
 jest.mock('../useInboxCounts', () => ({
@@ -68,33 +78,31 @@ jest.mock('rest/tasksAPI', () => ({
 jest.mock('../components/InboxTaskListToolbar', () => ({
   __esModule: true,
   default: ({
+    statusTabs,
+    statusOptions,
     statusFilter,
     onStatusFilterChange,
     onSearchChange,
     onGroupingChange,
     onTypeFilterChange,
   }: {
+    statusTabs: ReactNode;
+    statusOptions: string[];
     statusFilter: string[];
     onStatusFilterChange: (value: string[]) => void;
     onSearchChange: (value: string) => void;
     onGroupingChange: (value: string) => void;
     onTypeFilterChange: (value: string[]) => void;
   }) => (
-    <div data-status={statusFilter.join(',')} data-testid="toolbar">
+    <div
+      data-status={statusFilter.join(',')}
+      data-status-options={statusOptions.join(',')}
+      data-testid="toolbar">
+      {statusTabs}
       <button
-        data-testid="toolbar-status-all"
-        onClick={() => onStatusFilterChange([])}>
-        all statuses
-      </button>
-      <button
-        data-testid="toolbar-status-outcomes"
-        onClick={() => onStatusFilterChange(['approved', 'rejected'])}>
-        outcomes
-      </button>
-      <button
-        data-testid="toolbar-status-rejected"
-        onClick={() => onStatusFilterChange(['rejected'])}>
-        rejected
+        data-testid="toolbar-status-pending"
+        onClick={() => onStatusFilterChange(['pending-approval'])}>
+        pending approval
       </button>
       <button
         data-testid="toolbar-search"
@@ -167,7 +175,44 @@ jest.mock('components/common/Loader/Loader', () => ({
   default: () => <div data-testid="loader" />,
 }));
 
+let tabsOnChange: ((key: string) => void) | undefined;
+
 jest.mock('@openmetadata/ui-core-components', () => {
+  const TabsRoot = ({
+    onSelectionChange,
+    children,
+  }: {
+    onSelectionChange?: (...args: unknown[]) => void;
+    children?: ReactNode;
+  }) => {
+    tabsOnChange = onSelectionChange;
+
+    return <div>{children}</div>;
+  };
+  const TabsList = ({ children }: { children?: ReactNode }) => (
+    <div>{children}</div>
+  );
+  const TabsItem = ({
+    id,
+    label,
+    children,
+  }: {
+    id: string;
+    label?: ReactNode;
+    children?: ReactNode | ((state: { isSelected: boolean }) => ReactNode);
+  }) => (
+    <button
+      data-testid={`task-status-${id}`}
+      type="button"
+      onClick={() => tabsOnChange?.(id)}>
+      {typeof children === 'function'
+        ? children({ isSelected: false })
+        : children ?? label}
+    </button>
+  );
+
+  const Tabs = Object.assign(TabsRoot, { List: TabsList, Item: TabsItem });
+
   return {
     Box: ({
       children,
@@ -203,6 +248,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         <span>{description}</span>
       </div>
     ),
+    Tabs,
   };
 });
 
@@ -243,10 +289,10 @@ describe('TasksTab', () => {
   it('reports the in-range visible task count via onCountChange', () => {
     hookState = {
       items: [
-        { id: 't1', status: 'Open' },
-        { id: 't2', status: 'Open' },
-        { id: 't3', status: 'Open' },
-        { id: 't4', status: 'Open' },
+        { id: 't1' },
+        { id: 't2' },
+        { id: 't3' },
+        { id: 't4' },
       ] as unknown as Task[],
       isLoading: false,
       total: 4,
@@ -273,10 +319,10 @@ describe('TasksTab', () => {
     expect(mockListTasks).not.toHaveBeenCalled();
   });
 
-  it('fetches every status group once the Status filter is cleared', () => {
+  it('refetches visible tasks with no statusGroup when All is selected', () => {
     renderTab();
 
-    fireEvent.click(screen.getByTestId('toolbar-status-all'));
+    fireEvent.click(screen.getByTestId('task-status-all'));
     capturedFetchPage('cur');
 
     expect(mockListVisibleTasks).toHaveBeenLastCalledWith({
@@ -319,10 +365,7 @@ describe('TasksTab', () => {
 
   it('auto-selects the first task and renders its detail', () => {
     hookState = {
-      items: [
-        { id: 't1', status: 'Open' },
-        { id: 't2', status: 'Open' },
-      ] as unknown as Task[],
+      items: [{ id: 't1' }, { id: 't2' }] as unknown as Task[],
       isLoading: false,
       total: 2,
     };
@@ -334,7 +377,7 @@ describe('TasksTab', () => {
 
   it('removes a resolved task and decrements the total when it leaves the filter', () => {
     hookState = {
-      items: [{ id: 't1', status: 'Open' }] as unknown as Task[],
+      items: [{ id: 't1' }] as unknown as Task[],
       isLoading: false,
       total: 1,
     };
@@ -348,7 +391,7 @@ describe('TasksTab', () => {
 
   it('keeps an approved DAR in the Open list without decrementing the total', () => {
     hookState = {
-      items: [{ id: 't1', status: 'Open' }] as unknown as Task[],
+      items: [{ id: 't1' }] as unknown as Task[],
       isLoading: false,
       total: 1,
     };
@@ -363,9 +406,9 @@ describe('TasksTab', () => {
     expect(mockSetTotal).not.toHaveBeenCalled();
   });
 
-  it('refetches the lists and re-syncs the tab badge after an assignee change', () => {
+  it('refetches the lists and invalidates the count caches after an assignee change', () => {
     hookState = {
-      items: [{ id: 't1', status: 'Open' }] as unknown as Task[],
+      items: [{ id: 't1' }] as unknown as Task[],
       isLoading: false,
       total: 1,
     };
@@ -381,15 +424,19 @@ describe('TasksTab', () => {
       refetchType: 'active',
     });
     expect(mockSetTotal).not.toHaveBeenCalled();
-    // The tab badge re-syncs through its own React Query fetch.
+    // Both the tab-badge and the All/Open/Closed status-count caches are
+    // invalidated so their React Query fetches re-run.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-counts'],
     });
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['inbox-task-status-counts'],
+    });
   });
 
-  it('re-syncs the tab badge and the other lists after a task is resolved', () => {
+  it('invalidates the status-count cache after a task is resolved', () => {
     hookState = {
-      items: [{ id: 't1', status: 'Open' }] as unknown as Task[],
+      items: [{ id: 't1' }] as unknown as Task[],
       isLoading: false,
       total: 1,
     };
@@ -398,6 +445,12 @@ describe('TasksTab', () => {
 
     fireEvent.click(screen.getByTestId('resolve'));
 
+    // handleResolved invalidates the status-count cache so the badges re-sync
+    // instead of showing pre-resolution totals...
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['inbox-task-status-counts'],
+    });
+    // ...and the tab-badge react-query cache.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-counts'],
     });
@@ -423,7 +476,7 @@ describe('TasksTab', () => {
     // The sidebar badge fetches under its own key and never unmounts, so without
     // this invalidation it keeps the pre-approval count until a navigation.
     hookState = {
-      items: [{ id: 't1', status: 'Open' }] as unknown as Task[],
+      items: [{ id: 't1' }] as unknown as Task[],
       isLoading: false,
       total: 1,
     };
@@ -441,12 +494,10 @@ describe('TasksTab', () => {
     const TAG_TASK = {
       id: 't1',
       type: 'TagUpdate',
-      status: 'Open',
     } as unknown as Task;
     const INCIDENT_TASK = {
       id: 't2',
       type: 'TestCaseResolution',
-      status: 'Open',
     } as unknown as Task;
 
     beforeEach(() => {
@@ -529,66 +580,58 @@ describe('TasksTab', () => {
   });
 
   describe('the Status filter', () => {
-    const OPEN_TASK = { id: 't1', status: 'Open' } as unknown as Task;
-    const REJECTED_TASK = { id: 't2', status: 'Rejected' } as unknown as Task;
+    const MINE = {
+      id: 't1',
+      status: 'Open',
+      assignees: [{ id: 'u1' }],
+    } as unknown as Task;
+    const THEIRS = {
+      id: 't2',
+      status: 'InProgress',
+      assignees: [{ id: 'u9' }],
+    } as unknown as Task;
 
     beforeEach(() => {
-      hookState = {
-        items: [OPEN_TASK, REJECTED_TASK],
-        isLoading: false,
-        total: 2,
-      };
+      mockCurrentUserIds = new Set(['u1']);
+      hookState = { items: [MINE, THEIRS], isLoading: false, total: 2 };
     });
 
-    it('opens on work still in flight', () => {
+    it('shows the whole tab until a status is chosen', () => {
+      renderTab();
+
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+      expect(screen.getByTestId('task-t2')).toBeInTheDocument();
+    });
+
+    it('offers the Open tab only whose move it is', () => {
       renderTab();
 
       expect(screen.getByTestId('toolbar')).toHaveAttribute(
-        'data-status',
-        'open,pending-approval,in-review'
+        'data-status-options',
+        'pending-approval,in-review'
       );
+    });
+
+    it('narrows the tab to tasks waiting on the viewer', () => {
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-status-pending'));
+
       expect(screen.getByTestId('task-t1')).toBeInTheDocument();
       expect(screen.queryByTestId('task-t2')).not.toBeInTheDocument();
     });
 
-    it('fetches the closed group and shows only rejected tasks when chosen', () => {
+    it('offers outcomes on Closed and clears the choice on a tab switch', () => {
       renderTab();
 
-      fireEvent.click(screen.getByTestId('toolbar-status-rejected'));
+      fireEvent.click(screen.getByTestId('toolbar-status-pending'));
+      fireEvent.click(screen.getByTestId('task-status-closed'));
 
-      expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'closed', '']);
-      expect(screen.getByTestId('task-t2')).toBeInTheDocument();
-      expect(screen.queryByTestId('task-t1')).not.toBeInTheDocument();
-    });
-
-    // An approved access request stays open until granted, so Approved has to
-    // look in both groups.
-    it('fetches every group when Approved is among the choices', () => {
-      renderTab();
-
-      fireEvent.click(screen.getByTestId('toolbar-status-outcomes'));
-
-      expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'all', '']);
-    });
-
-    it('shows the archival empty state for outcomes only', () => {
-      hookState = { items: [], isLoading: false, total: 0 };
-      renderTab();
-
-      fireEvent.click(screen.getByTestId('toolbar-status-outcomes'));
-
-      expect(
-        screen.getByTestId('inbox-tasks-closed-empty')
-      ).toBeInTheDocument();
-    });
-
-    it('shows the generic empty state once the filter is cleared', () => {
-      hookState = { items: [], isLoading: false, total: 0 };
-      renderTab();
-
-      fireEvent.click(screen.getByTestId('toolbar-status-all'));
-
-      expect(screen.getByTestId('inbox-tasks-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('toolbar')).toHaveAttribute(
+        'data-status-options',
+        'approved,rejected'
+      );
+      expect(screen.getByTestId('toolbar')).toHaveAttribute('data-status', '');
     });
   });
 });
