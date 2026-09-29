@@ -54,8 +54,20 @@ class AlertDefinitionPolicyTest {
     assertInstanceOf(
         WrittenByHand.class,
         AlertDefinitionPolicy.ofNew(fromTheForm(byOwner()).withAlertType(AlertType.CUSTOM)));
+    assertInstanceOf(WrittenByHand.class, AlertDefinitionPolicy.ofNew(triggersWrittenByHand()));
     assertInstanceOf(FromSelections.class, AlertDefinitionPolicy.ofNew(fromTheForm(byOwner())));
     assertInstanceOf(FromSelections.class, AlertDefinitionPolicy.ofNew(fromTheForm()));
+  }
+
+  // A rename or an enable leaves the definition as it is, and nothing compiles triggers in its
+  // place.
+  @Test
+  void aRenameKeepsTriggersWrittenByHand() {
+    EventSubscription renamed = triggersWrittenByHand().withDisplayName("renamed");
+
+    settle(triggersWrittenByHand(), renamed, false);
+
+    assertEquals(List.of(WRITTEN), renamed.getFilteringRules().getActions());
   }
 
   @Test
@@ -160,6 +172,16 @@ class AlertDefinitionPolicyTest {
   private static EventSubscription handWritten(AlertFilteringInput input) {
     EventSubscription alert = alert(input);
     alert.getFilteringRules().setRules(new ArrayList<>(List.of(WRITTEN)));
+    return alert;
+  }
+
+  // Triggers with no selections behind them, as the system or an earlier release may store them.
+  private static EventSubscription triggersWrittenByHand() {
+    EventSubscription alert = alert(null).withAlertType(AlertType.OBSERVABILITY);
+    alert
+        .getFilteringRules()
+        .withRules(new ArrayList<>())
+        .setActions(new ArrayList<>(List.of(WRITTEN)));
     return alert;
   }
 
