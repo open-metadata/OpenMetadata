@@ -160,10 +160,11 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
       <Box align="center" className="tw:min-w-0 tw:flex-wrap" gap={2}>
         {statusBadge && (
           <Badge
+            className="tw:font-medium"
             color={STATUS_BADGE_COLOR[statusBadge.tone]}
             data-color={statusBadge.tone}
             data-testid="task-status-badge"
-            size="sm"
+            size="md"
             type="color">
             {statusBadge.label}
           </Badge>
