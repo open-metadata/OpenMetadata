@@ -290,23 +290,35 @@ export const Breadcrumbs = ({
     }
   }, [autoCollapse, fittedCount, items, measureKey]);
 
-  // Reset to the full trail and re-measure on mount, on a container resize, and
-  // once web fonts load (label widths can change after the first layout, which
-  // would otherwise leave a stale measurement). The reset lets the trail
-  // re-expand when there is more room.
+  // Reset to the full trail and re-measure on mount, when the container grows,
+  // and once web fonts load (label widths can change after the first layout,
+  // which would otherwise leave a stale measurement). The reset lets the trail
+  // re-expand when there is more room. A shrink only re-measures: in a
+  // content-sized container (a flex `auto` column) collapsing shrinks the
+  // container, and resetting on that would expand it again — a loop that
+  // keeps the trail and everything beside it moving.
   useEffect(() => {
     const el = containerRef.current;
     if (!autoCollapse || !el) {
       return undefined;
     }
 
-    const remeasure = () => {
+    let lastWidth = -1;
+    const reset = () => {
       setFittedCount(items.length);
       requestMeasure();
     };
-    const observer = new ResizeObserver(remeasure);
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width ?? el.clientWidth;
+      if (width > lastWidth) {
+        reset();
+      } else if (width < lastWidth) {
+        requestMeasure();
+      }
+      lastWidth = width;
+    });
     observer.observe(el);
-    document.fonts?.ready.then(remeasure).catch(() => undefined);
+    document.fonts?.ready.then(reset).catch(() => undefined);
 
     return () => observer.disconnect();
   }, [autoCollapse, items.length]);
