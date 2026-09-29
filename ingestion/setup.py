@@ -22,8 +22,11 @@ VERSIONS = {
     # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
     # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0);
     # CVE-2026-67587 Dag-author RCE on the Scheduler via a Serde Callback deserialization
-    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1)
-    "airflow": "apache-airflow==3.3.1",
+    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1);
+    # CVE-2026-86473 logout ignores a presented Authorization bearer token, leaving it
+    # revocable only by expiry, and CVE-2026-75158 the asset events API returns events for
+    # every Dag with no per-Dag authorization filter (both need 3.3.2)
+    "airflow": "apache-airflow==3.3.2",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
