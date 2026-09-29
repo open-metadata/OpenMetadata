@@ -48,9 +48,14 @@ public sealed interface AlertDefinitionPolicy {
   private static AlertDefinitionPolicy of(
       AlertType type, AlertFilteringInput selections, FilteringRules rules) {
     boolean compiledType = type == AlertType.NOTIFICATION || type == AlertType.OBSERVABILITY;
-    boolean rulesWithoutSelections =
-        !hasSelections(selections) && rules != null && !listOrEmpty(rules.getRules()).isEmpty();
+    boolean rulesWithoutSelections = !hasSelections(selections) && hasConditions(rules);
     return compiledType && !rulesWithoutSelections ? new FromSelections() : new WrittenByHand();
+  }
+
+  // Rules and triggers alike: a stored trigger is as much a definition as a stored rule.
+  private static boolean hasConditions(FilteringRules rules) {
+    return rules != null
+        && !(listOrEmpty(rules.getRules()).isEmpty() && listOrEmpty(rules.getActions()).isEmpty());
   }
 
   private static boolean hasSelections(AlertFilteringInput input) {

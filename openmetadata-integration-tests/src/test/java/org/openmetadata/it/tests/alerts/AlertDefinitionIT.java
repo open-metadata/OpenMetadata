@@ -136,6 +136,20 @@ class AlertDefinitionIT {
   }
 
   @Test
+  void handWrittenTriggersSurviveRenameAndEnable(TestNamespace ns) {
+    EventSubscription alert =
+        create(tableAlert(ns, "hand_written_triggers").withAlertType(AlertType.OBSERVABILITY));
+    alert.getFilteringRules().setActions(new ArrayList<>(List.of(WRITTEN)));
+    AlertFixtures.writeBehindTheServer(alert);
+
+    patch(alert, "[{\"op\":\"add\",\"path\":\"/displayName\",\"value\":\"renamed\"}]");
+    patch(alert, "[{\"op\":\"replace\",\"path\":\"/enabled\",\"value\":false}]");
+
+    assertEquals(
+        List.of(WRITTEN), AlertFixtures.stored(alert.getId()).getFilteringRules().getActions());
+  }
+
+  @Test
   void formSelectionsTurnAHandWrittenAlertIntoACompiledOne(TestNamespace ns) {
     EventSubscription alert = handWritten(create(tableAlert(ns, "converted_by_the_form")));
     String chooseAnOwner =
