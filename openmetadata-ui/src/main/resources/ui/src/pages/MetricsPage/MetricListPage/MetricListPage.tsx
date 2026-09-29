@@ -65,6 +65,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import DomainTags from '../../../components/common/DomainTags/DomainTags';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
@@ -74,14 +75,15 @@ import MetricListHealth from '../../../components/Metric/MetricListHealth/Metric
 import MetricStatusPill from '../../../components/Metric/MetricStatusPill/MetricStatusPill';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import type { Metric } from '../../../generated/entity/data/metric';
 import { EntityStatus } from '../../../generated/entity/data/metric';
 import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
@@ -220,8 +222,13 @@ const getDepthClassName = (depth: number) => {
   return '';
 };
 
+// AI padding standard: 16px under the header band (core PageLayout gives 8px).
+const getContentClassName = (isAiMode: boolean) =>
+  isAiMode ? 'tw:pt-4' : undefined;
+
 const MetricListPage = () => {
   const { t } = useTranslation();
+  const contentClassName = getContentClassName(useIsAiMode());
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { getResourcePermission } = usePermissionProvider();
@@ -847,13 +854,10 @@ const MetricListPage = () => {
       )}
       {visibleColumns.includes('domains') && (
         <Table.Cell>
-          {renderTagBadges(
-            (metric.domains ?? []).map((domain) => ({
-              tagFQN: domain.fullyQualifiedName ?? domain.id,
-              name:
-                domain.displayName ?? domain.name ?? domain.fullyQualifiedName,
-              source: TagSource.Classification,
-            }))
+          {metric.domains?.length ? (
+            <DomainTags domains={metric.domains} maxVisible={2} />
+          ) : (
+            <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
           )}
         </Table.Cell>
       )}
@@ -1532,7 +1536,9 @@ const MetricListPage = () => {
           subtitle={t('message.metric-description')}
           title={t('label.metric-plural')}
         />
-        <PageLayout.Content>{renderLoading()}</PageLayout.Content>
+        <PageLayout.Content className={contentClassName}>
+          {renderLoading()}
+        </PageLayout.Content>
       </PageLayout>
     );
   }
@@ -1546,7 +1552,7 @@ const MetricListPage = () => {
         subtitle={t('message.metric-description')}
         title={t('label.metric-plural')}
       />
-      <PageLayout.Content>
+      <PageLayout.Content className={contentClassName}>
         {renderAccessibleList()}
         <ModalOverlay
           isDismissable

@@ -23,7 +23,7 @@ class ExasolUsageSource(ExasolQueryParserSource, UsageSource):
     Exasol class for Usage
     """
 
-    dialect = Dialect.EXASOL  # pyright: ignore[reportAssignmentType]
+    dialect = Dialect.EXASOL
     sql_stmt = EXASOL_SQL_STATEMENT
     filters = """
         AND s.command_name = 'SELECT'

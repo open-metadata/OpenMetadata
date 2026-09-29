@@ -1226,8 +1226,7 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string",
-                                          "format": "password"
+                                          "type": "string"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -3077,8 +3076,7 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string",
-                                                  "format": "password"
+                                                  "type": "string"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -7024,8 +7022,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -7719,8 +7716,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -8763,6 +8759,12 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -12414,8 +12416,7 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string",
-                                                  "format": "password"
+                                                  "type": "string"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -13984,13 +13985,13 @@
                     },
                     "encrypt": {
                       "title": "Encrypt Connection",
-                      "description": "Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.",
+                      "description": "Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc. mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is decided by FreeTDS configuration.",
                       "type": "boolean",
                       "default": false
                     },
                     "trustServerCertificate": {
                       "title": "Trust Server Certificate",
-                      "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority.",
+                      "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority. On mssql+pytds the certificate chain is always validated against the supplied CA certificate and only the host name check is dropped.",
                       "type": "boolean",
                       "default": false
                     },
@@ -15005,8 +15006,7 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string",
-                                          "format": "password"
+                                          "type": "string"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -21010,8 +21010,7 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string",
-                                          "format": "password"
+                                          "type": "string"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -23917,6 +23916,12 @@
                       "title": "Database Schema",
                       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
                       "type": "string"
+                    },
+                    "includeMetricViews": {
+                      "title": "Include Metric Views",
+                      "description": "Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage from the relations it reads.",
+                      "type": "boolean",
+                      "default": true
                     },
                     "connectionTimeout": {
                       "title": "Connection Timeout",
@@ -28685,8 +28690,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -30926,8 +30930,7 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string",
-                                                  "format": "password"
+                                                  "type": "string"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -32334,8 +32337,7 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string",
-                                                  "format": "password"
+                                                  "type": "string"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -33060,8 +33062,7 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string",
-                                                  "format": "password"
+                                                  "type": "string"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -34683,13 +34684,13 @@
                             },
                             "encrypt": {
                               "title": "Encrypt Connection",
-                              "description": "Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.",
+                              "description": "Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc. mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is decided by FreeTDS configuration.",
                               "type": "boolean",
                               "default": false
                             },
                             "trustServerCertificate": {
                               "title": "Trust Server Certificate",
-                              "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority.",
+                              "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority. On mssql+pytds the certificate chain is always validated against the supplied CA certificate and only the host name check is dropped.",
                               "type": "boolean",
                               "default": false
                             },
@@ -35190,13 +35191,13 @@
                         },
                         "encrypt": {
                           "title": "Encrypt Connection",
-                          "description": "Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.",
+                          "description": "Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc. mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is decided by FreeTDS configuration.",
                           "type": "boolean",
                           "default": false
                         },
                         "trustServerCertificate": {
                           "title": "Trust Server Certificate",
-                          "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority.",
+                          "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority. On mssql+pytds the certificate chain is always validated against the supplied CA certificate and only the host name check is dropped.",
                           "type": "boolean",
                           "default": false
                         },
@@ -39426,8 +39427,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -40151,8 +40151,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -40594,7 +40593,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -40868,7 +40866,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -41346,8 +41343,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -41882,59 +41878,6 @@
                         "Sftp"
                       ],
                       "default": "Sftp"
-                    },
-                    "basicAuth": {
-                      "title": "Username/Password Authentication",
-                      "description": "Username and password authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "SFTP password",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "keyAuth": {
-                      "title": "Private Key Authentication",
-                      "description": "SSH private key authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "privateKey": {
-                          "title": "Private Key",
-                          "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
-                          "type": "string",
-                          "format": "password",
-                          "uiFieldType": "fileOrInput"
-                        },
-                        "privateKeyPassphrase": {
-                          "title": "Private Key Passphrase",
-                          "description": "Passphrase for the private key (if encrypted)",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "privateKey"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -41966,6 +41909,7 @@
                           "title": "Username/Password Authentication",
                           "description": "Username and password authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -41989,6 +41933,7 @@
                           "title": "Private Key Authentication",
                           "description": "SSH private key authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -43819,8 +43764,7 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string",
-                                          "format": "password"
+                                          "type": "string"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -45670,8 +45614,7 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string",
-                                                  "format": "password"
+                                                  "type": "string"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -49617,8 +49560,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -50312,8 +50254,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -51356,6 +51297,12 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -55007,8 +54954,7 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string",
-                                                  "format": "password"
+                                                  "type": "string"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -56577,13 +56523,13 @@
                     },
                     "encrypt": {
                       "title": "Encrypt Connection",
-                      "description": "Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.",
+                      "description": "Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc. mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is decided by FreeTDS configuration.",
                       "type": "boolean",
                       "default": false
                     },
                     "trustServerCertificate": {
                       "title": "Trust Server Certificate",
-                      "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority.",
+                      "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority. On mssql+pytds the certificate chain is always validated against the supplied CA certificate and only the host name check is dropped.",
                       "type": "boolean",
                       "default": false
                     },
@@ -57598,8 +57544,7 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string",
-                                          "format": "password"
+                                          "type": "string"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -63603,8 +63548,7 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string",
-                                          "format": "password"
+                                          "type": "string"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -66510,6 +66454,12 @@
                       "title": "Database Schema",
                       "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
                       "type": "string"
+                    },
+                    "includeMetricViews": {
+                      "title": "Include Metric Views",
+                      "description": "Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage from the relations it reads.",
+                      "type": "boolean",
+                      "default": true
                     },
                     "connectionTimeout": {
                       "title": "Connection Timeout",
@@ -71278,8 +71228,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -73519,8 +73468,7 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string",
-                                                  "format": "password"
+                                                  "type": "string"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -74927,8 +74875,7 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string",
-                                                  "format": "password"
+                                                  "type": "string"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -75653,8 +75600,7 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string",
-                                                  "format": "password"
+                                                  "type": "string"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -77276,13 +77222,13 @@
                             },
                             "encrypt": {
                               "title": "Encrypt Connection",
-                              "description": "Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.",
+                              "description": "Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc. mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is decided by FreeTDS configuration.",
                               "type": "boolean",
                               "default": false
                             },
                             "trustServerCertificate": {
                               "title": "Trust Server Certificate",
-                              "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority.",
+                              "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority. On mssql+pytds the certificate chain is always validated against the supplied CA certificate and only the host name check is dropped.",
                               "type": "boolean",
                               "default": false
                             },
@@ -77783,13 +77729,13 @@
                         },
                         "encrypt": {
                           "title": "Encrypt Connection",
-                          "description": "Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.",
+                          "description": "Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc. mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is decided by FreeTDS configuration.",
                           "type": "boolean",
                           "default": false
                         },
                         "trustServerCertificate": {
                           "title": "Trust Server Certificate",
-                          "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority.",
+                          "description": "Trust the server certificate without validation. Set to false in production to validate server certificates against the certificate authority. On mssql+pytds the certificate chain is always validated against the supplied CA certificate and only the host name check is dropped.",
                           "type": "boolean",
                           "default": false
                         },
@@ -82019,8 +81965,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -82744,8 +82689,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -83187,7 +83131,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -83461,7 +83404,6 @@
                       "type": "object",
                       "properties": {
                         "certificates": {
-                          "type": "object",
                           "title": "SSL Certificates",
                           "description": "SSL Certificates",
                           "oneOf": [
@@ -83939,8 +83881,7 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string",
-                                  "format": "password"
+                                  "type": "string"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -84475,59 +84416,6 @@
                         "Sftp"
                       ],
                       "default": "Sftp"
-                    },
-                    "basicAuth": {
-                      "title": "Username/Password Authentication",
-                      "description": "Username and password authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "SFTP password",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "keyAuth": {
-                      "title": "Private Key Authentication",
-                      "description": "SSH private key authentication for SFTP",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "SFTP username",
-                          "type": "string"
-                        },
-                        "privateKey": {
-                          "title": "Private Key",
-                          "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
-                          "type": "string",
-                          "format": "password",
-                          "uiFieldType": "fileOrInput"
-                        },
-                        "privateKeyPassphrase": {
-                          "title": "Private Key Passphrase",
-                          "description": "Passphrase for the private key (if encrypted)",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "privateKey"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -84559,6 +84447,7 @@
                           "title": "Username/Password Authentication",
                           "description": "Username and password authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -84582,6 +84471,7 @@
                           "title": "Private Key Authentication",
                           "description": "SSH private key authentication for SFTP",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth",
                           "properties": {
                             "username": {
                               "title": "Username",

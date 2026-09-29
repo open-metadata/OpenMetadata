@@ -48,11 +48,12 @@ import {
   renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { stripMarkdown } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
-import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
+import DomainTags from '../../common/DomainTags/DomainTags';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -552,11 +553,16 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { isTourOpen } = useTourProvider();
     const queryClient = useQueryClient();
 
-    const source = useMemo(() => {
-      return highlight
-        ? highlightEntityNameAndDescription(_source, highlight)
-        : _source;
-    }, [_source, highlight]);
+    const source = useMemo(
+      () =>
+        highlight
+          ? highlightEntityNameAndDescription(_source, highlight, true)
+          : {
+              ..._source,
+              description: stripMarkdown(_source.description ?? ''),
+            },
+      [_source, highlight]
+    );
 
     const rankingStages = useMemo(() => {
       const stageNames = new Set<string>();
@@ -773,7 +779,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             ? [
                 {
                   key: 'Domains',
-                  value: <DomainDisplay domains={source.domains} />,
+                  value: <DomainTags domains={source.domains} maxVisible={1} />,
                 },
               ]
             : emptyDomainInfo;

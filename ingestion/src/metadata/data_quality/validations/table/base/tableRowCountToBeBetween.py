@@ -17,6 +17,7 @@ import traceback
 from abc import abstractmethod
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -32,6 +33,8 @@ ROW_COUNT = "rowCount"
 
 class BaseTableRowCountToBeBetweenValidator(BaseTestValidator):
     """Validator for table row count to be between test case"""
+
+    SAMPLING_STABILITY = SamplingStability.SCALES_WITH_SAMPLE
 
     def _run_validation(self) -> TestCaseResult:
         """Execute the specific test validation logic
@@ -56,11 +59,12 @@ class BaseTableRowCountToBeBetweenValidator(BaseTestValidator):
             )
 
         min_bound, max_bound = self.get_bounds("minValue", "maxValue")
+        matched = min_bound <= res <= max_bound
 
         return self.get_test_case_result_object(
             self.execution_date,
-            self.get_test_case_status(min_bound <= res <= max_bound),
-            f"Found rowCount={res} vs. the expected min={min_bound},  max={max_bound}.",
+            self.get_test_case_status(matched),
+            self.format_statistic_message("Row count", res, (min_bound, max_bound), matched),
             [TestResultValue(name=ROW_COUNT, value=str(res))],
             min_bound=min_bound,
             max_bound=max_bound,

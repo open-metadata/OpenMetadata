@@ -19,6 +19,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
+  dismissToasts,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -77,6 +78,9 @@ test.describe('Glossary Advanced Operations', () => {
       await expect(page.getByTestId('form-item-alert')).not.toBeVisible();
 
       const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
+      // Save sits under the fixed bottom-center toast region; an error toast left
+      // over from the Glossary landing page never drains on its own.
+      await dismissToasts(page);
       await page.click('[data-testid="save-glossary"]');
       const response = await glossaryResponse;
       const responseData = await response.json();
@@ -190,6 +194,9 @@ test.describe('Glossary Advanced Operations', () => {
       });
 
       const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
+      // Save sits under the fixed bottom-center toast region; an error toast left
+      // over from the Glossary landing page never drains on its own.
+      await dismissToasts(page);
       await page.click('[data-testid="save-glossary"]');
       const response = await glossaryResponse;
       glossary.responseData = await response.json();
@@ -1173,12 +1180,24 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('tags-container')
         .getByTestId('edit-button')
         .click();
-      await page.getByTestId('tag-selector').waitFor();
 
-      // Remove the tag by clicking its close button
-      await page.getByTestId('remove-tags').locator('svg').click();
+      await expect(
+        page.getByTestId('classification-tag-picker-search')
+      ).toBeVisible();
 
-      await page.getByTestId('saveAssociatedTag').click();
+      const searchRemove = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent('Sensitive')}*`
+      );
+      await page
+        .getByTestId('classification-tag-picker-search')
+        .fill('Sensitive');
+      await searchRemove;
+
+      await page.getByTestId('tree-node-PII.Sensitive').click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
 
       await expect(page.getByRole('heading')).toContainText(
         'Would you like to proceed with updating the tags?'
@@ -1273,7 +1292,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.getByTestId('rename-button').click();
 
       // Wait for rename modal
-      await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
+      await page.getByTestId('entity-name-modal').waitFor({ state: 'visible' });
 
       const newDisplayName = `UpdatedTerm_${Date.now()}`;
       await page.locator('#displayName').fill(newDisplayName);
@@ -1375,6 +1394,9 @@ test.describe('Glossary Advanced Operations', () => {
     await fillDescriptionBox(page, 'Test description');
 
     // Try to save
+    // Save sits under the fixed bottom-center toast region; an error toast left
+    // over from the Glossary landing page never drains on its own.
+    await dismissToasts(page);
     await page.click('[data-testid="save-glossary"]');
 
     // Check for error (either validation error or the field truncates)

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ReactNode } from 'react';
+import type { FC, ReactNode } from 'react';
 
 export interface TreeSelectNode<T = unknown> {
   id: string;
@@ -103,6 +103,12 @@ export interface TreeSelectProps<T = unknown> {
   showCheckbox?: boolean;
   /** @default true */
   showIcon?: boolean;
+  /**
+   * When false, suppresses the expand/collapse chevron entirely — use for flat
+   * trees where no node has children (e.g. a classification tag list).
+   * @default true
+   */
+  showExpandIcon?: boolean;
   /** Selecting a node also selects/deselects all of its descendants. @default false */
   cascadeSelection?: boolean;
 
@@ -125,6 +131,30 @@ export interface TreeSelectProps<T = unknown> {
    */
   triggerVariant?: TreeSelectTriggerVariant;
   /**
+   * Extra classes for the built-in `button` trigger — e.g. a max width plus
+   * `tw:truncate` so a long label cannot stretch its container.
+   */
+  triggerClassName?: string;
+  /**
+   * Let a custom `renderTrigger` stretch to its container. Opt-in: the wrapper
+   * is content-sized by default, which is what inline triggers (tag and
+   * glossary pickers, TeamsSelectable) expect.
+   */
+  fullWidthTrigger?: boolean;
+  /**
+   * Render each selected value in the `input` trigger yourself — e.g. as the
+   * domain chip rather than plain label text. Applies to single and multiple
+   * alike; when set, the built-in chip/label rendering steps aside so the two
+   * cannot disagree.
+   */
+  renderSelectedItem?: (node: TreeSelectNode<T>) => ReactNode;
+  /**
+   * Handle a failed `fetchData` yourself. Without this the raw error message
+   * is toasted, which for an HTTP transport is an untranslated string like
+   * "Request failed with status code 500".
+   */
+  onFetchError?: (error: unknown) => void;
+  /**
    * Draw a border around the button-variant trigger. Only applies when
    * `triggerVariant` is `'button'`. Defaults to `false` (borderless text
    * button — the quick-filter look).
@@ -137,11 +167,25 @@ export interface TreeSelectProps<T = unknown> {
   showSelectAll?: boolean;
   /** @default 'immediate' */
   commitMode?: TreeSelectCommitMode;
+  /** Gap between trigger and dropdown, in px. @default 8 */
+  offset?: number;
   /** Controls the dropdown; omit to let the component own its open state. */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** Consumer-owned trigger, rendered in place of the built-in one. */
   renderTrigger?: (props: TreeSelectTriggerRenderProps) => ReactNode;
+  /**
+   * Leading icon for the built-in `button` trigger (e.g. a domain glyph),
+   * mirroring FilterSelect's button. Ignored by the `input` variant.
+   */
+  triggerIcon?: FC<{ className?: string }>;
+  /** Node ids expanded on first render (e.g. a synthetic root shown open). */
+  defaultExpandedKeys?: string[];
+  /**
+   * Cap the visual indent at this tree depth (deeper nodes share that indent).
+   * @default 2
+   */
+  maxIndentLevel?: number;
 
   onNodeExpand?: (nodeId: string) => void;
   onNodeCollapse?: (nodeId: string) => void;

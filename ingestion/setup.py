@@ -20,8 +20,11 @@ VERSIONS = {
     # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
     # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0);
     # CVE-2026-67587 Dag-author RCE on the Scheduler via a Serde Callback deserialization
-    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1)
-    "airflow": "apache-airflow==3.3.1",
+    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1);
+    # CVE-2026-86473 logout ignores a presented Authorization bearer token, leaving it
+    # revocable only by expiry, and CVE-2026-75158 the asset events API returns events for
+    # every Dag with no per-Dag authorization filter (both need 3.3.2)
+    "airflow": "apache-airflow==3.3.2",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     # authlib >=1.6.9 required for: CVE-2026-27962 (critical, JWS JWK header injection),
@@ -180,7 +183,7 @@ base_requirements = {
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
-    "Jinja2>=2.11.3",
+    "Jinja2>=3.1.6",  # 3.1.5/3.1.6 close sandbox escapes; the Rule Library relies on the sandbox
     "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
     "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
@@ -199,14 +202,14 @@ base_requirements = {
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage==2.1.7",
+    "collate-sqllineage==2.1.8",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.15",
+    "collate-data-diff>=0.11.17",  # get_stats_dict(retain_rows=...), DataDiffDuplicateKeyError
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.

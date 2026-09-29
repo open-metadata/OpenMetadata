@@ -105,16 +105,13 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         count = metric_values[Metrics.valuesCount.name]
         unique_count = metric_values[Metrics.uniqueCount.name]
 
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found valuesCount={count} vs. uniqueCount={unique_count}"
-            )
-        else:  # noqa: RET505
-            return (
-                f"Found valuesCount={count} vs. uniqueCount={unique_count}. "
-                "Both counts should be equal for column values to be unique."
-            )
+        return self.format_violation_message(
+            violations=count - unique_count,
+            population=count,
+            violation_noun="duplicate values",
+            matched=self._matched(metric_values, test_params),
+            dimension_info=dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for uniqueness test

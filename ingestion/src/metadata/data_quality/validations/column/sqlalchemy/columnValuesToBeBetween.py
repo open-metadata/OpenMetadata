@@ -172,8 +172,10 @@ class ColumnValuesToBeBetweenValidator(
                 pre_processor=convert_timestamp,
             )
         else:
-            min_bound = self.get_min_bound("minValue")
-            max_bound = self.get_max_bound("maxValue")
+            # The verdict is taken against the window the failure threshold widened into, so the
+            # failed rows are filtered with it too: a value the tolerance accepted is not a failure
+            # and has no business showing up in the sample.
+            min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
 
         filters = []
         if min_bound is not None:
