@@ -65,7 +65,6 @@ export interface NodeHandlesProps {
 }
 
 export interface ExpandCollapseHandlesProps {
-  isEditMode: boolean;
   hasOutgoers: boolean;
   hasIncomers: boolean;
   isDownstreamNode: boolean;

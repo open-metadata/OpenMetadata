@@ -14,10 +14,9 @@ import { Button } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@untitledui/icons';
 import { Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
-import { Fragment, memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
-import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { DataType } from '../../../generated/entity/data/table';
 import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
@@ -47,30 +46,6 @@ export const getHandleByType = (
       type={type}
     />
   );
-};
-
-export const getColumnHandle = (
-  nodeType: string,
-  isConnectable: HandleProps['isConnectable'],
-  className?: string,
-  id?: string
-) => {
-  if (nodeType === EntityLineageNodeType.NOT_CONNECTED) {
-    return null;
-  } else {
-    return (
-      <Fragment>
-        {getHandleByType(isConnectable, Position.Left, 'target', className, id)}
-        {getHandleByType(
-          isConnectable,
-          Position.Right,
-          'source',
-          className,
-          id
-        )}
-      </Fragment>
-    );
-  }
 };
 
 const ExpandHandle = ({
@@ -224,7 +199,6 @@ interface ColumnContentProps {
 
 const ColumnContentInner = ({
   column,
-  isConnectable,
   showDataObservabilitySummary,
   isLoading,
   summary,
@@ -233,13 +207,8 @@ const ColumnContentInner = ({
   onColumnHover,
   onColumnSelect,
 }: ColumnContentProps) => {
-  const {
-    selectedColumn,
-    setSelectedColumn,
-    setTracedColumns,
-    isEditMode,
-    tracedColumns,
-  } = useLineageStore();
+  const { selectedColumn, setSelectedColumn, setTracedColumns, tracedColumns } =
+    useLineageStore();
 
   const { fullyQualifiedName } = column;
 
@@ -275,19 +244,6 @@ const ColumnContentInner = ({
     [column, isLoading]
   );
 
-  const handles = useMemo(
-    () =>
-      isEditMode
-        ? getColumnHandle(
-            EntityLineageNodeType.DEFAULT,
-            isConnectable,
-            'lineage-column-node-handle',
-            fullyQualifiedName ?? ''
-          )
-        : null,
-    [isEditMode, isConnectable, fullyQualifiedName]
-  );
-
   return (
     <div
       className={classNames(`custom-node-column-container ${className}`, {
@@ -303,7 +259,6 @@ const ColumnContentInner = ({
       onMouseDown={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}>
-      {handles}
       <div className="custom-node-column-row">
         <div className="custom-node-name-container">
           {columnNameContentRender}
@@ -356,17 +311,14 @@ export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
  * do not count against that component's cyclomatic-complexity budget.
  */
 export function shouldShowNodeRemoveButton({
-  isSelected,
-  isEditMode,
   isRootNode,
   isNodeRemovable,
 }: {
   isSelected: boolean;
-  isEditMode: boolean;
   isRootNode: boolean;
   isNodeRemovable: boolean;
 }) {
-  const isRemovableSelection = isSelected && isEditMode;
+  const isRemovableSelection = false;
 
   return isRemovableSelection && !isRootNode && isNodeRemovable;
 }

@@ -742,12 +742,10 @@ const LineageMapOnboardingDialog = ({
 
 const LineageMapControls = ({
   canDrill,
-  isEditMode,
   scene,
   onBandChange,
 }: {
   canDrill: boolean;
-  isEditMode: boolean;
   scene: LineageScene;
   onBandChange: (band: LineageBand) => void;
 }) => {
@@ -763,7 +761,7 @@ const LineageMapControls = ({
       {bandOptions.map((band) => {
         const isDeeperBandUnavailable =
           isDeeperBand(scene.band, band) && !canDrill;
-        const isDisabled = isEditMode || isDeeperBandUnavailable;
+        const isDisabled = isDeeperBandUnavailable;
 
         return (
           <ButtonUtility
@@ -804,11 +802,9 @@ const LineageMapControls = ({
 };
 
 const LineageMapBreadcrumbs = ({
-  isEditMode,
   scene,
   onBreadcrumbFocus,
 }: {
-  isEditMode: boolean;
   scene: LineageScene;
   onBreadcrumbFocus: (breadcrumb: LineageSceneBreadcrumb) => void;
 }) => {
@@ -850,16 +846,12 @@ const LineageMapBreadcrumbs = ({
         items={items}
         maxItemWidth={180}
         size="sm"
-        onAction={
-          isEditMode
-            ? undefined
-            : (id) => {
-                const breadcrumb = breadcrumbById.get(String(id));
-                if (breadcrumb) {
-                  onBreadcrumbFocus(breadcrumb);
-                }
-              }
-        }
+        onAction={(id) => {
+          const breadcrumb = breadcrumbById.get(String(id));
+          if (breadcrumb) {
+            onBreadcrumbFocus(breadcrumb);
+          }
+        }}
       />
     </Panel>
   );
@@ -1011,7 +1003,6 @@ const LineageMapCanvas = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const {
     lineageMutationTick,
-    isEditMode,
     platformView,
     selectedColumn,
     selectedNode,
@@ -1103,13 +1094,7 @@ const LineageMapCanvas = ({
   useEffect(() => {
     setActiveLayer(getActiveLayersFromBand(request.band));
     setIsPlatformLineage(Boolean(isPlatformLineage));
-  }, [
-    isEditMode,
-    isPlatformLineage,
-    request.band,
-    setActiveLayer,
-    setIsPlatformLineage,
-  ]);
+  }, [isPlatformLineage, request.band, setActiveLayer, setIsPlatformLineage]);
 
   useEffect(() => {
     setSceneBand(scene?.band);
@@ -1141,9 +1126,6 @@ const LineageMapCanvas = ({
 
   const updateRequest = useCallback(
     (nextRequest: SceneRequest) => {
-      if (isEditMode) {
-        return;
-      }
       suppressSemanticZoom();
       navigate(
         {
@@ -1152,7 +1134,7 @@ const LineageMapCanvas = ({
         { replace: true }
       );
     },
-    [isEditMode, location.search, navigate, suppressSemanticZoom]
+    [location.search, navigate, suppressSemanticZoom]
   );
 
   const handleOnboardingClose = useCallback(() => {
@@ -1346,9 +1328,6 @@ const LineageMapCanvas = ({
   const prefetchAdjacentBands = useMemo(
     () =>
       debounce((currentScene: LineageScene) => {
-        if (isEditMode) {
-          return;
-        }
         prefetchSceneBands(
           currentScene,
           request,
@@ -1357,7 +1336,7 @@ const LineageMapCanvas = ({
           sceneCache
         );
       }, 300),
-    [config, isEditMode, queryFilter, request, sceneCache]
+    [config, queryFilter, request, sceneCache]
   );
 
   useEffect(() => {
@@ -1476,7 +1455,7 @@ const LineageMapCanvas = ({
     const nextEdges = toFlowEdges(
       nodeById,
       scene.edges,
-      !isEditMode && config.pipelineViewMode === PipelineViewMode.Node
+      config.pipelineViewMode === PipelineViewMode.Node
     );
     setColumnsHavingLineage(getColumnsHavingLineage(scene.edges));
     setColumnsInCurrentPages(new Map());
@@ -1551,7 +1530,6 @@ const LineageMapCanvas = ({
     handleSceneColumnHover,
     handleSceneColumnSelect,
     handleSceneNodeSelect,
-    isEditMode,
     removeSceneNode,
     scene,
     setColumnsHavingLineage,
@@ -1641,7 +1619,7 @@ const LineageMapCanvas = ({
 
   const handleMove = useCallback(
     (_event: unknown, viewport: { zoom: number }) => {
-      if (isEditMode || !scene || semanticZoomSuppressedRef.current) {
+      if (!scene || semanticZoomSuppressedRef.current) {
         previousZoomRef.current = viewport.zoom;
 
         return;
@@ -1682,7 +1660,6 @@ const LineageMapCanvas = ({
     [
       handleBandChange,
       handleDrill,
-      isEditMode,
       pickCenterExpandableNode,
       scene,
       updateRequest,
@@ -1830,16 +1807,9 @@ const LineageMapCanvas = ({
       ) {
         return;
       }
-      if (isEditMode) {
-        setActiveNode(undefined);
-        setSelectedEdge(undefined);
-        setSelectedNode(node.data.node as unknown as SourceType);
-
-        return;
-      }
       handleDrill(node.data.sceneNode);
     },
-    [handleDrill, isEditMode, setActiveNode, setSelectedEdge, setSelectedNode]
+    [handleDrill]
   );
 
   const handleEdgeClick = useCallback(
@@ -1858,11 +1828,6 @@ const LineageMapCanvas = ({
         nodesRef.current.map((node) => [node.id, node.data.sceneNode])
       );
       const isEditable = isEditableSceneEdge(sceneEdge, nodeById);
-      if (isEditMode && !isEditable) {
-        showInfoToast(t('label.zoom-in'));
-
-        return;
-      }
       if (!isEditable) {
         onEdgeClick(edge);
 
@@ -1882,11 +1847,7 @@ const LineageMapCanvas = ({
         }
         setSelectedNode(undefined);
         setActiveNode(undefined);
-        if (isEditMode) {
-          setSelectedEdge(hydratedEdge);
-        } else {
-          onEdgeClick(hydratedEdge);
-        }
+        onEdgeClick(hydratedEdge);
       } catch (error) {
         if ((error as AxiosError).response?.status === 404) {
           showInfoToast(t('message.no-lineage-data-available'));
@@ -1897,15 +1858,7 @@ const LineageMapCanvas = ({
         showErrorToast(error as AxiosError);
       }
     },
-    [
-      isEditMode,
-      refetchCurrentScene,
-      scene,
-      setActiveNode,
-      setSelectedEdge,
-      setSelectedNode,
-      t,
-    ]
+    [refetchCurrentScene, scene, setActiveNode, setSelectedNode, t]
   );
 
   const handleConnect = useCallback(
@@ -2307,12 +2260,10 @@ const LineageMapCanvas = ({
         />
         <LineageMapControls
           canDrill={canDrillScene}
-          isEditMode={isEditMode}
           scene={scene}
           onBandChange={handleBandChange}
         />
         <LineageMapBreadcrumbs
-          isEditMode={isEditMode}
           scene={scene}
           onBreadcrumbFocus={handleBreadcrumbFocus}
         />
@@ -2333,13 +2284,7 @@ const LineageMapCanvas = ({
           />
         </Panel>
       </ReactFlow>
-      <div
-        className={classNames(
-          'lineage-map-layer-control tw:absolute tw:bottom-4 tw:left-4 tw:z-10',
-          {
-            'edit-mode tw:pointer-events-none tw:opacity-60': isEditMode,
-          }
-        )}>
+      <div className="lineage-map-layer-control tw:absolute tw:bottom-4 tw:left-4 tw:z-10">
         <LineageLayers
           entity={entity}
           entityType={entityType}

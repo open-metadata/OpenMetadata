@@ -297,7 +297,6 @@ export function useCanvasEdgeRenderer({
     columnsInCurrentPages,
     isRepositioning,
     setIsCanvasReady,
-    isEditMode,
     isDQEnabled,
   } = useLineageStore();
 
@@ -492,6 +491,7 @@ export function useCanvasEdgeRenderer({
       isCanvasReadyRef.current = true;
       setIsCanvasReady(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pre-existing gap, unrelated to edit-mode removal (Task 2)
   }, [
     canvasRef,
     edges,
@@ -506,7 +506,6 @@ export function useCanvasEdgeRenderer({
     isRepositioning,
     setIsCanvasReady,
     isDQEnabled,
-    isEditMode,
     getNode,
   ]);
 
@@ -618,7 +617,6 @@ export function useCanvasEdgeRenderer({
     colors,
     hoveredButton,
     isDQEnabled,
-    isEditMode,
     scheduleRedraw,
     theme,
   ]);

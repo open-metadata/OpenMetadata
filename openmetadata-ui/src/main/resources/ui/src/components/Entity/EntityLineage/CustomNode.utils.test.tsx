@@ -12,14 +12,12 @@
  */
 import { fireEvent, render } from '@testing-library/react';
 import { ReactFlowProvider } from 'reactflow';
-import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import {
   ColumnContent,
   getCollapseHandle,
-  getColumnHandle,
   getExpandHandle,
 } from './CustomNode.utils';
 
@@ -51,7 +49,6 @@ const mockLineageState = {
   setSelectedColumn: mockSetSelectedColumn,
   selectedColumn: '',
   setTracedColumns: mockSetTracedColumns,
-  isEditMode: false,
   tracedColumns: new Set<string>(),
   sceneBand: undefined,
   columnEdges: [],
@@ -71,29 +68,6 @@ describe('Custom Node Utils', () => {
     (
       useLineageStore as unknown as { getState: () => typeof mockLineageState }
     ).getState = () => mockLineageState;
-  });
-
-  it('getColumnHandle should return null when nodeType is NOT_CONNECTED', () => {
-    const result = getColumnHandle(
-      EntityLineageNodeType.NOT_CONNECTED,
-      true,
-      'test',
-      '123'
-    );
-
-    expect(result).toBeNull();
-  });
-
-  it('getColumnHandle should render handles when nodeType is not NOT_CONNECTED', () => {
-    const { getByTestId } = render(
-      <ReactFlowProvider>
-        <div data-testid="column-handle">
-          {getColumnHandle('CONNECTED', true)}
-        </div>
-      </ReactFlowProvider>
-    );
-
-    expect(getByTestId('column-handle')).toBeInTheDocument();
   });
 
   describe('getExpandHandle', () => {

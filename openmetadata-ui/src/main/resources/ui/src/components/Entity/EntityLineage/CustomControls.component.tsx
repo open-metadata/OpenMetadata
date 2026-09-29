@@ -78,8 +78,6 @@ const CustomControls: FC<{
   onSearchValueChange?: (value: string) => void;
   searchValue?: string;
   queryFilterNodeIds?: string[];
-  deleted?: boolean;
-  hasEditAccess?: boolean;
   impactLevel?: EImpactLevel;
   // Reset the host's pagination to page 1 when the user narrows the result set
   // via a quick-filter value change or "Clear all". Hosts that have no

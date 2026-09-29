@@ -53,8 +53,6 @@ const mockDefaultStoreState = {
   isDQEnabled: false,
   setLineageConfig: mockOnLineageConfigUpdate,
   lineageConfig: {},
-  toggleEditMode: jest.fn(),
-  isEditMode: false,
   platformView: LineagePlatformView.None,
   sceneBand: undefined as LineageBand | undefined,
   nodes: [] as unknown[],

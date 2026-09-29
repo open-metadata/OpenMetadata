@@ -12,8 +12,6 @@
  */
 
 import { Card } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
-import { useLineageStore } from '../../hooks/useLineageStore';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import type { LineageProps } from './Lineage.interface';
 import LineageMap from './LineageMap/LineageMap.component';
@@ -27,17 +25,9 @@ const Lineage = ({
   platformHeader,
   showControls = true,
 }: LineageProps) => {
-  const { isEditMode } = useLineageStore();
-
   const entityHeader = showControls ? (
-    <div
-      className={classNames('lineage-header', {
-        'lineage-header-edit-mode': isEditMode,
-      })}>
-      <CustomControlsComponent
-        deleted={Boolean(deleted)}
-        hasEditAccess={hasEditAccess}
-      />
+    <div className="lineage-header">
+      <CustomControlsComponent />
     </div>
   ) : null;
   const headerContent = isPlatformLineage ? platformHeader : entityHeader;

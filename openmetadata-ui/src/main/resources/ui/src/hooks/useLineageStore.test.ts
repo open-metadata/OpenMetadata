@@ -34,7 +34,6 @@ describe('useLineageStore', () => {
   it('initializes with default values', () => {
     const { result } = renderHook(() => useLineageStore());
 
-    expect(result.current.isEditMode).toBe(false);
     expect(result.current.lineageConfig).toEqual({
       upstreamDepth: 3,
       downstreamDepth: 3,
@@ -70,45 +69,6 @@ describe('useLineageStore', () => {
     expect(result.current.lineageConfig).toEqual(newConfig);
   });
 
-  it('toggles edit mode', () => {
-    const { result } = renderHook(() => useLineageStore());
-
-    expect(result.current.isEditMode).toBe(false);
-
-    act(() => {
-      result.current.setSceneBand(LineageBand.Field);
-      result.current.toggleEditMode();
-    });
-
-    expect(result.current.isEditMode).toBe(true);
-    expect(result.current.activeLayer).toContain(
-      LineageLayer.ColumnLevelLineage
-    );
-
-    act(() => {
-      result.current.toggleEditMode();
-    });
-
-    expect(result.current.isEditMode).toBe(false);
-    expect(result.current.activeLayer).toContain(
-      LineageLayer.ColumnLevelLineage
-    );
-  });
-
-  it('does not force column expansion when editing an asset scene', () => {
-    const { result } = renderHook(() => useLineageStore());
-
-    act(() => {
-      result.current.setSceneBand(LineageBand.Asset);
-      result.current.toggleEditMode();
-    });
-
-    expect(result.current.isEditMode).toBe(true);
-    expect(result.current.activeLayer).not.toContain(
-      LineageLayer.ColumnLevelLineage
-    );
-  });
-
   it('tracks scene mutations and resets scene state', () => {
     const { result } = renderHook(() => useLineageStore());
 
@@ -127,22 +87,6 @@ describe('useLineageStore', () => {
 
     expect(result.current.lineageMutationTick).toBe(0);
     expect(result.current.sceneBand).toBeUndefined();
-  });
-
-  it('sets isEditMode directly', () => {
-    const { result } = renderHook(() => useLineageStore());
-
-    act(() => {
-      result.current.setIsEditMode(true);
-    });
-
-    expect(result.current.isEditMode).toBe(true);
-
-    act(() => {
-      result.current.setIsEditMode(false);
-    });
-
-    expect(result.current.isEditMode).toBe(false);
   });
 
   it('sets traced columns', () => {
@@ -463,39 +407,15 @@ describe('useLineageStore', () => {
     const { result } = renderHook(() => useLineageStore());
 
     act(() => {
-      result.current.setIsEditMode(true);
       result.current.setZoomValue(2);
       result.current.setTracedColumns(new Set(['col1']));
       result.current.setActiveLayer([LineageLayer.ColumnLevelLineage]);
       result.current.reset();
     });
 
-    expect(result.current.isEditMode).toBe(false);
     expect(result.current.zoomValue).toBe(ZOOM_VALUE);
     expect(result.current.tracedColumns.size).toBe(0);
     expect(result.current.activeLayer).toEqual([]);
-  });
-
-  it('clears selected items when toggling edit mode off', () => {
-    const { result } = renderHook(() => useLineageStore());
-
-    const node: Node = { id: 'node1', position: { x: 0, y: 0 }, data: {} };
-    const edge: Edge = { id: 'edge1', source: 'node1', target: 'node2' };
-
-    act(() => {
-      result.current.setActiveNode(node);
-      result.current.setSelectedEdge(edge);
-      result.current.toggleEditMode();
-    });
-
-    expect(result.current.isEditMode).toBe(true);
-
-    act(() => {
-      result.current.toggleEditMode();
-    });
-
-    expect(result.current.activeNode).toBeUndefined();
-    expect(result.current.selectedEdge).toBeUndefined();
   });
 
   it('sets isDQEnabled when DataObservability layer is active', () => {
@@ -521,25 +441,6 @@ describe('useLineageStore', () => {
     );
 
     expect(columnLineageLayers.length).toBe(1);
-  });
-
-  it('clears traced columns and nodes when toggling edit mode off', () => {
-    const { result } = renderHook(() => useLineageStore());
-
-    act(() => {
-      result.current.setTracedColumns(new Set(['col1', 'col2']));
-      result.current.setTracedNodes(new Set(['node1', 'node2']));
-      result.current.toggleEditMode();
-    });
-
-    expect(result.current.isEditMode).toBe(true);
-
-    act(() => {
-      result.current.toggleEditMode();
-    });
-
-    expect(result.current.tracedColumns.size).toBe(0);
-    expect(result.current.tracedNodes.size).toBe(0);
   });
 
   describe('Node Filter State', () => {

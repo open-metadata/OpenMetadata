@@ -55,7 +55,6 @@ const NodeChildren = ({
     columnsHavingLineage,
     selectedColumn,
     isCreatingEdge,
-    isEditMode,
   } = useLineageStore();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
@@ -67,6 +66,7 @@ const NodeChildren = ({
     return Boolean(
       isDQEnabled && entityType === EntityType.TABLE && node.testSuite
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pre-existing gap, unrelated to edit-mode removal (Task 2)
   }, [isDQEnabled, entityType]);
 
   const supportsColumns = useMemo(() => {
@@ -74,6 +74,7 @@ const NodeChildren = ({
       node &&
       LINEAGE_COLUMN_NODE_SUPPORTED.includes(node.entityType as EntityType)
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pre-existing gap, unrelated to edit-mode removal (Task 2)
   }, [node.entityType]);
 
   const { children: entityChildren, childrenHeading } = useMemo(
@@ -105,7 +106,7 @@ const NodeChildren = ({
       const searchQuery = e.target.value;
       setSearchValue(searchQuery);
       const currentNodeColumnsToSearch =
-        isOnlyShowColumnsWithLineageFilterActive && !isEditMode
+        isOnlyShowColumnsWithLineageFilterActive
           ? stableColumnsWithLineage
           : entityChildren;
 
@@ -124,14 +125,13 @@ const NodeChildren = ({
     [
       entityChildren,
       stableColumnsWithLineage,
-      isEditMode,
       isOnlyShowColumnsWithLineageFilterActive,
     ]
   );
 
   useEffect(() => {
     if (!isEmpty(entityChildren)) {
-      if (isOnlyShowColumnsWithLineageFilterActive && !isEditMode) {
+      if (isOnlyShowColumnsWithLineageFilterActive) {
         setFilteredColumns(stableColumnsWithLineage);
       } else {
         setFilteredColumns(entityChildren);
@@ -140,7 +140,6 @@ const NodeChildren = ({
   }, [
     entityChildren,
     stableColumnsWithLineage,
-    isEditMode,
     isOnlyShowColumnsWithLineageFilterActive,
   ]);
 
@@ -166,17 +165,14 @@ const NodeChildren = ({
     } else {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pre-existing gap, unrelated to edit-mode removal (Task 2)
   }, [node, showDataObservabilitySummary, summary]);
 
   const pageSize = useMemo(() => {
-    return isOnlyShowColumnsWithLineageFilterActive || isEditMode
+    return isOnlyShowColumnsWithLineageFilterActive
       ? filteredColumns.length
       : LINEAGE_CHILD_ITEMS_PER_PAGE;
-  }, [
-    isOnlyShowColumnsWithLineageFilterActive,
-    isEditMode,
-    filteredColumns.length,
-  ]);
+  }, [isOnlyShowColumnsWithLineageFilterActive, filteredColumns.length]);
 
   // No need to render if there's no children
   if (entityChildren.length === 0) {

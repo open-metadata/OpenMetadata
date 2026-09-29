@@ -87,7 +87,6 @@ const mockDefaultStoreValue = {
   isPlatformLineage: false,
   setActiveLayer: jest.fn(),
   zoomValue: 1,
-  isEditMode: false,
   setSelectedColumn: mockColumnClick,
 };
 

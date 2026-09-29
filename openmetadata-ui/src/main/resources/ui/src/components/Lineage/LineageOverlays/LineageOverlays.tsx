@@ -86,7 +86,6 @@ const LineageBreadcrumbs = ({
 };
 
 type LineageDrawerOverlayProps = {
-  isEditMode: boolean;
   selectedNode?: SourceType;
   selectedEdge?: Edge;
   isDrawerOpen: boolean;
@@ -98,7 +97,6 @@ type LineageDrawerOverlayProps = {
 };
 
 const LineageDrawerOverlay = ({
-  isEditMode,
   selectedNode,
   selectedEdge,
   isDrawerOpen,
@@ -108,7 +106,7 @@ const LineageDrawerOverlay = ({
   onEdgeDetailsUpdate,
   onEntityUpdate,
 }: LineageDrawerOverlayProps) => {
-  if (isEditMode || (!selectedNode && !selectedEdge)) {
+  if (!selectedNode && !selectedEdge) {
     return null;
   }
 
@@ -219,7 +217,6 @@ export const LineageOverlays: React.FC<LineageOverlaysProps> = ({
     'true';
 
   const {
-    isEditMode,
     lineageConfig,
     selectedNode,
     selectedEdge,
@@ -240,7 +237,6 @@ export const LineageOverlays: React.FC<LineageOverlaysProps> = ({
     platformView,
   } = useLineageStore(
     useShallow((state) => ({
-      isEditMode: state.isEditMode,
       lineageConfig: state.lineageConfig,
       selectedNode: state.selectedNode,
       selectedEdge: state.selectedEdge,
@@ -329,7 +325,6 @@ export const LineageOverlays: React.FC<LineageOverlaysProps> = ({
       />
       <LineageDrawerOverlay
         isDrawerOpen={isDrawerOpen}
-        isEditMode={isEditMode}
         lineageConfig={lineageConfig}
         nodes={nodes}
         selectedEdge={selectedEdge}

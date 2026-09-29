@@ -35,7 +35,6 @@ import { LineagePlatformView, LineageTimeRange } from './lineage/types';
 
 interface LineageState {
   // state properties
-  isEditMode: boolean;
   canEditLineage: boolean;
   lineageConfig: LineageConfig;
   tracedColumns: Set<string>;
@@ -81,8 +80,6 @@ interface LineageState {
   deletionState: { loading: boolean; status: LoadingState };
 
   // Actions
-  setIsEditMode: (isEditMode: boolean) => void;
-  toggleEditMode: () => void;
   setCanEditLineage: (canEditLineage: boolean) => void;
   setLineageConfig: (lineageConfig: LineageConfig) => void;
   setTracedColumns: (tracedColumns: Set<string>) => void;
@@ -158,7 +155,6 @@ const defaultLineageSettings = {
 };
 
 export const useLineageStore = create<LineageState>((set, get) => ({
-  isEditMode: false,
   canEditLineage: false,
   lineageConfig: defaultLineageSettings,
   tracedColumns: new Set(),
@@ -199,37 +195,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
 
-  setIsEditMode: (isEditMode: boolean) => set({ isEditMode }),
-
   setCanEditLineage: (canEditLineage: boolean) => set({ canEditLineage }),
-
-  toggleEditMode: () => {
-    const { isEditMode, isColumnLevelLineage, sceneBand } = get();
-    const updatedEditMode = !isEditMode;
-
-    if (
-      updatedEditMode &&
-      sceneBand === LineageBand.Field &&
-      !isColumnLevelLineage
-    ) {
-      set({
-        activeLayer: [LineageLayer.ColumnLevelLineage],
-        isColumnLevelLineage: true,
-      });
-    }
-
-    if (!updatedEditMode) {
-      set({ tracedColumns: new Set(), tracedNodes: new Set() });
-    }
-
-    set({
-      isEditMode: !isEditMode,
-      activeNode: undefined,
-      selectedNode: undefined,
-      selectedEdge: undefined,
-      selectedColumn: undefined,
-    });
-  },
 
   setTracedColumns: (tracedColumns: Set<string>) => set({ tracedColumns }),
 
@@ -353,7 +319,6 @@ export const useLineageStore = create<LineageState>((set, get) => ({
 
   reset: () =>
     set({
-      isEditMode: false,
       canEditLineage: false,
       lineageConfig: defaultLineageSettings,
       tracedColumns: new Set(),

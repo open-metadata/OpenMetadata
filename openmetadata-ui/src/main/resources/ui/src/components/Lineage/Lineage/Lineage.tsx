@@ -486,7 +486,6 @@ export const Lineage = ({
   const lastFetchedLineageKeyRef = useRef<string>();
 
   const {
-    isEditMode,
     canEditLineage,
     lineageConfig,
     setLineageConfig,
@@ -1570,7 +1569,6 @@ export const Lineage = ({
                 />
               </>
             ),
-            isEditMode,
             isNewNode: true,
           },
         };
@@ -1579,7 +1577,7 @@ export const Lineage = ({
         setNewAddedNode(newNode as Node);
       }
     },
-    [addNodes, isEditMode, onEntitySelect, reactFlowInstance, removeNodeHandler]
+    [addNodes, onEntitySelect, reactFlowInstance, removeNodeHandler]
   );
 
   const selectLoadMoreNode = useCallback(
@@ -2213,8 +2211,7 @@ export const Lineage = ({
   }, [defaultLineageConfig, setActiveLayer, setLineageConfig]);
 
   useEffect(() => {
-    if (!isEditMode && updatedEntityLineage !== null) {
-      // On exit of edit mode, use updatedEntityLineage and update data.
+    if (updatedEntityLineage !== null) {
       const { downstreamEdges, upstreamEdges } =
         getUpstreamDownstreamNodesEdges(
           updatedEntityLineage.edges ?? [],
@@ -2236,7 +2233,7 @@ export const Lineage = ({
         nodes: updatedNodes,
       });
     }
-  }, [isEditMode, updatedEntityLineage, entityFqn]);
+  }, [updatedEntityLineage, entityFqn]);
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {

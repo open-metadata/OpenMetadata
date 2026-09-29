@@ -44,9 +44,7 @@ describe('Lineage Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useLineageStore as unknown as jest.Mock).mockReturnValue({
-      isEditMode: false,
-    });
+    (useLineageStore as unknown as jest.Mock).mockReturnValue({});
   });
 
   it('renders the scene-backed map in the lineage container', () => {
@@ -88,18 +86,6 @@ describe('Lineage Component', () => {
 
     expect(screen.getByTestId('platform-header')).toBeInTheDocument();
     expect(screen.queryByTestId('custom-controls')).not.toBeInTheDocument();
-  });
-
-  it('applies edit mode class when edit mode is active', () => {
-    (useLineageStore as unknown as jest.Mock).mockReturnValue({
-      isEditMode: true,
-    });
-
-    render(<Lineage {...defaultProps} />);
-
-    expect(screen.getByTestId('custom-controls').parentElement).toHaveClass(
-      'lineage-header-edit-mode'
-    );
   });
 
   it('keeps the scene map mounted when controls are hidden', () => {

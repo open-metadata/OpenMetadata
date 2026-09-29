@@ -33,7 +33,6 @@ const mockLineageState = {
   selectedColumn: null,
   setSelectedColumn: jest.fn(),
   setTracedColumns: jest.fn(),
-  isEditMode: false,
   tracedColumns: new Set<string>(),
   reactFlowInstance: mockReactFlowInstance as
     | typeof mockReactFlowInstance

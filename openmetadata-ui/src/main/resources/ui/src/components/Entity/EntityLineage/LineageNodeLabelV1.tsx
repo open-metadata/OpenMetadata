@@ -224,7 +224,6 @@ const EntityFooter = ({
   isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelProps) => {
   const { t } = useTranslation();
-  const { isEditMode } = useLineageStore();
   const { childrenHeading, childrenCount } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node]
@@ -297,7 +296,6 @@ const EntityFooter = ({
           color="tertiary"
           data-testid="lineage-filter-button"
           icon={FilterIcon}
-          isDisabled={isEditMode}
           tooltip={t('message.only-show-columns-with-lineage')}
           tooltipPlacement="right"
           onClick={handleOnlyShowColumnsWithLineage}

@@ -145,7 +145,6 @@ const mockNodeWithoutChildren = {
 
 const defaultLineageStore = {
   isDQEnabled: false,
-  isEditMode: false,
 };
 
 describe('LineageNodeLabelV1', () => {
@@ -408,28 +407,6 @@ describe('LineageNodeLabelV1', () => {
       expect(
         mockToggleOnlyShowColumnsWithLineageFilterActive
       ).toHaveBeenCalledTimes(1);
-    });
-
-    it('should disable filter button in edit mode', () => {
-      (useLineageStore as unknown as jest.Mock).mockReturnValue({
-        ...defaultLineageStore,
-        isEditMode: true,
-      });
-
-      render(
-        <LineageNodeLabelV1
-          isChildrenListExpanded={false}
-          isOnlyShowColumnsWithLineageFilterActive={false}
-          node={mockBasicNode}
-          toggleOnlyShowColumnsWithLineageFilterActive={
-            mockToggleOnlyShowColumnsWithLineageFilterActive
-          }
-        />
-      );
-
-      const filterButton = screen.getByTestId('lineage-filter-button');
-
-      expect(filterButton).toBeDisabled();
     });
 
     it('should expose the filter button tooltip as an accessible label', () => {
@@ -731,7 +708,6 @@ describe('LineageNodeLabelV1', () => {
     it('should render complete component with all features enabled', async () => {
       (useLineageStore as unknown as jest.Mock).mockReturnValue({
         isDQEnabled: true,
-        isEditMode: false,
       });
 
       render(

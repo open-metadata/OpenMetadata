@@ -129,10 +129,7 @@ const getHandleVisibility = ({
 });
 
 const ExpandCollapseHandles = memo((props: ExpandCollapseHandlesProps) => {
-  const { isEditMode, onCollapse, onExpand } = props;
-  if (isEditMode) {
-    return null;
-  }
+  const { onCollapse, onExpand } = props;
 
   const {
     showDownstreamCollapse,
@@ -205,7 +202,6 @@ const CustomNodeV1 = (props: NodeProps) => {
   const dataQualityLineage = useLineageStore((s) => s.dataQualityLineage);
 
   const {
-    isEditMode,
     tracedNodes,
     selectedNode,
     isColumnLevelLineage,
@@ -237,19 +233,16 @@ const CustomNodeV1 = (props: NodeProps) => {
     isNodeRemovable = true,
   } = data;
 
-  // sync expand state based on edit or column layer active
+  // sync expand state based on column layer active
   useEffect(() => {
-    setColumnsExpanded(isEditMode || isColumnLevelLineage);
-  }, [isEditMode, isColumnLevelLineage]);
+    setColumnsExpanded(isColumnLevelLineage);
+  }, [isColumnLevelLineage]);
 
   const toggleColumnsExpanded = useCallback(() => {
     setColumnsExpanded((prev) => !prev);
   }, []);
 
-  const nodeType = useMemo(
-    () => (isEditMode ? EntityLineageNodeType.DEFAULT : type),
-    [isEditMode, type]
-  );
+  const nodeType = type;
   const isSelected = useMemo(() => selectedNode === node, [selectedNode, node]);
   const {
     id,
@@ -299,7 +292,6 @@ const CustomNodeV1 = (props: NodeProps) => {
   );
   const showRemoveButton = shouldShowNodeRemoveButton({
     isSelected,
-    isEditMode,
     isRootNode: Boolean(isRootNode),
     isNodeRemovable,
   });
@@ -357,9 +349,7 @@ const CustomNodeV1 = (props: NodeProps) => {
           toggleOnlyShowColumnsWithLineageFilterActive={
             toggleShowColumnsWithLineageOnly
           }
-          onEntityClick={
-            !isEditMode && onSceneNodeSelect ? handleEntityClick : undefined
-          }
+          onEntityClick={onSceneNodeSelect ? handleEntityClick : undefined}
         />
         {showRemoveButton && (
           <LineageNodeRemoveButton onRemove={handleNodeRemove} />
@@ -377,7 +367,6 @@ const CustomNodeV1 = (props: NodeProps) => {
     toggleShowColumnsWithLineageOnly,
     handleNodeRemove,
     toggleColumnsExpanded,
-    isEditMode,
     showRemoveButton,
   ]);
 
@@ -388,7 +377,6 @@ const CustomNodeV1 = (props: NodeProps) => {
       hasIncomers,
       hasOutgoers,
       isDownstreamNode,
-      isEditMode,
       isRootNode,
       isUpstreamNode,
       upstreamLineageLength: upstreamLineage.length,
@@ -401,7 +389,6 @@ const CustomNodeV1 = (props: NodeProps) => {
       hasIncomers,
       hasOutgoers,
       isDownstreamNode,
-      isEditMode,
       isRootNode,
       isUpstreamNode,
       upstreamLineage.length,
@@ -451,13 +438,11 @@ const CustomNodeV1 = (props: NodeProps) => {
         </div>
       )}
       <div className="lineage-node-content">
-        {!isEditMode && (
-          <SceneDrillButton
-            label={sceneDrillLabel}
-            node={sceneNode}
-            onDrill={onSceneDrill}
-          />
-        )}
+        <SceneDrillButton
+          label={sceneDrillLabel}
+          node={sceneNode}
+          onDrill={onSceneDrill}
+        />
         <div className="label-container tw:bg-surface">{nodeLabel}</div>
         <NodeHandles
           expandCollapseHandles={handlesElement}
