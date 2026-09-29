@@ -1,0 +1,117 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/datacontract/odcs/odcsImportReport.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ODCSImportReport",
+  "description": "What importing an ODCS document into OpenMetadata keeps, changes and leaves out, so the user can decide whether to import it.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSImportReport",
+  "definitions": {
+    "odcsImportIssueSeverity": {
+      "description": "`blocking` issues prevent the import; `warning` issues mean part of the document will not be imported, or not as written; `info` issues describe how something is imported.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueSeverity",
+      "enum": ["blocking", "warning", "info"]
+    },
+    "odcsImportIssueCategory": {
+      "description": "Part of the ODCS document an issue is about.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory",
+      "enum": ["document", "schema", "quality", "sla", "team", "roles", "servers", "support", "other"]
+    },
+    "odcsImportIssue": {
+      "description": "One finding about the ODCS document. Findings about the same key in many places, e.g. `businessName` on every property, are reported once with the number of occurrences.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssue",
+      "properties": {
+        "severity": {
+          "$ref": "#/definitions/odcsImportIssueSeverity"
+        },
+        "category": {
+          "$ref": "#/definitions/odcsImportIssueCategory"
+        },
+        "field": {
+          "description": "ODCS key the finding is about, e.g. `businessName`.",
+          "type": "string"
+        },
+        "path": {
+          "description": "Location of the first occurrence in the document, e.g. `schema[0].properties[3].businessName`.",
+          "type": "string"
+        },
+        "occurrences": {
+          "description": "Number of places in the document the finding applies to.",
+          "type": "integer",
+          "default": 1
+        },
+        "message": {
+          "description": "What happens to the field and why.",
+          "type": "string"
+        }
+      },
+      "required": ["severity", "category", "message"],
+      "additionalProperties": false
+    },
+    "odcsQualityRuleOutcome": {
+      "description": "What one ODCS quality rule becomes in OpenMetadata.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRuleOutcome",
+      "properties": {
+        "name": {
+          "description": "Name of the rule in the ODCS document.",
+          "type": "string"
+        },
+        "column": {
+          "description": "Column the rule is attached to, if any.",
+          "type": "string"
+        },
+        "outcome": {
+          "description": "`testCase`: the rule runs as a test case. `sla`: the rule sets the contract's refresh frequency. `notExecuted`: the rule is kept with the contract but nothing runs it.",
+          "type": "string",
+          "enum": ["testCase", "sla", "notExecuted"]
+        },
+        "testDefinition": {
+          "description": "Test definition the rule runs as, for `testCase` outcomes.",
+          "type": "string"
+        },
+        "testCaseName": {
+          "description": "Name of the test case the rule creates or updates, for `testCase` outcomes.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why the rule is not executed, for `notExecuted` outcomes.",
+          "type": "string"
+        }
+      },
+      "required": ["outcome"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "odcsVersion": {
+      "description": "`apiVersion` the document declares.",
+      "type": "string"
+    },
+    "canImport": {
+      "description": "False when at least one issue is blocking.",
+      "type": "boolean"
+    },
+    "canCreateTestCases": {
+      "description": "Whether the requesting user may create test cases on the target, which importing quality rules as test cases requires.",
+      "type": "boolean"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsImportIssue"
+      },
+      "default": null
+    },
+    "qualityRules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/odcsQualityRuleOutcome"
+      },
+      "default": null
+    }
+  },
+  "additionalProperties": false
+}

@@ -166,6 +166,53 @@ describe('TeamAndUserSelectItem', () => {
     jest.useRealTimers();
   });
 
+  it.each(['success', 'error'])(
+    'ignores a stale search %s after newer results arrive',
+    async (outcome) => {
+      let resolveOlder!: (options: typeof MOCK_OPTIONS) => void;
+      let rejectOlder!: (error: Error) => void;
+      let resolveNewer!: (options: typeof MOCK_OPTIONS) => void;
+      const older = new Promise<typeof MOCK_OPTIONS>((resolve, reject) => {
+        resolveOlder = resolve;
+        rejectOlder = reject;
+      });
+      const newer = new Promise<typeof MOCK_OPTIONS>((resolve) => {
+        resolveNewer = resolve;
+      });
+      const onSearch = jest
+        .fn()
+        .mockReturnValueOnce(older)
+        .mockReturnValueOnce(newer);
+      renderWithForm(
+        <TeamAndUserSelectItem {...MOCK_PROPS} onSearch={onSearch} />
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('team-user-select-trigger-0'));
+        jest.advanceTimersByTime(500);
+      });
+      fireEvent.change(screen.getByTestId('search-input-field'), {
+        target: { value: 'Gamma' },
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+        resolveNewer(MOCK_SEARCHED_OPTIONS);
+      });
+
+      expect(screen.getByTestId('team-gamma')).toBeInTheDocument();
+
+      await act(async () => {
+        if (outcome === 'error') {
+          rejectOlder(new Error('Previous search failed'));
+        } else {
+          resolveOlder(MOCK_OPTIONS);
+        }
+      });
+
+      expect(screen.getByTestId('team-gamma')).toBeInTheDocument();
+      expect(screen.queryByTestId('team-alpha')).not.toBeInTheDocument();
+    }
+  );
+
   it('renders placeholder when no items are selected', () => {
     renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} />);
 
