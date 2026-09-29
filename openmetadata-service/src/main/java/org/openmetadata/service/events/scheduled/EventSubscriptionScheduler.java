@@ -60,6 +60,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.DIContainer;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
@@ -324,7 +325,7 @@ public class EventSubscriptionScheduler {
   private EventSubscription readCommitted(UUID subscriptionId) {
     EntityRepository<? extends EntityInterface> repository =
         Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
-    try {
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
       return (EventSubscription) repository.get(null, subscriptionId, repository.getFields("*"));
     } catch (EntityNotFoundException deleted) {
       return null;
