@@ -295,6 +295,8 @@ export const fillCustomPropertyEditModal = async (data: {
         .getByRole('combobox');
       await enumInput.fill(value);
       await page.getByRole('option', { name: value, exact: true }).click();
+      // Multi-select keeps the listbox open over the footer; close it.
+      await editModal.getByRole('heading').click();
 
       break;
     }
@@ -374,6 +376,8 @@ export const fillCustomPropertyEditModal = async (data: {
         await searchEntity;
         await page.getByRole('option').getByTestId(val).click();
       }
+      // The results listbox stays open over the footer; close it.
+      await editModal.getByRole('heading').click();
 
       break;
     }
@@ -419,6 +423,12 @@ export const openCustomPropertiesTab = async (page: Page) => {
   await expect(page.getByTestId('custom-properties-card')).toBeVisible();
 };
 
+/** Card of `propertyName` on the Custom Properties tab. */
+export const getCustomPropertyCard = (
+  scope: Page | Locator,
+  propertyName: string
+) => scope.getByTestId(`custom-property-${propertyName}-card`);
+
 /** Row of the Custom Properties side widget for `propertyName`. */
 export const getCustomPropertyWidgetRow = (
   scope: Page | Locator,
@@ -442,7 +452,7 @@ export const setValueForProperty = async (data: {
   const { page, propertyName, value, propertyType, endpoint } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  const container = page.getByTestId(`custom-property-${propertyName}-card`);
+  const container = getCustomPropertyCard(page, propertyName);
 
   await expect(container.getByTestId('property-name')).toContainText(
     propertyName
@@ -466,7 +476,7 @@ export const validateValueForProperty = async (data: {
   const { page, propertyName, value, propertyType } = data;
   await page.click('[data-testid="custom_properties"]');
 
-  const container = page.getByTestId(`custom-property-${propertyName}-card`);
+  const container = getCustomPropertyCard(page, propertyName);
 
   const toggleBtnVisibility = await container
     .getByTestId(`toggle-${propertyName}`)

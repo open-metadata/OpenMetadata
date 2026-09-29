@@ -43,11 +43,11 @@ import {
   getDefaultWidgetForTab,
 } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
-import { getColumnLockedDragHandlers } from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import {
   getAddWidgetHandler,
   mergeGridLayout,
 } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
+import { getColumnLockedDragHandlers } from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { CustomPropertiesTabLayoutSection } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesTabLayoutSection';
