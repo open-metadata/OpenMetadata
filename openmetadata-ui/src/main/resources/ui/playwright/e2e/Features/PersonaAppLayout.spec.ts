@@ -223,6 +223,8 @@ test.describe('Persona default view mode', { tag: ['@Platform'] }, () => {
 });
 
 test.describe('Persona App Layout page', { tag: ['@Platform'] }, () => {
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
   test('an admin saves App Layout settings and they persist after a reload', async ({
     browser,
     page,
