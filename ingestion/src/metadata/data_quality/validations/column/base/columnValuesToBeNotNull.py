@@ -53,14 +53,7 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
 
         try:
             column: SQALikeColumn | Column = self.get_column()
-            null_count = self._run_results(Metrics.nullCount, column)
-
-            metric_values = {
-                Metrics.nullCount.name: null_count,
-            }
-
-            if self._needs_row_count():
-                metric_values[Metrics.rowCount.name] = self.get_row_count()
+            metric_values = self._run_results_with_row_count(Metrics.nullCount, column)
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
