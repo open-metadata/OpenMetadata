@@ -127,12 +127,7 @@ const fetchDomainOptions = async (
   );
 };
 
-/**
- * Server-searched options for one picker. Each search text is its own query,
- * and only the current one renders — so a slow, older response (e.g. the
- * unfiltered focus search) can never overwrite the results for what the user
- * typed since. Nothing is fetched until the picker is first focused.
- */
+/** One query per search text, so a slow older search can never overwrite newer results. */
 const useSearchPicker = (
   queryKey: string,
   fetchOptions: (searchText: string) => Promise<EntityReferenceOption[]>

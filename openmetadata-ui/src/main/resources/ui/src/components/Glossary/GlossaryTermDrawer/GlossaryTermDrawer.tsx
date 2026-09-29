@@ -40,10 +40,7 @@ const GLOSSARY_TERM_FIELDS = [
   TabSpecificField.RELATED_TERMS,
 ];
 
-/**
- * Add / edit glossary term drawer. It opens on mount and reports every close
- * through `onCancel`, so the parent controls it by mounting it.
- */
+/** Add / edit glossary term drawer; opens on mount and reports every close via `onCancel`. */
 const GlossaryTermDrawer = ({
   editMode,
   glossaryTermFQN,
@@ -92,8 +89,7 @@ const GlossaryTermDrawer = ({
     };
   }, [editMode, form, glossaryTermFQN, onCancel]);
 
-  // Surfaces the server's field-level rejections inline and toasts the rest;
-  // the error is rethrown so the drawer stays open for a retry.
+  // Field errors show inline, others as a toast; rethrown to keep the drawer open.
   const mapSaveErrorToField = useCallback(
     (error: unknown) => {
       const response = (error as AxiosError<{ message?: string }>)?.response;

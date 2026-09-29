@@ -33,11 +33,7 @@ import {
 
 export const GLOSSARY_FORM_DRAWER_WIDTH = '40vw';
 
-/**
- * The "create glossary" drawer: form, submit and drawer chrome. On success
- * it navigates to the new glossary and runs `onCreated` (e.g. to refresh the
- * glossary list the page already holds).
- */
+/** Create-glossary drawer; on success navigates to the new glossary and calls `onCreated`. */
 export const useGlossaryCreateDrawer = (onCreated?: () => void) => {
   const { t } = useTranslation();
   const navigate = useNavigate();

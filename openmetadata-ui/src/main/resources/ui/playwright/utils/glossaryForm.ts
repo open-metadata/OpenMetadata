@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 
-/**
- * The one place Playwright drives the Add Glossary and Add / Edit Glossary
- * Term drawers. Specs open a form, fill it from a plain field object and save
- * it through these helpers instead of reaching for form test ids directly, so
- * a change to either form is absorbed here.
- *
- * Both drawers are SlideoutMenus mounted over the glossary page, which keeps
- * its own description editor, tag pickers and owner widgets — so every field
- * is resolved through the form container, never off `page`.
- */
+/** Shared helpers for the Add Glossary and Add / Edit Glossary Term drawers; fields resolve inside the form. */
 import { expect, Locator, Page, Response } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { INVALID_NAMES, NAME_VALIDATION_ERROR } from '../constant/common';
@@ -81,9 +72,7 @@ const DRAWER = {
   },
 } as const;
 
-// ---------------------------------------------------------------------------
 // Locators
-// ---------------------------------------------------------------------------
 
 export const getGlossaryFormDrawer = (page: Page, kind: GlossaryFormKind) =>
   page.getByTestId(DRAWER[kind].drawer);
@@ -124,9 +113,7 @@ export const getGlossaryFormOptionField = (
   field: GlossaryFormOptionField
 ) => form.getByTestId(field);
 
-// ---------------------------------------------------------------------------
 // Open
-// ---------------------------------------------------------------------------
 
 /** Opens the Add Glossary drawer from the left panel or the empty state. */
 export const openAddGlossaryForm = async (page: Page) => {
@@ -141,11 +128,7 @@ export const openAddGlossaryForm = async (page: Page) => {
   return getGlossaryForm(page);
 };
 
-/**
- * Waits for the term drawer and its form. The form mounts only once the
- * intake form (and, in edit mode, the term) has loaded — a Loader stands in
- * until then.
- */
+/** Waits for the term drawer; the form mounts once the intake form (and term, on edit) loads. */
 export const waitForGlossaryTermForm = async (
   page: Page,
   mode: GlossaryTermFormMode
@@ -158,11 +141,7 @@ export const waitForGlossaryTermForm = async (
   return getGlossaryTermForm(page);
 };
 
-/**
- * Opens the Add Glossary Term drawer.
- * - `header` (default): the glossary / term header "Add term" button.
- * - `placeholder`: the empty-terms placeholder button.
- */
+/** Opens the Add Glossary Term drawer from the header button or the empty-state placeholder. */
 export const openAddGlossaryTermForm = async (
   page: Page,
   { from = 'header' }: { from?: 'header' | 'placeholder' } = {}
@@ -208,20 +187,9 @@ export const openEditGlossaryTermForm = async (page: Page, termFqn: string) => {
   return waitForGlossaryTermForm(page, 'Edit Glossary Term');
 };
 
-// ---------------------------------------------------------------------------
 // Field-level helpers
-// ---------------------------------------------------------------------------
 
-/**
- * Pick options in a search-backed core Autocomplete (`owners` / `reviewers` /
- * `domains`).
- *
- * Focus loads an unfiltered page of options and typing re-queries after a
- * debounce, so the unfiltered response can land after the filtered one and
- * replace it. Retyping until the option shows covers that race and ES
- * indexing lag for freshly created entities. Options carry the display name
- * with the FQN as supporting text, so a login name matches too.
- */
+/** Picks owners / reviewers / domains, retyping until the option shows to absorb search lag. */
 export const selectGlossaryFormOptions = async (
   page: Page,
   form: Locator,
@@ -250,11 +218,7 @@ export const selectGlossaryFormOptions = async (
   await input.press('Escape');
 };
 
-/**
- * Pick a tag in the form's `TagSelector` (a core FilterSelect in
- * immediate-commit mode). Clicking outside would dismiss the drawer itself,
- * so the popover is closed with Escape.
- */
+/** Picks a tag and closes the popover with Escape, since an outside click would close the drawer. */
 export const selectTagInGlossaryForm = async (
   page: Page,
   form: Locator,
@@ -352,11 +316,7 @@ export const selectRelatedTermsInGlossaryTermForm = async (
   }
 };
 
-/**
- * The icon field is a picker, not a text input: the trigger opens a popover
- * with an icon grid and a URL tab. Re-clicking the trigger closes the popover
- * so it cannot cover the drawer's Save button.
- */
+/** Picks an icon; re-clicking the trigger closes the popover so it can't cover Save. */
 export const selectStyleIcon = async (
   page: Page,
   form: Locator,
@@ -411,9 +371,7 @@ export const replaceFormDescription = async (
   await editor.fill(description);
 };
 
-// ---------------------------------------------------------------------------
 // Fill
-// ---------------------------------------------------------------------------
 
 const fillSharedFields = async (
   page: Page,
@@ -484,26 +442,16 @@ export const fillGlossaryTermForm = async (
   }
 };
 
-// ---------------------------------------------------------------------------
 // Submit / cancel
-// ---------------------------------------------------------------------------
 
-/**
- * Presses a drawer's Save button.
- *
- * The SlideoutMenu footer shifts while the form body re-renders, so a pointer
- * click can spin on Playwright's "stable" check (see clickDrawerSave in
- * domain.ts). The footer buttons are native <button>s: focus + Enter fires the
- * same press without a stable pointer target.
- */
+/** Presses Save via focus + Enter, since the drawer footer shifts and breaks pointer clicks. */
 export const pressGlossaryFormSave = async (
   page: Page,
   kind: GlossaryFormKind
 ) => {
   const saveButton = page.getByTestId(DRAWER[kind].save);
 
-  // A toast left over from the glossary page can sit over the footer, and it
-  // never drains on its own (see dismissToasts).
+  // Clear leftover toasts that can cover the footer.
   await dismissToasts(page);
   await expect(saveButton).toBeEnabled();
   await saveButton.focus();
@@ -522,10 +470,7 @@ const isGlossaryTermPatch = (response: Response) =>
   response.url().includes('/api/v1/glossaryTerms/') &&
   response.request().method() === 'PATCH';
 
-/**
- * Saves the Add Glossary drawer and waits for the create call and the drawer
- * to close. Resolves the create response for payload assertions.
- */
+/** Saves the Add Glossary drawer and resolves the create response once it closes. */
 export const saveGlossaryForm = async (page: Page) => {
   const createResponse = page.waitForResponse(isGlossaryCreate);
   await pressGlossaryFormSave(page, 'glossary');
@@ -536,10 +481,7 @@ export const saveGlossaryForm = async (page: Page) => {
   return response;
 };
 
-/**
- * Saves the term drawer and waits for the create (Add) or patch (Edit) call
- * and the drawer to close. Resolves that response for payload assertions.
- */
+/** Saves the term drawer and resolves the create / patch response once it closes. */
 export const saveGlossaryTermForm = async (
   page: Page,
   mode: 'create' | 'edit' = 'create'
@@ -555,10 +497,7 @@ export const saveGlossaryTermForm = async (
   return response;
 };
 
-/**
- * Presses Save on a form expected to be rejected — by client validation or by
- * the server — and checks the drawer stays open with `message` in the form.
- */
+/** Presses Save expecting a rejection; the drawer must stay open, optionally showing `message`. */
 export const saveGlossaryFormExpectingError = async (
   page: Page,
   kind: GlossaryFormKind,
@@ -582,9 +521,7 @@ export const cancelGlossaryForm = async (
   await expect(getGlossaryFormDrawer(page, kind)).toBeHidden();
 };
 
-// ---------------------------------------------------------------------------
 // Validation
-// ---------------------------------------------------------------------------
 
 const getFormByKind = (page: Page, kind: GlossaryFormKind) =>
   kind === 'glossary' ? getGlossaryForm(page) : getGlossaryTermForm(page);
@@ -601,10 +538,7 @@ export const expectGlossaryFormError = async (
   ).toBeVisible();
 };
 
-/**
- * Walks the required / length / pattern rules on the name and description.
- * Expects the form to have been submitted empty already.
- */
+/** Checks the name / description rules; expects an empty submit to have happened already. */
 export const validateGlossaryFormRequiredFields = async (form: Locator) => {
   await expect(
     form.getByText('Name is required', { exact: true })
@@ -628,9 +562,7 @@ export const validateGlossaryFormRequiredFields = async (form: Locator) => {
   ).toBeVisible();
 };
 
-// ---------------------------------------------------------------------------
 // End-to-end flows
-// ---------------------------------------------------------------------------
 
 /** Opens, fills and saves the Add Glossary drawer; resolves the create response. */
 export const createGlossaryFromForm = async (

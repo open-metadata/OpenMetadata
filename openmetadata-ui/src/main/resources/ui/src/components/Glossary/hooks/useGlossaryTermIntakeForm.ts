@@ -37,10 +37,7 @@ const isCustomPropertyField = (field: IntakeFormField) =>
   field.fieldKind === FieldKind.CustomProperty ||
   field.fieldPath.startsWith('extension.');
 
-/**
- * Loads the admin-configured intake form for glossary terms. Intake forms only
- * govern creation, so nothing is fetched in edit mode.
- */
+/** Loads the glossary term intake form; skipped in edit mode since it only governs creation. */
 export const useGlossaryTermIntakeForm = (
   editMode: boolean
 ): GlossaryTermIntakeFormState => {
@@ -62,8 +59,7 @@ export const useGlossaryTermIntakeForm = (
     let cancelled = false;
     setIsLoaded(false);
 
-    // getIntakeFormByEntityType resolves null when no form is configured, so a
-    // rejection here is a real failure worth surfacing.
+    // A missing intake form resolves to null, so any rejection is a real failure.
     Promise.allSettled([
       getIntakeFormByEntityType(TargetEntityType.GlossaryTerm),
       getCustomPropertiesByEntityType(TargetEntityType.GlossaryTerm),

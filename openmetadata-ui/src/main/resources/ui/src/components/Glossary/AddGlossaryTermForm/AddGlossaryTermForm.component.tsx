@@ -96,8 +96,7 @@ const AddGlossaryTermForm = ({
     [intake.requiredNativeFields, t]
   );
 
-  // The intake form can make any native field mandatory; its configured
-  // message wins over the generic one.
+  // Intake forms can make any native field required, with their own message.
   const applyIntakeRequired = useCallback(
     (field: FieldProp): FieldProp => {
       const message = getIntakeRequiredMessage(field.name);
@@ -215,8 +214,7 @@ const AddGlossaryTermForm = ({
             <FormItemLabel required label={t('label.description')} />
             <RichTextEditor
               className="new-form-style"
-              // Seeded from the defaults, not the live value, so typing never
-              // re-applies content to the editor; `reset` re-seeds it.
+              // Seeded from defaults so typing never resets the editor.
               initialValue={form.formState.defaultValues?.description}
               onTextChange={field.onChange}
             />
@@ -361,8 +359,7 @@ const AddGlossaryTermForm = ({
 
       {!editMode && intake.isLoaded && (
         <AddDomainFormExtensionFields
-          // The extension fields only read and write `extensionFormValues.*`,
-          // which both form shapes share.
+          // Safe cast: these fields only touch `extensionFormValues`, shared by both forms.
           control={form.control as unknown as Control<DomainFormValues>}
           customProperties={intake.customProperties}
           formFields={intake.extensionFormFields}

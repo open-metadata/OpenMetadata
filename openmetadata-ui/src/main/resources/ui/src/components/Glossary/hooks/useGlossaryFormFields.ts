@@ -43,10 +43,7 @@ const toPickerProps = ({
   options,
 });
 
-/**
- * Field configs shared by the glossary and glossary term forms, so both
- * drawers validate names and owners identically.
- */
+/** Field configs shared by the glossary and glossary term forms. */
 export const useGlossaryFormFields = ({
   entityRules,
   ownersPicker,

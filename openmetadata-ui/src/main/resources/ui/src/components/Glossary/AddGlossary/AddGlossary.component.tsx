@@ -120,8 +120,7 @@ const AddGlossary = ({ form, onSubmit }: AddGlossaryProps) => {
             <FormItemLabel required label={t('label.description')} />
             <RichTextEditor
               className="new-form-style"
-              // Seeded from the defaults, not the live value, so typing never
-              // re-applies content to the editor; `reset` re-seeds it.
+              // Seeded from defaults so typing never resets the editor.
               initialValue={form.formState.defaultValues?.description}
               onTextChange={field.onChange}
             />

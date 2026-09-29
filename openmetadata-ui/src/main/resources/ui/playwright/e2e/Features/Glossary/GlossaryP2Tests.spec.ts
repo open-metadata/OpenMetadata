@@ -48,8 +48,7 @@ test.describe('Glossary P2 Tests', () => {
       });
       const termData = await response.json();
 
-      // No reviewers = auto-approved in some configs. A glossary term carries
-      // its lifecycle state in `entityStatus`; it has no `status` field.
+      // Terms carry their status in `entityStatus`; with no reviewers it may auto-approve.
       expect(['Draft', 'Approved']).toContain(termData.entityStatus);
     } finally {
       await glossary.delete(apiContext);
