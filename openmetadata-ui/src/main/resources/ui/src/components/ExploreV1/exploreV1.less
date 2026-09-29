@@ -128,3 +128,24 @@
     column-gap: 16px;
   }
 }
+
+// Browse Estate while searching (entity-type menu): same hover and selected
+// surface as the sidebar nav items; antd's light-blue selected fill glares in
+// dark mode.
+.custom-menu[data-testid='explore-left-panel'] .ant-menu-item {
+  border-radius: var(--om-radius-sm);
+
+  &:hover {
+    background-color: var(
+      --ask-hover,
+      var(--tw-background-color-secondary_hover)
+    );
+  }
+}
+
+.dark-mode
+  .custom-menu[data-testid='explore-left-panel']
+  .ant-menu-item-selected {
+  background-color: var(--ask-selected-surface);
+  color: var(--ask-selected-fg);
+}

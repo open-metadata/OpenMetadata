@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GlossaryTag } from '@openmetadata/ui-core-components';
+import { Button, GlossaryTag } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -204,8 +204,10 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
             />
           ))}
           {glossaryTerms.length > maxVisibleGlossaryTerms && (
-            <button
+            <Button
               className="show-more-terms-button"
+              color="link-color"
+              size="xs"
               type="button"
               onClick={() => setShowAllTerms(!showAllTerms)}>
               {showAllTerms
@@ -213,7 +215,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
                 : `+${glossaryTerms.length - maxVisibleGlossaryTerms} ${t(
                     'label.more-lowercase'
                   )}`}
-            </button>
+            </Button>
           )}
         </div>
       </div>

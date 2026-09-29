@@ -24,6 +24,25 @@
   // Inherit the Browse Estate card surface instead of antd's bg-primary.
   background: transparent;
 
+  // Same hover as the sidebar nav items (secondary_hover in light, gray-700 in
+  // dark via the sidebar's --ask-hover).
+  .ant-tree-node-content-wrapper {
+    border-radius: var(--om-radius-sm);
+  }
+
+  .ant-tree-node-content-wrapper:hover {
+    background-color: var(
+      --ask-hover,
+      var(--tw-background-color-secondary_hover)
+    );
+  }
+
+  // Dark: antd's light-blue selected fill glares on the dark card; use the
+  // sidebar's selected pill instead. Light keeps antd's selected colour.
+  .dark-mode & .ant-tree-node-content-wrapper.ant-tree-node-selected {
+    background-color: var(--ask-selected-surface);
+  }
+
   .ant-tree-iconEle {
     svg {
       width: 16px;
