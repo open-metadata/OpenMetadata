@@ -1403,13 +1403,16 @@ const InlineCustomPropertiesEditor = ({
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line sonarjs/no-identical-functions -- distinct effect closure; extraction would cross scopes
     const handleMouseDown = (event: globalThis.MouseEvent) => {
       const target = event.target as Node;
 
+      // Select dropdowns portal to document.body, outside the editor.
       if (
         triggerRef.current?.contains(target) ||
-        editorRef.current?.contains(target)
+        editorRef.current?.contains(target) ||
+        (target as Element).closest?.(
+          '.bulk-edit-custom-property-select-dropdown'
+        )
       ) {
         return;
       }
@@ -1506,11 +1509,10 @@ const InlineCustomPropertiesEditor = ({
     propertyValue: ExtensionDataTypes | undefined,
     isReferenceList: boolean
   ) => {
-    const mode = isReferenceList ? 'multiple' : undefined;
     const initialOptions = getEntityReferenceInitialOptions(propertyValue);
 
     const handleReferenceChange = (
-      option: DataAssetOption | DataAssetOption[]
+      option?: DataAssetOption | DataAssetOption[]
     ) => {
       if (Array.isArray(option)) {
         handleUpdateDraft(
@@ -1529,16 +1531,14 @@ const InlineCustomPropertiesEditor = ({
 
     return (
       <DataAssetAsyncSelectList
-        className="bulk-edit-custom-property-reference-select"
-        getPopupContainer={() => document.body}
         initialOptions={initialOptions}
-        mode={mode}
+        multiple={isReferenceList}
         placeholder={
           isReferenceList
             ? t('label.entity-reference-plural')
             : t('label.entity-reference')
         }
-        popupClassName="bulk-edit-custom-property-select-dropdown"
+        popoverClassName="bulk-edit-custom-property-select-dropdown"
         searchIndex={getCustomPropertyReferenceSearchIndex(customProperty)}
         value={getEntityReferenceSelectValue(propertyValue)}
         onChange={handleReferenceChange}
