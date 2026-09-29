@@ -198,17 +198,9 @@ public interface SearchIndex {
         entity.getEntityStatus() != null
             ? entity.getEntityStatus().value()
             : org.openmetadata.schema.type.EntityStatus.UNPROCESSED.value());
+    doc.put("totalVotes", SearchIndexUtils.totalVotes(entity.getVotes()));
     if (entity.getVotes() != null) {
-      int upVotes = entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0;
-      int downVotes =
-          entity.getVotes().getDownVotes() != null ? entity.getVotes().getDownVotes() : 0;
-      doc.put("totalVotes", Math.max(upVotes - downVotes, 0));
-      Map<String, Object> votesMap = new HashMap<>();
-      votesMap.put("upVotes", upVotes);
-      votesMap.put("downVotes", downVotes);
-      doc.put("votes", votesMap);
-    } else {
-      doc.put("totalVotes", 0);
+      doc.put("votes", SearchIndexUtils.voteCounts(entity.getVotes()));
     }
 
     doc.put("descriptionStatus", getDescriptionStatus(entity));

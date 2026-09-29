@@ -4636,6 +4636,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(originalEntity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
+    // The entity was loaded without its relationships; the votes-only change description keeps
+    // search indexing from rebuilding the document out of it, as addFollower does.
+    originalEntity.setIncrementalChangeDescription(change);
+    originalEntity.setChangeDescription(change);
     postUpdate(originalEntity, originalEntity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }

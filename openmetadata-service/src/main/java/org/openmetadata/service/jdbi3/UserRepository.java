@@ -59,7 +59,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -1910,13 +1909,9 @@ public class UserRepository extends EntityRepository<User> {
       recordListChange(
           TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
 
-      // Update users and userCount in team search index
-      Stream.concat(added.stream(), deleted.stream())
-          .forEach(
-              teamRef -> {
-                EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
-                searchRepository.updateEntityIndex(team);
-              });
+      // Reloads each team with every field its index needs, so userCount changes without
+      // blanking the team's owners and domains.
+      Stream.concat(added.stream(), deleted.stream()).forEach(searchRepository::updateEntity);
     }
 
     private List<EntityReference> findAddedTeams(

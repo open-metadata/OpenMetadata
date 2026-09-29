@@ -3855,9 +3855,10 @@ public class SearchRepository {
         scriptTxt.append("ctx._source.domains = params.domains;");
       }
       if (fieldChange.getName().equalsIgnoreCase("votes")) {
-        Map<String, Object> doc = JsonUtils.getMap(entity);
-        fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
+        fieldAddParams.put("votes", SearchIndexUtils.voteCounts(entity.getVotes()));
+        fieldAddParams.put("totalVotes", SearchIndexUtils.totalVotes(entity.getVotes()));
         scriptTxt.append("ctx._source.votes = params.votes;");
+        scriptTxt.append("ctx._source.totalVotes = params.totalVotes;");
       }
       if (fieldChange.getName().equalsIgnoreCase("pipelineStatus")) {
         scriptTxt.append(

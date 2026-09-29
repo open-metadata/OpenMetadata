@@ -18,6 +18,8 @@ public class TeamIndex implements SearchIndex {
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new HashSet<>(SearchIndex.super.getRequiredReindexFields());
     fields.add("parents");
+    fields.add("userCount");
+    fields.add("childrenCount");
     return java.util.Collections.unmodifiableSet(fields);
   }
 

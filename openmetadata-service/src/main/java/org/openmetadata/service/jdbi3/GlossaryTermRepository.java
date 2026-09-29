@@ -786,6 +786,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   /**
+   * A move loads only what it rewrites. Reloads what the term's search document is built from,
+   * inheritance included, so the index write keeps its owners and domains and reflects what the
+   * term now inherits from its new parent.
+   */
+  private void loadSearchIndexFields(GlossaryTerm term) {
+    Fields indexFields =
+        getOnlySupportedFields(
+            String.join(
+                ",", searchRepository.getSearchIndexFactory().getReindexFieldsFor(GLOSSARY_TERM)));
+    setFieldsInternal(term, indexFields);
+    setInheritedFields(term, indexFields);
+  }
+
+  /**
    * A root term's parent is its glossary, which declares no ontology attributes. Asking a glossary
    * for the term-only effective attribute field is rejected as an unknown field, so only terms are
    * loaded with it.
@@ -2867,6 +2881,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             updateParent(original, updated); // Only update parent/glossary and FQN/relationships
             storeUpdate();
           });
+      loadSearchIndexFields(updated);
       postUpdate(original, updated);
     }
 

@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -360,6 +361,27 @@ public final class SearchIndexUtils {
       return Collections.emptyList();
     }
     return followersRef.stream().map(item -> item.getId().toString()).toList();
+  }
+
+  /** The vote counts indexed with an entity. Voter references are not indexed. */
+  public static Map<String, Object> voteCounts(Votes votes) {
+    Map<String, Object> counts = new HashMap<>();
+    counts.put("upVotes", upVotes(votes));
+    counts.put("downVotes", downVotes(votes));
+    return counts;
+  }
+
+  /** Net votes that search ranks an entity by, floored at zero. */
+  public static int totalVotes(Votes votes) {
+    return Math.max(upVotes(votes) - downVotes(votes), 0);
+  }
+
+  private static int upVotes(Votes votes) {
+    return votes == null || votes.getUpVotes() == null ? 0 : votes.getUpVotes();
+  }
+
+  private static int downVotes(Votes votes) {
+    return votes == null || votes.getDownVotes() == null ? 0 : votes.getDownVotes();
   }
 
   /**
