@@ -16,7 +16,7 @@ import { EdgeInteractionOverlay } from './EdgeInteractionOverlay.component';
 
 const mockUseViewport = jest.fn().mockReturnValue({ x: 0, y: 0, zoom: 1 });
 const mockUseLineageStore = {
-  isEditMode: false,
+  canEditLineage: false,
   selectedEdge: undefined,
 };
 
@@ -52,7 +52,7 @@ const createEdge = (overrides: Partial<Edge> = {}): Edge => ({
 describe('EdgeInteractionOverlay', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseLineageStore.isEditMode = false;
+    mockUseLineageStore.canEditLineage = false;
     mockUseLineageStore.selectedEdge = undefined;
   });
 
@@ -66,7 +66,7 @@ describe('EdgeInteractionOverlay', () => {
 
   it('renders edit button when edge is selected in edit mode', () => {
     const edge = createEdge();
-    mockUseLineageStore.isEditMode = true;
+    mockUseLineageStore.canEditLineage = true;
     mockUseLineageStore.selectedEdge = edge;
 
     render(<EdgeInteractionOverlay />);
@@ -83,7 +83,7 @@ describe('EdgeInteractionOverlay', () => {
         isColumnLineage: true,
       },
     });
-    mockUseLineageStore.isEditMode = true;
+    mockUseLineageStore.canEditLineage = true;
     mockUseLineageStore.selectedEdge = edge;
 
     render(<EdgeInteractionOverlay />);
@@ -98,7 +98,7 @@ describe('EdgeInteractionOverlay', () => {
         isColumnLineage: true,
       },
     });
-    mockUseLineageStore.isEditMode = true;
+    mockUseLineageStore.canEditLineage = true;
     mockUseLineageStore.selectedEdge = edge;
 
     render(<EdgeInteractionOverlay />);
@@ -110,7 +110,7 @@ describe('EdgeInteractionOverlay', () => {
 
   it('does not render delete button for non-column lineage', () => {
     const edge = createEdge();
-    mockUseLineageStore.isEditMode = true;
+    mockUseLineageStore.canEditLineage = true;
     mockUseLineageStore.selectedEdge = edge;
 
     render(<EdgeInteractionOverlay />);
@@ -126,7 +126,7 @@ describe('EdgeInteractionOverlay', () => {
         isColumnLineage: true,
       },
     });
-    mockUseLineageStore.isEditMode = true;
+    mockUseLineageStore.canEditLineage = true;
     mockUseLineageStore.selectedEdge = edge;
 
     render(<EdgeInteractionOverlay onEdgeRemove={onEdgeRemove} />);
@@ -135,6 +135,17 @@ describe('EdgeInteractionOverlay', () => {
     fireEvent.click(deleteButton);
 
     expect(onEdgeRemove).toHaveBeenCalled();
+  });
+
+  it('hides edit/delete buttons when the user cannot edit lineage', () => {
+    const edge = createEdge();
+    mockUseLineageStore.canEditLineage = false;
+    mockUseLineageStore.selectedEdge = edge;
+
+    render(<EdgeInteractionOverlay />);
+
+    expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('add-pipeline')).not.toBeInTheDocument();
   });
 
   it('does not render when computedPath is missing', () => {

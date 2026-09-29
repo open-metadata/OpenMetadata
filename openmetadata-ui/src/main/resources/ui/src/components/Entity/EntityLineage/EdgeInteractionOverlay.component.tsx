@@ -29,8 +29,12 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
   onPipelineClick,
   onEdgeRemove,
 }) => {
-  const { isEditMode, selectedEdge, columnsInCurrentPages, isRepositioning } =
-    useLineageStore();
+  const {
+    canEditLineage,
+    selectedEdge,
+    columnsInCurrentPages,
+    isRepositioning,
+  } = useLineageStore();
   const { getNode } = useReactFlow();
   const viewport = useViewport();
 
@@ -119,8 +123,8 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
 
   return (
     <div className="edge-interaction-overlay">
-      {selectedEdge && isEditMode && renderEditButton(selectedEdge)}
-      {selectedEdge && isEditMode && renderDeleteButton(selectedEdge)}
+      {selectedEdge && canEditLineage && renderEditButton(selectedEdge)}
+      {selectedEdge && canEditLineage && renderDeleteButton(selectedEdge)}
     </div>
   );
 };

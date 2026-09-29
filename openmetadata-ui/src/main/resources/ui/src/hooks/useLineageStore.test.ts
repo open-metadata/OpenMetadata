@@ -884,3 +884,22 @@ describe('data slice (extra actions)', () => {
     expect(s.nodes).toHaveLength(1);
   });
 });
+
+describe('canEditLineage', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('defaults to false and can be set', () => {
+    expect(useLineageStore.getState().canEditLineage).toBe(false);
+
+    useLineageStore.getState().setCanEditLineage(true);
+
+    expect(useLineageStore.getState().canEditLineage).toBe(true);
+  });
+
+  it('reset clears it', () => {
+    useLineageStore.getState().setCanEditLineage(true);
+    useLineageStore.getState().reset();
+
+    expect(useLineageStore.getState().canEditLineage).toBe(false);
+  });
+});

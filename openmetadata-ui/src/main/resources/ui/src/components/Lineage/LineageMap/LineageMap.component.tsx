@@ -61,6 +61,7 @@ import {
   NODE_HEIGHT_WITH_CHILDREN,
   NODE_WIDTH,
 } from '../../../constants/Lineage.constants';
+import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
@@ -76,6 +77,7 @@ import {
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import { EntityReference } from '../../../generated/entity/type';
 import { LineageLayer } from '../../../generated/settings/settings';
+import { LineagePlatformView } from '../../../hooks/lineage/types';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -954,12 +956,14 @@ const LineageMapCanvas = ({
   deleted,
   entity,
   entityType,
+  hasEditAccess,
   isPlatformLineage,
 }: {
   config: LineageConfig;
   deleted?: boolean;
   entity?: SourceType;
   entityType: LineageProps['entityType'];
+  hasEditAccess?: boolean;
   isPlatformLineage?: boolean;
 }) => {
   const { t } = useTranslation();
@@ -1008,11 +1012,13 @@ const LineageMapCanvas = ({
   const {
     lineageMutationTick,
     isEditMode,
+    platformView,
     selectedColumn,
     selectedNode,
     selectedQuickFilters,
     setActiveLayer,
     setActiveNode,
+    setCanEditLineage,
     setColumnsHavingLineage,
     setColumnsInCurrentPages,
     setIsCreatingEdge,
@@ -1065,7 +1071,22 @@ const LineageMapCanvas = ({
     return JSON.stringify(scopedQuery);
   }, [selectedQuickFilters, activeDomain, isDomainRestricted]);
   const previousMutationTickRef = useRef(lineageMutationTick);
-  const canEditScene = isEditMode && scene?.band !== LineageBand.Layer;
+  const canEditScene = useMemo(() => {
+    const isEditableLineageView =
+      Boolean(hasEditAccess) &&
+      !deleted &&
+      platformView === LineagePlatformView.None;
+
+    return (
+      isEditableLineageView &&
+      !SERVICE_TYPES.includes(entityType as EntityType) &&
+      scene?.band !== LineageBand.Layer
+    );
+  }, [hasEditAccess, deleted, platformView, entityType, scene?.band]);
+
+  useEffect(() => {
+    setCanEditLineage(canEditScene);
+  }, [canEditScene, setCanEditLineage]);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -1464,10 +1485,7 @@ const LineageMapCanvas = ({
       const lineageNode = toLineageNode(node, t);
 
       return {
-        connectable:
-          isEditMode &&
-          scene.band !== LineageBand.Layer &&
-          isEditableSceneNode(node),
+        connectable: canEditScene && isEditableSceneNode(node),
         id: node.id,
         type: EntityLineageNodeType.DEFAULT,
         width: getNodeWidth(node, scene.band),
@@ -1527,6 +1545,7 @@ const LineageMapCanvas = ({
       isMounted = false;
     };
   }, [
+    canEditScene,
     config.pipelineViewMode,
     handleDrill,
     handleSceneColumnHover,
@@ -2113,7 +2132,7 @@ const LineageMapCanvas = ({
   useEffect(() => {
     const handleDeleteKey = (event: KeyboardEvent) => {
       if (
-        !isEditMode ||
+        !canEditScene ||
         !selectedNode ||
         (event.key !== 'Delete' && event.key !== 'Backspace')
       ) {
@@ -2137,7 +2156,7 @@ const LineageMapCanvas = ({
     window.addEventListener('keydown', handleDeleteKey);
 
     return () => window.removeEventListener('keydown', handleDeleteKey);
-  }, [isEditMode, removeSceneNode, selectedNode]);
+  }, [canEditScene, removeSceneNode, selectedNode]);
 
   const handleCanvasMouseMove = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -2339,6 +2358,7 @@ const LineageMap = ({
   deleted,
   entity,
   entityType,
+  hasEditAccess,
   isPlatformLineage,
 }: LineageProps) => {
   const lineageConfig = useLineageStore((state) => state.lineageConfig);
@@ -2365,6 +2385,7 @@ const LineageMap = ({
         deleted={deleted}
         entity={entity}
         entityType={entityType}
+        hasEditAccess={hasEditAccess}
         isPlatformLineage={isPlatformLineage}
       />
     </ReactFlowProvider>

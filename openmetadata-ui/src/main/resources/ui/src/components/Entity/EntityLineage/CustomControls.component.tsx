@@ -26,19 +26,15 @@ import {
   FC,
   memo,
   MouseEventHandler,
-  ReactNode,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
-import { useFocusable } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/ic-download.svg';
 import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
@@ -50,13 +46,10 @@ import {
   FULLSCREEN_QUERY_PARAM_KEY,
 } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
-import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
-import { LineageBand } from '../../../generated/api/lineage/lineageScene';
-import { LineagePlatformView } from '../../../hooks/lineage/types';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -67,7 +60,6 @@ import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import { getSearchNameEsQuery } from '../../../utils/Lineage/LineagePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
-import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
@@ -79,30 +71,6 @@ import LineageTimeFilter from './LineageTimeFilter.component';
 type LineageFilterNodeData = {
   node?: { id?: string };
   sceneNode?: { sourceEntity?: { id?: string } };
-};
-
-const DisabledEditTooltipTrigger = ({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) => {
-  const ref = useRef<HTMLSpanElement>(null);
-  // Disabled controls ignore the tooltip context; a focusable span keeps the
-  // hint available without nesting the disabled button in another button.
-  const { focusableProps } = useFocusable({}, ref);
-
-  return (
-    <span
-      {...focusableProps}
-      aria-label={label}
-      className="tw:inline-flex"
-      ref={ref}
-      role="group">
-      {children}
-    </span>
-  );
 };
 
 const CustomControls: FC<{
@@ -122,8 +90,6 @@ const CustomControls: FC<{
   onSearchValueChange,
   searchValue,
   queryFilterNodeIds,
-  deleted = false,
-  hasEditAccess = false,
   impactLevel,
   onPageReset,
 }) => {
@@ -144,14 +110,7 @@ const CustomControls: FC<{
       setTimeFilter: s.setTimeFilter,
     }))
   );
-  const {
-    lineageConfig,
-    toggleEditMode,
-    isEditMode,
-    platformView,
-    sceneBand,
-    setLineageConfig,
-  } = useLineageStore();
+  const { lineageConfig, setLineageConfig } = useLineageStore();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const navigate = useNavigate();
@@ -436,54 +395,6 @@ const CustomControls: FC<{
     },
     [updateURLParams]
   );
-  const lineageEditButton = useMemo(() => {
-    const isEditableLineageView =
-      hasEditAccess && !deleted && platformView === LineagePlatformView.None;
-    const showEditOption =
-      isEditableLineageView &&
-      entityType &&
-      !SERVICE_TYPES.includes(entityType as AssetsUnion);
-    const isLayerBand = sceneBand === LineageBand.Layer;
-    const editLabel = t('label.edit-entity', { entity: t('label.lineage') });
-    const editButton = (
-      <Button
-        aria-label={editLabel}
-        color={isEditMode ? 'primary' : 'secondary'}
-        data-testid="edit-lineage"
-        iconLeading={EditIcon}
-        isDisabled={isLayerBand}
-        onClick={toggleEditMode}
-      />
-    );
-
-    return showEditOption ? (
-      <Tooltip
-        placement="top"
-        title={
-          isLayerBand
-            ? t('label.zoom-in')
-            : t('label.edit-entity', { entity: t('label.lineage') })
-        }>
-        {isLayerBand ? (
-          <DisabledEditTooltipTrigger label={editLabel}>
-            {editButton}
-          </DisabledEditTooltipTrigger>
-        ) : (
-          editButton
-        )}
-      </Tooltip>
-    ) : null;
-  }, [
-    hasEditAccess,
-    deleted,
-    platformView,
-    entityType,
-    isEditMode,
-    sceneBand,
-    toggleEditMode,
-    t,
-  ]);
-
   const settingsButton = useMemo(() => {
     const handleSettingsClick = () => {
       setDialogVisible(true);
@@ -518,22 +429,21 @@ const CustomControls: FC<{
   );
 
   const tabsSection = useMemo(
-    () =>
-      isEditMode ? null : (
-        <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key) => handleTabChange(key as string)}>
-          <Tabs.List size="sm" type="button-border">
-            <Tabs.Item id="lineage" key="lineage">
-              {t('label.lineage')}
-            </Tabs.Item>
-            <Tabs.Item id="impact_analysis" key="impact_analysis">
-              {t('label.impact-analysis')}
-            </Tabs.Item>
-          </Tabs.List>
-        </Tabs>
-      ),
-    [isEditMode, activeTab, handleTabChange, t]
+    () => (
+      <Tabs
+        selectedKey={activeTab}
+        onSelectionChange={(key) => handleTabChange(key as string)}>
+        <Tabs.List size="sm" type="button-border">
+          <Tabs.Item id="lineage" key="lineage">
+            {t('label.lineage')}
+          </Tabs.Item>
+          <Tabs.Item id="impact_analysis" key="impact_analysis">
+            {t('label.impact-analysis')}
+          </Tabs.Item>
+        </Tabs.List>
+      </Tabs>
+    ),
+    [activeTab, handleTabChange, t]
   );
 
   const filterSelectionSection = useMemo(
@@ -636,13 +546,11 @@ const CustomControls: FC<{
               onChange={setTimeFilter}
             />
           )}
-          {lineageEditButton}
           <Tooltip placement="top" title={exportButtonLabel}>
             <TooltipTrigger>
               <ButtonUtility
                 aria-label={exportButtonLabel}
                 data-testid="export-button"
-                disabled={isEditMode}
                 icon={DownloadIcon}
                 onClick={handleExportClick}
               />

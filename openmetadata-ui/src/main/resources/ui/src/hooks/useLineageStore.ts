@@ -36,6 +36,7 @@ import { LineagePlatformView, LineageTimeRange } from './lineage/types';
 interface LineageState {
   // state properties
   isEditMode: boolean;
+  canEditLineage: boolean;
   lineageConfig: LineageConfig;
   tracedColumns: Set<string>;
   tracedNodes: Set<string>;
@@ -82,6 +83,7 @@ interface LineageState {
   // Actions
   setIsEditMode: (isEditMode: boolean) => void;
   toggleEditMode: () => void;
+  setCanEditLineage: (canEditLineage: boolean) => void;
   setLineageConfig: (lineageConfig: LineageConfig) => void;
   setTracedColumns: (tracedColumns: Set<string>) => void;
   addTracedColumns: (newColumn: string) => void;
@@ -157,6 +159,7 @@ const defaultLineageSettings = {
 
 export const useLineageStore = create<LineageState>((set, get) => ({
   isEditMode: false,
+  canEditLineage: false,
   lineageConfig: defaultLineageSettings,
   tracedColumns: new Set(),
   tracedNodes: new Set(),
@@ -197,6 +200,8 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
 
   setIsEditMode: (isEditMode: boolean) => set({ isEditMode }),
+
+  setCanEditLineage: (canEditLineage: boolean) => set({ canEditLineage }),
 
   toggleEditMode: () => {
     const { isEditMode, isColumnLevelLineage, sceneBand } = get();
@@ -349,6 +354,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   reset: () =>
     set({
       isEditMode: false,
+      canEditLineage: false,
       lineageConfig: defaultLineageSettings,
       tracedColumns: new Set(),
       tracedNodes: new Set(),

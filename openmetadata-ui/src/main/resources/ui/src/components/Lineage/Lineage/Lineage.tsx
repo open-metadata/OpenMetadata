@@ -36,7 +36,6 @@ import {
   Node,
   NodeProps,
   ReactFlowInstance,
-  useKeyPress,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {
@@ -488,6 +487,7 @@ export const Lineage = ({
 
   const {
     isEditMode,
+    canEditLineage,
     lineageConfig,
     setLineageConfig,
     tracedColumns,
@@ -558,8 +558,6 @@ export const Lineage = ({
   );
   const queryParams = new URLSearchParams(location.search);
   const isFullScreen = queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
-  const deletePressed = useKeyPress('Delete');
-  const backspacePressed = useKeyPress('Backspace');
   const { showModal } = useEntityExportModalProvider();
   const [dqHighlightedEdges, setDqHighlightedEdges] = useState<Set<string>>();
 
@@ -2241,32 +2239,6 @@ export const Lineage = ({
   }, [isEditMode, updatedEntityLineage, entityFqn]);
 
   useEffect(() => {
-    if (isEditMode) {
-      setUpdatedEntityLineage(null);
-      if (deletePressed || backspacePressed) {
-        if (activeNode) {
-          removeNodeHandler(activeNode);
-        } else if (selectedEdge) {
-          if (selectedEdge.data?.isColumnLineage) {
-            removeColumnEdge(selectedEdge, true);
-          } else {
-            removeEdgeHandler(selectedEdge, true);
-          }
-        }
-      }
-    }
-  }, [
-    isEditMode,
-    deletePressed,
-    backspacePressed,
-    activeNode,
-    selectedEdge,
-    removeColumnEdge,
-    removeEdgeHandler,
-    removeNodeHandler,
-  ]);
-
-  useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {
       redrawRef.current();
     }
@@ -2422,7 +2394,10 @@ export const Lineage = ({
           'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
         })}>
         {children}
-        <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
+        <EntityLineageSidebar
+          newAddedNode={newAddedNode}
+          show={canEditLineage}
+        />
         <LineageOverlays handlers={overlayHandlers} />
       </div>
     </LineageHandlersContext.Provider>
