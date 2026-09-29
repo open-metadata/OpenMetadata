@@ -308,7 +308,12 @@ const selectFieldConfig = {
   },
 };
 
-const loadSelectTree = (operator, value, valueType) =>
+const loadSelectTree = (
+  operator,
+  value,
+  valueType,
+  config = selectFieldConfig
+) =>
   QbUtils.checkTree(
     QbUtils.loadTree({
       id: 'aaaaaaaa-1111-4111-8111-111111111111',
@@ -328,7 +333,7 @@ const loadSelectTree = (operator, value, valueType) =>
         },
       },
     }),
-    selectFieldConfig
+    config
   );
 
 const firstRuleOf = (tree) => tree.get('children1').valueSeq().toArray()[0];
@@ -343,6 +348,80 @@ describe('elasticSearchFormat – rule node reached directly (Issue #31564)', ()
     ).toStrictEqual(clause);
     expect(elasticSearchFormat(tree, selectFieldConfig)).toStrictEqual({
       bool: { must: [clause] },
+    });
+  });
+});
+
+// `Not in [a, b]` means "holds neither", so the per-value `must_not` clauses are
+// AND-ed. OR-ing them asked for "does not hold all of them", which matched every
+// asset carrying exactly one of the values — the filter let through the rows it
+// was written to exclude.
+describe('elasticSearchFormat – multi-value negated select', () => {
+  const OTHER_VALUE = 'retail-snowflake';
+
+  const multiSelectConfig = {
+    ...selectFieldConfig,
+    fields: {
+      [SELECT_FIELD]: {
+        ...selectFieldConfig.fields[SELECT_FIELD],
+        fieldSettings: {
+          listValues: {
+            [SELECT_VALUE]: SELECT_VALUE,
+            [OTHER_VALUE]: OTHER_VALUE,
+          },
+        },
+      },
+    },
+  };
+
+  const formatSelect = (operator) =>
+    elasticSearchFormat(
+      loadSelectTree(
+        operator,
+        [[SELECT_VALUE, OTHER_VALUE]],
+        'multiselect',
+        multiSelectConfig
+      ),
+      multiSelectConfig
+    );
+
+  it('should AND the negated clauses of a Not in rule', () => {
+    expect(formatSelect('select_not_any_in')).toStrictEqual({
+      bool: {
+        must: [
+          {
+            bool: {
+              must: [
+                {
+                  bool: {
+                    must_not: { term: { [SELECT_FIELD]: SELECT_VALUE } },
+                  },
+                },
+                {
+                  bool: { must_not: { term: { [SELECT_FIELD]: OTHER_VALUE } } },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it('should still OR the clauses of an Any in rule', () => {
+    expect(formatSelect('select_any_in')).toStrictEqual({
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                { term: { [SELECT_FIELD]: SELECT_VALUE } },
+                { term: { [SELECT_FIELD]: OTHER_VALUE } },
+              ],
+            },
+          },
+        ],
+      },
     });
   });
 });

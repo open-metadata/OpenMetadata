@@ -406,6 +406,18 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   /**
+   * Rejects a contract that {@link #prepare} would reject, without side effects. Callers that
+   * create other entities for a contract before storing it use this so a rejected contract leaves
+   * nothing behind.
+   */
+  public void assertImportable(DataContract dataContract, boolean update) {
+    if (!update) {
+      validateEntityReference(dataContract.getEntity());
+    }
+    prepareForValidation(dataContract);
+  }
+
+  /**
    * Validation-only version of prepare() that validates without creating any entities.
    * This is used for ODCS import preview and contract validation endpoints.
    * Unlike prepare(), this method has NO side effects (no test suite or pipeline creation).

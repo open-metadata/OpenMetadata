@@ -79,7 +79,7 @@ describe('Test Add attribute modal', () => {
     const container = await screen.findByTestId('modal-container');
     const title = await screen.findByTestId('modal-title');
 
-    const sumbitButton = await screen.findByText('Submit');
+    const sumbitButton = await screen.findByText('label.save');
     const cancelButton = await screen.findByText('Cancel');
 
     expect(container).toBeInTheDocument();
@@ -102,7 +102,7 @@ describe('Test Add attribute modal', () => {
   it('Submit button should work', async () => {
     render(<AddAttributeModal {...mockProps} />);
 
-    const sumbitButton = await screen.findByText('Submit');
+    const sumbitButton = await screen.findByText('label.save');
 
     expect(sumbitButton).toBeInTheDocument();
 
