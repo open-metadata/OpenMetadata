@@ -22,7 +22,6 @@ import {
   LayersThree01,
   MessageSquare01,
   Search,
-  Search,
   Server01,
   Shield01,
 } from '@openmetadata/ui-core-components/icons';
