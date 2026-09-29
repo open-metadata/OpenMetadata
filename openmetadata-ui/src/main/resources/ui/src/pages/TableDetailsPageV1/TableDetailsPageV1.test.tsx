@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
@@ -187,6 +188,10 @@ jest.mock(
     )),
   })
 );
+
+jest.mock('../../components/Lineage/Lineage/Lineage', () => ({
+  Lineage: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
 
 jest.mock('../../components/Lineage/Lineage.component', () => {
   return jest
