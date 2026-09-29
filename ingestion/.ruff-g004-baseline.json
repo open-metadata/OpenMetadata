@@ -1464,7 +1464,6 @@
       "986facc4960abea718b6fd722b9507565c88ac0fcd5e1ce3a8f3b13ead563153": 1
     },
     "ingestion/src/metadata/ingestion/source/database/external_table_lineage_mixin.py": {
-      "1e6dd0cdbac34fbce133c8949a25ab4ff0329490c2b029bcc5096b45013b3057": 1,
       "de7d379e991ec7f76dc4b5e170f6428c0027e16a772d59366762da348bfdc413": 1
     },
     "ingestion/src/metadata/ingestion/source/database/glue/metadata.py": {
