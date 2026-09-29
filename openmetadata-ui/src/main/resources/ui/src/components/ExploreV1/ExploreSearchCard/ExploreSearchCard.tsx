@@ -12,6 +12,7 @@
  */
 import {
   Breadcrumbs,
+  Button as CoreButton,
   Card,
   ClassificationTag,
   Owner,
@@ -700,18 +701,23 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         const columnDetails: ExtraInfo[] = [];
 
         if (columnSource.table) {
+          const tableLink = searchClassBase.getEntityLink({
+            ...columnSource.table,
+            entityType: EntityType.TABLE,
+          } as SourceType);
           columnDetails.push({
             key: t('label.table'),
             value: (
-              <Link
-                className="text-primary no-underline truncate w-max-13 d-inline-block align-middle"
-                title={getEntityName(columnSource.table)}
-                to={searchClassBase.getEntityLink({
-                  ...columnSource.table,
-                  entityType: EntityType.TABLE,
-                } as SourceType)}>
+              <CoreButton
+                ellipsis
+                noTextPadding
+                className="tw:max-w-52 tw:align-middle"
+                color="link-color"
+                href={isString(tableLink) ? tableLink : tableLink.pathname}
+                size="sm"
+                tooltip={getEntityName(columnSource.table)}>
                 {getEntityName(columnSource.table)}
-              </Link>
+              </CoreButton>
             ),
           });
         }
