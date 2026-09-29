@@ -184,6 +184,17 @@ public final class ODPSConverter {
     return dp;
   }
 
+  /**
+   * The raw ODPS productID for the selected language, or null when absent. Export writes the entity
+   * FQN here, so callers can match an existing product by its exact identifier before falling back
+   * to the sanitized slug.
+   */
+  public static String selectProductId(ODPSDataProduct odps, String languageCode) {
+    ODPSProductDetails details =
+        odps == null ? null : selectDetails(odps.getProduct(), languageCode);
+    return details == null ? null : details.getProductID();
+  }
+
   private static ODPSProductDetails selectDetails(ODPSProduct product, String languageCode) {
     if (product == null || product.getDetails() == null) {
       return null;
