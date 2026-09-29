@@ -201,6 +201,7 @@ export { Upload } from './Upload';
 export { Validity } from './Validity';
 export { Version } from './Version';
 export { XClose } from './XClose';
+export { AppLayout } from './AppLayout';
 export { Bronze } from './Bronze';
 export { Gold } from './Gold';
 export { None } from './None';

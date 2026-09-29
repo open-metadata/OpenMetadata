@@ -14,8 +14,6 @@
 import {
   Box,
   Button,
-  ButtonGroup,
-  ButtonGroupItem,
   ButtonUtility,
   Card,
   Divider,
@@ -24,6 +22,7 @@ import {
   RadioButton,
   RadioGroup,
   Select,
+  Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Delete, Plus } from '@openmetadata/ui-core-components/icons';
@@ -299,27 +298,26 @@ export const PersonaAppLayoutPage = ({
                       {t(labelKey)}
                     </Typography>
                     <Box align="center" gap={3}>
-                      <ButtonGroup
-                        disallowEmptySelection
-                        aria-label={t(labelKey)}
-                        selectedKeys={[viewModes[page] as PageViewMode]}
-                        size="sm"
-                        variant="segmented"
-                        onSelectionChange={(keys) =>
-                          setPageViewMode(
-                            page,
-                            Array.from(keys)[0] as PageViewMode
-                          )
+                      <Tabs
+                        className="tw:w-auto"
+                        selectedKey={viewModes[page]}
+                        onSelectionChange={(key) =>
+                          setPageViewMode(page, key as PageViewMode)
                         }>
-                        {views.map((view) => (
-                          <ButtonGroupItem
-                            data-testid={`view-mode-${page}-${view}`}
-                            id={view}
-                            key={view}>
-                            {t(PAGE_VIEW_MODE_LABEL_KEYS[view])}
-                          </ButtonGroupItem>
-                        ))}
-                      </ButtonGroup>
+                        <Tabs.List
+                          aria-label={t(labelKey)}
+                          size="sm"
+                          type="button-border">
+                          {views.map((view) => (
+                            <Tabs.Item
+                              data-testid={`view-mode-${page}-${view}`}
+                              id={view}
+                              key={view}>
+                              {t(PAGE_VIEW_MODE_LABEL_KEYS[view])}
+                            </Tabs.Item>
+                          ))}
+                        </Tabs.List>
+                      </Tabs>
                       <ButtonUtility
                         color="tertiary"
                         data-testid={`remove-view-mode-${page}`}
@@ -366,18 +364,23 @@ export const PersonaAppLayoutPage = ({
                               id={page}
                               key={page}
                               textValue={t(labelKey)}>
-                              <span className="tw:flex tw:justify-between tw:gap-4">
-                                <span className="tw:text-md tw:text-primary">
+                              <Box gap={4} justify="between">
+                                <Typography
+                                  as="span"
+                                  className="tw:text-primary"
+                                  size="text-md">
                                   {t(labelKey)}
-                                </span>
-                                <span className="tw:text-tertiary">
+                                </Typography>
+                                <Typography
+                                  as="span"
+                                  className="tw:text-tertiary">
                                   {views
                                     .map((view) =>
                                       t(PAGE_VIEW_MODE_LABEL_KEYS[view])
                                     )
                                     .join(' · ')}
-                                </span>
-                              </span>
+                                </Typography>
+                              </Box>
                             </Dropdown.Item>
                           ))}
                         </Dropdown.Section>

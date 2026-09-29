@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { VIEW_MODE_PAGE } from '../../../constants/platform/personaViewMode.constants';
 import { usePersonaViewMode } from '../../../hooks/platform/usePersonaViewMode';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
@@ -33,7 +34,8 @@ import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActi
 import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../../common/EntityListingTable/EntityListingTable.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ViewToggle, { ViewMode } from '../../common/ViewToggle/ViewToggle';
+import ViewToggle from '../../common/ViewToggle/ViewToggle';
+import { PageViewMode } from '../../../generated/type/personaPreferences';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
@@ -83,8 +85,8 @@ const SubDomainsTable = ({
     };
   }, [debouncedSearch]);
 
-  const personaView = usePersonaViewMode('subDomains');
-  const [selectedView, setView] = useState<ViewMode>();
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.SubDomains);
+  const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
   const { renderDomainCard } = useDomainCardTemplates();
 
@@ -150,7 +152,7 @@ const SubDomainsTable = ({
       );
     }
 
-    if (view === ViewMode.Table) {
+    if (view === PageViewMode.Table) {
       return (
         <>
           <EntityListingTable

@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { VIEW_MODE_PAGE } from '../../constants/platform/personaViewMode.constants';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
@@ -42,7 +43,8 @@ import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveS
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import ViewToggle from '../common/ViewToggle/ViewToggle';
+import { PageViewMode } from '../../generated/type/personaPreferences';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
@@ -138,10 +140,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     loading: domainListing.loading,
   });
 
-  const personaView = usePersonaViewMode('domains');
-  const [selectedView, setView] = useState<ViewMode>();
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.Domains);
+  const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
-  const isTreeView = view === ViewMode.Tree;
+  const isTreeView = view === PageViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
@@ -235,7 +237,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       );
     }
 
-    if (view === ViewMode.Table) {
+    if (view === PageViewMode.Table) {
       return (
         <>
           <EntityListingTable
@@ -337,7 +339,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             <Box className="tw:ml-auto" />
             <ViewToggle
               value={view}
-              views={[ViewMode.Table, ViewMode.Card, ViewMode.Tree]}
+              views={[PageViewMode.Table, PageViewMode.Card, PageViewMode.Tree]}
               onChange={setView}
             />
             {deleteIconButton}

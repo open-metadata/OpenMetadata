@@ -17,6 +17,13 @@ import {
 
 export type ViewModePage = keyof DefaultViewModes;
 
+export const VIEW_MODE_PAGE = {
+  Domains: 'domains',
+  SubDomains: 'subDomains',
+  DataProducts: 'dataProducts',
+  LearningResources: 'learningResources',
+} as const satisfies Record<string, ViewModePage>;
+
 export interface ViewModePageOption {
   page: ViewModePage;
   labelKey: string;
@@ -30,22 +37,22 @@ const TABLE_AND_GRID = [PageViewMode.Table, PageViewMode.Card];
 // Only pages that render a ViewToggle, each with the views its toggle offers.
 export const VIEW_MODE_PAGES: ViewModePageOption[] = [
   {
-    page: 'domains',
+    page: VIEW_MODE_PAGE.Domains,
     labelKey: 'label.domain-plural',
     views: [...TABLE_AND_GRID, PageViewMode.Tree],
   },
   {
-    page: 'subDomains',
+    page: VIEW_MODE_PAGE.SubDomains,
     labelKey: 'label.sub-domain-plural',
     views: TABLE_AND_GRID,
   },
   {
-    page: 'dataProducts',
+    page: VIEW_MODE_PAGE.DataProducts,
     labelKey: 'label.data-product-plural',
     views: TABLE_AND_GRID,
   },
   {
-    page: 'learningResources',
+    page: VIEW_MODE_PAGE.LearningResources,
     labelKey: 'label.learning-resources',
     views: TABLE_AND_GRID,
   },

@@ -33,9 +33,8 @@ import { DeleteModal } from '../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import ViewToggle, {
-  ViewMode,
-} from '../../components/common/ViewToggle/ViewToggle';
+import ViewToggle from '../../components/common/ViewToggle/ViewToggle';
+import { PageViewMode } from '../../generated/type/personaPreferences';
 import {
   CATEGORY_BADGE_COLORS,
   LEARNING_CATEGORIES,
@@ -55,6 +54,7 @@ import {
   MAX_VISIBLE_TAGS,
   PAGE_IDS,
 } from '../../constants/Learning.constants';
+import { VIEW_MODE_PAGE } from '../../constants/platform/personaViewMode.constants';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { LearningResource } from '../../rest/learningResourceAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -133,8 +133,8 @@ export const LearningResourcesPage: React.FC = () => {
     handlePlayerClose,
   } = useLearningResourceActions({ onRefetch: refetch });
 
-  const personaView = usePersonaViewMode('learningResources');
-  const [selectedView, setView] = useState<ViewMode>();
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
+  const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
 
   const [searchInputValue, setSearchInputValue] = useState(searchText);
@@ -376,7 +376,7 @@ export const LearningResourcesPage: React.FC = () => {
             {filterSelectionDisplay}
           </Box>
 
-          {view === ViewMode.Table && (
+          {view === PageViewMode.Table && (
             <>
               <Table
                 stickyHeader
@@ -423,7 +423,7 @@ export const LearningResourcesPage: React.FC = () => {
             </>
           )}
 
-          {view === ViewMode.Card && (
+          {view === PageViewMode.Card && (
             <>
               <Box
                 className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-3"

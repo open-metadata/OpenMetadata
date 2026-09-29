@@ -19,31 +19,32 @@
  */
 
 import { APIRequestContext, Browser, Page } from '@playwright/test';
+import { Document } from '../../../src/generated/entity/docStore/document';
+import {
+  AppMode,
+  PageViewMode,
+  PersonaPreferences,
+} from '../../../src/generated/type/personaPreferences';
 import { expect, test } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
+import { performUserLogin } from '../../utils/user';
 import { clickAndWaitFor } from '../../utils/waitHelpers';
 
 // Glossary opens its first glossary (`/glossary/<name>`) when one exists.
 const GLOSSARY_URL = /\/glossary(\/|\?|#|$)/;
 
-interface PersonaPreferenceSeed {
-  appMode?: 'classic' | 'AI';
-  defaultLandingPage?: string;
-  defaultViewModes?: Record<string, 'table' | 'card' | 'tree'>;
-}
-
-interface SeededPersona {
-  persona: PersonaClass;
-  docId: string;
-}
+type PersonaPreferenceSeed = Pick<
+  PersonaPreferences,
+  'appMode' | 'defaultLandingPage' | 'defaultViewModes'
+>;
 
 const createPersonaWithPreferences = async (
   apiContext: APIRequestContext,
   preferences: PersonaPreferenceSeed
-): Promise<SeededPersona> => {
+) => {
   const persona = new PersonaClass();
   await persona.create(apiContext);
 
@@ -68,7 +69,7 @@ const createPersonaWithPreferences = async (
     },
   });
   expect(response.ok()).toBeTruthy();
-  const doc = await response.json();
+  const doc: Document = await response.json();
 
   return { persona, docId: doc.id };
 };
@@ -114,13 +115,11 @@ const signInWithPersona = async (
       seeded.persona
     );
 
-    const context = await browser.newContext();
-    const page = await context.newPage();
+    const session = await performUserLogin(browser, user);
     try {
-      await user.login(page);
-      await assertLanding(page, user);
+      await assertLanding(session.page, user);
     } finally {
-      await context.close();
+      await session.afterAction();
     }
   } finally {
     await user.delete(apiContext).catch(() => undefined);
@@ -136,12 +135,9 @@ test.describe('Persona default landing page', { tag: ['@Platform'] }, () => {
   test('a Classic persona lands on its default landing page after sign-in', async ({
     browser,
   }) => {
-    // Persona + doc + user setup and a fresh-context login.
-    test.slow();
-
     await signInWithPersona(
       browser,
-      { appMode: 'classic', defaultLandingPage: '/glossary' },
+      { appMode: AppMode.Classic, defaultLandingPage: '/glossary' },
       async (page) => {
         await expect(page).toHaveURL(GLOSSARY_URL);
       }
@@ -151,19 +147,13 @@ test.describe('Persona default landing page', { tag: ['@Platform'] }, () => {
   test('a Classic persona lands there again after logging out and back in', async ({
     browser,
   }) => {
-    test.slow();
-
     await signInWithPersona(
       browser,
-      { appMode: 'classic', defaultLandingPage: '/glossary' },
+      { appMode: AppMode.Classic, defaultLandingPage: '/glossary' },
       async (page, user) => {
-        // Load the app on another page first, then sign back in without a
-        // page load — the way a user does after an in-app logout.
         await page.goto('/explore');
         await user.logout(page);
-        await page.locator('input[name="email"]').fill(user.data.email);
-        await page.locator('input[name="password"]').fill(user.data.password);
-        await page.getByTestId('login').click();
+        await user.login(page);
 
         await expect(page).toHaveURL(GLOSSARY_URL);
       }
@@ -173,11 +163,9 @@ test.describe('Persona default landing page', { tag: ['@Platform'] }, () => {
   test('opening the app in a new tab lands on the default landing page', async ({
     browser,
   }) => {
-    test.slow();
-
     await signInWithPersona(
       browser,
-      { appMode: 'classic', defaultLandingPage: '/glossary' },
+      { appMode: AppMode.Classic, defaultLandingPage: '/glossary' },
       async (page) => {
         await expect(page).toHaveURL(GLOSSARY_URL);
 
@@ -192,11 +180,9 @@ test.describe('Persona default landing page', { tag: ['@Platform'] }, () => {
   test('an AI persona lands on its default landing page too', async ({
     browser,
   }) => {
-    test.slow();
-
     await signInWithPersona(
       browser,
-      { appMode: 'AI', defaultLandingPage: '/glossary' },
+      { appMode: AppMode.AI, defaultLandingPage: '/glossary' },
       async (page) => {
         // The AI sidebar proves the AI route tree mounted.
         await expect(page.getByTestId('ask-sidebar')).toBeVisible();
@@ -208,13 +194,14 @@ test.describe('Persona default landing page', { tag: ['@Platform'] }, () => {
 
 test.describe('Persona default view mode', { tag: ['@Platform'] }, () => {
   test('pages open in the view the persona picked', async ({ browser }) => {
-    test.slow();
-
     await signInWithPersona(
       browser,
       {
-        appMode: 'classic',
-        defaultViewModes: { domains: 'tree', dataProducts: 'card' },
+        appMode: AppMode.Classic,
+        defaultViewModes: {
+          domains: PageViewMode.Tree,
+          dataProducts: PageViewMode.Card,
+        },
       },
       async (page) => {
         await page.goto('/domain');
@@ -240,8 +227,6 @@ test.describe('Persona App Layout page', { tag: ['@Platform'] }, () => {
     browser,
     page,
   }) => {
-    test.slow();
-
     const { apiContext, afterAction } = await createNewPage(browser);
     const seeded = await createPersonaWithPreferences(apiContext, {});
 
@@ -272,7 +257,7 @@ test.describe('Persona App Layout page', { tag: ['@Platform'] }, () => {
         page.getByTestId('app-mode-option-classic').getByRole('radio')
       ).toBeChecked();
       await expect(page.getByTestId('view-mode-domains-tree')).toHaveAttribute(
-        'aria-checked',
+        'aria-selected',
         'true'
       );
     } finally {

@@ -92,7 +92,7 @@ const getLandingPageTrigger = () =>
   within(screen.getByTestId('default-landing-page-select')).getByRole('button');
 
 const getViewOption = (page: string, view: string) =>
-  within(screen.getByTestId(`view-mode-row-${page}`)).getByRole('radio', {
+  within(screen.getByTestId(`view-mode-row-${page}`)).getByRole('tab', {
     name: view,
   });
 
@@ -163,8 +163,14 @@ describe('PersonaAppLayoutPage', () => {
       seedDoc({ defaultViewModes: { domains: PageViewMode.Tree } });
       renderPage();
 
-      expect(getViewOption('domains', 'label.tree')).toBeChecked();
-      expect(getViewOption('domains', 'label.table')).not.toBeChecked();
+      expect(getViewOption('domains', 'label.tree')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(getViewOption('domains', 'label.table')).toHaveAttribute(
+        'aria-selected',
+        'false'
+      );
       expect(
         screen.queryByTestId('view-mode-row-dataProducts')
       ).not.toBeInTheDocument();
