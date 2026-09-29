@@ -44,6 +44,7 @@ import org.openmetadata.schema.api.data.OntologyRelationshipSuggestionList;
 import org.openmetadata.schema.api.data.OntologyRelationshipSuggestionRequest;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -65,6 +66,7 @@ import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
@@ -189,9 +191,18 @@ public final class OntologyAiResource {
       @Valid final OntologyMemoryDerivationRequest request) {
     service().requireAvailable();
     final OntologyMemoryDerivationService derivation = memoryDerivationService();
-    derivation.loadGlossary(request.getGlossary());
-    authorizeGlossary(
-        securityContext, request.getGlossary(), MetadataOperation.EDIT_GLOSSARY_TERMS);
+    if (request.getGlossary() != null) {
+      derivation.loadGlossary(request.getGlossary());
+      authorizeGlossary(
+          securityContext, request.getGlossary(), MetadataOperation.EDIT_GLOSSARY_TERMS);
+    } else {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(Entity.ONTOLOGY_CHANGE_SET, MetadataOperation.CREATE),
+          new CreateResourceContext<>(
+              Entity.ONTOLOGY_CHANGE_SET,
+              new OntologyChangeSet().withName("memory-glossary-draft")));
+    }
     if (request.getMemoryIds() == null) {
       throw new BadRequestException("memoryIds are required");
     }

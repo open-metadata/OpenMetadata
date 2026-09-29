@@ -69,24 +69,55 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
     if (entity.getUpdatedAt() == null) {
       entity.setUpdatedAt(System.currentTimeMillis());
     }
-    entity.setGlossaries(validateGlossaries(entity.getGlossaries()));
     OntologyChangeSetValidator.normalizeAndValidate(entity);
+    entity.setGlossaries(validateGlossaries(entity));
     validateStateResult(entity);
   }
 
-  private static List<EntityReference> validateGlossaries(
-      final List<EntityReference> glossaryReferences) {
+  private static List<EntityReference> validateGlossaries(final OntologyChangeSet changeSet) {
     final Set<UUID> glossaryIds = new HashSet<>();
     final List<EntityReference> glossaries =
-        listOrEmpty(glossaryReferences).stream()
-            .map(OntologyChangeSetRepository::requireEditableGlossary)
-            .map(Glossary::getEntityReference)
+        listOrEmpty(changeSet.getGlossaries()).stream()
+            .map(reference -> validateGlossary(changeSet, reference))
             .toList();
     if (glossaries.isEmpty()
         || glossaries.stream().anyMatch(ref -> !glossaryIds.add(ref.getId()))) {
       throw new BadRequestException("Ontology change sets require unique editable glossaries");
     }
     return glossaries;
+  }
+
+  private static EntityReference validateGlossary(
+      final OntologyChangeSet changeSet, final EntityReference reference) {
+    final Glossary planned =
+        listOrEmpty(changeSet.getOperations()).stream()
+            .filter(operation -> operation.getGlossary() != null)
+            .map(OntologyChangeOperation::getGlossary)
+            .filter(glossary -> glossary.getId().equals(reference.getId()))
+            .findFirst()
+            .orElse(null);
+    if (planned == null) {
+      return requireEditableGlossary(reference).getEntityReference();
+    }
+    if (!planned.getFullyQualifiedName().equals(reference.getFullyQualifiedName())
+        || !planned.getName().equals(planned.getFullyQualifiedName())) {
+      throw new BadRequestException("Planned glossary scope does not match its create operation");
+    }
+    final GlossaryRepository repository =
+        (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
+    final var existing =
+        repository.getByNameOrNull(
+            null,
+            planned.getFullyQualifiedName(),
+            repository.getFields(""),
+            Include.NON_DELETED,
+            false);
+    if (existing.isPresent()
+        && (changeSet.getState() != OntologyChangeSetState.APPLIED
+            || !existing.get().getId().equals(planned.getId()))) {
+      throw new BadRequestException("Glossary already exists: " + planned.getFullyQualifiedName());
+    }
+    return planned.getEntityReference();
   }
 
   private static Glossary requireEditableGlossary(final EntityReference reference) {
@@ -128,6 +159,15 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
   @Override
   public void storeRelationships(final OntologyChangeSet entity) {
     for (final EntityReference glossary : entity.getGlossaries()) {
+      final boolean isPlanned =
+          listOrEmpty(entity.getOperations()).stream()
+              .anyMatch(
+                  operation ->
+                      operation.getGlossary() != null
+                          && operation.getGlossary().getId().equals(glossary.getId()));
+      if (isPlanned && entity.getState() != OntologyChangeSetState.APPLIED) {
+        continue;
+      }
       addRelationship(
           glossary.getId(),
           entity.getId(),

@@ -17,6 +17,6 @@
       "uniqueItems": true
     }
   },
-  "required": ["glossary", "memoryIds"],
+  "required": ["memoryIds"],
   "additionalProperties": false
 }

@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -66,18 +67,24 @@ public final class OntologyMemoryDerivationService {
     if (previous.isPresent()) {
       return Optional.of(previous.get().getId());
     }
-    final Glossary glossary = loadGlossary(glossaryFqn);
     final List<ContextMemory> memories = loadMemories(memoryIds);
+    final OntologyMemoryGlossarySelector.Selection selection =
+        glossaryFqn == null || glossaryFqn.isBlank()
+            ? new OntologyMemoryGlossarySelector(
+                    glossaryRepository, Entity.getSearchRepository(), gateway)
+                .select(memories.stream().map(this::context).toList())
+            : new OntologyMemoryGlossarySelector.Selection(
+                loadGlossary(glossaryFqn), false, 1D, null, null);
     final OntologyAiCompletionGateway.MemoryTermPrompt prompt =
         new OntologyAiCompletionGateway.MemoryTermPrompt(
-            glossary.getFullyQualifiedName(),
+            selection.glossary().getFullyQualifiedName(),
             memories.stream().map(this::context).toList(),
             memories.size() * MAX_TERMS_PER_MEMORY);
     final var completion = gateway.deriveTermsFromMemories(prompt);
     final Optional<CreateOntologyChangeSet> draft =
         draftFactory.create(
             jobId,
-            glossary,
+            selection,
             Set.copyOf(memoryIds),
             completion,
             fqn ->

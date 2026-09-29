@@ -14,6 +14,6 @@
  * Queue glossary-term suggestions grounded in published context memories.
  */
 export interface OntologyMemoryDerivationRequest {
-    glossary:  string;
+    glossary?: string;
     memoryIds: string[];
 }

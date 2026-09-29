@@ -14,6 +14,7 @@
 package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
@@ -30,11 +32,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.ConceptMapping;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.type.EventType;
@@ -42,6 +46,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.ontology.OntologyChangeOperationExecutor.OperationOutcome;
@@ -58,13 +63,68 @@ class OntologyChangeOperationExecutorTest {
 
   private final UriInfo uriInfo = mock(UriInfo.class);
   private final GlossaryTermRepository termRepository = mock(GlossaryTermRepository.class);
+  private final GlossaryRepository glossaryRepository = mock(GlossaryRepository.class);
   private final OntologyAxiomRepository axiomRepository = mock(OntologyAxiomRepository.class);
   private final Clock clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC);
   private OntologyChangeOperationExecutor executor;
 
   @BeforeEach
   void setUp() {
-    executor = new OntologyChangeOperationExecutor(termRepository, axiomRepository, clock);
+    executor =
+        new OntologyChangeOperationExecutor(
+            glossaryRepository, termRepository, axiomRepository, clock);
+  }
+
+  @Test
+  void createsGlossaryOnlyWhenItsStudioOperationExecutes() {
+    final Glossary glossary =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("Sales")
+            .withFullyQualifiedName("Sales")
+            .withDescription("Sales concepts");
+    when(glossaryRepository.getByNameOrNull(
+            isNull(), eq("Sales"), isNull(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(Optional.empty());
+    when(glossaryRepository.createOrUpdate(eq(uriInfo), any(Glossary.class), eq(USER)))
+        .thenAnswer(
+            invocation ->
+                new PutResponse<>(
+                    Response.Status.CREATED,
+                    invocation.getArgument(1, Glossary.class),
+                    EventType.ENTITY_CREATED));
+    final OntologyChangeOperation operation =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.CREATE_GLOSSARY)
+            .withGlossary(glossary);
+
+    final OperationOutcome outcome = executor.execute(uriInfo, USER, operation);
+
+    assertEquals(glossary.getId(), outcome.entity().getId());
+    verify(glossaryRepository).prepareInternal(any(Glossary.class), eq(false));
+    verify(glossaryRepository).createOrUpdate(eq(uriInfo), any(Glossary.class), eq(USER));
+  }
+
+  @Test
+  void neverOverwritesAnExistingGlossaryDuringCreate() {
+    final Glossary glossary =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("Sales")
+            .withFullyQualifiedName("Sales")
+            .withDescription("Sales concepts");
+    when(glossaryRepository.getByNameOrNull(
+            isNull(), eq("Sales"), isNull(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(Optional.of(glossary));
+    final OntologyChangeOperation operation =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.CREATE_GLOSSARY)
+            .withGlossary(glossary);
+
+    assertThrows(BadRequestException.class, () -> executor.execute(uriInfo, USER, operation));
+    verify(glossaryRepository, never()).createOrUpdate(any(), any(), any());
   }
 
   @Test

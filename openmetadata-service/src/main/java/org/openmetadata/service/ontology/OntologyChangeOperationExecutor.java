@@ -15,6 +15,7 @@ package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.ConceptMapping;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.type.EntityReference;
@@ -33,12 +35,14 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 
 public final class OntologyChangeOperationExecutor {
   private static final String TERM_EDIT_FIELDS = "attributes,conceptMappings";
   private final GlossaryTermRepository termRepository;
+  private final GlossaryRepository glossaryRepository;
   private final OntologyAxiomRepository axiomRepository;
   private final Clock clock;
 
@@ -46,6 +50,15 @@ public final class OntologyChangeOperationExecutor {
       final GlossaryTermRepository termRepository,
       final OntologyAxiomRepository axiomRepository,
       final Clock clock) {
+    this(null, termRepository, axiomRepository, clock);
+  }
+
+  public OntologyChangeOperationExecutor(
+      final GlossaryRepository glossaryRepository,
+      final GlossaryTermRepository termRepository,
+      final OntologyAxiomRepository axiomRepository,
+      final Clock clock) {
+    this.glossaryRepository = glossaryRepository;
     this.termRepository = termRepository;
     this.axiomRepository = axiomRepository;
     this.clock = clock;
@@ -55,6 +68,7 @@ public final class OntologyChangeOperationExecutor {
       final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
     final OperationOutcome outcome =
         switch (operation.getOperationType()) {
+          case CREATE_GLOSSARY -> createGlossary(uriInfo, user, operation);
           case CREATE_TERM, UPDATE_TERM -> upsertTerm(uriInfo, user, operation);
           case DELETE_TERM -> deleteTerm(user, operation);
           case ADD_RELATIONSHIP -> addRelationship(uriInfo, user, operation);
@@ -68,6 +82,24 @@ public final class OntologyChangeOperationExecutor {
           case DELETE_AXIOM -> deleteAxiom(user, operation);
         };
     return outcome;
+  }
+
+  private OperationOutcome createGlossary(
+      final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
+    final Glossary glossary = JsonUtils.deepCopy(operation.getGlossary(), Glossary.class);
+    final var existing =
+        glossaryRepository.getByNameOrNull(
+            null,
+            glossary.getFullyQualifiedName(),
+            glossaryRepository.getFields(""),
+            Include.NON_DELETED,
+            false);
+    if (existing.isPresent()) {
+      throw new BadRequestException("Glossary already exists: " + glossary.getFullyQualifiedName());
+    }
+    glossary.setUpdatedBy(user);
+    glossaryRepository.prepareInternal(glossary, false);
+    return outcome(glossaryRepository.createOrUpdate(uriInfo, glossary, user).getEntity());
   }
 
   private OperationOutcome upsertTerm(

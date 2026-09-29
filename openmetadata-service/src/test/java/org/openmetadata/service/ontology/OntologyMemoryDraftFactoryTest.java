@@ -55,6 +55,33 @@ class OntologyMemoryDraftFactoryTest {
   }
 
   @Test
+  void proposesGlossaryBeforeTermsAndLeavesCreationForApply() {
+    final var selection =
+        new OntologyMemoryGlossarySelector.Selection(
+            glossary.withDescription("Business concepts"),
+            true,
+            0.85D,
+            "No matching glossary",
+            "selection-model");
+    final CreateOntologyChangeSet draft =
+        factory
+            .create(
+                42, selection, Set.of(memoryId), completion(candidate("customer")), fqn -> false)
+            .orElseThrow();
+
+    assertEquals(2, draft.getOperations().size());
+    assertEquals(2, draft.getUndoCursor());
+    assertEquals(
+        OntologyChangeOperationType.CREATE_GLOSSARY,
+        draft.getOperations().getFirst().getOperationType());
+    assertEquals(glossary.getId(), draft.getOperations().getFirst().getGlossary().getId());
+    assertEquals(
+        draft.getOperations().getFirst().getGlossary().getId(),
+        draft.getOperations().getLast().getTerm().getGlossary().getId());
+    assertEquals(Set.of(memoryId), draft.getOperations().getFirst().getSourceMemoryIds());
+  }
+
+  @Test
   void skipsInvalidNamesAndExistingTermsWithoutCreatingAnEmptyDraft() {
     assertTrue(
         factory

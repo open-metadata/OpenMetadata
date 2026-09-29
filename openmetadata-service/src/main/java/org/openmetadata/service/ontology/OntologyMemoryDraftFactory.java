@@ -50,6 +50,21 @@ final class OntologyMemoryDraftFactory {
       final OntologyAiCompletionGateway.Completion<OntologyAiCompletionGateway.MemoryTermCandidate>
           completion,
       final Predicate<String> termExists) {
+    return create(
+        jobId,
+        new OntologyMemoryGlossarySelector.Selection(glossary, false, 1D, null, null),
+        memoryIds,
+        completion,
+        termExists);
+  }
+
+  Optional<CreateOntologyChangeSet> create(
+      final long jobId,
+      final OntologyMemoryGlossarySelector.Selection selection,
+      final Set<UUID> memoryIds,
+      final OntologyAiCompletionGateway.Completion<OntologyAiCompletionGateway.MemoryTermCandidate>
+          completion,
+      final Predicate<String> termExists) {
     requireCompletion(completion);
     if (completion.items().size() > memoryIds.size() * 2) {
       throw OntologyAiOutputValidator.invalid("memory derivation exceeded its term limit");
@@ -58,10 +73,19 @@ final class OntologyMemoryDraftFactory {
     final List<OntologyChangeOperation> operations = new ArrayList<>();
     for (final OntologyAiCompletionGateway.MemoryTermCandidate candidate : completion.items()) {
       addCandidate(
-          candidate, glossary, memoryIds, completion.modelId(), termExists, names, operations);
+          candidate,
+          selection.glossary(),
+          memoryIds,
+          completion.modelId(),
+          termExists,
+          names,
+          operations);
     }
     if (operations.isEmpty()) {
       return Optional.empty();
+    }
+    if (selection.create()) {
+      operations.addFirst(createGlossaryOperation(selection, memoryIds));
     }
     return Optional.of(
         new CreateOntologyChangeSet()
@@ -69,11 +93,24 @@ final class OntologyMemoryDraftFactory {
             .withDisplayName("Glossary terms from memories")
             .withDescription(
                 "AI proposals grounded in published context memories. Review before applying.")
-            .withGlossaries(Set.of(glossary.getFullyQualifiedName()))
+            .withGlossaries(Set.of(selection.glossary().getFullyQualifiedName()))
             .withState(OntologyChangeSetState.DRAFT)
             .withOperations(List.copyOf(operations))
             .withUndoCursor(operations.size())
             .withProvider(ProviderType.USER));
+  }
+
+  private static OntologyChangeOperation createGlossaryOperation(
+      final OntologyMemoryGlossarySelector.Selection selection, final Set<UUID> memoryIds) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(OntologyChangeOperationType.CREATE_GLOSSARY)
+        .withGlossary(selection.glossary())
+        .withState(OntologyChangeOperationState.ACTIVE)
+        .withSourceMemoryIds(memoryIds)
+        .withConfidence(selection.confidence())
+        .withRationale(selection.rationale())
+        .withModelId(selection.modelId());
   }
 
   static String changeSetName(final long jobId) {

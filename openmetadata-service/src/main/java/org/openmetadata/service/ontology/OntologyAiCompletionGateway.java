@@ -27,6 +27,10 @@ public interface OntologyAiCompletionGateway {
 
   Completion<MemoryTermCandidate> deriveTermsFromMemories(MemoryTermPrompt prompt);
 
+  default Completion<GlossaryMatchCandidate> matchGlossary(final GlossaryMatchPrompt prompt) {
+    throw new UnsupportedOperationException("Glossary matching is not available");
+  }
+
   record Completion<T>(String modelId, List<T> items) {
     public Completion {
       items = List.copyOf(items);
@@ -58,6 +62,18 @@ public interface OntologyAiCompletionGateway {
   record MemoryTermPrompt(String glossary, List<MemoryContext> memories, int maxTerms) {}
 
   record MemoryContext(UUID id, String question, String answer, String summary) {}
+
+  record GlossaryContext(UUID id, String name, String description) {}
+
+  record GlossaryMatchPrompt(List<MemoryContext> memories, List<GlossaryContext> glossaries) {}
+
+  record GlossaryMatchCandidate(
+      UUID glossaryId,
+      String newGlossaryName,
+      String newGlossaryDisplayName,
+      String newGlossaryDescription,
+      double confidence,
+      String rationale) {}
 
   record RelationshipCandidate(
       UUID sourceTermId,
