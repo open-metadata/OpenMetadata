@@ -53,6 +53,7 @@ public class CompanyContextTool implements McpTool {
 
   private static final String NOT_A_SHARED_PILL_ERROR =
       "Requested entity is not a shared Company Context knowledge pill";
+  private static final String PILL_FIELDS = "sourceFile,tags,domains";
 
   @Override
   public Map<String, Object> execute(
@@ -122,7 +123,10 @@ public class CompanyContextTool implements McpTool {
     String normalizedFqn = FullyQualifiedName.quoteName(fqn);
     LOG.debug("Getting company context pill: {} (normalized fqn: {})", fqn, normalizedFqn);
     return Entity.getEntityByName(
-        Entity.CONTEXT_MEMORY, normalizedFqn, "sourceFile,owners,tags,domains", null);
+        Entity.CONTEXT_MEMORY,
+        normalizedFqn,
+        ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, PILL_FIELDS),
+        null);
   }
 
   /**

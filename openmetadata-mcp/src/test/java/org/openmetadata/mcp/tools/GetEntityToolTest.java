@@ -166,12 +166,12 @@ class GetEntityToolTest {
   }
 
   /**
-   * The regression guard for the fetch itself: owners is a relationship field, absent unless the
-   * read asks for it, and an ownerless memory reads as nobody's - which would deny the owner their
-   * own private memory.
+   * The read must fetch the relationship fields used by the memory visibility decision. Omitting
+   * owners would deny the owner their private memory; omitting primaryEntity would expose an
+   * anchored Entity memory as org-wide.
    */
   @Test
-  void contentReadFetchesOwnersSoTheOwnerKeepsReadingTheirOwnPrivateMemory() throws Exception {
+  void contentReadFetchesVisibilityFieldsSoTheOwnerKeepsTheirPrivateMemory() throws Exception {
     String fqn = "alices-private-note";
     ContextMemory memory = privateMemoryOwnedBy("alice", fqn);
     CatalogSecurityContext securityContext = securityContextFor("alice");
@@ -183,7 +183,7 @@ class GetEntityToolTest {
           .when(
               () ->
                   Entity.getEntityByName(
-                      Entity.CONTEXT_MEMORY, fqn, Entity.FIELD_OWNERS, Include.NON_DELETED))
+                      Entity.CONTEXT_MEMORY, fqn, "owners,primaryEntity", Include.NON_DELETED))
           .thenReturn(memory);
       subjects
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
