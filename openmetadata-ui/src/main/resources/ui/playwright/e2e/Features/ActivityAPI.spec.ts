@@ -23,7 +23,10 @@ import {
   toggleThumbsUpReaction,
   visitTableActivityFeed,
 } from '../../utils/activityAPI';
-import { postActivityComment } from '../../utils/activityFeed';
+import {
+  clickFeedReaction,
+  postActivityComment,
+} from '../../utils/activityFeed';
 import { createAdminApiContext } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
@@ -345,7 +348,7 @@ test.describe(
             response.url().endsWith('/reaction/rocket') &&
             response.request().method() === 'PUT'
         );
-        await page.locator('[title="rocket"]:visible').click();
+        await clickFeedReaction(page, 'rocket');
         await reactionResponse;
 
         await editedReplyCard.getByTestId('emoji-button').hover();
