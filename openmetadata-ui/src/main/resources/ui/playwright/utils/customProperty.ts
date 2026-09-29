@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, Response } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Locator,
+  Page,
+  Response,
+} from '@playwright/test';
 import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
@@ -122,6 +128,44 @@ const addTablePropertyRow = async (page: Page) => {
   }).toPass({ timeout: 20_000, intervals: [500, 1_000] });
 };
 
+const selectEnumOption = async (page: Page, scope: Locator, value: string) => {
+  await scope
+    .getByTestId('enum-select')
+    .getByRole('button', { name: /Enum Values/ })
+    .click();
+  await page.getByRole('option', { name: value, exact: true }).click();
+  await clickOutside(page);
+};
+
+// Core DatePicker/TimePicker are segmented react-aria fields: type digits into
+// the first segment and focus auto-advances (assumes the en-US month/day/year order).
+const fillCoreDateTimePicker = async (
+  page: Page,
+  scope: Locator,
+  propertyType: string,
+  value: string
+) => {
+  const [date, time] =
+    propertyType === 'time-cp' ? [undefined, value] : value.split(' ');
+
+  if (date) {
+    const [year, month, day] = date.split('-');
+    await scope.getByTestId('date-time-picker').getByRole('button').click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('spinbutton', { name: 'month' }).click();
+    await page.keyboard.type(`${month}${day}${year}`);
+    await dialog.getByRole('button', { name: 'Apply' }).click();
+  }
+
+  if (time) {
+    await scope
+      .getByTestId('time-picker')
+      .getByRole('spinbutton', { name: 'hour' })
+      .click();
+    await page.keyboard.type(time.replace(/:/g, ''));
+  }
+};
+
 export const setValueForProperty = async (data: {
   page: Page;
   propertyName: string;
@@ -181,11 +225,7 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'enum':
-      await container.locator('#enumValues').click();
-      // eslint-disable-next-line playwright/no-force-option -- Ant Select selected item overlay covers combobox input
-      await container.locator('#enumValues').fill(value, { force: true });
-      await container.locator('#enumValues').press('Enter');
-      await clickOutside(page);
+      await selectEnumOption(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -220,26 +260,10 @@ export const setValueForProperty = async (data: {
       break;
     }
 
-    case 'time-cp': {
-      await expect(
-        container.locator('[data-testid="time-picker"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="time-picker"]').click();
-      await container.locator('[data-testid="time-picker"]').fill(value);
-      await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
-
+    case 'time-cp':
     case 'date-cp':
     case 'dateTime-cp': {
-      await expect(
-        container.locator('[data-testid="date-time-picker"]')
-      ).toBeVisible();
-      await container.locator('[data-testid="date-time-picker"]').click();
-      await container.locator('[data-testid="date-time-picker"]').fill(value);
-      await page.keyboard.press('Enter');
+      await fillCoreDateTimePicker(page, container, propertyType, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -1131,11 +1155,7 @@ export const editColumnCustomProperty = async (
   } else if (propertyType === 'email') {
     await page.getByTestId('email-input').fill(testValue);
   } else if (propertyType === 'enum') {
-    await page.getByTestId('enum-select').click();
-    await page
-      .locator('.ant-select-item-option-content')
-      .getByText(testValue, { exact: true })
-      .click();
+    await selectEnumOption(page, page.locator('body'), testValue);
   } else if (propertyType === 'table-cp') {
     await addTablePropertyRow(page);
 
@@ -1177,13 +1197,12 @@ export const editColumnCustomProperty = async (
       await page.keyboard.press('Escape');
     }
   } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
-    // Ant Design Pickers
-    const picker = page.getByTestId(
-      propertyType === 'time-cp' ? 'time-picker' : 'date-time-picker'
+    await fillCoreDateTimePicker(
+      page,
+      page.locator('body'),
+      propertyType,
+      testValue
     );
-    await picker.click();
-    await page.keyboard.type(testValue);
-    await page.keyboard.press('Enter');
   } else if (['string', 'integer', 'number'].includes(propertyType)) {
     const valueInput = page.getByTestId('value-input');
     await expect(valueInput).toBeVisible();
@@ -1448,19 +1467,18 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
       break;
 
-    case 'enum':
-      await page.click('#enumValues');
-      while (
-        (await page.locator('.ant-select-selection-item-remove').count()) > 0
-      ) {
-        await page.locator('.ant-select-selection-item-remove').first().click();
+    case 'enum': {
+      const clearAll = container
+        .getByTestId('enum-select')
+        .getByRole('button', { name: 'Clear all' });
+      if (await clearAll.isVisible()) {
+        await clearAll.click();
       }
-      await page.fill('#enumValues', value);
-      await page.locator(`.ant-select-item-option[title="${value}"]`).click();
-      await clickOutside(page);
+      await selectEnumOption(page, container, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
+    }
 
     case 'timestamp':
       await expect(
@@ -1470,16 +1488,6 @@ export const updateCustomPropertyInRightPanel = async (data: {
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
-
-    case 'time-cp': {
-      await expect(page.locator('[data-testid="time-picker"]')).toBeVisible();
-      await page.locator('[data-testid="time-picker"]').click();
-      await page.locator('[data-testid="time-picker"]').fill(value);
-      await page.getByRole('button', { name: 'OK', exact: true }).click();
-      await container.locator('[data-testid="inline-save-btn"]').click();
-
-      break;
-    }
 
     case 'timeInterval': {
       const [startValue, endValue] = value.split(',');
@@ -1492,14 +1500,10 @@ export const updateCustomPropertyInRightPanel = async (data: {
       break;
     }
 
+    case 'time-cp':
     case 'date-cp':
     case 'dateTime-cp': {
-      await expect(
-        page.locator('[data-testid="date-time-picker"]')
-      ).toBeVisible();
-      await page.locator('[data-testid="date-time-picker"]').click();
-      await page.locator('[data-testid="date-time-picker"]').fill(value);
-      await page.locator('[data-testid="date-time-picker"]').press('Enter');
+      await fillCoreDateTimePicker(page, container, propertyType, value);
       await container.locator('[data-testid="inline-save-btn"]').click();
 
       break;
