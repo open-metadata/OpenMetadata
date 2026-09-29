@@ -14,6 +14,7 @@
 package org.openmetadata.service.apps.bundles.changeEvent;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -37,9 +38,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.AlertingSettings.Sending;
 import org.openmetadata.service.events.subscription.channels.Channel;
@@ -61,9 +62,9 @@ class ChannelDispatchTest {
   void activityFeedDestinationHasHealth() throws Exception {
     Destination<ChangeEvent> feed = publisher(false);
 
-    Optional<EventPublisherException> failure = dispatch(Set.of(), feed).send(EVENT, CONTENT);
+    ChannelResult result = dispatch(Set.of(), feed).send(EVENT, CONTENT);
 
-    assertTrue(failure.isEmpty());
+    assertEquals(ChannelResult.DELIVERED, result);
     verify(feed).sendTo(any(), any());
     assertEquals(SubscriptionStatus.Status.ACTIVE, statusOf(feed).getStatus());
   }
@@ -81,11 +82,10 @@ class ChannelDispatchTest {
               return Recipients.none();
             });
 
-    Optional<EventPublisherException> failure =
+    ChannelResult result =
         new ChannelDispatch(channel, List.of(email), resolver, health).send(EVENT, CONTENT);
 
-    assertTrue(
-        failure.isEmpty(), "it counts as delivered, as a mail server that is off does today");
+    assertNotAttempted("the mail server is not enabled", email, result);
     assertTrue(asked.isEmpty());
     verify(email, never()).prepare(any(), any());
     verify(email, never()).sendTo(any(), any());
@@ -107,17 +107,47 @@ class ChannelDispatchTest {
         new TargetResolver(
             (event, destination) -> Recipients.of(new EmailRecipient("alice@corp.com", "alice")));
 
-    Optional<EventPublisherException> reportFailure =
+    ChannelResult reportResult =
         new ChannelDispatch(reportChannel, List.of(report), alice, health)
             .send(EVENT, fileNotProduced);
     new ChannelDispatch(channel, List.of(email), alice, health).send(EVENT, fileNotProduced);
 
-    assertTrue(reportFailure.isEmpty());
+    assertNotAttempted("the file it carries could not be produced", report, reportResult);
     verify(report, never()).sendTo(any(), any());
     assertEquals(
         "Not attempted: the file it carries could not be produced",
         statusOf(report).getLastFailedReason());
     verify(email).sendTo(any(), any());
+  }
+
+  // An audience the channel reaches nobody in sends nothing: the event failed, and the destination
+  // reads why.
+  @Test
+  void nobodyToSendToFailsTheEvent() throws Exception {
+    Destination<ChangeEvent> owners = publisher(true, SubscriptionCategory.OWNERS);
+
+    ChannelResult result = dispatch(Set.of(), owners).send(EVENT, CONTENT);
+
+    assertNotAttempted("no Owners with an Email address", owners, result);
+    verify(owners, never()).prepare(any(), any());
+    verify(owners, never()).sendTo(any(), any());
+    assertEquals(
+        "Not attempted: no Owners with an Email address", statusOf(owners).getLastFailedReason());
+  }
+
+  // Reaching someone for one event of the tick is enough to read delivered; the event that had
+  // nobody still failed.
+  @Test
+  void aDestinationThatReachedSomeoneInTheTickReadsActive() throws Exception {
+    Destination<ChangeEvent> owners = publisher(true, SubscriptionCategory.OWNERS);
+    Recipient alice = new EmailRecipient("alice@corp.com", "alice");
+
+    ChannelResult reached = dispatch(Set.of(alice), owners).send(EVENT, CONTENT);
+    ChannelResult nobody = dispatch(Set.of(), owners).send(EVENT, CONTENT);
+
+    assertEquals(ChannelResult.DELIVERED, reached);
+    assertInstanceOf(ChannelResult.Failed.class, nobody);
+    assertEquals(SubscriptionStatus.Status.ACTIVE, statusOf(owners).getStatus());
   }
 
   @Test
@@ -127,11 +157,14 @@ class ChannelDispatchTest {
     Recipient bob = new EmailRecipient("bob@corp.com", "bob");
     doThrow(new IllegalStateException("mailbox full")).when(owners).sendTo(any(), eq(bob));
 
-    Optional<EventPublisherException> failure =
-        dispatch(Set.of(alice, bob), owners).send(EVENT, CONTENT);
+    ChannelResult result = dispatch(Set.of(alice, bob), owners).send(EVENT, CONTENT);
 
     verify(owners).sendTo(any(), eq(alice));
-    assertTrue(failure.orElseThrow().getMessage().contains("1 of 2 recipients failed"));
+    assertTrue(
+        assertInstanceOf(ChannelResult.Failed.class, result)
+            .failure()
+            .reason()
+            .contains("1 of 2 recipients failed"));
     assertEquals(
         "1 of 2 recipients failed. bob: mailbox full", statusOf(owners).getLastFailedReason());
   }
@@ -202,10 +235,10 @@ class ChannelDispatchTest {
                     Recipients.of(alice).and(Recipients.failed("team A: no answer"))),
             health);
 
-    Optional<EventPublisherException> failure = dispatch.send(EVENT, CONTENT);
+    ChannelResult result = dispatch.send(EVENT, CONTENT);
 
     verify(owners).sendTo(any(), eq(alice));
-    assertTrue(failure.isPresent());
+    assertInstanceOf(ChannelResult.Failed.class, result);
     assertEquals(SubscriptionStatus.Status.FAILED, statusOf(owners).getStatus());
     assertTrue(statusOf(owners).getLastFailedReason().contains("team A: no answer"));
   }
@@ -226,17 +259,34 @@ class ChannelDispatchTest {
         health);
   }
 
+  private static void assertNotAttempted(
+      String why, Destination<ChangeEvent> publisher, ChannelResult result) {
+    ChannelResult.Failed failed =
+        assertInstanceOf(ChannelResult.Failed.class, result, "nothing went out, so it failed");
+    assertEquals(publisher.getSubscriptionDestination().getId(), failed.failure().destinationId());
+    assertTrue(
+        failed.failure().reason().contains("Not attempted: " + why), failed.failure().reason());
+  }
+
   private SubscriptionStatus statusOf(Destination<ChangeEvent> publisher) {
     Map<UUID, SubscriptionStatus> reported = new HashMap<>();
     health.reportTo((destinationId, outcome) -> reported.put(destinationId, outcome.status()));
     return reported.get(publisher.getSubscriptionDestination().getId());
   }
 
-  @SuppressWarnings("unchecked")
   private static Destination<ChangeEvent> publisher(boolean requiresRecipients) throws Exception {
+    return publisher(requiresRecipients, null);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Destination<ChangeEvent> publisher(
+      boolean requiresRecipients, SubscriptionCategory category) throws Exception {
     Destination<ChangeEvent> publisher = mock(Destination.class);
     SubscriptionDestination destination =
-        BuiltInChannels.previewDestination().withId(UUID.randomUUID()).withEnabled(true);
+        BuiltInChannels.previewDestination()
+            .withId(UUID.randomUUID())
+            .withEnabled(true)
+            .withCategory(category);
     when(publisher.getSubscriptionDestination()).thenReturn(destination);
     when(publisher.requiresRecipients()).thenReturn(requiresRecipients);
     return publisher;
