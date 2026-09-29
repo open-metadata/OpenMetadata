@@ -231,25 +231,23 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
-          # setup-node's built-in cache SAVES as a post-step under the current
-          # ref, and there is no restore-only mode. On merge_group that ref is
-          # gh-readonly-queue/*, which dies after the run — but the ~1.2 GB
-          # node-cache-Linux-x64-yarn-* entry it leaves behind stays charged
-          # against the repo's 10 GB LRU budget. This job is the only
-          # setup-node+cache writer on a merge_group trigger in the repo;
-          # measured 2026-09-09 it held 2.35 GB across dead queue refs while
-          # main's scope had zero fixture / distribution / ingestion-image
-          # entries left — all evicted. A cold `yarn --ignore-scripts` here
-          # costs ~1 min on the summary job; a missed golden fixture costs
-          # ~17 min on every shard's critical path. Keep the cache on
-          # pull_request (the PR ref outlives the run and re-pushes hit it);
-          # disable the write on merge_group. Same rule the reusable applies
-          # to its own saves. Follow-up: switch to actions/cache/restore
-          # against populate-playwright-caches.yml's main-scoped
-          # yarn-pkg-cache-* key so merge_group gets a hit instead of a cold
-          # install — different key family, so setup-node cannot restore it.
-          cache: ${{ github.event_name != 'merge_group' && 'yarn' || '' }}
-          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      # Restore-only. setup-node's built-in `cache: yarn` saves a ~1.4 GB
+      # node-cache-* entry under the current ref as a post-step and has no
+      # restore-only mode; nothing on main writes that key family, so every
+      # PR missed and saved its own copy (3 x 1.4 GB measured 2026-09-29,
+      # 43% of the 10 GB budget) and evicted the warmer's fixtures. The
+      # yarn-pkg-cache-* key is written under main by
+      # populate-playwright-caches.yml, so this hits on every event.
+      - name: Restore yarn package cache
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
 
       - name: Install report dependencies
         id: install-report-dependencies
