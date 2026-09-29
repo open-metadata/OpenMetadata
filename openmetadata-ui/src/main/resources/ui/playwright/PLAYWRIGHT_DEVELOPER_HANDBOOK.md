@@ -266,8 +266,10 @@ Using API calls instead of UI interactions for test setup provides:
 
 ### Best Practices
 
-1. **Create test data via API in `beforeAll`/`beforeEach` hooks**, and read the body with `okJson`
-   so a failed create throws here instead of leaking `undefined` ids downstream:
+1. **Create test data via API in `beforeAll`/`beforeEach` hooks**. Prefer the support classes
+   (`new TableClass().create(apiContext)`) — they build a valid payload and its parent hierarchy.
+   When you call the API directly, send every field the create schema requires and read the body
+   with `okJson` so a failed create throws here instead of leaking `undefined` ids downstream:
 ```typescript
 test.describe('Table operations', () => {
   let testTable: Table;
@@ -276,7 +278,11 @@ test.describe('Table operations', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     testTable = await okJson<Table>(
       await apiContext.post('/api/v1/tables', {
-        data: { name: `pw-table-${uuid()}`, databaseSchema: schemaFqn },
+        data: {
+          name: `pw-table-${uuid()}`,
+          databaseSchema: schemaFqn,
+          columns: [{ name: 'id', dataType: 'INT' }],
+        },
       }),
       'Create table'
     );
