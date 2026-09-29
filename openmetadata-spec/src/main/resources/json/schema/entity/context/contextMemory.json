@@ -10,15 +10,16 @@
   "definitions": {
     "memoryType": {
       "javaType": "org.openmetadata.schema.entity.context.ContextMemoryType",
-      "description": "High-level type of reusable memory.",
+      "description": "High-level type of reusable memory. Learning is something the agent had to discover in a conversation, e.g. a failed query and its fix.",
       "type": "string",
-      "enum": ["Preference", "UseCase", "Note", "Runbook", "Faq"],
+      "enum": ["Preference", "UseCase", "Note", "Runbook", "Faq", "Learning"],
       "javaEnums": [
         { "name": "PREFERENCE" },
         { "name": "USE_CASE" },
         { "name": "NOTE" },
         { "name": "RUNBOOK" },
-        { "name": "FAQ" }
+        { "name": "FAQ" },
+        { "name": "LEARNING" }
       ],
       "default": "Note"
     },
@@ -35,27 +36,30 @@
     },
     "memoryStatus": {
       "javaType": "org.openmetadata.schema.entity.context.ContextMemoryStatus",
-      "description": "Lifecycle state of the memory. Any status may be set at creation (e.g. importing an already-archived memory); the Draft -> Active -> Archived transition rules are only enforced on subsequent updates.",
+      "description": "Lifecycle state of the memory. Any status but Superseded (which needs supersededBy) may be set at creation; transitions are enforced on update. Superseded and Invalidated memories are kept for audit and can be restored.",
       "type": "string",
-      "enum": ["Draft", "Active", "Archived"],
+      "enum": ["Draft", "Active", "Archived", "Superseded", "Invalidated"],
       "javaEnums": [
         { "name": "DRAFT" },
         { "name": "ACTIVE" },
-        { "name": "ARCHIVED" }
+        { "name": "ARCHIVED" },
+        { "name": "SUPERSEDED" },
+        { "name": "INVALIDATED" }
       ],
       "default": "Active"
     },
     "sourceType": {
       "javaType": "org.openmetadata.schema.entity.context.ContextMemorySourceType",
-      "description": "How the memory was created.",
+      "description": "How the memory was created. ConversationExtraction is captured automatically at the end of a chat turn; it is ground truth, not regenerable like a file or page pill.",
       "type": "string",
-      "enum": ["Manual", "ChatPromotion", "RememberRequest", "FileExtraction", "PageExtraction"],
+      "enum": ["Manual", "ChatPromotion", "RememberRequest", "FileExtraction", "PageExtraction", "ConversationExtraction"],
       "javaEnums": [
         { "name": "MANUAL" },
         { "name": "CHAT_PROMOTION" },
         { "name": "REMEMBER_REQUEST" },
         { "name": "FILE_EXTRACTION" },
-        { "name": "PAGE_EXTRACTION" }
+        { "name": "PAGE_EXTRACTION" },
+        { "name": "CONVERSATION_EXTRACTION" }
       ],
       "default": "Manual"
     },
@@ -194,6 +198,27 @@
         "lastRunAt": { "$ref": "../../type/basic.json#/definitions/timestamp" }
       },
       "additionalProperties": false
+    },
+    "memoryDispute": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryDispute",
+      "description": "A memory owned by someone else whose claim contradicts this one. Both stay Active.",
+      "type": "object",
+      "properties": {
+        "memory": {
+          "description": "The contradicting context memory.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "reason": {
+          "description": "Why the two memories contradict each other.",
+          "type": "string"
+        },
+        "detectedAt": {
+          "description": "When the contradiction was detected.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["memory", "reason"],
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -241,6 +266,22 @@
     },
     "status": {
       "$ref": "#/definitions/memoryStatus"
+    },
+    "statusReason": {
+      "description": "Why the memory reached its current status, e.g. the reconciliation verdict or the missing anchor. Cleared by a status change that brings no reason of its own.",
+      "type": "string"
+    },
+    "supersededBy": {
+      "description": "The memory that replaced this one. Set if and only if status is Superseded.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "disputes": {
+      "description": "Memories owned by someone else whose claims contradict this one.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/memoryDispute"
+      },
+      "default": null
     },
     "pinned": {
       "description": "Whether this memory is globally pinned in Context Center.",

@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.BadRequestException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
@@ -48,5 +50,44 @@ class ContextMemoryStatusTransitionTest {
         () ->
             ContextMemoryRepository.validateStatusTransition(
                 ContextMemoryStatus.ARCHIVED, ContextMemoryStatus.DRAFT));
+  }
+
+  @Test
+  void testLifecycleTransitionsFromActiveAreAccepted() {
+    ContextMemoryRepository.validateStatusTransition(
+        ContextMemoryStatus.ACTIVE, ContextMemoryStatus.SUPERSEDED);
+    ContextMemoryRepository.validateStatusTransition(
+        ContextMemoryStatus.ACTIVE, ContextMemoryStatus.INVALIDATED);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "Superseded,Active",
+    "Superseded,Archived",
+    "Invalidated,Active",
+    "Invalidated,Archived"
+  })
+  void testSupersededAndInvalidatedCanBeRestoredOrArchived(String from, String to) {
+    ContextMemoryRepository.validateStatusTransition(
+        ContextMemoryStatus.fromValue(from), ContextMemoryStatus.fromValue(to));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "Draft,Superseded",
+    "Draft,Invalidated",
+    "Archived,Superseded",
+    "Archived,Invalidated",
+    "Superseded,Invalidated",
+    "Invalidated,Superseded",
+    "Superseded,Draft",
+    "Invalidated,Draft"
+  })
+  void testTransitionsOutsideTheLifecycleTableAreRejected(String from, String to) {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ContextMemoryRepository.validateStatusTransition(
+                ContextMemoryStatus.fromValue(from), ContextMemoryStatus.fromValue(to)));
   }
 }

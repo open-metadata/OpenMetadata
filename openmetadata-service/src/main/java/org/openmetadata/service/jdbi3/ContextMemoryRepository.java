@@ -36,6 +36,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
@@ -434,6 +435,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     validateSharedPrincipals(entity);
     setCreatorAsDefaultOwner(entity, update);
+    prepareLifecycle(entity, update);
   }
 
   private void validateNotSelfReference(ContextMemory entity, UUID referencedId, String field) {
@@ -475,6 +477,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         List.of(
             Entity.getEntityReferenceByName(
                 Entity.USER, entity.getUpdatedBy(), Include.NON_DELETED)));
+  }
+
+  private static void prepareLifecycle(ContextMemory memory, boolean update) {
+    if (!update) {
+      ContextMemoryLifecycle.applyCreate(memory, ContextMemoryRepository::resolveLiveMemory);
+    }
+  }
+
+  private static EntityReference resolveLiveMemory(EntityReference reference, String field) {
+    try {
+      return Entity.getEntityReference(reference, Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      throw new BadRequestException(
+          String.format("%s must reference an existing, non-deleted context memory", field));
+    }
   }
 
   @Override
@@ -545,40 +562,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   // Lifecycle enforcement
   // ------------------------------------------------------------------
 
-  /**
-   * Valid status transitions:
-   *   DRAFT → ACTIVE
-   *   DRAFT → ARCHIVED
-   *   ACTIVE → ARCHIVED
-   *   ARCHIVED → ACTIVE (re-activate)
-   *
-   * Invalid:
-   *   ARCHIVED → DRAFT (cannot revert to draft)
-   *   ACTIVE → DRAFT (cannot revert to draft)
-   */
-  private static final Map<ContextMemoryStatus, Set<ContextMemoryStatus>> VALID_TRANSITIONS =
-      Map.of(
-          ContextMemoryStatus.DRAFT,
-              Set.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ACTIVE, Set.of(ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ARCHIVED, Set.of(ContextMemoryStatus.ACTIVE));
-
-  /** Validate that a status transition is allowed. */
+  /** Rejects a status change outside the table in {@link ContextMemoryLifecycle}. */
   public static void validateStatusTransition(ContextMemoryStatus from, ContextMemoryStatus to) {
-    if (from == to) {
-      return; // No change
-    }
-    Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.get(from);
-    if (allowed == null) {
-      throw new BadRequestException(
-          String.format("No transitions defined for status %s", from.value()));
-    }
-    if (!allowed.contains(to)) {
-      throw new BadRequestException(
-          String.format(
-              "Invalid memory status transition from %s to %s. Allowed transitions from %s: %s",
-              from.value(), to.value(), from.value(), allowed));
-    }
+    ContextMemoryLifecycle.validateTransition(from, to);
   }
 
   @Override
@@ -617,13 +603,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           original.getMachineRepresentation(),
           updated.getMachineRepresentation());
 
-      // Validate lifecycle transition before recording status change
-      if (original.getStatus() != null
-          && updated.getStatus() != null
-          && original.getStatus() != updated.getStatus()) {
-        validateStatusTransition(original.getStatus(), updated.getStatus());
-      }
-      recordChange("status", original.getStatus(), updated.getStatus());
+      updateLifecycle(consolidatingChanges);
 
       recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig());
 
@@ -688,6 +668,26 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     /** True when a PATCH edited a field the extraction reconciler would otherwise overwrite. */
     private boolean extractionManagedFieldChanged() {
       return ContextMemoryRepository.extractionManagedFieldChanged(original, updated);
+    }
+
+    private void updateLifecycle(boolean consolidatingChanges) {
+      if (!consolidatingChanges) {
+        ContextMemoryLifecycle.applyUpdate(
+            original, updated, ContextMemoryRepository::resolveLiveMemory);
+      }
+      recordChange("status", original.getStatus(), updated.getStatus());
+      recordChange("statusReason", original.getStatusReason(), updated.getStatusReason());
+      recordChange(
+          ContextMemoryLifecycle.FIELD_SUPERSEDED_BY,
+          original.getSupersededBy(),
+          updated.getSupersededBy(),
+          true,
+          EntityUtil.entityReferenceMatch);
+      recordChange(
+          ContextMemoryLifecycle.FIELD_DISPUTES,
+          original.getDisputes(),
+          updated.getDisputes(),
+          true);
     }
 
     private void updateSourceEntityRelationship() {

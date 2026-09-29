@@ -123,10 +123,12 @@ export enum MemoryScope {
 }
 
 /**
- * High-level type of reusable memory.
+ * High-level type of reusable memory. Learning is something the agent had to discover in a
+ * conversation, e.g. a failed query and its fix.
  */
 export enum MemoryType {
     FAQ = "Faq",
+    Learning = "Learning",
     Note = "Note",
     Preference = "Preference",
     Runbook = "Runbook",
@@ -241,10 +243,12 @@ export enum ShareVisibility {
 }
 
 /**
- * How the memory was created.
+ * How the memory was created. ConversationExtraction is captured automatically at the end
+ * of a chat turn; it is ground truth, not regenerable like a file or page pill.
  */
 export enum SourceType {
     ChatPromotion = "ChatPromotion",
+    ConversationExtraction = "ConversationExtraction",
     FileExtraction = "FileExtraction",
     Manual = "Manual",
     PageExtraction = "PageExtraction",
@@ -252,14 +256,16 @@ export enum SourceType {
 }
 
 /**
- * Lifecycle state of the memory. Any status may be set at creation (e.g. importing an
- * already-archived memory); the Draft -> Active -> Archived transition rules are only
- * enforced on subsequent updates.
+ * Lifecycle state of the memory. Any status but Superseded (which needs supersededBy) may
+ * be set at creation; transitions are enforced on update. Superseded and Invalidated
+ * memories are kept for audit and can be restored.
  */
 export enum MemoryStatus {
     Active = "Active",
     Archived = "Archived",
     Draft = "Draft",
+    Invalidated = "Invalidated",
+    Superseded = "Superseded",
 }
 
 /**
