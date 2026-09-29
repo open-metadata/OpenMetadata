@@ -52,6 +52,7 @@ import {
   escapeESReservedCharacters,
   getEntityDisplayName,
   openClassificationTagPicker,
+  openOwnerPicker,
   waitForAllLoadersToDisappear,
 } from './entity';
 import { pickGlossaryTermInField } from './glossaryPicker';
@@ -351,9 +352,10 @@ export const addTeamAsReviewer = async (
     `api/v1/search/query?q=*${encodeURI(teamName)}*`
   );
 
-  await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
-
-  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
+  await openOwnerPicker(
+    page,
+    page.locator(`[data-testid="${activatorBtnDataTestId}"]`)
+  );
 
   await teamsResponse;
 
@@ -1851,9 +1853,7 @@ export const addMultiOwnerInDialog = async (data: {
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
 
-  await page.click(activatorBtnLocator);
-
-  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
+  await openOwnerPicker(page, page.locator(activatorBtnLocator));
 
   await waitForAllLoadersToDisappear(page);
 
