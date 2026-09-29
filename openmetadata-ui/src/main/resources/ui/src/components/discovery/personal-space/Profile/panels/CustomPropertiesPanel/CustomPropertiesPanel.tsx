@@ -12,16 +12,22 @@
  */
 
 import {
-    Box,
-    FeaturedIcon,
-    Toggle,
-    Typography
+  Box,
+  FeaturedIcon,
+  Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Hint } from '@openmetadata/ui-core-components/icons';
 import { Settings02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import type { Key } from 'react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
@@ -44,10 +50,10 @@ import CustomPropertiesLandingPage from './CustomPropertiesLandingPage';
 import { CRUMB } from './CustomPropertiesPanel.constants';
 import { CustomPropertiesSubView } from './CustomPropertiesPanel.types';
 import {
-    getBreadcrumbItems,
-    getPageTitle,
-    parseCustomPropertiesHash,
-    viewToSubPath
+  getBreadcrumbItems,
+  getPageTitle,
+  parseCustomPropertiesHash,
+  viewToSubPath,
 } from './CustomPropertiesPanel.utils';
 
 interface CustomPropertiesPanelProps {
@@ -112,10 +118,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
 
         if (parsedHash.action === 'add') {
           setSubView({ type: 'add', entityType });
-        } else if (
-          parsedHash.action === 'edit' &&
-          parsedHash.propertyName
-        ) {
+        } else if (parsedHash.action === 'edit' && parsedHash.propertyName) {
           const property = entityType.customProperties?.find(
             (p) => p.name === parsedHash.propertyName
           );
@@ -137,10 +140,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
 
   const handleSelectEntityType = useCallback(
     (entityType: Type) => {
-      setHash(
-        'custom-properties',
-        entityType.fullyQualifiedName ?? undefined
-      );
+      setHash('custom-properties', entityType.fullyQualifiedName ?? undefined);
     },
     [setHash]
   );

@@ -14,10 +14,10 @@
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { Button } from '@openmetadata/ui-core-components';
 import {
-    AuditLogs as AuditLogsIcon,
-    PermissionDebugger as AccessControlIcon,
-    Policy as PoliciesIcon,
-    Role as RolesIcon
+  AuditLogs as AuditLogsIcon,
+  PermissionDebugger as AccessControlIcon,
+  Policy as PoliciesIcon,
+  Role as RolesIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import type { Key } from 'react';

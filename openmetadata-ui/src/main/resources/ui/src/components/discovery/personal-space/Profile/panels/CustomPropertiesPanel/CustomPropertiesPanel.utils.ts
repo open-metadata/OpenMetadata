@@ -79,7 +79,11 @@ export function parseCustomPropertiesHash(
   }
 
   if (parts[1] === 'edit-property' && parts[2]) {
-    return { entityFqn, action: 'edit', propertyName: parts.slice(2).join('/') };
+    return {
+      entityFqn,
+      action: 'edit',
+      propertyName: parts.slice(2).join('/'),
+    };
   }
 
   return { entityFqn, action: 'detail' };

@@ -13,30 +13,30 @@
 
 import { getLocalTimeZone, today } from '@internationalized/date';
 import {
-    Badge,
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    DateRangePicker,
-    Dialog,
-    Input,
-    Modal,
-    ModalOverlay,
-    PaginationCardWithControls,
-    ProgressBarBase,
-    Typography
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  DateRangePicker,
+  Dialog,
+  Input,
+  Modal,
+  ModalOverlay,
+  PaginationCardWithControls,
+  ProgressBarBase,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { SearchLg, XClose } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import type { DateValue } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -46,30 +46,30 @@ import '../../../../../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../../../../../components/common/Banner/Banner';
 import { CSVExportWebsocketResponse } from '../../../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_LARGE,
-    PAGE_SIZE_MEDIUM,
-    SOCKET_EVENTS
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+  SOCKET_EVENTS,
 } from '../../../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import {
-    exportAuditLogs,
-    getAuditLogExportJob,
-    getAuditLogExportResult,
-    getAuditLogs
+  exportAuditLogs,
+  getAuditLogExportJob,
+  getAuditLogExportResult,
+  getAuditLogs,
 } from '../../../../../../rest/auditLogAPI';
 import {
-    AuditLogActiveFilter,
-    AuditLogEntry,
-    AuditLogListParams,
-    AuditLogListResponse
+  AuditLogActiveFilter,
+  AuditLogEntry,
+  AuditLogListParams,
+  AuditLogListResponse,
 } from '../../../../../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../../../../../utils/AuditLogUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import { EXPORT_POLL_INTERVAL_MS } from './AccessControl.constants';
 import type { ExportJob } from './AccessControl.types';

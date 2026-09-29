@@ -16,10 +16,10 @@ import { uniqBy } from 'lodash';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { Function } from '../../../../../../generated/type/function';
 import {
-    getEntityDetailsPath,
-    getPolicyWithFqnPath,
-    getRoleWithFqnPath,
-    getTeamsWithFqnPath
+  getEntityDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
+  getTeamsWithFqnPath,
 } from '../../../../../../utils/RouterUtils';
 import type { AccessControlView } from './AccessControl.types';
 
@@ -86,9 +86,7 @@ export function hashSubPathToView(subPath: string): AccessControlView {
   return { type: 'landing' };
 }
 
-export function viewToSubPath(
-  view: AccessControlView
-): string | undefined {
+export function viewToSubPath(view: AccessControlView): string | undefined {
   switch (view.type) {
     case 'landing':
       return undefined;
