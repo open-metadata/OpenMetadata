@@ -4719,6 +4719,7 @@
         "playwright/e2e/Pages/InputOutputPorts.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
@@ -9368,6 +9369,22 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/data-contract/ODCSImportReport/ODCSImportReport.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/data-contract/ODCSImportSummary/ODCSImportSummary.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
     },
     {
