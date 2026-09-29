@@ -3772,6 +3772,41 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void importFromODPS_resolvesGlossaryAndClassificationTags(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = getOrCreateDomain(ns);
+    String glossaryTermFqn = shared.GLOSSARY1_TERM1.getFullyQualifiedName();
+    String classificationTagFqn = shared.PERSONAL_DATA_TAG.getFullyQualifiedName();
+
+    String productId = ns.prefix("odps_dp");
+    String odpsBody =
+        JsonUtils.pojoToJson(
+            buildOdpsDoc(productId, "[DEV] " + productId, glossaryTermFqn, classificationTagFqn));
+
+    DataProduct imported =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/dataProducts/odps?domain=" + domain.getFullyQualifiedName(),
+                odpsBody,
+                DataProduct.class,
+                RequestOptions.builder().header("Content-Type", "application/json").build());
+
+    DataProduct fetched = getEntityWithFields(imported.getId().toString(), "tags");
+    assertNotNull(fetched.getTags(), "ODPS tags should be attached");
+    assertEquals(2, fetched.getTags().size(), "both ODPS tags should be attached");
+    assertEquals(
+        TagLabel.TagSource.GLOSSARY,
+        sourceOf(fetched, glossaryTermFqn),
+        "a glossary-term FQN must attach as a GLOSSARY label, not fail as a missing classification tag");
+    assertEquals(
+        TagLabel.TagSource.CLASSIFICATION,
+        sourceOf(fetched, classificationTagFqn),
+        "a classification-tag FQN must stay a CLASSIFICATION label");
+  }
+
+  @Test
   void importFromODPS_matchesExistingProductByProductId(TestNamespace ns) {
     Domain domain = getOrCreateDomain(ns);
     String domainFqn = domain.getFullyQualifiedName();
@@ -3823,6 +3858,14 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         "re-import of a non-slug productID must update the existing product, not create a duplicate");
   }
 
+  private TagLabel.TagSource sourceOf(DataProduct dataProduct, String tagFqn) {
+    return dataProduct.getTags().stream()
+        .filter(tag -> tagFqn.equals(tag.getTagFQN()))
+        .map(TagLabel::getSource)
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Tag not found on data product: " + tagFqn));
+  }
+
   private DataProduct putOdps(String domainFqn, ODPSDataProduct odps) {
     return SdkClients.adminClient()
         .getHttpClient()
@@ -3834,11 +3877,14 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
             RequestOptions.builder().header("Content-Type", "application/json").build());
   }
 
-  private ODPSDataProduct buildOdpsDoc(String productId, String name) {
+  private ODPSDataProduct buildOdpsDoc(String productId, String name, String... tagFqns) {
     ODPSProductDetails details = new ODPSProductDetails();
     details.setName(name);
     details.setProductID(productId);
     details.setDescription("Imported from ODPS");
+    if (tagFqns.length > 0) {
+      details.setTags(List.of(tagFqns));
+    }
 
     Details detailsByLang = new Details();
     detailsByLang.setAdditionalProperty("en", details);
