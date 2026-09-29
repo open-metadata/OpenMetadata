@@ -12,7 +12,6 @@
  */
 import { Page } from '@playwright/test';
 import { SearchIndex } from '../../../src/enums/search.enum';
-import { Kpi } from '../../../src/generated/dataInsight/kpi/kpi';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
@@ -34,7 +33,11 @@ import {
   verifyWidgetHeaderNavigation,
   waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
-import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
+import {
+  addKpi,
+  deleteKpiRequest,
+  deleteSeededKpisOnChart,
+} from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
@@ -396,25 +399,9 @@ test(
     test.slow(true);
 
     const kpi = await test.step('Add KPI', async () => {
-      // The server allows one KPI per chart and the Add KPI dropdown hides charts
-      // that already have one. Collate seeds "Migration ... KPI" on every chart,
-      // so free the owner chart; KPIs other specs create are left alone.
       const { apiContext, afterAction } = await getApiContext(page);
       try {
-        const { data } = await okJson<{ data: Kpi[] }>(
-          await apiContext.get('/api/v1/kpi?fields=dataInsightChart&limit=100'),
-          'List KPIs'
-        );
-        await deleteKpiRequest(
-          apiContext,
-          data
-            .filter(
-              (item) =>
-                item.displayName?.startsWith('Migration') &&
-                item.dataInsightChart.fullyQualifiedName?.includes('owner')
-            )
-            .map((item) => item.id as string)
-        );
+        await deleteSeededKpisOnChart(apiContext, 'owner');
       } finally {
         await afterAction();
       }
