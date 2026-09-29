@@ -44,6 +44,7 @@ public class ContextMemoryIndex implements TaggableIndex {
       Set.of(
           ContextMemoryRepository.FIELD_PRIMARY_ENTITY,
           ContextMemoryRepository.FIELD_RELATED_ENTITIES,
+          ContextMemoryRepository.FIELD_SOURCE_ENTITY,
           ContextMemoryRepository.FIELD_SOURCE_FILE);
 
   final ContextMemory memory;

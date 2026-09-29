@@ -33,6 +33,8 @@ public class QueryIndex implements TaggableIndex {
     // setFieldsInBulk when explicitly requested. Without it, reindex drops the field from
     // query_search_index and Table → Queries renders the empty state.
     fields.add("queryUsedIn");
+    // "users" is stripped from storage JSON the same way; the Queries panel lists them from here.
+    fields.add("users");
     return Set.copyOf(fields);
   }
 
