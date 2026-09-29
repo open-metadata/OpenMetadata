@@ -18,19 +18,23 @@ import {
   SearchInputIcon,
 } from '@openmetadata/ui-core-components';
 import { FilterLines } from '@untitledui/icons';
-import React, { useMemo } from 'react';
+import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Task } from '../../../../../generated/entity/tasks/task';
 import { getTaskTypeBadge, getTaskTypeKey } from '../taskDetail.utils';
 import {
   TaskStatusBucket,
-  TASK_STATUS_BUCKET_OPTIONS,
+  TASK_STATUS_BUCKET_LABEL_KEY,
 } from '../taskList.utils';
 
 /** How the loaded tasks are broken up in the list. */
 export type InboxTaskGrouping = 'none' | 'type';
 
 export interface InboxTaskListToolbarProps {
+  /** The All / Open / Closed control, sharing the first row with grouping. */
+  statusTabs: ReactNode;
+  /** The statuses the active tab can hold; the dropdown offers only these. */
+  statusOptions: TaskStatusBucket[];
   statusFilter: TaskStatusBucket[];
   onStatusFilterChange: (value: TaskStatusBucket[]) => void;
   search: string;
@@ -45,13 +49,15 @@ export interface InboxTaskListToolbarProps {
 }
 
 /**
- * The list column's controls: grouping on one row, then search with the status
- * and type filters.
+ * The list column's controls: the status tabs and grouping on one row, then
+ * search with the status and type filters.
  *
  * The type options come from the tasks on screen rather than the full enum, so
  * the filter never offers a type the queue does not contain.
  */
 const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
+  statusTabs,
+  statusOptions,
   statusFilter,
   onStatusFilterChange,
   search,
@@ -78,13 +84,13 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
     [t]
   );
 
-  const statusOptions = useMemo(
+  const statusFilterOptions = useMemo(
     () =>
-      TASK_STATUS_BUCKET_OPTIONS.map(({ value, labelKey }) => ({
+      statusOptions.map((value) => ({
         value,
-        label: t(labelKey),
+        label: t(TASK_STATUS_BUCKET_LABEL_KEY[value]),
       })),
-    [t]
+    [statusOptions, t]
   );
 
   // One option per label, not per type: a test case incident and an incident
@@ -109,7 +115,8 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
       className="tw:shrink-0 tw:gap-3 tw:px-4 tw:pt-4 tw:pb-3"
       data-testid="inbox-tasks-toolbar"
       direction="col">
-      <Box align="center" className="tw:justify-end tw:gap-2">
+      <Box align="center" className="tw:justify-between tw:gap-2">
+        {statusTabs}
         {/* A grouping always has a value, so FilterSelect's "active filter"
             brand tint would be permanent; keep the trigger neutral. */}
         <FilterSelect
@@ -142,7 +149,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
           bordered
           data-testid="inbox-tasks-status-filter"
           label={t('label.status')}
-          options={statusOptions}
+          options={statusFilterOptions}
           popoverClassName="tw:w-56"
           selectedValues={statusFilter}
           selectionMode="multiple"
