@@ -115,7 +115,10 @@ const validateProfilerAccessForRole = async (
     '/api/v1/dataQuality/testCases/testCaseResults/*?*'
   );
 
-  await page.goto(`test-case/${testCase.fullyQualifiedName}/test-case-results`);
+  await page.goto(
+    `test-case/${testCase.fullyQualifiedName}/test-case-results`,
+    { waitUntil: 'domcontentloaded' }
+  );
 
   const getTestCaseDetailsResponse = await getTestCaseDetails;
   const getTestResultResponse = await getTestResult;
@@ -270,7 +273,7 @@ test.describe(
       await page.getByTestId('profiler').click();
       await page.getByRole('tab', { name: 'Data Quality' }).click();
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await test.step('Update profiler setting', async () => {
         await page.click('[data-testid="profiler-setting-btn"]');
