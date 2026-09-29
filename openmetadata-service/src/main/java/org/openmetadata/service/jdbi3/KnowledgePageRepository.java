@@ -933,8 +933,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   /**
-   * Hands the page to the in-memory throttle, which coalesces autosaves and runs extraction once the
-   * body settles. A no-op when the LLM is disabled, mirroring the file pipeline.
+   * Enqueues a delayed job, coalescing autosaves in the persistent background job table. A no-op
+   * when the LLM is disabled, mirroring the file pipeline.
    */
   private void schedulePillExtraction(UUID pageId) {
     if (isExtractionEnabled()) {

@@ -7,6 +7,7 @@ import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.context.center.ContextMemoryReconciler.ReconcileResult;
 import org.openmetadata.service.context.center.DocumentMemoryExtractor.DeriveResult;
+import org.openmetadata.service.llm.LLMCompletionException;
 
 /**
  * Shared core of Context Center knowledge-pill extraction. Given a source entity (a ContextFile, a
@@ -70,6 +71,10 @@ public abstract class ContextProcessingEngine {
 
   private ExtractionOutcome extractAndReconcile(UUID entityId, Source source) {
     DeriveResult derived = extractor.derive(source.text(), source.sourceRef(), sourceType());
+    if (derived.chunksProcessed() != derived.chunksTotal()) {
+      throw new LLMCompletionException(
+          "Knowledge pill extraction did not process every source chunk");
+    }
     ReconcileResult reconciled =
         reconciler.reconcile(source.sourceRef(), entityType(), derived.memories());
     ExtractionStats stats =
