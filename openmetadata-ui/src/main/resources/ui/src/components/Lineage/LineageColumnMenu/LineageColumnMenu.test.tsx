@@ -40,6 +40,20 @@ describe('LineageColumnMenu', () => {
     );
   });
 
+  it('anchors the popover trigger ref to a real, mounted element', async () => {
+    const onEdit = jest.fn();
+    render(<LineageColumnMenu {...props} onEdit={onEdit} />);
+    fireEvent.click(screen.getByTestId('lineage-column-menu'));
+    fireEvent.click(await screen.findByText('label.edit-upstream'));
+
+    const triggerRef = onEdit.mock.calls[0][1];
+
+    expect(triggerRef.current).toBeInstanceOf(HTMLElement);
+    expect(
+      triggerRef.current.contains(screen.getByTestId('lineage-column-menu'))
+    ).toBe(true);
+  });
+
   it('does not render a delete item', async () => {
     render(<LineageColumnMenu {...props} />);
     fireEvent.click(screen.getByTestId('lineage-column-menu'));

@@ -19,19 +19,20 @@ import { LineageColumnMenuProps } from './LineageColumnMenu.interface';
 
 const LineageColumnMenu = ({ onEdit }: LineageColumnMenuProps) => {
   const { t } = useTranslation();
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Dropdown.DotsButton is a plain function component (no forwardRef), so a
+  // ref placed on it never attaches in React 18 — anchor the popover to this
+  // wrapper div instead, which we own and which forwardRef works on.
+  const triggerRef = useRef<HTMLDivElement>(null);
 
   return (
     <div
-      className="nodrag nopan"
+      className="nodrag nopan tw:inline-flex"
+      ref={triggerRef}
       role="presentation"
       onClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}>
       <Dropdown.Root>
-        <Dropdown.DotsButton
-          data-testid="lineage-column-menu"
-          ref={triggerRef}
-        />
+        <Dropdown.DotsButton data-testid="lineage-column-menu" />
         <Dropdown.Popover>
           <Dropdown.Menu
             aria-label={t('label.lineage-options')}

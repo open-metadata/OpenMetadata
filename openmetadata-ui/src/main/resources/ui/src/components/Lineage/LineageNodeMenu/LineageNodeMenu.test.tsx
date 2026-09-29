@@ -40,6 +40,20 @@ describe('LineageNodeMenu', () => {
     );
   });
 
+  it('anchors the popover trigger ref to a real, mounted element', async () => {
+    const onEdit = jest.fn();
+    render(<LineageNodeMenu {...props} onEdit={onEdit} />);
+    fireEvent.click(screen.getByTestId('lineage-node-menu'));
+    fireEvent.click(await screen.findByText('label.edit-upstream'));
+
+    const triggerRef = onEdit.mock.calls[0][1];
+
+    expect(triggerRef.current).toBeInstanceOf(HTMLElement);
+    expect(
+      triggerRef.current.contains(screen.getByTestId('lineage-node-menu'))
+    ).toBe(true);
+  });
+
   it('deletes when allowed and hides delete otherwise', async () => {
     const { rerender } = render(<LineageNodeMenu {...props} />);
     fireEvent.click(screen.getByTestId('lineage-node-menu'));

@@ -27,11 +27,15 @@ const LineageNodeMenu = ({
   onDelete,
 }: LineageNodeMenuProps) => {
   const { t } = useTranslation();
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Dropdown.DotsButton is a plain function component (no forwardRef), so a
+  // ref placed on it never attaches in React 18 — anchor the popover to this
+  // wrapper div instead, which we own and which forwardRef works on.
+  const triggerRef = useRef<HTMLDivElement>(null);
 
   return (
     <div
-      className="nodrag nopan"
+      className="nodrag nopan tw:inline-flex"
+      ref={triggerRef}
       role="presentation"
       onClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}>
@@ -39,7 +43,6 @@ const LineageNodeMenu = ({
         <Dropdown.DotsButton
           className="tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center"
           data-testid="lineage-node-menu"
-          ref={triggerRef}
         />
         <Dropdown.Popover>
           <Dropdown.Menu
