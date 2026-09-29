@@ -1850,6 +1850,7 @@
     "metric-for": "対象メトリック",
     "metric-group": "メトリクスグループ",
     "metric-hierarchy": "メトリクス階層",
+    "metric-lowercase": "メトリクス",
     "metric-plural": "メトリクス",
     "metric-type": "メトリクスタイプ",
     "metric-value": "メトリクス値",
