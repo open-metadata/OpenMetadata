@@ -98,10 +98,6 @@ export const PersonaDetailsPage = () => {
     }
   }, [permissionsError]);
 
-  // AI is always available in OSS — the shell ships in-tree, no
-  // install-gate.
-  const hasNonDefaultMode = true;
-
   const breadcrumb = useMemo(() => {
     const breadcrumbList = [
       {
@@ -115,9 +111,9 @@ export const PersonaDetailsPage = () => {
     ];
 
     if (activeCategory) {
-      const category = getCustomizePageCategories()
-        .filter((item) => item.key !== 'askCollateSidebar' || hasNonDefaultMode)
-        .find((category) => category.key === activeCategory);
+      const category = getCustomizePageCategories().find(
+        (category) => category.key === activeCategory
+      );
 
       if (category) {
         breadcrumbList.push({
@@ -128,7 +124,7 @@ export const PersonaDetailsPage = () => {
     }
 
     return breadcrumbList;
-  }, [personaDetails, activeCategory, fqn, hasNonDefaultMode]);
+  }, [personaDetails, activeCategory, fqn]);
 
   const fetchPersonaDetails = async () => {
     try {

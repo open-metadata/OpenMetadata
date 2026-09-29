@@ -13,7 +13,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button, Dialog, DialogTrigger, Modal } from 'react-aria-components';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Select } from './select';
 
 describe('Select in a modal', () => {
@@ -141,7 +141,35 @@ describe('Select labelWeight', () => {
   });
 });
 
+// jsdom has no PointerEvent, so react-aria falls back to a mouse-event path
+// that never hits the reopen-on-press-start race the trigger test guards.
+class PointerEventPolyfill extends MouseEvent {
+  readonly pointerId: number;
+  readonly pointerType: string;
+  readonly width: number;
+  readonly height: number;
+  readonly isPrimary: boolean;
+
+  constructor(type: string, init: PointerEventInit = {}) {
+    super(type, init);
+    this.pointerId = init.pointerId ?? 1;
+    this.pointerType = init.pointerType ?? 'mouse';
+    // react-aria treats a 0x0 pointer as a virtual (screen reader) press.
+    this.width = init.width ?? 1;
+    this.height = init.height ?? 1;
+    this.isPrimary = init.isPrimary ?? true;
+  }
+}
+
 describe('Select dismissal', () => {
+  beforeAll(() => {
+    vi.stubGlobal('PointerEvent', PointerEventPolyfill);
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
   const renderSelect = () =>
     render(
       <>

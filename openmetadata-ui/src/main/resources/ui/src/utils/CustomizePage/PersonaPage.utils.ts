@@ -12,7 +12,6 @@
  */
 
 import { isUndefined, omit, omitBy } from 'lodash';
-import { DEFAULT_APP_MODE } from '../../constants/appMode.constants';
 import {
   DEFAULT_LANDING_PAGE,
   LANDING_PAGE_SECTIONS,
@@ -22,7 +21,6 @@ import {
   ViewModePage,
   VIEW_MODE_PAGES,
 } from '../../constants/platform/personaViewMode.constants';
-import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { Page } from '../../generated/system/ui/page';
@@ -167,8 +165,8 @@ export const isLandingPageOption = (path?: string): path is string =>
   );
 
 /**
- * Where a user of this persona lands after signing in. Only paths from the
- * curated option list are honoured, so a stale or hand-edited value falls
+ * Where a user of this persona lands when they open the app. Only paths from
+ * the curated option list are honoured, so a stale or hand-edited value falls
  * back to Home instead of navigating somewhere unexpected.
  */
 export const resolvePersonaLandingPage = (
@@ -178,27 +176,6 @@ export const resolvePersonaLandingPage = (
   const path = getPersonaPreferences(document, personaId)?.defaultLandingPage;
 
   return isLandingPageOption(path) ? path : DEFAULT_LANDING_PAGE;
-};
-
-/**
- * Where a fresh sign-in lands. Only Classic honours the persona's default
- * landing page: the AI shell owns `/`, and many Classic pages don't exist in
- * its route tree. Home keeps routing to `/`, as it did before this setting.
- */
-export const getSignInLandingPath = (
-  appMode: string,
-  document: Document | null | undefined,
-  personaId: string | undefined
-): string => {
-  if (appMode !== DEFAULT_APP_MODE) {
-    return APP_ROUTER_ROUTES.HOME;
-  }
-
-  const landingPage = resolvePersonaLandingPage(document, personaId);
-
-  return landingPage === DEFAULT_LANDING_PAGE
-    ? APP_ROUTER_ROUTES.HOME
-    : landingPage;
 };
 
 /**

@@ -13,13 +13,13 @@
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { Document } from '../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import {
   AppMode,
   PageViewMode,
   PersonaPreferences,
 } from '../../../../generated/type/personaPreferences';
-import { useCustomizeStore } from '../../../CustomizablePage/CustomizeStore';
 import { PersonaAppLayoutPage } from './PersonaAppLayoutPage';
 
 jest.mock('../../../../components/PageLayoutV1/PageLayoutV1', () => ({
@@ -41,31 +41,35 @@ jest.mock(
 const personaId = 'persona-1';
 const persona = { id: personaId, name: 'analytics' } as Persona;
 
+let personaDocument: Document;
+
 const seedDoc = (
   preferences: Pick<
     PersonaPreferences,
     'appMode' | 'defaultLandingPage' | 'defaultViewModes'
   > = {}
 ) => {
-  useCustomizeStore.setState({
-    document: {
-      id: 'doc-1',
-      name: 'persona.analytics',
-      fullyQualifiedName: 'persona.analytics',
-      entityType: 'persona',
-      data: {
-        personaPreferences: [
-          { personaId, personaName: 'analytics', ...preferences },
-        ],
-      },
-    } as never,
-  });
+  personaDocument = {
+    id: 'doc-1',
+    name: 'persona.analytics',
+    fullyQualifiedName: 'persona.analytics',
+    entityType: 'persona',
+    data: {
+      personaPreferences: [
+        { personaId, personaName: 'analytics', ...preferences },
+      ],
+    },
+  };
 };
 
 const renderPage = (onSave = jest.fn().mockResolvedValue(undefined)) => {
   render(
     <MemoryRouter>
-      <PersonaAppLayoutPage personaDetails={persona} onSave={onSave} />
+      <PersonaAppLayoutPage
+        personaDetails={persona}
+        personaDocument={personaDocument}
+        onSave={onSave}
+      />
     </MemoryRouter>
   );
 
@@ -121,14 +125,6 @@ describe('PersonaAppLayoutPage', () => {
 
       expect(getRadio('null').checked).toBe(true);
       expect(getRadio(AppMode.Classic).checked).toBe(false);
-    });
-
-    it('never shows the unavailable placeholder (AI always available in OSS)', () => {
-      renderPage();
-
-      expect(
-        screen.queryByTestId('app-mode-unavailable-placeholder')
-      ).not.toBeInTheDocument();
     });
   });
 
@@ -307,6 +303,20 @@ describe('PersonaAppLayoutPage', () => {
         appMode: undefined,
         defaultLandingPage: undefined,
       });
+    });
+
+    it('keeps the edits and re-enables save when saving fails', async () => {
+      const onSave = renderPage(jest.fn().mockRejectedValue(new Error('500')));
+
+      fireEvent.click(getRadio(AppMode.AI));
+      await clickSave();
+
+      expect(onSave).toHaveBeenCalledTimes(1);
+      expect(getRadio(AppMode.AI).checked).toBe(true);
+      expect(getSaveButton()).toBeEnabled();
+      expect(screen.getByTestId('save-status')).toHaveTextContent(
+        'message.unsaved-changes'
+      );
     });
 
     it('discard reverts every unsaved change to the saved values', () => {

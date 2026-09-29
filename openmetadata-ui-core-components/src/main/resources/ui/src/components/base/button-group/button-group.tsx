@@ -43,8 +43,13 @@ export const styles = sortCx({
     root: [
       'tw:group/button-group tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:rounded-md tw:font-medium tw:whitespace-nowrap tw:text-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
       'tw:hover:text-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
-      'tw:disabled:cursor-not-allowed tw:disabled:text-disabled',
+      // text-disabled matches the unselected text-quaternary in light mode, so
+      // disabled uses the lighter fg-disabled, as Button does.
+      'tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled',
       'tw:selected:bg-primary_alt tw:selected:text-primary tw:selected:shadow-sm',
+      // `selected:` outranks `disabled:`, so a disabled selection needs its own
+      // rules or it keeps looking active.
+      'tw:selected:disabled:bg-disabled_subtle tw:selected:disabled:text-fg-disabled tw:selected:disabled:shadow-none',
     ].join(' '),
     sizes: {
       sm: 'tw:gap-1.5 tw:px-3 tw:py-1 tw:text-[13px] tw:leading-5',

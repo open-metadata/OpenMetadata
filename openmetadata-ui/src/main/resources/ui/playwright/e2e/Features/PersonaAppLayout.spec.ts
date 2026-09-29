@@ -13,9 +13,9 @@
 
 /**
  * A persona's `personaPreferences[].defaultLandingPage` decides where its
- * users land after a fresh sign-in — in Classic mode only. The AI shell owns
- * `/`, so an AI persona keeps landing there whatever the landing page says.
- * Its `defaultViewModes` decide which layout each view-toggle page opens in.
+ * users land when the app opens at `/` — after a sign-in or in a new tab, in
+ * either app mode. Its `defaultViewModes` decide which layout each
+ * view-toggle page opens in.
  */
 
 import { APIRequestContext, Browser, Page } from '@playwright/test';
@@ -23,6 +23,11 @@ import { expect, test } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage } from '../../utils/common';
+import { getEncodedFqn } from '../../utils/entity';
+import { clickAndWaitFor } from '../../utils/waitHelpers';
+
+// Glossary opens its first glossary (`/glossary/<name>`) when one exists.
+const GLOSSARY_URL = /\/glossary(\/|\?|#|$)/;
 
 interface PersonaPreferenceSeed {
   appMode?: 'classic' | 'AI';
@@ -138,7 +143,7 @@ test.describe('Persona default landing page', { tag: ['@Platform'] }, () => {
       browser,
       { appMode: 'classic', defaultLandingPage: '/glossary' },
       async (page) => {
-        await expect(page).toHaveURL(/\/glossary(\?|#|$)/);
+        await expect(page).toHaveURL(GLOSSARY_URL);
       }
     );
   });
@@ -160,12 +165,31 @@ test.describe('Persona default landing page', { tag: ['@Platform'] }, () => {
         await page.locator('input[name="password"]').fill(user.data.password);
         await page.getByTestId('login').click();
 
-        await expect(page).toHaveURL(/\/glossary(\?|#|$)/);
+        await expect(page).toHaveURL(GLOSSARY_URL);
       }
     );
   });
 
-  test('an AI persona keeps landing at "/" whatever its landing page', async ({
+  test('opening the app in a new tab lands on the default landing page', async ({
+    browser,
+  }) => {
+    test.slow();
+
+    await signInWithPersona(
+      browser,
+      { appMode: 'classic', defaultLandingPage: '/glossary' },
+      async (page) => {
+        await expect(page).toHaveURL(GLOSSARY_URL);
+
+        const newTab = await page.context().newPage();
+        await newTab.goto('/');
+
+        await expect(newTab).toHaveURL(GLOSSARY_URL);
+      }
+    );
+  });
+
+  test('an AI persona lands on its default landing page too', async ({
     browser,
   }) => {
     test.slow();
@@ -174,10 +198,9 @@ test.describe('Persona default landing page', { tag: ['@Platform'] }, () => {
       browser,
       { appMode: 'AI', defaultLandingPage: '/glossary' },
       async (page) => {
-        // The AI sidebar proves the AI route tree mounted before the URL check.
+        // The AI sidebar proves the AI route tree mounted.
         await expect(page.getByTestId('ask-sidebar')).toBeVisible();
-
-        expect(new URL(page.url()).pathname).toBe('/');
+        await expect(page).toHaveURL(GLOSSARY_URL);
       }
     );
   });
@@ -209,5 +232,55 @@ test.describe('Persona default view mode', { tag: ['@Platform'] }, () => {
         );
       }
     );
+  });
+});
+
+test.describe('Persona App Layout page', { tag: ['@Platform'] }, () => {
+  test('an admin saves App Layout settings and they persist after a reload', async ({
+    browser,
+    page,
+  }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const seeded = await createPersonaWithPreferences(apiContext, {});
+
+    try {
+      const personaFqn =
+        seeded.persona.responseData.fullyQualifiedName ??
+        seeded.persona.responseData.name;
+      await page.goto(
+        `/customize-page/${getEncodedFqn(personaFqn)}/app-layout`
+      );
+
+      await page.getByTestId('app-mode-option-classic').click();
+      await page.getByTestId('add-view-mode-page').click();
+      await page.getByTestId('add-view-mode-page-domains').click();
+      await page.getByTestId('view-mode-domains-tree').click();
+
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('save-button'),
+        `/api/v1/docStore/${seeded.docId}`
+      );
+
+      await expect(page.getByTestId('save-button')).toBeDisabled();
+
+      await page.reload();
+
+      await expect(
+        page.getByTestId('app-mode-option-classic').getByRole('radio')
+      ).toBeChecked();
+      await expect(page.getByTestId('view-mode-domains-tree')).toHaveAttribute(
+        'aria-checked',
+        'true'
+      );
+    } finally {
+      await apiContext
+        .delete(`/api/v1/docStore/${seeded.docId}?hardDelete=true`)
+        .catch(() => undefined);
+      await seeded.persona.delete(apiContext).catch(() => undefined);
+      await afterAction();
+    }
   });
 });

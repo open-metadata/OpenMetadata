@@ -29,11 +29,10 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Delete, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { isEmpty, isEqual, omit } from 'lodash';
+import { isEmpty, isEqual, noop, omit } from 'lodash';
 import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ErrorPlaceHolder from '../../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NavigationBlocker } from '../../../../components/common/NavigationBlocker/NavigationBlocker';
 import PageLayoutV1 from '../../../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
@@ -47,7 +46,7 @@ import {
   ViewModePage,
   VIEW_MODE_PAGES,
 } from '../../../../constants/platform/personaViewMode.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { Document } from '../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import {
   AppMode,
@@ -65,10 +64,10 @@ import {
   getPersonaDetailsPath,
   getSettingPath,
 } from '../../../../utils/RouterUtils';
-import { useCustomizeStore } from '../../../CustomizablePage/CustomizeStore';
 
 interface Props {
   personaDetails?: Persona;
+  personaDocument: Document | null;
   onSave: (preferences: PersonaAppLayoutPreferences) => Promise<void>;
 }
 
@@ -111,7 +110,7 @@ const PreferenceRow = ({
       <Grid.Item span={8}>
         <Box className="tw:gap-1.5" direction="col">
           <Typography
-            as="h3"
+            as="h2"
             className="not-prose tw:m-0 tw:text-primary"
             size="text-sm"
             weight="semibold">
@@ -129,22 +128,22 @@ const PreferenceRow = ({
   </Card.Content>
 );
 
-export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
+export const PersonaAppLayoutPage = ({
+  personaDetails,
+  personaDocument,
+  onSave,
+}: Props) => {
   const { t } = useTranslation();
-  const { document } = useCustomizeStore();
-  // AI is always available in OSS — the shell ships in-tree, no
-  // install-gate.
-  const hasNonDefaultMode = true;
 
   const persistedPreferences = getPersonaPreferences(
-    document,
+    personaDocument,
     personaDetails?.id
   );
   const persistedAppMode = persistedPreferences?.appMode ?? NO_DEFAULT_VALUE;
   const persistedViewModes: DefaultViewModes =
     persistedPreferences?.defaultViewModes ?? {};
   const persistedLandingPage = resolvePersonaLandingPage(
-    document,
+    personaDocument,
     personaDetails?.id
   );
 
@@ -186,6 +185,8 @@ export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
   const removePageViewMode = (page: ViewModePage) =>
     setViewModes((prev) => omit(prev, page));
 
+  // Rejects when the save fails, which is what keeps NavigationBlocker's
+  // "Save and leave" on the page. `onSave` has already shown the error toast.
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -203,31 +204,13 @@ export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
     }
   };
 
+  const handleSavePress = () => handleSave().catch(noop);
+
   const handleDiscard = () => {
     setSelectedMode(persistedAppMode);
     setLandingPage(persistedLandingPage);
     setViewModes(persistedViewModes);
   };
-
-  if (!hasNonDefaultMode) {
-    return (
-      <PageLayoutV1
-        className="bg-grey"
-        pageTitle={t('label.customize-entity', {
-          entity: t('label.app-mode'),
-        })}>
-        <div data-testid="app-mode-unavailable-placeholder">
-          <ErrorPlaceHolder
-            className="m-t-lg"
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography as="p" className="w-max-500">
-              {t('message.app-mode-not-available')}
-            </Typography>
-          </ErrorPlaceHolder>
-        </div>
-      </PageLayoutV1>
-    );
-  }
 
   return (
     <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
@@ -492,7 +475,7 @@ export const PersonaAppLayoutPage = ({ personaDetails, onSave }: Props) => {
                 isDisabled={disableSave}
                 isLoading={isSaving}
                 size="md"
-                onPress={handleSave}>
+                onPress={handleSavePress}>
                 {t('label.save-changes')}
               </Button>
             </Box>

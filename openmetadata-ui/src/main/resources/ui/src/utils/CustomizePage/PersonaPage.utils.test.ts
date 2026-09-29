@@ -20,7 +20,6 @@ import {
 } from '../../generated/type/personaPreferences';
 import {
   getPersonaPage,
-  getSignInLandingPath,
   normalizePersonaDocument,
   resolvePersonaLandingPage,
   resolvePersonaViewMode,
@@ -220,41 +219,6 @@ describe('resolvePersonaLandingPage', () => {
         undefined
       )
     ).toBe('/my-data');
-  });
-});
-
-describe('getSignInLandingPath', () => {
-  it('lands on the persona landing page in Classic mode', () => {
-    expect(
-      getSignInLandingPath(
-        'default',
-        createLandingPageDocument('/dataProduct'),
-        'persona-1'
-      )
-    ).toBe('/dataProduct');
-  });
-
-  it('keeps landing on / when the persona uses the Home default', () => {
-    expect(
-      getSignInLandingPath('default', createLandingPageDocument(), 'persona-1')
-    ).toBe('/');
-    expect(
-      getSignInLandingPath(
-        'default',
-        createLandingPageDocument('/my-data'),
-        'persona-1'
-      )
-    ).toBe('/');
-  });
-
-  it('ignores the landing page outside Classic mode', () => {
-    expect(
-      getSignInLandingPath(
-        'ai',
-        createLandingPageDocument('/dataProduct'),
-        'persona-1'
-      )
-    ).toBe('/');
   });
 });
 

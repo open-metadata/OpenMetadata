@@ -25,16 +25,7 @@ import {
 import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 
 export const CustomizeUI = () => {
-  // AI is always available in OSS — the shell ships in-tree, no
-  // install-gate.
-  const hasNonDefaultMode = true;
-  const categories = useMemo(
-    () =>
-      getCustomizePageCategories().filter(
-        (category) => category.key !== 'askCollateSidebar' || hasNonDefaultMode
-      ),
-    [hasNonDefaultMode]
-  );
+  const categories = useMemo(() => getCustomizePageCategories(), []);
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { fqn: personaFQN } = useFqn();

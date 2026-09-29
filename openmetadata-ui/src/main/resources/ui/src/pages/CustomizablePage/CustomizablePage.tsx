@@ -89,6 +89,7 @@ const CustomizeAppModeSidebarPage = withSuspenseFallback(
 
 interface CustomizePageRenderContext {
   personaDetails: Persona;
+  personaDocument: Document | null;
   currentPage: Page | null;
   backgroundColor?: string;
   onSaveLayout: (newPage?: Page) => Promise<void>;
@@ -128,6 +129,7 @@ const getCustomizePageContent = (
 ): ReactElement => {
   const {
     personaDetails,
+    personaDocument,
     currentPage,
     backgroundColor,
     onSaveLayout,
@@ -165,6 +167,7 @@ const getCustomizePageContent = (
     'app-layout': () => (
       <PersonaAppLayoutPage
         personaDetails={personaDetails}
+        personaDocument={personaDocument}
         onSave={onAppLayoutSave}
       />
     ),
@@ -443,7 +446,7 @@ const CustomizablePageContent = () => {
             : t('label.created-lowercase'),
         })
       );
-    } catch {
+    } catch (error) {
       showErrorToast(
         t('server.page-layout-operation-error', {
           operation: document.id
@@ -451,6 +454,10 @@ const CustomizablePageContent = () => {
             : t('label.creating-lowercase'),
         })
       );
+
+      // NavigationBlocker's "Save and leave" only stays on the page when the
+      // save rejects; swallowing it here would navigate away and drop the edits.
+      throw error;
     }
   };
 
@@ -533,6 +540,7 @@ const CustomizablePageContent = () => {
 
   return getCustomizePageContent(pageFqn, {
     personaDetails,
+    personaDocument: document,
     currentPage,
     backgroundColor,
     onSaveLayout: handlePageCustomizeSave,

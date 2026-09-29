@@ -10,32 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useQuery } from '@tanstack/react-query';
 import { ViewModePage } from '../../constants/platform/personaViewMode.constants';
-import {
-  docStoreQueryFn,
-  docStoreQueryKey,
-  personaDocFqn,
-  PERSONA_DOC_STALE_TIME,
-} from '../../rest/queries/docStoreQuery';
 import { resolvePersonaViewMode } from '../../utils/CustomizePage/PersonaPage.utils';
-import { useApplicationStore } from '../useApplicationStore';
+import { usePersonaDocument } from './usePersonaDocument';
 
-/**
- * The view `page` opens in for the selected persona. Shares the persona
- * document cache slot with `useCustomPages`, so it adds no request.
- */
+/** The view `page` opens in for the selected persona. */
 export const usePersonaViewMode = (page: ViewModePage) => {
-  const { selectedPersona } = useApplicationStore();
-  const fqn = personaDocFqn(selectedPersona);
+  const { personaDocument, personaId } = usePersonaDocument();
 
-  const { data: doc } = useQuery({
-    queryKey: docStoreQueryKey(fqn ?? ''),
-    queryFn: docStoreQueryFn(fqn ?? ''),
-    enabled: !!fqn,
-    retry: false,
-    staleTime: PERSONA_DOC_STALE_TIME,
-  });
-
-  return resolvePersonaViewMode(doc, selectedPersona?.id, page);
+  return resolvePersonaViewMode(personaDocument, personaId, page);
 };
