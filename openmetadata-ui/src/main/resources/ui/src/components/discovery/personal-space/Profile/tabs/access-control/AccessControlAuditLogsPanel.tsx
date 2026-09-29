@@ -704,7 +704,7 @@ const AccessControlAuditLogsPanel: React.FC<
                         <Typography
                           ellipsis
                           as="p"
-                          className="tw:text-brand-600"
+                          className="tw:text-utility-brand-600"
                           title={filter.value.label}
                           weight="medium">
                           {filter.value.label}
