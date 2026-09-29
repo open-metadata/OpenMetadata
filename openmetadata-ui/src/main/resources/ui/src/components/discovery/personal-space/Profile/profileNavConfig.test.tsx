@@ -33,6 +33,9 @@ jest.mock('./tabs/bots/BotsPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('../../../../assets/svg/entity/bot.svg', () => ({
+  ReactComponent: () => null,
+}));
 
 import {
   DEFAULT_PROFILE_NAV_ID,
