@@ -28,7 +28,8 @@ import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
  * Keeps Test Login state in the database, as the MCP flow keeps its pending authorizations, so that
  * every server sees every test and the per-admin credential limit holds across all of them. A
  * pending test's candidate configuration carries live secrets: it is stored sealed (see {@link
- * TestLoginPendingState}) and cleared as soon as the test completes or expires.
+ * TestLoginPendingState}), cleared as soon as the test completes, and cleared by the {@link
+ * TestLoginSessionSweeper} within a minute of the test expiring.
  */
 final class JdbiTestLoginSessionStore implements TestLoginSessionStore {
   private static final String PENDING = "pending";
@@ -50,7 +51,6 @@ final class JdbiTestLoginSessionStore implements TestLoginSessionStore {
   @Override
   public void put(TestLoginSessionEntry entry) {
     long now = clock.millis();
-    removeExpired(now);
     dao.insert(
         entry.testSessionId(),
         entry.adminPrincipal(),
@@ -92,10 +92,11 @@ final class JdbiTestLoginSessionStore implements TestLoginSessionStore {
   }
 
   /**
-   * An expired test loses its secrets at once; its row goes once it no longer counts towards the
-   * credential-test limit.
+   * Clears the secrets of every expired test, and deletes its row once it no longer counts towards
+   * the credential-test limit.
    */
-  private void removeExpired(long now) {
+  void removeExpired() {
+    long now = clock.millis();
     dao.clearExpiredSecrets(now);
     dao.deleteExpired(now, now - CREDENTIAL_TEST_WINDOW.toMillis());
   }

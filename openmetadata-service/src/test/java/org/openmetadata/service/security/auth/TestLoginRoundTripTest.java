@@ -262,6 +262,28 @@ class TestLoginRoundTripTest {
   }
 
   @Test
+  void aTestRefusedByTheCredentialLimitEndsAtOnceAndSaysWhy() {
+    for (int i = 0; i < TestLoginRoundTrip.MAX_CREDENTIAL_TESTS_PER_WINDOW; i++) {
+      roundTrip.submitCredentials(ADMIN, credentialsFor(roundTrip.start(ADMIN, unreachableLdap())));
+    }
+    TestLoginSession refused = roundTrip.start(ADMIN, unreachableLdap());
+    assertThrows(
+        WebApplicationException.class,
+        () -> roundTrip.submitCredentials(ADMIN, credentialsFor(refused)));
+
+    TestLoginResult result = roundTrip.result(ADMIN, refused.getTestSessionId());
+
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+    assertEquals(
+        TestLoginStageStatus.FAILED, statusOf(result, TestLoginStage.CREDENTIALS_VERIFIED));
+    assertTrue(result.getErrors().getFirst().startsWith("Too many credential test logins"));
+    assertNull(store.find(refused.getTestSessionId()).orElseThrow().candidate());
+    assertThrows(
+        BadRequestException.class,
+        () -> roundTrip.submitCredentials(ADMIN, credentialsFor(refused)));
+  }
+
+  @Test
   void aTestThatIsNotWaitingForCredentialsRefusesThem() {
     OidcClientConfig unreachable =
         new OidcClientConfig()

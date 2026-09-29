@@ -54,6 +54,8 @@ public final class TestLoginRoundTrip {
   private static final Set<String> WEB_URL_SCHEMES = Set.of("http", "https");
   private static final String NOT_AWAITING_CREDENTIALS =
       "This test login is not waiting for credentials. Start a new test login.";
+  private static final String TOO_MANY_CREDENTIAL_TESTS =
+      "Too many credential test logins. Wait a few minutes and try again.";
 
   private final TestLoginSessionStore sessions;
 
@@ -104,7 +106,7 @@ public final class TestLoginRoundTrip {
     if (!sessions.claimForCredentials(entry.testSessionId())) {
       throw new BadRequestException(NOT_AWAITING_CREDENTIALS);
     }
-    requireCredentialTestAllowance(adminPrincipal);
+    requireCredentialTestAllowance(entry);
     TestLoginResult result =
         entry.protocol() == TestLoginProtocol.LDAP
             ? TestLoginCredentialHandler.verifyLdap(
@@ -122,12 +124,24 @@ public final class TestLoginRoundTrip {
     return entry;
   }
 
-  private void requireCredentialTestAllowance(String adminPrincipal) {
-    if (sessions.countRecentCredentialTests(adminPrincipal) > MAX_CREDENTIAL_TESTS_PER_WINDOW) {
+  /**
+   * Runs once the test is claimed, so racing requests all count. A refused test is finished rather
+   * than left claimed until it expires: its secrets go at once, and its result says why it stopped.
+   */
+  private void requireCredentialTestAllowance(TestLoginSessionEntry entry) {
+    if (sessions.countRecentCredentialTests(entry.adminPrincipal())
+        > MAX_CREDENTIAL_TESTS_PER_WINDOW) {
+      sessions.complete(entry.testSessionId(), refusedOverCredentialLimit(entry.protocol()));
       throw new WebApplicationException(
-          "Too many credential test logins. Wait a few minutes and try again.",
-          Response.Status.TOO_MANY_REQUESTS);
+          TOO_MANY_CREDENTIAL_TESTS, Response.Status.TOO_MANY_REQUESTS);
     }
+  }
+
+  private static TestLoginResult refusedOverCredentialLimit(TestLoginProtocol protocol) {
+    TestLoginStageRecorder recorder = TestLoginStageRecorder.forProtocol(protocol);
+    recorder.pass(TestLoginStage.STARTED);
+    recorder.fail(TestLoginStage.CREDENTIALS_VERIFIED, TOO_MANY_CREDENTIAL_TESTS);
+    return TestLoginService.failure(protocol, recorder);
   }
 
   /** Bounds how many tests one admin can have open, now that they are stored. */
