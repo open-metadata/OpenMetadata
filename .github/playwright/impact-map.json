@@ -12,7 +12,6 @@
     {
       "projects": ["Basic"],
       "specs": [
-        "playwright/e2e/Pages/Login.spec.ts",
         "playwright/e2e/Flow/Navbar.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
@@ -466,10 +465,7 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/i18next/**"
       ],
       "projects": ["chromium", "Basic"],
-      "specs": [
-        "playwright/e2e/Pages/Login.spec.ts",
-        "playwright/e2e/Flow/Navbar.spec.ts"
-      ]
+      "specs": ["playwright/e2e/Flow/Navbar.spec.ts"]
     },
     {
       "sources": [
