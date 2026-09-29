@@ -14,8 +14,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -761,20 +759,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   }
 
   private static String authCallbackOnHostOf(String acs) {
-    String authCallback = null;
-    if (!nullOrEmpty(acs)) {
-      try {
-        URI uri = new URI(acs.trim());
-        if (uri.getScheme() != null && uri.getHost() != null) {
-          URI origin =
-              new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null);
-          authCallback = origin + AUTH_CALLBACK_PATH;
-        }
-      } catch (URISyntaxException e) {
-        LOG.warn("Could not derive SAML server origin from ACS URL: {}", acs, e);
-      }
-    }
-    return authCallback;
+    String origin = SecurityUtil.originOf(acs);
+    return origin == null ? null : origin + AUTH_CALLBACK_PATH;
   }
 
   private String defaultSamlRedirectUri() {

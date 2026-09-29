@@ -1557,6 +1557,34 @@ class SecurityUtilTest {
     assertEquals("Redirect URI must exactly match a trusted redirect URI", error.getMessage());
   }
 
+  @Test
+  void originOf_keepsSchemeHostAndExplicitPortOnly() {
+    assertEquals(
+        "https://dr.example.com:8443",
+        SecurityUtil.originOf("https://dr.example.com:8443/callback?x=1#frag"));
+    assertEquals(
+        "https://dr.example.com", SecurityUtil.originOf("  https://dr.example.com/callback "));
+  }
+
+  @Test
+  void originOf_keepsBracketedIpv6Hosts() {
+    assertEquals("http://[::1]:8585", SecurityUtil.originOf("http://[::1]:8585/api/v1/saml/acs"));
+  }
+
+  @Test
+  void originOf_dropsUserInfo() {
+    assertEquals("https://om.example.org", SecurityUtil.originOf("https://user@om.example.org/cb"));
+  }
+
+  @Test
+  void originOf_returnsNullForAnythingWithoutAnOrigin() {
+    assertNull(SecurityUtil.originOf(null));
+    assertNull(SecurityUtil.originOf("  "));
+    assertNull(SecurityUtil.originOf("/callback"));
+    assertNull(SecurityUtil.originOf("not a url"));
+    assertNull(SecurityUtil.originOf("mailto:admin@example.org"));
+  }
+
   private static Map<String, Claim> jwtClaims(Map<String, Object> values) {
     String token = JWT.create().withPayload(values).sign(Algorithm.none());
     return JWT.decode(token).getClaims();

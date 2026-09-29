@@ -73,6 +73,7 @@ class SsoRedirectBoundaryTest {
   private static final String INVALID_REDIRECT_MESSAGE =
       "Redirect URI must exactly match a trusted redirect URI";
   private static final String PRIMARY_CALLBACK = SERVER_URL + "/callback";
+  private static final String PRIMARY_AUTH_CALLBACK = SERVER_URL + "/auth/callback";
   private static final String DR_CALLBACK = "https://dr.example.com/callback";
   private static final String DR_AUTH_CALLBACK = "https://dr.example.com/auth/callback";
   private static final String SP_ENTITY_ID = SERVER_URL + "/api/v1/saml/metadata";
@@ -177,18 +178,57 @@ class SsoRedirectBoundaryTest {
     assertEquals(DR_AUTH_CALLBACK, pendingSession.getRedirectUri());
   }
 
-  /** A forged host can make the login land on itself, but never send an unregistered callback. */
+  /** A forged host never selects an unregistered callback; selection falls back to the primary. */
   @Test
   void oidcLoginKeepsThePrimaryCallbackUrlForAnUnregisteredHost() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store, List.of(DR_CALLBACK)));
+
+    HttpResponse<String> response = loginVia(baseUri, "evil.example.com", PRIMARY_AUTH_CALLBACK);
+
+    assertEquals(302, response.statusCode());
+    assertEquals(PRIMARY_CALLBACK, sentRedirectUri(response));
+    assertNull(store.onlySession().getIdpRedirectUri());
+  }
+
+  /**
+   * The landing page is trusted only on hosts an operator configured. A forged {@code
+   * X-Forwarded-Host} used to make the login land on the forged host; now it is refused before any
+   * session exists.
+   */
+  @Test
+  void oidcLoginRejectsALandingOnAnUnregisteredHost() throws Exception {
     InMemorySessionStore store = new InMemorySessionStore();
     URI baseUri = startServer(newOidcHandler(store, List.of(DR_CALLBACK)));
 
     HttpResponse<String> response =
         loginVia(baseUri, "evil.example.com", "https://evil.example.com/auth/callback");
 
+    assertRejected(response);
+    assertTrue(store.isEmpty());
+  }
+
+  /**
+   * Issue #26311: {@code oidcConfiguration.serverUrl} left at its localhost default while the
+   * deployment is served elsewhere. The configured callback URL has to be right for login to work at
+   * all, so its host anchors the landing page. No forwarded header is sent, so this works without
+   * trusting any.
+   */
+  @Test
+  void oidcLoginLandsOnTheCallbackHostWhenServerUrlIsStale() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store, List.of(), "http://localhost:8585"));
+
+    HttpResponse<String> response =
+        get(
+            baseUri.resolve(
+                "/api/v1/auth/login?redirectUri="
+                    + URLEncoder.encode(PRIMARY_AUTH_CALLBACK, StandardCharsets.UTF_8)),
+            null);
+
     assertEquals(302, response.statusCode());
     assertEquals(PRIMARY_CALLBACK, sentRedirectUri(response));
-    assertNull(store.onlySession().getIdpRedirectUri());
+    assertEquals(PRIMARY_AUTH_CALLBACK, store.onlySession().getRedirectUri());
   }
 
   @Test
@@ -196,7 +236,7 @@ class SsoRedirectBoundaryTest {
     InMemorySessionStore store = new InMemorySessionStore();
     URI baseUri = startServer(newOidcHandler(store));
 
-    HttpResponse<String> response = loginVia(baseUri, "dr.example.com", DR_AUTH_CALLBACK);
+    HttpResponse<String> response = loginVia(baseUri, "dr.example.com", PRIMARY_AUTH_CALLBACK);
 
     assertEquals(302, response.statusCode());
     assertEquals(PRIMARY_CALLBACK, sentRedirectUri(response));
@@ -306,8 +346,14 @@ class SsoRedirectBoundaryTest {
 
   private AuthenticationCodeFlowHandler newOidcHandler(
       InMemorySessionStore store, List<String> additionalCallbackUrls) {
+    return newOidcHandler(store, additionalCallbackUrls, SERVER_URL);
+  }
+
+  private AuthenticationCodeFlowHandler newOidcHandler(
+      InMemorySessionStore store, List<String> additionalCallbackUrls, String serverUrl) {
     AuthenticationConfiguration authConfig =
         oidcAuthConfig(startOidcProvider()).withAdditionalCallbackUrls(additionalCallbackUrls);
+    authConfig.getOidcConfiguration().setServerUrl(serverUrl);
     return new AuthenticationCodeFlowHandler(
         authConfig, new AuthorizerConfiguration(), new SessionService(authConfig, store));
   }

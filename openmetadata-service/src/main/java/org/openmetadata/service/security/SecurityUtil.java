@@ -816,6 +816,28 @@ public final class SecurityUtil {
     }
   }
 
+  /**
+   * The scheme and authority of a configured absolute URL, or {@code null} for anything else.
+   *
+   * <p>This is how OpenMetadata's own fixed paths are anchored on hosts an operator configured, where
+   * {@link #requestOrigin} would anchor them on whatever host a request claims.
+   */
+  public static String originOf(String configuredUrl) {
+    URI uri = parseOrNull(configuredUrl);
+    boolean hasOrigin = uri != null && uri.isAbsolute() && StringUtils.isNotBlank(uri.getHost());
+    return hasOrigin ? schemeAndAuthority(uri) : null;
+  }
+
+  private static String schemeAndAuthority(URI uri) {
+    try {
+      return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null)
+          .toString();
+    } catch (URISyntaxException e) {
+      LOG.warn("Could not derive an origin from URL [{}]", uri, e);
+      return null;
+    }
+  }
+
   private static URI parseOrNull(String value) {
     try {
       return StringUtils.isBlank(value) ? null : new URI(value.trim());
@@ -835,9 +857,10 @@ public final class SecurityUtil {
    * proxy headers are therefore read first so a deployment behind an ingress resolves its own origin
    * with no extra configuration, falling back to the connector's view for a direct deployment.
    *
-   * <p>Callers must treat the result as client-influenced: it is safe to trust for a fixed,
-   * first-party path on this deployment (where a forged host can only redirect the forger back to
-   * themselves) and not safe as a general-purpose allow-list entry.
+   * <p>The result is client-influenced. Use it only to <em>choose among</em> values the operator
+   * configured, never as a redirect target or an allow-list entry: a forged host can then select
+   * nothing that was not already registered. Anchor OpenMetadata's own paths with {@link #originOf}
+   * on a configured URL instead.
    */
   public static String requestOrigin(HttpServletRequest request) {
     if (request == null) {
