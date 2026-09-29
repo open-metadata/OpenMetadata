@@ -290,13 +290,15 @@ public class RBACConditionEvaluator {
     for (String domainFqn : domainFqns) {
       domainQueries.add(queryBuilderFactory.termQuery("domains.fullyQualifiedName", domainFqn));
     }
-    OMQueryBuilder domainQueryCombined;
-    if (domainQueries.size() == 1) {
-      domainQueryCombined = domainQueries.get(0);
-    } else {
-      domainQueryCombined = queryBuilderFactory.boolQuery().should(domainQueries);
+    switch (domainQueries.size()) {
+      case 0 ->
+          // No domains requested: the condition can never match, so make the rule deny-all instead
+          // of adding an empty bool query (Elasticsearch/OpenSearch treat an empty bool query as
+          // match_all, which would turn an ALLOW rule into a full index grant).
+          collector.setMatchNothing(true);
+      case 1 -> collector.addMust(domainQueries.get(0));
+      default -> collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
     }
-    collector.addMust(domainQueryCombined);
   }
 
   public void matchAnyCertification(
@@ -306,13 +308,14 @@ public class RBACConditionEvaluator {
       certificationQueries.add(
           queryBuilderFactory.termQuery("certification.tagLabel.tagFQN", certificationLabel));
     }
-    OMQueryBuilder certificationQueriesCombined;
-    if (certificationQueries.size() == 1) {
-      certificationQueriesCombined = certificationQueries.get(0);
-    } else {
-      certificationQueriesCombined = queryBuilderFactory.boolQuery().should(certificationQueries);
+    switch (certificationQueries.size()) {
+      case 0 ->
+          // No certifications requested: deny-all instead of emitting an empty bool query, which
+          // Elasticsearch/OpenSearch evaluate as match_all and would turn an ALLOW into a grant.
+          collector.setMatchNothing(true);
+      case 1 -> collector.addMust(certificationQueries.get(0));
+      default -> collector.addMust(queryBuilderFactory.boolQuery().should(certificationQueries));
     }
-    collector.addMust(certificationQueriesCombined);
   }
 
   public void isOwner(User user, ConditionCollector collector) {

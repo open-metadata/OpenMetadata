@@ -478,4 +478,37 @@ class OpenSearchRBACConditionEvaluatorTest {
         json.contains("\"ignore_unmapped\":true"),
         "must set ignore_unmapped so query works on indexes without this nested field");
   }
+
+  /**
+   * Regression for the empty-condition ALLOW leak: {@code matchAnyDomain()} with zero arguments used
+   * to emit an empty bool query, which OpenSearch evaluates as match_all, so an ALLOW rule granted
+   * access to every searchable resource. The generated query must fail closed (match_none) and must
+   * not contain an empty must/should clause.
+   */
+  @Test
+  void testMatchAnyDomainWithNoArgumentsDoesNotGrantAccess() {
+    setupMockPolicies("matchAnyDomain()", "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+    // RBACConditionEvaluator fails closed by returning ConditionCollector's match_none query, which
+    // serializes as {"bool":{"must_not":[{"match_all":{}}]}} — a query that can never match.
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[?(@.match_all)]",
+        "an ALLOW rule with an empty matchAnyDomain() must fail closed to a never-matching query");
+    assertFalse(
+        generatedQuery.contains("domains.fullyQualifiedName"),
+        "no domain clause should be emitted for an empty argument list");
+    assertFalse(
+        generatedQuery.contains("\"should\":[]"),
+        "no empty bool clause may be emitted, it is treated as match_all by OpenSearch");
+    assertFalse(
+        jsonContext.read("$.bool.must", List.class) != null
+            && !((List<?>) jsonContext.read("$.bool.must", List.class)).isEmpty(),
+        "no must clause may be emitted, an empty bool is treated as match_all by OpenSearch");
+  }
 }
