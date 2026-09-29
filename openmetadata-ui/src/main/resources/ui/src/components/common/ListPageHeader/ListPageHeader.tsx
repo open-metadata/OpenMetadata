@@ -28,6 +28,55 @@ import {
   ListPageHeaderRenderProps,
 } from './ListPageHeader.interface';
 
+interface SearchHeaderRowProps {
+  title: string;
+  subtitle?: string;
+  search: ReactNode;
+  actions?: ReactNode;
+}
+
+/**
+ * Page-header title row with a search between the title and the actions.
+ * The search centres in the space the title leaves; 35vw matches Explore.
+ */
+export const SearchHeaderRow = ({
+  title,
+  subtitle,
+  search,
+  actions,
+}: SearchHeaderRowProps) => (
+  <Box
+    align="center"
+    className="tw:w-full"
+    data-testid="search-header-row"
+    direction="row"
+    gap={4}>
+    <div className="tw:shrink-0" data-testid="search-header-title">
+      <Typography as="h3" size="text-xl" weight="semibold">
+        {title}
+      </Typography>
+      {subtitle && (
+        <Typography
+          className="tw:whitespace-nowrap"
+          color="secondary"
+          size="text-sm">
+          {subtitle}
+        </Typography>
+      )}
+    </div>
+    <div className="tw:min-w-0 tw:flex-1">
+      <div
+        className="tw:mx-auto tw:w-full tw:max-w-[35vw] tw:min-w-0"
+        data-testid="search-header-search">
+        {search}
+      </div>
+    </div>
+    <div className="tw:shrink-0" data-testid="search-header-actions">
+      {actions}
+    </div>
+  </Box>
+);
+
 const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
   titleKey,
   subtitleKey,
@@ -43,40 +92,6 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
       {t(addLabelKey)}
     </Button>
   ) : null;
-
-  // Search centres in the space the title leaves; 35vw matches Explore.
-  const centeredHeaderLayout = (
-    <Box
-      align="center"
-      className="tw:w-full"
-      data-testid="list-page-header-layout"
-      direction="row"
-      gap={4}>
-      <div className="tw:shrink-0" data-testid="list-page-header-title">
-        <Typography as="h3" size="text-xl" weight="semibold">
-          {t(titleKey)}
-        </Typography>
-        {subtitleKey && (
-          <Typography
-            className="tw:whitespace-nowrap"
-            color="secondary"
-            size="text-sm">
-            {t(subtitleKey)}
-          </Typography>
-        )}
-      </div>
-      <div className="tw:min-w-0 tw:flex-1">
-        <div
-          className="tw:mx-auto tw:w-full tw:max-w-[35vw] tw:min-w-0"
-          data-testid="list-page-header-search">
-          {search}
-        </div>
-      </div>
-      <div className="tw:shrink-0" data-testid="list-page-header-actions-group">
-        {addButton}
-      </div>
-    </Box>
-  );
 
   return (
     <PageLayout.PageHeader
@@ -103,7 +118,18 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
       className="tw:mb-4"
       data-testid="list-page-header"
       subtitle={search || !subtitleKey ? undefined : t(subtitleKey)}
-      title={search ? centeredHeaderLayout : t(titleKey)}
+      title={
+        search ? (
+          <SearchHeaderRow
+            actions={addButton}
+            search={search}
+            subtitle={subtitleKey && t(subtitleKey)}
+            title={t(titleKey)}
+          />
+        ) : (
+          t(titleKey)
+        )
+      }
       variant="gradient"
     />
   );

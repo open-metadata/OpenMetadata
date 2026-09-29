@@ -27,7 +27,6 @@ import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { SearchIndex } from '../../enums/search.enum';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -116,16 +115,11 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   const headerSearch = showHeaderSearch ? (
     <MarketplaceSearchInput
-      showEntityResults
       placeholder={t('label.search-for-type', {
         type: t('label.domain-plural'),
       })}
-      results={{
-        domains: domainListing.entities,
-        isSearching: domainListing.loading,
-      }}
-      searchCriteria={SearchIndex.DOMAIN}
       searchQuery={domainListing.urlState.searchQuery}
+      onRefresh={domainListing.refetch}
       onSearchChange={domainListing.handleSearchChange}
     />
   ) : undefined;

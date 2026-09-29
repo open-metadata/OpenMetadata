@@ -13,10 +13,14 @@
 
 import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { getDataProductIconByUrl } from '../../../utils/DataProductUtils';
 import { getDomainIcon } from '../../../utils/DomainUtils';
+import { getDomainDetailsPath } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringUtils';
 // The classes below live with the search bar these rows were extracted from;
 // they only applied where that component happened to be loaded.
 import '../MarketplaceSearchBar/marketplace-search-bar.less';
@@ -25,18 +29,35 @@ interface MarketplaceSearchResultsProps {
   dataProducts: DataProduct[];
   domains: Domain[];
   isSearching: boolean;
-  onDataProductClick: (dataProduct: DataProduct) => void;
-  onDomainClick: (domain: Domain) => void;
+  /** Runs when a pick opens its page, e.g. to close the popover. */
+  onSelect: () => void;
 }
 
 const MarketplaceSearchResults = ({
   dataProducts,
   domains,
   isSearching,
-  onDataProductClick,
-  onDomainClick,
+  onSelect,
 }: MarketplaceSearchResultsProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { dataProductBasePath } = useMarketplaceStore();
+
+  // Picking a result opens it, as it does on Explore.
+  const openEntity = (path: string) => {
+    onSelect();
+    navigate(path, { state: { fromMarketplace: true } });
+  };
+
+  const onDataProductClick = (dataProduct: DataProduct) =>
+    openEntity(
+      `${dataProductBasePath}/${getEncodedFqn(
+        dataProduct.fullyQualifiedName ?? ''
+      )}`
+    );
+
+  const onDomainClick = (domain: Domain) =>
+    openEntity(getDomainDetailsPath(domain.fullyQualifiedName ?? ''));
 
   if (isSearching) {
     return (

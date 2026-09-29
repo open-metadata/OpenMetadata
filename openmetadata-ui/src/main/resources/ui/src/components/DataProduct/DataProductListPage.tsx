@@ -36,7 +36,6 @@ import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { SearchIndex } from '../../enums/search.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
@@ -199,16 +198,11 @@ const DataProductListPage = ({
 
   const headerSearch = showHeaderSearch ? (
     <MarketplaceSearchInput
-      showEntityResults
       placeholder={t('label.search-for-type', {
         type: t('label.data-product-plural'),
       })}
-      results={{
-        dataProducts: dataProductListing.entities,
-        isSearching: dataProductListing.loading,
-      }}
-      searchCriteria={SearchIndex.DATA_PRODUCT}
       searchQuery={dataProductListing.urlState.searchQuery}
+      onRefresh={dataProductListing.refetch}
       onSearchChange={dataProductListing.handleSearchChange}
     />
   ) : undefined;

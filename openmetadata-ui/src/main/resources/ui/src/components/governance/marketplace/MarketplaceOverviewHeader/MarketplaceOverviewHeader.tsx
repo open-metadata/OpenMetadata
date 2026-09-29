@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, PageLayout, Typography } from '@openmetadata/ui-core-components';
+import { PageLayout } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MarketplaceIcon } from '../../../../assets/svg/marketplace-default.svg';
 import { ROUTES } from '../../../../constants/constants';
-import { SearchIndex } from '../../../../enums/search.enum';
 import HeaderBreadcrumb from '../../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { SearchHeaderRow } from '../../../common/ListPageHeader/ListPageHeader';
 import MarketplaceSearchInput from '../../../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import { AddNewMenu } from '../AddNewMenu/AddNewMenu';
 
@@ -31,46 +31,6 @@ import { AddNewMenu } from '../AddNewMenu/AddNewMenu';
  */
 export const MarketplaceOverviewHeader: FC = () => {
   const { t } = useTranslation();
-
-  // Same row as the marketplace list-page headers (`ListPageHeader`).
-  const headerLayout = (
-    <Box
-      align="center"
-      className="tw:w-full"
-      data-testid="marketplace-header-layout"
-      direction="row"
-      gap={4}>
-      <div className="tw:shrink-0" data-testid="marketplace-header-title">
-        <Typography as="h3" size="text-xl" weight="semibold">
-          {t('label.data-marketplace')}
-        </Typography>
-        <Typography
-          className="tw:whitespace-nowrap"
-          color="secondary"
-          size="text-sm">
-          {t('message.discover-data-products-subtitle')}
-        </Typography>
-      </div>
-      <div className="tw:min-w-0 tw:flex-1">
-        <div
-          className="tw:mx-auto tw:w-full tw:max-w-[35vw] tw:min-w-0"
-          data-testid="marketplace-header-search">
-          <MarketplaceSearchInput
-            showEntityResults
-            placeholder={t('label.search-for-type', {
-              type: `${t('label.data-product-plural')}, ${t(
-                'label.domain-plural'
-              )}`,
-            })}
-            searchCriteria={SearchIndex.MARKETPLACE}
-          />
-        </div>
-      </div>
-      <div className="tw:shrink-0" data-testid="marketplace-actions-group">
-        <AddNewMenu />
-      </div>
-    </Box>
-  );
 
   return (
     <PageLayout.PageHeader
@@ -91,7 +51,22 @@ export const MarketplaceOverviewHeader: FC = () => {
       }
       className="tw:mb-4"
       data-testid="marketplace-overview-header"
-      title={headerLayout}
+      title={
+        <SearchHeaderRow
+          actions={<AddNewMenu />}
+          search={
+            <MarketplaceSearchInput
+              placeholder={t('label.search-for-type', {
+                type: `${t('label.data-product-plural')}, ${t(
+                  'label.domain-plural'
+                )}`,
+              })}
+            />
+          }
+          subtitle={t('message.discover-data-products-subtitle')}
+          title={t('label.data-marketplace')}
+        />
+      }
       variant="gradient"
     />
   );

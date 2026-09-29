@@ -131,7 +131,6 @@ export const useListingData = <
       urlState.searchQuery,
       urlState.filters,
       urlState.pageSize,
-      useNlq,
     ]);
     if (signature === lastFetchedRef.current) {
       return;
@@ -148,7 +147,8 @@ export const useListingData = <
     urlState.searchQuery,
     urlState.filters,
     urlState.pageSize,
-    useNlq,
+    // `useNlq` is left out on purpose: flipping the NLQ toggle must not run a
+    // query by itself. As on Explore, NLQ runs when the user submits.
     isRouteVisible,
     // Note: dataFetching.searchEntities intentionally excluded - we always want the latest version
   ]);

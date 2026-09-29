@@ -48,14 +48,14 @@ describe('ListPageHeader', () => {
       search: <input aria-label="search" data-testid="search-box" />,
     });
 
-    const searchSlot = screen.getByTestId('list-page-header-search');
+    const searchSlot = screen.getByTestId('search-header-search');
 
     expect(searchSlot).toContainElement(screen.getByTestId('search-box'));
     expect(searchSlot).toHaveClass('tw:mx-auto');
     expect(searchSlot).toHaveClass('tw:max-w-[35vw]');
-    expect(
-      screen.getByTestId('list-page-header-actions-group')
-    ).not.toContainElement(screen.getByTestId('search-box'));
+    expect(screen.getByTestId('search-header-actions')).not.toContainElement(
+      screen.getByTestId('search-box')
+    );
   });
 
   it('keeps the title on one line so the subtitle is never truncated', () => {
@@ -64,7 +64,7 @@ describe('ListPageHeader', () => {
     });
 
     // shrink-0 stops the flex row squeezing the subtitle.
-    expect(screen.getByTestId('list-page-header-title')).toHaveClass(
+    expect(screen.getByTestId('search-header-title')).toHaveClass(
       'tw:shrink-0'
     );
   });
@@ -72,8 +72,6 @@ describe('ListPageHeader', () => {
   it('renders the plain title block when there is no search', () => {
     renderHeader();
 
-    expect(
-      screen.queryByTestId('list-page-header-layout')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('search-header-row')).not.toBeInTheDocument();
   });
 });

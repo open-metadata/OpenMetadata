@@ -15,6 +15,7 @@ import { act, renderHook } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { useListingData } from './useListingData';
 
 // Mock dependencies
@@ -356,5 +357,36 @@ describe('useListingData', () => {
 
       expect(mockSearchEntities).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('does not re-query when the NLQ toggle flips, leaving NLQ to the next submit', () => {
+    mockUseUrlState.mockReturnValue({
+      ...mockUseUrlState(),
+      urlState: {
+        searchQuery: 'finance',
+        filters: {},
+        currentPage: 1,
+        pageSize: 10,
+      },
+    });
+    act(() => {
+      useSearchStore.setState({ isNLPEnabled: true, isNLPActive: false });
+    });
+    renderHook(
+      () =>
+        useListingData({
+          searchIndex: SearchIndex.DOMAIN,
+          filterKeys: [],
+          columns: [],
+          enableNlq: true,
+        }),
+      { wrapper }
+    );
+
+    act(() => {
+      useSearchStore.setState({ isNLPActive: true });
+    });
+
+    expect(mockSearchEntities).toHaveBeenCalledTimes(1);
   });
 });

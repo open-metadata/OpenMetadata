@@ -11,236 +11,118 @@
  *  limitations under the License.
  */
 
-import { debounce } from 'lodash';
-import {
-  FormEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useNavigate } from 'react-router-dom';
-import { SearchIndex } from '../../../enums/search.enum';
-import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Domain } from '../../../generated/entity/domains/domain';
-import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchStore } from '../../../hooks/useSearchStore';
-import { getDomainDetailsPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringUtils';
+import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import { ExploreSearchInput } from '../../discovery/explore/ExploreHeader/ExploreSearchInput';
 import MarketplaceSearchResults from '../MarketplaceSearchResults/MarketplaceSearchResults.component';
 import { useMarketplaceEntitySearch } from '../MarketplaceSearchResults/useMarketplaceEntitySearch';
 
-const SEARCH_DEBOUNCE_MS = 300;
-const SUGGESTION_DEBOUNCE_MS = 400;
-
 interface MarketplaceSearchInputProps {
-  /** Index the suggestions and the NLQ query are scoped to. */
-  searchCriteria: SearchIndex;
   /** Current query, as the page holds it (usually mirrored from the URL). */
   searchQuery?: string;
   /**
-   * Push a new query to the page. Debounced while typing, immediate on clear.
-   * Omitted on a page with no list of its own - the overview, where the
-   * suggestions themselves are the result.
+   * Filter the page's own list. Omitted on the overview, which has no list:
+   * there the matching domains and data products show in the popover instead.
    */
   onSearchChange?: (value: string) => void;
+  /** Re-run the list's current query, for Enter on unchanged text. */
+  onRefresh?: () => void;
   /** Placeholder text. Defaults to Explore's. */
   placeholder?: string;
-  /**
-   * Render matching entities in the popover instead of Explore's suggestions,
-   * whose canned prompts are about tables and dashboards and mean nothing here.
-   */
-  showEntityResults?: boolean;
-  /**
-   * Results the page has already fetched. Supplying them keeps the popover and
-   * the list identical and costs no extra request — they ask the same index the
-   * same question. Without them the popover fetches its own, which is what the
-   * overview does, having no list.
-   */
-  results?: {
-    dataProducts?: DataProduct[];
-    domains?: Domain[];
-    isSearching?: boolean;
-  };
 }
 
 /**
- * Explore's search bar on the marketplace pages. Same control and suggestions,
- * but submitting filters the page's own list instead of navigating to Explore.
+ * Explore's search bar on the marketplace pages. Submitting filters the page's
+ * own list, or shows the matches on the overview, instead of navigating to
+ * Explore.
  */
 const MarketplaceSearchInput = ({
-  searchCriteria,
   searchQuery,
   onSearchChange,
+  onRefresh,
   placeholder,
-  showEntityResults,
-  results,
 }: MarketplaceSearchInputProps) => {
-  const navigate = useNavigate();
-  const { dataProductBasePath } = useMarketplaceStore();
   const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
-  const [searchValue, setSearchValue] = useState(searchQuery ?? '');
-  const [suggestionSearch, setSuggestionSearch] = useState('');
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState(false);
   const searchContainerRef = useRef<HTMLFormElement>(null);
+  const showsResults = !onSearchChange;
+  const isNlq = isNLPEnabled && isNLPActive;
+  const { dataProducts, domains, isSearching, search } =
+    useMarketplaceEntitySearch();
 
   // GlobalSearchBar is absent on these pages, so bootstrap the store.
   useEffect(() => {
     initNLP();
   }, [initNLP]);
 
-  // Held in a ref so the debounce below is built once. The prop chains down to
-  // react-router's `setSearchParams`, whose identity changes on every URL
-  // change - rebuilding the debounce there would cancel it mid-flight.
-  const onSearchChangeRef = useRef(onSearchChange);
-  onSearchChangeRef.current = onSearchChange;
+  const { searchInputValue, handleChange, handleSubmit, handleClear } =
+    useListSearchInput({
+      searchQuery,
+      onSearchChange: onSearchChange ?? search,
+      onRefresh,
+      // NLQ runs an LLM step per call, so as on Explore it waits for Enter.
+      submitOnly: isNlq,
+    });
 
-  const pushSearch = useCallback(
-    (value: string) => onSearchChangeRef.current?.(value),
-    []
-  );
-
-  const debouncedSearch = useMemo(
-    () => debounce(pushSearch, SEARCH_DEBOUNCE_MS),
-    [pushSearch]
-  );
-
-  const debouncedSuggestionSearch = useMemo(
-    () =>
-      debounce(
-        (value: string) => setSuggestionSearch(value),
-        SUGGESTION_DEBOUNCE_MS
-      ),
-    []
-  );
-
-  useEffect(() => {
-    debouncedSearch.cancel();
-    setSearchValue(searchQuery ?? '');
-  }, [searchQuery, debouncedSearch]);
-
-  useEffect(() => {
-    return () => debouncedSearch.cancel();
-  }, [debouncedSearch]);
-
-  // Separate from the one above: a shared cleanup would cancel this timer
-  // whenever the other debounce was rebuilt, killing the popover's query.
-  useEffect(() => {
-    return () => debouncedSuggestionSearch.cancel();
-  }, [debouncedSuggestionSearch]);
+  // A list page's results are the list itself, so only the overview has a
+  // popover, and only once there is text for it to match.
+  const isPopoverOpen =
+    showsResults && isSearchBoxOpen && Boolean(searchInputValue.trim());
 
   const handleSearchChange = useCallback(
     (value: string) => {
-      setSearchValue(value);
-      setIsSearchBoxOpen(Boolean(value) || isNLPActive);
-      debouncedSearch(value);
-      debouncedSuggestionSearch(value);
+      handleChange(value);
+      // An NLQ query shows nothing until Enter, rather than the last results.
+      setIsSearchBoxOpen(Boolean(value) && !isNlq);
     },
-    [debouncedSearch, debouncedSuggestionSearch, isNLPActive]
+    [handleChange, isNlq]
   );
 
-  // Enter applies the query now rather than waiting out the debounce.
-  const handleSubmit = useCallback(
+  const handleFormSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      debouncedSearch.cancel();
-      pushSearch(searchValue);
-      setIsSearchBoxOpen(false);
+      handleSubmit();
+      setIsSearchBoxOpen(true);
     },
-    [debouncedSearch, pushSearch, searchValue]
+    [handleSubmit]
   );
 
   const handleClearSearch = useCallback(() => {
-    debouncedSearch.cancel();
-    debouncedSuggestionSearch.cancel();
-    setSearchValue('');
-    setSuggestionSearch('');
+    handleClear();
     setIsSearchBoxOpen(false);
-    pushSearch('');
-  }, [debouncedSearch, debouncedSuggestionSearch, pushSearch]);
-
-  const handleSuggestionSelect = useCallback(
-    (value: string) => {
-      debouncedSearch.cancel();
-      setSearchValue(value);
-      setIsSearchBoxOpen(false);
-      pushSearch(value);
-    },
-    [debouncedSearch, pushSearch]
-  );
+  }, [handleClear]);
 
   const handleNLPToggle = useCallback(
     () => setNLPActive(!isNLPActive),
     [isNLPActive, setNLPActive]
   );
 
-  // Skipped entirely when the page supplies its own results.
-  const fetched = useMarketplaceEntitySearch(
-    showEntityResults && !results ? suggestionSearch : '',
-    searchCriteria
-  );
-  const dataProducts = results
-    ? results.dataProducts ?? []
-    : fetched.dataProducts;
-  const domains = results ? results.domains ?? [] : fetched.domains;
-  const isSearching = results
-    ? Boolean(results.isSearching)
-    : fetched.isSearching;
-
-  // Picking a result opens it, as it does on Explore.
-  const openEntity = useCallback(
-    (path: string) => {
-      setIsSearchBoxOpen(false);
-      navigate(path, { state: { fromMarketplace: true } });
-    },
-    [navigate]
-  );
-
-  const handleDataProductClick = useCallback(
-    (dataProduct: DataProduct) =>
-      openEntity(
-        `${dataProductBasePath}/${getEncodedFqn(
-          dataProduct.fullyQualifiedName ?? ''
-        )}`
-      ),
-    [openEntity, dataProductBasePath]
-  );
-
-  const handleDomainClick = useCallback(
-    (domain: Domain) =>
-      openEntity(getDomainDetailsPath(domain.fullyQualifiedName ?? '')),
-    [openEntity]
-  );
+  const closePopover = useCallback(() => setIsSearchBoxOpen(false), []);
 
   return (
     <ExploreSearchInput
       isNLPActive={isNLPActive}
       isNLPEnabled={isNLPEnabled}
-      isSearchBoxOpen={isSearchBoxOpen}
+      isSearchBoxOpen={isPopoverOpen}
       placeholder={placeholder}
       searchContainerRef={searchContainerRef}
-      searchCriteria={searchCriteria}
-      searchValue={searchValue}
-      suggestionSearch={suggestionSearch}
+      searchValue={searchInputValue}
+      suggestionSearch={searchInputValue}
       suggestions={
-        showEntityResults ? (
-          <MarketplaceSearchResults
-            dataProducts={dataProducts}
-            domains={domains}
-            isSearching={isSearching}
-            onDataProductClick={handleDataProductClick}
-            onDomainClick={handleDomainClick}
-          />
-        ) : undefined
+        <MarketplaceSearchResults
+          dataProducts={dataProducts}
+          domains={domains}
+          isSearching={isSearching}
+          onSelect={closePopover}
+        />
       }
       onClearSearch={handleClearSearch}
       onNLPToggle={handleNLPToggle}
       onSearchBoxOpenChange={setIsSearchBoxOpen}
       onSearchChange={handleSearchChange}
-      onSubmit={handleSubmit}
-      onSuggestionSelect={handleSuggestionSelect}
+      onSubmit={handleFormSubmit}
+      onSuggestionSelect={handleSearchChange}
     />
   );
 };

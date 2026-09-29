@@ -11,18 +11,11 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { SearchIndex } from '../../../enums/search.enum';
-import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Domain } from '../../../generated/entity/domains/domain';
+import { useSearchStore } from '../../../hooks/useSearchStore';
+import { nlqSearch, searchQuery } from '../../../rest/searchAPI';
 import MarketplaceSearchInput from './MarketplaceSearchInput.component';
-
-interface ResultsProps {
-  onDataProductClick: (dataProduct: DataProduct) => void;
-  onDomainClick: (domain: Domain) => void;
-}
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -30,13 +23,10 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
-jest.mock('../../../hooks/useSearchStore', () => ({
-  useSearchStore: () => ({
-    isNLPEnabled: true,
-    isNLPActive: false,
-    setNLPActive: jest.fn(),
-    initNLP: jest.fn(),
-  }),
+jest.mock('../../../rest/searchAPI', () => ({
+  getNLPEnabledStatus: jest.fn().mockResolvedValue(true),
+  nlqSearch: jest.fn(),
+  searchQuery: jest.fn(),
 }));
 
 // `getDomainDetailsPath` reads the store statically, so the mock needs
@@ -52,83 +42,157 @@ jest.mock('../../../hooks/useMarketplaceStore', () => ({
   }),
 }));
 
-const dataProduct = {
-  id: 'dp1',
-  name: 'Customer 360',
-  fullyQualifiedName: 'dp.c360',
-} as DataProduct;
-const domain = {
-  id: 'd1',
-  name: 'Finance',
-  fullyQualifiedName: 'Finance',
-} as Domain;
+const PLACEHOLDER = 'Search marketplace';
 
-jest.mock('../MarketplaceSearchResults/useMarketplaceEntitySearch', () => ({
-  useMarketplaceEntitySearch: () => ({
-    dataProducts: [dataProduct],
-    domains: [domain],
-    isSearching: false,
-  }),
-}));
+const domainHit = {
+  _source: {
+    id: 'd1',
+    name: 'Finance',
+    fullyQualifiedName: 'Finance',
+    entityType: 'domain',
+  },
+};
 
-// Stand-in for the results list: exposes one button per entity so a click can
-// be routed through the real handlers.
-jest.mock(
-  '../MarketplaceSearchResults/MarketplaceSearchResults.component',
-  () => ({
-    __esModule: true,
-    default: ({ onDataProductClick, onDomainClick }: ResultsProps) => (
-      <div>
-        <button
-          data-testid="pick-data-product"
-          onClick={() => onDataProductClick(dataProduct)}>
-          dp
-        </button>
-        <button data-testid="pick-domain" onClick={() => onDomainClick(domain)}>
-          domain
-        </button>
-      </div>
-    ),
-  })
-);
+const mockSearchQuery = searchQuery as jest.Mock;
+const mockNlqSearch = nlqSearch as jest.Mock;
 
-jest.mock('../../discovery/explore/ExploreHeader/ExploreSearchInput', () => ({
-  ExploreSearchInput: ({ suggestions }: { suggestions: ReactNode }) => (
-    <div>{suggestions}</div>
-  ),
-}));
-
-const renderInput = (props: {
-  searchCriteria: SearchIndex;
-  onSearchChange?: (value: string) => void;
-}) =>
+const renderInput = (
+  onSearchChange?: (value: string) => void,
+  listProps: { searchQuery?: string; onRefresh?: () => void } = {}
+) =>
   render(
     <MemoryRouter>
-      <MarketplaceSearchInput showEntityResults {...props} />
+      <MarketplaceSearchInput
+        placeholder={PLACEHOLDER}
+        onSearchChange={onSearchChange}
+        {...listProps}
+      />
     </MemoryRouter>
   );
 
-describe('MarketplaceSearchInput', () => {
-  beforeEach(() => jest.clearAllMocks());
-
-  it('opens a pick rather than filtering the page list, as Explore does', () => {
-    const onSearchChange = jest.fn();
-    renderInput({ searchCriteria: SearchIndex.DOMAIN, onSearchChange });
-
-    fireEvent.click(screen.getByTestId('pick-domain'));
-
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/domain/Finance',
-      expect.objectContaining({ state: { fromMarketplace: true } })
-    );
-    expect(onSearchChange).not.toHaveBeenCalled();
+const type = (value: string) =>
+  fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), {
+    target: { value },
   });
 
-  it('opens every pick on a page with no list', () => {
-    renderInput({ searchCriteria: SearchIndex.MARKETPLACE });
+// Longer than any debounce in the input, so a push that was going to happen has.
+const settle = () =>
+  act(async () => {
+    jest.advanceTimersByTime(1000);
+  });
 
-    fireEvent.click(screen.getByTestId('pick-domain'));
+const submit = () =>
+  act(async () => {
+    fireEvent.submit(screen.getByTestId('explore-search-form'));
+  });
 
-    expect(mockNavigate).toHaveBeenCalled();
+const setNlq = (isNLPActive: boolean) =>
+  useSearchStore.setState({
+    isNLPEnabled: true,
+    isNLPActive,
+    isNLPInitialized: true,
+  });
+
+describe('MarketplaceSearchInput', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchQuery.mockResolvedValue({ hits: { hits: [domainHit] } });
+    mockNlqSearch.mockResolvedValue({ hits: { hits: [domainHit] } });
+    setNlq(false);
+  });
+
+  it('shows matching entities on the overview as the user types, and opens a pick', async () => {
+    renderInput();
+
+    type('fin');
+    await settle();
+
+    expect(mockSearchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: 'fin' })
+    );
+
+    fireEvent.click(screen.getByTestId('search-result-domain-d1'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining('Finance'),
+      { state: { fromMarketplace: true } }
+    );
+  });
+
+  it('runs an NLQ search on the overview only on Enter', async () => {
+    setNlq(true);
+    renderInput();
+
+    type('domains owned by finance');
+    await settle();
+
+    expect(mockNlqSearch).not.toHaveBeenCalled();
+
+    await submit();
+
+    expect(mockNlqSearch).toHaveBeenCalledTimes(1);
+    expect(mockNlqSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: 'domains owned by finance' })
+    );
+  });
+
+  it('does not run a search when the NLQ toggle is switched on', async () => {
+    renderInput();
+
+    type('fin');
+    await settle();
+
+    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('explore-nlp-toggle'));
+    });
+    await settle();
+
+    expect(mockNlqSearch).not.toHaveBeenCalled();
+    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it('filters a list page as the user types, with no popover of its own', async () => {
+    const onSearchChange = jest.fn();
+    renderInput(onSearchChange);
+
+    type('fin');
+    await settle();
+
+    expect(onSearchChange).toHaveBeenCalledWith('fin');
+    expect(mockSearchQuery).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('search-result-domain-d1')
+    ).not.toBeInTheDocument();
+  });
+
+  it('filters a list page only on Enter while NLQ is on', async () => {
+    setNlq(true);
+    const onSearchChange = jest.fn();
+    renderInput(onSearchChange);
+
+    type('domains owned by finance');
+    await settle();
+
+    expect(onSearchChange).not.toHaveBeenCalled();
+
+    await submit();
+
+    expect(onSearchChange).toHaveBeenCalledTimes(1);
+    expect(onSearchChange).toHaveBeenCalledWith('domains owned by finance');
+  });
+
+  it('re-runs the list query on Enter when the text is unchanged', async () => {
+    // e.g. the list was filtered by keyword, then NLQ was switched on.
+    setNlq(true);
+    const onSearchChange = jest.fn();
+    const onRefresh = jest.fn();
+    renderInput(onSearchChange, { searchQuery: 'finance', onRefresh });
+
+    await submit();
+
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(onSearchChange).not.toHaveBeenCalled();
   });
 });
