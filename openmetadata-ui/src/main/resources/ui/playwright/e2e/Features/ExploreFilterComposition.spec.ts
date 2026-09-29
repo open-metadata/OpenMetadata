@@ -12,6 +12,11 @@
  */
 import test, { expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  LabelType,
+  State,
+  TagSource,
+} from '../../../src/generated/entity/data/table';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -71,18 +76,18 @@ const glossaryTermTagPatch = (index: number): Operation => ({
   },
 });
 
+const certificationLabel = (tagFQN: string) => ({
+  tagFQN,
+  source: TagSource.Classification,
+  labelType: LabelType.Manual,
+  state: State.Confirmed,
+});
+
 // Certification is a first-class entity field — patch /certification, not /tags
 const certificationPatch = (tagFQN: string): Operation => ({
   op: 'add',
   path: '/certification',
-  value: {
-    tagLabel: {
-      tagFQN,
-      source: 'Classification',
-      labelType: 'Manual',
-      state: 'Confirmed',
-    },
-  },
+  value: { tagLabel: certificationLabel(tagFQN) },
 });
 
 const domainPatch = (): Operation => ({
@@ -226,6 +231,22 @@ test.beforeAll(
     goldCertification = new TagClass({ classification: 'Certification' });
     silverCertification = new TagClass({ classification: 'Certification' });
 
+    await goldCertification.create(apiContext);
+    await silverCertification.create(apiContext);
+
+    // Certified at create so its column docs are indexed from the certified
+    // table in one bulk write. A later certification PATCH reaches column docs
+    // only through an async cascade that can lose a version conflict to the
+    // concurrent inherited-fields update, leaving the columns uncertified.
+    tierOneTable.entity.certification = {
+      tagLabel: certificationLabel(
+        goldCertification.responseData.fullyQualifiedName
+      ),
+      // Required by create validation; the server re-stamps both on create
+      appliedDate: Date.now(),
+      expiryDate: Date.now(),
+    };
+
     await tierOneTable.create(apiContext);
     await tierTwoTable.create(apiContext);
     await tierOneDashboard.create(apiContext);
@@ -234,15 +255,12 @@ test.beforeAll(
     await assetDomain.create(apiContext);
     await compositionGlossary.create(apiContext);
     await compositionTerm.create(apiContext);
-    await goldCertification.create(apiContext);
-    await silverCertification.create(apiContext);
 
     await tierOneTable.patch({
       apiContext,
       patchData: [
         classificationTagPatch('Tier.Tier1', 0),
         classificationTagPatch('PersonalData.Personal', 1),
-        certificationPatch(goldCertification.responseData.fullyQualifiedName),
         domainPatch(),
       ],
     });
@@ -636,8 +654,8 @@ test('certification union shows assets certified with either level', async ({
     const columnName = tierOneTable.columnsName[0];
     const columnFqn = `${tierOneTable.entityResponseData.fullyQualifiedName}.${columnName}`;
 
-    // Column search docs inherit the table's certification asynchronously;
-    // wait until it lands so the badge-absent assertion below is not vacuous.
+    // Column docs are indexed asynchronously; wait until one carries the
+    // table's certification so the badge-absent assertion below is not vacuous.
     const { apiContext, afterAction } = await createNewPage(browser);
     await expect
       .poll(
