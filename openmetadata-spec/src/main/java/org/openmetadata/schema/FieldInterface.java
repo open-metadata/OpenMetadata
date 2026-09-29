@@ -6,29 +6,22 @@ import org.openmetadata.schema.type.TagLabel;
 public interface FieldInterface {
   String getName();
 
-  default String getDisplayName() {
-    return null;
-  }
+  String getDisplayName();
 
   String getDescription();
 
+  /** Absent on Task and MlFeature, which describe no data type. */
   default String getDataTypeDisplay() {
     return null;
   }
 
   String getFullyQualifiedName();
 
-  default void setFullyQualifiedName(String fullyQualifiedName) {
-    /* no-op, overridden by generated POJOs that carry a fullyQualifiedName field */
-  }
+  void setFullyQualifiedName(String fullyQualifiedName);
 
-  default void setDescription(String description) {
-    /* no-op, overridden by generated POJOs that carry a description field */
-  }
+  void setDescription(String description);
 
-  default void setDisplayName(String displayName) {
-    /* no-op, overridden by generated POJOs that carry a displayName field */
-  }
+  void setDisplayName(String displayName);
 
   List<TagLabel> getTags();
 
@@ -36,6 +29,7 @@ public interface FieldInterface {
     /* no-op implementation to be overridden */
   }
 
+  /** Absent on Task and MlFeature, which hold no nested children. */
   default List<? extends FieldInterface> getChildren() {
     return null;
   }

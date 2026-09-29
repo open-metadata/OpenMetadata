@@ -28,9 +28,8 @@ class FieldInterfaceConformanceTest {
   }
 
   @Test
-  void mlFeature_displayNameDefaultsNull() {
+  void mlFeature_hasNoChildren_defaultReturnsNull() {
     FieldInterface feature = new MlFeature().withName("f1");
-    assertNull(feature.getDisplayName());
     assertNull(feature.getChildren());
   }
 
@@ -49,11 +48,11 @@ class FieldInterfaceConformanceTest {
   }
 
   @Test
-  void mlFeature_displayNameSetterIsNoOp() {
-    // mlFeature has no displayName property, so the interface default must swallow the write
-    // rather than fail. The write path gates displayName off for mlmodel with a 400.
+  void mlFeature_displayNameSetterIsReal() {
+    // mlFeature carries displayName like every other child type, so the write must stick
+    // rather than be swallowed by an interface default.
     FieldInterface feature = new MlFeature().withName("f1");
-    feature.setDisplayName("ignored");
-    assertNull(feature.getDisplayName());
+    feature.setDisplayName("Customer age");
+    assertEquals("Customer age", feature.getDisplayName());
   }
 }

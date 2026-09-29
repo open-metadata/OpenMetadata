@@ -81,6 +81,10 @@
         "name": {
           "$ref": "../../type/basic.json#/definitions/entityName"
         },
+        "displayName": {
+          "description": "Display Name that identifies this ML Feature name.",
+          "type": "string"
+        },
         "dataType": {
           "description": "Data type of the column (numerical vs. categorical).",
           "$ref": "#/definitions/featureType"

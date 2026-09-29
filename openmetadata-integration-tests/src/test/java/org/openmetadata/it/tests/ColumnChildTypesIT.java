@@ -270,16 +270,29 @@ public class ColumnChildTypesIT {
   }
 
   @Test
-  void putDisplayName_rejected400ForMlmodel(TestNamespace ns) throws Exception {
-    // mlFeature has no displayName property, so accepting one would drop the value silently.
+  void putDisplayName_roundTripsForMlmodel(TestNamespace ns) throws Exception {
+    // mlFeature carries displayName like every other child type, so the write must stick
+    // rather than be dropped silently or rejected.
     ChildFixture fixture = createFixture("mlmodel", ns);
-    String body = OBJECT_MAPPER.writeValueAsString(Map.of("displayName", "Age"));
-    assertHttpStatus(400, HttpMethod.PUT, childUrl(fixture), body);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String body = OBJECT_MAPPER.writeValueAsString(Map.of("displayName", "Customer age"));
+    String putResponse =
+        client.getHttpClient().executeForString(HttpMethod.PUT, childUrl(fixture), body);
+    assertEquals(
+        "Customer age",
+        OBJECT_MAPPER.readTree(putResponse).path("displayName").asText(),
+        "the write must apply displayName to the returned feature: " + putResponse);
+
+    String getResponse =
+        client.getHttpClient().executeForString(HttpMethod.GET, childUrl(fixture), null);
+    assertEquals(
+        "Customer age",
+        OBJECT_MAPPER.readTree(getResponse).path("displayName").asText(),
+        "displayName must survive the round trip: " + getResponse);
   }
 
   @Test
   void putDisplayName_acceptedForATypeThatHasIt(TestNamespace ns) throws Exception {
-    // The counterpart to the mlmodel rejection: the gate must be per type, not blanket.
     ChildFixture fixture = createFixture("pipeline", ns);
     OpenMetadataClient client = SdkClients.adminClient();
     String body = OBJECT_MAPPER.writeValueAsString(Map.of("displayName", "Extract step"));

@@ -132,23 +132,17 @@ class ColumnRepositoryValidationTest {
   }
 
   @Test
-  void displayNameIsRejectedForMlmodelWhichHasNoSuchProperty() {
-    IllegalArgumentException error =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                update(
-                    "service.model.feature", "mlmodel", new UpdateColumn().withDisplayName("Age")));
-    assertTrue(
-        error.getMessage().contains("displayName is not supported for entity type mlmodel"),
-        error.getMessage());
-  }
-
-  @Test
-  void displayNameIsAcceptedForEveryOtherType() {
+  void displayNameIsAcceptedForEveryType() {
+    // EntityNotFoundException, not IllegalArgumentException: the write cleared the
+    // entity-type gate and only then failed to find the fixture, which is what shows
+    // displayName is not rejected. mlFeature carries the property like its siblings.
     assertThrows(
         EntityNotFoundException.class,
         () -> update("service.topic.field", "topic", new UpdateColumn().withDisplayName("Field")));
+    assertThrows(
+        EntityNotFoundException.class,
+        () ->
+            update("service.model.feature", "mlmodel", new UpdateColumn().withDisplayName("Age")));
   }
 
   @Test

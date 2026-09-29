@@ -262,10 +262,6 @@ public class ColumnRepository {
       throw new IllegalArgumentException(
           "Column extension is not supported for entity type " + spec.entityType());
     }
-    if (updateColumn.getDisplayName() != null && !spec.supportsDisplayName()) {
-      throw new IllegalArgumentException(
-          "displayName is not supported for entity type " + spec.entityType());
-    }
   }
 
   private String extractParentFQN(String columnFQN, String entityType) {

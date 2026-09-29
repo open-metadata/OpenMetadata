@@ -70,8 +70,7 @@ public final class ChildFieldResolver {
       List<String> containerPaths,
       String requiredFields,
       Class<? extends FieldInterface> childClass,
-      int parentFqnDepth,
-      boolean supportsDisplayName) {}
+      int parentFqnDepth) {}
 
   private static final Map<String, ChildContainerSpec> REGISTRY = buildRegistry();
 
@@ -91,8 +90,7 @@ public final class ChildFieldResolver {
                 List.of("columns"),
                 "columns,tags,tableConstraints",
                 Column.class,
-                4,
-                true)),
+                4)),
         Map.entry(
             DASHBOARD_DATA_MODEL,
             new ChildContainerSpec(
@@ -101,8 +99,7 @@ public final class ChildFieldResolver {
                 List.of("columns"),
                 "columns,tags",
                 Column.class,
-                3,
-                true)),
+                3)),
         Map.entry(
             TOPIC,
             new ChildContainerSpec(
@@ -111,8 +108,7 @@ public final class ChildFieldResolver {
                 List.of("messageSchema.schemaFields"),
                 "messageSchema,tags",
                 Field.class,
-                2,
-                true)),
+                2)),
         Map.entry(
             CONTAINER,
             new ChildContainerSpec(
@@ -121,26 +117,18 @@ public final class ChildFieldResolver {
                 List.of("dataModel.columns"),
                 "dataModel,tags",
                 Column.class,
-                LONGEST_PREFIX,
-                true)),
+                LONGEST_PREFIX)),
         Map.entry(
             MLMODEL,
             new ChildContainerSpec(
-                MLMODEL, null, List.of("mlFeatures"), "tags", MlFeature.class, 2, false)),
+                MLMODEL, null, List.of("mlFeatures"), "tags", MlFeature.class, 2)),
         Map.entry(
             PIPELINE,
-            new ChildContainerSpec(
-                PIPELINE, null, List.of("tasks"), "tasks,tags", Task.class, 2, true)),
+            new ChildContainerSpec(PIPELINE, null, List.of("tasks"), "tasks,tags", Task.class, 2)),
         Map.entry(
             SEARCH_INDEX,
             new ChildContainerSpec(
-                SEARCH_INDEX,
-                null,
-                List.of("fields"),
-                "fields,tags",
-                SearchIndexField.class,
-                2,
-                true)),
+                SEARCH_INDEX, null, List.of("fields"), "fields,tags", SearchIndexField.class, 2)),
         Map.entry(
             API_ENDPOINT,
             new ChildContainerSpec(
@@ -149,8 +137,7 @@ public final class ChildFieldResolver {
                 List.of("requestSchema.schemaFields", "responseSchema.schemaFields"),
                 "requestSchema,responseSchema,tags",
                 Field.class,
-                3,
-                true)),
+                3)),
         Map.entry(
             WORKSHEET,
             new ChildContainerSpec(
@@ -159,8 +146,7 @@ public final class ChildFieldResolver {
                 List.of("columns"),
                 "columns,tags",
                 Column.class,
-                LONGEST_PREFIX,
-                true)));
+                LONGEST_PREFIX)));
   }
 
   public static boolean supports(String entityType) {
