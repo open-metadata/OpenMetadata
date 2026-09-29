@@ -42,9 +42,9 @@ final class AlertReconciler {
   static final long PERIOD_SECONDS = 600;
   // A job or a row younger than this may belong to a create another server has not finished.
   static final long ORPHAN_MIN_AGE_MS = TimeUnit.MINUTES.toMillis(5);
-  // Far past the few seconds the misfire handler takes to fire a late trigger again, so only a
-  // trigger that nothing will fire again reads frozen, not one waiting for a free thread.
-  static final long FROZEN_AFTER_MS = TimeUnit.MINUTES.toMillis(10);
+  // A trigger this late has had a full misfire scan to be fired again and was not, so nothing will
+  // fire it; one waiting for a free thread is fired by the scan well before.
+  static final long FROZEN_AFTER_MS = 2 * EventSubscriptionScheduler.MISFIRE_THRESHOLD_MS;
   private static final String HEALTHY = "healthy";
   private static final int REMEMBERED_VERDICTS = 1000;
   private static final int KEYS_SHOWN_PER_STORE = 20;
