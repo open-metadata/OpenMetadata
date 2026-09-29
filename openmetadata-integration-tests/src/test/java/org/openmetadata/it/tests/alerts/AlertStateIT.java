@@ -25,6 +25,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.AlertHealth;
+import org.openmetadata.schema.entity.events.DestinationHealth;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -156,30 +157,56 @@ class AlertStateIT {
   @Test
   void healthSurvivesEditAndRestart(TestNamespace ns) throws Exception {
     EventSubscription alert = create(ns, "health_survives", true);
-    String destinationId = alert.getDestinations().getFirst().getId().toString();
-    AlertHealth failing = JsonUtils.readValue(health(alert), AlertHealth.class);
-    failing
-        .getDestinations()
-        .get(destinationId)
-        .withStatus(
-            new SubscriptionStatus()
-                .withStatus(SubscriptionStatus.Status.FAILED)
-                .withLastFailedReason("connection refused")
-                .withTimestamp(System.currentTimeMillis()));
-    dao()
-        .upsertSubscriberExtension(
-            alert.getId().toString(),
-            LedgerKeys.HEALTH,
-            "alertHealth",
-            JsonUtils.pojoToJson(failing));
+    SubscriptionDestination destination = alert.getDestinations().getFirst();
+    reportFailed(alert, destination);
 
-    repository().createOrUpdate(null, alert.withDescription("edited"), "admin");
-    EventSubscriptionScheduler.getInstance().updateEventSubscription(alert);
+    save(alert.withDescription("edited"));
 
-    SubscriptionStatus afterwards =
-        EventSubscriptionScheduler.getInstance()
-            .getStatusForEventSubscription(alert.getId(), UUID.fromString(destinationId));
-    assertEquals(SubscriptionStatus.Status.FAILED, afterwards.getStatus());
+    assertEquals(SubscriptionStatus.Status.FAILED, statusOf(alert, destination));
+  }
+
+  // Disabled is read from the destination as it is now, and what its ticks reported stays behind
+  // it.
+  @Test
+  void disabledDestinationReadsDisabledWhateverItsHistory(TestNamespace ns) throws Exception {
+    EventSubscription alert = create(ns, "disabled_reads_disabled", true);
+    SubscriptionDestination destination = alert.getDestinations().getFirst();
+    reportFailed(alert, destination);
+
+    save(withDestinationEnabled(alert, false));
+
+    assertEquals(SubscriptionStatus.Status.DISABLED, statusOf(alert, destination));
+    assertEquals(
+        SubscriptionStatus.Status.DISABLED,
+        shownStatusOf(
+            EventSubscriptionScheduler.getInstance()
+                .destinationsWithStatus(AlertRows.read(alert.getId()))));
+    assertEquals(
+        SubscriptionStatus.Status.DISABLED,
+        shownStatusOf(
+            EventSubscriptionScheduler.getInstance().listAlertDestinations(alert.getId())));
+
+    save(withDestinationEnabled(AlertRows.read(alert.getId()), true));
+
+    assertEquals(SubscriptionStatus.Status.FAILED, statusOf(alert, destination));
+  }
+
+  @Test
+  void destinationDisabledAtFirstScheduleReadsActiveOnceEnabled(TestNamespace ns) throws Exception {
+    CreateEventSubscription request = request(ns, "disabled_at_first", true);
+    request.getDestinations().getFirst().setEnabled(false);
+    EventSubscription alert =
+        AlertRows.read(SdkClients.adminClient().eventSubscriptions().create(request).getId());
+    SubscriptionDestination destination = alert.getDestinations().getFirst();
+
+    assertEquals(SubscriptionStatus.Status.DISABLED, statusOf(alert, destination));
+    assertTrue(
+        JsonUtils.readValue(health(alert), AlertHealth.class).getDestinations().isEmpty(),
+        "only what ticks report is stored");
+
+    save(withDestinationEnabled(alert, true));
+
+    assertEquals(SubscriptionStatus.Status.ACTIVE, statusOf(alert, destination));
   }
 
   @Test
@@ -251,6 +278,50 @@ class AlertStateIT {
   private static void unmarkNotFound(EventSubscription alert) {
     CacheBundle.getNotFoundCache()
         .invalidate(Entity.EVENT_SUBSCRIPTION, alert.getId(), alert.getFullyQualifiedName());
+  }
+
+  private static void reportFailed(EventSubscription alert, SubscriptionDestination destination) {
+    AlertHealth failing = JsonUtils.readValue(health(alert), AlertHealth.class);
+    failing
+        .getDestinations()
+        .put(
+            destination.getId().toString(),
+            new DestinationHealth()
+                .withConsecutiveFailedTicks(1)
+                .withStatus(
+                    new SubscriptionStatus()
+                        .withStatus(SubscriptionStatus.Status.FAILED)
+                        .withLastFailedReason("connection refused")
+                        .withTimestamp(System.currentTimeMillis())));
+    dao()
+        .upsertSubscriberExtension(
+            alert.getId().toString(),
+            LedgerKeys.HEALTH,
+            "alertHealth",
+            JsonUtils.pojoToJson(failing));
+  }
+
+  private static EventSubscription withDestinationEnabled(
+      EventSubscription alert, boolean enabled) {
+    alert.getDestinations().getFirst().setEnabled(enabled);
+    return alert;
+  }
+
+  private static void save(EventSubscription alert) {
+    repository().createOrUpdate(null, alert, "admin");
+    EventSubscriptionScheduler.getInstance().updateEventSubscription(alert);
+  }
+
+  private static SubscriptionStatus.Status statusOf(
+      EventSubscription alert, SubscriptionDestination destination) {
+    return EventSubscriptionScheduler.getInstance()
+        .getStatusForEventSubscription(alert.getId(), destination.getId())
+        .getStatus();
+  }
+
+  private static SubscriptionStatus.Status shownStatusOf(
+      List<SubscriptionDestination> destinations) {
+    return ((SubscriptionStatus) destinations.getFirst().getStatusDetails()).getStatus();
   }
 
   private static String health(EventSubscription alert) {

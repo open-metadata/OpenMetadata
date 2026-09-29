@@ -472,30 +472,40 @@ public class EventSubscriptionScheduler {
 
   /** Every destination of the alert with its current status: one read, whatever their number. */
   public List<SubscriptionDestination> destinationsWithStatus(EventSubscription alert) {
-    List<SubscriptionDestination> destinations = listOrEmpty(alert.getDestinations());
-    if (Boolean.FALSE.equals(alert.getEnabled())) {
-      destinations.forEach(
-          destination ->
-              destination.setStatusDetails(
-                  new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED)));
-    } else {
-      destinationsWithHealth(alert);
-    }
-    return destinations;
+    return destinationsWithHealth(alert);
   }
 
-  // Health lives in a row of its own, so registering, editing and restarting never reset it. A
-  // destination no tick has reported on yet reads Active when enabled and Disabled otherwise.
+  // Health lives in a row of its own, so registering, editing and restarting never reset it.
   private static List<SubscriptionDestination> destinationsWithHealth(EventSubscription alert) {
     Map<String, DestinationHealth> health =
         AlertRecord.open(alert).map(AlertLedger::health).orElse(Map.of());
     long now = System.currentTimeMillis();
     for (SubscriptionDestination destination : listOrEmpty(alert.getDestinations())) {
-      DestinationHealth known = health.get(destination.getId().toString());
       destination.setStatusDetails(
-          (known != null ? known : AlertRecord.healthWithoutHistory(destination, now)).getStatus());
+          statusToShow(alert, destination, health.get(destination.getId().toString()), now));
     }
     return listOrEmpty(alert.getDestinations());
+  }
+
+  // Disabled is decided when read, from the alert and the destination as they are now, and never
+  // stored. Otherwise the last tick that reached the destination speaks, and Active before any has.
+  private static SubscriptionStatus statusToShow(
+      EventSubscription alert,
+      SubscriptionDestination destination,
+      DestinationHealth known,
+      long now) {
+    boolean switchedOff =
+        Boolean.FALSE.equals(alert.getEnabled()) || Boolean.FALSE.equals(destination.getEnabled());
+    SubscriptionStatus status;
+    if (switchedOff) {
+      status = new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED);
+    } else if (known != null) {
+      status = known.getStatus();
+    } else {
+      status =
+          new SubscriptionStatus().withStatus(SubscriptionStatus.Status.ACTIVE).withTimestamp(now);
+    }
+    return status;
   }
 
   public EventsRecord getEventSubscriptionEventsRecord(UUID subscriptionId) {

@@ -14,7 +14,6 @@ import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
@@ -36,10 +35,7 @@ class AlertLedgerIT {
     AlertHealth health = stored(alert, LedgerKeys.HEALTH, AlertHealth.class);
     assertNotNull(position.getStartingTimestamp(), "the watermark is written with the position");
     assertEquals(position.getStartingOffset(), position.getCurrentOffset());
-    String destinationId = alert.getDestinations().getFirst().getId().toString();
-    assertEquals(
-        SubscriptionStatus.Status.ACTIVE,
-        health.getDestinations().get(destinationId).getStatus().getStatus());
+    assertTrue(health.getDestinations().isEmpty(), "health holds only what ticks report");
   }
 
   @Test
