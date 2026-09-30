@@ -17,20 +17,26 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.getEntityReference;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
+import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -55,6 +61,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
+
+  private static final String FEATURES_FIELD = "mlFeatures";
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
   private static final String MODEL_PATCH_FIELDS = "dashboard";
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("mlFeatures.description");
@@ -77,6 +85,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("dashboard", this::fetchAndSetDashboards);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetFeatureTags);
   }
 
   public static MlFeature findMlFeature(List<MlFeature> features, String featureName) {
@@ -101,6 +110,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void setFields(MlModel mlModel, Fields fields, RelationIncludes relationIncludes) {
     mlModel.setService(getContainer(mlModel.getId()));
+    // Feature tags are stripped from the stored JSON, so this is what puts them back.
+    populateEntityFieldTags(
+        entityType,
+        mlModel.getMlFeatures(),
+        mlModel.getFullyQualifiedName(),
+        fields.contains(FIELD_TAGS));
     mlModel.setDashboard(
         fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
     if (mlModel.getUsageSummary() == null) {
@@ -130,6 +145,17 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       return;
     }
     setFieldFromMap(true, mlModels, batchFetchDashboards(mlModels), MlModel::setDashboard);
+  }
+
+  /** The bulk counterpart of the setFields hydration; without it a listed model reads untagged. */
+  private void fetchAndSetFeatureTags(List<MlModel> mlModels, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || nullOrEmpty(mlModels)) {
+      return;
+    }
+    for (MlModel mlModel : mlModels) {
+      populateEntityFieldTags(
+          entityType, mlModel.getMlFeatures(), mlModel.getFullyQualifiedName(), true);
+    }
   }
 
   private void fetchAndSetUsageSummaries(List<MlModel> mlModels, Fields fields) {
@@ -290,6 +316,52 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service", "dashboard");
+  }
+
+  /**
+   * Keeps a feature's tags out of the stored JSON, so tag_usage is their single source the way it
+   * is for every other type with inline children.
+   *
+   * <p>Deliberately not recursive, unlike the sibling strippers. A feature source's FQN is built
+   * from its dataSource - {@code <table fqn>.<source name>} - so it collides with that table's own
+   * column FQN and cannot be keyed in tag_usage without writing onto another entity's tags. Those
+   * tags therefore stay in the JSON, which is where they have always lived and where getAllTags
+   * still reads them. Nothing hydrates them either: flattening follows getChildren(), and MlFeature
+   * has none, so the tag_usage read can never reach a feature source in either direction.
+   */
+  @Override
+  protected ObjectNode storageJsonNode(MlModel mlModel) {
+    ObjectNode node = super.storageJsonNode(mlModel);
+    if (node.get("mlFeatures") instanceof ArrayNode features) {
+      for (JsonNode feature : features) {
+        if (feature instanceof ObjectNode featureNode) {
+          featureNode.remove(FIELD_TAGS);
+        }
+      }
+    }
+    return node;
+  }
+
+  @Override
+  public void applyTags(MlModel mlModel) {
+    super.applyTags(mlModel);
+    applyFeatureTags(mlModel.getMlFeatures());
+  }
+
+  /**
+   * Indexes each feature's tags under the feature's own FQN, the way every other type with inline
+   * children does. The model's stored JSON stays the primary copy; tag_usage is what a reader
+   * querying by FQN prefix can see, and without these rows such a reader finds nothing and
+   * concludes the feature is untagged.
+   *
+   * <p>Feature sources are deliberately not indexed here: their FQNs hang off the source data
+   * asset rather than the model, so they fall outside the model's prefix and belong to whatever
+   * owns that asset.
+   */
+  private void applyFeatureTags(List<MlFeature> features) {
+    for (MlFeature feature : listOrEmpty(features)) {
+      applyTags(feature.getTags(), feature.getFullyQualifiedName());
+    }
   }
 
   @Override
@@ -487,9 +559,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
           mlFeatureMatch);
 
       for (MlFeature updatedFeature : listOrEmpty(updatedModel.getMlFeatures())) {
+        // Paired by name, the way every sibling type pairs its children. mlFeatureMatch is whole
+        // object equality, which is right for the recordListChange above but wrong here: a
+        // feature is "the same feature" across an edit precisely when its fields differ, so
+        // matching on equality found nothing and skipped the per-feature updates below for any
+        // feature that had actually changed.
         MlFeature storedFeature =
             listOrEmpty(origModel.getMlFeatures()).stream()
-                .filter(feature -> mlFeatureMatch.test(feature, updatedFeature))
+                .filter(feature -> feature.getName().equals(updatedFeature.getName()))
                 .findAny()
                 .orElse(null);
         if (storedFeature == null) {
@@ -497,7 +574,49 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         }
 
         updateMlFeatureDescription(storedFeature, updatedFeature);
+        // Index the feature's tags the way the pipeline updater does for a task. applyTags only
+        // runs on create, so without this a tag added or removed by a patch never reaches
+        // tag_usage and any reader querying by FQN prefix keeps seeing the pre-patch set.
+        updateTags(
+            storedFeature.getFullyQualifiedName(),
+            EntityUtil.getFieldName(FEATURES_FIELD, updatedFeature.getName(), FIELD_TAGS),
+            storedFeature.getTags(),
+            updatedFeature.getTags());
       }
+
+      indexTagsOfAddedAndRemovedFeatures(origModel, updatedModel);
+    }
+
+    /**
+     * Indexes a newly added feature's tags and drops the rows of one that is gone, mirroring what
+     * the pipeline updater does for tasks. The loop above only covers features on both sides, so
+     * without this a feature added with tags is never indexed, and a removed feature leaves rows
+     * behind that a later feature of the same name would inherit.
+     *
+     * <p>Membership is by name rather than the addedList/deletedList that recordListChange fills:
+     * those use whole-object equality, so a feature whose tags merely changed appears in both and
+     * would be deleted and re-added on every edit.
+     */
+    private void indexTagsOfAddedAndRemovedFeatures(MlModel origModel, MlModel updatedModel) {
+      Set<String> origNames = featureNames(origModel);
+      Set<String> updatedNames = featureNames(updatedModel);
+
+      for (MlFeature feature : listOrEmpty(origModel.getMlFeatures())) {
+        if (!updatedNames.contains(feature.getName())) {
+          daoCollection.tagUsageDAO().deleteTagsByTarget(feature.getFullyQualifiedName());
+        }
+      }
+      for (MlFeature feature : listOrEmpty(updatedModel.getMlFeatures())) {
+        if (!origNames.contains(feature.getName())) {
+          applyTags(feature.getTags(), feature.getFullyQualifiedName());
+        }
+      }
+    }
+
+    private Set<String> featureNames(MlModel model) {
+      return listOrEmpty(model.getMlFeatures()).stream()
+          .map(MlFeature::getName)
+          .collect(Collectors.toSet());
     }
 
     private void updateMlFeatureDescription(MlFeature originalFeature, MlFeature updatedFeature) {

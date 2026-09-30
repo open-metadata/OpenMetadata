@@ -114,19 +114,6 @@ public class ColumnRepository {
     return columnAggregator.aggregateColumns(request);
   }
 
-  /**
-   * Legacy Column-typed read. Both types it serves have Column children, so the cast is total.
-   * New callers should use {@link #getChildByFQN}, which serves every registry type.
-   */
-  public Column getColumnByFQN(
-      SecurityContext securityContext,
-      String columnFQN,
-      String entityType,
-      String fieldsParam,
-      Include include) {
-    return (Column) getChildByFQN(securityContext, columnFQN, entityType, fieldsParam, include);
-  }
-
   public FieldInterface getChildByFQN(
       SecurityContext securityContext,
       String columnFQN,
@@ -199,21 +186,6 @@ public class ColumnRepository {
           .enrichSingleColumnFields((DashboardDataModel) parent, column, fieldsParam);
       default -> column;
     };
-  }
-
-  /**
-   * Legacy Column-typed write. Both types it serves have Column children, so the cast is total.
-   * New callers should use {@link #updateChildByFQN}, which serves every registry type and accepts
-   * a change source.
-   */
-  public Column updateColumnByFQN(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      String columnFQN,
-      String entityType,
-      UpdateColumn updateColumn) {
-    return (Column)
-        updateChildByFQN(uriInfo, securityContext, columnFQN, entityType, updateColumn, null);
   }
 
   public FieldInterface updateChildByFQN(
@@ -773,13 +745,16 @@ public class ColumnRepository {
         updateColumn.setDescription(columnUpdate.getDescription());
         updateColumn.setTags(columnUpdate.getTags());
 
-        Column updatedColumn =
-            updateColumnByFQN(
-                uriInfo,
-                securityContext,
-                columnUpdate.getColumnFQN(),
-                columnUpdate.getEntityType(),
-                updateColumn);
+        // The type-generic write: a row here may name any registry type, and the Column-typed
+        // overload would throw casting the result after the patch had already been saved,
+        // reporting a committed change as a failure.
+        updateChildByFQN(
+            uriInfo,
+            securityContext,
+            columnUpdate.getColumnFQN(),
+            columnUpdate.getEntityType(),
+            updateColumn,
+            null);
 
         successCount.incrementAndGet();
         BulkResponse successResponse = new BulkResponse();

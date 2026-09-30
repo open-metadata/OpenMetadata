@@ -390,6 +390,45 @@ public class ColumnChildTypesIT {
     assertEquals("Automated", entry.get("changeSource").asText());
   }
 
+  @Test
+  void getChildren_mlmodelFeatureTags_surviveAFieldsTagsRequest(TestNamespace ns) throws Exception {
+    // mlmodel keeps its features' tags in the model's stored JSON, not in tag_usage:
+    // MlModelRepository has no applyTags override. Hydrating the page from tag_usage therefore
+    // missed and set an empty list, so fields=tags returned FEWER tags than omitting it, and a
+    // caller that read the list, appended to it and PUT it back erased the feature's tags.
+    ChildFixture fixture = createFixture("mlmodel", ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String body =
+        OBJECT_MAPPER.writeValueAsString(
+            Map.of(
+                "tags",
+                List.of(
+                    Map.of(
+                        "tagFQN", "PII.Sensitive",
+                        "source", "Classification",
+                        "labelType", "Manual",
+                        "state", "Confirmed"))));
+    client.getHttpClient().executeForString(HttpMethod.PUT, childUrl(fixture), body);
+
+    String page =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/mlmodels/name/"
+                    + encodeURIComponent(fixture.parentFqn())
+                    + "/columns?fields=tags",
+                null);
+    List<String> tagFqns = new ArrayList<>();
+    OBJECT_MAPPER
+        .readTree(page)
+        .path("data")
+        .forEach(
+            feature -> feature.path("tags").forEach(t -> tagFqns.add(t.path("tagFQN").asText())));
+    assertTrue(
+        tagFqns.contains("PII.Sensitive"), "fields=tags must not blank a feature's tags: " + page);
+  }
+
   private String childUrl(ChildFixture fixture) {
     return "/v1/columns/name/"
         + encodeURIComponent(fixture.childFqn())
