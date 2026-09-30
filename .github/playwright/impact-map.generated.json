@@ -3957,6 +3957,18 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/formSignIn.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeAuthGating.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeCrossDevice.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModePrecedence.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModePreferenceRoundTrip.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/utils/glossary.ts"
       ],
       "specs": [

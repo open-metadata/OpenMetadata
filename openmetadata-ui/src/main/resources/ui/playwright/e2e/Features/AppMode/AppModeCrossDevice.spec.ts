@@ -16,6 +16,7 @@ import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { signInThroughForm } from '../../../utils/formSignIn';
 import {
   AppModeExpectation,
   assertAppMode,
@@ -55,8 +56,7 @@ const waitForAppMode = async (page: Page, expected: AppModeExpectation) => {
 };
 
 const openSwitcherAsAi = async (page: Page, user: UserClass) => {
-  // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
-  await user.login(page);
+  await signInThroughForm(page, user);
   await switchToAiModeViaProfileToggle(page);
   await expect(page.getByTestId('ask-sidebar')).toBeVisible();
   await page.locator(VISIBLE_SWITCHER_TRIGGER).click();
@@ -109,8 +109,7 @@ test.describe('AppMode — cross-device sync', { tag: ['@Platform'] }, () => {
 
       // B has taken no action of its own — a fresh login must pick up the
       // server-side preference A just wrote.
-      // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
-      await user.login(pageB);
+      await signInThroughForm(pageB, user);
       await waitForAllLoadersToDisappear(pageB);
 
       await expect(pageB.getByTestId('ask-sidebar')).toBeVisible();

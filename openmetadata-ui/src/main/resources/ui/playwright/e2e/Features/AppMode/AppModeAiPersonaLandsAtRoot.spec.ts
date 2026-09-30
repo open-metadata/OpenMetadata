@@ -40,6 +40,7 @@ import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { signInThroughForm } from '../../../utils/formSignIn';
 import { AppModeExpectation, assertAppMode } from '../../Utils/appMode';
 
 type PersonaWithAppMode = {
@@ -163,8 +164,7 @@ test.describe('AppMode — landing URL', { tag: ['@Platform'] }, () => {
           }
         });
 
-        // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
-        await user.login(page);
+        await signInThroughForm(page, user);
         await waitForAllLoadersToDisappear(page);
 
         // 1. AppMode resolves to AI (persona-driven).

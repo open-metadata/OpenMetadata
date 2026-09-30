@@ -129,11 +129,13 @@ const requireAggregationWaitHelper = {
  * The implementation modules that must log in (auth.setup, the fixtures, the
  * login helpers) are exempt by path.
  *
- * It runs at `error` with zero suppressions. The ~290 call sites that made a
- * warn-level rule the only honest setting have been migrated; what remains is
- * six files carrying a justified disable, all of them specs where the form
- * sign-in is the subject (`Pages/Login.spec.ts`) or where the route the app
- * lands on afterwards is the assertion (`Features/AppMode/**`).
+ * It runs at `error` with zero suppressions and zero disables. The ~290 call
+ * sites that made a warn-level rule the only honest setting have been migrated.
+ * The two cases that legitimately need the form — the form is the subject
+ * (`Auth/Login.spec.ts`), or the route the app lands on afterwards is the
+ * assertion (`Features/AppMode/**`) — go through `signInThroughForm` in
+ * utils/formSignIn, which is on the exemption list below. That keeps the
+ * intent at the call site and the exemption in one auditable place.
  */
 const ROLE_FIXTURES = [
   'adminPage',
@@ -154,6 +156,7 @@ const LOGIN_IMPLEMENTATION_PATHS = [
   'e2e/fixtures/pages.ts',
   'utils/user.ts',
   'utils/apiSignIn.ts',
+  'utils/formSignIn.ts',
   'utils/admin.ts',
   'support/user/',
 ];
@@ -166,7 +169,7 @@ const preferRolePageFixture = {
     },
     messages: {
       preferRolePageFixture:
-        '`login()` drives the sign-in form — nine UI interactions before this test has done anything. Use `signIn()` instead: same session, same post-sign-in steps, one POST. Better still, take a fixture and let it own the account: one of {{fixtures}} from support/fixtures/userPages (or e2e/fixtures/pages) for a seeded role, or `isolatedUserPage` / `freshUserPage` from support/fixtures/isolatedUser when the test needs its own account — those create and delete it for you, so there is no beforeAll/afterAll bookkeeping to get wrong. If this spec is testing the sign-in form itself, keep `login()` and disable this rule with a reason.',
+        '`login()` drives the sign-in form — nine UI interactions before this test has done anything. Use `signIn()` instead: same session, same post-sign-in steps, one POST. Better still, take a fixture and let it own the account: one of {{fixtures}} from support/fixtures/userPages (or e2e/fixtures/pages) for a seeded role, or `isolatedUserPage` / `freshUserPage` from support/fixtures/isolatedUser when the test needs its own account — those create and delete it for you, so there is no beforeAll/afterAll bookkeeping to get wrong. If the form itself is what the test asserts — or the route the app lands on after sign-in is the assertion, which `signInViaApi` would mask by finishing on /my-data — call `signInThroughForm(page, user)` from utils/formSignIn, which says so at the call site instead of suppressing this rule.',
     },
     schema: [],
     type: 'suggestion',

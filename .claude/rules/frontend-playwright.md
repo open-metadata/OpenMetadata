@@ -38,12 +38,15 @@ Highest-value constraints, all machine-enforced:
   POST and runs the identical post-sign-in steps. Creating a user as *test data* is fine; signing
   one in through the form is what the rule flags.
 
-  The rule is at **error**, and the only justified disables are the specs that assert something the
-  form sign-in itself produces — either the form is the subject (`Pages/Login.spec.ts`), or the
-  *route the app lands on* after sign-in is the assertion, which `signInViaApi` would mask because
-  it finishes on `/my-data` (`Features/AppMode/**` — `AppModeAiPersonaLandsAtRoot` asserts the path
-  is exactly `/`). "This test needs a real session" is not a reason: `signIn()` posts to the same
-  `/api/v1/auth/login`, so every server-side effect of signing in is identical.
+  The rule is at **error** with no suppressions and **no disables**. The two cases that genuinely
+  need the form call `signInThroughForm(page, user)` from `utils/formSignIn.ts` — the one module on
+  the rule's exemption list — so the intent reads at the call site instead of as a suppression:
+  either the form is the subject (`Auth/Login.spec.ts`), or the *route the app lands on* after
+  sign-in is the assertion, which `signInViaApi` would mask because it finishes on `/my-data`
+  (`Features/AppMode/**` — `AppModeAiPersonaLandsAtRoot` records every navigation and asserts
+  `/my-data` is never among them, so `signIn()` would fail it by construction). "This test needs a
+  real session" is not a reason: `signIn()` posts to the same `/api/v1/auth/login`, so every
+  server-side effect of signing in is identical.
 - **`beforeAll` is not a per-worker hook.** Under `fullyParallel` it runs once per *group* of the
   file's tests dispatched to a worker, with `afterAll` in between — so it can run twice in one
   worker. Rebuild describe-scope state at the top of the hook; never `.push()` into it.
