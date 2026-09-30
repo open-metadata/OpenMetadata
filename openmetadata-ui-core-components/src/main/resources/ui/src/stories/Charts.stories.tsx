@@ -279,33 +279,6 @@ export const GeoMap: Story = {
   ),
 };
 
-export const Empty: Story = {
-  render: () => (
-    <Frame>
-      <LineChart
-        ariaLabel="No runs"
-        data={[]}
-        series={[{ key: 'success', name: 'Success' }]}
-        xKey="day"
-      />
-    </Frame>
-  ),
-};
-
-export const Loading: Story = {
-  render: () => (
-    <Frame>
-      <BarChart
-        loading
-        ariaLabel="Loading runs"
-        data={runs}
-        series={[{ key: 'success', name: 'Success' }]}
-        xKey="day"
-      />
-    </Frame>
-  ),
-};
-
 export const RawEChart: Story = {
   render: () => (
     <Frame>
@@ -326,23 +299,6 @@ export const RawEChart: Story = {
             { type: 'line', data: runs.map((r) => r.failed * 10) },
           ],
         })}
-      />
-    </Frame>
-  ),
-};
-
-export const LightAndDark: Story = {
-  parameters: { theme: 'both' },
-  render: () => (
-    <Frame>
-      <LineChart
-        ariaLabel="Pipeline runs per day"
-        data={runs}
-        series={[
-          { key: 'success', name: 'Success' },
-          { key: 'failed', name: 'Failed' },
-        ]}
-        xKey="day"
       />
     </Frame>
   ),
