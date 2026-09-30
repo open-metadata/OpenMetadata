@@ -589,6 +589,10 @@ public interface EntityDAO<T extends EntityInterface> {
   String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
+  /** Null when the row is missing or another transaction holds it. */
+  @SqlQuery("SELECT json FROM <table> WHERE id = :id FOR UPDATE SKIP LOCKED")
+  String findByIdForUpdateSkipLocked(@Define("table") String table, @BindUUID("id") UUID id);
+
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)
   List<EntityIdJsonPair> findByIds(

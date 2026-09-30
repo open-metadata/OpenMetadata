@@ -117,7 +117,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityCacheRepair;
-import org.openmetadata.service.jdbi3.EntityExtensionReferences;
+import org.openmetadata.service.jdbi3.EntityExtensionReferenceCompaction;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
@@ -467,7 +467,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .lifecycle()
         .manage(
             new EntityExtensionReferenceCompactionScheduler(
-                new EntityExtensionReferences(jdbi.onDemand(CollectionDAO.class))));
+                new EntityExtensionReferenceCompaction(jdbi.onDemand(CollectionDAO.class))));
 
     environment
         .lifecycle()

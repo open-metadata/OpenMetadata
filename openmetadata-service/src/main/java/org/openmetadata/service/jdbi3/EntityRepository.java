@@ -4019,8 +4019,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // handle is held).
     flushInOneTransaction(
         () -> {
+          entities.forEach(
+              entity -> fillColumnReferenceIds(getColumnsForExtensionPersistence(entity)));
           storeEntities(entities);
           storeExtensions(entities);
+          storeColumnExtensions(entities);
           storeRelationshipsInternal(entities);
         });
     setInheritedFields(entities, new Fields(allowedFields));
@@ -5302,6 +5305,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void createNewEntityFlushBody(T entity) {
     try (var ignored = phase("createStoreEntity")) {
+      fillColumnReferenceIds(getColumnsForExtensionPersistence(entity));
       storeEntity(entity, false);
       storeExtension(entity);
       storeExtensionReferences(entity);
@@ -5602,8 +5606,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void createManyEntitiesFlushBody(List<T> entities) {
     try (var ignored = phase("storeEntities")) {
+      entities.forEach(entity -> fillColumnReferenceIds(getColumnsForExtensionPersistence(entity)));
       storeEntities(entities);
       storeExtensions(entities);
+      storeColumnExtensions(entities);
     }
     try (var ignored = phase("storeRelationships")) {
       storeRelationshipsInternal(entities);
@@ -6069,6 +6075,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Upserts one column's extension. Shared by create and update paths. */
   protected final void storeColumnExtension(UUID entityId, Column column) {
+    storeColumnExtension(entityId, column, true);
+  }
+
+  /**
+   * Upserts one column's extension and, unless this is a session-consolidation pass, keeps the
+   * reference ledger in step with it; see {@link EntityUpdater#updateExtension}.
+   */
+  protected final void storeColumnExtension(
+      UUID entityId, Column column, boolean maintainReferences) {
     if (entityId == null
         || column == null
         || column.getExtension() == null
@@ -6076,20 +6091,131 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     String extensionKey = FullyQualifiedName.buildHash(column.getFullyQualifiedName());
+    JsonNode value = JsonUtils.valueToTree(column.getExtension());
+    boolean tracked =
+        maintainReferences && ColumnExtensionReferences.carriesReferences(entityType, value);
+    if (tracked) {
+      ColumnExtensionReferences.fillIds(
+          value, ColumnExtensionReferences.referencePropertiesOf(entityType));
+      column.setExtension(JsonUtils.treeToValue(value, Object.class));
+    }
     daoCollection
         .entityExtensionDAO()
         .insert(
-            entityId, extensionKey, "columnExtension", JsonUtils.pojoToJson(column.getExtension()));
+            entityId,
+            extensionKey,
+            ColumnExtensionReferences.COLUMN_EXTENSION_SCHEMA,
+            JsonUtils.pojoToJson(column.getExtension()));
+    if (tracked) {
+      columnReferences().replace(entityId, entityType, extensionKey, value);
+    }
   }
 
   /** Recursively persists extensions on all columns (and nested children). */
   protected final void storeColumnExtensions(UUID entityId, List<Column> columns) {
+    storeColumnExtensions(entityId, columns, true);
+  }
+
+  protected final void storeColumnExtensions(
+      UUID entityId, List<Column> columns, boolean maintainReferences) {
     if (entityId == null || columns == null || columns.isEmpty()) {
       return;
     }
     for (Column column : EntityUtil.getFlattenedEntityField(columns)) {
-      storeColumnExtension(entityId, column);
+      storeColumnExtension(entityId, column, maintainReferences);
     }
+  }
+
+  /**
+   * Drops a removed column's extension and its ledger rows. Safe on a consolidating pass too: the
+   * final pass re-inserts rows for any column the request keeps.
+   */
+  protected final void deleteColumnExtension(UUID entityId, String columnFqn) {
+    String extensionKey = FullyQualifiedName.buildHash(columnFqn);
+    daoCollection.entityExtensionDAO().delete(entityId, extensionKey);
+    columnReferences().delete(entityId, extensionKey);
+  }
+
+  private void storeColumnExtensions(List<T> entities) {
+    entities.forEach(
+        entity -> storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity)));
+  }
+
+  /** Completes name-only column references before the entity row, and its inline copy, is written. */
+  private void fillColumnReferenceIds(List<Column> columns) {
+    if (nullOrEmpty(columns)) {
+      return;
+    }
+    for (Column column : EntityUtil.getFlattenedEntityField(columns)) {
+      JsonNode value =
+          column.getExtension() == null ? null : JsonUtils.valueToTree(column.getExtension());
+      if (ColumnExtensionReferences.carriesReferences(entityType, value)) {
+        ColumnExtensionReferences.fillIds(
+            value, ColumnExtensionReferences.referencePropertiesOf(entityType));
+        column.setExtension(JsonUtils.treeToValue(value, Object.class));
+      }
+    }
+  }
+
+  /**
+   * The persisted side-table value of each column, when this holder type can carry references;
+   * null otherwise. The updater compares against it rather than the request's in-memory original,
+   * which a writer may have read before a target was deleted and the sweep cleaned the value.
+   */
+  protected final Map<String, Object> persistedColumnExtensions(
+      UUID entityId, List<Column> columns) {
+    if (nullOrEmpty(columns) || !columnsCarryReferences(columns)) {
+      return null;
+    }
+    List<String> keys =
+        columns.stream()
+            .map(Column::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .map(FullyQualifiedName::buildHash)
+            .toList();
+    Map<String, Object> persisted = new HashMap<>();
+    daoCollection
+        .entityExtensionDAO()
+        .getExtensionsByKeys(entityId, keys)
+        .forEach(
+            record ->
+                persisted.put(
+                    record.extensionName(),
+                    JsonUtils.readValue(record.extensionJson(), Object.class)));
+    return persisted;
+  }
+
+  private boolean columnsCarryReferences(List<Column> columns) {
+    return ColumnExtensionReferences.tracksReferences(entityType)
+        || columns.stream()
+            .filter(column -> column.getExtension() != null)
+            .anyMatch(
+                column ->
+                    ColumnExtensionReferences.carriesReferences(
+                        entityType, JsonUtils.valueToTree(column.getExtension())));
+  }
+
+  /** What a column holds now: the persisted value when it was read, else the request's copy. */
+  private static Object currentColumnExtension(Column stored, Map<String, Object> persisted) {
+    if (persisted == null || stored.getFullyQualifiedName() == null) {
+      return stored.getExtension();
+    }
+    return persisted.get(FullyQualifiedName.buildHash(stored.getFullyQualifiedName()));
+  }
+
+  private ColumnExtensionReferences columnReferences() {
+    return new ColumnExtensionReferences(daoCollection);
+  }
+
+  /** Marks on this type's column values, by holder and column key; empty when none can exist. */
+  protected final Map<UUID, Map<String, Set<String>>> pendingColumnReferences(
+      List<UUID> holderIds) {
+    return columnReferences().pending(entityType, holderIds);
+  }
+
+  protected final void removePendingColumnReferences(
+      UUID holderId, List<Column> columns, Map<UUID, Map<String, Set<String>>> pending) {
+    ColumnExtensionReferences.removePending(entityType, holderId, columns, pending);
   }
 
   public final void removeExtension(EntityInterface entity) {
@@ -6121,7 +6247,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // table-level extension would silently wipe its column-level custom properties.
     if (!entityIds.isEmpty()) {
       daoCollection.entityExtensionDAO().deleteByJsonSchemaBatch(entityIds, "customFieldSchema");
-      daoCollection.entityExtensionReferenceDAO().deleteAllBatch(entityIds);
+      // Only entity-level rows: the holder's column-level rows belong to values that stay.
+      daoCollection
+          .entityExtensionReferenceDAO()
+          .deleteByExtensionPrefixBatch(
+              entityIds, TypeRegistry.getCustomPropertyFQNPrefix(entityType) + Entity.SEPARATOR);
     }
   }
 
@@ -6151,6 +6281,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 extensionReferences()
                     .store(
                         entity.getId(),
+                        entityType,
                         TypeRegistry.getCustomPropertyFQN(entityType, field.getKey()),
                         field.getValue());
               }
@@ -6168,8 +6299,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         extensionReferences()
             .replace(
                 updated.getId(),
+                entityType,
                 TypeRegistry.getCustomPropertyFQN(entityType, name),
-                before.get(name),
                 after.get(name));
       }
     }
@@ -9141,6 +9272,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityChanged = false;
     private boolean versionChanged = false;
     private boolean entityStored = false;
+    // True while revert() replays the pre-session snapshot; the reference ledger is left alone.
+    protected boolean consolidatingPass = false;
 
     /**
      * Diff produced by THIS request. Every {@code EntityUpdater} entry point must populate this
@@ -9730,6 +9863,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
      */
     @Transaction
     private void updateInternal(boolean consolidatingChanges) {
+      consolidatingPass = consolidatingChanges;
       if (operation.isDelete()) { // Soft DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
@@ -9762,6 +9896,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     @Transaction
     private void updateInternalForImport(boolean consolidatingChanges) {
+      consolidatingPass = consolidatingChanges;
       if (operation.isDelete()) { // Soft DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
@@ -11292,8 +11427,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       deletedColumns.forEach(
           deleted -> {
             daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName());
-            String extensionKey = FullyQualifiedName.buildHash(deleted.getFullyQualifiedName());
-            daoCollection.entityExtensionDAO().delete(entityId, extensionKey);
+            deleteColumnExtension(entityId, deleted.getFullyQualifiedName());
           });
 
       // Add tags related to newly added columns
@@ -11305,8 +11439,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
             added.getFullyQualifiedName());
       }
       // Added columns are skipped by the existing-column loop below.
-      storeColumnExtensions(entityId, addedColumns);
+      storeColumnExtensions(entityId, addedColumns, !consolidatingPass);
 
+      Map<String, Object> persistedExtensions =
+          consolidatingPass ? null : persistedColumnExtensions(entityId, origColumns);
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
         Column stored =
@@ -11342,8 +11478,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(columnPrefix, stored, updated);
-        if (!Objects.equals(stored.getExtension(), updated.getExtension())) {
-          storeColumnExtension(entityId, updated);
+        if (!Objects.equals(
+            currentColumnExtension(stored, persistedExtensions), updated.getExtension())) {
+          storeColumnExtension(entityId, updated, !consolidatingPass);
         }
 
         if (updated.getChildren() != null && stored.getChildren() != null) {

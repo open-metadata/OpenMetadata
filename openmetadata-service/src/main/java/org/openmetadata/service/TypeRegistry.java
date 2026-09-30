@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
@@ -240,6 +241,17 @@ public class TypeRegistry {
                 Entity.TYPE, property.getPropertyType().getName()));
       }
     }
+  }
+
+  /** Whether the registry on this server knows a custom property of one of these types. */
+  public static boolean hasCustomPropertyOfType(String entityType, Set<String> propertyTypeNames) {
+    String prefix = getCustomPropertyFQNPrefix(entityType) + Entity.SEPARATOR;
+    return CUSTOM_PROPERTIES.entrySet().stream()
+        .anyMatch(
+            entry ->
+                entry.getKey().startsWith(prefix)
+                    && entry.getValue().getPropertyType() != null
+                    && propertyTypeNames.contains(entry.getValue().getPropertyType().getName()));
   }
 
   public static String getCustomPropertyFQNPrefix(String entityType) {

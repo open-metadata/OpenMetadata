@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
@@ -149,13 +150,20 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
-    if (fields.contains("columns") && fields.contains("extension")) {
-      if (dashboardDataModel.getColumns() != null) {
+    // Columns are served whether or not they were asked for, so the filter does not key on fields.
+    if (!nullOrEmpty(dashboardDataModel.getColumns())) {
+      // Marks before side-table values. The inline copy came with the entity row, so a read that
+      // straddles a compaction can still serve a dead id once.
+      Map<UUID, Map<String, Set<String>>> pending =
+          pendingColumnReferences(List.of(dashboardDataModel.getId()));
+      if (fields.contains("columns") && fields.contains("extension")) {
         for (Column column : dashboardDataModel.getColumns()) {
           column.setExtension(
               getColumnExtension(dashboardDataModel.getId(), column.getFullyQualifiedName()));
         }
       }
+      removePendingColumnReferences(
+          dashboardDataModel.getId(), dashboardDataModel.getColumns(), pending);
     }
   }
 
@@ -220,6 +228,19 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     // Bulk fetch tags for columns if needed
     fetchAndSetColumnTags(dataModels, fields);
+    filterPendingColumnReferences(dataModels);
+  }
+
+  /** List reads serve the inline copy of column values, so they take the same filter. */
+  private void filterPendingColumnReferences(List<DashboardDataModel> dataModels) {
+    if (dataModels.isEmpty()) {
+      return;
+    }
+    Map<UUID, Map<String, Set<String>>> pending =
+        pendingColumnReferences(dataModels.stream().map(DashboardDataModel::getId).toList());
+    dataModels.forEach(
+        dataModel ->
+            removePendingColumnReferences(dataModel.getId(), dataModel.getColumns(), pending));
   }
 
   @Override
@@ -335,11 +356,16 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
           entityType, paginatedColumns, dataModel.getFullyQualifiedName(), true);
     }
 
+    // Marks before side-table values. The inline copy came with the entity row, so a read that
+    // straddles a compaction can still serve a dead id once.
+    Map<UUID, Map<String, Set<String>>> pending =
+        pendingColumnReferences(List.of(dataModel.getId()));
     if (fieldsParam != null && fieldsParam.contains("extension")) {
       for (Column column : paginatedColumns) {
         column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
       }
     }
+    removePendingColumnReferences(dataModel.getId(), paginatedColumns, pending);
 
     // Calculate pagination metadata
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
@@ -350,16 +376,18 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   public Column enrichSingleColumnFields(
       DashboardDataModel dataModel, Column column, String fieldsParam) {
-    if (fieldsParam == null) {
-      return column;
-    }
     List<Column> singleton = new ArrayList<>(List.of(column));
-    if (fieldsParam.contains("tags")) {
+    // Marks before side-table values. The inline copy came with the entity row, so a read that
+    // straddles a compaction can still serve a dead id once.
+    Map<UUID, Map<String, Set<String>>> pending =
+        pendingColumnReferences(List.of(dataModel.getId()));
+    if (fieldsParam != null && fieldsParam.contains("tags")) {
       populateEntityFieldTags(entityType, singleton, dataModel.getFullyQualifiedName(), true);
     }
-    if (fieldsParam.contains("extension")) {
+    if (fieldsParam != null && fieldsParam.contains("extension")) {
       column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
     }
+    removePendingColumnReferences(dataModel.getId(), singleton, pending);
     return column;
   }
 

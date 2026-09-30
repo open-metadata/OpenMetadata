@@ -20,23 +20,29 @@ import static org.openmetadata.service.jdbi3.EntityExtensionReferences.ENTITY_RE
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ColumnExtensionReferences;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecordWithId;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceKey;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityExtensionReferences;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
- * Builds {@code entity_extension_reference} from the entity-level custom-property values that
- * exist before the ledger did. Name-only references get their id filled in place, references whose
+ * Builds {@code entity_extension_reference} from the custom-property values, entity-level and
+ * column-level, that exist before the ledger did. Name-only references get their id filled in place, references whose
  * target is already gone are marked for the compaction sweep, and everything else is indexed live.
  * Idempotent and restart-from-zero: rows upsert, marks are re-applied. Reads property definitions
  * from {@code field_relationship} because {@code TypeRegistry} is not loaded in the migrate job.
@@ -44,14 +50,24 @@ import org.openmetadata.service.util.EntityUtil;
 @Slf4j
 public final class CustomPropertyReferenceBackfill {
   private static final int PAGE_SIZE = 1_000;
+  private static final int COLUMN_PAGE_SIZE = 500;
+  private static final String COLUMN_EXTENSION_SCHEMA =
+      TableRepository.COLUMN_EXTENSION_JSON_SCHEMA;
 
   private CustomPropertyReferenceBackfill() {}
 
   public static void backfillCustomPropertyReferences(CollectionDAO dao) {
     Set<String> deadTargets = new HashSet<>();
+    List<String> keys = referencePropertyKeys(dao);
     int values = 0;
-    for (String key : referencePropertyKeys(dao)) {
-      values += backfillProperty(dao, key, deadTargets);
+    for (String key : keys) {
+      if (columnHolderType(key) == null) {
+        values += backfillProperty(dao, key, deadTargets);
+      }
+    }
+    Map<String, Set<String>> columnProperties = columnPropertiesByHolderType(keys);
+    if (!columnProperties.isEmpty()) {
+      values += backfillColumnValues(dao, columnProperties, deadTargets);
     }
     int marked = dao.entityExtensionReferenceDAO().markPending(new ArrayList<>(deadTargets));
     LOG.info(
@@ -71,13 +87,32 @@ public final class CustomPropertyReferenceBackfill {
     return keys;
   }
 
+  /** The holder type for a column-level property key, or null for an entity-level one. */
+  private static String columnHolderType(String key) {
+    return ColumnExtensionReferences.holderTypeOfColumnType(FullyQualifiedName.split(key)[0]);
+  }
+
+  private static Map<String, Set<String>> columnPropertiesByHolderType(List<String> keys) {
+    Map<String, Set<String>> byHolderType = new HashMap<>();
+    for (String key : keys) {
+      String holderType = columnHolderType(key);
+      if (holderType != null) {
+        byHolderType
+            .computeIfAbsent(holderType, ignored -> new HashSet<>())
+            .add(FullyQualifiedName.unquoteName(FullyQualifiedName.split(key)[2]));
+      }
+    }
+    return byHolderType;
+  }
+
   private static int backfillProperty(CollectionDAO dao, String key, Set<String> deadTargets) {
+    String holderType = FullyQualifiedName.split(key)[0];
     int values = 0;
     List<ExtensionRecordWithId> page =
         dao.entityExtensionDAO().listByExtensionAfterId(key, "", PAGE_SIZE);
     while (!page.isEmpty()) {
       for (ExtensionRecordWithId row : page) {
-        indexValue(dao, row, deadTargets);
+        indexValue(dao, row, holderType, deadTargets);
         values++;
       }
       String afterId = page.getLast().id().toString();
@@ -90,7 +125,7 @@ public final class CustomPropertyReferenceBackfill {
   }
 
   private static void indexValue(
-      CollectionDAO dao, ExtensionRecordWithId row, Set<String> deadTargets) {
+      CollectionDAO dao, ExtensionRecordWithId row, String holderType, Set<String> deadTargets) {
     JsonNode value = JsonUtils.readTree(row.extensionJson());
     String before = value.toString();
     EntityUtil.fillCustomPropertyReferenceIds(value);
@@ -98,12 +133,97 @@ public final class CustomPropertyReferenceBackfill {
       dao.entityExtensionDAO()
           .insert(row.id(), row.extensionName(), CUSTOM_FIELD_SCHEMA, value.toString());
     }
-    Map<String, List<String>> byType = EntityExtensionReferences.referencedIdsByType(value);
+    insertRows(
+        dao,
+        new ValueKey(row.id(), row.extensionName(), holderType),
+        EntityExtensionReferences.referencedIdsByType(value),
+        deadTargets);
+  }
+
+  /**
+   * Column values have no index by property, so this walks every column-extension row once, keys
+   * only, reading one value at a time. It only runs when a column-level reference property exists.
+   */
+  private static int backfillColumnValues(
+      CollectionDAO dao, Map<String, Set<String>> propertiesByHolderType, Set<String> deadTargets) {
+    int values = 0;
+    List<ReferenceKey> page =
+        dao.entityExtensionDAO().listColumnExtensionKeysAfter("", "", COLUMN_PAGE_SIZE);
+    while (!page.isEmpty()) {
+      Map<UUID, String> holderTypes = holderTypesOf(page, propertiesByHolderType.keySet());
+      for (ReferenceKey key : page) {
+        String holderType = holderTypes.get(key.id());
+        if (holderType != null) {
+          values +=
+              indexColumnValue(
+                  dao, key, holderType, propertiesByHolderType.get(holderType), deadTargets);
+        }
+      }
+      ReferenceKey last = page.getLast();
+      page =
+          page.size() < COLUMN_PAGE_SIZE
+              ? List.of()
+              : dao.entityExtensionDAO()
+                  .listColumnExtensionKeysAfter(
+                      last.id().toString(), last.extension(), COLUMN_PAGE_SIZE);
+    }
+    return values;
+  }
+
+  /** A column value does not record what kind of entity holds it; the holder tables do. */
+  private static Map<UUID, String> holderTypesOf(List<ReferenceKey> page, Set<String> holderTypes) {
+    List<String> ids = page.stream().map(key -> key.id().toString()).distinct().toList();
+    Map<UUID, String> types = new HashMap<>();
+    for (String holderType : holderTypes) {
+      EntityDAO<?> holderDao = Entity.getEntityRepository(holderType).getDao();
+      EntityDAO.queryInChunks(
+              ids, chunk -> holderDao.findExistingIds(holderDao.getTableName(), chunk))
+          .forEach(id -> types.put(UUID.fromString(id), holderType));
+    }
+    return types;
+  }
+
+  private static int indexColumnValue(
+      CollectionDAO dao,
+      ReferenceKey key,
+      String holderType,
+      Set<String> referenceProperties,
+      Set<String> deadTargets) {
+    String json = dao.entityExtensionDAO().getExtension(key.id(), key.extension());
+    if (json == null) {
+      return 0;
+    }
+    JsonNode value = JsonUtils.readTree(json);
+    String before = value.toString();
+    ColumnExtensionReferences.fillIds(value, referenceProperties::contains);
+    if (!before.equals(value.toString())) {
+      dao.entityExtensionDAO()
+          .insert(key.id(), key.extension(), COLUMN_EXTENSION_SCHEMA, value.toString());
+    }
+    insertRows(
+        dao,
+        new ValueKey(key.id(), key.extension(), holderType),
+        ColumnExtensionReferences.referencedIdsByType(value, referenceProperties::contains),
+        deadTargets);
+    return 1;
+  }
+
+  private record ValueKey(UUID holderId, String extension, String holderType) {}
+
+  private static void insertRows(
+      CollectionDAO dao,
+      ValueKey valueKey,
+      Map<String, List<String>> byType,
+      Set<String> deadTargets) {
     byType.forEach(
         (type, ids) -> {
           dao.entityExtensionReferenceDAO()
               .insertManyKeepingMarks(
-                  row.id(), row.extensionName(), ids, Collections.nCopies(ids.size(), type));
+                  valueKey.holderId(),
+                  valueKey.extension(),
+                  valueKey.holderType(),
+                  ids,
+                  Collections.nCopies(ids.size(), type));
           deadTargets.addAll(missingTargets(type, ids));
         });
   }

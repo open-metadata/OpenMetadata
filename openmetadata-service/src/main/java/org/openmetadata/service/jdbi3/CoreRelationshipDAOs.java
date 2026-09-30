@@ -365,6 +365,22 @@ public interface CoreRelationshipDAOs {
     String getExtensionForUpdateSkipLocked(
         @BindUUID("id") UUID id, @Bind("extension") String extension);
 
+    /** Keys only, so a page never holds more than one large column value in memory. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, extension FROM entity_extension WHERE jsonSchema = 'columnExtension' "
+                + "AND (id > :id OR (id = :id AND extension > :extension)) "
+                + "ORDER BY id, extension LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, extension FROM entity_extension WHERE jsonSchema = 'columnExtension' "
+                + "AND (id, extension) > (:id, :extension) ORDER BY id, extension LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ReferenceKeyMapper.class)
+    List<ReferenceKey> listColumnExtensionKeysAfter(
+        @Bind("id") String id, @Bind("extension") String extension, @Bind("limit") int limit);
+
     @SqlQuery(
         "SELECT id, extension, json FROM entity_extension "
             + "WHERE extension = :extension AND id > :afterId ORDER BY id LIMIT :limit")
@@ -386,14 +402,14 @@ public interface CoreRelationshipDAOs {
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO entity_extension_reference(id, extension, toId, toEntity) "
-                + "VALUES (:id, :extension, :toId, :toEntity) "
+            "INSERT INTO entity_extension_reference(id, extension, fromEntity, toId, toEntity) "
+                + "VALUES (:id, :extension, :fromEntity, :toId, :toEntity) "
                 + "ON DUPLICATE KEY UPDATE toEntity = VALUES(toEntity), pendingCompaction = FALSE",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO entity_extension_reference(id, extension, toId, toEntity) "
-                + "VALUES (:id, :extension, :toId, :toEntity) "
+            "INSERT INTO entity_extension_reference(id, extension, fromEntity, toId, toEntity) "
+                + "VALUES (:id, :extension, :fromEntity, :toId, :toEntity) "
                 + "ON CONFLICT (id, extension, toId) DO UPDATE SET "
                 + "toEntity = EXCLUDED.toEntity, pendingCompaction = FALSE",
         connectionType = POSTGRES)
@@ -401,6 +417,7 @@ public interface CoreRelationshipDAOs {
     void insertMany(
         @BindUUID("id") UUID id,
         @Bind("extension") String extension,
+        @Bind("fromEntity") String fromEntity,
         @Bind("toId") List<String> toIds,
         @Bind("toEntity") List<String> toEntities);
 
@@ -411,20 +428,21 @@ public interface CoreRelationshipDAOs {
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO entity_extension_reference(id, extension, toId, toEntity) "
-                + "VALUES (:id, :extension, :toId, :toEntity) "
+            "INSERT INTO entity_extension_reference(id, extension, fromEntity, toId, toEntity) "
+                + "VALUES (:id, :extension, :fromEntity, :toId, :toEntity) "
                 + "ON DUPLICATE KEY UPDATE toEntity = VALUES(toEntity)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO entity_extension_reference(id, extension, toId, toEntity) "
-                + "VALUES (:id, :extension, :toId, :toEntity) "
+            "INSERT INTO entity_extension_reference(id, extension, fromEntity, toId, toEntity) "
+                + "VALUES (:id, :extension, :fromEntity, :toId, :toEntity) "
                 + "ON CONFLICT (id, extension, toId) DO NOTHING",
         connectionType = POSTGRES)
     @BatchChunkSize(1000)
     void insertManyKeepingMarks(
         @BindUUID("id") UUID id,
         @Bind("extension") String extension,
+        @Bind("fromEntity") String fromEntity,
         @Bind("toId") List<String> toIds,
         @Bind("toEntity") List<String> toEntities);
 
@@ -457,8 +475,29 @@ public interface CoreRelationshipDAOs {
       }
     }
 
+    /** Entity-level rows only; a holder's column-level rows are keyed by column and survive. */
+    @SqlUpdate(
+        "DELETE FROM entity_extension_reference WHERE id IN (<ids>) AND extension LIKE :extension")
+    void deleteByExtensionPrefixBatchInternal(
+        @BindList("ids") List<String> ids,
+        @BindConcat(
+                value = "extension",
+                parts = {":extensionPrefix", "%"})
+            String extensionPrefix);
+
+    default void deleteByExtensionPrefixBatch(List<String> ids, String extensionPrefix) {
+      if (!nullOrEmpty(ids)) {
+        EntityDAO.updateInChunks(
+            ids, chunk -> deleteByExtensionPrefixBatchInternal(chunk, extensionPrefix));
+      }
+    }
+
     @SqlUpdate("DELETE FROM entity_extension_reference WHERE extension = :extension")
     void deleteExtension(@Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT toId FROM entity_extension_reference WHERE id = :id AND extension = :extension")
+    List<String> findToIds(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     /** Plain consistent read: no locks, so a delete never holds a gap on the target index. */
     @SqlQuery(
@@ -516,10 +555,16 @@ public interface CoreRelationshipDAOs {
 
     /** Non-locking candidate read for the sweep; one row per pending reference, dedupe in Java. */
     @SqlQuery(
-        "SELECT id, extension FROM entity_extension_reference "
+        "SELECT id, extension, fromEntity FROM entity_extension_reference "
             + "WHERE pendingCompaction = TRUE ORDER BY id, extension LIMIT :limit")
-    @RegisterRowMapper(ReferenceKeyMapper.class)
-    List<ReferenceKey> listPendingKeys(@Bind("limit") int limit);
+    @RegisterRowMapper(PendingKeyMapper.class)
+    List<PendingKey> listPendingKeys(@Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT id, extension, fromEntity FROM entity_extension_reference "
+            + "WHERE id = :id AND pendingCompaction = TRUE ORDER BY extension")
+    @RegisterRowMapper(PendingKeyMapper.class)
+    List<PendingKey> listPendingKeysFor(@BindUUID("id") UUID id);
 
     /**
      * Keyset over the primary key. MySQL's range optimizer handles the OR-expanded form; Postgres
@@ -545,10 +590,11 @@ public interface CoreRelationshipDAOs {
         @Bind("toId") String toId,
         @Bind("limit") int limit);
 
-    /** Taken after the holder's entity_extension row lock, never before; see the sweep. */
+    /** Taken after the holder's entity_extension row lock; SKIP LOCKED so the sweep never waits. */
     @SqlQuery(
         "SELECT toId FROM entity_extension_reference "
-            + "WHERE id = :id AND extension = :extension AND pendingCompaction = TRUE FOR UPDATE")
+            + "WHERE id = :id AND extension = :extension AND pendingCompaction = TRUE "
+            + "FOR UPDATE SKIP LOCKED")
     List<String> findPendingForUpdate(@BindUUID("id") UUID id, @Bind("extension") String extension);
   }
 
@@ -568,6 +614,19 @@ public interface CoreRelationshipDAOs {
   }
 
   record ReferenceTarget(UUID id, String extension, String toId, String toEntity) {}
+
+  /** A ledger key the sweep has to compact, with the type of the entity that holds the value. */
+  record PendingKey(UUID id, String extension, String fromEntity) {}
+
+  class PendingKeyMapper implements RowMapper<PendingKey> {
+    @Override
+    public PendingKey map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new PendingKey(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("extension"),
+          rs.getString("fromEntity"));
+    }
+  }
 
   class ReferenceTargetMapper implements RowMapper<ReferenceTarget> {
     @Override

@@ -500,10 +500,12 @@ DEALLOCATE PREPARE announcement_type_index_stmt;
 -- Custom-property entityReference / entityReferenceList values copy the referenced entity into
 -- the holder's extension JSON with nothing linking the copy back. One row per reference lets a
 -- hard delete find every holder through an index; pendingCompaction marks references whose
--- target is gone until the compaction sweep rewrites the JSON. Entity-level values only.
+-- target is gone until the compaction sweep rewrites the JSON. Covers entity-level values and
+-- column-level values of tables and dashboard data models; fromEntity is the holder's type.
 CREATE TABLE IF NOT EXISTS entity_extension_reference (
     id VARCHAR(36) NOT NULL,
     extension VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    fromEntity VARCHAR(256) NOT NULL,
     toId VARCHAR(36) NOT NULL,
     toEntity VARCHAR(256) NOT NULL,
     pendingCompaction BOOLEAN NOT NULL DEFAULT FALSE,

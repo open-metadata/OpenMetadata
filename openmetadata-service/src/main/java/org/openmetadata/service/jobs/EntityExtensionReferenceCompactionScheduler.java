@@ -19,7 +19,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.jdbi3.EntityExtensionReferences;
+import org.openmetadata.service.jdbi3.EntityExtensionReferenceCompaction;
 
 /**
  * Rewrites custom-property values whose referenced entity was hard-deleted. The delete only marks
@@ -37,13 +37,14 @@ public class EntityExtensionReferenceCompactionScheduler implements Managed {
 
   private static volatile EntityExtensionReferenceCompactionScheduler current;
 
-  private final EntityExtensionReferences references;
+  private final EntityExtensionReferenceCompaction compaction;
   private final AtomicBoolean running = new AtomicBoolean();
   private final AtomicBoolean rerunRequested = new AtomicBoolean();
   private ScheduledExecutorService scheduler;
 
-  public EntityExtensionReferenceCompactionScheduler(EntityExtensionReferences references) {
-    this.references = references;
+  public EntityExtensionReferenceCompactionScheduler(
+      EntityExtensionReferenceCompaction compaction) {
+    this.compaction = compaction;
   }
 
   /** Single-flight nudge from a hard delete; a no-op before start, after stop, or mid-run. */
@@ -100,7 +101,8 @@ public class EntityExtensionReferenceCompactionScheduler implements Managed {
   int runOnce() {
     int rewritten = 0;
     for (int page = 0; page < MAX_PAGES_PER_RUN; page++) {
-      EntityExtensionReferences.CompactionPage result = references.compactPending(PAGE_SIZE);
+      EntityExtensionReferenceCompaction.CompactionPage result =
+          compaction.compactPending(PAGE_SIZE);
       rewritten += result.rewritten();
       // A full page with no progress means every candidate is held by another transaction.
       if (result.fetched() < PAGE_SIZE || result.processed() == 0) {

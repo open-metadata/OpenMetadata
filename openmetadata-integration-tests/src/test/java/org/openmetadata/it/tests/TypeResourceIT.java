@@ -55,7 +55,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceKey;
-import org.openmetadata.service.jdbi3.EntityExtensionReferences;
+import org.openmetadata.service.jdbi3.EntityExtensionReferenceCompaction;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceBackfill;
 import org.slf4j.Logger;
@@ -1671,7 +1671,7 @@ public class TypeResourceIT {
         .atMost(Duration.ofSeconds(30))
         .untilAsserted(
             () -> {
-              new EntityExtensionReferences(Entity.getCollectionDAO())
+              new EntityExtensionReferenceCompaction(Entity.getCollectionDAO())
                   .compactPendingFor(domain.getId());
               assertTrue(expected.test(storedValue(domain, property)));
             });
@@ -1682,10 +1682,22 @@ public class TypeResourceIT {
         .atMost(Duration.ofSeconds(30))
         .untilAsserted(
             () -> {
-              new EntityExtensionReferences(Entity.getCollectionDAO())
+              new EntityExtensionReferenceCompaction(Entity.getCollectionDAO())
                   .compactPendingFor(domain.getId());
               assertTrue(ledgerRowsFor(target).isEmpty());
+              assertTrue(pendingRowsFor(domain.getId(), target).isEmpty());
             });
+  }
+
+  /** Marked rows are not live, so {@link #ledgerRowsFor} alone passes right after a delete. */
+  private static List<String> pendingRowsFor(UUID holderId, UUID target) {
+    return Entity.getCollectionDAO()
+        .entityExtensionReferenceDAO()
+        .findPending(List.of(holderId.toString()))
+        .stream()
+        .map(row -> row.toId())
+        .filter(toId -> toId.equals(target.toString()))
+        .toList();
   }
 
   private static List<ReferenceKey> ledgerRowsFor(UUID target) {

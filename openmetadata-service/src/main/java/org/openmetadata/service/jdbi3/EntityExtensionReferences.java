@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,28 +27,25 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceKey;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceRow;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceTarget;
-import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
- * Keeps {@code entity_extension_reference} in step with entity-level custom-property values of
- * type {@code entityReference} and {@code entityReferenceList}, and applies it on every path: a
- * writer proves its targets exist under a shared lock, reads hide references whose target was
- * hard-deleted, and the compaction sweep rewrites those values once the delete has committed.
+ * Keeps {@code entity_extension_reference} in step with custom-property values of type {@code
+ * entityReference} and {@code entityReferenceList}: a writer proves its targets exist under a
+ * shared lock, reads hide references whose target was hard-deleted, and {@link
+ * EntityExtensionReferenceCompaction} rewrites those values once the delete has committed.
+ * Entity-level values live here; column-level values in {@link ColumnExtensionReferences}.
  */
 @Slf4j
 public final class EntityExtensionReferences {
@@ -58,6 +54,7 @@ public final class EntityExtensionReferences {
   private static final String FIELD_ID = "id";
   private static final String FIELD_TYPE = "type";
   public static final String CUSTOM_FIELD_SCHEMA = "customFieldSchema";
+  private static final String CUSTOM_PROPERTIES_SEGMENT = ".customProperties.";
 
   /** One warning per (property, type) per server, not one per edit. */
   private static final Cache<String, Boolean> WARNED_TYPES =
@@ -67,6 +64,11 @@ public final class EntityExtensionReferences {
 
   public EntityExtensionReferences(CollectionDAO daoCollection) {
     this.daoCollection = daoCollection;
+  }
+
+  /** Entity-level keys read {@code <type>.customProperties.<name>}; column keys are FQN hashes. */
+  static boolean isEntityLevelKey(String extension) {
+    return extension.contains(CUSTOM_PROPERTIES_SEGMENT);
   }
 
   public static boolean isReferenceProperty(String entityType, String propertyName) {
@@ -97,7 +99,7 @@ public final class EntityExtensionReferences {
     }
   }
 
-  private static String idOf(JsonNode ref) {
+  static String idOf(JsonNode ref) {
     return ref != null && ref.hasNonNull(FIELD_ID) ? ref.get(FIELD_ID).asText() : null;
   }
 
@@ -133,27 +135,33 @@ public final class EntityExtensionReferences {
   }
 
   /** Writes the rows for one value after locking its targets; a missing target fails the write. */
-  public void store(UUID holderId, String extension, JsonNode value) {
-    insertLocked(holderId, extension, referencedIdsByType(value));
+  public void store(UUID holderId, String holderType, String extension, JsonNode value) {
+    insertLocked(holderId, holderType, extension, referencedIdsByType(value));
   }
 
-  /** Applies the difference between two values of the same property. */
-  public void replace(UUID holderId, String extension, JsonNode original, JsonNode updated) {
-    Set<String> before = flatten(referencedIdsByType(original));
+  /**
+   * Brings the ledger rows of one property in line with its new value. The baseline is the
+   * persisted ledger, not the request's original: a writer that read the entity before a target
+   * was deleted and commits after the sweep dropped its rows would otherwise write the dead id
+   * back with no row to mark it. Against the ledger the id is new, the lock fails, the write 400s.
+   */
+  public void replace(UUID holderId, String holderType, String extension, JsonNode updated) {
+    Set<String> before =
+        new HashSet<>(daoCollection.entityExtensionReferenceDAO().findToIds(holderId, extension));
     Map<String, List<String>> after = referencedIdsByType(updated);
     List<String> removed = new ArrayList<>(before);
     removed.removeAll(flatten(after));
     if (!removed.isEmpty()) {
       daoCollection.entityExtensionReferenceDAO().deleteMany(holderId, extension, removed);
     }
-    insertLocked(holderId, extension, withoutIds(after, before));
+    insertLocked(holderId, holderType, extension, withoutIds(after, before));
   }
 
-  private static Set<String> flatten(Map<String, List<String>> byType) {
+  static Set<String> flatten(Map<String, List<String>> byType) {
     return byType.values().stream().flatMap(List::stream).collect(Collectors.toSet());
   }
 
-  private static Map<String, List<String>> withoutIds(
+  static Map<String, List<String>> withoutIds(
       Map<String, List<String>> byType, Set<String> excluded) {
     Map<String, List<String>> kept = new LinkedHashMap<>();
     byType.forEach(
@@ -166,13 +174,15 @@ public final class EntityExtensionReferences {
     return kept;
   }
 
-  private void insertLocked(UUID holderId, String extension, Map<String, List<String>> byType) {
+  void insertLocked(
+      UUID holderId, String holderType, String extension, Map<String, List<String>> byType) {
     byType.forEach(this::lockExisting);
     byType.forEach(
         (type, ids) ->
             daoCollection
                 .entityExtensionReferenceDAO()
-                .insertMany(holderId, extension, ids, Collections.nCopies(ids.size(), type)));
+                .insertMany(
+                    holderId, extension, holderType, ids, Collections.nCopies(ids.size(), type)));
   }
 
   /**
@@ -215,6 +225,9 @@ public final class EntityExtensionReferences {
     List<String> ids = holderIds.stream().map(UUID::toString).toList();
     Map<UUID, Map<String, Set<String>>> pending = new HashMap<>();
     for (ReferenceRow row : daoCollection.entityExtensionReferenceDAO().findPending(ids)) {
+      if (!isEntityLevelKey(row.extension())) {
+        continue;
+      }
       pending
           .computeIfAbsent(row.id(), ignored -> new HashMap<>())
           .computeIfAbsent(
@@ -252,7 +265,7 @@ public final class EntityExtensionReferences {
     }
   }
 
-  private static boolean removeDeadElements(ArrayNode list, Set<String> dead) {
+  static boolean removeDeadElements(ArrayNode list, Set<String> dead) {
     boolean removed = false;
     Iterator<JsonNode> elements = list.elements();
     while (elements.hasNext()) {
@@ -330,123 +343,9 @@ public final class EntityExtensionReferences {
     return rows.size();
   }
 
-  /** Compacts every pending value of one holder; used by tests and the ops command. */
-  public int compactPendingFor(UUID holderId) {
-    Set<ReferenceKey> keys =
-        daoCollection
-            .entityExtensionReferenceDAO()
-            .findPending(List.of(holderId.toString()))
-            .stream()
-            .map(ReferenceRow::key)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
-    int rewritten = 0;
-    for (ReferenceKey key : keys) {
-      rewritten += compact(key) == Outcome.REWRITTEN ? 1 : 0;
-    }
-    return rewritten;
-  }
-
   public int markPending(List<UUID> deletedIds) {
     return daoCollection
         .entityExtensionReferenceDAO()
         .markPending(deletedIds.stream().map(UUID::toString).toList());
-  }
-
-  /** What one compaction pass over up to {@code limit} pending rows did. */
-  public record CompactionPage(int fetched, int processed, int rewritten) {}
-
-  enum Outcome {
-    SKIPPED,
-    CLEANED,
-    REWRITTEN
-  }
-
-  /** Compacts the holders behind up to {@code limit} pending rows. */
-  public CompactionPage compactPending(int limit) {
-    List<ReferenceKey> rows = daoCollection.entityExtensionReferenceDAO().listPendingKeys(limit);
-    int processed = 0;
-    int rewritten = 0;
-    for (ReferenceKey key : new LinkedHashSet<>(rows)) {
-      Outcome outcome = compact(key);
-      processed += outcome == Outcome.SKIPPED ? 0 : 1;
-      rewritten += outcome == Outcome.REWRITTEN ? 1 : 0;
-    }
-    return new CompactionPage(rows.size(), processed, rewritten);
-  }
-
-  /**
-   * One short transaction per holder that takes the value row before its ledger rows, the same
-   * order a writer uses, so the two never wait on each other in a cycle. A row another
-   * transaction holds is skipped and picked up by a later run.
-   */
-  Outcome compact(ReferenceKey key) {
-    Outcome outcome =
-        DeadlockRetry.execute(
-            () -> daoCollection.inTransaction(dao -> compactInTransaction(dao, key)));
-    if (outcome == Outcome.REWRITTEN) {
-      refreshHolder(key);
-    }
-    return outcome;
-  }
-
-  private Outcome compactInTransaction(CollectionDAO dao, ReferenceKey key) {
-    String json =
-        dao.entityExtensionDAO().getExtensionForUpdateSkipLocked(key.id(), key.extension());
-    if (json == null) {
-      return dropOrphanRows(dao, key);
-    }
-    List<String> dead =
-        dao.entityExtensionReferenceDAO().findPendingForUpdate(key.id(), key.extension());
-    if (dead.isEmpty()) {
-      return Outcome.CLEANED;
-    }
-    boolean changed = rewriteValue(dao, key, JsonUtils.readTree(json), new HashSet<>(dead));
-    dao.entityExtensionReferenceDAO().deleteMany(key.id(), key.extension(), dead);
-    return changed ? Outcome.REWRITTEN : Outcome.CLEANED;
-  }
-
-  /** Null from the locking read means locked elsewhere, or gone; only the latter leaves orphans. */
-  private static Outcome dropOrphanRows(CollectionDAO dao, ReferenceKey key) {
-    if (dao.entityExtensionDAO().getExtension(key.id(), key.extension()) != null) {
-      return Outcome.SKIPPED;
-    }
-    dao.entityExtensionReferenceDAO().delete(key.id(), key.extension());
-    return Outcome.CLEANED;
-  }
-
-  /** An edit may already have rewritten the value; a no-op rewrite is skipped, not replayed. */
-  private static boolean rewriteValue(
-      CollectionDAO dao, ReferenceKey key, JsonNode value, Set<String> dead) {
-    boolean changed;
-    if (value.isArray()) {
-      changed = removeDeadElements((ArrayNode) value, dead);
-      if (changed && value.isEmpty()) {
-        dao.entityExtensionDAO().delete(key.id(), key.extension());
-      } else if (changed) {
-        dao.entityExtensionDAO()
-            .insert(key.id(), key.extension(), CUSTOM_FIELD_SCHEMA, value.toString());
-      }
-    } else {
-      changed = dead.contains(idOf(value));
-      if (changed) {
-        dao.entityExtensionDAO().delete(key.id(), key.extension());
-      }
-    }
-    return changed;
-  }
-
-  private static void refreshHolder(ReferenceKey key) {
-    String holderType = FullyQualifiedName.split(key.extension())[0];
-    if (!Entity.hasEntityRepository(holderType)) {
-      return;
-    }
-    try {
-      EntityReference holder = Entity.getEntityReferenceById(holderType, key.id(), ALL);
-      EntityRepository.invalidateCacheForEntity(
-          holderType, key.id(), holder.getFullyQualifiedName());
-      Entity.getSearchRepository().updateEntity(holder);
-    } catch (EntityNotFoundException e) {
-      LOG.debug("Holder {} {} was deleted before its value could be reindexed", holderType, key);
-    }
   }
 }
