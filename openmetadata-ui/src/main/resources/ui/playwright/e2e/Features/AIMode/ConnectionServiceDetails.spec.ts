@@ -12,22 +12,25 @@
  */
 
 /**
- * The data-assets table on the AI-mode service details page (`/connections/<category>/<fqn>`)
- * must list what classic service details lists (#34260): each asset's owners and tags, paging
- * that moves the rows, the Deleted switch, a soft-deleted service's children, the list after a
- * restore and after a search is cleared, only the top level of nesting assets, and drive
- * directories.
+ * The AI-mode service details page (`/connections/<category>/<fqn>`) must match classic service
+ * details (#34260).
+ *
+ * Its data-assets table lists each asset's owners and tags, pages that move the rows, the Deleted
+ * switch, a soft-deleted service's children, the list after a restore and after a search is
+ * cleared, only the top level of nesting assets, and drive directories.
+ *
+ * It gates what classic gates: the Connection tab, which shows the connection config, only for
+ * users who may edit the service; and no domain / owner / tier edits on a soft-deleted service.
  *
  * Every service here is the spec's own: the lists, pages and switches under test are scoped to
  * it, so no other worker's entities can shift a row.
  */
 
-import { Page, Response } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { DriveServiceClass } from '../../../support/entity/service/DriveServiceClass';
 import { StorageServiceClass } from '../../../support/entity/service/StorageServiceClass';
-import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { okJson, settleAll } from '../../../utils/apiResponse';
@@ -35,10 +38,13 @@ import { uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { getRowByName } from '../../../utils/scopedLocators';
+import {
+  visitAiModeServiceDetailsPage,
+  waitForServiceChildList,
+} from '../../../utils/service';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
+import { test } from '../../fixtures/pages';
 import { enableAiAppMode } from '../../Utils/appMode';
-
-test.use({ storageState: 'playwright/.auth/admin.json' });
 
 type EntityRef = { id: string; fullyQualifiedName: string };
 
@@ -49,61 +55,8 @@ const PERSONAL_TAG = {
   state: 'Confirmed',
 };
 
-/** The data-assets list request for one service, optionally narrowed by its query params. */
-const waitForChildList = (
-  page: Page,
-  path: string,
-  serviceFqn: string,
-  matchesParams: (params: URLSearchParams) => boolean = () => true
-): Promise<Response> =>
-  waitForResponseWithStatus(
-    page,
-    (response) => {
-      const url = new URL(response.url());
-
-      return (
-        response.request().method() === 'GET' &&
-        url.pathname === `/api/v1/${path}` &&
-        url.searchParams.get('service') === serviceFqn &&
-        matchesParams(url.searchParams)
-      );
-    },
-    200
-  );
-
-const openServiceDetails = async (
-  page: Page,
-  {
-    category,
-    fqn,
-    path,
-    query = '',
-    include = 'non-deleted',
-  }: {
-    category: string;
-    fqn: string;
-    path: string;
-    query?: string;
-    include?: string;
-  }
-) => {
-  const list = waitForChildList(
-    page,
-    path,
-    fqn,
-    (params) => params.get('include') === include
-  );
-  await page.goto(
-    `/connections/${category}/${encodeURIComponent(fqn)}${query}`,
-    { waitUntil: 'domcontentloaded' }
-  );
-  await list;
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('service-children-table')).toBeVisible();
-};
-
 test.describe(
-  'AI mode service details — data assets',
+  'AI mode service details',
   { tag: [DOMAIN_TAGS.INTEGRATION] },
   () => {
     test.describe('database service', () => {
@@ -172,10 +125,9 @@ test.describe(
       });
 
       test('shows the owners and tags of each database', async ({ page }) => {
-        await openServiceDetails(page, {
+        await visitAiModeServiceDetailsPage(page, {
           category: 'databaseServices',
           fqn: serviceFqn,
-          path: 'databases',
         });
 
         const ownedRow = getRowByName(page, databases[0]);
@@ -188,10 +140,9 @@ test.describe(
         page,
       }) => {
         await test.step('first page holds the first two databases', async () => {
-          await openServiceDetails(page, {
+          await visitAiModeServiceDetailsPage(page, {
             category: 'databaseServices',
             fqn: serviceFqn,
-            path: 'databases',
             query: '?pageSize=2',
           });
 
@@ -201,9 +152,9 @@ test.describe(
         });
 
         await test.step('Next shows the next databases, not the same ones', async () => {
-          const nextPage = waitForChildList(
+          const nextPage = waitForServiceChildList(
             page,
-            'databases',
+            'databaseServices',
             serviceFqn,
             (params) => params.has('after')
           );
@@ -215,9 +166,9 @@ test.describe(
         });
 
         await test.step('a reload stays on the page the URL points at', async () => {
-          const samePage = waitForChildList(
+          const samePage = waitForServiceChildList(
             page,
-            'databases',
+            'databaseServices',
             serviceFqn,
             (params) => params.has('after')
           );
@@ -233,10 +184,9 @@ test.describe(
       test('lists soft-deleted databases when the Deleted switch is on', async ({
         page,
       }) => {
-        await openServiceDetails(page, {
+        await visitAiModeServiceDetailsPage(page, {
           category: 'databaseServices',
           fqn: serviceFqn,
-          path: 'databases',
         });
 
         await expect(getRowByName(page, databases[0])).toBeVisible();
@@ -245,9 +195,9 @@ test.describe(
         const deletedSwitch = page.getByTestId('show-deleted');
         await expect(deletedSwitch).not.toBeChecked();
 
-        const deletedList = waitForChildList(
+        const deletedList = waitForServiceChildList(
           page,
-          'databases',
+          'databaseServices',
           serviceFqn,
           (params) => params.get('include') === 'deleted'
         );
@@ -262,10 +212,9 @@ test.describe(
       test('clearing the search brings every database back', async ({
         page,
       }) => {
-        await openServiceDetails(page, {
+        await visitAiModeServiceDetailsPage(page, {
           category: 'databaseServices',
           fqn: serviceFqn,
-          path: 'databases',
         });
 
         const searchBar = page.getByTestId('searchbar');
@@ -287,7 +236,11 @@ test.describe(
         });
 
         await test.step('clearing it lists every database again', async () => {
-          const fullList = waitForChildList(page, 'databases', serviceFqn);
+          const fullList = waitForServiceChildList(
+            page,
+            'databaseServices',
+            serviceFqn
+          );
           await searchBar.fill('');
           await fullList;
 
@@ -338,10 +291,9 @@ test.describe(
         await enableAiAppMode(page);
 
         await test.step('a deleted service lists its deleted databases', async () => {
-          await openServiceDetails(page, {
+          await visitAiModeServiceDetailsPage(page, {
             category: 'databaseServices',
             fqn: serviceFqn,
-            path: 'databases',
             include: 'deleted',
           });
 
@@ -366,9 +318,9 @@ test.describe(
                 .includes('/api/v1/services/databaseServices/restore'),
             200
           );
-          const liveList = waitForChildList(
+          const liveList = waitForServiceChildList(
             page,
-            'databases',
+            'databaseServices',
             serviceFqn,
             (params) => params.get('include') === 'non-deleted'
           );
@@ -426,10 +378,9 @@ test.describe(
 
       test('lists only its top-level containers', async ({ page }) => {
         await enableAiAppMode(page);
-        await openServiceDetails(page, {
+        await visitAiModeServiceDetailsPage(page, {
           category: 'storageServices',
           fqn: serviceFqn,
-          path: 'containers',
         });
 
         await expect(getRowByName(page, parent)).toBeVisible();
@@ -467,13 +418,132 @@ test.describe(
 
       test('lists its directories', async ({ page }) => {
         await enableAiAppMode(page);
-        await openServiceDetails(page, {
+        await visitAiModeServiceDetailsPage(page, {
           category: 'driveServices',
           fqn: serviceFqn,
-          path: 'drives/directories',
         });
 
         await expect(getRowByName(page, directory)).toBeVisible();
+      });
+    });
+
+    test.describe('permissions', () => {
+      // Header edit controls: asserted present on a live service first, so their absence on a
+      // deleted one is not vacuous.
+      const HEADER_EDIT_BUTTONS = [
+        'edit-domain-button',
+        'edit-owner-button',
+        'edit-tier-button',
+      ];
+      let service: DatabaseServiceClass;
+      let deletedService: DatabaseServiceClass;
+
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        service = new DatabaseServiceClass();
+        deletedService = new DatabaseServiceClass();
+        await settleAll([
+          service.create(apiContext),
+          deletedService.create(apiContext),
+        ]);
+        await okJson(
+          await apiContext.delete(
+            `/api/v1/services/databaseServices/${deletedService.entityResponseData.id}?recursive=true&hardDelete=false`
+          ),
+          'Soft-delete database service'
+        );
+        await afterAction();
+      });
+
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await settleAll([
+          service.delete(apiContext),
+          deletedService.delete(apiContext),
+        ]);
+        await afterAction();
+      });
+
+      test('a read-only user gets no Connection tab, even from a deep link', async ({
+        page,
+        dataConsumerPage,
+      }) => {
+        const fqn = service.entityResponseData.fullyQualifiedName;
+        await enableAiAppMode(page);
+        await enableAiAppMode(dataConsumerPage);
+
+        await test.step('an admin has the tab', async () => {
+          await visitAiModeServiceDetailsPage(page, {
+            category: 'databaseServices',
+            fqn,
+          });
+
+          await expect(
+            page.getByRole('tab', { name: 'Connection', exact: true })
+          ).toBeVisible();
+        });
+
+        await test.step('a data consumer does not', async () => {
+          await visitAiModeServiceDetailsPage(dataConsumerPage, {
+            category: 'databaseServices',
+            fqn,
+          });
+
+          await expect(
+            dataConsumerPage.getByRole('tab', { name: 'Databases' })
+          ).toBeVisible();
+          await expect(
+            dataConsumerPage.getByRole('tab', {
+              name: 'Connection',
+              exact: true,
+            })
+          ).toBeHidden();
+        });
+
+        await test.step('nor through the tab URL', async () => {
+          await visitAiModeServiceDetailsPage(dataConsumerPage, {
+            category: 'databaseServices',
+            fqn,
+            tab: 'connection',
+          });
+
+          await expect(
+            dataConsumerPage.getByRole('tab', { name: 'Databases' })
+          ).toHaveAttribute('aria-selected', 'true');
+          await expect(
+            dataConsumerPage.getByTestId('edit-connection-button')
+          ).toBeHidden();
+        });
+      });
+
+      test('a soft-deleted service offers no domain, owner or tier edits', async ({
+        page,
+      }) => {
+        await enableAiAppMode(page);
+
+        await test.step('a live service offers them', async () => {
+          await visitAiModeServiceDetailsPage(page, {
+            category: 'databaseServices',
+            fqn: service.entityResponseData.fullyQualifiedName,
+          });
+
+          for (const testId of HEADER_EDIT_BUTTONS) {
+            await expect(page.getByTestId(testId)).toBeVisible();
+          }
+        });
+
+        await test.step('a deleted one does not', async () => {
+          await visitAiModeServiceDetailsPage(page, {
+            category: 'databaseServices',
+            fqn: deletedService.entityResponseData.fullyQualifiedName,
+            include: 'deleted',
+          });
+
+          await expect(page.getByTestId('deleted-badge')).toBeVisible();
+          for (const testId of HEADER_EDIT_BUTTONS) {
+            await expect(page.getByTestId(testId)).toBeHidden();
+          }
+        });
       });
     });
   }
