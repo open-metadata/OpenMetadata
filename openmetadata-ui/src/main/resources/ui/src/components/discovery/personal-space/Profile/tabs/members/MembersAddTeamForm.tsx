@@ -12,32 +12,32 @@
  */
 
 import {
-  Box,
-  Button,
-  FieldProp,
-  FieldTypes,
-  FormFields,
-  FormItemLabel,
-  HookForm,
-  Typography,
+    Box,
+    Button,
+    FieldProp,
+    FieldTypes,
+    FormFields,
+    FormItemLabel,
+    HookForm,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../../../constants/regex.constants';
 import {
-  CreateTeam,
-  TeamType,
+    CreateTeam,
+    TeamType
 } from '../../../../../../generated/api/teams/createTeam';
 import { EntityReference } from '../../../../../../generated/entity/type';
-import { createTeam } from '../../../../../../rest/teamsAPI';
+import { createTeam, getTeamByName } from '../../../../../../rest/teamsAPI';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import { getTeamOptionsFromType } from '../../../../../../utils/TeamUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
@@ -45,12 +45,14 @@ import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextE
 
 interface MembersAddTeamFormProps {
   parentTeamType?: TeamType;
+  parentTeamFqn?: string;
   onCancel: () => void;
   onSave: () => void;
 }
 
 const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
   parentTeamType = TeamType.Organization,
+  parentTeamFqn,
   onCancel,
   onSave,
 }) => {
@@ -58,6 +60,30 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
   const descEditorRef = useRef<EditorContentRef>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<EntityReference[]>([]);
+  const [parentTeamId, setParentTeamId] = useState<string>();
+  const [resolvedParentType, setResolvedParentType] =
+    useState<TeamType>(parentTeamType);
+
+  // Resolve the parent fqn to its id + team type once, so the new team nests
+  // correctly and the team-type options reflect what the parent can contain.
+  useEffect(() => {
+    if (!parentTeamFqn) {
+      return;
+    }
+    let active = true;
+    getTeamByName(parentTeamFqn)
+      .then((parent) => {
+        if (active) {
+          setParentTeamId(parent.id);
+          setResolvedParentType(parent.teamType ?? parentTeamType);
+        }
+      })
+      .catch((error) => showErrorToast(error as AxiosError));
+
+    return () => {
+      active = false;
+    };
+  }, [parentTeamFqn, parentTeamType]);
 
   const form = useForm<CreateTeam>({
     defaultValues: {
@@ -72,11 +98,11 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
 
   const teamTypeOptions = useMemo(
     () =>
-      getTeamOptionsFromType(parentTeamType).map((type) => ({
+      getTeamOptionsFromType(resolvedParentType).map((type) => ({
         id: type,
         label: type,
       })),
-    [parentTeamType]
+    [resolvedParentType]
   );
 
   const nameFields: FieldProp[] = useMemo(
@@ -192,6 +218,9 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
         name: data.name.trim(),
         displayName: data.displayName?.trim(),
         description,
+        // The API takes parent team ids so the new team nests under the current
+        // team instead of becoming top-level.
+        parents: parentTeamId ? [parentTeamId] : undefined,
         domains: selectedDomains.length
           ? (selectedDomains
               .map((domain) => domain.fullyQualifiedName)

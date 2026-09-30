@@ -4132,6 +4132,7 @@
     "import-odps-description": "استورد منتج بيانات من ملف YAML الخاص بمعيار Open Data Product Standard (ODPS) v4.1.",
     "import-ontology-accepts": "يقبل OWL (RDF/XML) وTurtle وN-Triples. يعيد استخدام importRdf — لا تتم كتابة أي شيء حتى تؤكد.",
     "import-ontology-help": "قم بتحميل ملف أنطولوجيا OWL/RDF (Turtle، RDF/XML، N-Triples) لإنشاء مصطلحات المسرد والعلاقات.",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "يحتوي مسرد المصطلحات على مراجعين → تدخل المصطلحات المستوردة في حالة المسودة.",
     "import-terms-into-glossary": "استيراد المصطلحات إلى {{glossary}}.",
     "importing-entity": "Importing {{entity}}...",

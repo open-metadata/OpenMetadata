@@ -14,15 +14,16 @@
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { Clock, ShieldTick, User01, Users01 } from '@untitledui/icons';
 import type { Key } from 'react';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { MembersPanelProps, MembersView } from './Members.types';
-import { hashSubPathToView, viewToSubPath } from './Members.utils';
+import { hashSubPathToView } from './Members.utils';
 import MembersAddTeamForm from './MembersAddTeamForm';
 import MembersAdminsPanel from './MembersAdminsPanel';
 import MembersCreateUserForm from './MembersCreateUserForm';
+import MembersImportForm from './MembersImportForm';
 import MembersLanding from './MembersLanding';
 import MembersOnlineUsersPanel from './MembersOnlineUsersPanel';
 import MembersTeamDetail from './MembersTeamDetail';
@@ -32,19 +33,20 @@ const TEAM_DETAIL = 'team-detail' as const;
 
 const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
-  const { state: hashState, setHash } = useSettingsHash();
+  const { state: hashState } = useSettingsHash();
 
-  const view = useMemo<MembersView>(
-    () => hashSubPathToView(hashState.subPath),
-    [hashState.subPath]
+  // Local-state navigation (same pattern as AccessControlPanel /
+  // CustomPropertiesPanel). The hash is only read once on mount to honour a
+  // deep link; in-session navigation is pure setState so it always re-renders,
+  // instead of round-tripping through the router (which did not propagate
+  // reliably inside the modal).
+  const [view, setView] = useState<MembersView>(() =>
+    hashSubPathToView(hashState.subPath)
   );
 
-  const onNavigate = useCallback(
-    (nextView: MembersView) => {
-      setHash('members', viewToSubPath(nextView));
-    },
-    [setHash]
-  );
+  const onNavigate = useCallback((nextView: MembersView) => {
+    setView(nextView);
+  }, []);
 
   const [panelHeaderActions, setPanelHeaderActions] =
     useState<React.ReactNode>(undefined);
@@ -81,6 +83,8 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       teamName = view.name;
     }
 
+    const importLabel = t('label.import');
+
     const settingsItem: BreadcrumbItemType = {
       id: 'settings',
       label: settingsLabel,
@@ -111,6 +115,11 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
         teamsItem,
         { id: 'current', label: teamName },
       ],
+      'team-import': [
+        ...base,
+        teamsItem,
+        { id: 'current', label: importLabel },
+      ],
       'teams-add': [
         ...base,
         teamsItem,
@@ -133,6 +142,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       landing: Users01,
       teams: Users01,
       [TEAM_DETAIL]: Users01,
+      'team-import': Users01,
       'teams-add': Users01,
       users: User01,
       admins: ShieldTick,
@@ -144,6 +154,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       landing: membersLabel,
       teams: organizationLabel,
       [TEAM_DETAIL]: teamName,
+      'team-import': importLabel,
       'teams-add': addTeamLabel,
       users: usersLabel,
       admins: adminsLabel,
@@ -155,6 +166,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       landing: t('message.members-settings-description'),
       teams: t('message.members-teams-description'),
       [TEAM_DETAIL]: t('message.members-teams-description'),
+      'team-import': t('message.members-teams-description'),
       'teams-add': t('message.members-teams-description'),
       users: t('message.members-users-description'),
       admins: t('message.members-admins-description'),
@@ -205,6 +217,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       return (
         <MembersTeamDetail
           fqn="Organization"
+          key="Organization"
           onNavigate={onNavigate}
           onRename={() => {
             /* Organization name is not editable */
@@ -220,6 +233,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       return (
         <MembersTeamDetail
           fqn={view.fqn}
+          key={view.fqn}
           onNavigate={onNavigate}
           onRename={() => {
             /* Name update reflected on next fetch */
@@ -231,11 +245,31 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       );
     }
 
+    if (view.type === 'team-import') {
+      const returnToDetail = () =>
+        onNavigate({ type: TEAM_DETAIL, fqn: view.fqn, name: view.fqn });
+
+      return (
+        <MembersImportForm
+          fqn={view.fqn}
+          onCancel={returnToDetail}
+          onSuccess={returnToDetail}
+        />
+      );
+    }
+
     if (view.type === 'teams-add') {
+      const parentFqn = view.parentFqn;
+      const back = () =>
+        parentFqn
+          ? onNavigate({ type: TEAM_DETAIL, fqn: parentFqn, name: parentFqn })
+          : onNavigate({ type: 'teams' });
+
       return (
         <MembersAddTeamForm
-          onCancel={() => onNavigate({ type: 'teams' })}
-          onSave={() => onNavigate({ type: 'teams' })}
+          parentTeamFqn={parentFqn}
+          onCancel={back}
+          onSave={back}
         />
       );
     }

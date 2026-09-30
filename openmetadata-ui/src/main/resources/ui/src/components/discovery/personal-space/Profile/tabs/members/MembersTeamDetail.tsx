@@ -16,10 +16,10 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Dropdown,
   EmptyPlaceholder,
   Input,
-  Owner,
   SelectItemType,
   Tabs,
   Toggle,
@@ -38,21 +38,19 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, noop } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFilter } from 'react-aria';
-import { DropZone, useDragAndDrop } from 'react-aria-components';
 import type { Key } from 'react-aria-components';
+import { DropZone, useDragAndDrop } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  PAGE_SIZE_LARGE,
-  ROUTES,
+    PAGE_SIZE_LARGE,
+    ROUTES
 } from '../../../../../../constants/constants';
 import { ExportTypes } from '../../../../../../constants/Export.constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../../../../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../../../../enums/Assets.enum';
-import { EntityAction, EntityType, TabSpecificField } from '../../../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Operation, Policy } from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
@@ -62,36 +60,31 @@ import { Include } from '../../../../../../generated/type/include';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { getPolicies, getRoles } from '../../../../../../rest/rolesAPIV1';
 import {
-  deleteUserFromTeam,
-  exportTeam,
-  getTeamByName,
-  getTeams,
-  patchTeamDetail,
-  restoreTeam,
+    deleteUserFromTeam,
+    exportTeam,
+    getTeamByName,
+    getTeams,
+    patchTeamDetail,
+    restoreTeam
 } from '../../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
 import { checkPermission, LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 import {
-  getRoleWithFqnPath,
-  getSettingsPathWithFqn,
-  getUserPath,
+    getRoleWithFqnPath,
+    getUserPath
 } from '../../../../../../utils/RouterUtils';
 import { isDropRestricted } from '../../../../../../utils/TeamUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
-import { DomainLabel } from '../../../../../common/DomainLabel/DomainLabel.component';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
-import { EditIconButton } from '../../../../../common/IconButtons/EditIconButton';
 import Loader from '../../../../../common/Loader/Loader';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
@@ -101,10 +94,9 @@ import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import TeamsSubscription from '../../../../../Settings/Team/TeamDetails/TeamsHeaderSection/TeamsSubscription.component';
-import type { SubscriptionWebhook } from '../../../../../Settings/Team/TeamDetails/team.interface';
 import type { MembersTeamDetailProps } from './Members.types';
 import MembersPagination from './MembersPagination';
+import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 
 const AssetsTabs = withSuspenseFallback(
   React.lazy(
@@ -186,10 +178,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     to?: Team;
   }>();
   const draggedTeamRef = useRef<Team>();
-
-  // Email inline edit
-  const [isEmailEdit, setIsEmailEdit] = useState(false);
-  const [emailValue, setEmailValue] = useState('');
 
   // Inline add role/policy
   const [isAddingRole, setIsAddingRole] = useState(false);
@@ -413,34 +401,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     }
   }, [team, t]);
 
-  const handleSaveEmail = useCallback(() => {
-    if (!team) {
-      return;
-    }
-    handlePatchTeam({ ...team, email: emailValue });
-    setIsEmailEdit(false);
-  }, [team, emailValue, handlePatchTeam]);
-
-  const handleUpdateTeamSubscription = useCallback(
-    async (data?: SubscriptionWebhook) => {
-      if (!team) {
-        return;
-      }
-      const updatedData: Team = {
-        ...team,
-        profile: {
-          subscription: isEmpty(data)
-            ? undefined
-            : {
-                [data?.webhook ?? '']: { endpoint: data?.endpoint ?? '' },
-              },
-        },
-      };
-      await handlePatchTeam(updatedData);
-    },
-    [team, handlePatchTeam]
-  );
-
   const handleToggleJoinable = useCallback(() => {
     if (!team) {
       return;
@@ -503,15 +463,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     if (!team?.name) {
       return;
     }
-    navigate(
-      getSettingsPathWithFqn(
-        GlobalSettingsMenuCategory.MEMBERS,
-        GlobalSettingOptions.TEAMS,
-        team.name,
-        EntityAction.IMPORT
-      )
-    );
-  }, [team, navigate]);
+    onNavigate({ type: 'team-import', fqn: team.name });
+  }, [team, onNavigate]);
 
   const handleRemoveUser = useCallback(
     async (userId: string) => {
@@ -665,24 +618,34 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     if (!movedTeam?.from || !team) {
       return;
     }
-    const targetParentId = movedTeam.to?.id ?? team.id;
+    const dropTeamId = movedTeam.to?.id;
     try {
+      // Match the legacy move: fetch the dragged team with its full child-bearing
+      // field set so the patch diff is limited to `parents`, then re-parent
+      // (undefined parents === move to the organization root).
       const data = await getTeamByName(movedTeam.from.name, {
-        fields: TabSpecificField.PARENTS,
+        fields: [
+          TabSpecificField.USERS,
+          TabSpecificField.DEFAULT_ROLES,
+          TabSpecificField.POLICIES,
+          TabSpecificField.OWNERS,
+          TabSpecificField.PARENTS,
+          TabSpecificField.CHILDREN,
+        ],
         include: Include.All,
       });
       const updatedTeam: Team = {
         ...data,
-        parents: [{ id: targetParentId, type: EntityType.TEAM }],
+        parents: dropTeamId
+          ? [{ id: dropTeamId, type: EntityType.TEAM }]
+          : undefined,
       };
       const patch = compare(data, updatedTeam);
       await patchTeamDetail(data.id, patch);
-      showSuccessToast(
-        t('server.update-entity-success', { entity: t('label.team') })
-      );
+      showSuccessToast(t('message.team-moved-success'));
       fetchChildTeams();
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(error as AxiosError, t('server.team-moved-error'));
     } finally {
       setMovedTeam(undefined);
     }
@@ -1252,265 +1215,72 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       data-testid="team-detail"
       direction="col">
       {/* Info widget section */}
-      <Box
-        className="tw:flex-wrap tw:px-8 tw:py-4"
-        data-testid="team-info-widgets"
-        direction="row"
-        gap={4}>
-        {/* Domains */}
-        <Box
-          className="tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3"
-          direction="col"
-          gap={1}>
-          <Typography
-            className="tw:text-tertiary"
-            size="text-xs"
-            weight="medium">
-            {t('label.domain-plural')}
-          </Typography>
-          <DomainLabel
-            multiple
-            domains={team.domains ?? []}
-            entityFqn={team.fullyQualifiedName ?? ''}
-            entityId={team.id ?? ''}
-            entityType={EntityType.TEAM}
-            hasPermission={canEditAll && !team.deleted}
-          />
-        </Box>
+      <MembersTeamInfoWidgets
+        canEdit={canEditAll && !team.deleted}
+        team={team}
+        onPatch={handlePatchTeam}
+      />
 
-        {/* Owners */}
-        <Box
-          className="tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3"
-          direction="col"
-          gap={1}>
-          <Typography
-            className="tw:text-tertiary"
-            size="text-xs"
-            weight="medium">
-            {t('label.owner-plural')}
-          </Typography>
-          <Owner
-            hasPermission={canEditAll && !team.deleted}
-            isCompactView={false}
-            owners={team.owners ?? []}
-            selectorContent={
-              <UserTeamSelectableList
-                hasPermission={canEditAll && !team.deleted}
-                owner={team.owners ?? []}
-                onUpdate={(owners) =>
-                  handlePatchTeam({ ...team, owners })
-                }
-              />
-            }
-            showLabel={false}
-          />
-        </Box>
-
-        {/* Type */}
-        <Box
-          className="tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3"
-          direction="col"
-          gap={1}>
-          <Typography
-            className="tw:text-tertiary"
-            size="text-xs"
-            weight="medium">
-            {t('label.type')}
-          </Typography>
-          <Typography
-            className="tw:text-primary"
-            data-testid="team-type"
-            size="text-sm"
-            weight="semibold">
-            {team.teamType ?? t('label.none')}
-          </Typography>
-        </Box>
-
-        {/* Persona */}
-        <Box
-          className="tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3"
-          direction="col"
-          gap={1}>
-          <Typography
-            className="tw:text-tertiary"
-            size="text-xs"
-            weight="medium">
-            {t('label.persona')}
-          </Typography>
-          <Typography
-            className="tw:text-primary"
-            data-testid="team-persona"
-            size="text-sm"
-            weight="semibold">
-            {team.defaultPersona
-              ? getEntityName(team.defaultPersona)
-              : t('label.none')}
-          </Typography>
-        </Box>
-
-        {/* Email */}
-        <Box
-          className="tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3"
-          direction="col"
-          gap={1}>
-          <Typography
-            className="tw:text-tertiary"
-            size="text-xs"
-            weight="medium">
-            {t('label.email')}
-          </Typography>
-          {isEmailEdit ? (
+      {/* Description (inline editor — no modal) */}
+      <Card className="tw:mx-8 tw:mb-4">
+        <Card.Content>
+          <Box direction="col" gap={2}>
             <Box align="center" direction="row" gap={2}>
-              <Input
-                autoFocus
-                data-testid="email-input"
-                size="sm"
-                value={emailValue}
-                onChange={(value) => setEmailValue(value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSaveEmail();
-                  } else if (e.key === 'Escape') {
-                    setIsEmailEdit(false);
-                  }
-                }}
-              />
-              <Button
-                color="primary"
-                data-testid="save-email"
-                size="sm"
-                onPress={handleSaveEmail}>
-                {t('label.save')}
-              </Button>
-              <Button
-                color="tertiary"
-                data-testid="cancel-email"
-                size="sm"
-                onPress={() => setIsEmailEdit(false)}>
-                {t('label.cancel')}
-              </Button>
-            </Box>
-          ) : (
-            <Box align="center" direction="row" gap={1}>
-              <Typography
-                className="tw:text-primary"
-                size="text-sm"
-                weight="semibold">
-                {team.email || t('label.none')}
+              <Typography className="tw:text-primary" weight="medium">
+                {t('label.description')}
               </Typography>
-              {canEditAll && !team.deleted && (
-                <EditIconButton
-                  newLook
-                  data-testid="edit-email"
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity: t('label.email'),
-                  })}
-                  onClick={() => {
-                    setEmailValue(team.email ?? '');
-                    setIsEmailEdit(true);
-                  }}
+              {canEditDescInline && !isDescEditing && (
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid="edit-description-btn"
+                  icon={Edit}
+                  size="xs"
+                  tooltip={String(
+                    t('label.edit-entity', { entity: t('label.description') })
+                  )}
+                  tooltipPlacement="right"
+                  onClick={() => setIsDescEditing(true)}
                 />
               )}
             </Box>
-          )}
-        </Box>
-
-        {/* Subscription */}
-        <Box
-          className="tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3"
-          direction="col"
-          gap={1}>
-          <Typography
-            className="tw:text-tertiary"
-            size="text-xs"
-            weight="medium">
-            {t('label.subscription')}
-          </Typography>
-          <TeamsSubscription
-            hideLabel
-            hasEditPermission={canEditAll && !team.deleted}
-            subscription={team.profile?.subscription}
-            updateTeamSubscription={handleUpdateTeamSubscription}
-          />
-        </Box>
-
-        {/* Total Users */}
-        <Box
-          className="tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3"
-          direction="col"
-          gap={1}>
-          <Typography
-            className="tw:text-tertiary"
-            size="text-xs"
-            weight="medium">
-            {t('label.total-entity', { entity: t('label.user-plural') })}
-          </Typography>
-          <Typography
-            className="tw:text-primary"
-            size="text-sm"
-            weight="semibold">
-            {String(team.userCount ?? 0)}
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Description (inline editor — no modal) */}
-      <Box className="tw:px-8 tw:pb-4 tw:w-full" direction="col" gap={2}>
-        <Box align="center" direction="row" gap={2}>
-          <Typography className="tw:text-primary" weight="medium">
-            {t('label.description')}
-          </Typography>
-          {canEditDescInline && !isDescEditing && (
-            <ButtonUtility
-              color="tertiary"
-              data-testid="edit-description-btn"
-              icon={Edit}
-              size="xs"
-              tooltip={String(
-                t('label.edit-entity', { entity: t('label.description') })
-              )}
-              tooltipPlacement="right"
-              onClick={() => setIsDescEditing(true)}
-            />
-          )}
-        </Box>
-        {isDescEditing && (
-          <Box direction="col" gap={2}>
-            <RichTextEditor
-              className="new-form-style"
-              initialValue={team.description ?? ''}
-              ref={descEditorRef}
-            />
-            <Box direction="row" gap={2} justify="end">
-              <Button
-                color="tertiary"
-                data-testid="cancel-description"
-                isDisabled={isDescSaving}
-                size="sm"
-                onPress={() => setIsDescEditing(false)}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                data-testid="save-description"
-                isLoading={isDescSaving}
-                size="sm"
-                onPress={handleDescriptionSave}>
-                {t('label.save')}
-              </Button>
-            </Box>
+            {isDescEditing && (
+              <Box direction="col" gap={2}>
+                <RichTextEditor
+                  className="new-form-style"
+                  initialValue={team.description ?? ''}
+                  ref={descEditorRef}
+                />
+                <Box direction="row" gap={2} justify="end">
+                  <Button
+                    color="tertiary"
+                    data-testid="cancel-description"
+                    isDisabled={isDescSaving}
+                    size="sm"
+                    onPress={() => setIsDescEditing(false)}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    color="primary"
+                    data-testid="save-description"
+                    isLoading={isDescSaving}
+                    size="sm"
+                    onPress={handleDescriptionSave}>
+                    {t('label.save')}
+                  </Button>
+                </Box>
+              </Box>
+            )}
+            {!isDescEditing && team.description && (
+              <RichTextEditorPreviewerV1 markdown={team.description} />
+            )}
+            {!isDescEditing && !team.description && (
+              <Typography className="tw:text-tertiary" size="text-sm">
+                {t('label.no-description')}
+              </Typography>
+            )}
           </Box>
-        )}
-        {!isDescEditing && team.description && (
-          <RichTextEditorPreviewerV1 markdown={team.description} />
-        )}
-        {!isDescEditing && !team.description && (
-          <Typography className="tw:text-tertiary" size="text-sm">
-            {t('label.no-description')}
-          </Typography>
-        )}
-      </Box>
+        </Card.Content>
+      </Card>
 
       {/* Tabs */}
       <Box className="tw:px-8 tw:flex-1" direction="col">
@@ -1554,23 +1324,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                     });
                   }
                 }}>
-                {canCreateTeam && (
-                  <Box
-                    align="center"
-                    className="tw:pb-3"
-                    direction="row"
-                    justify="end">
-                    <Button
-                      color="primary"
-                      data-testid="add-team"
-                      size="sm"
-                      onPress={() => onNavigate({ type: 'teams-add' })}>
-                      {t('label.add-entity', {
-                        entity: t('label.team'),
-                      })}
-                    </Button>
-                  </Box>
-                )}
                 <Table
                   className={
                     isTableHovered ? 'drop-over-table' : undefined
@@ -1588,6 +1341,22 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                         size="sm"
                         onChange={setShowDeletedTeam}
                       />
+                      {canCreateTeam && (
+                        <Button
+                          color="primary"
+                          data-testid="add-team"
+                          size="sm"
+                          onPress={() =>
+                            onNavigate({
+                              type: 'teams-add',
+                              parentFqn: team.fullyQualifiedName,
+                            })
+                          }>
+                          {t('label.add-entity', {
+                            entity: t('label.team'),
+                          })}
+                        </Button>
+                      )}
                     </Box>
                   }
                   loading={isChildTeamsLoading}

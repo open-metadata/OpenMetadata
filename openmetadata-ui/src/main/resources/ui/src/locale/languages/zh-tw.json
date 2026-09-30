@@ -4132,6 +4132,7 @@
     "import-odps-description": "從開放資料產品標準 (ODPS) v4.1 YAML 匯入資料產品。",
     "import-ontology-accepts": "接受 OWL (RDF/XML)、Turtle 和 N-Triples。重複使用 importRdf — 在您確認之前不會寫入任何內容。",
     "import-ontology-help": "上傳 OWL/RDF 本體檔案（Turtle、RDF/XML、N-Triples）以建立詞彙表術語與關聯。",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "詞彙表有審核者 → 匯入的術語會進入草稿狀態。",
     "import-terms-into-glossary": "將詞彙匯入到 {{glossary}}。",
     "importing-entity": "Importing {{entity}}...",

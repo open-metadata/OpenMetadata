@@ -12,11 +12,11 @@
  */
 
 import {
-  Box,
-  Button,
-  EmptyPlaceholder,
-  Toggle,
-  Tooltip,
+    Box,
+    Button,
+    EmptyPlaceholder,
+    Toggle,
+    Tooltip
 } from '@openmetadata/ui-core-components';
 import { Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -28,8 +28,8 @@ import { ReactComponent as BotIcon } from '../../../../../../assets/svg/bot.svg'
 import { ReactComponent as IconRestore } from '../../../../../../assets/svg/ic-restore.svg';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
-  INITIAL_PAGING_VALUE,
-  TEXT_GREY_MUTED,
+    INITIAL_PAGING_VALUE,
+    TEXT_GREY_MUTED
 } from '../../../../../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -46,18 +46,18 @@ import { getUsers, restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { checkPermission, LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 import {
-  getRoleWithFqnPath,
-  getTeamsWithFqnPath,
+    getRoleWithFqnPath,
+    getTeamsWithFqnPath
 } from '../../../../../../utils/RouterUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
-import ConfirmationModal from '../../../../../Modals/ConfirmationModal/ConfirmationModal';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
+import ConfirmationModal from '../../../../../Modals/ConfirmationModal/ConfirmationModal';
 
 import type { MembersUsersPanelProps } from './Members.types';
 import MembersPagination from './MembersPagination';

@@ -4132,6 +4132,7 @@
     "import-odps-description": "Importa un produto de datos desde un YAML do Open Data Product Standard (ODPS) v4.1.",
     "import-ontology-accepts": "Acepta OWL (RDF/XML), Turtle e N-Triples. Reutiliza importRdf — non se escribe nada ata que confirmes.",
     "import-ontology-help": "Sube un ficheiro de ontoloxía OWL/RDF (Turtle, RDF/XML, N-Triples) para crear termos do glosario e relacións.",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "O glosario ten revisores → os termos importados entran en Borrador.",
     "import-terms-into-glossary": "Importar termos a {{glossary}}.",
     "importing-entity": "Importing {{entity}}...",

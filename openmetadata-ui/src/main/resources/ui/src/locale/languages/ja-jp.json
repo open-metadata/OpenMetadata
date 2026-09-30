@@ -4132,6 +4132,7 @@
     "import-odps-description": "Open Data Product Standard (ODPS) v4.1 YAML からデータプロダクトをインポートします。",
     "import-ontology-accepts": "OWL (RDF/XML)、Turtle、N-Triples に対応しています。importRdf を再利用します — 確認するまで何も書き込まれません。",
     "import-ontology-help": "OWL/RDF オントロジーファイル（Turtle、RDF/XML、N-Triples）をアップロードして、用語集の用語と関係を作成します。",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "用語集にレビュアーがいます → インポートした用語は下書きになります。",
     "import-terms-into-glossary": "{{glossary}} に用語をインポートします。",
     "importing-entity": "Importing {{entity}}...",

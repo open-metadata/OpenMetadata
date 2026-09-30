@@ -4132,6 +4132,7 @@
     "import-odps-description": "นำเข้าผลิตภัณฑ์ข้อมูลจาก YAML ตามมาตรฐาน Open Data Product Standard (ODPS) v4.1",
     "import-ontology-accepts": "รองรับ OWL (RDF/XML), Turtle และ N-Triples ใช้ importRdf ซ้ำ — จะไม่มีการเขียนข้อมูลใดจนกว่าคุณจะยืนยัน",
     "import-ontology-help": "อัปโหลดไฟล์ออนโทโลยี OWL/RDF (Turtle, RDF/XML, N-Triples) เพื่อสร้างคำศัพท์อภิธานและความสัมพันธ์",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "สารานุกรมมีผู้ตรวจสอบ → คำศัพท์ที่นำเข้าจะเข้าสู่ฉบับร่าง",
     "import-terms-into-glossary": "นำเข้าคำศัพท์ไปยัง {{glossary}}",
     "importing-entity": "Importing {{entity}}...",

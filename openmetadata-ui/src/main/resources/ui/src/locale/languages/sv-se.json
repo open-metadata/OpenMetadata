@@ -4132,6 +4132,7 @@
     "import-odps-description": "Import a data product from Open Data Product Standard (ODPS) v4.1 YAML.",
     "import-ontology-accepts": "Accepterar OWL (RDF/XML), Turtle och N-Triples. Återanvänder importRdf — inget skrivs förrän du bekräftar.",
     "import-ontology-help": "Ladda upp en OWL/RDF-ontologifil (Turtle, RDF/XML, N-Triples) för att skapa ordlistetermer och relationer.",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "Ordlistan har granskare → importerade termer hamnar i Utkast.",
     "import-terms-into-glossary": "Importera termer till {{glossary}}.",
     "importing-entity": "Importing {{entity}}...",

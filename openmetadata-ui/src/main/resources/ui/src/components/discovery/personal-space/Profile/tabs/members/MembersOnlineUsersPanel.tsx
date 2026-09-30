@@ -12,10 +12,10 @@
  */
 
 import {
-  Box,
-  EmptyPlaceholder,
-  Select,
-  Typography,
+    Box,
+    EmptyPlaceholder,
+    Select,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,15 +27,15 @@ import type { User } from '../../../../../../generated/entity/teams/user';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
-  getOnlineUsers,
-  OnlineUsersQueryParams,
+    getOnlineUsers,
+    OnlineUsersQueryParams
 } from '../../../../../../rest/userAPI';
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 import {
-  getRoleWithFqnPath,
-  getTeamsWithFqnPath,
+    getRoleWithFqnPath,
+    getTeamsWithFqnPath
 } from '../../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';

@@ -4132,6 +4132,7 @@
     "import-odps-description": "Open Data Product Standard (ODPS) v4.1 YAML'den bir veri ürünü içe aktarın.",
     "import-ontology-accepts": "OWL (RDF/XML), Turtle ve N-Triples kabul eder. importRdf'yi yeniden kullanır — siz onaylayana kadar hiçbir şey yazılmaz.",
     "import-ontology-help": "Sözlük terimleri ve ilişkileri oluşturmak için bir OWL/RDF ontoloji dosyası (Turtle, RDF/XML, N-Triples) yükleyin.",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "Sözlükte inceleyiciler var → içe aktarılan terimler Taslak durumuna geçer.",
     "import-terms-into-glossary": "Terimleri {{glossary}} sözlüğüne aktar.",
     "importing-entity": "Importing {{entity}}...",
