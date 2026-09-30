@@ -425,14 +425,14 @@ const AlertAiNotificationSection = ({
           onSelectionChange={(key) => {
             const nextTemplate = key ? String(key) : SYSTEM_DEFAULT_TEMPLATES;
 
-            onChange?.({
-              ...value,
+            onChange?.((prev) => ({
+              ...prev,
               customNotificationTemplateData:
                 nextTemplate === CUSTOM_TEMPLATE_VALUE
                   ? customTemplateData
                   : undefined,
               notificationTemplate: nextTemplate,
-            } as ModifiedCreateEventSubscription);
+            }));
           }}>
           {renderSelectItem}
         </Select>
