@@ -54,7 +54,7 @@ const AssignErrorPlaceHolder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography as="div" className="w-max-600">
+          <Typography as="div" className="w-max-600 tw:mb-3.5!">
             {children ??
               t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                 entity: heading,

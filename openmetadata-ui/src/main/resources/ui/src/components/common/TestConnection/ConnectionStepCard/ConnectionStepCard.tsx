@@ -177,7 +177,7 @@ const ConnectionStepCard = ({
         })}>
         <Space className="w-full justify-between">
           <Space>
-            <Typography className="text-body text-600">
+            <Typography className="text-body text-600 tw:text-primary">
               {testConnectionStep.mandatory
                 ? requiredField(testConnectionStep.name, true)
                 : testConnectionStep.name}

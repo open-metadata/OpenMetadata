@@ -221,7 +221,11 @@ const OnlineUsersPage = () => {
 
         return (
           <Space direction="vertical" size={0}>
-            <Typography style={{ color: statusColor }}>{statusText}</Typography>
+            <Typography
+              className="tw:text-primary"
+              style={{ color: statusColor }}>
+              {statusText}
+            </Typography>
             <Typography color="secondary" style={{ fontSize: '12px' }}>
               {formatDateTime(activityTime)}
             </Typography>

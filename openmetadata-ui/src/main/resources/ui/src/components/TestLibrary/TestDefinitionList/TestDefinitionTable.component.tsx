@@ -226,7 +226,7 @@ const TestDefinitionTable = ({
   const renderRow = (record: TestDefinition) => (
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>
-        <Typography data-testid={record.name}>
+        <Typography className="tw:text-primary" data-testid={record.name}>
           {getEntityName(record)}
         </Typography>
       </Table.Cell>
@@ -234,10 +234,12 @@ const TestDefinitionTable = ({
         <RichTextEditorPreviewerNew markdown={record.description ?? ''} />
       </Table.Cell>
       <Table.Cell>
-        <Typography>{record.entityType}</Typography>
+        <Typography className="tw:text-primary">{record.entityType}</Typography>
       </Table.Cell>
       <Table.Cell>
-        <Typography>{record.testPlatforms?.join(', ') ?? '--'}</Typography>
+        <Typography className="tw:text-primary">
+          {record.testPlatforms?.join(', ') ?? '--'}
+        </Typography>
       </Table.Cell>
       <Table.Cell>{renderEnabledCell(record)}</Table.Cell>
       <Table.Cell>{renderActionsCell(record)}</Table.Cell>

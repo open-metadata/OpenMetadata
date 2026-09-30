@@ -108,7 +108,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         <>
           <Row className="p-b-xss" justify="space-between">
             <Col>
-              <Typography className="font-medium">
+              <Typography className="font-medium tw:text-primary">
                 {t('label.version-plural-history')}
               </Typography>
             </Col>

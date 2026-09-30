@@ -76,7 +76,11 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
         <Space className="w-full justify-between items-start">
           <div data-testid="data-insight-header">
             <div className="flex gap-2 items-center">
-              <Typography as="h5" size="text-md" weight="semibold">
+              <Typography
+                as="h5"
+                className="tw:mb-2!"
+                size="text-md"
+                weight="semibold">
                 {t('label.data-insight-plural')}
               </Typography>
             </div>

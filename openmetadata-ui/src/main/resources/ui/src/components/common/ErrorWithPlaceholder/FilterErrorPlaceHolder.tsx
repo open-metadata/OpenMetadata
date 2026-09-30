@@ -47,10 +47,16 @@ const FilterErrorPlaceHolder = ({
             <Typography as="p">{placeholderText}</Typography>
           ) : (
             <>
-              <Typography as="p" style={{ marginBottom: '0' }}>
+              <Typography
+                as="p"
+                className="tw:text-primary"
+                style={{ marginBottom: '0' }}>
                 {t('label.no-result-found')}
               </Typography>
-              <Typography as="p" style={{ marginBottom: '0' }}>
+              <Typography
+                as="p"
+                className="tw:text-primary"
+                style={{ marginBottom: '0' }}>
                 {t('message.try-adjusting-filter')}
               </Typography>
             </>

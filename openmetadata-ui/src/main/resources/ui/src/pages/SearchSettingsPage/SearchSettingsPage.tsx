@@ -99,7 +99,7 @@ const SearchBoostsSection = ({
           header={
             <Row className="d-flex items-center justify-between w-full">
               <Col className="d-flex items-center gap-4">
-                <Typography className="text-sm font-semibold m-0">
+                <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.term-boost')}
                 </Typography>
                 <span className="count-label">
@@ -142,7 +142,7 @@ const SearchBoostsSection = ({
           header={
             <Row className="d-flex items-center justify-between w-full">
               <Col className="d-flex items-center gap-4">
-                <Typography className="text-sm font-semibold m-0">
+                <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.field-value-boost')}
                 </Typography>
                 <span className="count-label">

@@ -161,6 +161,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
       ellipsis: { showTitle: false },
       render: (text: string) => (
         <Typography
+          className="tw:text-primary"
           data-testid={`lineage-column-${header}-${text}`}
           ellipsis={{ tooltip: true }}>
           {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}

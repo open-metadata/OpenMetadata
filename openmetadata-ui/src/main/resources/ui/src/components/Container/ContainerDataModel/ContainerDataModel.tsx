@@ -232,7 +232,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
                 textAlign: 'center',
               }}
               title={toLower(dataTypeDisplay)}>
-              <Typography ellipsis className="cursor-pointer">
+              <Typography ellipsis className="cursor-pointer tw:text-primary">
                 {dataTypeDisplay ?? record.dataType}
               </Typography>
             </Tooltip>

@@ -207,7 +207,7 @@ function WorksheetColumnsTable() {
               </div>
               {isEmpty(displayName) ? null : (
                 <Typography
-                  className="m-b-0 d-block break-word"
+                  className="m-b-0 d-block break-word tw:text-primary"
                   data-testid="column-display-name">
                   {getEntityName(record)}
                 </Typography>
@@ -235,7 +235,7 @@ function WorksheetColumnsTable() {
                 textAlign: 'center',
               }}
               title={toLower(dataTypeDisplay)}>
-              <Typography ellipsis className="cursor-pointer">
+              <Typography ellipsis className="cursor-pointer tw:text-primary">
                 {dataTypeDisplay ?? record.dataType}
               </Typography>
             </Tooltip>

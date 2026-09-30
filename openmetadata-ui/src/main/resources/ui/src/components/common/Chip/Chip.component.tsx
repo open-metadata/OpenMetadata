@@ -67,7 +67,9 @@ const Chip = ({
 
   if (isEmpty(data) && showNoDataPlaceholder) {
     return (
-      <Typography as="p" className="m-t-xs text-sm no-data-chip-placeholder">
+      <Typography
+        as="p"
+        className="m-t-xs text-sm no-data-chip-placeholder tw:mb-3.5!">
         {noDataPlaceholder ?? NO_DATA_PLACEHOLDER}
       </Typography>
     );

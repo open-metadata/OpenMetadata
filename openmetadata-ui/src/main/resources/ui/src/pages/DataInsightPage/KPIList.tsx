@@ -105,7 +105,9 @@ const KPIList = () => {
         dataIndex: 'startDate',
         key: 'startDate',
         render: (startDate: number) => (
-          <Typography>{formatDateTime(startDate)}</Typography>
+          <Typography className="tw:text-primary">
+            {formatDateTime(startDate)}
+          </Typography>
         ),
       },
       {
@@ -113,7 +115,9 @@ const KPIList = () => {
         dataIndex: 'endDate',
         key: 'endDate',
         render: (endDate: number) => (
-          <Typography>{formatDateTime(endDate)}</Typography>
+          <Typography className="tw:text-primary">
+            {formatDateTime(endDate)}
+          </Typography>
         ),
       },
       {
@@ -125,7 +129,9 @@ const KPIList = () => {
             record.metricType === KpiTargetType.Percentage;
           const targetValue = isPercentageMetric ? `${+value}%` : value;
 
-          return <Typography>{targetValue}</Typography>;
+          return (
+            <Typography className="tw:text-primary">{targetValue}</Typography>
+          );
         },
       },
       {
@@ -133,7 +139,7 @@ const KPIList = () => {
         dataIndex: 'metricType',
         key: 'metricType',
         render: (metricType: KpiTargetType) => (
-          <Typography>{metricType}</Typography>
+          <Typography className="tw:text-primary">{metricType}</Typography>
         ),
       },
       {

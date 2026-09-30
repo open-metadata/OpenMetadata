@@ -71,7 +71,9 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
         title: t('label.step'),
         dataIndex: 'name',
         render: (_, record: StepSummary) => (
-          <Typography data-testid={`step-summary-name-${record.name}`}>
+          <Typography
+            className="tw:text-primary"
+            data-testid={`step-summary-name-${record.name}`}>
             {getEntityName(record)}
           </Typography>
         ),

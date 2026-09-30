@@ -535,7 +535,7 @@ const SchemaTable = () => {
         return (
           <Typography
             as="p"
-            className="cursor-pointer"
+            className="cursor-pointer tw:mb-3.5! tw:text-primary"
             ellipsis={{ tooltip: displayValue, rows: 3 }}>
             {highlightSearchArrayElement(dataTypeDisplay, searchText)}
           </Typography>

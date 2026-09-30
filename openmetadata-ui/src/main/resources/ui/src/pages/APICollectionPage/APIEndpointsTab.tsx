@@ -189,7 +189,11 @@ function APIEndpointsTab({
         key: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
 
         render: (requestMethod: APIEndpoint['requestMethod']) => {
-          return <Typography>{requestMethod ?? NO_DATA}</Typography>;
+          return (
+            <Typography className="tw:text-primary">
+              {requestMethod ?? NO_DATA}
+            </Typography>
+          );
         },
       },
       ...descriptionTableObject(),

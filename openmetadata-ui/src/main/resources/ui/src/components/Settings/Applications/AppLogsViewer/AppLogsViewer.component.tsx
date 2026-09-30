@@ -309,7 +309,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'failedRecords',
             key: 'failedRecords',
             render: (text: string) => (
-              <Typography className="text-failure">{text}</Typography>
+              <Typography className="text-failure tw:text-primary">
+                {text}
+              </Typography>
             ),
           },
           ...(successContext?.stats?.vectorStats?.totalRecords
@@ -332,7 +334,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'readerAvgMs',
             key: 'readerAvgMs',
             render: (value: string) => (
-              <Typography data-testid="entity-reader-avg">{value}</Typography>
+              <Typography
+                className="tw:text-primary"
+                data-testid="entity-reader-avg">
+                {value}
+              </Typography>
             ),
           },
           {
@@ -340,7 +346,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'processAvgMs',
             key: 'processAvgMs',
             render: (value: string) => (
-              <Typography data-testid="entity-process-avg">{value}</Typography>
+              <Typography
+                className="tw:text-primary"
+                data-testid="entity-process-avg">
+                {value}
+              </Typography>
             ),
           },
           {
@@ -348,7 +358,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'sinkAvgMs',
             key: 'sinkAvgMs',
             render: (value: string) => (
-              <Typography data-testid="entity-sink-avg">{value}</Typography>
+              <Typography
+                className="tw:text-primary"
+                data-testid="entity-sink-avg">
+                {value}
+              </Typography>
             ),
           },
           ...(successContext?.stats?.vectorStats?.totalRecords
@@ -358,7 +372,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   dataIndex: 'vectorAvgMs',
                   key: 'vectorAvgMs',
                   render: (value: string) => (
-                    <Typography data-testid="entity-vector-avg">
+                    <Typography
+                      className="tw:text-primary"
+                      data-testid="entity-vector-avg">
                       {value}
                     </Typography>
                   ),
@@ -429,7 +445,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         dataIndex: 'name',
         key: 'name',
         render: (text: string) => (
-          <Typography className="font-medium">{text}</Typography>
+          <Typography className="font-medium tw:text-primary">
+            {text}
+          </Typography>
         ),
       },
       {
@@ -489,14 +507,18 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         dataIndex: 'failedRecords',
         key: 'failedRecords',
         render: (text: number) => (
-          <Typography className="text-failure">{text}</Typography>
+          <Typography className="text-failure tw:text-primary">
+            {text}
+          </Typography>
         ),
       },
       {
         title: t('label.partition-plural'),
         dataIndex: 'partitions',
         key: 'partitions',
-        render: (text: string) => <Typography>{text}</Typography>,
+        render: (text: string) => (
+          <Typography className="tw:text-primary">{text}</Typography>
+        ),
       },
     ];
   }, [serverStatsData]);

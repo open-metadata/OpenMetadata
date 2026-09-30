@@ -75,7 +75,11 @@ const renderFailedContent = (
       title: t('label.failure-reason'),
       dataIndex: 'message',
       key: 'message',
-      render: (error: string) => <Typography as="p">{error}</Typography>,
+      render: (error: string) => (
+        <Typography as="p" className="tw:text-primary">
+          {error}
+        </Typography>
+      ),
     },
   ];
 

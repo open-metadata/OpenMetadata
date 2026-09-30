@@ -210,7 +210,7 @@ const TaskFeedCardFromTask = ({
             {taskColumnName}
 
             <Typography
-              className="break-all header-link text-sm"
+              className="break-all header-link text-sm tw:text-primary"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography>

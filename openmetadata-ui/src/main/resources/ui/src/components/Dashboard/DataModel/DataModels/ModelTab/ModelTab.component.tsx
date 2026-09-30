@@ -379,7 +379,9 @@ const ModelTab = () => {
         key: TABLE_COLUMNS_KEYS.DATA_TYPE,
         width: 100,
         render: (dataType, record) => (
-          <Typography>{record.dataTypeDisplay || dataType}</Typography>
+          <Typography className="tw:text-primary">
+            {record.dataTypeDisplay || dataType}
+          </Typography>
         ),
       },
       {

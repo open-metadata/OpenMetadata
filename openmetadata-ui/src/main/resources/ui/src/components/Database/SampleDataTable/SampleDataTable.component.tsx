@@ -295,7 +295,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
       <ErrorPlaceHolder className="error-placeholder">
-        <Typography as="p">
+        <Typography as="p" className="tw:mb-3.5!">
           <Transi18next
             i18nKey="message.view-sample-data-entity"
             renderElement={

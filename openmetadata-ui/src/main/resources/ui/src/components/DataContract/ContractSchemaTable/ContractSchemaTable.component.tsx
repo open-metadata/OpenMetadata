@@ -87,7 +87,9 @@ const ContractSchemaTable: React.FC<{
                       {constraint}
                     </Tag>
                   ) : (
-                    <Typography data-testid="no-constraints">
+                    <Typography
+                      className="tw:text-primary"
+                      data-testid="no-constraints">
                       {NO_DATA_PLACEHOLDER}
                     </Typography>
                   )}

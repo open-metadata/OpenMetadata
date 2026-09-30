@@ -167,7 +167,9 @@ const ReindexFailures = ({
         key: 'entityType',
         width: 120,
         render: (text: string) => (
-          <Typography weight="medium">{text}</Typography>
+          <Typography className="tw:text-primary" weight="medium">
+            {text}
+          </Typography>
         ),
       },
       {
@@ -178,7 +180,7 @@ const ReindexFailures = ({
         ellipsis: true,
         render: (text: string) => (
           <span className="tw:inline-flex tw:items-center tw:gap-1">
-            <Typography>{text || '-'}</Typography>
+            <Typography className="tw:text-primary">{text || '-'}</Typography>
             {text && <CopyToClipboardButton copyText={text} />}
           </span>
         ),
@@ -188,7 +190,9 @@ const ReindexFailures = ({
         dataIndex: 'failureStage',
         key: 'failureStage',
         width: 100,
-        render: (text: string) => <Typography>{text || '-'}</Typography>,
+        render: (text: string) => (
+          <Typography className="tw:text-primary">{text || '-'}</Typography>
+        ),
       },
       {
         title: t('label.error'),

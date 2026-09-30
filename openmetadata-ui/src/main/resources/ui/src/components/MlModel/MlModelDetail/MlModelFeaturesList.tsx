@@ -172,7 +172,11 @@ const MlModelFeaturesList = () => {
             <Divider className="m-y-md" />
           </Col>
           <Col span={24}>
-            <Typography as="h5" size="text-md" weight="semibold">
+            <Typography
+              as="h5"
+              className="tw:mb-2!"
+              size="text-md"
+              weight="semibold">
               {t('label.feature-plural-used')}
             </Typography>
           </Col>

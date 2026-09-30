@@ -207,7 +207,7 @@ const ACTIVITY_EVENT_HEADER_RENDERERS: Partial<
   Record<ActivityEventType, () => ReactNode>
 > = {
   [ActivityEventType.EntityCreated]: () => (
-    <Typography className="font-bold">
+    <Typography className="font-bold tw:text-primary">
       {t('label.created-lowercase')}
     </Typography>
   ),

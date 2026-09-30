@@ -152,7 +152,9 @@ export const TestSuitesTable = ({
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>{renderNameCell(record)}</Table.Cell>
       <Table.Cell>
-        <Typography>{(record.summary as TestSummary)?.total ?? 0}</Typography>
+        <Typography className="tw:text-primary">
+          {(record.summary as TestSummary)?.total ?? 0}
+        </Typography>
       </Table.Cell>
       <Table.Cell>{renderSuccessCell(record.summary)}</Table.Cell>
       <Table.Cell>

@@ -1053,7 +1053,7 @@ const APIEndpointSchemaV1: React.FC<{
       key: 'dataType',
       width: 150,
       render: (dataType: string, record: Field) => (
-        <Typography as="span" className="tw:text-xs">
+        <Typography as="span" className="tw:text-xs tw:text-primary">
           {record.dataTypeDisplay || dataType || 'Unknown'}
         </Typography>
       ),

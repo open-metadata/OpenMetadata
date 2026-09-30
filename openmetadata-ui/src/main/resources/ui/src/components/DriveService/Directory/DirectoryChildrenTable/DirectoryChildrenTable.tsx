@@ -72,7 +72,7 @@ function DirectoryChildrenTable() {
               textAlign: 'center',
             }}
             title={toLower(type)}>
-            <Typography ellipsis className="cursor-pointer">
+            <Typography ellipsis className="cursor-pointer tw:text-primary">
               {type ?? record.type}
             </Typography>
           </Tooltip>

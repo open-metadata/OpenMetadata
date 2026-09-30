@@ -60,14 +60,14 @@ const CreateErrorPlaceHolder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography as="p">
+          <Typography as="p" className="tw:mb-3.5!">
             {placeholderText ??
               t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                 entity: heading,
               })}
           </Typography>
           {!placeholderText && (
-            <Typography as="p">
+            <Typography as="p" className="tw:mb-3.5!">
               <Transi18next
                 i18nKey="message.refer-to-our-doc"
                 renderElement={

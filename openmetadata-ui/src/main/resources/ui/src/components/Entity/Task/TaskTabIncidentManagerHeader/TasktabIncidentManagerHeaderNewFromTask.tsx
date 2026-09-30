@@ -86,7 +86,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
         className: toLower(status.testCaseResolutionStatusType),
         title: (
           <div>
-            <Typography as="p" className="m-b-0">
+            <Typography as="p" className="m-b-0 tw:text-primary">
               {status.testCaseResolutionStatusType}
             </Typography>
             <Typography as="p" className="m-b-0">

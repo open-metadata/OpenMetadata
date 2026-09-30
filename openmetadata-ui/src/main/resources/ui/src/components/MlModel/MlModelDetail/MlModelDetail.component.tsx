@@ -293,7 +293,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlHyperParameters = useMemo(() => {
     return (
       <>
-        <Typography as="h5" size="text-md" weight="semibold">
+        <Typography
+          as="h5"
+          className="tw:mb-2!"
+          size="text-md"
+          weight="semibold">
           {t('label.hyper-parameter-plural')}{' '}
         </Typography>
         {isEmpty(mlModelDetail.mlHyperParameters) ? (
@@ -315,7 +319,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlModelStore = useMemo(() => {
     return (
       <>
-        <Typography as="h5" size="text-md" weight="semibold">
+        <Typography
+          as="h5"
+          className="tw:mb-2!"
+          size="text-md"
+          weight="semibold">
           {t('label.model-store')}
         </Typography>
         {mlModelDetail.mlStore ? (

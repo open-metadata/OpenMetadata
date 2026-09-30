@@ -149,7 +149,11 @@ const SpreadsheetVersion = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (_, record) => <Typography>{getEntityName(record)}</Typography>,
+        render: (_, record) => (
+          <Typography className="tw:text-primary">
+            {getEntityName(record)}
+          </Typography>
+        ),
       },
       ...descriptionTableObject(),
     ],

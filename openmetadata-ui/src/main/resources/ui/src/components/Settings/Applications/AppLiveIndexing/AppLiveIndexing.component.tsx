@@ -101,7 +101,9 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'entityType',
         width: 140,
         render: (entityType: string) => (
-          <Typography>{entityType || NO_DATA_PLACEHOLDER}</Typography>
+          <Typography className="tw:text-primary">
+            {entityType || NO_DATA_PLACEHOLDER}
+          </Typography>
         ),
       },
       {
@@ -111,6 +113,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         ellipsis: true,
         render: (entityFqn: string) => (
           <Typography
+            className="tw:text-primary"
             ellipsis={{ tooltip: entityFqn }}
             style={{ maxWidth: 300 }}>
             {entityFqn || NO_DATA_PLACEHOLDER}
@@ -135,7 +138,9 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         dataIndex: 'retryCount',
         key: 'retryCount',
         width: 120,
-        render: (count: number) => <Typography>{count}</Typography>,
+        render: (count: number) => (
+          <Typography className="tw:text-primary">{count}</Typography>
+        ),
       },
       {
         title: t('label.failure-reason'),
@@ -143,7 +148,10 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'failureReason',
         ellipsis: true,
         render: (reason: string) => (
-          <Typography ellipsis={{ tooltip: reason }} style={{ maxWidth: 300 }}>
+          <Typography
+            className="tw:text-primary"
+            ellipsis={{ tooltip: reason }}
+            style={{ maxWidth: 300 }}>
             {reason || NO_DATA_PLACEHOLDER}
           </Typography>
         ),

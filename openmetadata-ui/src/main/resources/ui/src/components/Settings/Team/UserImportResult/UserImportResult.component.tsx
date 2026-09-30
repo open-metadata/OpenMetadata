@@ -80,7 +80,10 @@ export const UserImportResult = ({
         fixed: true,
         render: (name: string) => {
           return (
-            <Typography as="p" style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {name}
             </Typography>
           );
@@ -92,7 +95,10 @@ export const UserImportResult = ({
         key: 'displayName',
         render: (displayName: string) => {
           return (
-            <Typography as="p" style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {displayName || '--'}
             </Typography>
           );
@@ -120,7 +126,10 @@ export const UserImportResult = ({
         key: 'email',
         render: (value: string) => {
           return (
-            <Typography as="p" style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {value || '--'}
             </Typography>
           );
@@ -132,7 +141,10 @@ export const UserImportResult = ({
         key: 'timezone',
         render: (value: string) => {
           return (
-            <Typography as="p" style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {value || '--'}
             </Typography>
           );
@@ -144,7 +156,10 @@ export const UserImportResult = ({
         key: 'isAdmin',
         render: (value: string) => {
           return (
-            <Typography as="p" style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {value || '--'}
             </Typography>
           );
@@ -156,7 +171,10 @@ export const UserImportResult = ({
         key: 'teams*',
         render: (value: string) => {
           return (
-            <Typography as="p" style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {value || '--'}
             </Typography>
           );
@@ -167,7 +185,11 @@ export const UserImportResult = ({
         dataIndex: 'Roles',
         key: 'Roles',
         render: (value: string) => {
-          return <Typography as="p">{value || '--'}</Typography>;
+          return (
+            <Typography as="p" className="tw:text-primary">
+              {value || '--'}
+            </Typography>
+          );
         },
       },
     ];
