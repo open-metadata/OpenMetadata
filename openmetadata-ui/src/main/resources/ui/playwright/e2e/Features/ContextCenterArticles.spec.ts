@@ -1675,14 +1675,16 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', { tag: '@quarantine' }, async ({
-      dataConsumerPage,
-    }) => {
-      await runTextFormattingTest(
-        dataConsumerPage,
-        dataConsumerEditorKnowledgeCenter.knowledgePages[1]
-      );
-    });
+    test(
+      'Text formatting',
+      { tag: '@quarantine' },
+      async ({ dataConsumerPage }) => {
+        await runTextFormattingTest(
+          dataConsumerPage,
+          dataConsumerEditorKnowledgeCenter.knowledgePages[1]
+        );
+      }
+    );
 
     test('Editor operations', async ({ dataConsumerPage }) => {
       await runEditorOperationsTest(
@@ -1721,14 +1723,16 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', { tag: '@quarantine' }, async ({
-      dataStewardPage,
-    }) => {
-      await runTextFormattingTest(
-        dataStewardPage,
-        dataStewardEditorKnowledgeCenter.knowledgePages[1]
-      );
-    });
+    test(
+      'Text formatting',
+      { tag: '@quarantine' },
+      async ({ dataStewardPage }) => {
+        await runTextFormattingTest(
+          dataStewardPage,
+          dataStewardEditorKnowledgeCenter.knowledgePages[1]
+        );
+      }
+    );
 
     test('Editor operations', async ({ dataStewardPage }) => {
       await runEditorOperationsTest(

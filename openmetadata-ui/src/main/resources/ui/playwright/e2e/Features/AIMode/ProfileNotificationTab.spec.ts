@@ -427,35 +427,91 @@ test('Conversation source alert', { tag: '@quarantine' }, async ({ page }) => {
  * Alert with recent events — admin-only (notification tab is admin-gated).
  * Creates a table-scoped alert, triggers via soft-delete/restore, verifies events.
  */
-test('Alert with recent events check', { tag: '@quarantine' }, async ({
-  page,
-}) => {
-  test.slow();
-  const ALERT_NAME = generateAlertName();
-  const { apiContext } = await getApiContext(page);
-  await navigateToAlertsList(page);
+test(
+  'Alert with recent events check',
+  { tag: '@quarantine' },
+  async ({ page }) => {
+    test.slow();
+    const ALERT_NAME = generateAlertName();
+    const { apiContext } = await getApiContext(page);
+    await navigateToAlertsList(page);
 
-  await test.step('Create and trigger alert', async () => {
+    await test.step('Create and trigger alert', async () => {
+      await page.getByTestId('add-alert').click();
+      await inputAlertInformation({
+        page,
+        name: ALERT_NAME,
+        sourceName: SOURCE_NAME_5,
+      });
+
+      await page.getByTestId('add-filters').click();
+      await addEntityFQNFilterProfile({
+        page,
+        filterNumber: 0,
+        entityFQN: (table.entityResponseData as { fullyQualifiedName: string })
+          .fullyQualifiedName,
+      });
+
+      await page.getByTestId('add-filters').click();
+      await addEventTypeFilterProfile({
+        page,
+        filterNumber: 1,
+        eventTypes: ['Entity Soft Deleted', 'Entity Restored'],
+      });
+
+      await page.click('[data-testid="add-destination-button"]');
+      await addInternalDestinationProfile({
+        page,
+        destinationNumber: 0,
+        category: 'Owners',
+        type: 'Email',
+      });
+
+      data.alertDetails = await saveNewAlertAndVerify(page);
+
+      await table.deleteTable(apiContext, false);
+      await table.restore(apiContext);
+    });
+
+    await test.step('Check alert details and recent events', async () => {
+      await navigateToAlertsList(page);
+
+      await waitForRecentEventsToFinishExecution(
+        page,
+        data.alertDetails.name,
+        2
+      );
+
+      await navigateToAlertDetail(page, data.alertDetails);
+
+      await expect(page.getByTestId('edit-description-btn')).toBeVisible();
+
+      await checkRecentEventDetailsProfile({
+        page,
+        alertDetails: data.alertDetails,
+        table,
+        totalEventsCount: 2,
+      });
+    });
+
+    await test.step('Delete alert', async () => {
+      await navigateToAlertsList(page);
+      await deleteAlertFromList(page, data.alertDetails);
+    });
+  }
+);
+
+test(
+  'Destination should work properly',
+  { tag: '@quarantine' },
+  async ({ page }) => {
+    await navigateToAlertsList(page);
     await page.getByTestId('add-alert').click();
+
     await inputAlertInformation({
       page,
-      name: ALERT_NAME,
-      sourceName: SOURCE_NAME_5,
-    });
-
-    await page.getByTestId('add-filters').click();
-    await addEntityFQNFilterProfile({
-      page,
-      filterNumber: 0,
-      entityFQN: (table.entityResponseData as { fullyQualifiedName: string })
-        .fullyQualifiedName,
-    });
-
-    await page.getByTestId('add-filters').click();
-    await addEventTypeFilterProfile({
-      page,
-      filterNumber: 1,
-      eventTypes: ['Entity Soft Deleted', 'Entity Restored'],
+      name: 'test-name',
+      sourceName: SOURCE_NAME_1,
     });
 
     await page.click('[data-testid="add-destination-button"]');
@@ -463,108 +519,62 @@ test('Alert with recent events check', { tag: '@quarantine' }, async ({
       page,
       destinationNumber: 0,
       category: 'Owners',
-      type: 'Email',
+      type: 'G Chat',
     });
 
-    data.alertDetails = await saveNewAlertAndVerify(page);
+    await expect(page.getByTestId('test-destination-button')).toBeDisabled();
 
-    await table.deleteTable(apiContext, false);
-    await table.restore(apiContext);
-  });
-
-  await test.step('Check alert details and recent events', async () => {
-    await navigateToAlertsList(page);
-
-    await waitForRecentEventsToFinishExecution(page, data.alertDetails.name, 2);
-
-    await navigateToAlertDetail(page, data.alertDetails);
-
-    await expect(page.getByTestId('edit-description-btn')).toBeVisible();
-
-    await checkRecentEventDetailsProfile({
+    await addExternalDestinationProfile({
       page,
-      alertDetails: data.alertDetails,
-      table,
-      totalEventsCount: 2,
+      destinationNumber: 0,
+      category: 'G Chat',
+      input: 'https://google.com',
     });
-  });
 
-  await test.step('Delete alert', async () => {
-    await navigateToAlertsList(page);
-    await deleteAlertFromList(page, data.alertDetails);
-  });
-});
+    await page.click('[data-testid="add-destination-button"]');
+    await addExternalDestinationProfile({
+      page,
+      destinationNumber: 1,
+      category: 'Slack',
+      input: 'https://slack.com',
+      advancedConfig: {
+        headers: [{ key: 'header1', value: 'value1' }],
+        queryParams: [{ key: 'param1', value: 'value1' }],
+      },
+    });
 
-test('Destination should work properly', { tag: '@quarantine' }, async ({
-  page,
-}) => {
-  await navigateToAlertsList(page);
-  await page.getByTestId('add-alert').click();
+    const testButton = page.getByTestId('test-destination-button');
+    await expect(testButton).toBeVisible();
+    await expect(testButton).toBeEnabled();
 
-  await inputAlertInformation({
-    page,
-    name: 'test-name',
-    sourceName: SOURCE_NAME_1,
-  });
+    const testDestinations = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes('/api/v1/events/subscriptions/testDestination') &&
+        response.request().method() === 'POST'
+    );
 
-  await page.click('[data-testid="add-destination-button"]');
-  await addInternalDestinationProfile({
-    page,
-    destinationNumber: 0,
-    category: 'Owners',
-    type: 'G Chat',
-  });
+    await testButton.click();
 
-  await expect(page.getByTestId('test-destination-button')).toBeDisabled();
+    const testResponse = await testDestinations;
+    expect(testResponse.status()).toBe(200);
+    await testResponse.json().then(async (testResults) => {
+      expect(testResults).toHaveLength(2);
 
-  await addExternalDestinationProfile({
-    page,
-    destinationNumber: 0,
-    category: 'G Chat',
-    input: 'https://google.com',
-  });
+      for (const testResult of testResults) {
+        const isGChat = testResult.type === 'GChat';
 
-  await page.click('[data-testid="add-destination-button"]');
-  await addExternalDestinationProfile({
-    page,
-    destinationNumber: 1,
-    category: 'Slack',
-    input: 'https://slack.com',
-    advancedConfig: {
-      headers: [{ key: 'header1', value: 'value1' }],
-      queryParams: [{ key: 'param1', value: 'value1' }],
-    },
-  });
-
-  const testButton = page.getByTestId('test-destination-button');
-  await expect(testButton).toBeVisible();
-  await expect(testButton).toBeEnabled();
-
-  const testDestinations = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/events/subscriptions/testDestination') &&
-      response.request().method() === 'POST'
-  );
-
-  await testButton.click();
-
-  const testResponse = await testDestinations;
-  expect(testResponse.status()).toBe(200);
-  await testResponse.json().then(async (testResults) => {
-    expect(testResults).toHaveLength(2);
-
-    for (const testResult of testResults) {
-      const isGChat = testResult.type === 'GChat';
-
-      await expect(
-        page
-          .getByTestId(`destination-${isGChat ? 0 : 1}`)
-          .getByRole('alert')
-          .getByText(testResult.statusDetails.status)
-      ).toBeAttached();
-    }
-  });
-});
+        await expect(
+          page
+            .getByTestId(`destination-${isGChat ? 0 : 1}`)
+            .getByRole('alert')
+            .getByText(testResult.statusDetails.status)
+        ).toBeAttached();
+      }
+    });
+  }
+);
 
 test('System alert is read-only', { tag: '@quarantine' }, async ({ page }) => {
   await navigateToAlertsList(page);
