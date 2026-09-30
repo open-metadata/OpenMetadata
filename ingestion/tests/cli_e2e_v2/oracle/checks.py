@@ -10,7 +10,9 @@
 #  limitations under the License.
 """Pure Oracle fixture-specific persisted-state checks."""
 
-from ..features.database.entities import procedure_has_code
+from metadata.ingestion.ometa.utils import model_str
+
+from ..features.database.entities import entity_exists, procedure_has_code
 
 
 def procedures_have_bodies(snapshot):
@@ -26,3 +28,25 @@ def procedures_have_bodies(snapshot):
         procedure = next((item for item in snapshot.procedures if item.name.root == name), None)
         for fragment in fragments:
             procedure_has_code(fragment)(procedure)
+
+
+def native_sample_rows(table):
+    """Return the persisted sample rows for all_types, keyed by id.
+
+    Asserts the shape (column set, row count, row widths) before returning, so a
+    caller comparing one cell cannot pass against a truncated or reshaped sample.
+    """
+    entity_exists(table)
+    fqn = model_str(table.fullyQualifiedName)
+    assert table.sampleData is not None, f"{fqn}: sample data missing"
+    names = [name.root for name in table.sampleData.columns]
+    rows = table.sampleData.rows
+    assert len(rows) == 3, f"{fqn}: sample row count: expected 3, got {len(rows)}"
+    widths = [len(row) for row in rows]
+    assert all(width == len(names) for width in widths), (
+        f"{fqn}: sample row widths: expected {len(names)} each, got {widths!r}"
+    )
+    assert "id" in names, f"{fqn}: sample columns missing 'id': {names!r}"
+    keyed = {row[names.index("id")]: dict(zip(names, row, strict=True)) for row in rows}
+    assert set(keyed) == {1, 2, 3}, f"{fqn}: sample row IDs: expected {{1, 2, 3}}, got {set(keyed)!r}"
+    return keyed

@@ -17,8 +17,20 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.utils import model_str
 
 from ..features.database.catalog.differ import catalog_matches
-from ..features.database.entities import table_has_foreign_key, table_is_deleted
-from ..features.database.pipelines import MetadataPipeline
+from ..features.database.entities import (
+    column_has_no_tag,
+    column_has_tag,
+    entity_exists,
+    table_has_foreign_key,
+    table_has_schema_definition,
+    table_is_deleted,
+)
+from ..features.database.lineage import lineage_has_columns, lineage_has_edge, lineage_query
+from ..features.database.pipelines import (
+    AutoClassificationPipeline,
+    LineagePipeline,
+    MetadataPipeline,
+)
 from ..runtime import expect
 from .checks import procedures_have_bodies
 from .expected import oracle_expected
@@ -90,6 +102,57 @@ def test_repeat_ingest_preserves_ids_and_updates_metadata(cli, oracle):
     expect.poll(oracle.catalog_query()).satisfies(updated)
 
 
+@pytest.mark.e2e_contract("lineage.view")
+def test_lineage_view_references_tables(cli, oracle):
+    """The view's DDL is stored, and parsing it yields table- and column-level edges."""
+    cli.run(oracle.invocation(MetadataPipeline(includeDDL=True, includeStoredProcedures=False)))
+    for name in ("customers", "transactions"):
+        expect.poll(oracle.table_query(name)).satisfies(entity_exists)
+    view = oracle.table_fqn("customer_txn_summary")
+    # Prove the DDL landed before asserting on edges parsed from it, so a missing-DDL
+    # regression is distinguishable from a parser regression.
+    expect.poll(oracle.table_query("customer_txn_summary")).satisfies(table_has_schema_definition("LEFT JOIN"))
+
+    # processQueryLineage=False: the ingestion account has no query-history access, and
+    # this asserts view lineage specifically.
+    cli.run(oracle.invocation(LineagePipeline(processQueryLineage=False)))
+
+    def check(graph):
+        lineage_has_edge(oracle.table_fqn("customers"), view)(graph)
+        lineage_has_edge(oracle.table_fqn("transactions"), view)(graph)
+        lineage_has_columns(
+            (oracle.column_fqn("customers", "id"), oracle.column_fqn("transactions", "amount")),
+            (
+                oracle.column_fqn("customer_txn_summary", "customer_id"),
+                oracle.column_fqn("customer_txn_summary", "total_amount"),
+            ),
+        )(graph)
+
+    expect.poll(lineage_query(oracle.om, view)).satisfies(check)
+
+
+@pytest.mark.e2e_contract("classification.tags")
+def test_auto_classification_tags_pii_columns(cli, oracle):
+    """PII columns are tagged and non-PII columns are left alone."""
+    cli.run(oracle.invocation(MetadataPipeline(includeStoredProcedures=False)))
+    expect.poll(oracle.table_query("customers")).satisfies(entity_exists)
+    cli.run(
+        oracle.invocation(
+            AutoClassificationPipeline(storeSampleData=True, enableAutoClassification=True, confidence=60)
+        )
+    )
+
+    def check(table):
+        column_has_tag("email", "PII.Sensitive")(table)
+        column_has_tag("date_of_birth", "PII.NonSensitive")(table)
+        # The negative half matters: without it, a classifier that tags everything passes.
+        for name in ("id", "status"):
+            for tag in ("PII.Sensitive", "PII.NonSensitive"):
+                column_has_no_tag(name, tag)(table)
+
+    expect.poll(oracle.table_query("customers")).satisfies(check)
+
+
 @pytest.mark.parametrize(
     "filters, expected_tables",
     [
@@ -104,6 +167,12 @@ def test_repeat_ingest_preserves_ids_and_updates_metadata(cli, oracle):
             {"customers", "all_types", "customer_txn_summary"},
             id="exclude-one",
             marks=pytest.mark.e2e_contract("filter.table.exclude-one"),
+        ),
+        pytest.param(
+            {"tableFilterPattern": {"includes": ["customers", "transactions"], "excludes": ["transactions"]}},
+            {"customers"},
+            id="mix",
+            marks=pytest.mark.e2e_contract("filter.table.mix"),
         ),
     ],
 )
