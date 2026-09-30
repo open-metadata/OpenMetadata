@@ -5995,6 +5995,22 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/RunDetailsCard/RunDetailsCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/RunExecutionError/RunExecutionError.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/SqlQueryTab/AddSqlQueryFormModal/AddSqlQueryFormModal.component.tsx"
       ],
       "specs": [
