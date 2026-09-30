@@ -110,6 +110,26 @@ class OntologyMemoryDraftFactoryTest {
             .isEmpty());
   }
 
+  @Test
+  void createsNoDraftForNoSuggestionOrUncertainSuggestion() {
+    assertTrue(
+        factory
+            .create(
+                42,
+                glossary,
+                Set.of(memoryId),
+                new OntologyAiCompletionGateway.Completion<>("test-model", List.of()),
+                fqn -> false)
+            .isEmpty());
+    final var uncertain =
+        new OntologyAiCompletionGateway.MemoryTermCandidate(
+            memoryId, "customer", "Customer", "A buyer", 0.79D, "Possible concept");
+    assertTrue(
+        factory
+            .create(42, glossary, Set.of(memoryId), completion(uncertain), fqn -> false)
+            .isEmpty());
+  }
+
   private OntologyAiCompletionGateway.MemoryTermCandidate candidate(final String name) {
     return new OntologyAiCompletionGateway.MemoryTermCandidate(
         memoryId, name, "Customer", "A buyer", 0.9D, "Grounded in the memory");

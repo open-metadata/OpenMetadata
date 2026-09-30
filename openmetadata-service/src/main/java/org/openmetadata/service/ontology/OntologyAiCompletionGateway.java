@@ -59,7 +59,11 @@ public interface OntologyAiCompletionGateway {
 
   record DomainPrompt(String glossary, String description, int maxConcepts) {}
 
-  record MemoryTermPrompt(String glossary, List<MemoryContext> memories, int maxTerms) {}
+  record MemoryTermPrompt(
+      String glossary,
+      List<MemoryContext> memories,
+      List<TermContext> existingTerms,
+      int maxTerms) {}
 
   record MemoryContext(UUID id, String question, String answer, String summary) {}
 

@@ -37,7 +37,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 final class OntologyMemoryDraftFactory {
-  private static final double MIN_CONFIDENCE = 0.6D;
+  private static final double MIN_CONFIDENCE = 0.8D;
   private static final double INITIAL_VERSION = 0.1D;
   private static final int MAX_DESCRIPTION_CHARS = 4_000;
   private static final int MAX_RATIONALE_CHARS = 2_000;

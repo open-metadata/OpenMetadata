@@ -177,7 +177,7 @@ final class OntologyMemoryGlossarySelector {
         .toList();
   }
 
-  private static String query(final List<OntologyAiCompletionGateway.MemoryContext> memories) {
+  static String query(final List<OntologyAiCompletionGateway.MemoryContext> memories) {
     return memories.stream()
         .map(memory -> memory.summary() == null ? memory.question() : memory.summary())
         .flatMap(text -> Arrays.stream(text.split("[^A-Za-z0-9]+")))

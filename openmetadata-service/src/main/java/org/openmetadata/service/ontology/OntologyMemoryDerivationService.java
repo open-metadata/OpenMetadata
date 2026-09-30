@@ -68,17 +68,20 @@ public final class OntologyMemoryDerivationService {
       return Optional.of(previous.get().getId());
     }
     final List<ContextMemory> memories = loadMemories(memoryIds);
+    final List<OntologyAiCompletionGateway.MemoryContext> contexts =
+        memories.stream().map(this::context).toList();
     final OntologyMemoryGlossarySelector.Selection selection =
         glossaryFqn == null || glossaryFqn.isBlank()
             ? new OntologyMemoryGlossarySelector(
                     glossaryRepository, Entity.getSearchRepository(), gateway)
-                .select(memories.stream().map(this::context).toList())
+                .select(contexts)
             : new OntologyMemoryGlossarySelector.Selection(
                 loadGlossary(glossaryFqn), false, 1D, null, null);
     final OntologyAiCompletionGateway.MemoryTermPrompt prompt =
         new OntologyAiCompletionGateway.MemoryTermPrompt(
             selection.glossary().getFullyQualifiedName(),
-            memories.stream().map(this::context).toList(),
+            contexts,
+            new OntologyMemoryExistingTermFinder(Entity.getSearchRepository()).find(contexts),
             memories.size() * MAX_TERMS_PER_MEMORY);
     final var completion = gateway.deriveTermsFromMemories(prompt);
     final Optional<CreateOntologyChangeSet> draft =
