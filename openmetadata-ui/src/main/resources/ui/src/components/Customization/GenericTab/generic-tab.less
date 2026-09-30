@@ -31,13 +31,13 @@
   }
 
   &.custom-tab {
-    background: var(--tw-color-bg-primary);
+    background: var(--om-color-bg-surface);
     border-radius: @border-rad-sm;
     padding: @padding-sm;
   }
 
   > #KnowledgePanel\.LeftPanel {
-    background: white;
+    background: var(--om-color-bg-surface);
     border-radius: @border-rad-sm;
     border: 1px solid @grey-15;
     box-shadow: 0px 0px 0px 4px @grey-100;
@@ -49,8 +49,8 @@
     }
   }
 
-  // `flat` variant: drop the left-panel frame card so the sole widget stands on
-  // its own (used by Domain & Data Product docs, which only hold the Description).
+  // `flat` variant: drop the left-panel frame card so the widgets stand on their
+  // own (Domain, Data Product, Glossary, Glossary Term and Classification docs).
   // Also drop the frame's inner padding so the widget lines up flush with the
   // tabs (left) and the right panel (top) instead of being inset by the frame gap.
   &.flat-left-panel > #KnowledgePanel\.LeftPanel {
@@ -61,17 +61,6 @@
     > .dynamic-height-widget > .left-panel-content {
       padding: 0;
     }
-  }
-}
-
-.ant-tabs.ant-tabs-top.tabs-new {
-  .grid-container > #KnowledgePanel\.LeftPanel {
-    // Let it's content take the height
-    height: initial !important;
-  }
-
-  .grid-container > #KnowledgePanel\.DomainType {
-    height: initial !important;
   }
 }
 

@@ -375,7 +375,9 @@ export default defineConfig(async ({ mode }) => {
     },
 
     css: {
-      preprocessorMaxWorkers: true,
+      // Less intermittently crashes on shared imports in Vite's worker pool.
+      // Compile in-process so that valid stylesheets build deterministically.
+      preprocessorMaxWorkers: 0,
       preprocessorOptions: {
         less: {
           javascriptEnabled: true,
@@ -549,7 +551,6 @@ export default defineConfig(async ({ mode }) => {
         'antlr4',
         '@azure/msal-browser',
         '@azure/msal-react',
-        'codemirror',
         '@deuex-solutions/react-tour',
         // Force-prebundle react-hook-form so it shares the single optimized
         // React instance. Through a symlinked node_modules (worktree/linked

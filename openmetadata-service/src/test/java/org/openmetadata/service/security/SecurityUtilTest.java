@@ -823,6 +823,70 @@ class SecurityUtilTest {
   }
 
   @Test
+  void validateRedirectUri_rejectsSchemeRelativeRedirect() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "//attacker.example/collect", Set.of("https://app.example.com/auth/callback")));
+
+    assertEquals("Redirect URI must be same-origin", exception.getMessage());
+  }
+
+  @Test
+  void validateRedirectUri_rejectsFragmentEvenWhenConfigured() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://app.example.com/auth/callback#continue",
+                    Set.of("https://app.example.com/auth/callback#continue")));
+
+    assertEquals("Redirect URI must not contain a fragment", exception.getMessage());
+  }
+
+  @Test
+  void validateRedirectUri_rejectsUserInfoInRequestedRedirect() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://attacker@app.example.com/auth/callback",
+                    Set.of("https://app.example.com/auth/callback")));
+
+    assertEquals("Redirect URI must not contain user-info", exception.getMessage());
+  }
+
+  @Test
+  void validateRedirectUri_rejectsUserInfoInTrustedConfiguration() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://app.example.com/auth/callback",
+                    Set.of("https://attacker@app.example.com/auth/callback")));
+
+    assertEquals("Trusted redirect URI must not contain user-info", exception.getMessage());
+  }
+
+  @Test
+  void validateRedirectUri_rejectsFragmentInTrustedConfiguration() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://app.example.com/auth/callback",
+                    Set.of("https://app.example.com/auth/callback#continue")));
+
+    assertEquals("Trusted redirect URI must not contain a fragment", exception.getMessage());
+  }
+
+  @Test
   void buildRedirectWithToken_usesFragmentNotQueryString() {
     String redirectUrl =
         SecurityUtil.buildRedirectWithToken(
@@ -838,6 +902,23 @@ class SecurityUtilTest {
     assertTrue(fragment.contains("email="));
     assertTrue(fragment.contains("name="));
     assertTrue(fragment.contains("%26"));
+  }
+
+  @Test
+  void sendRedirectWithToken_disablesCachingAndReferrers() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    String redirectUri = "https://app.example.com/callback";
+
+    SecurityUtil.sendRedirectWithToken(
+        response, redirectUri, "token-value", "user@example.com", "Jane Doe");
+
+    verify(response).setHeader("Cache-Control", "no-store");
+    verify(response).setHeader("Pragma", "no-cache");
+    verify(response).setHeader("Referrer-Policy", "no-referrer");
+    verify(response)
+        .sendRedirect(
+            SecurityUtil.buildRedirectWithToken(
+                redirectUri, "token-value", "user@example.com", "Jane Doe"));
   }
 
   @Test

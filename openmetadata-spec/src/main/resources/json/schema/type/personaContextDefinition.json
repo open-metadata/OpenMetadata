@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/personaContextDefinition.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PersonaContextDefinition",
   "description": "Rules and materialization settings for the shared AI context document attached to a Persona.",
   "type": "object",
@@ -119,6 +119,11 @@
       "description": "Whether persona context is enabled.",
       "type": "boolean",
       "default": true
+    },
+    "prompt": {
+      "description": "Instructions for the AI assistant serving this persona, such as who its users are, what they understand and what they are responsible for. Sent to the assistant as instructions while the context is enabled; never rendered into the context document.",
+      "type": "string",
+      "maxLength": 8000
     },
     "rules": {
       "description": "Ordered dynamic entity-selection rules. An entity matched by multiple rules is rendered under the first rule only.",

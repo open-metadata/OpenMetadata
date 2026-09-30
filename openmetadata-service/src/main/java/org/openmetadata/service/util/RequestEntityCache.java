@@ -3,13 +3,18 @@ package org.openmetadata.service.util;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.monitoring.RequestLatencyContext.Phase;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -23,6 +28,10 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  * ~50% less allocation per cache interaction compared to the deepCopy approach.
  *
  * <p>Bounded to {@value MAX_ENTRIES_PER_REQUEST} entries using LRU eviction.
+ *
+ * <p>A {@link Scope} gives a stretch of code on the same thread its own empty cache: nothing cached
+ * before the scope answers a read inside it, and nothing cached inside it outlives it. Invalidation
+ * reaches the request cache and every open scope. {@link FreshReadScope} opens one.
  */
 public final class RequestEntityCache {
 
@@ -38,19 +47,32 @@ public final class RequestEntityCache {
 
   // Stores JSON strings (not entity objects) to avoid deepCopy overhead
   private static final ThreadLocal<Map<EntityCacheKey, String>> REQUEST_CACHE =
-      ThreadLocal.withInitial(
-          () ->
-              new LinkedHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR, ACCESS_ORDER) {
-                @Override
-                protected boolean removeEldestEntry(Map.Entry<EntityCacheKey, String> eldest) {
-                  return size() > MAX_ENTRIES_PER_REQUEST;
-                }
-              });
+      ThreadLocal.withInitial(RequestEntityCache::newEntryMap);
+
+  // Open scopes, innermost first; absent when none is open.
+  private static final ThreadLocal<Deque<Scope>> SCOPES = new ThreadLocal<>();
 
   private RequestEntityCache() {}
 
   public static void clear() {
     REQUEST_CACHE.remove();
+    forEachScope(Scope::clearEntries);
+  }
+
+  /** Opens a scope with its own empty cache on this thread. Close it to drop that cache. */
+  static Scope openScope() {
+    Deque<Scope> scopes = SCOPES.get();
+    if (scopes == null) {
+      scopes = new ArrayDeque<>();
+      SCOPES.set(scopes);
+    }
+    Scope scope = new Scope();
+    scopes.push(scope);
+    return scope;
+  }
+
+  static boolean hasOpenScopes() {
+    return SCOPES.get() != null;
   }
 
   /**
@@ -61,26 +83,10 @@ public final class RequestEntityCache {
     if (entityType == null || (id == null && name == null)) {
       return;
     }
-    try (var ignored = phase("requestCacheInvalidate")) {
-      REQUEST_CACHE
-          .get()
-          .entrySet()
-          .removeIf(
-              entry -> {
-                EntityCacheKey key = entry.getKey();
-                if (!entityType.equals(key.entityType())) {
-                  return false;
-                }
-                boolean idMatch =
-                    id != null
-                        && key.lookupType() == LookupType.ID
-                        && id.toString().equals(key.lookupValue());
-                boolean nameMatch =
-                    name != null
-                        && key.lookupType() == LookupType.NAME
-                        && name.equals(key.lookupValue());
-                return idMatch || nameMatch;
-              });
+    Predicate<EntityCacheKey> stale = key -> key.refersTo(entityType, id, name);
+    try (Phase ignored = phase("requestCacheInvalidate")) {
+      REQUEST_CACHE.get().keySet().removeIf(stale);
+      forEachScope(scope -> scope.evict(stale));
     }
   }
 
@@ -140,13 +146,13 @@ public final class RequestEntityCache {
 
   private static <T extends EntityInterface> T get(EntityCacheKey key, Class<T> entityClass) {
     String cachedJson;
-    try (var ignored = phase("requestCacheGet")) {
-      cachedJson = REQUEST_CACHE.get().get(key);
+    try (Phase ignored = phase("requestCacheGet")) {
+      cachedJson = entries().get(key);
     }
     if (cachedJson == null) {
       return null;
     }
-    try (var ignored = phase("requestCacheDeserialize")) {
+    try (Phase ignored = phase("requestCacheDeserialize")) {
       return JsonUtils.readValue(cachedJson, entityClass);
     }
   }
@@ -155,10 +161,31 @@ public final class RequestEntityCache {
     if (entity == null) {
       return;
     }
-    try (var ignored = phase("requestCacheSerialize")) {
+    try (Phase ignored = phase("requestCacheSerialize")) {
       String json = JsonUtils.pojoToJson(entity);
-      REQUEST_CACHE.get().put(key, json);
+      entries().put(key, json);
     }
+  }
+
+  private static Map<EntityCacheKey, String> entries() {
+    Deque<Scope> scopes = SCOPES.get();
+    return scopes == null ? REQUEST_CACHE.get() : scopes.peek().entries;
+  }
+
+  private static void forEachScope(Consumer<Scope> action) {
+    Deque<Scope> scopes = SCOPES.get();
+    if (scopes != null) {
+      scopes.forEach(action);
+    }
+  }
+
+  private static Map<EntityCacheKey, String> newEntryMap() {
+    return new LinkedHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR, ACCESS_ORDER) {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry<EntityCacheKey, String> eldest) {
+        return size() > MAX_ENTRIES_PER_REQUEST;
+      }
+    };
   }
 
   private static String fieldsKey(Fields fields) {
@@ -183,6 +210,36 @@ public final class RequestEntityCache {
             .map(entry -> entry.getKey() + ":" + entry.getValue().name())
             .collect(Collectors.joining(","));
     return defaultInclude.name() + "|" + fieldOverrides;
+  }
+
+  /**
+   * One scope's own cache on its thread. Scopes are told apart by identity, so closing one never
+   * removes another that happens to hold the same entries.
+   */
+  static final class Scope implements AutoCloseable {
+    private final Map<EntityCacheKey, String> entries = newEntryMap();
+
+    private Scope() {}
+
+    private void evict(Predicate<EntityCacheKey> stale) {
+      entries.keySet().removeIf(stale);
+    }
+
+    private void clearEntries() {
+      entries.clear();
+    }
+
+    @Override
+    public void close() {
+      Deque<Scope> scopes = SCOPES.get();
+      if (scopes == null) {
+        return;
+      }
+      scopes.remove(this);
+      if (scopes.isEmpty()) {
+        SCOPES.remove();
+      }
+    }
   }
 
   private enum LookupType {
@@ -216,6 +273,15 @@ public final class RequestEntityCache {
         boolean fromCache) {
       return new EntityCacheKey(
           entityType, LookupType.NAME, name, fieldsKey, relationIncludesKey, fromCache);
+    }
+
+    boolean refersTo(String type, UUID id, String name) {
+      if (!entityType.equals(type)) {
+        return false;
+      }
+      return lookupType == LookupType.ID
+          ? id != null && lookupValue.equals(id.toString())
+          : name != null && lookupValue.equals(name);
     }
   }
 }

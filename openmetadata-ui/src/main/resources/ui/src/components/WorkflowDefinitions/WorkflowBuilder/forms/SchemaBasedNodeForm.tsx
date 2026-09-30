@@ -29,7 +29,8 @@ import runAppTaskSchema from '../../../../jsons/governanceSchemas/automatedTask/
 import setEntityCertificationSchema from '../../../../jsons/governanceSchemas/automatedTask/setEntityCertificationTask.json';
 import setGlossaryTermStatusSchema from '../../../../jsons/governanceSchemas/automatedTask/setGlossaryTermStatusTask.json';
 import createRecognizerFeedbackApprovalSchema from '../../../../jsons/governanceSchemas/userTask/createRecognizerFeedbackApprovalTask.json';
-import { FormActionButtons, MetadataFormSection } from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface SchemaFieldDefinition {
   title?: string;

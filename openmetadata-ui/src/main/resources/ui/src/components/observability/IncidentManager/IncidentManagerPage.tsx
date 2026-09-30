@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, PageLayout } from '@openmetadata/ui-core-components';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
@@ -27,7 +27,19 @@ import FilterBar from '../common/FilterChip/FilterBar';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import IncidentGroupsView from './IncidentGroups/IncidentGroupsView';
 import IncidentManagerPageWidgets from './IncidentManagerPageWidgets';
+
+// Widget wrapper: strip the widgets' own border/padding and give the chart cards
+// a light bg in light and a dark surface in dark.
+const INCIDENT_WIDGETS_WRAPPER_CLASS = [
+  'tw:mb-4',
+  'tw:[&_.incident-page-widgets]:border-0',
+  'tw:[&_.incident-page-widgets]:p-0',
+  'tw:[&_.custom-chart-background]:border-0',
+  'tw:[&_.custom-chart-background]:bg-gray-blue-25',
+  'tw:[&_.custom-chart-background]:dark:bg-surface',
+].join(' ');
 
 /**
  * App-mode Incident Manager page. Composes the shared useIncidentManagerListPage
@@ -37,6 +49,21 @@ import IncidentManagerPageWidgets from './IncidentManagerPageWidgets';
  */
 const IncidentManagerPage = () => {
   const { t } = useTranslation();
+
+  /**
+   * The group rows above the table aggregate the very incidents it lists, so a
+   * status, severity or assignee changed in the table leaves their counts,
+   * chips and breakdown bar showing the old values until the page is reloaded.
+   * Bumping the key re-reads the groups — one fetch per change that went
+   * through, and none while the user is only looking.
+   */
+  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
+
+  const refreshIncidentGroups = useCallback(
+    () => setGroupsRefreshKey((key) => key + 1),
+    []
+  );
+
   const {
     commonTestCasePermission,
     filterDescriptors,
@@ -52,7 +79,10 @@ const IncidentManagerPage = () => {
     handleStatusSubmit,
     handleSeveritySubmit,
     handleAssigneeUpdate,
-  } = useIncidentManagerListPage({ isIncidentPage: true });
+  } = useIncidentManagerListPage({
+    isIncidentPage: true,
+    onIncidentChange: refreshIncidentGroups,
+  });
 
   // Consumer via a hook return value (useIncidentManagerListPage is out of this batch's
   // scope — incident permissions decouple from test-case perms in an open upstream PR
@@ -105,34 +135,37 @@ const IncidentManagerPage = () => {
         />
       }
       pageTitle={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}>
-      <div className="tw:mb-4 tw:[&_.incident-page-widgets]:border-0 tw:[&_.incident-page-widgets]:p-0 tw:[&_.custom-chart-background]:border-0 tw:[&_.custom-chart-background]:bg-gray-blue-25">
+      <div className={INCIDENT_WIDGETS_WRAPPER_CLASS}>
         <IncidentManagerPageWidgets />
       </div>
       {hasViewPermission ? (
-        <Box
-          className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
-          direction="col">
-          <Box className="tw:border-b tw:border-secondary tw:p-4">
-            <FilterBar
-              filters={filterDescriptors}
-              hasActiveFilters={hasActiveFilters}
-              variant="input"
-              onClearAll={clearAllFilters}
+        <Box className="tw:gap-4" direction="col">
+          <IncidentGroupsView refreshKey={groupsRefreshKey} />
+          <Box
+            className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
+            direction="col">
+            <Box className="tw:border-b tw:border-secondary tw:p-4">
+              <FilterBar
+                filters={filterDescriptors}
+                hasActiveFilters={hasActiveFilters}
+                variant="input"
+                onClearAll={clearAllFilters}
+              />
+            </Box>
+            <IncidentManagerTable
+              breadcrumbData={incidentBreadcrumb}
+              handleAssigneeUpdate={handleAssigneeUpdate}
+              handleSeveritySubmit={handleSeveritySubmit}
+              handleStatusSubmit={handleStatusSubmit}
+              isIncidentPage={isIncidentPage}
+              isPermissionLoading={isPermissionLoading}
+              pagingData={pagingData}
+              showPagination={showPagination}
+              tableDetails={tableDetails}
+              testCaseListData={testCaseListData}
+              testCasePermissions={testCasePermissions}
             />
           </Box>
-          <IncidentManagerTable
-            breadcrumbData={incidentBreadcrumb}
-            handleAssigneeUpdate={handleAssigneeUpdate}
-            handleSeveritySubmit={handleSeveritySubmit}
-            handleStatusSubmit={handleStatusSubmit}
-            isIncidentPage={isIncidentPage}
-            isPermissionLoading={isPermissionLoading}
-            pagingData={pagingData}
-            showPagination={showPagination}
-            tableDetails={tableDetails}
-            testCaseListData={testCaseListData}
-            testCasePermissions={testCasePermissions}
-          />
         </Box>
       ) : (
         <ErrorPlaceHolder

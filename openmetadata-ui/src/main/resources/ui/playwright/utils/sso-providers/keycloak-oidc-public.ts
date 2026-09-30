@@ -116,6 +116,8 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   // via oidc-client's signinSilent — same-origin refresh with no popup.
   supportsSilentCallback: true,
   usesBackendRefresh: false,
+  hasBackendIssuedRefreshCookie: false,
+  usesPkce: true,
   supportsColdLoadRefresh: true,
 
   expectedResponseType: 'code',
@@ -137,7 +139,7 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: this.signInButtonPattern }).click();
     await performProviderLogin(page, {
       username: KEYCLOAK_SEEDED_CREDS.username,
@@ -165,9 +167,15 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
     // /callback, and the signup completion never ran.
     const sidebarLocator = page.getByTestId('app-bar-item-my-data');
     const createButton = page.getByTestId('create-button');
+    // Match the signup POST specifically. A bare `.includes('/api/v1/users')`
+    // matches the 404 from `GET /api/v1/users/loggedInUser` that fires first
+    // (that's the response that routes the SPA to /signup), so the waiter
+    // would resolve before the actual submission and skip the wait.
     const submissionPending = page
       .waitForResponse(
-        (resp) => resp.url().includes('/api/v1/users') && resp.status() < 400
+        (resp) =>
+          resp.url().includes('/api/v1/users') &&
+          resp.request().method() !== 'GET'
       )
       .catch(() => undefined);
     const signupAppeared = await Promise.race([
@@ -183,7 +191,13 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
     if (signupAppeared) {
       // displayName is required; the SPA pre-fills it from token claims but
       // the KC realm's user has no given_name claim, so fill deterministically.
-      const fullNameInput = page.getByTestId('full-name-input');
+      // #33575 migrated the signup screen to core-components, which puts the
+      // test id on the react-aria wrapper (`data-input-wrapper`) rather than the
+      // control -- filling it throws "Element is not an <input>". Reach the
+      // control the way the rest of the corpus does for these wrappers.
+      const fullNameInput = page
+        .getByTestId('full-name-input')
+        .locator('input');
       const currentName = await fullNameInput.inputValue().catch(() => '');
       if (!currentName) {
         await fullNameInput.fill('Azure Saml');

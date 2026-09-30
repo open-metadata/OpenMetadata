@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import type { ColumnType } from './Table.interface';
-import { resolveCellValue } from './TableV2Utils';
+import {
+  getColumnStickyStyle,
+  getStickyBodyCellClass,
+  resolveCellValue,
+} from './TableV2Utils';
 
 type Row = Record<string, unknown>;
 
@@ -40,5 +44,21 @@ describe('resolveCellValue rawValue branch', () => {
 
   it('returns null when dataIndex is undefined', () => {
     expect(resolveCellValue(buildColumn({}), {}, 0)).toBeNull();
+  });
+});
+
+describe('sticky column background', () => {
+  it('leaves body cells to the class so dark hover/selected can repaint them', () => {
+    expect(getColumnStickyStyle('left', 1)).not.toHaveProperty('background');
+    expect(getStickyBodyCellClass('right')).toContain(
+      'tw:dark:group-hover:bg-secondary'
+    );
+    expect(getStickyBodyCellClass(undefined)).toBe('');
+  });
+
+  it('keeps an explicit header background inline', () => {
+    expect(
+      getColumnStickyStyle('right', 2, 'var(--om-color-bg-secondary)')
+    ).toMatchObject({ background: 'var(--om-color-bg-secondary)' });
   });
 });

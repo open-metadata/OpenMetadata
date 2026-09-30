@@ -73,7 +73,7 @@ import {
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
 import { queryClient } from '../../../queryClient';
-import axiosClient from '../../../rest';
+import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { clearEtagCache } from '../../../rest/etagInterceptor';
 import {
@@ -84,7 +84,7 @@ import { personaDocFqn } from '../../../rest/queries/docStoreQuery';
 import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
-import { authCoordinator } from '../../../utils/Auth/AuthCoordinator';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
 import {
   getAuthConfig,
   getUrlPathnameExpiry,
@@ -692,99 +692,122 @@ export const AuthProvider = ({
     // the two paths don't fight each other.
   };
 
+  type AuthConfigResponse = NonNullable<
+    Awaited<ReturnType<typeof fetchAuthenticationConfig>>
+  >;
+  type AuthorizerConfigResponse = Awaited<
+    ReturnType<typeof fetchAuthorizerConfig>
+  >;
+
+  // Signed-in session: load the user unless this is the SSO callback route.
+  const resumeSignedInSession = async () => {
+    const oidcToken = await getOidcToken();
+    if (!oidcToken) {
+      handleStoreProtectedRedirectPath();
+      setApplicationLoading(false);
+
+      return;
+    }
+
+    // get the user details if token is present and route is not auth callback and saml callback
+    if (
+      ![ROUTES.AUTH_CALLBACK, ROUTES.SILENT_CALLBACK].includes(
+        location.pathname
+      )
+    ) {
+      // Fire-and-forget: `getLoggedInUserDetails` now re-throws a
+      // refreshable 401 (Task 13 — Bug 1 fix) so the AuthCoordinator's
+      // axios response interceptor can retry it. Before that change
+      // this call could never reject; now that it can, the rejection
+      // needs a handler here or it surfaces as an uncaught promise.
+      // If the interceptor's own refresh attempt ultimately fails, the
+      // coordinator's `refresh-failed` subscription (mount effect
+      // above) already drives `resetUserDetails(true)` — this catch
+      // only silences the otherwise-unhandled rejection.
+      getLoggedInUserDetails().catch(() => undefined);
+    }
+  };
+
+  const applySupportedAuthConfig = async (
+    authConfig: AuthConfigResponse,
+    authorizerConfig: AuthorizerConfigResponse
+  ) => {
+    // Validate against the RAW server response, not the transformed
+    // configJson. `getAuthConfig` reshapes into per-SDK payloads —
+    // Azure/Basic nest fields under `auth.*`, Okta renames
+    // `authority` → `issuer`, several providers omit `providerName`
+    // — so validating the transformed shape falsely reported every
+    // Azure/Auth0 config as broken (fields "missing" that were only
+    // nested-away). REQUIRED_FIELDS_BY_PROVIDER lists the fields the
+    // /system/config/auth public endpoint actually exposes, which is
+    // what `authConfig` is.
+    const validation = validateAuthFieldsDetailed(
+      authConfig as AuthenticationConfigurationWithScope
+    );
+    const configJson = getAuthConfig(authConfig);
+    setHasValidConfig(validation.valid);
+    if (!validation.valid) {
+      // Surface the misconfiguration with a toast — the SPA still
+      // proceeds to render whatever the current provider allows so
+      // the admin isn't locked out of the shell entirely (per
+      // conductor review). Any downstream SDK failure with the
+      // empty fields surfaces its own error.
+      const missing = validation.errors.map((error) => error.field).join(', ');
+      showErrorToast(
+        t('message.auth-configuration-missing-fields', {
+          fields: missing,
+        })
+      );
+    }
+    setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
+    setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
+    setAuthConfig(configJson);
+    setAuthorizerConfig(authorizerConfig);
+    // RDF enabled status is already set from system config in App.tsx.
+    //
+    // Gate the SDK-instance wiring on validation.valid: MSAL's
+    // PublicClientApplication.initialize() rejects an empty
+    // clientId, and setMsalInstance never runs, leaving
+    // isConfigLoading true forever — the whole shell sits on
+    // <Loader /> instead of falling through to SignInPage like the
+    // other providers do. Skip the SDK boot when required fields
+    // are missing so Azure matches Basic/LDAP/OIDC/Auth0/Okta:
+    // toast fires, SignInPage renders, admin can retry after the
+    // config is fixed on the server.
+    if (validation.valid) {
+      updateAuthInstance(configJson);
+    }
+    await resumeSignedInSession();
+  };
+
   const fetchAuthConfig = async () => {
     try {
       const [authConfig, authorizerConfig] = await Promise.all([
         fetchAuthenticationConfig(),
         fetchAuthorizerConfig(),
       ]);
-      if (!isNil(authConfig)) {
-        const provider = authConfig.provider;
-        // show an error toast if provider is null or not supported
-        if (provider && Object.values(AuthProviderEnum).includes(provider)) {
-          // Validate against the RAW server response, not the transformed
-          // configJson. `getAuthConfig` reshapes into per-SDK payloads —
-          // Azure/Basic nest fields under `auth.*`, Okta renames
-          // `authority` → `issuer`, several providers omit `providerName`
-          // — so validating the transformed shape falsely reported every
-          // Azure/Auth0 config as broken (fields "missing" that were only
-          // nested-away). REQUIRED_FIELDS_BY_PROVIDER lists the fields the
-          // /system/config/auth public endpoint actually exposes, which is
-          // what `authConfig` is.
-          const validation = validateAuthFieldsDetailed(
-            authConfig as AuthenticationConfigurationWithScope
-          );
-          const configJson = getAuthConfig(authConfig);
-          setHasValidConfig(validation.valid);
-          if (!validation.valid) {
-            // Surface the misconfiguration with a toast — the SPA still
-            // proceeds to render whatever the current provider allows so
-            // the admin isn't locked out of the shell entirely (per
-            // conductor review). Any downstream SDK failure with the
-            // empty fields surfaces its own error.
-            const missing = validation.errors
-              .map((error) => error.field)
-              .join(', ');
-            showErrorToast(
-              t('message.auth-configuration-missing-fields', {
-                fields: missing,
-              })
-            );
-          }
-          setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
-          setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
-          setAuthConfig(configJson);
-          setAuthorizerConfig(authorizerConfig);
-          // RDF enabled status is already set from system config in App.tsx.
-          //
-          // Gate the SDK-instance wiring on validation.valid: MSAL's
-          // PublicClientApplication.initialize() rejects an empty
-          // clientId, and setMsalInstance never runs, leaving
-          // isConfigLoading true forever — the whole shell sits on
-          // <Loader /> instead of falling through to SignInPage like the
-          // other providers do. Skip the SDK boot when required fields
-          // are missing so Azure matches Basic/LDAP/OIDC/Auth0/Okta:
-          // toast fires, SignInPage renders, admin can retry after the
-          // config is fixed on the server.
-          if (validation.valid) {
-            updateAuthInstance(configJson);
-          }
-          const oidcToken = await getOidcToken();
-          if (!oidcToken) {
-            handleStoreProtectedRedirectPath();
-            setApplicationLoading(false);
-          } else {
-            // get the user details if token is present and route is not auth callback and saml callback
-            if (
-              ![ROUTES.AUTH_CALLBACK, ROUTES.SILENT_CALLBACK].includes(
-                location.pathname
-              )
-            ) {
-              // Fire-and-forget: `getLoggedInUserDetails` now re-throws a
-              // refreshable 401 (Task 13 — Bug 1 fix) so the AuthCoordinator's
-              // axios response interceptor can retry it. Before that change
-              // this call could never reject; now that it can, the rejection
-              // needs a handler here or it surfaces as an uncaught promise.
-              // If the interceptor's own refresh attempt ultimately fails, the
-              // coordinator's `refresh-failed` subscription (mount effect
-              // above) already drives `resetUserDetails(true)` — this catch
-              // only silences the otherwise-unhandled rejection.
-              getLoggedInUserDetails().catch(() => undefined);
-            }
-          }
-        } else {
-          // provider is either null or not supported
-          setApplicationLoading(false);
-          showErrorToast(
-            t('message.configured-sso-provider-is-not-supported', {
-              provider: authConfig?.provider,
-            })
-          );
-        }
-      } else {
+      if (isNil(authConfig)) {
         setApplicationLoading(false);
         showErrorToast(t('message.auth-configuration-missing'));
+
+        return;
       }
+
+      const provider = authConfig.provider;
+      // show an error toast if provider is null or not supported
+      if (!provider || !Object.values(AuthProviderEnum).includes(provider)) {
+        // provider is either null or not supported
+        setApplicationLoading(false);
+        showErrorToast(
+          t('message.configured-sso-provider-is-not-supported', {
+            provider: authConfig?.provider,
+          })
+        );
+
+        return;
+      }
+
+      await applySupportedAuthConfig(authConfig, authorizerConfig);
     } catch (error) {
       setApplicationLoading(false);
       showErrorToast(

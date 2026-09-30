@@ -26,8 +26,11 @@ import java.security.KeyStoreException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.function.Supplier;
 import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
@@ -42,6 +45,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
@@ -62,12 +66,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   protected final String username;
   protected final String password;
-  protected final HttpClient client;
   protected final URL serviceURL;
+  private final Supplier<HttpClient> httpClientFactory;
+  private final Object clientLock = new Object();
+
+  /** Never read directly — go through {@link #client()} so a dead client gets replaced. */
+  protected volatile HttpClient client;
+
   private volatile List<String> apiEndpointSegments;
   private static final String DAG_ID = "dag_id";
   private static final String CONF = "conf";
   private static final String APP_CONFIG_OVERRIDE = "appConfigOverride";
+  private static final String SOURCE_CONFIG_OVERRIDE = "sourceConfigOverride";
+  private static final String PIPELINE_RUN_ID = "pipelineRunId";
   private String detectedAirflowVersion = null;
   private final Object detectionLock = new Object();
   private volatile String csrfToken = null;
@@ -94,20 +105,47 @@ public class AirflowRESTClient extends PipelineServiceClient {
     this.serviceURL = validateServiceURL(config.getApiEndpoint());
 
     SSLContext sslContext = createAirflowSSLContext(config);
+    Duration connectTimeout = Duration.ofSeconds(getIntParam(params, TIMEOUT_KEY, 10));
 
-    HttpClient.Builder clientBuilder =
-        HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofSeconds(getIntParam(params, TIMEOUT_KEY, 10)));
-
-    if (sslContext == null) {
-      this.client = clientBuilder.build();
-    } else {
-      this.client = clientBuilder.sslContext(sslContext).build();
-    }
+    this.httpClientFactory =
+        () -> {
+          HttpClient.Builder clientBuilder =
+              HttpClient.newBuilder()
+                  .version(HttpClient.Version.HTTP_1_1)
+                  .connectTimeout(connectTimeout);
+          return sslContext == null
+              ? clientBuilder.build()
+              : clientBuilder.sslContext(sslContext).build();
+        };
+    this.client = httpClientFactory.get();
 
     // Lazy initialization - will detect on first API call
     this.apiEndpointSegments = null;
+  }
+
+  /**
+   * Returns a live {@link HttpClient}, replacing the cached one when its selector manager has died.
+   *
+   * <p>A fatal error inside the JDK selector loop terminates that thread for good: every later
+   * {@code send} on the same instance fails with {@code IOException: selector manager closed}. The
+   * client is held for the lifetime of the process by {@code PipelineServiceClientFactory}, so
+   * without this the agent stays UNAVAILABLE until OpenMetadata is restarted, even once Airflow is
+   * healthy again.
+   */
+  protected HttpClient client() {
+    HttpClient current = client;
+    if (!current.isTerminated()) {
+      return current;
+    }
+    synchronized (clientLock) {
+      if (client.isTerminated()) {
+        LOG.warn(
+            "Airflow HTTP client at [{}] is no longer usable. Rebuilding it to recover.",
+            serviceURL);
+        client = httpClientFactory.get();
+      }
+      return client;
+    }
   }
 
   private static SSLContext createAirflowSSLContext(PipelineServiceClientConfiguration config)
@@ -163,7 +201,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
               .timeout(Duration.ofSeconds(5))
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
         try {
@@ -200,7 +238,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
               .timeout(Duration.ofSeconds(5))
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
         try {
@@ -236,7 +274,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
               .timeout(Duration.ofSeconds(5))
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
 
       if (response.statusCode() == 200) {
         try {
@@ -289,7 +327,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     }
 
     HttpResponse<String> response =
-        client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+        client().send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
     // If we get a 400 with CSRF token expired error, clear the token and retry once
     if (authenticate
@@ -314,7 +352,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         requestBuilder.header("Cookie", String.join("; ", sessionCookies));
       }
 
-      response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+      response = client().send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
     }
 
     return response;
@@ -388,7 +426,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   @Override
   public PipelineServiceClientResponse runPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
-    return runPipeline(ingestionPipeline, service, null);
+    return runPipelineWithOptions(ingestionPipeline, service, RunOptions.NONE);
   }
 
   @Override
@@ -396,18 +434,26 @@ public class AirflowRESTClient extends PipelineServiceClient {
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service,
       Map<String, Object> config) {
+    return runPipelineWithOptions(
+        ingestionPipeline, service, RunOptions.withAppConfigOverride(config));
+  }
+
+  // Airflow bakes a DAG's config at deploy time, so a run's options reach it only through the
+  // trigger conf, never through the pipeline passed in.
+  @Override
+  public PipelineServiceClientResponse runPipelineWithOptions(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service, RunOptions options) {
     String pipelineName = ingestionPipeline.getName();
     HttpResponse<String> response;
     try {
       String triggerUrl = buildURI("trigger").build().toString();
       JSONObject requestPayload = new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
-      if (config != null) {
-        requestPayload.put(CONF, Map.of(APP_CONFIG_OVERRIDE, config));
-      }
+      String runId = UUID.randomUUID().toString();
+      requestPayload.put(CONF, buildRunConf(options, runId));
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
-        return getResponse(200, response.body());
+        return getResponse(200, response.body()).withRunId(runId);
       }
     } catch (IOException | URISyntaxException e) {
       throw IngestionPipelineDeploymentException.byMessage(
@@ -423,6 +469,20 @@ public class AirflowRESTClient extends PipelineServiceClient {
         TRIGGER_ERROR,
         "Failed to trigger IngestionPipeline",
         Response.Status.fromStatusCode(response.statusCode()));
+  }
+
+  // The run id goes along too: the worker reports under it, so the queued status the server records
+  // for this id is the one that progresses.
+  private Map<String, Object> buildRunConf(RunOptions options, String runId) {
+    Map<String, Object> conf = new HashMap<>();
+    conf.put(PIPELINE_RUN_ID, runId);
+    if (options.appConfigOverride() != null) {
+      conf.put(APP_CONFIG_OVERRIDE, options.appConfigOverride());
+    }
+    if (!options.sourceConfigOverride().isEmpty()) {
+      conf.put(SOURCE_CONFIG_OVERRIDE, options.sourceConfigOverride());
+    }
+    return conf;
   }
 
   @Override
@@ -490,68 +550,76 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   /**
-   * Scenarios handled here: 1. Failed to access Airflow APIs: No response from Airflow; APIs might not be installed 2.
-   * Auth failed when accessing Airflow APIs 3. Different versions between server and client
+   * {@link #getServiceStatus()} retries 5xx responses only, so every branch below that reports a
+   * standing condition rather than a blip carries a non-5xx code of its own.
+   *
+   * <p>Scenarios handled here: 1. Failed to access Airflow APIs: No response from Airflow; APIs
+   * might not be installed 2. Auth failed when accessing Airflow APIs 3. Different versions between
+   * server and client
    */
   @Override
   public PipelineServiceClientResponse getServiceStatusInternal() {
-    HttpResponse<String> response;
     try {
       String healthUrl = buildURI("health-auth").build().toString();
-      response = getRequestAuthenticatedForJsonContent(healthUrl);
-
-      // We can reach the APIs and get the status back from Airflow
-      if (response.statusCode() == 200) {
-        JSONObject responseJSON = new JSONObject(response.body());
-        String ingestionVersion = responseJSON.getString("version");
-        return validServerClientVersions(ingestionVersion, SERVER_VERSION)
-            ? buildHealthyStatus(ingestionVersion)
-            : buildUnhealthyStatus(
-                buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
-      }
-
-      // Auth error when accessing the APIs
-      if (response.statusCode() == 401 || response.statusCode() == 403) {
-        return buildUnhealthyStatus(
-            String.format(
-                "Authentication failed for user [%s] trying to access the Airflow APIs at [%s]",
-                this.username, serviceURL.toString()));
-      }
-
-      // APIs URL not found
-      if (response.statusCode() == 404) {
-        return buildUnhealthyStatus(
-            String.format(
-                "Airflow APIs not found at [%s]. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
-                serviceURL.toString(), DOCS_LINK));
-      }
-
-      return buildUnhealthyStatus(
-          String.format(
-              "Unexpected status response at [%s]: code [%s] - [%s]",
-              serviceURL.toString(), response.statusCode(), response.body()));
-
-    } catch (IOException | URISyntaxException e) {
-      String exceptionMsg;
-      if (e.getMessage() != null) {
-        exceptionMsg =
-            String.format(
-                "Failed to get Airflow status at [%s] due to [%s].",
-                serviceURL.toString(), e.getMessage());
-      } else {
-        exceptionMsg =
-            String.format(
-                "Failed to connect to Airflow due to %s. Is the host available at %s?",
-                e.getCause().toString(), serviceURL.toString());
-      }
-      return buildUnhealthyStatus(String.format("%s %s", exceptionMsg, DOCS_LINK));
+      return readHealthResponse(getRequestAuthenticatedForJsonContent(healthUrl));
+    } catch (URISyntaxException e) {
+      return buildStatus(
+          CONFIGURATION_ERROR,
+          String.format("Invalid Airflow URL [%s]: %s %s", serviceURL, e.getMessage(), DOCS_LINK));
+    } catch (IOException e) {
+      // Transport failures are the transient case the retry exists for, so they stay on 500.
+      return buildUnhealthyStatus(String.format("%s %s", connectionFailureMessage(e), DOCS_LINK));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return buildUnhealthyStatus(
-          String.format(
-              "Failed to connect to Airflow due to %s. Is the host available at %s? %s.",
-              e.getMessage(), serviceURL.toString(), DOCS_LINK));
+      // The check was cancelled before it could reach Airflow, so this says nothing about Airflow's
+      // health. Non-retryable: the backoff would sleep on a thread whose interrupt flag is set.
+      return buildStatus(
+          REQUEST_CANCELLED,
+          String.format("Interrupted while checking the Airflow status at [%s].", serviceURL));
+    } catch (PipelineServiceClientException e) {
+      // buildURI throws when endpoint detection finds no reachable API version. Reported as 404
+      // rather than a 5xx because detection has already probed v3/v2/v1 — a retry would just
+      // repeat those three probes for the same answer.
+      return buildStatus(404, String.format("%s %s", e.getMessage(), DOCS_LINK));
     }
+  }
+
+  private PipelineServiceClientResponse readHealthResponse(HttpResponse<String> response) {
+    return switch (response.statusCode()) {
+      case 200 -> versionedStatus(new JSONObject(response.body()).getString("version"));
+      case 401, 403 -> buildStatus(
+          response.statusCode(),
+          String.format(
+              "Authentication failed for user [%s] trying to access the Airflow APIs at [%s]",
+              this.username, serviceURL));
+      case 404 -> buildStatus(
+          response.statusCode(),
+          String.format(
+              "Airflow APIs not found at [%s]. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
+              serviceURL, DOCS_LINK));
+      default -> buildStatus(
+          response.statusCode(),
+          String.format(
+              "Unexpected status response at [%s]: code [%s] - [%s]",
+              serviceURL, response.statusCode(), response.body()));
+    };
+  }
+
+  private PipelineServiceClientResponse versionedStatus(String ingestionVersion) {
+    return validServerClientVersions(ingestionVersion, SERVER_VERSION)
+        ? buildHealthyStatus(ingestionVersion)
+        : buildStatus(
+            CONFIGURATION_ERROR,
+            buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
+  }
+
+  private String connectionFailureMessage(IOException e) {
+    return e.getMessage() != null
+        ? String.format(
+            "Failed to get Airflow status at [%s] due to [%s].", serviceURL, e.getMessage())
+        : String.format(
+            "Failed to connect to Airflow due to %s. Is the host available at %s?",
+            e.getCause(), serviceURL);
   }
 
   @Override
@@ -754,7 +822,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private HttpResponse<String> getRequestAuthenticatedForJsonContent(String url)
       throws IOException, InterruptedException {
     HttpRequest request = authenticatedRequestBuilder(url).GET().build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
+    return client().send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private HttpResponse<String> deleteRequestAuthenticatedForJsonContent(String url)
@@ -762,7 +830,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     // DELETE endpoints are protected by CSRF on Airflow 3.x
     fetchCsrfTokenIfNeeded();
     HttpRequest request = authenticatedRequestBuilder(url).DELETE().build();
-    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
 
     // If we get a 400 with CSRF token expired error, clear the token and retry once
     if (response.statusCode() == 400
@@ -772,7 +840,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       clearCsrfToken();
       fetchCsrfTokenIfNeeded();
       request = authenticatedRequestBuilder(url).DELETE().build();
-      response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      response = client().send(request, HttpResponse.BodyHandlers.ofString());
     }
 
     return response;
@@ -876,7 +944,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
             .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password))
             .GET()
             .build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
+    return client().send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private void storeSessionCookies(HttpResponse<String> response) {

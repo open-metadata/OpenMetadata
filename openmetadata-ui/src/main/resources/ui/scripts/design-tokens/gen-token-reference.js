@@ -109,7 +109,7 @@ const GROUPS = [
     note: 'transition / animation. See foundations/motion.md.',
   },
   {
-    key: /^--om-color-(text|bg|border|fg|link|interactive|focus)/,
+    key: /^--om-color-(text|bg|border|fg|link|interactive|focus|utility)/,
     title: 'Semantic colors',
     note: 'Prefer these — they adapt to dark mode.',
   },

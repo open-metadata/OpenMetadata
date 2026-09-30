@@ -14,7 +14,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { REDIRECT_PATHNAME } from '../../../constants/router.constants';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
-import axiosClient from '../../../rest';
+import axiosClient from '../../../rest/axiosClient';
 import { fetchAuthenticationConfig } from '../../../rest/miscAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
 import { isRefreshableAuthError } from '../../../utils/AuthProvider.util';
@@ -168,7 +168,7 @@ jest.mock('../../../hooks/useApplicationStore', () => {
 // 'refresh-failed' into React state. Capturing the callbacks passed to
 // `on(...)` is how the Bug 2 regression test below drives them directly,
 // without needing a real axios round trip.
-jest.mock('../../../utils/Auth/AuthCoordinator', () => {
+jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => {
   const disposeInterceptor = jest.fn();
   const offRefreshed = jest.fn();
   const offFailed = jest.fn();
@@ -200,8 +200,7 @@ const {
   __mockOffFailed: mockOffFailed,
   __mockAuthCoordinatorInstall: mockAuthCoordinatorInstall,
   __mockAuthCoordinatorOn: mockAuthCoordinatorOn,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-} = jest.requireMock('../../../utils/Auth/AuthCoordinator') as any;
+} = jest.requireMock('../../../utils/Auth/AuthCoordinator/AuthCoordinator');
 
 const {
   __mockCookieSetItem: mockCookieSetItem,

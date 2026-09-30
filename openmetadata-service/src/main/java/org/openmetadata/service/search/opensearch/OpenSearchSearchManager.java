@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
@@ -28,6 +29,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -60,6 +62,8 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.QueryFilterShape;
+import org.openmetadata.service.search.SearchEngineErrors;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -73,6 +77,7 @@ import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import os.org.opensearch.client.json.JsonData;
@@ -100,6 +105,8 @@ import os.org.opensearch.client.opensearch.indices.GetMappingResponse;
  */
 @Slf4j
 public class OpenSearchSearchManager implements SearchManagementClient {
+  private static final String EMPTY_JSON_OBJECT = "{}";
+
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
   private final String clusterAlias;
@@ -1044,29 +1051,20 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private void applyQueryFilter(
       OpenSearchRequestBuilder requestBuilder,
       org.openmetadata.schema.search.SearchRequest request) {
-    if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
-      try {
-        String queryToProcess = OsUtils.parseJsonQuery(request.getQueryFilter());
-        Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
-        Query existingQuery = requestBuilder.query();
-        if (existingQuery != null) {
-          Query combinedQuery =
-              Query.of(
-                  q ->
-                      q.bool(
-                          b -> {
-                            b.must(existingQuery);
-                            b.filter(filterQuery);
-                            return b;
-                          }));
-          requestBuilder.query(combinedQuery);
-        } else {
-          requestBuilder.query(filterQuery);
-        }
-      } catch (Exception ex) {
-        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
+    String queryFilter = request.getQueryFilter();
+    if (nullOrEmpty(queryFilter) || EMPTY_JSON_OBJECT.equals(queryFilter)) {
+      return;
     }
+    String queryDsl = QueryFilterShape.requireQueryDsl(queryFilter);
+    String encodedQuery = Base64.getEncoder().encodeToString(queryDsl.getBytes(UTF_8));
+    Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(encodedQuery)));
+    Query existingQuery = requestBuilder.query();
+    requestBuilder.query(
+        existingQuery == null ? filterQuery : filteredBy(existingQuery, filterQuery));
+  }
+
+  private static Query filteredBy(Query existingQuery, Query filterQuery) {
+    return Query.of(q -> q.bool(b -> b.must(existingQuery).filter(filterQuery)));
   }
 
   /**
@@ -1175,15 +1173,22 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   /**
-   * Keys a compiled RBAC query by the subject fields that end up embedded in it as literal ids.
-   * Roles select the policies; {@code hasDomain()} compiles domain ids into term clauses; {@code
-   * isOwner()}, {@code isReviewer()} and {@code inAnyTeam()} compile team ids the same way. Nothing
-   * invalidates this cache, so any field left out of the key is served stale for the remainder of
-   * the TTL after it changes. Keep this in step with {@link RBACConditionEvaluator} whenever a new
-   * condition starts reading another subject field.
+   * Keys a compiled RBAC query by everything that ends up embedded in it as literal ids.
+   *
+   * <p>Subject side: roles select the policies; {@code hasDomain()} compiles domain ids into term
+   * clauses; {@code isOwner()}, {@code isReviewer()} and {@code inAnyTeam()} compile team ids the
+   * same way. Resource side: the {@code matchAnyService*} conditions compile the ids of the
+   * services matching their arguments, which is global state no subject field can stand for —
+   * hence the resolver generation, which changes whenever that service state does.
+   *
+   * <p>Nothing invalidates this cache, so any input left out of the key is served stale for the
+   * remainder of the TTL after it changes. Keep this in step with {@link RBACConditionEvaluator}
+   * whenever a new condition starts reading anything else.
    */
   static String rbacCacheKey(SubjectContext subjectContext) {
-    return subjectContext.user().getId()
+    return ServiceAttributeResolver.generation()
+        + ":"
+        + subjectContext.user().getId()
         + ":"
         + sortedIds(subjectContext.user().getRoles())
         + ":"
@@ -1833,16 +1838,14 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   private static SearchException buildSearchException(OpenSearchException e) {
-    String detail = e.getMessage();
-    ErrorCause error = e.error();
-    if (error != null && error.rootCause() != null && !error.rootCause().isEmpty()) {
-      String rootCauses =
-          error.rootCause().stream()
-              .map(c -> c.type() + ": " + c.reason())
-              .collect(Collectors.joining("; "));
-      detail = String.format("%s | Root cause: [%s]", detail, rootCauses);
+    return SearchEngineErrors.searchFailure(e.status(), e.getMessage(), rootCauses(e.error()));
+  }
+
+  private static List<String> rootCauses(ErrorCause error) {
+    if (error == null || error.rootCause() == null) {
+      return List.of();
     }
-    return new SearchException(String.format("Search failed due to %s", detail));
+    return error.rootCause().stream().map(c -> c.type() + ": " + c.reason()).toList();
   }
 
   private List<?> buildSearchHierarchy(

@@ -26,7 +26,7 @@ import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { Operation } from '../../../generated/entity/policies/policy';
+import { ResourcePermission } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { TestCase } from '../../../generated/tests/testCase';
 import { Include } from '../../../generated/type/include';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
@@ -36,7 +36,7 @@ import {
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { TestCaseSearchParams } from '../DataQuality.interface';
@@ -84,6 +84,10 @@ export const useTestCaseList = ({
   showPagination,
 }: UseTestCaseListProps) => {
   const [testCase, setTestCase] = useState<TestCase[]>([]);
+  // Left undefined when the list API doesn't return inline permissions so the
+  // DataQualityTab falls back to its own per-row permission fetch.
+  const [entityPermissions, setEntityPermissions] =
+    useState<Record<string, ResourcePermission>>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showDeleted, setShowDeleted] = useState(false);
   const [sortOptions, setSortOptions] =
@@ -106,7 +110,11 @@ export const useTestCaseList = ({
 
       setIsLoading(true);
       try {
-        const { data, paging: pagingResponse } = await getListTestCaseBySearch({
+        const {
+          data,
+          paging: pagingResponse,
+          entityPermissions: listPermissions,
+        } = await getListTestCaseBySearch({
           ...updatedParams,
           ...sortOptions,
           testCaseStatus: isEmpty(params?.testCaseStatus)
@@ -114,6 +122,7 @@ export const useTestCaseList = ({
             : params?.testCaseStatus,
           limit: pageSize,
           includeAllTests: true,
+          includePermissions: true,
           fields: [
             TabSpecificField.TEST_CASE_RESULT,
             TabSpecificField.TESTSUITE,
@@ -127,6 +136,7 @@ export const useTestCaseList = ({
         });
         if (requestId === latestRequestId.current) {
           setTestCase(data);
+          setEntityPermissions(listPermissions);
           handlePagingChange(pagingResponse);
         }
       } catch (error) {
@@ -217,7 +227,7 @@ export const useTestCaseList = ({
 
   useEffect(() => {
     if (
-      getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic) &&
+      getDerivedPermissionFlags(testCasePermission).canViewBasic &&
       tab === DataQualityPageTabs.TEST_CASES
     ) {
       getTestCases();
@@ -241,6 +251,7 @@ export const useTestCaseList = ({
   return {
     testCase,
     setTestCase,
+    entityPermissions,
     isLoading,
     fetchTestCases,
     sortTestCase,

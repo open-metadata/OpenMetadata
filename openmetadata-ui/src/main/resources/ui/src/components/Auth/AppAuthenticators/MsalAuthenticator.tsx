@@ -25,7 +25,8 @@ import {
   useImperativeHandle,
   useRef,
 } from 'react';
-import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
 import {
   msalLoginRequest,
   parseMSALResponse,

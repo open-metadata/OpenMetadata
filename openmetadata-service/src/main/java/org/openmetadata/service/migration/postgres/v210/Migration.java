@@ -24,6 +24,7 @@ import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exempt
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
+import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -58,6 +59,9 @@ public class Migration extends MigrationProcessImpl {
     // migration.
     // Idempotent.
     repairFieldNamesAggregations();
+    // Existing clusters retain persisted ranking and term-boost settings, so correcting the seed
+    // alone does not restore tag and certification boosts on upgrade.
+    repairTermBoostSettings();
     // Repair Dashboard/Chart/Pipeline/Topic/MlModel rows created under dotted-name services before
     // 1.1.0 (the v1120 repair covered only their 7 sibling types). DB-agnostic, so also run on
     // MySQL. Re-homed here so instances already past 1.12 heal on upgrade.

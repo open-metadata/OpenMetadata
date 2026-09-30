@@ -59,8 +59,8 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   }),
 }));
 
-jest.mock('../../DataAssets/DomainLabelV2/DomainLabelV2', () => ({
-  DomainLabelV2: jest.fn().mockImplementation((props) => {
+jest.mock('../../common/DomainLabel/DomainLabel.component', () => ({
+  DomainLabel: jest.fn().mockImplementation((props) => {
     capturedOnUpdate = props.onUpdate;
     capturedDomainLabelProps = props;
 
@@ -76,7 +76,7 @@ describe('DataProductDomainWidget', () => {
     capturedDomainLabelProps = undefined;
   });
 
-  it('renders DomainLabelV2 in single-domain mode so the heading reads "Domain"', async () => {
+  it('renders DomainLabel in single-domain mode so the heading reads "Domain"', async () => {
     render(<DataProductDomainWidget />);
 
     await waitFor(() => expect(capturedDomainLabelProps).toBeDefined());

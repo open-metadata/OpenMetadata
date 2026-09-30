@@ -64,7 +64,7 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
 
 const registerRenewer = jest.fn();
 
-jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => ({
   authCoordinator: {
     registerRenewer: (renewer: unknown) => registerRenewer(renewer),
   },

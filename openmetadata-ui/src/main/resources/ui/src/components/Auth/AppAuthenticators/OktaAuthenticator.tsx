@@ -20,7 +20,8 @@ import {
   useEffect,
   useImperativeHandle,
 } from 'react';
-import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';

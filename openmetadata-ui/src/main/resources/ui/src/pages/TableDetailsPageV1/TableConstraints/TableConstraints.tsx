@@ -106,7 +106,7 @@ const TableConstraints = ({
           if (constraintType === ConstraintType.ForeignKey) {
             return (
               <div
-                className="d-flex gap-2 constraint-columns"
+                className="d-flex gap-2 constraint-columns tw:bg-(--om-legacy-color-f8f8f8) tw:dark:bg-transparent"
                 data-testid={`${ConstraintType.ForeignKey}-container`}
                 key={ConstraintType.ForeignKey}>
                 <ForeignKeyConstraint />

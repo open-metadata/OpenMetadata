@@ -13,6 +13,7 @@
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
+import { clickCodeEditor } from '../../../utils/codeEditor';
 import {
   createNewPage,
   getApiContext,
@@ -894,14 +895,17 @@ test.describe(
           page.locator('[data-id="tableCustomSQLQuery"]')
         ).toBeVisible();
 
-        await page.locator('.CodeMirror-scroll').click();
+        await clickCodeEditor(page);
         await page
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(testCase.sqlQuery);
+        // The strategy options read as sentences, not as the stored ROWS/COUNT
+        // enum, and react-aria's listbox items expose no key attribute — so
+        // they are matched on the distinctive part of their wording.
         await selectOptionWithRetry(
           page.locator('#testCaseFormV1_params_strategy'),
-          page.getByRole('option', { name: 'ROWS' })
+          page.getByRole('option', { name: 'count the rows' })
         );
         await page.fill('#testCaseFormV1_params_threshold', '23');
         await submitTestCaseForm(page);
@@ -944,14 +948,14 @@ test.describe(
         await page.locator('[id="root\\/displayName"]').clear();
         await page.fill('[id="root\\/displayName"]', testCase.displayName);
 
-        await page.locator('.CodeMirror-scroll').click();
+        await clickCodeEditor(page);
         await page
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(' update');
         await selectOptionWithRetry(
-          page.getByRole('button', { name: 'ROWS Strategy' }),
-          page.getByRole('option', { name: 'COUNT' })
+          page.locator('#testCaseFormV1_params_strategy'),
+          page.getByRole('option', { name: 'use the single number' })
         );
         await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
           state: 'visible',
