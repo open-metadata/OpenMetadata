@@ -1,5 +1,6 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
@@ -17,7 +18,7 @@ import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
-import org.openmetadata.mcp.util.ResponseBudget;
+import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -55,6 +56,7 @@ public class GetLineageTool implements McpTool {
   private static final String PARAM_INCLUDE_COLUMN_LINEAGE = "includeColumnLineage";
   private static final String PARAM_INCLUDE_SQL = "includeSql";
   private static final String PARAM_COLUMN = "column";
+  private static final String PARAM_CURSOR = "cursor";
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   record SlimEdge(
@@ -149,7 +151,9 @@ public class GetLineageTool implements McpTool {
     Predicate<EntityReference> pipelineVisible =
         pipelineVisibility(permissionFilter, securityContext, filtered.lineage());
     return annotateVisibility(
-        enforceSizeBudget(toSlim(filtered.lineage(), options, pipelineVisible)),
+        enforceSizeBudget(
+            toSlim(filtered.lineage(), options, pipelineVisible),
+            pageStart(McpParams.getString(params, PARAM_CURSOR, null))),
         filtered,
         pruned.hiddenNodes());
   }
@@ -394,102 +398,59 @@ public class GetLineageTool implements McpTool {
     return name;
   }
 
+  @VisibleForTesting
+  static Map<String, Object> enforceSizeBudget(SlimLineage slim) {
+    return enforceSizeBudget(slim, 0);
+  }
+
   /**
    * Keeps the response under the dispatch-level cap by returning fewer <em>edges</em>, never by
-   * dropping the whole graph to a bare count or by cutting an edge's SQL. When everything fits (the
-   * common case, including full edge SQL) the complete graph is returned unchanged. When it does not,
-   * the size budget is split fairly between the two directions so both upstream and downstream stay
-   * represented, and per-direction markers tell the caller how many edges were withheld.
-   */
-  @VisibleForTesting
-  /**
-   * Always states whether the graph is complete.
+   * dropping the whole graph to a bare count or by cutting an edge's SQL, and makes the withheld
+   * edges reachable: a clipped page carries a {@code nextCursor} that resumes at the next edge.
    *
-   * <p>"30 downstream" and "at least 30 downstream" are different answers to "what breaks if I
-   * deprecate this", and the response used to carry no signal either way. {@code get_entity_details}
-   * has flagged the analogous column case with {@code columnsTruncated} all along.
+   * <p>Always states whether the graph is complete. "30 downstream" and "at least 30 downstream" are
+   * different answers to "what breaks if I deprecate this", and the response used to carry no signal
+   * either way. {@code get_entity_details} has flagged the analogous column case with {@code
+   * columnsTruncated} all along.
    */
-  static Map<String, Object> enforceSizeBudget(SlimLineage slim) {
-    int totalUpstream = slim.upstream() == null ? 0 : slim.upstream().size();
-    int totalDownstream = slim.downstream() == null ? 0 : slim.downstream().size();
-    Map<String, Object> full = JsonUtils.getMap(slim);
-    Map<String, Object> result = full;
-    if (McpResponseTrim.serializedLength(full) > McpResponseTrim.MAX_RESPONSE_CHARS) {
-      result = fitGraphToBudget(slim);
-    }
-    annotateCompleteness(result, totalUpstream, totalDownstream);
-    return result;
-  }
-
-  private static void annotateCompleteness(
-      Map<String, Object> result, int totalUpstream, int totalDownstream) {
-    int returnedUpstream = sizeOf(result.get("upstream"));
-    int returnedDownstream = sizeOf(result.get("downstream"));
-    boolean clipped = returnedUpstream < totalUpstream || returnedDownstream < totalDownstream;
-    result.put("totalEdges", totalUpstream + totalDownstream);
-    result.put("returnedEdges", returnedUpstream + returnedDownstream);
-    result.put("edgesTruncated", clipped);
-    if (clipped) {
-      result.put(
-          McpResponseTrim.MESSAGE_KEY,
-          String.format(
-              "Graph clipped to fit the response budget: %d of %d edges returned. Reduce"
-                  + " upstreamDepth/downstreamDepth for a complete graph at a shallower depth.",
-              returnedUpstream + returnedDownstream, totalUpstream + totalDownstream));
-    }
-  }
-
-  private static int sizeOf(Object edges) {
-    return edges instanceof List<?> list ? list.size() : 0;
-  }
-
-  private static Map<String, Object> fitGraphToBudget(SlimLineage slim) {
-    long overhead = graphOverheadChars(slim);
-    long available = Math.max(0, ResponseBudget.defaultBudgetChars() - overhead);
-    long halfShare = available / 2;
-    ResponseBudget.Fit up = ResponseBudget.fitWithin(slim.upstream(), halfShare);
-    ResponseBudget.Fit down =
-        ResponseBudget.fitWithin(slim.downstream(), available - up.usedChars());
-    boolean downstreamLeftRoom =
-        down.usedChars() < halfShare && up.count() < slim.upstream().size();
-    if (downstreamLeftRoom) {
-      up = ResponseBudget.fitWithin(slim.upstream(), available - down.usedChars());
-    }
-    return buildFittedGraph(slim, up.count(), down.count());
-  }
-
-  /** Serialized size of the graph shell (root identity + empty edge lists), the fixed overhead. */
-  private static long graphOverheadChars(SlimLineage slim) {
-    SlimLineage shell =
-        new SlimLineage(slim.root(), slim.rootId(), slim.rootType(), List.of(), List.of());
-    return McpResponseTrim.serializedLength(JsonUtils.getMap(shell));
-  }
-
-  private static Map<String, Object> buildFittedGraph(
-      SlimLineage slim, int upCount, int downCount) {
-    List<SlimEdge> up = slim.upstream().subList(0, upCount);
-    List<SlimEdge> down = slim.downstream().subList(0, downCount);
+  static Map<String, Object> enforceSizeBudget(SlimLineage slim, int from) {
+    LineageEdgePager.Page page = LineageEdgePager.page(slim, from);
     Map<String, Object> result =
         JsonUtils.getMap(
             new SlimLineage(
-                slim.root(),
-                slim.rootId(),
-                slim.rootType(),
-                new ArrayList<>(up),
-                new ArrayList<>(down)));
-    result.put("truncated", Boolean.TRUE);
-    result.put("upstreamReturned", upCount);
-    result.put("upstreamTotal", slim.upstream().size());
-    result.put("downstreamReturned", downCount);
-    result.put("downstreamTotal", slim.downstream().size());
-    result.put(
-        "message",
-        String.format(
-            "Lineage graph is large: returning %d of %d upstream and %d of %d downstream edges to"
-                + " stay within the response size budget. Reduce upstreamDepth/downstreamDepth to"
-                + " narrow the graph.",
-            upCount, slim.upstream().size(), downCount, slim.downstream().size()));
+                slim.root(), slim.rootId(), slim.rootType(), page.upstream(), page.downstream()));
+    result.put("totalEdges", page.total());
+    result.put("returnedEdges", page.returned());
+    result.put("edgesTruncated", page.hasMore());
+    if (page.hasMore()) {
+      annotateNextPage(result, slim, page, from);
+    }
     return result;
+  }
+
+  private static void annotateNextPage(
+      Map<String, Object> result, SlimLineage slim, LineageEdgePager.Page page, int from) {
+    result.put("truncated", Boolean.TRUE);
+    result.put("upstreamReturned", page.upstream().size());
+    result.put("upstreamTotal", listOrEmpty(slim.upstream()).size());
+    result.put("downstreamReturned", page.downstream().size());
+    result.put("downstreamTotal", listOrEmpty(slim.downstream()).size());
+    result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
+    result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(page.nextFrom()));
+    result.put(
+        McpResponseTrim.MESSAGE_KEY,
+        String.format(
+            "Graph clipped to fit the response budget: edges %d-%d of %d returned. Call again with"
+                + " the same arguments and cursor=nextCursor for the next page.",
+            Math.min(from, page.total()) + 1, page.nextFrom(), page.total()));
+  }
+
+  /** A missing or unreadable cursor starts at the first edge rather than failing the call. */
+  static int pageStart(String cursor) {
+    return PageCursor.decode(cursor)
+        .filter(PageCursor.Cursor::isOffset)
+        .map(PageCursor.Cursor::offset)
+        .orElse(0);
   }
 
   /**

@@ -502,6 +502,63 @@ public class McpIntegrationIT extends McpTestBase {
         .doesNotContain(unrelated.getFullyQualifiedName());
   }
 
+  /**
+   * A graph too large for one response must be fully reachable: following nextCursor from the first
+   * page returns every edge, each once, where the old behaviour could only advise a shallower depth.
+   */
+  @Test
+  void lineagePagesThroughAGraphTooLargeForOneResponse() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Table root = createServiceDatabaseSchemaTable("mcp_page_root_" + suffix);
+    String largeSql = "SELECT " + "customer_id, order_total, ".repeat(800) + "1";
+    List<String> expected = new java.util.ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      Table consumer = createServiceDatabaseSchemaTable("mcp_page_" + i + "_" + suffix);
+      addSqlLineageEdge(root, consumer, largeSql);
+      expected.add(consumer.getFullyQualifiedName());
+    }
+
+    List<String> seen = new java.util.ArrayList<>();
+    int pages = 0;
+    String cursor = null;
+    do {
+      Map<String, Object> options = new HashMap<>();
+      options.put("upstreamDepth", 0);
+      options.put("downstreamDepth", 1);
+      options.put("includeSql", true);
+      if (cursor != null) {
+        options.put("cursor", cursor);
+      }
+      JsonNode payload =
+          toolPayload(
+              executeMcpRequest(
+                  McpTestUtils.createGetLineageToolCall(
+                      Entity.TABLE, root.getFullyQualifiedName(), options)));
+      payload.get("downstream").forEach(edge -> seen.add(edge.get("toFQN").asText()));
+      cursor = payload.hasNonNull("nextCursor") ? payload.get("nextCursor").asText() : null;
+      pages++;
+    } while (cursor != null && pages < 20);
+
+    assertThat(pages).as("eight edges with large SQL cannot fit one response").isGreaterThan(1);
+    assertThat(seen)
+        .as("every edge is returned exactly once across the pages")
+        .containsExactlyInAnyOrderElementsOf(expected);
+  }
+
+  private void addSqlLineageEdge(Table from, Table to, String sql) throws Exception {
+    putLineageEdge(
+        Map.of(
+            "fromEntity", Map.of("id", from.getId().toString(), "type", Entity.TABLE),
+            "toEntity", Map.of("id", to.getId().toString(), "type", Entity.TABLE),
+            "lineageDetails", Map.of("sqlQuery", sql)));
+  }
+
+  private JsonNode toolPayload(JsonNode response) throws Exception {
+    JsonNode content = response.at("/result/content");
+    assertThat(content.isArray()).as("tool result must carry content").isTrue();
+    return OBJECT_MAPPER.readTree(content.get(0).get("text").asText());
+  }
+
   private static String columnFqn(Table table, String column) {
     return table.getFullyQualifiedName() + "." + column;
   }

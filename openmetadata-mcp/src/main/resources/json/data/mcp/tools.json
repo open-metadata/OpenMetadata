@@ -642,6 +642,10 @@
             "type": "string",
             "description": "FQN of one column of this entity, e.g. the 'fullyQualifiedName' of a tableColumn search result. Returns only that column's lineage: the column is followed hop by hop, including where a consumer renames it, and only the edges and column mappings that carry it are returned. Use this instead of includeColumnLineage when the question is about one column."
           },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque pagination token. When a response has 'hasMore', pass its 'nextCursor' here with the same other arguments to get the next page of edges. Omit for the first page."
+          },
           "includeSql": {
             "type": "boolean",
             "default": false,

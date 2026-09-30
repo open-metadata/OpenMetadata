@@ -461,6 +461,137 @@ class GetLineageToolTest {
     return columns;
   }
 
+  private static EntityLineage heavyGraph(int perDirection) {
+    List<ColumnLineage> heavyColumns = buildHeavyColumns();
+    EntityReference root = ref("orders", "db.public.orders");
+    List<Edge> upstream = new java.util.ArrayList<>();
+    List<Edge> downstream = new java.util.ArrayList<>();
+    List<EntityReference> nodes = new java.util.ArrayList<>();
+    for (int i = 0; i < perDirection; i++) {
+      EntityReference up = ref("up_" + i, "db.raw.up_with_a_long_qualified_name_" + i);
+      EntityReference down = ref("down_" + i, "db.mart.down_with_a_long_qualified_name_" + i);
+      nodes.add(up);
+      nodes.add(down);
+      upstream.add(
+          new Edge()
+              .withFromEntity(up.getId())
+              .withToEntity(root.getId())
+              .withLineageDetails(details("SELECT 1", heavyColumns)));
+      downstream.add(
+          new Edge()
+              .withFromEntity(root.getId())
+              .withToEntity(down.getId())
+              .withLineageDetails(details("SELECT 2", heavyColumns)));
+    }
+    return new EntityLineage()
+        .withEntity(root)
+        .withNodes(nodes)
+        .withUpstreamEdges(upstream)
+        .withDownstreamEdges(downstream);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<String> edgeKeys(Map<String, Object> response) {
+    List<String> keys = new java.util.ArrayList<>();
+    for (String direction : List.of("upstream", "downstream")) {
+      for (Map<String, Object> edge :
+          (List<Map<String, Object>>) response.getOrDefault(direction, List.of())) {
+        keys.add(direction + ":" + edge.get("fromFQN") + "->" + edge.get("toFQN"));
+      }
+    }
+    return keys;
+  }
+
+  private static int nextOffset(Map<String, Object> response) {
+    return org.openmetadata.mcp.util.PageCursor.decode(
+            (String) response.get(McpResponseTrim.NEXT_CURSOR_KEY))
+        .orElseThrow()
+        .offset();
+  }
+
+  /** The customer's ask: when a graph is clipped, the rest must be reachable, not just counted. */
+  @Test
+  void pagingThroughAClippedGraphReturnsEveryEdgeExactlyOnce() {
+    GetLineageTool.SlimLineage slim = GetLineageTool.toSlim(heavyGraph(40), true);
+    List<String> seen = new java.util.ArrayList<>();
+    int pages = 0;
+    int from = 0;
+    boolean hasMore = true;
+    while (hasMore) {
+      Map<String, Object> page = GetLineageTool.enforceSizeBudget(slim, from);
+      assertTrue(
+          org.openmetadata.schema.utils.JsonUtils.pojoToJson(page).length()
+              < McpResponseTrim.MAX_RESPONSE_CHARS,
+          "every page must be under the dispatch cap");
+      seen.addAll(edgeKeys(page));
+      hasMore = Boolean.TRUE.equals(page.get(McpResponseTrim.HAS_MORE_KEY));
+      from = hasMore ? nextOffset(page) : from;
+      pages++;
+    }
+    assertTrue(pages > 1, "a graph over the cap must take more than one page");
+    assertEquals(80, seen.size(), "no edge may be skipped or repeated across pages");
+    assertEquals(80, new java.util.HashSet<>(seen).size(), "no edge may be repeated");
+  }
+
+  @Test
+  void aCompleteGraphHasNoNextCursor() {
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(
+            GetLineageTool.toSlim(singleUpstreamEdge("SELECT 1", List.of()), false), 0);
+
+    assertNull(response.get(McpResponseTrim.NEXT_CURSOR_KEY));
+    assertNull(response.get(McpResponseTrim.HAS_MORE_KEY));
+  }
+
+  @Test
+  void anOffsetPastTheEndReturnsNoEdgesAndNoCursor() {
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(heavyGraph(3), true), 500);
+
+    assertEquals(0, response.get("returnedEdges"));
+    assertEquals(6, response.get("totalEdges"));
+    assertNull(response.get(McpResponseTrim.NEXT_CURSOR_KEY));
+  }
+
+  /**
+   * The repository returns edges depth-first with no ORDER BY. A page boundary is only meaningful if
+   * the same graph orders the same way every call, and the first page should hold the nearest hops.
+   */
+  @Test
+  void edgesComeNearestHopFirstWhateverOrderTheRepositoryUsed() {
+    EntityReference root = ref("orders", "db.public.orders");
+    EntityReference stage = ref("stage", "db.mart.b_stage");
+    EntityReference report = ref("report", "db.mart.c_report");
+    EntityReference audit = ref("audit", "db.mart.a_audit");
+    Edge secondHop = new Edge().withFromEntity(stage.getId()).withToEntity(report.getId());
+    Edge toStage = new Edge().withFromEntity(root.getId()).withToEntity(stage.getId());
+    Edge toAudit = new Edge().withFromEntity(root.getId()).withToEntity(audit.getId());
+    EntityLineage lineage =
+        new EntityLineage()
+            .withEntity(root)
+            .withNodes(List.of(stage, report, audit))
+            .withUpstreamEdges(List.of())
+            .withDownstreamEdges(List.of(secondHop, toStage, toAudit));
+
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(lineage, false), 0);
+
+    assertEquals(
+        List.of(
+            "downstream:db.public.orders->db.mart.a_audit",
+            "downstream:db.public.orders->db.mart.b_stage",
+            "downstream:db.mart.b_stage->db.mart.c_report"),
+        edgeKeys(response));
+  }
+
+  @Test
+  void aMissingOrUnreadableCursorStartsAtTheFirstEdge() {
+    assertEquals(0, GetLineageTool.pageStart(null));
+    assertEquals(0, GetLineageTool.pageStart("not-a-cursor"));
+    assertEquals(
+        144, GetLineageTool.pageStart(org.openmetadata.mcp.util.PageCursor.encodeOffset(144)));
+  }
+
   @Test
   void lineageAlwaysStatesWhetherTheGraphIsComplete() {
     Map<String, Object> response =
