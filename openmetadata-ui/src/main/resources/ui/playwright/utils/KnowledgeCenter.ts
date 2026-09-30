@@ -754,8 +754,12 @@ export const verifyTextFormatting = async (
   }[format];
 
   const lastWord = text.split(' ').pop() ?? text;
-  const fullTextLocator = editor.locator(formatTag).filter({ hasText: new RegExp(`^${text}$`) });
-  const lastWordLocator = editor.locator(formatTag).filter({ hasText: new RegExp(`^${lastWord}$`) });
+  const fullTextLocator = editor
+    .locator(formatTag)
+    .filter({ hasText: new RegExp(`^${text}$`) });
+  const lastWordLocator = editor
+    .locator(formatTag)
+    .filter({ hasText: new RegExp(`^${lastWord}$`) });
 
   await expect(fullTextLocator.or(lastWordLocator)).toBeVisible({
     timeout: 15_000,
