@@ -620,6 +620,15 @@
     ],
     "childAliases": []
   },
+  "dataContract": {
+    "indexName": "data_contract_search_index",
+    "indexMappingFile": "/elasticsearch/%s/data_contract_index_mapping.json",
+    "alias": "dataContract",
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": []
+  },
   "mcpServer": {
     "indexName": "mcp_server_search_index",
     "indexMappingFile": "/elasticsearch/%s/mcp_server_index_mapping.json",
