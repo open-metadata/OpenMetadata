@@ -59,6 +59,9 @@ let aiUserSession: SessionState;
 
 const signInAndSaveSession = async (browser: Browser, user: UserClass) => {
   const { page, afterAction } = await performUserLogin(browser, user);
+  // Signing in lands on the persona's default landing page. Checked here,
+  // before the session is saved, because every test starts from that session.
+  await expect(page).toHaveURL(GLOSSARY_URL);
   // The auth token lives in IndexedDB, so it has to be saved too.
   const session = await page.context().storageState({ indexedDB: true });
   await afterAction();
