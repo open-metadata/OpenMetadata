@@ -585,12 +585,14 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             # The SDK only ever surfaces DataSourceFormat.DELTA for Delta-backed
             # tables (UniForm/Iceberg arrive as None), so DELTA is the sole
             # reliably-detectable format. It refines a managed/external/regular
-            # table into DeltaLake but must never override a view.
+            # table into DeltaLake but must never override a view. Match DELTA
+            # exactly (plus the DELTA_UNIFORM* variants, mirroring the Databricks
+            # connector) rather than any DELTA-prefixed value, so DELTASHARING --
+            # a Delta Sharing table, not Delta Lake -- is not misclassified.
             dsf = getattr(table, "data_source_format", None)
-            if (
-                table_type not in (TableType.View, TableType.MaterializedView)
-                and dsf is not None
-                and str(getattr(dsf, "value", dsf)).upper().startswith("DELTA")
+            normalized_dsf = str(getattr(dsf, "value", dsf)).upper() if dsf is not None else ""
+            if table_type not in (TableType.View, TableType.MaterializedView) and (
+                normalized_dsf == "DELTA" or normalized_dsf.startswith("DELTA_UNIFORM")
             ):
                 table_type = TableType.DeltaLake
             self.context.get().table_data = table  # pyright: ignore[reportAttributeAccessIssue]

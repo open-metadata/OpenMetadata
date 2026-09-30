@@ -74,3 +74,14 @@ def test_materialized_view_not_overridden_by_delta_format():
         data_source_format=DataSourceFormat.DELTA,
     )
     assert _run(table) == [("mv", TableType.MaterializedView)]
+
+
+def test_delta_sharing_not_classified_delta_lake():
+    # DELTASHARING shares the "DELTA" string prefix but is not a Delta Lake table;
+    # a prefix match would mislabel it, so it must keep the default Regular type.
+    table = TableInfo(
+        name="ds",
+        table_type=SdkTableType.MANAGED,
+        data_source_format=DataSourceFormat.DELTASHARING,
+    )
+    assert _run(table) == [("ds", TableType.Regular)]
