@@ -25,11 +25,11 @@ import {
   TestCaseErrorDetails,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
-import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
+import { useTestCaseStore } from '../useTestCase.store';
 import {
   RunDetailsStatusStyle,
   RUN_DETAILS_STATUS_STYLE,

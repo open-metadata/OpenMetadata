@@ -16,8 +16,8 @@ import {
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
-import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
+import { useTestCaseStore } from '../useTestCase.store';
 import RunDetailsCard from './RunDetailsCard';
 
 // Only the REST and permission boundaries are stubbed; the Retry run hook runs for real.
