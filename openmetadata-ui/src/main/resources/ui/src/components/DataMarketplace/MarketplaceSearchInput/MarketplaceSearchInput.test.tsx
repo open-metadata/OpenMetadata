@@ -83,9 +83,7 @@ const settle = () =>
 
 const pressEnter = () =>
   act(async () => {
-    fireEvent.keyDown(screen.getByPlaceholderText(PLACEHOLDER), {
-      key: 'Enter',
-    });
+    fireEvent.submit(screen.getByTestId('explore-search-form'));
   });
 
 const setNlq = (isNLPActive: boolean) =>
@@ -165,10 +163,16 @@ describe('MarketplaceSearchInput', () => {
     renderInput(jest.fn());
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('marketplace-nlq-toggle'));
+      fireEvent.click(screen.getByTestId('explore-nlp-toggle'));
     });
     await settle();
 
     expect(mockNlqSearch).not.toHaveBeenCalled();
+  });
+
+  it('shows the Cmd/K hint for the global Ask Collate shortcut', () => {
+    renderInput(jest.fn());
+
+    expect(screen.getByTestId('explore-search-shortcut')).toBeInTheDocument();
   });
 });

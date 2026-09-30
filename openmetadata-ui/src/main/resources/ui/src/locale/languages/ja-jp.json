@@ -3437,6 +3437,7 @@
     "expected-schema-structure-of-this-asset": "このアセットの予想されるスキーマ構造",
     "expected-true-or-false-got-type": "true または false が必要ですが、{{type}} が指定されました",
     "explore-our-guide-here": "ガイドを見る",
+    "explore-search-placeholder": "Context Platform 全体を検索",
     "export-all-matching-assets-description": "Export all assets matching this search across asset types",
     "export-assets-limit-exceeded": "エクスポートは {{limit}} アセットまで制限されています。フィルターを調整するか、表示可能な結果を選択してください。",
     "export-audit-logs-description": "監査ログをエクスポートします。日付範囲を選択してイベントをフィルタリングしてください。エクスポートファイルは100,000件に制限されます。",

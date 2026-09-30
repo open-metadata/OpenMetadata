@@ -3437,6 +3437,7 @@
     "expected-schema-structure-of-this-asset": "此資產的預期結構",
     "expected-true-or-false-got-type": "應為 true 或 false，但收到 {{type}}",
     "explore-our-guide-here": "在此處探索我們的指南。",
+    "explore-search-placeholder": "搜尋您的 Context Platform",
     "export-all-matching-assets-description": "跨資產類型導出與此搜索匹配的所有資產",
     "export-assets-limit-exceeded": "導出限制為 {{limit}} 資產。請優化您的過濾器或選擇可見的結果。",
     "export-audit-logs-description": "匯出稽核日誌。選擇日期範圍以篩選事件。匯出檔案將限制為 100,000 筆記錄。",

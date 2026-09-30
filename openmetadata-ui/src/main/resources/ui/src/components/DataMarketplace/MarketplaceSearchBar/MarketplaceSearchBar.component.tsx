@@ -12,20 +12,27 @@
  */
 
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMarketplaceRecentSearches } from '../../../hooks/useMarketplaceRecentSearches';
 import { useSearchStore } from '../../../hooks/useSearchStore';
+import { ExploreSearchInput } from '../../discovery/explore/ExploreHeader/ExploreSearchInput';
 import MarketplaceSearchResults from '../MarketplaceSearchResults/MarketplaceSearchResults.component';
 import { useMarketplaceEntitySearch } from '../MarketplaceSearchResults/useMarketplaceEntitySearch';
-import MarketplaceSearchControl from './MarketplaceSearchControl.component';
 
 const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const { t } = useTranslation();
   const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
   const [searchValue, setSearchValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLFormElement>(null);
   const { addSearch } = useMarketplaceRecentSearches();
   const { dataProducts, domains, isSearching, search } =
     useMarketplaceEntitySearch();
@@ -62,14 +69,18 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
     [debouncedSearch, search, isNlq]
   );
 
-  const handleSearch = useCallback(() => {
-    if (searchValue.trim()) {
-      debouncedSearch.cancel();
-      search(searchValue);
-      addSearch(searchValue);
-      setIsOpen(true);
-    }
-  }, [debouncedSearch, search, addSearch, searchValue]);
+  const handleSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (searchValue.trim()) {
+        debouncedSearch.cancel();
+        search(searchValue);
+        addSearch(searchValue);
+        setIsOpen(true);
+      }
+    },
+    [debouncedSearch, search, addSearch, searchValue]
+  );
 
   // A keyword search still waiting on the debounce would otherwise fire as NLQ.
   const handleNLPToggle = useCallback(() => {
@@ -77,19 +88,29 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
     setNLPActive(!isNLPActive);
   }, [debouncedSearch, isNLPActive, setNLPActive]);
 
+  const handleClearSearch = useCallback(() => {
+    debouncedSearch.cancel();
+    setSearchValue('');
+    setIsOpen(false);
+    search('');
+  }, [debouncedSearch, search]);
+
   const closePopover = useCallback(() => setIsOpen(false), []);
 
   return (
-    <MarketplaceSearchControl
-      containerRef={containerRef}
+    <ExploreSearchInput
+      showShortcutHint
       isDisabled={isEditView}
       isNLPActive={isNLPActive}
       isNLPEnabled={isNLPEnabled}
-      isPopoverOpen={isOpen && searchValue.trim().length > 0}
+      isSearchBoxOpen={isOpen && searchValue.trim().length > 0}
       placeholder={t('label.search-for-type', {
         type: `${t('label.data-product-plural')}, ${t('label.domain-plural')}`,
       })}
-      results={
+      searchContainerRef={searchContainerRef}
+      searchValue={searchValue}
+      suggestionSearch={searchValue}
+      suggestions={
         <MarketplaceSearchResults
           dataProducts={dataProducts}
           domains={domains}
@@ -97,13 +118,12 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
           onSelect={closePopover}
         />
       }
-      searchValue={searchValue}
+      onClearSearch={handleClearSearch}
       onNLPToggle={handleNLPToggle}
-      onPopoverOpenChange={(open) =>
-        setIsOpen(searchValue.trim().length > 0 && open)
-      }
+      onSearchBoxOpenChange={setIsOpen}
       onSearchChange={handleChange}
-      onSubmit={handleSearch}
+      onSubmit={handleSubmit}
+      onSuggestionSelect={handleChange}
     />
   );
 };

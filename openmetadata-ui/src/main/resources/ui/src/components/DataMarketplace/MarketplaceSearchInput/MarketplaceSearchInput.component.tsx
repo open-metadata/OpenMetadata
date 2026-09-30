@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchStore } from '../../../hooks/useSearchStore';
 import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
-import MarketplaceSearchControl from '../MarketplaceSearchBar/MarketplaceSearchControl.component';
+import { ExploreSearchInput } from '../../discovery/explore/ExploreHeader/ExploreSearchInput';
 import MarketplaceSearchResults from '../MarketplaceSearchResults/MarketplaceSearchResults.component';
 import { useMarketplaceEntitySearch } from '../MarketplaceSearchResults/useMarketplaceEntitySearch';
 
@@ -29,9 +29,9 @@ interface MarketplaceSearchInputProps {
 }
 
 /**
- * The marketplace search field on a list page. Submitting filters the page's
- * own list rather than navigating, and the popover previews the domains and
- * data products the query also matches.
+ * Explore's search control on a marketplace list page. Submitting filters the
+ * page's own list rather than navigating, and the popover previews the domains
+ * and data products the query also matches.
  */
 const MarketplaceSearchInput = ({
   searchQuery,
@@ -40,64 +40,80 @@ const MarketplaceSearchInput = ({
   placeholder,
 }: MarketplaceSearchInputProps) => {
   const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [isSearchBoxOpen, setIsSearchBoxOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLFormElement>(null);
   const isNlq = isNLPEnabled && isNLPActive;
   const { dataProducts, domains, isSearching, search } =
     useMarketplaceEntitySearch();
 
-  // GlobalSearchBar is absent on marketplace pages, so bootstrap the store.
+  // GlobalSearchBar is absent on these pages, so bootstrap the store.
   useEffect(() => {
     initNLP();
   }, [initNLP]);
 
-  const { searchInputValue, handleChange, handleSubmit } = useListSearchInput({
-    searchQuery,
-    onSearchChange,
-    onRefresh,
-    // NLQ runs an LLM step per call, so as on Explore it waits for Enter.
-    submitOnly: isNlq,
-  });
+  const { searchInputValue, handleChange, handleSubmit, handleClear } =
+    useListSearchInput({
+      searchQuery,
+      onSearchChange,
+      onRefresh,
+      // NLQ runs an LLM step per call, so as on Explore it waits for Enter.
+      submitOnly: isNlq,
+    });
+
+  const isPopoverOpen = isSearchBoxOpen && Boolean(searchInputValue.trim());
 
   const handleSearchChange = useCallback(
     (value: string) => {
       handleChange(value);
       // An NLQ query shows nothing until Enter, rather than the last results.
       if (!value.trim() || isNlq) {
-        setIsPopoverOpen(false);
+        setIsSearchBoxOpen(false);
         search('');
 
         return;
       }
-      setIsPopoverOpen(true);
+      setIsSearchBoxOpen(true);
       search(value);
     },
     [handleChange, isNlq, search]
   );
 
-  const handleFormSubmit = useCallback(() => {
-    handleSubmit();
-    if (searchInputValue.trim()) {
-      search(searchInputValue);
-      setIsPopoverOpen(true);
-    }
-  }, [handleSubmit, search, searchInputValue]);
+  const handleFormSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      handleSubmit();
+      if (searchInputValue.trim()) {
+        search(searchInputValue);
+        setIsSearchBoxOpen(true);
+      }
+    },
+    [handleSubmit, search, searchInputValue]
+  );
+
+  const handleClearSearch = useCallback(() => {
+    handleClear();
+    setIsSearchBoxOpen(false);
+    search('');
+  }, [handleClear, search]);
 
   const handleNLPToggle = useCallback(
     () => setNLPActive(!isNLPActive),
     [isNLPActive, setNLPActive]
   );
 
-  const closePopover = useCallback(() => setIsPopoverOpen(false), []);
+  const closePopover = useCallback(() => setIsSearchBoxOpen(false), []);
 
   return (
-    <MarketplaceSearchControl
-      containerRef={containerRef}
+    <ExploreSearchInput
+      showShortcutHint
       isNLPActive={isNLPActive}
       isNLPEnabled={isNLPEnabled}
-      isPopoverOpen={isPopoverOpen && searchInputValue.trim().length > 0}
+      isSearchBoxOpen={isPopoverOpen}
       placeholder={placeholder}
-      results={
+      searchContainerRef={searchContainerRef}
+      searchValue={searchInputValue}
+      suggestionSearch={searchInputValue}
+      suggestions={
         <MarketplaceSearchResults
           dataProducts={dataProducts}
           domains={domains}
@@ -105,13 +121,12 @@ const MarketplaceSearchInput = ({
           onSelect={closePopover}
         />
       }
-      searchValue={searchInputValue}
+      onClearSearch={handleClearSearch}
       onNLPToggle={handleNLPToggle}
-      onPopoverOpenChange={(open) =>
-        setIsPopoverOpen(searchInputValue.trim().length > 0 && open)
-      }
+      onSearchBoxOpenChange={setIsSearchBoxOpen}
       onSearchChange={handleSearchChange}
       onSubmit={handleFormSubmit}
+      onSuggestionSelect={handleSearchChange}
     />
   );
 };

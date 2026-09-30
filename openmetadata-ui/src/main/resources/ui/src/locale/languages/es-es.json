@@ -3437,6 +3437,7 @@
     "expected-schema-structure-of-this-asset": "Estructura de esquema esperada de este activo",
     "expected-true-or-false-got-type": "se esperaba true o false, se obtuvo {{type}}",
     "explore-our-guide-here": "explore nuestra guía aquí.",
+    "explore-search-placeholder": "Busca en tu Context Platform",
     "export-all-matching-assets-description": "Exportar todos los activos coincidentes con esta búsqueda a través de tipos de activos",
     "export-assets-limit-exceeded": "El export es limitado a {{limit}} activos. Por favor, refine sus filtros o elija resultados visibles.",
     "export-audit-logs-description": "Exportar registros de auditoría. Seleccione un rango de fechas para filtrar eventos. El archivo de exportación estará limitado a 100.000 entradas.",
