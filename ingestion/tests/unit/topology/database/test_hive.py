@@ -1517,24 +1517,29 @@ class TestHiveMetastoreDeltaDetection:
     marker upper-cased (`DELTA`), Spark stores it lower-cased (`delta`).
     """
 
+    # A configured metastore is the default for these cases; `metastore=None` is HiveServer2 mode.
+    DEFAULT_METASTORE = MysqlConnection(username="hive", hostPort="localhost:3306", databaseSchema="metastore")
+
     @contextmanager
     def _source(
         self,
         table_names,
         provider_rows,
         *,
-        metastore=None,
+        metastore=DEFAULT_METASTORE,
         dialect=None,
         view_names=(),
         execute_error=None,
     ):
         """`inspector` and `connection` are read-only properties on the real class.
 
-        The dialect is a real metastore dialect so the SQL under test is the SQL that ships;
-        only the DBAPI round trip is mocked.
+        The dialect is a real metastore dialect so the SQL under test is the SQL that ships, and
+        the real `get_validated_metastore_connection` decides the mode from the config we set
+        here; only the DBAPI round trip is mocked.
         """
         source = HiveSource.__new__(HiveSource)
         source.service_connection = MagicMock()
+        source.service_connection.metastoreConnection = metastore
         inspector = MagicMock()
         inspector.get_table_names.return_value = table_names
         inspector.get_view_names.return_value = list(view_names)
@@ -1547,10 +1552,6 @@ class TestHiveMetastoreDeltaDetection:
         with (
             patch.object(HiveSource, "inspector", new_callable=PropertyMock, return_value=inspector),
             patch.object(HiveSource, "connection", new_callable=PropertyMock, return_value=connection),
-            patch(
-                "metadata.ingestion.source.database.hive.metadata.get_validated_metastore_connection",
-                return_value=MagicMock() if metastore is None else metastore,
-            ),
         ):
             yield source, connection
 
@@ -1612,8 +1613,24 @@ class TestHiveMetastoreDeltaDetection:
         connection.execute.assert_not_called()
 
     def test_hiveserver2_mode_does_not_query_the_metastore(self):
-        """Without a metastore connection the provider query must not run at all."""
-        with self._source(["delta_sales"], [("delta_sales", "DELTA")], metastore=False) as (source, connection):
+        """Without a metastore connection the provider query must not run at all.
+
+        `None` is what the real `get_validated_metastore_connection` returns here, and the real
+        function is what runs: nothing in this class stubs the metastore predicate.
+        """
+        with self._source(["delta_sales"], [("delta_sales", "DELTA")], metastore=None) as (source, connection):
+            result = source.query_table_names_and_types("delta_schema")
+        assert result == [TableNameAndType(name="delta_sales", type_=TableType.Regular)]
+        connection.execute.assert_not_called()
+
+    def test_defaults_only_metastore_payload_is_hiveserver2_mode(self):
+        """Picking "None" for the metastore in the UI submits a defaults-only object, not null.
+
+        It carries no hostPort, so it means "no metastore". A truthiness check on the raw config
+        would read this dict as a configured metastore and query TBLS against HiveServer2.
+        """
+        payload = {"type": "Mysql", "scheme": "mysql+pymysql", "username": "openmetadata_user"}
+        with self._source(["delta_sales"], [("delta_sales", "DELTA")], metastore=payload) as (source, connection):
             result = source.query_table_names_and_types("delta_schema")
         assert result == [TableNameAndType(name="delta_sales", type_=TableType.Regular)]
         connection.execute.assert_not_called()
