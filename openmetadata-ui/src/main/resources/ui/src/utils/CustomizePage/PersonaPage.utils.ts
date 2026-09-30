@@ -14,8 +14,8 @@
 import { isUndefined, omit, omitBy } from 'lodash';
 import {
   DEFAULT_LANDING_PAGE,
-  LANDING_PAGE_SECTIONS,
   DEFAULT_PAGE_VIEW_MODE,
+  LANDING_PAGE_SECTIONS,
   ViewModePage,
   VIEW_MODE_PAGES,
 } from '../../constants/platform/personaAppLayout.constants';

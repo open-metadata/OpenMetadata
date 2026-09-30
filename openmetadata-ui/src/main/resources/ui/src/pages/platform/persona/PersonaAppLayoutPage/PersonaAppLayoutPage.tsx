@@ -36,8 +36,8 @@ import { CustomizablePageHeader } from '../../../../components/MyData/Customizab
 import PageLayoutV1 from '../../../../components/PageLayoutV1/PageLayoutV1';
 import {
   DEFAULT_LANDING_PAGE,
-  LANDING_PAGE_SECTIONS,
   DEFAULT_PAGE_VIEW_MODE,
+  LANDING_PAGE_SECTIONS,
   PAGE_VIEW_MODE_LABEL_KEYS,
   ViewModePage,
   VIEW_MODE_PAGES,

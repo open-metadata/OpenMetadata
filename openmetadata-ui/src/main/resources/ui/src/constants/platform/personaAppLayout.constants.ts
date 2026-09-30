@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ROUTES } from '../constants';
 import {
   DefaultViewModes,
   PageViewMode,
 } from '../../generated/type/personaPreferences';
+import { ROUTES } from '../constants';
 
 export interface LandingPageOption {
   path: string;
