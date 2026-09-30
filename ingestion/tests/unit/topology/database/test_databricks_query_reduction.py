@@ -57,9 +57,9 @@ def test_get_table_type_uses_one_bulk_query_per_schema():
     connection = Mock()
     connection.info = {}
     connection.execute.return_value = [
-        ("orders", "MANAGED"),
-        ("customers", "EXTERNAL"),
-        ("legacy_feed", "FOREIGN"),
+        ("orders", "MANAGED", "DELTA"),
+        ("customers", "EXTERNAL", "DELTA"),
+        ("legacy_feed", "FOREIGN", "UNKNOWN_DATA_SOURCE_FORMAT"),
     ]
 
     assert get_table_type(dialect, connection, "main_prod", "sales", "orders") == "MANAGED"
@@ -75,8 +75,8 @@ def test_get_table_type_refetches_for_a_different_schema():
     connection = Mock()
     connection.info = {}
     connection.execute.side_effect = [
-        [("orders", "MANAGED")],
-        [("events", "MANAGED")],
+        [("orders", "MANAGED", "DELTA")],
+        [("events", "MANAGED", "DELTA")],
     ]
 
     assert get_table_type(dialect, connection, "main_prod", "sales", "orders") == "MANAGED"
@@ -401,9 +401,9 @@ def test_get_table_type_cache_is_bounded_to_current_schema():
     connection = Mock()
     connection.info = {}
     connection.execute.side_effect = [
-        [("orders", "MANAGED")],
-        [("events", "MANAGED")],
-        [("orders", "MANAGED")],
+        [("orders", "MANAGED", "DELTA")],
+        [("events", "MANAGED", "DELTA")],
+        [("orders", "MANAGED", "DELTA")],
     ]
 
     get_table_type(dialect, connection, "main_prod", "sales", "orders")

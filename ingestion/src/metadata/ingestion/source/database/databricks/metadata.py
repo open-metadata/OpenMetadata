@@ -803,15 +803,17 @@ def _get_schema_table_types(
     connection: Connection,
     database: str | None,
     schema: str,
-) -> dict[str, str]:
+) -> dict[str, tuple[str, str | None]]:
     """One ``information_schema.tables`` query per schema in place of a per-table
     ``DESCRIBE``. Held in a size-1 cache on ``connection.info`` so it is scoped to
     the current thread's connection (the source hands each thread its own
     connection) and bounded: every ``get_table_type`` call for a schema's tables
     runs inside one ``get_table_names`` pass, so the current schema's map is
     reused, then evicted when the next schema is fetched — never accumulated
-    across the catalog. Returns an empty mapping on failure so callers fall back
-    to a per-table ``DESCRIBE``."""
+    across the catalog. Maps each table name to its ``(table_type,
+    data_source_format)`` so callers can both skip FOREIGN tables and classify
+    Delta/Iceberg storage. Returns an empty mapping on failure so callers fall
+    back to a per-table ``DESCRIBE``."""
     cache_key = (database, schema)
     cached = connection.info.get(_TABLE_TYPES_CACHE_KEY)
     if isinstance(cached, dict) and cache_key in cached:
@@ -827,7 +829,7 @@ def _get_schema_table_types(
                     )
                 ).bindparams(schema_name=schema)
             )
-            table_types = {row[0]: row[1] for row in rows}
+            table_types = {row[0]: (row[1], row[2]) for row in rows}
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(
                 f"Bulk table-type fetch failed for {database}.{schema}, falling back to per-table DESCRIBE: {err}"
@@ -837,12 +839,29 @@ def _get_schema_table_types(
     return table_types
 
 
+def _table_type_from_data_source_format(data_source_format: str | None) -> TableType | None:
+    """Map a Databricks ``information_schema.tables.data_source_format`` to an
+    OpenMetadata table type. Unity Catalog reports every Delta table — managed,
+    partitioned and UniForm(Iceberg) alike — as ``DELTA``, while native Iceberg
+    tables report ``ICEBERG``; ``DELTA_UNIFORM_*`` is defined by the UC REST enum
+    and mapped defensively. Any other/unknown/missing value returns ``None`` so
+    the caller keeps its default type."""
+    if not data_source_format:
+        return None
+    normalized = data_source_format.strip().upper()
+    if normalized == "DELTA" or normalized.startswith("DELTA_UNIFORM"):
+        return TableType.DeltaLake
+    if normalized == "ICEBERG":
+        return TableType.Iceberg
+    return None
+
+
 def get_table_type(self, connection, database, schema, table):
     """get table type (regular/foreign)"""
     try:
         table_types = _get_schema_table_types(self, connection, database, schema)
         if table in table_types:
-            return table_types[table]
+            return table_types[table][0]
         if database:
             query = _format_identifier_query(
                 DATABRICKS_GET_TABLE_COMMENTS,
@@ -985,12 +1004,22 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
-        """
 
+        Delta/Iceberg storage is stamped from the schema's cached
+        ``data_source_format`` (populated while listing the tables) so managed,
+        partitioned and UniForm Delta tables surface as DeltaLake and native
+        Iceberg tables as Iceberg, without a per-table query.
+        """
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        table_names = self.inspector.get_table_names(schema=schema_name, db_name=database) or []
+        table_formats = _get_schema_table_types(self.connection.dialect, self.connection, database, schema_name)
         return [
-            TableNameAndType(name=table_name)
-            for table_name in self.inspector.get_table_names(schema=schema_name, db_name=self.context.get().database)
-            or []
+            TableNameAndType(
+                name=table_name,
+                type_=_table_type_from_data_source_format(table_formats.get(table_name, (None, None))[1])
+                or TableType.Regular,
+            )
+            for table_name in table_names
         ]
 
     def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
