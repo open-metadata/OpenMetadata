@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { Table } from '@openmetadata/ui-core-components/icons';
-import { CheckCircle, User01 } from '@openmetadata/ui-core-components/icons';
+import {
+  CheckCircle,
+  Table,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import {
   IncidentGroupBy,
   IncidentTrendDirection,
