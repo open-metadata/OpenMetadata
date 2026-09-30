@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.directory import Directory
 from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.glossary import Glossary
@@ -179,6 +180,7 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metric": Metric,
     "glossary": Glossary,
     "glossaryTerm": GlossaryTerm,
+    "dataContract": DataContract,
     "eventSubscription": EventSubscription,
 }
 
