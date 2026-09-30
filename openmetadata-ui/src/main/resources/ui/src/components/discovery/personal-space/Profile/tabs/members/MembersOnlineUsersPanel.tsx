@@ -12,30 +12,41 @@
  */
 
 import {
-    Box,
-    EmptyPlaceholder,
-    Select,
-    Typography
+  Box,
+  Button,
+  EmptyPlaceholder,
+  PaginationCardWithControls,
+  Popover,
+  PopoverTrigger,
+  Select,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { INITIAL_PAGING_VALUE } from '../../../../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../../../constants/constants';
+import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import type { User } from '../../../../../../generated/entity/teams/user';
+import type { EntityReference } from '../../../../../../generated/entity/type';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
-    getOnlineUsers,
-    OnlineUsersQueryParams
+  getOnlineUsers,
+  OnlineUsersQueryParams,
 } from '../../../../../../rest/userAPI';
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 import {
-    getRoleWithFqnPath,
-    getTeamsWithFqnPath
+  getRoleWithFqnPath,
+  getTeamsWithFqnPath,
 } from '../../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
@@ -45,7 +56,6 @@ import Table from '../../../../../common/Table/TableV2';
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
-import MembersPagination from './MembersPagination';
 
 const USER_FIELDS = 'profile,teams,roles,lastLoginTime,lastActivityTime';
 
@@ -67,21 +77,18 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   } = usePaging();
 
   const fetchOnlineUsers = useCallback(
-    async (page = INITIAL_PAGING_VALUE, size = pageSize) => {
+    async (params?: { after?: string; before?: string }) => {
       setLoading(true);
 
       try {
-        const params: OnlineUsersQueryParams = {
+        const queryParams: OnlineUsersQueryParams = {
           timeWindow: timeWindow || undefined,
           fields: USER_FIELDS,
-          limit: size,
+          limit: pageSize,
+          ...params,
         };
 
-        if (page > INITIAL_PAGING_VALUE && paging.after) {
-          params.after = paging.after;
-        }
-
-        const response = await getOnlineUsers(params);
+        const response = await getOnlineUsers(queryParams);
 
         setUsers(response.data);
         handlePagingChange(response.paging);
@@ -92,8 +99,26 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         setLoading(false);
       }
     },
-    [timeWindow, pageSize, paging.after, handlePagingChange]
+    [timeWindow, pageSize, handlePagingChange]
   );
+
+  const handlePageNavigation = (newPage: number) => {
+    if (newPage === currentPage || searchText) {
+      return;
+    }
+
+    // ponytail: cursor paging only supports ±1 steps; numbered/jump beyond adjacent no-ops.
+    const cursorType =
+      newPage > currentPage ? CursorType.AFTER : CursorType.BEFORE;
+    const cursor = paging[cursorType];
+
+    if (Math.abs(newPage - currentPage) !== 1 || !cursor) {
+      return;
+    }
+
+    handlePageChange(newPage);
+    fetchOnlineUsers({ [cursorType]: cursor });
+  };
 
   const handleSearch = useCallback(
     async (query: string) => {
@@ -154,13 +179,10 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     if (!searchText) {
       fetchOnlineUsers();
     }
-  }, [timeWindow]);
+  }, [timeWindow, pageSize]);
 
   const renderEntityLinks = useCallback(
-    (
-      items: User['teams'] | User['roles'],
-      pathFn: (fqn: string) => string
-    ) => {
+    (items: User['teams'] | User['roles'], pathFn: (fqn: string) => string) => {
       if (!items || items.length === 0) {
         return '-';
       }
@@ -171,9 +193,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
       return (
         <Box align="center" direction="row" gap={1}>
           {visible.map((item) => (
-            <Link
-              key={item.id}
-              to={pathFn(item.fullyQualifiedName ?? '')}>
+            <Link key={item.id} to={pathFn(item.fullyQualifiedName ?? '')}>
               {getEntityName(item)}
             </Link>
           ))}
@@ -190,12 +210,52 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     [t]
   );
 
+  const renderRolesCell = useCallback(
+    (roles: User['roles']) => {
+      if (!roles || roles.length === 0) {
+        return '-';
+      }
+
+      const renderRoleItem = (role: EntityReference) => (
+        <Link
+          key={role.id}
+          to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+          {getEntityName(role)}
+        </Link>
+      );
+
+      return (
+        <Box data-testid="role-link" direction="row" gap={1} wrap="wrap">
+          {roles.slice(0, LIST_CAP).map(renderRoleItem)}
+          {roles.length > LIST_CAP && (
+            <PopoverTrigger>
+              <Button
+                className="tw:py-0.5 tw:bg-tertiary"
+                color="secondary"
+                data-testid="plus-more-count"
+                size="xs">
+                {t('label.plus-count-more', { count: roles.length - LIST_CAP })}
+              </Button>
+              <Popover className="tw:max-h-80! tw:overflow-scroll">
+                <Box className="tw:p-3" direction="col" gap={1}>
+                  {roles.slice(LIST_CAP).map(renderRoleItem)}
+                </Box>
+              </Popover>
+            </PopoverTrigger>
+          )}
+        </Box>
+      );
+    },
+    [t]
+  );
+
   const columns = useMemo(
     (): ColumnsType<User> => [
       {
         title: t('label.username'),
         dataIndex: 'name',
         key: 'username',
+        ellipsis: true,
         render: (_: string, record: User) =>
           record.name ? (
             <UserPopOverCard
@@ -211,6 +271,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'name',
+        ellipsis: true,
         render: (_: string, record: User) => (
           <Typography size="text-sm">{getEntityName(record)}</Typography>
         ),
@@ -220,8 +281,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         dataIndex: 'lastActivityTime',
         key: 'lastActivity',
         render: (_: number | undefined, record: User) => {
-          const activityTime =
-            record.lastActivityTime ?? record.lastLoginTime;
+          const activityTime = record.lastActivityTime ?? record.lastLoginTime;
           const status = formatOnlineStatus(activityTime, t);
 
           return (
@@ -230,9 +290,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
                 {status.label}
               </Typography>
               {activityTime ? (
-                <Typography
-                  className="tw:text-tertiary"
-                  size="text-xs">
+                <Typography className="tw:text-tertiary" size="text-xs">
                   {formatDateTime(activityTime)}
                 </Typography>
               ) : null}
@@ -251,12 +309,13 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         title: t('label.role-plural'),
         dataIndex: 'roles',
         key: 'roles',
-        render: (_: unknown, record: User) =>
-          renderEntityLinks(record.roles, getRoleWithFqnPath),
+        render: (_: unknown, record: User) => renderRolesCell(record.roles),
       },
     ],
-    [t, renderEntityLinks]
+    [t, renderEntityLinks, renderRolesCell]
   );
+
+  const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
 
   return (
     <Box
@@ -270,9 +329,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         dataSource={users}
         extraTableFilters={
           <Box align="center" direction="row" gap={2}>
-            <Typography size="text-sm">
-              {t('label.time-window')}:
-            </Typography>
+            <Typography size="text-sm">{t('label.time-window')}:</Typography>
             <Select
               data-testid="time-window-select"
               selectedKey={String(timeWindow)}
@@ -318,15 +375,13 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
       />
 
       {showPagination && (
-        <MembersPagination
-          currentPage={currentPage}
-          isLoading={loading}
+        <PaginationCardWithControls
+          page={currentPage}
           pageSize={pageSize}
-          paging={paging}
-          pagingHandler={({ currentPage: page }) =>
-            handlePageChange(page, undefined, pageSize)
-          }
-          onShowSizeChange={handlePageSizeChange}
+          pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+          total={totalPages}
+          onPageChange={handlePageNavigation}
+          onPageSizeChange={handlePageSizeChange}
         />
       )}
     </Box>

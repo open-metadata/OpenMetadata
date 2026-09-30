@@ -18,7 +18,6 @@ const USERS = 'users';
 const ADMINS = 'admins';
 const ADD = 'add';
 const CREATE = 'create';
-const IMPORT = 'import';
 const ONLINE_USERS = 'online-users';
 
 // fqns are URL-encoded in the hash to survive the round-trip (they can contain
@@ -38,13 +37,6 @@ function parseTeamsSubPath(parts: string[]): MembersView {
         : decodeURIComponent(parts.slice(1, -1).join('/'));
 
     return { type: 'teams-add', parentFqn };
-  }
-
-  if (last === IMPORT) {
-    return {
-      type: 'team-import',
-      fqn: decodeURIComponent(parts.slice(1, -1).join('/')),
-    };
   }
 
   const fqn = decodeURIComponent(parts.slice(1).join('/'));
@@ -81,8 +73,6 @@ function teamsViewToSubPath(view: MembersView): string {
   switch (view.type) {
     case 'team-detail':
       return `${TEAMS}/${encodeURIComponent(view.fqn)}`;
-    case 'team-import':
-      return `${TEAMS}/${encodeURIComponent(view.fqn)}/${IMPORT}`;
     case 'teams-add':
       return view.parentFqn
         ? `${TEAMS}/${encodeURIComponent(view.parentFqn)}/${ADD}`
@@ -109,7 +99,7 @@ export function viewToSubPath(view: MembersView): string | undefined {
     return view.isAdmin ? `${ADMINS}/${CREATE}` : `${USERS}/${CREATE}`;
   }
 
-  // teams, team-detail, team-import, teams-add
+  // teams, team-detail, teams-add
   return teamsViewToSubPath(view);
 }
 

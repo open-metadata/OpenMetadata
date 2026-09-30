@@ -369,9 +369,12 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
 
   return (
     <Box className="tw:h-full tw:min-h-0" direction="col" justify="between">
-      <HookForm form={form}>
+      <HookForm
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
+        form={form}>
+        <div className="tw:overflow-y-auto">
         <Box
-          className="tw:flex-1 tw:overflow-y-auto tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
+          className="tw:flex-1 tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
           data-testid="create-user-container"
           direction="col"
           gap={5}>
@@ -620,6 +623,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
             </>
           )}
         </Box>
+          </div>
       </HookForm>
 
       <Box
