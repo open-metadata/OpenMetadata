@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { getAggregations } from '../../../../utils/ExplorePureUtils';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import { useDataFetching } from '../data/useDataFetching';
@@ -35,6 +36,8 @@ interface UseListingDataProps<T> {
   onCustomEntityClick?: (entity: T) => void;
   onCustomAddClick?: () => void;
   searchKey?: string;
+  /** Run the search as a natural-language query while the NLQ toggle is on. */
+  enableNlq?: boolean;
 }
 
 export const useListingData = <
@@ -56,7 +59,13 @@ export const useListingData = <
     onCustomEntityClick,
     onCustomAddClick,
     searchKey,
+    enableNlq = false,
   } = props;
+
+  const isNlqActive = useSearchStore(
+    (state) => state.isNLPEnabled && state.isNLPActive
+  );
+  const useNlq = enableNlq && isNlqActive;
 
   const urlStateHook = useUrlState({
     searchKey,
@@ -79,6 +88,7 @@ export const useListingData = <
     searchIndex,
     baseFilter,
     pageSize: effectivePageSize,
+    useNlq,
   });
 
   const paginationState = usePaginationState({
@@ -111,6 +121,8 @@ export const useListingData = <
     urlState.searchQuery,
     urlState.filters,
     urlState.pageSize,
+    // `useNlq` is left out on purpose: flipping the NLQ toggle must not run a
+    // query by itself. As on Explore, NLQ runs when the user submits.
     // Note: dataFetching.searchEntities intentionally excluded - we always want the latest version
   ]);
 
