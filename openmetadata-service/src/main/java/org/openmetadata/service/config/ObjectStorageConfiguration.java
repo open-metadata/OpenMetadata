@@ -16,10 +16,6 @@ public class ObjectStorageConfiguration {
   @JsonProperty("maxFileSize")
   private long maxFileSize = 5 * 1024 * 1024; // 5MB in bytes
 
-  /** How many files one user may upload in a rolling day; 0 leaves it unbounded. */
-  @JsonProperty("maxUploadsPerUserPerDay")
-  private int maxUploadsPerUserPerDay = 50;
-
   /**
    * Provider can be "s3", "azure", or "noop" (for local testing).
    */

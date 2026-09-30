@@ -181,24 +181,6 @@ public interface CollectionDAO
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT COUNT(*) FROM asset_entity WHERE LOWER(assetType) = LOWER(:assetType) "
-                + "AND updatedBy = :updatedBy AND updatedAt >= :since "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityLink')) LIKE :entityLinkPrefix",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(*) FROM asset_entity WHERE LOWER(assetType) = LOWER(:assetType) "
-                + "AND updatedBy = :updatedBy AND updatedAt >= :since "
-                + "AND json ->> 'entityLink' LIKE :entityLinkPrefix",
-        connectionType = POSTGRES)
-    int countByEntityLinkPrefixAndUpdatedBySince(
-        @Bind("assetType") String assetType,
-        @Bind("entityLinkPrefix") String entityLinkPrefix,
-        @Bind("updatedBy") String updatedBy,
-        @Bind("since") long since);
-
-    @ConnectionAwareSqlQuery(
-        value =
             "SELECT json FROM asset_entity WHERE LOWER(assetType) = LOWER(:assetType) "
                 + "AND updatedAt < :before "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityLink')) LIKE :entityLinkPrefix",
