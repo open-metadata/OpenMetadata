@@ -1434,7 +1434,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           client._transport().jsonpMapper().jsonProvider(),
           generator -> response.serialize(generator, client._transport().jsonpMapper()));
     } finally {
-      if (timer != null) RequestLatencyContext.endSearchOperation(timer);
+      if (timer != null) {
+        RequestLatencyContext.endSearchOperation(timer);
+      }
     }
   }
 

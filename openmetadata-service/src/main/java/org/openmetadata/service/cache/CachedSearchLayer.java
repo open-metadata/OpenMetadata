@@ -120,7 +120,9 @@ public final class CachedSearchLayer {
     String key;
     try {
       key = buildKey(request, principalName);
-      if (operation == Operation.ENTITY_TYPE_COUNTS) key += ":entityTypeCounts";
+      if (operation == Operation.ENTITY_TYPE_COUNTS) {
+        key += ":entityTypeCounts";
+      }
     } catch (Exception e) {
       LOG.debug("Search cache key build failed; falling through to compute", e);
       return supplier.get();

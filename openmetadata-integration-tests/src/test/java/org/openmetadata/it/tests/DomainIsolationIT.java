@@ -249,21 +249,34 @@ public class DomainIsolationIT {
           .atMost(Duration.ofSeconds(30))
           .untilAsserted(
               () -> {
-                assertEquals(2, domainCount(admin, prefix));
-                assertEquals(1, domainCount(restricted, prefix));
-                assertEquals(2, domainCount(admin, prefix));
+                for (boolean includeTopHit : List.of(false, true)) {
+                  assertEquals(2, domainCount(admin, prefix, includeTopHit));
+                  assertEquals(1, domainCount(restricted, prefix, includeTopHit));
+                  assertEquals(2, domainCount(admin, prefix, includeTopHit));
+                }
               });
     } finally {
       drain(cleanup);
     }
   }
 
-  private long domainCount(OpenMetadataClient client, String prefix) throws Exception {
+  private long domainCount(OpenMetadataClient client, String prefix, boolean includeTopHit)
+      throws Exception {
     JsonNode results =
         MAPPER.readTree(client.search().query(prefix + "*").index("domain").size(100).execute());
     JsonNode counts =
-        MAPPER.readTree(
-            client.search().entityTypeCounts().query(prefix + "*").index("domain").execute());
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/search/entityTypeCounts",
+                null,
+                JsonNode.class,
+                RequestOptions.builder()
+                    .queryParam("q", prefix + "*")
+                    .queryParam("index", "domain")
+                    .queryParam("include_top_hit", Boolean.toString(includeTopHit))
+                    .build());
     assertEquals(results.at("/hits/total/value").asLong(), counts.at("/hits/total/value").asLong());
     return counts.at("/hits/total/value").asLong();
   }

@@ -115,7 +115,9 @@ class SearchCountConsistencyIT {
         assertTrue(expected > 0, type + " must have matching fixtures");
         long actual = 0;
         for (JsonNode bucket : counts.at("/aggregations/entityType/buckets")) {
-          if (type.equals(bucket.path("key").asText())) actual = bucket.path("doc_count").asLong();
+          if (type.equals(bucket.path("key").asText())) {
+            actual = bucket.path("doc_count").asLong();
+          }
         }
         assertEquals(expected, actual, type + " count for " + query);
         expectedTotal += expected;
@@ -188,7 +190,9 @@ class SearchCountConsistencyIT {
               ? aggregations.path("entityType")
               : aggregations.path("sterms#entityType");
       for (JsonNode bucket : entityTypes.path("buckets")) {
-        if (bucket.path("key").asText().equals(index)) actual = bucket.path("doc_count").asLong();
+        if (bucket.path("key").asText().equals(index)) {
+          actual = bucket.path("doc_count").asLong();
+        }
       }
       assertEquals(
           expected, actual, "count must use the " + index + " query, not the composite query");

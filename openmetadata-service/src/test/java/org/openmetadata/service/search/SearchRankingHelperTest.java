@@ -5,9 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,8 +26,43 @@ import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.StopWordsByLanguage;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.utils.JsonUtils;
 
 class SearchRankingHelperTest {
+
+  @Test
+  void identityFieldsAreImmutableAndBothJsonRepresentationsReadTheSameIdentifiers() {
+    assertEquals(List.of("name", "fullyQualifiedName"), SearchRankingHelper.identityFields());
+    assertThrows(
+        UnsupportedOperationException.class,
+        () -> SearchRankingHelper.identityFields().add("displayName"));
+    for (String json :
+        List.of(
+            "{}",
+            "{\"name\":\"customer\"}",
+            "{\"fullyQualifiedName\":\"service.customer\"}",
+            "{\"name\":null,\"fullyQualifiedName\":42}",
+            "{\"name\":{},\"fullyQualifiedName\":true}",
+            "{\"name\":\"customer\",\"fullyQualifiedName\":\"service.customer\",\"displayName\":\"ignore me\"}")) {
+      try (var reader = Json.createReader(new StringReader(json))) {
+        List<String> identifiers =
+            SearchRankingHelper.identifiersFrom(reader.readObject()).toList();
+        assertEquals(
+            identifiers, SearchRankingHelper.identifiersFrom(JsonUtils.readTree(json)).toList());
+      }
+    }
+    assertEquals(
+        List.of("customer", "service.customer"),
+        SearchRankingHelper.identifiersFrom(
+                JsonUtils.readTree(
+                    "{\"name\":\"customer\",\"fullyQualifiedName\":\"service.customer\"}"))
+            .toList());
+    assertEquals(List.of(), SearchRankingHelper.identifiersFrom((JsonNode) null).toList());
+    assertEquals(List.of(), SearchRankingHelper.identifiersFrom((JsonObject) null).toList());
+    assertEquals(
+        List.of(), SearchRankingHelper.identifiersFrom(JsonUtils.readTree("null")).toList());
+    assertEquals(List.of(), SearchRankingHelper.identifiersFrom(JsonUtils.readTree("[]")).toList());
+  }
 
   @Test
   void projectedFirstPageUsesAnIndependentIdentityProbe() throws IOException {

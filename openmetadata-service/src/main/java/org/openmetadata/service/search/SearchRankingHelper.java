@@ -2,7 +2,10 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_FIELD;
+import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_ORDER;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import java.io.IOException;
@@ -62,6 +65,11 @@ public final class SearchRankingHelper {
    */
   public static int identityProbeSize() {
     return IDENTITY_PROBE_SIZE;
+  }
+
+  /** Source fields required by both result and count identity probes. */
+  public static List<String> identityFields() {
+    return IDENTITY_FIELDS;
   }
 
   /**
@@ -757,8 +765,9 @@ public final class SearchRankingHelper {
         && (nullOrEmpty(request.getIncludeSourceFields())
             || request.getIncludeSourceFields().containsAll(IDENTITY_FIELDS))
         && (nullOrEmpty(request.getSortFieldParam())
-            || "_score".equals(request.getSortFieldParam()))
-        && (nullOrEmpty(request.getSortOrder()) || "desc".equalsIgnoreCase(request.getSortOrder()));
+            || DEFAULT_SORT_FIELD.equals(request.getSortFieldParam()))
+        && (nullOrEmpty(request.getSortOrder())
+            || DEFAULT_SORT_ORDER.equalsIgnoreCase(request.getSortOrder()));
   }
 
   private record PrecisionSearch(
@@ -820,15 +829,17 @@ public final class SearchRankingHelper {
         JsonUtils.deepCopy(request, SearchRequest.class)
             .withFrom(window.from())
             .withSize(window.size());
-    if (!window.cursorPaged()) copy.withSearchAfter(List.of());
+    if (!window.cursorPaged()) {
+      copy.withSearchAfter(List.of());
+    }
     if (window.identityProbe()) {
       copy.withFetchSource(true)
           .withIncludeSourceFields(IDENTITY_FIELDS)
           .withExcludeSourceFields(List.of())
           .withIncludeAggregations(false)
           .withExplain(false)
-          .withSortFieldParam("_score")
-          .withSortOrder("desc");
+          .withSortFieldParam(DEFAULT_SORT_FIELD)
+          .withSortOrder(DEFAULT_SORT_ORDER);
     }
     return copy;
   }
@@ -861,6 +872,17 @@ public final class SearchRankingHelper {
       }
     }
     return identifiers.stream();
+  }
+
+  /** Jackson counterpart for the engine-neutral count aggregation response. */
+  public static Stream<String> identifiersFrom(JsonNode hitSource) {
+    if (hitSource == null) {
+      return Stream.empty();
+    }
+    return IDENTITY_FIELDS.stream()
+        .map(hitSource::path)
+        .filter(JsonNode::isTextual)
+        .map(JsonNode::textValue);
   }
 
   private static boolean rankingHasPrunableFuzzyStage(RankingConfiguration ranking) {
