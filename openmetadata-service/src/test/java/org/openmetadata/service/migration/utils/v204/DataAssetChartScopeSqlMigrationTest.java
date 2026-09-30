@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.utils.v203;
+package org.openmetadata.service.migration.utils.v204;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,7 +26,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 /**
- * Guards the 2.0.3 data migration that re-scopes the Data Insights data-asset charts (#31478).
+ * Guards the 2.0.4 data migration that re-scopes the Data Insights data-asset charts (#31478).
  *
  * <p>The scope now lives in SQL rather than in a Java migration, because a Java {@code
  * runDataMigration()} attached to a version a deployment has already recorded never runs, while SQL
@@ -39,7 +39,6 @@ class DataAssetChartScopeSqlMigrationTest {
 
   private static final String EXPECTED_EXCLUDE_GROUPS =
       "[\"tag\",\"glossaryTerm\",\"dataProduct\"]";
-  // 2.0.3 also carries unrelated migrations (RDF app config), so only chart statements count.
   private static final String CHART_UPDATE = "UPDATE di_chart_entity";
   private static final Pattern NAME_IN_LIST = Pattern.compile("name IN \\(([^)]*)\\)");
   private static final Pattern QUOTED_NAME = Pattern.compile("'([a-z0-9_]+)'");
@@ -80,7 +79,7 @@ class DataAssetChartScopeSqlMigrationTest {
     assertEquals(
         JsonUtils.pojoToJson(DataInsightSystemChartRepository.NON_DATA_ASSET_ENTITY_TYPES),
         EXPECTED_EXCLUDE_GROUPS,
-        "NON_DATA_ASSET_ENTITY_TYPES changed; update the 2.0.3 excludeGroups literal to match");
+        "NON_DATA_ASSET_ENTITY_TYPES changed; update the 2.0.4 excludeGroups literal to match");
     assertTrue(read(dialect).contains(EXPECTED_EXCLUDE_GROUPS), dialect + " excludeGroups literal");
   }
 
@@ -181,7 +180,7 @@ class DataAssetChartScopeSqlMigrationTest {
   }
 
   private static Path versionDir() {
-    return repositoryRoot().resolve("bootstrap/sql/migrations/native/2.0.3");
+    return repositoryRoot().resolve("bootstrap/sql/migrations/native/2.0.4");
   }
 
   private static Path path(final String dialect) {
@@ -191,7 +190,7 @@ class DataAssetChartScopeSqlMigrationTest {
   private static String resource(final String name) throws IOException {
     return Files.readString(
         repositoryRoot()
-            .resolve("openmetadata-service/src/test/resources/migration/v203")
+            .resolve("openmetadata-service/src/test/resources/migration/v204")
             .resolve(name + ".json"));
   }
 
