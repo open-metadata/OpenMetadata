@@ -60,6 +60,7 @@ describe('option builders in a Node environment', () => {
   it.each([
     'options/cartesian.ts',
     'options/common.ts',
+    'options/geo.ts',
     'options/merge.ts',
     'options/pie.ts',
     'format.ts',

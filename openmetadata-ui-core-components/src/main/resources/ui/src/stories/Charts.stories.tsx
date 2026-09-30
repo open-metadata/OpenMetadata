@@ -18,9 +18,11 @@ import {
   BarChart,
   ComposedChart,
   EChart,
+  GeoMapChart,
   LineChart,
   PieChart,
 } from '../charts';
+import type { GeoJson } from '../charts';
 
 const meta = {
   title: 'Charts/Overview',
@@ -64,6 +66,58 @@ const status = [
   { name: 'Success', value: 42, color: '#17b26a' },
   { name: 'Failed', value: 7, color: '#f04438' },
   { name: 'Aborted', value: 3, color: '#f79009' },
+];
+
+// A 3×3 grid of made-up regions — real map data belongs to the caller.
+const REGION_NAMES = [
+  ['North West', 'North', 'North East'],
+  ['West', 'Central', 'East'],
+  ['South West', 'South', 'South East'],
+];
+
+const gridMap: GeoJson = {
+  type: 'FeatureCollection',
+  features: REGION_NAMES.flatMap((row, y) =>
+    row.map((name, x) => ({
+      type: 'Feature' as const,
+      properties: { name },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [x, -y],
+            [x + 1, -y],
+            [x + 1, -y - 1],
+            [x, -y - 1],
+            [x, -y],
+          ],
+        ],
+      },
+    }))
+  ),
+};
+
+const REGION_CODES: Record<string, string> = {
+  NW: 'North West',
+  N: 'North',
+  NE: 'North East',
+  W: 'West',
+  C: 'Central',
+  E: 'East',
+  SW: 'South West',
+  S: 'South',
+};
+
+const regionSales = [
+  { region: 'NW', value: 120 },
+  { region: 'N', value: 340 },
+  { region: 'NE', value: 90 },
+  { region: 'W', value: 260 },
+  { region: 'C', value: 510 },
+  { region: 'E', value: 180 },
+  { region: 'SW', value: 40 },
+  { region: 'S', value: 300 },
+  { region: 'Atlantis', value: 10 },
 ];
 
 const Frame = ({ children }: { children: ReactNode }) => (
@@ -206,6 +260,20 @@ export const DonutWithCentreLabel: Story = {
         }
         data={status}
         innerRadius="55%"
+      />
+    </Frame>
+  ),
+};
+
+export const GeoMap: Story = {
+  render: () => (
+    <Frame>
+      <GeoMapChart
+        ariaLabel="Sales by region"
+        data={regionSales}
+        geoJson={gridMap}
+        mapName="story-grid"
+        resolveRegion={(raw) => REGION_CODES[raw]}
       />
     </Frame>
   ),

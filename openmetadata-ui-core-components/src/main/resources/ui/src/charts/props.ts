@@ -13,7 +13,14 @@
 
 import type { ECElementEvent } from 'echarts';
 import type { ReactNode } from 'react';
-import type { CartesianBuildInput, ChartOption, PieBuildInput } from './types';
+import type {
+  CartesianBuildInput,
+  ChartOption,
+  GeoJson,
+  GeoMapBuildInput,
+  GeoMapDatum,
+  PieBuildInput,
+} from './types';
 
 /** Props every chart component shares, on top of its build input. */
 export interface ChartCommonProps {
@@ -61,4 +68,13 @@ export interface PieChartProps extends PieBuildInput, ChartCommonProps {
     datum: PieBuildInput['data'][number],
     event: ECElementEvent
   ) => void;
+}
+
+export interface GeoMapChartProps extends GeoMapBuildInput, ChartCommonProps {
+  /** Map geometry, already loaded (and trimmed, if wanted) by the caller. */
+  geoJson: GeoJson;
+  /** Receives the resolved region name and its summed value. */
+  onRegionClick?: (datum: GeoMapDatum, event: ECElementEvent) => void;
+  /** Raw region values that matched no feature, e.g. to explain blank areas. */
+  onUnmatchedRegions?: (raw: string[]) => void;
 }

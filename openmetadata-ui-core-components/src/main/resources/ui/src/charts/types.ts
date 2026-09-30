@@ -20,10 +20,12 @@ import type {
   GridComponentOption,
   LegendComponentOption,
   LineSeriesOption,
+  MapSeriesOption,
   MarkLineComponentOption,
   PieSeriesOption,
   TooltipComponentFormatterCallbackParams,
   TooltipComponentOption,
+  VisualMapComponentOption,
   XAXisComponentOption,
   YAXisComponentOption,
 } from 'echarts';
@@ -62,12 +64,14 @@ export type ChartOption = ComposeOption<
   | LineSeriesOption
   | BarSeriesOption
   | PieSeriesOption
+  | MapSeriesOption
   | GridComponentOption
   | TooltipComponentOption
   | LegendComponentOption
   | DataZoomComponentOption
   | MarkLineComponentOption
   | AriaComponentOption
+  | VisualMapComponentOption
 >;
 
 export type ChartSeriesType = 'line' | 'area' | 'bar';
@@ -173,6 +177,45 @@ export interface PieBuildInput {
   /** Whole-percent labels beside each slice. */
   showLabels?: boolean;
   legend?: ChartLegendProps;
+  tooltip?: ChartTooltipProps;
+  /** Merged into the built option last. Objects merge, arrays replace. */
+  option?: ChartOption;
+}
+
+/** Minimal GeoJSON FeatureCollection shape ECharts' `registerMap` accepts. */
+export interface GeoJson {
+  type: 'FeatureCollection';
+  features: Array<{
+    type: 'Feature';
+    properties: { name?: string } & Record<string, unknown>;
+    geometry: unknown;
+  }>;
+}
+
+export interface GeoMapDatum {
+  /** Raw region value; resolved to a GeoJSON feature name via `resolveRegion`. */
+  region: string;
+  value: number;
+}
+
+export interface GeoMapBuildInput {
+  data: GeoMapDatum[];
+  /** Accessible name of the chart. Translated by the caller. */
+  ariaLabel: string;
+  /**
+   * Key the map geometry is registered under. Different geometry (e.g. a
+   * differently trimmed map) needs a different key.
+   */
+  mapName: string;
+  /**
+   * Maps a raw region value (`'CA'`, `'06'`) to its GeoJSON feature name.
+   * `undefined` means unmatched. Defaults to the raw value itself.
+   */
+  resolveRegion?: (raw: string) => string | undefined;
+  /** Colour-scale legend under the map. Defaults to true. */
+  showScale?: boolean;
+  /** Low → high colours of the scale. Defaults to `GEO_COLOR_RANGE`. */
+  colorRange?: string[];
   tooltip?: ChartTooltipProps;
   /** Merged into the built option last. Objects merge, arrays replace. */
   option?: ChartOption;

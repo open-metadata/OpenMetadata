@@ -20,6 +20,7 @@ export { AreaChart } from './area-chart';
 export { BarChart } from './bar-chart';
 export { ComposedChart } from './composed-chart';
 export { EChart } from './echart';
+export { GeoMapChart } from './geo-map-chart';
 export type { EChartProps } from './echart';
 export { LineChart } from './line-chart';
 export { PieChart } from './pie-chart';
@@ -47,13 +48,19 @@ export {
   tooltipConfig,
   valueAxis,
 } from './options/common';
+export {
+  buildGeoMapOption,
+  GEO_COLOR_RANGE,
+  resolveGeoData,
+} from './options/geo';
+export type { ResolvedGeoData } from './options/geo';
 export { mergeOption, REPLACE_MERGE_KEYS } from './options/merge';
 export { buildPieOption, isPieEmpty } from './options/pie';
 
 // Palette, theme, formatting
 export { formatTooltipValue, formatYAxisTick } from './format';
 export { CHART_PALETTE, getSeriesColor } from './palette';
-export { registerEChartsParts } from './register';
+export { registerEChartsParts, registerGeoMap } from './register';
 export { buildChartTheme, DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
 export { useIsDarkMode } from './use-is-dark-mode';
 
@@ -63,6 +70,7 @@ export type {
   BarChartProps,
   CartesianChartProps,
   ChartCommonProps,
+  GeoMapChartProps,
   PieChartProps,
 } from './props';
 export type {
@@ -77,6 +85,9 @@ export type {
   ChartTooltipProps,
   ChartXAxisProps,
   ChartYAxisProps,
+  GeoJson,
+  GeoMapBuildInput,
+  GeoMapDatum,
   PieBuildInput,
   PieDatum,
 } from './types';

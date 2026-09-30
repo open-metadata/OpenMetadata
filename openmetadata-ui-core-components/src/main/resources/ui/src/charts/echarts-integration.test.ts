@@ -12,7 +12,7 @@
  */
 
 // @vitest-environment node
-import { BarChart, LineChart } from 'echarts/charts';
+import { BarChart, LineChart, MapChart } from 'echarts/charts';
 import {
   AriaComponent,
   DataZoomComponent,
@@ -20,15 +20,17 @@ import {
   LegendComponent,
   MarkLineComponent,
   TooltipComponent,
+  VisualMapComponent,
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { SVGRenderer } from 'echarts/renderers';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildComposedOption, buildLineOption } from './options/cartesian';
 import { applyZoomWindow } from './options/common';
+import { buildGeoMapOption } from './options/geo';
 import { REPLACE_MERGE_KEYS } from './options/merge';
 import { LIGHT_CHART_THEME } from './theme';
-import type { CartesianBuildInput, ChartOption } from './types';
+import type { CartesianBuildInput, ChartOption, GeoJson } from './types';
 
 // These run the builders against a real (server-side) ECharts instance with
 // the same merge policy EChart uses, so re-render behaviour is checked on
@@ -42,6 +44,8 @@ echarts.use([
   DataZoomComponent,
   MarkLineComponent,
   AriaComponent,
+  MapChart,
+  VisualMapComponent,
   SVGRenderer,
 ]);
 
@@ -183,5 +187,47 @@ describe('zoom window on a real chart', () => {
     );
 
     expect(modelOf(chart).dataZoom?.[0]).toMatchObject({ start: 50, end: 80 });
+  });
+});
+
+describe('geo map on a real chart', () => {
+  const square = (name: string, x: number): GeoJson['features'][number] => ({
+    type: 'Feature',
+    properties: { name },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [x, 0],
+          [x + 1, 0],
+          [x + 1, 1],
+          [x, 1],
+          [x, 0],
+        ],
+      ],
+    },
+  });
+
+  it('shades the regions of a caller-registered map', () => {
+    echarts.registerMap('integration-squares', {
+      type: 'FeatureCollection',
+      features: [square('Alpha', 0), square('Beta', 2)],
+    } as Parameters<typeof echarts.registerMap>[1]);
+    const { option } = buildGeoMapOption(
+      {
+        ariaLabel: 'Squares',
+        mapName: 'integration-squares',
+        data: [
+          { region: 'Alpha', value: 1 },
+          { region: 'Beta', value: 9 },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const svg = mount(option).renderToSVGString();
+
+    // Lowest value → first colour of the range, highest → the last.
+    expect(svg).toContain('fill="rgb(227,237,253)"');
+    expect(svg).toContain('fill="rgb(21,112,239)"');
   });
 });

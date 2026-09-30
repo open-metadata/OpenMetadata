@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { BarChart, LineChart, PieChart } from 'echarts/charts';
+import { BarChart, LineChart, MapChart, PieChart } from 'echarts/charts';
 import {
   AriaComponent,
   DataZoomComponent,
@@ -19,10 +19,12 @@ import {
   LegendComponent,
   MarkLineComponent,
   TooltipComponent,
+  VisualMapComponent,
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { LabelLayout } from 'echarts/features';
 import { SVGRenderer } from 'echarts/renderers';
+import type { GeoJson } from './types';
 
 let registered = false;
 
@@ -39,12 +41,14 @@ export const registerChartParts = (): void => {
     LineChart,
     BarChart,
     PieChart,
+    MapChart,
     GridComponent,
     TooltipComponent,
     LegendComponent,
     DataZoomComponent,
     MarkLineComponent,
     AriaComponent,
+    VisualMapComponent,
     LabelLayout,
     SVGRenderer,
   ]);
@@ -60,6 +64,20 @@ export const registerEChartsParts = (
   parts: Parameters<typeof echarts.use>[0]
 ): void => {
   echarts.use(parts);
+};
+
+/**
+ * Registers map geometry under `mapName` on the shared core instance, once.
+ * A name that is already registered keeps its first geometry, so different
+ * geometry must use a different name.
+ */
+export const registerGeoMap = (mapName: string, geoJson: GeoJson): void => {
+  if (!echarts.getMap(mapName)) {
+    echarts.registerMap(
+      mapName,
+      geoJson as Parameters<typeof echarts.registerMap>[1]
+    );
+  }
 };
 
 export { echarts };
