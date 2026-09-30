@@ -103,14 +103,6 @@ jest.mock('../../../../Tag/TagsViewer/TagsViewer', () => ({
   ),
 }));
 
-jest.mock('../../../RichTextEditor/RichTextEditorPreviewerV1', () =>
-  jest
-    .fn()
-    .mockImplementation(({ markdown }: { markdown: string }) => (
-      <div data-testid="rte-previewer">{markdown}</div>
-    ))
-);
-
 const DOMAIN = {
   id: 'domain-id',
   name: 'engineering',
@@ -322,12 +314,7 @@ describe('useDomainCardTemplates > renderDataProductCard', () => {
       </>
     );
 
-    // The mock renders markdown verbatim (no actual parsing) - this just
-    // confirms the raw description string reaches the previewer unmodified,
-    // i.e. nothing is stripping it before it gets there.
-    expect(screen.getByTestId('rte-previewer')).toHaveTextContent(
-      '**A short description.**'
-    );
+    expect(screen.getByText('A short description.')).toBeInTheDocument();
     expect(screen.queryByText('label.view-more')).not.toBeInTheDocument();
   });
 
