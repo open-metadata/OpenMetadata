@@ -626,8 +626,13 @@ class K8sPipelineClientTest {
     assertEquals(1000L, podSpec.getSecurityContext().getRunAsUser());
     assertEquals(1000L, podSpec.getSecurityContext().getRunAsGroup());
     assertEquals(1000L, podSpec.getSecurityContext().getFsGroup());
+    // PodSecurity "restricted" requires a seccomp profile (issue #28858)
+    assertEquals("RuntimeDefault", podSpec.getSecurityContext().getSeccompProfile().getType());
 
     // Verify container security context
+    assertEquals(
+        "RuntimeDefault",
+        podSpec.getContainers().get(0).getSecurityContext().getSeccompProfile().getType());
     assertNotNull(podSpec.getContainers().get(0).getSecurityContext());
     assertTrue(podSpec.getContainers().get(0).getSecurityContext().getRunAsNonRoot());
     assertFalse(podSpec.getContainers().get(0).getSecurityContext().getAllowPrivilegeEscalation());
