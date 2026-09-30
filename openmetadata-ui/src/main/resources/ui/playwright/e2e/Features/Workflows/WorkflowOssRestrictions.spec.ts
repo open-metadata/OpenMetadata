@@ -653,9 +653,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
       }) => {
         await redirectToHomePage(page);
 
-        // The workflow's trigger is eventBasedEntity on table Created, so a
-        // table created by any other spec would give it real instances. Pin the
-        // payload so the rendered state is a single known value.
+        // Trigger fires on table Created, so pin the payload to stay deterministic.
         await page.route(
           '**/api/v1/governance/workflowInstances**',
           async (route) => {
@@ -679,8 +677,6 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await waitForAllLoadersToDisappear(page);
         await historyResponse;
 
-        // OSS cannot trigger a workflow (run-workflow-button is absent), so an
-        // empty history is the state this tab is expected to render.
         await expect(
           page.getByTestId('workflow-execution-history-empty')
         ).toBeVisible();
