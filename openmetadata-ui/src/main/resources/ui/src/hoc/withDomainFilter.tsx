@@ -73,58 +73,58 @@ export const withDomainFilter = (
     return config;
   }
 
-  // Only search is decorated. REST list views are not: the selection is persisted on the user
-  // and the server applies it (including sub-domains); an explicit ?domain= would take precedence
-  // and narrow the list to the exact domain only.
-  if (
-    isGetRequest &&
-    hasActiveDomain &&
-    config.url?.includes('/search/query')
-  ) {
-    if (config.params?.index === SearchIndex.TAG) {
-      return config;
+  if (isGetRequest && hasActiveDomain) {
+    if (config.url?.includes('/search/query')) {
+      if (config.params?.index === SearchIndex.TAG) {
+        return config;
+      }
+
+      const domainFilterField =
+        config.params?.index === SearchIndex.DOMAIN
+          ? 'fullyQualifiedName'
+          : 'domains.fullyQualifiedName';
+      const filter = parseExistingFilter(
+        config.params?.query_filter as string | undefined
+      );
+
+      const mustArray = collectMustClauses(filter);
+      const existingBool = filter.query?.bool;
+
+      filter.query = {
+        bool: {
+          ...existingBool,
+          must: [
+            ...mustArray,
+            {
+              bool: {
+                should: [
+                  {
+                    term: {
+                      [domainFilterField]: activeDomain,
+                    },
+                  },
+                  {
+                    prefix: {
+                      [domainFilterField]: `${activeDomain}.`,
+                    },
+                  },
+                ],
+              },
+            } as QueryFieldInterface,
+          ],
+        },
+      };
+
+      config.params = {
+        ...config.params,
+        query_filter: JSON.stringify(filter),
+      };
+    } else {
+      config.params = {
+        ...config.params,
+        domain: activeDomain,
+      };
     }
-
-    const domainFilterField =
-      config.params?.index === SearchIndex.DOMAIN
-        ? 'fullyQualifiedName'
-        : 'domains.fullyQualifiedName';
-    const filter = parseExistingFilter(
-      config.params?.query_filter as string | undefined
-    );
-
-    const mustArray = collectMustClauses(filter);
-    const existingBool = filter.query?.bool;
-
-    filter.query = {
-      bool: {
-        ...existingBool,
-        must: [
-          ...mustArray,
-          {
-            bool: {
-              should: [
-                {
-                  term: {
-                    [domainFilterField]: activeDomain,
-                  },
-                },
-                {
-                  prefix: {
-                    [domainFilterField]: `${activeDomain}.`,
-                  },
-                },
-              ],
-            },
-          } as QueryFieldInterface,
-        ],
-      },
-    };
-
-    config.params = {
-      ...config.params,
-      query_filter: JSON.stringify(filter),
-    };
   }
 
   return config;

@@ -49,6 +49,11 @@ public final class DomainNavFilter {
    * Stamps the selection onto {@code filter} when {@link #shouldApply} allows it. {@code
    * selectedDomainFqnHash} lets the list also match assets in the selected domain's sub-domains
    * (a parent pick includes its descendants); pass null to match the exact domain only.
+   *
+   * <p>An explicit {@code ?domain=} keeps control of which domain is listed. When it merely echoes
+   * the request's active domain (the UI sends the navbar pick on every list call), it is the
+   * navbar selection and gets the same sub-domain matching; any other explicit domain is left as
+   * the caller passed it.
    */
   public static void apply(
       ListFilter filter,
@@ -56,15 +61,22 @@ public final class DomainNavFilter {
       boolean supportsDomains,
       String selectedDomainIds,
       String selectedDomainFqnHash) {
-    boolean hasExplicitDomain = filter.getQueryParams().get("domainId") != null;
-    if (shouldApply(entityType, supportsDomains, hasExplicitDomain, selectedDomainIds)) {
-      filter.addQueryParam("domainId", selectedDomainIds);
-      if (!nullOrEmpty(selectedDomainFqnHash)) {
-        filter.addQueryParam("domainFqnHash", selectedDomainFqnHash);
-      }
-      if (filter.getQueryParams().get("entityType") == null) {
-        filter.addQueryParam("entityType", entityType);
-      }
+    String explicitDomainIds = filter.getQueryParams().get("domainId");
+    boolean hasExplicitDomain = explicitDomainIds != null;
+    boolean echoesSelection =
+        hasExplicitDomain
+            && !nullOrEmpty(selectedDomainIds)
+            && explicitDomainIds.replace("'", "").equals(selectedDomainIds);
+    if (!shouldApply(
+        entityType, supportsDomains, hasExplicitDomain && !echoesSelection, selectedDomainIds)) {
+      return;
+    }
+    filter.addQueryParam("domainId", selectedDomainIds);
+    if (!nullOrEmpty(selectedDomainFqnHash)) {
+      filter.addQueryParam("domainFqnHash", selectedDomainFqnHash);
+    }
+    if (filter.getQueryParams().get("entityType") == null) {
+      filter.addQueryParam("entityType", entityType);
     }
   }
 }

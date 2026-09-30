@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,25 @@ class DomainNavFilterTest {
   void shouldNotApply_whenNoDomainSelected() {
     assertFalse(DomainNavFilter.shouldApply(Entity.TABLE, true, false, null));
     assertFalse(DomainNavFilter.shouldApply(Entity.TABLE, true, false, ""));
+  }
+
+  @Test
+  void apply_explicitDomainEchoingTheSelectionGetsDescendantMatching() {
+    // The UI sends the navbar pick as ?domain= on every list call; resources quote the id.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "'" + DOMAIN_ID + "'");
+    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha");
+    assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
+    assertEquals("hAlpha", filter.getQueryParams().get("domainFqnHash"));
+  }
+
+  @Test
+  void apply_explicitOtherDomainKeepsControl() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "'22222222-2222-2222-2222-222222222222'");
+    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha");
+    assertEquals("'22222222-2222-2222-2222-222222222222'", filter.getQueryParams().get("domainId"));
+    assertNull(filter.getQueryParams().get("domainFqnHash"));
   }
 
   @Test
