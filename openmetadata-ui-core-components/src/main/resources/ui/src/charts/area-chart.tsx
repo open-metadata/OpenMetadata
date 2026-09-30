@@ -13,7 +13,7 @@
 
 import { CartesianChartBase } from './cartesian-chart-base';
 import { buildAreaOption } from './options/cartesian';
-import type { CartesianChartProps } from './types';
+import type { CartesianChartProps } from './props';
 
 /** Area chart: lines filled with a fading gradient of their colour. */
 export const AreaChart = <T extends object>(props: CartesianChartProps<T>) => (

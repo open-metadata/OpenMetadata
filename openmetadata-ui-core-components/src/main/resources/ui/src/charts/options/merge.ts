@@ -33,3 +33,16 @@ export const mergeOption = <T>(base: T, override?: unknown): T => {
 
   return result as T;
 };
+
+/**
+ * `setOption` `replaceMerge` keys for re-renders: these components are
+ * replaced from the new option (so removed series, axes and zoom go away),
+ * while the legend is merged so series a user hid stay hidden.
+ */
+export const REPLACE_MERGE_KEYS = [
+  'series',
+  'xAxis',
+  'yAxis',
+  'grid',
+  'dataZoom',
+];

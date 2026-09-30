@@ -149,7 +149,9 @@ describe('LineChart', () => {
       <LineChart ariaLabel="Runs" data={rows} series={series} xKey="day" />
     );
 
-    expect(lastHost().onEvents).toBeUndefined();
+    expect(
+      (lastHost().onEvents as Record<string, unknown>).click
+    ).toBeUndefined();
   });
 });
 

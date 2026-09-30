@@ -17,7 +17,6 @@ import type {
   ComposeOption,
   DataZoomComponentOption,
   DefaultLabelFormatterCallbackParams,
-  ECElementEvent,
   GridComponentOption,
   LegendComponentOption,
   LineSeriesOption,
@@ -28,7 +27,9 @@ import type {
   XAXisComponentOption,
   YAXisComponentOption,
 } from 'echarts';
-import type { ReactNode } from 'react';
+
+// No React here, not even type-only: the Collate email renderer compiles the
+// option builders and this file without React installed.
 
 /**
  * Neutral chart chrome (axes, grid, tooltip, borders) for one colour mode.
@@ -128,26 +129,12 @@ export interface ChartReferenceLine {
   color?: string;
 }
 
-interface ChartCommonProps {
-  /** Accessible name of the chart. Translated by the caller. */
-  ariaLabel: string;
-  height?: number | string;
-  /** Forces a colour mode. Detected from `.dark-mode` when omitted. */
-  isDark?: boolean;
-  loading?: boolean;
-  /** Shown instead of the chart when there is no data. */
-  emptyState?: ReactNode;
-  /** Merged into the built option last. Objects merge, arrays replace. */
-  option?: ChartOption;
-  className?: string;
-  'data-testid'?: string;
-}
-
-export interface CartesianChartProps<T extends object>
-  extends ChartCommonProps {
+export interface CartesianBuildInput<T extends object> {
   data: T[];
   xKey: keyof T & string;
   series: ChartSeries[];
+  /** Accessible name of the chart. Translated by the caller. */
+  ariaLabel: string;
   xAxis?: ChartXAxisProps;
   yAxis?: ChartYAxisProps | [ChartYAxisProps, ChartYAxisProps];
   tooltip?: ChartTooltipProps;
@@ -155,39 +142,19 @@ export interface CartesianChartProps<T extends object>
   referenceLines?: ChartReferenceLine[];
   /** `'auto'` turns zoom on above 15 points. Defaults to false. */
   zoom?: boolean | 'auto';
-  onPointClick?: (datum: T, seriesKey: string, event: ECElementEvent) => void;
-}
-
-export interface BarChartProps<T extends object>
-  extends CartesianChartProps<T> {
+  /** Merged into the built option last. Objects merge, arrays replace. */
+  option?: ChartOption;
+  /** Bar charts only. */
   layout?: 'vertical' | 'horizontal';
-  /** Colour of one bar. `undefined` keeps the series colour. */
+  /** Bar charts only. Colour of one bar; `undefined` keeps the series colour. */
   getBarColor?: (datum: T, index: number) => string | undefined;
+  /** Bar charts only. */
   showValueLabels?:
     | boolean
     | ((params: DefaultLabelFormatterCallbackParams) => string);
-  /** Corner radius of the bar's outer end. 4, or 0 for stacked bars. */
+  /** Bar charts only. Radius of the bar's outer end. 4, or 0 when stacked. */
   radius?: number;
 }
-
-export type CartesianBuildInput<T extends object> = Pick<
-  BarChartProps<T>,
-  | 'data'
-  | 'xKey'
-  | 'series'
-  | 'ariaLabel'
-  | 'xAxis'
-  | 'yAxis'
-  | 'tooltip'
-  | 'legend'
-  | 'referenceLines'
-  | 'zoom'
-  | 'option'
-  | 'layout'
-  | 'getBarColor'
-  | 'showValueLabels'
-  | 'radius'
->;
 
 export interface PieDatum {
   /** Slice label. Translated by the caller. */
@@ -197,26 +164,16 @@ export interface PieDatum {
   color?: string;
 }
 
-export interface PieChartProps extends ChartCommonProps {
+export interface PieBuildInput {
   data: PieDatum[];
+  /** Accessible name of the chart. Translated by the caller. */
+  ariaLabel: string;
   /** Set for a donut, e.g. `'55%'`. Defaults to a full pie. */
   innerRadius?: number | string;
-  /** Rendered in the middle of the chart, typically for a donut total. */
-  centerLabel?: ReactNode;
   /** Whole-percent labels beside each slice. */
   showLabels?: boolean;
   legend?: ChartLegendProps;
   tooltip?: ChartTooltipProps;
-  onSliceClick?: (datum: PieDatum, event: ECElementEvent) => void;
+  /** Merged into the built option last. Objects merge, arrays replace. */
+  option?: ChartOption;
 }
-
-export type PieBuildInput = Pick<
-  PieChartProps,
-  | 'data'
-  | 'ariaLabel'
-  | 'innerRadius'
-  | 'showLabels'
-  | 'legend'
-  | 'tooltip'
-  | 'option'
->;

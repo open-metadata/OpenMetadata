@@ -108,12 +108,14 @@ export const categoryAxis = (
   theme: ChartTheme,
   props: ChartAxisProps<XAXisComponentOption> & {
     type?: 'category' | 'time';
-  } = {}
+  } = {},
+  inverse = false
 ): XAXisComponentOption => {
   const isTime = props.type === 'time';
   const base: XAXisComponentOption = {
     type: isTime ? 'time' : 'category',
     ...(isTime ? {} : { data: categories }),
+    ...(inverse ? { inverse: true } : {}),
     name: props.label,
     nameLocation: 'middle',
     nameGap: 32,
@@ -213,10 +215,34 @@ export const dataZoomFor = (
         height: SLIDER_HEIGHT,
       };
 
+  // Fixed ids let a re-render re-apply the user's window (applyZoomWindow).
   return [
-    { type: 'inside', start: 0, end, ...axis },
-    { type: 'slider', start: 0, end, ...axis, ...slider },
+    { id: 'zoom-inside', type: 'inside', start: 0, end, ...axis },
+    { id: 'zoom-slider', type: 'slider', start: 0, end, ...axis, ...slider },
   ];
+};
+
+export interface ZoomWindow {
+  start: number;
+  end: number;
+}
+
+/**
+ * Sets every dataZoom in `option` to `window`, so a rebuilt option keeps the
+ * range the user zoomed to instead of jumping back to the default.
+ */
+export const applyZoomWindow = <O extends { dataZoom?: unknown }>(
+  option: O,
+  window?: ZoomWindow
+): O => {
+  if (!window || !Array.isArray(option.dataZoom)) {
+    return option;
+  }
+
+  return {
+    ...option,
+    dataZoom: option.dataZoom.map((zoom) => ({ ...zoom, ...window })),
+  };
 };
 
 export const referenceLinesToMarkLine = (

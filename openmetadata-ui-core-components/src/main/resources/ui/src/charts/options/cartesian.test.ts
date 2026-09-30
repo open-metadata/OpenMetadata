@@ -70,6 +70,9 @@ describe('toNumberOrNull', () => {
   });
 
   it('turns missing and non-numeric values into null', () => {
+    expect(toNumberOrNull(' ')).toBeNull();
+    expect(toNumberOrNull(true)).toBeNull();
+    expect(toNumberOrNull([])).toBeNull();
     expect(toNumberOrNull(null)).toBeNull();
     expect(toNumberOrNull(undefined)).toBeNull();
     expect(toNumberOrNull('')).toBeNull();
@@ -270,7 +273,7 @@ describe('buildLineOption', () => {
     expect(right.splitLine).toMatchObject({ show: false });
   });
 
-  it('draws reference lines as a dashed markLine on the first series', () => {
+  it('draws reference lines on their own hidden series, not a data series', () => {
     const option = buildLineOption(
       {
         ...base,
@@ -281,21 +284,55 @@ describe('buildLineOption', () => {
       },
       LIGHT_CHART_THEME
     );
-    const markLine = seriesOf(option)[0].markLine as {
+    const all = seriesOf(option);
+    const reference = all[all.length - 1];
+    const markLine = reference.markLine as {
       symbol: string;
       silent: boolean;
       data: Array<Record<string, unknown>>;
     };
 
+    expect(all).toHaveLength(3);
+    expect(reference).toMatchObject({
+      id: '__reference-lines',
+      type: 'line',
+      data: [],
+      silent: true,
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+    });
     expect(markLine.symbol).toBe('none');
-    expect(markLine.silent).toBe(true);
     expect(markLine.data[0]).toMatchObject({
       yAxis: 80,
       label: { formatter: 'Target' },
       lineStyle: { color: '#ff0000', type: 'dashed' },
     });
     expect(markLine.data[1]).toMatchObject({ xAxis: 'Tue' });
-    expect(seriesOf(option)[1].markLine).toBeUndefined();
+    expect(all[0].markLine).toBeUndefined();
+    expect((option.legend as LegendComponentOption).data).toEqual([
+      'Passed',
+      'Failed',
+    ]);
+  });
+
+  it('measures reference lines against the first value axis in a composed chart', () => {
+    const option = buildComposedOption(
+      {
+        ...base,
+        series: [
+          { key: 'passed', name: 'Passed', type: 'line' },
+          { key: 'failed', name: 'Failed', type: 'bar', yAxisIndex: 1 },
+        ],
+        yAxis: [{}, {}],
+        referenceLines: [{ axis: 'y', value: 4 }],
+      },
+      LIGHT_CHART_THEME
+    );
+    const reference = seriesOf(option).find(
+      (s) => s.id === '__reference-lines'
+    );
+
+    expect(reference?.yAxisIndex).toBe(0);
   });
 
   it("turns on zoom with 'auto' only above 15 points", () => {
@@ -466,9 +503,11 @@ describe('buildBarOption', () => {
     ) as XAXisComponentOption[];
 
     expect(xAxes[0].type).toBe('value');
+    // inverse puts the first row at the top, as a ranked list reads.
     expect(yAxesOf(option)[0]).toMatchObject({
       type: 'category',
       data: ['Mon', 'Tue', 'Wed'],
+      inverse: true,
     });
     expect(
       (seriesOf(option)[0].itemStyle as { borderRadius: number[] }).borderRadius

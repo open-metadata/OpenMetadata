@@ -141,8 +141,51 @@ describe('EChart', () => {
       />
     );
 
-    expect(lastHost().onEvents).toEqual({ click: onClick });
+    expect((lastHost().onEvents as Record<string, unknown>).click).toBe(
+      onClick
+    );
     expect(lastHost().echarts).toHaveProperty('use');
+  });
+
+  it('re-applies the zoom window the user picked after a re-render', () => {
+    const option: ChartOption = {
+      dataZoom: [
+        { id: 'zoom-inside', type: 'inside', start: 0, end: 30 },
+        { id: 'zoom-slider', type: 'slider', start: 0, end: 30 },
+      ],
+      series: [],
+    };
+    const { rerender } = render(<EChart ariaLabel="Chart" option={option} />);
+    act(() => {
+      (lastHost().onEvents as Record<string, (e: unknown) => void>).datazoom({
+        batch: [{ start: 40, end: 70 }],
+      });
+    });
+    rerender(<EChart ariaLabel="Chart" option={{ ...option }} />);
+
+    expect(lastHost().option).toMatchObject({
+      dataZoom: [
+        { id: 'zoom-inside', start: 40, end: 70 },
+        { id: 'zoom-slider', start: 40, end: 70 },
+      ],
+    });
+  });
+
+  it("still calls the caller's own datazoom handler", () => {
+    const onZoom = vi.fn();
+    render(
+      <EChart
+        ariaLabel="Chart"
+        option={{ series: [] }}
+        onEvents={{ datazoom: onZoom }}
+      />
+    );
+    const event = { start: 10, end: 20 };
+    (lastHost().onEvents as Record<string, (e: unknown) => void>).datazoom(
+      event
+    );
+
+    expect(onZoom).toHaveBeenCalledWith(event);
   });
 
   it('sizes the chart to 300px tall and full width by default', () => {

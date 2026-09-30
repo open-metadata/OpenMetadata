@@ -31,9 +31,11 @@ export {
   buildCartesianOption,
   buildComposedOption,
   buildLineOption,
+  REFERENCE_SERIES_ID,
   toNumberOrNull,
 } from './options/cartesian';
 export {
+  applyZoomWindow,
   areaGradient,
   categoryAxis,
   dataZoomFor,
@@ -45,7 +47,7 @@ export {
   tooltipConfig,
   valueAxis,
 } from './options/common';
-export { mergeOption } from './options/merge';
+export { mergeOption, REPLACE_MERGE_KEYS } from './options/merge';
 export { buildPieOption, isPieEmpty } from './options/pie';
 
 // Palette, theme, formatting
@@ -56,10 +58,15 @@ export { buildChartTheme, DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
 export { useIsDarkMode } from './use-is-dark-mode';
 
 // Types
+export type { ZoomWindow } from './options/common';
 export type {
   BarChartProps,
-  CartesianBuildInput,
   CartesianChartProps,
+  ChartCommonProps,
+  PieChartProps,
+} from './props';
+export type {
+  CartesianBuildInput,
   ChartAxisProps,
   ChartLegendProps,
   ChartOption,
@@ -71,7 +78,6 @@ export type {
   ChartXAxisProps,
   ChartYAxisProps,
   PieBuildInput,
-  PieChartProps,
   PieDatum,
 } from './types';
 export type {

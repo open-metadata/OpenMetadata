@@ -14,12 +14,8 @@
 import type { ECElementEvent } from 'echarts';
 import { useCallback, useMemo } from 'react';
 import { EChart } from './echart';
-import type {
-  BarChartProps,
-  CartesianBuildInput,
-  ChartOption,
-  ChartTheme,
-} from './types';
+import type { BarChartProps } from './props';
+import type { CartesianBuildInput, ChartOption, ChartTheme } from './types';
 
 type CartesianBuilder = <T extends object>(
   input: CartesianBuildInput<T>,

@@ -17,6 +17,8 @@ import { ReactNode, useMemo, useRef } from 'react';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
+import { applyZoomWindow, ZoomWindow } from './options/common';
+import { REPLACE_MERGE_KEYS } from './options/merge';
 import { echarts, registerChartParts } from './register';
 import { buildChartTheme } from './theme';
 import type { ChartOption, ChartTheme } from './types';
@@ -26,9 +28,6 @@ registerChartParts();
 
 const DEFAULT_HEIGHT = 300;
 const DEFAULT_WIDTH = '100%';
-// Legend is left out on purpose: merging it keeps the series a user hid by
-// clicking the legend hidden across re-renders.
-const REPLACE_MERGE = ['series', 'xAxis', 'yAxis', 'grid', 'dataZoom'];
 const RENDER_OPTS = { renderer: 'svg' } as const;
 
 export interface EChartProps {
@@ -50,6 +49,20 @@ export interface EChartProps {
   /** Overlay drawn above the chart, e.g. a donut's centre label. */
   children?: ReactNode;
 }
+
+interface DataZoomEvent {
+  start?: number;
+  end?: number;
+  batch?: Array<{ start?: number; end?: number }>;
+}
+
+// A slider drag reports start/end on the event; an inside (wheel/drag) zoom
+// reports them in `batch`.
+const zoomWindowOf = (event: DataZoomEvent): ZoomWindow | undefined => {
+  const { start, end } = event.batch?.[0] ?? event;
+
+  return start === undefined || end === undefined ? undefined : { start, end };
+};
 
 const withAria = (option: ChartOption, ariaLabel: string): ChartOption =>
   option.aria
@@ -76,15 +89,31 @@ export const EChart = ({
 }: EChartProps) => {
   const { t } = useCoreTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
+  // The range the user zoomed to, re-applied whenever the option is rebuilt.
+  const zoomRef = useRef<ZoomWindow>();
   const dark = useIsDarkMode(containerRef, isDark);
   const theme = buildChartTheme({ isDark: dark });
   const resolved = useMemo(
     () =>
-      withAria(
-        typeof option === 'function' ? option(theme) : option,
-        ariaLabel
+      applyZoomWindow(
+        withAria(
+          typeof option === 'function' ? option(theme) : option,
+          ariaLabel
+        ),
+        zoomRef.current
       ),
     [option, theme, ariaLabel]
+  );
+  const events = useMemo(
+    () => ({
+      ...onEvents,
+      datazoom: (event: ECElementEvent) => {
+        zoomRef.current =
+          zoomWindowOf(event as unknown as DataZoomEvent) ?? zoomRef.current;
+        onEvents?.datazoom?.(event);
+      },
+    }),
+    [onEvents]
   );
   const size = { height, width };
   const showChart = !loading && !isEmpty;
@@ -114,9 +143,9 @@ export const EChart = ({
           notMerge={false}
           option={resolved}
           opts={RENDER_OPTS}
-          replaceMerge={REPLACE_MERGE}
+          replaceMerge={REPLACE_MERGE_KEYS}
           style={size}
-          onEvents={onEvents}
+          onEvents={events}
         />
       )}
       {showChart && children}

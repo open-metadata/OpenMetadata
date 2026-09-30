@@ -13,7 +13,7 @@
 
 import { CartesianChartBase } from './cartesian-chart-base';
 import { buildBarOption } from './options/cartesian';
-import type { BarChartProps } from './types';
+import type { BarChartProps } from './props';
 
 /** Bar chart, vertical or horizontal. */
 export const BarChart = <T extends object>(props: BarChartProps<T>) => (

@@ -50,10 +50,9 @@ type CartesianSeriesOption = LineSeriesOption | BarSeriesOption;
 
 /** Missing or non-numeric values become `null`, which ECharts draws as a gap. */
 export const toNumberOrNull = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === '') {
-    return null;
-  }
-  const n = typeof value === 'number' ? value : Number(value);
+  const isNumericString = typeof value === 'string' && value.trim() !== '';
+  const n =
+    typeof value === 'number' || isNumericString ? Number(value) : Number.NaN;
 
   return Number.isFinite(n) ? n : null;
 };
@@ -130,7 +129,8 @@ const lineSeries = <T extends object>(
   showSymbol: series.showDots ?? false,
   lineStyle: { color, width: LINE_WIDTH, cap: 'round', join: 'round' },
   itemStyle: { color },
-  ...(filled ? { areaStyle: { color: areaGradient(color) } } : {}),
+  // Always set, so a re-render that drops the fill clears the old one.
+  areaStyle: filled ? { color: areaGradient(color) } : undefined,
   ...(ctx.composed ? { z: Z_LINE } : {}),
   data: ctx.input.data.map((datum) =>
     pointValue(ctx, datum, series.key)
@@ -154,14 +154,13 @@ const buildSeries = <T extends object>(
     name: series.name,
     stack: series.stack,
     [ctx.horizontal ? 'xAxisIndex' : 'yAxisIndex']: series.yAxisIndex ?? 0,
-    ...(valueFormatter
+    // Always set, so a re-render that drops the formatter clears the old one.
+    tooltip: valueFormatter
       ? {
-          tooltip: {
-            valueFormatter: (value: number | string) =>
-              valueFormatter(value, series.key),
-          },
+          valueFormatter: (value: number | string) =>
+            valueFormatter(value, series.key),
         }
-      : {}),
+      : undefined,
   };
 
   return mergeOption(
@@ -182,24 +181,32 @@ const valueAxes = (
   );
 };
 
-const withReferenceLines = <T extends object>(
-  series: CartesianSeriesOption[],
+export const REFERENCE_SERIES_ID = '__reference-lines';
+
+/**
+ * Reference lines ride on their own empty series on the first axes. On a data
+ * series they would vanish when the user hides that series through the
+ * legend, and would be measured against that series' axis. Not listed in the
+ * legend, so it cannot be toggled.
+ */
+const referenceSeries = <T extends object>(
   input: CartesianBuildInput<T>,
   theme: ChartTheme
-): CartesianSeriesOption[] => {
-  if (!input.referenceLines?.length || !series.length) {
-    return series;
-  }
-  const [first, ...rest] = series;
-
-  return [
-    {
-      ...first,
-      markLine: referenceLinesToMarkLine(input.referenceLines, theme),
-    } as CartesianSeriesOption,
-    ...rest,
-  ];
-};
+): LineSeriesOption[] =>
+  input.referenceLines?.length
+    ? [
+        {
+          id: REFERENCE_SERIES_ID,
+          type: 'line',
+          data: [],
+          silent: true,
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          tooltip: { show: false },
+          markLine: referenceLinesToMarkLine(input.referenceLines, theme),
+        },
+      ]
+    : [];
 
 // Lines are drawn after bars so they sit on top in a composed chart.
 const linesLast = (series: CartesianSeriesOption[]) =>
@@ -229,11 +236,10 @@ export const buildCartesianOption = <T extends object>(
       composed ? series.type ?? defaultType : defaultType
     )
   );
-  const series = withReferenceLines(
-    composed ? linesLast(built) : built,
-    input,
-    theme
-  );
+  const series = [
+    ...(composed ? linesLast(built) : built),
+    ...referenceSeries(input, theme),
+  ];
   const names = input.series.map((s) => s.name);
   const legend = legendConfig(names, theme, input.legend);
   const hasZoom =
@@ -242,7 +248,7 @@ export const buildCartesianOption = <T extends object>(
   const categories = isTime
     ? undefined
     : input.data.map((datum) => String((datum as Datum)[input.xKey]));
-  const category = categoryAxis(categories, theme, input.xAxis);
+  const category = categoryAxis(categories, theme, input.xAxis, horizontal);
   const values = valueAxes(theme, input.yAxis, horizontal);
   const valueSlot = values.length === 1 ? values[0] : values;
   const layout = { legend, horizontal };

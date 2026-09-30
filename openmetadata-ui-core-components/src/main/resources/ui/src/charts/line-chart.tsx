@@ -13,7 +13,7 @@
 
 import { CartesianChartBase } from './cartesian-chart-base';
 import { buildLineOption } from './options/cartesian';
-import type { CartesianChartProps } from './types';
+import type { CartesianChartProps } from './props';
 
 /** Line chart: one line per series. */
 export const LineChart = <T extends object>(props: CartesianChartProps<T>) => (

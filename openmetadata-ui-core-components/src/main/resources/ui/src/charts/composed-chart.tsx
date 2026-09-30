@@ -13,7 +13,7 @@
 
 import { CartesianChartBase } from './cartesian-chart-base';
 import { buildComposedOption } from './options/cartesian';
-import type { CartesianChartProps } from './types';
+import type { CartesianChartProps } from './props';
 
 /** Composed chart: each series sets its own type (line, area or bar). */
 export const ComposedChart = <T extends object>(

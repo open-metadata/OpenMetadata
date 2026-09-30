@@ -15,7 +15,8 @@ import type { ECElementEvent } from 'echarts';
 import { useCallback, useMemo } from 'react';
 import { EChart } from './echart';
 import { buildPieOption, isPieEmpty } from './options/pie';
-import type { ChartTheme, PieChartProps } from './types';
+import type { PieChartProps } from './props';
+import type { ChartTheme } from './types';
 
 /** Pie chart; a donut when `innerRadius` is set. */
 export const PieChart = ({

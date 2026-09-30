@@ -12,6 +12,8 @@
  */
 
 // @vitest-environment node
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { describe, expect, it } from 'vitest';
 import {
   buildBarOption,
@@ -51,5 +53,22 @@ describe('option builders in a Node environment', () => {
         theme
       ).series
     ).toHaveLength(1);
+  });
+
+  // The Collate renderer type-checks these files with no React installed, so
+  // even a type-only React import breaks its build.
+  it.each([
+    'options/cartesian.ts',
+    'options/common.ts',
+    'options/merge.ts',
+    'options/pie.ts',
+    'format.ts',
+    'palette.ts',
+    'theme.ts',
+    'types.ts',
+  ])('%s imports nothing from react', (file) => {
+    const source = readFileSync(resolve(__dirname, file), 'utf8');
+
+    expect(source).not.toMatch(/from ['"]react['"]/);
   });
 });
