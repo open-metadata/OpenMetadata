@@ -290,4 +290,35 @@ describe('useAsyncDataAssetOptions', () => {
       expect.objectContaining({ query: '*' })
     );
   });
+
+  it('keeps the latest search results when an earlier search resolves last', async () => {
+    let resolveOpenLoad!: (value: unknown) => void;
+    (searchQuery as jest.Mock)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveOpenLoad = resolve;
+          })
+      )
+      .mockResolvedValueOnce(
+        buildSearchResponse([mockHit('2', 'orders', 'Orders')], 1)
+      );
+
+    const { result } = renderHook(() =>
+      useAsyncDataAssetOptions(DEFAULT_PARAMS)
+    );
+
+    let openLoad!: Promise<void>;
+    await act(async () => {
+      openLoad = result.current.loadOptions('');
+      await result.current.loadOptions('orders');
+    });
+    await act(async () => {
+      resolveOpenLoad(buildSearchResponse([mockHit('1', 'users', 'Users')], 1));
+      await openLoad;
+    });
+
+    expect(result.current.options.map((o) => o.name)).toEqual(['orders']);
+    expect(result.current.searchText).toBe('orders');
+  });
 });
