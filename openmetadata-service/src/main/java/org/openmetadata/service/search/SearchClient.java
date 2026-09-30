@@ -742,8 +742,7 @@ public interface SearchClient
           "tier",
           "changeDescription");
 
-  Set<String> FIELDS_TO_REMOVE_WHEN_NULL =
-      Set.of("tier", "certification", "testCaseResult", "testCaseStatus");
+  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification");
 
   String FIELDS_TO_REMOVE = "fieldsToRemove";
 
