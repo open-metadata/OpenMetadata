@@ -98,6 +98,7 @@ public final class OntologyChangeOperationExecutor {
       throw new BadRequestException("Glossary already exists: " + glossary.getFullyQualifiedName());
     }
     glossary.setUpdatedBy(user);
+    glossary.setUpdatedAt(clock.millis());
     glossaryRepository.prepareInternal(glossary, false);
     return outcome(glossaryRepository.createOrUpdate(uriInfo, glossary, user).getEntity());
   }

@@ -102,8 +102,11 @@ class OntologyChangeOperationExecutorTest {
     final OperationOutcome outcome = executor.execute(uriInfo, USER, operation);
 
     assertEquals(glossary.getId(), outcome.entity().getId());
+    final ArgumentCaptor<Glossary> persisted = ArgumentCaptor.forClass(Glossary.class);
+    verify(glossaryRepository).createOrUpdate(eq(uriInfo), persisted.capture(), eq(USER));
+    assertEquals(NOW, persisted.getValue().getUpdatedAt());
+    assertEquals(USER, persisted.getValue().getUpdatedBy());
     verify(glossaryRepository).prepareInternal(any(Glossary.class), eq(false));
-    verify(glossaryRepository).createOrUpdate(eq(uriInfo), any(Glossary.class), eq(USER));
   }
 
   @Test
