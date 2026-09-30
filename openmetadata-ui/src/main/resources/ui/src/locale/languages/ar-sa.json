@@ -3178,6 +3178,7 @@
     "trigger": "مشغل",
     "trigger-entity": "مشغل {{entity}}",
     "trigger-type": "نوع المشغل",
+    "triggered-by": "تم التشغيل بواسطة",
     "triggered-lowercase": "تم التشغيل",
     "triggering-lowercase": "جاري التشغيل",
     "true": "صحيح",

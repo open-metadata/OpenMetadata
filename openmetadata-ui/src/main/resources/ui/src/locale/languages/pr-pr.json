@@ -3178,6 +3178,7 @@
     "trigger": "فعال‌کننده",
     "trigger-entity": "فعال کردن {{entity}}",
     "trigger-type": "نوع فعال‌کننده",
+    "triggered-by": "فعال‌شده توسط",
     "triggered-lowercase": "فعال‌شده",
     "triggering-lowercase": "فعال‌سازی",
     "true": "TRUE",
