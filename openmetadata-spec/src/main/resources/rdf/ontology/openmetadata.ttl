@@ -2098,6 +2098,10 @@ om:allowImpersonation a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "allowImpersonation" .
 
+om:aliases a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "aliases" .
+
 om:answer a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "answer" .

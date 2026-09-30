@@ -41,8 +41,11 @@ const shardPlan = process.env.PW_SHARD_PLAN
   : undefined;
 const hasDedicatedIngestionLane =
   Boolean(shardPlan) || process.env.PW_DEDICATED_INGESTION === 'true';
+// Unlike ingestion, a shard plan alone does not imply an ImportExport lane on
+// this branch: its CI discovery never sets PW_DEDICATED_IMPORT_EXPORT, so
+// @import-export tests are planned into chromium and must run there.
 const hasDedicatedImportExportLane =
-  Boolean(shardPlan) || process.env.PW_DEDICATED_IMPORT_EXPORT === 'true';
+  process.env.PW_DEDICATED_IMPORT_EXPORT === 'true';
 const isPlannedShard = Boolean(shardPlan);
 const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
 const authDependencies = hasPreseededState ? [] : ['setup'];

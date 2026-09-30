@@ -89,6 +89,7 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex, AI
     }
 
     doc.put("locationPath", table.getLocationPath());
+    doc.put("aliases", table.getAliases());
     doc.put("schemaDefinition", table.getSchemaDefinition());
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
     doc.put("processedLineage", table.getProcessedLineage());
