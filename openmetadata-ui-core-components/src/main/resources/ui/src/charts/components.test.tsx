@@ -246,6 +246,18 @@ describe('PieChart', () => {
     expect(screen.getByText('8 tests')).toBeInTheDocument();
   });
 
+  it('shows a pointer cursor only when slices are clickable', () => {
+    const { rerender } = render(<PieChart ariaLabel="Status" data={slices} />);
+
+    expect(pie().cursor).toBe('default');
+
+    rerender(
+      <PieChart ariaLabel="Status" data={slices} onSliceClick={vi.fn()} />
+    );
+
+    expect(pie().cursor).toBe('pointer');
+  });
+
   it('maps a clicked slice back to its datum', () => {
     const onSliceClick = vi.fn();
     render(

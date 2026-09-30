@@ -185,6 +185,8 @@ export interface PieBuildInput {
    * the ring (and any centre label) instead of the empty state.
    */
   track?: boolean;
+  /** Slices show a pointer cursor. `PieChart` sets it when `onSliceClick` is given. */
+  clickable?: boolean;
   /** Whole-percent labels beside each slice. */
   showLabels?: boolean;
   legend?: ChartLegendProps;

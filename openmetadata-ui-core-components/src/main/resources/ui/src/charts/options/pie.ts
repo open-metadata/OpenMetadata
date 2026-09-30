@@ -81,6 +81,7 @@ export const buildPieOption = (
     minAngle: input.minAngle ?? 0,
     padAngle: input.padAngle ?? 0,
     stillShowZeroSum: false,
+    cursor: input.clickable ? 'pointer' : 'default',
     itemStyle: { borderColor: theme.segmentBorder, borderWidth: 1 },
     label: sliceLabel(showLabels),
     labelLine: { show: showLabels },

@@ -12,7 +12,7 @@
  */
 
 // @vitest-environment node
-import { BarChart, LineChart, MapChart } from 'echarts/charts';
+import { BarChart, LineChart, MapChart, PieChart } from 'echarts/charts';
 import {
   AriaComponent,
   DataZoomComponent,
@@ -32,6 +32,7 @@ import {
 } from './options/cartesian';
 import { applyZoomWindow } from './options/common';
 import { buildGeoMapOption } from './options/geo';
+import { buildPieOption } from './options/pie';
 import { REPLACE_MERGE_KEYS } from './options/merge';
 import { LIGHT_CHART_THEME } from './theme';
 import type { CartesianBuildInput, ChartOption, GeoJson } from './types';
@@ -49,6 +50,7 @@ echarts.use([
   MarkLineComponent,
   AriaComponent,
   MapChart,
+  PieChart,
   VisualMapComponent,
   SVGRenderer,
 ]);
@@ -287,5 +289,80 @@ describe('geo map on a real chart', () => {
     expect(
       (chart.getOption() as { visualMap?: unknown[] }).visualMap ?? []
     ).toHaveLength(0);
+  });
+});
+
+describe('pie on a real chart', () => {
+  type PieLayout = { angle: number };
+  type PieData = {
+    count: () => number;
+    getItemLayout: (index: number) => PieLayout;
+    get: (dim: string, index: number) => unknown;
+  };
+  const sliceData = (chart: echarts.ECharts): PieData =>
+    (
+      chart as unknown as {
+        getModel: () => {
+          getSeriesByIndex: (i: number) => { getData: () => PieData };
+        };
+      }
+    )
+      .getModel()
+      .getSeriesByIndex(0)
+      .getData();
+  // A zero slice is still emitted, as `<path d="">`, so DOM order keeps
+  // matching data order (the Playwright slice-click helper relies on it).
+  const paths = (chart: echarts.ECharts) =>
+    (chart.renderToSVGString().match(/<path d="[^"]*"/g) ?? []).map((path) =>
+      path.slice(9, -1)
+    );
+  const arcs = (chart: echarts.ECharts) =>
+    paths(chart).filter((d) => d !== '').length;
+
+  it('draws no arc for a zero slice and keeps every slice at its index', () => {
+    const chart = mount(
+      buildPieOption(
+        {
+          ariaLabel: 'Tests',
+          minAngle: 3,
+          legend: { show: false },
+          data: [
+            { name: 'Aborted', value: 0 },
+            { name: 'Success', value: 5 },
+            { name: 'Failed', value: 3 },
+          ],
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    const data = sliceData(chart);
+
+    expect(data.count()).toBe(3);
+    expect(Number.isNaN(data.getItemLayout(0).angle)).toBe(true);
+    expect(data.getItemLayout(1).angle).toBeGreaterThan(0);
+    expect(data.get('value', 2)).toBe(3);
+    expect(paths(chart)).toHaveLength(3);
+    expect(paths(chart)[0]).toBe('');
+    expect(arcs(chart)).toBe(2);
+  });
+
+  it('draws only the track when every slice is zero', () => {
+    const chart = mount(
+      buildPieOption(
+        {
+          ariaLabel: 'Tests',
+          minAngle: 3,
+          track: true,
+          legend: { show: false },
+          data: [
+            { name: 'Success', value: 0 },
+            { name: 'Failed', value: 0 },
+          ],
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+
+    expect(arcs(chart)).toBe(1);
   });
 });

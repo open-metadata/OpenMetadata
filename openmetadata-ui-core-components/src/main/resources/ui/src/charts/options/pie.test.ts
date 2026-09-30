@@ -120,6 +120,16 @@ describe('buildPieOption', () => {
     expect(option.legend).toMatchObject({ top: 4, bottom: 0 });
   });
 
+  it('shows a pointer cursor only on clickable slices', () => {
+    expect(pieOf(buildPieOption(base, LIGHT_CHART_THEME)).cursor).toBe(
+      'default'
+    );
+    expect(
+      pieOf(buildPieOption({ ...base, clickable: true }, LIGHT_CHART_THEME))
+        .cursor
+    ).toBe('pointer');
+  });
+
   it('uses a custom outer radius', () => {
     const pie = pieOf(
       buildPieOption(
