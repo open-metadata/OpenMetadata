@@ -32,6 +32,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.common.collect.Lists;
+import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -78,6 +79,7 @@ import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -109,6 +111,8 @@ import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchAggregation;
+import org.openmetadata.service.search.SearchAggregationNode;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -127,6 +131,10 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TestCaseRepository extends EntityRepository<TestCase> {
+  static final int FAILING_ENTITY_BATCH_SIZE = 100;
+  private static final String FAILING_ENTITY_FILTER_PREFIX = "entity";
+  private static final String ORIGIN_ENTITY_FQN_FIELD = "originEntityFQN";
+  private static final String TEST_CASE_STATUS_SEARCH_FIELD = "testCaseResult.testCaseStatus";
   public static final String TEST_SUITE_FIELD = "testSuite";
   public static final String TEST_DEFINITION_FIELD = "testDefinition";
   public static final String INCIDENTS_FIELD = "incidentId";
@@ -1175,6 +1183,70 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                     "Error deleting test case results for {} test cases", testCaseFQNs.size(), e);
               }
             });
+  }
+
+  /**
+   * Of {@code entityFqns}, the ones with at least one test case whose latest result failed. A
+   * column-level test counts toward its table. Reads the status stored on the test case search
+   * document, the same one the asset's own data quality views show, in one query per batch.
+   */
+  public Set<String> getEntitiesWithFailingTests(List<String> entityFqns, Include include)
+      throws IOException {
+    Set<String> failing = new HashSet<>();
+    for (List<String> batch : Lists.partition(entityFqns, FAILING_ENTITY_BATCH_SIZE)) {
+      JsonObject aggregations =
+          searchRepository.aggregate(
+              failingTestsQuery(batch),
+              TEST_CASE,
+              failingTestsAggregation(batch),
+              new SearchListFilter(include));
+      failing.addAll(entitiesWithFailures(batch, aggregations));
+    }
+    return failing;
+  }
+
+  static String failingTestsQuery(List<String> entityFqns) {
+    return JsonUtils.pojoToJson(
+        Map.of(
+            "bool",
+            Map.of(
+                "filter",
+                List.of(
+                    Map.of("terms", Map.of(ORIGIN_ENTITY_FQN_FIELD, entityFqns)),
+                    Map.of(
+                        "term",
+                        Map.of(TEST_CASE_STATUS_SEARCH_FIELD, TestCaseStatus.Failed.value()))))));
+  }
+
+  /** One filter per entity, named by position: search rejects some FQN characters in names. */
+  static SearchAggregation failingTestsAggregation(List<String> entityFqns) {
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+    for (int i = 0; i < entityFqns.size(); i++) {
+      root.addChild(
+          SearchAggregation.filter(
+              FAILING_ENTITY_FILTER_PREFIX + i,
+              JsonUtils.pojoToJson(
+                  Map.of("term", Map.of(ORIGIN_ENTITY_FQN_FIELD, entityFqns.get(i))))));
+    }
+    return SearchAggregation.fromTree(root);
+  }
+
+  static Set<String> entitiesWithFailures(List<String> entityFqns, JsonObject aggregations) {
+    Set<String> failing = new HashSet<>();
+    for (int i = 0; i < entityFqns.size(); i++) {
+      String key = "filter#" + FAILING_ENTITY_FILTER_PREFIX + i;
+      JsonObject bucket = aggregations == null ? null : aggregations.getJsonObject(key);
+      // A missing bucket means the response shape is not the one asked for; reading it as "no
+      // failure" would hide failures again, so fail loudly instead.
+      if (bucket == null) {
+        throw new IllegalStateException(
+            "Search response has no aggregation " + key + " for entity " + entityFqns.get(i));
+      }
+      if (bucket.getJsonNumber("doc_count").longValue() > 0) {
+        failing.add(entityFqns.get(i));
+      }
+    }
+    return failing;
   }
 
   @SneakyThrows

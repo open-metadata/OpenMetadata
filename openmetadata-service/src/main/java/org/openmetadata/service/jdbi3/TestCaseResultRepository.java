@@ -8,7 +8,6 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -376,21 +375,5 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       // Store each dimensional result
       dimensionResultRepository.storeDimensionResult(testCaseFQN, dimResult);
     }
-  }
-
-  public boolean hasTestCaseFailure(String fqn) throws IOException {
-    ResultList<TestCaseResult> testCaseResultResults =
-        listLatestFromSearch(
-            EntityUtil.Fields.EMPTY_FIELDS,
-            new SearchListFilter().addQueryParam("entityFQN", fqn),
-            "testCaseFQN.keyword",
-            null,
-            null,
-            null,
-            null,
-            null);
-    return testCaseResultResults.getData().stream()
-        .anyMatch(
-            testCaseResult -> testCaseResult.getTestCaseStatus().equals(TestCaseStatus.Failed));
   }
 }
