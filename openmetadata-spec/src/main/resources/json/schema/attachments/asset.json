@@ -25,67 +25,21 @@
       "default": "Inline",
       "additionalProperties": false
     },
-    "tabularValueCount": {
-      "javaType": "org.openmetadata.schema.attachments.TabularValueCount",
-      "description": "One value of a column and how many rows carry it.",
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "string"
-        },
-        "count": {
-          "type": "integer",
-          "format": "int64"
-        }
-      },
-      "required": [
-        "value",
-        "count"
-      ],
-      "additionalProperties": false
-    },
     "tabularColumn": {
       "javaType": "org.openmetadata.schema.attachments.TabularColumn",
-      "description": "One column of a tabular file with the statistics the Query Runner read for it, kept as the worker wrote them.",
+      "description": "One column of a relation read from a tabular file.",
       "type": "object",
       "properties": {
         "name": {
           "type": "string"
         },
         "dataType": {
-          "type": "string"
+          "type": "string",
+          "description": "The column's type as the engine that read the file names it, for example BIGINT or VARCHAR."
         },
-        "min": {
-          "type": "string"
-        },
-        "max": {
-          "type": "string"
-        },
-        "approxUnique": {
-          "type": "string"
-        },
-        "avg": {
-          "type": "string"
-        },
-        "nullPercentage": {
-          "type": "string"
-        },
-        "distinctCount": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Exact number of distinct values."
-        },
-        "valuesCount": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Number of non-null values."
-        },
-        "topValues": {
-          "type": "array",
-          "description": "The most frequent values of a text column with their counts, most frequent first; at most fifty, so a small domain is listed in full.",
-          "items": {
-            "$ref": "#/definitions/tabularValueCount"
-          }
+        "profile": {
+          "description": "Statistics of the column's values, in the shape a table column's profile has. Filled as far as the read goes: counts, null share, distinct count, min, max and mean, and for a text column its most frequent values as the cardinality distribution (at most fifty, most frequent first).",
+          "$ref": "../entity/data/table.json#/definitions/columnProfile"
         }
       },
       "required": [
@@ -102,9 +56,9 @@
           "type": "string",
           "description": "Relation name, as registered for a file uploaded under its own name."
         },
-        "rowCount": {
-          "type": "integer",
-          "format": "int64"
+        "profile": {
+          "description": "Row and column counts of the relation, in the shape a table's profile has.",
+          "$ref": "../entity/data/table.json#/definitions/tableProfile"
         },
         "columns": {
           "type": "array",
