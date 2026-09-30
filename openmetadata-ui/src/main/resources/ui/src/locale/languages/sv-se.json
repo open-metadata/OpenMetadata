@@ -3437,6 +3437,7 @@
     "expected-schema-structure-of-this-asset": "Förväntad schemastruktur för denna tillgång",
     "expected-true-or-false-got-type": "förväntade true eller false, fick {{type}}",
     "explore-our-guide-here": "utforska vår guide här.",
+    "explore-search-placeholder": "Sök i din Context Platform",
     "export-all-matching-assets-description": "Exportera tillgångar över alla tillgångstyper",
     "export-assets-limit-exceeded": "Exporten är begränsad till {{limit}} tillgångar. Förfina dina filter eller välj synliga resultat.",
     "export-audit-logs-description": "Exportera granskningsloggar. Välj ett datumintervall för att filtrera händelser. Exportfilen begränsas till 100 000 poster.",

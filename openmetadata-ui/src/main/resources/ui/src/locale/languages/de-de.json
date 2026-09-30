@@ -3437,6 +3437,7 @@
     "expected-schema-structure-of-this-asset": "Erwartete Schemastruktur dieses Assets",
     "expected-true-or-false-got-type": "true oder false erwartet, erhalten: {{type}}",
     "explore-our-guide-here": "Erkunden Sie unseren Leitfaden hier.",
+    "explore-search-placeholder": "Durchsuchen Sie Ihre Context Platform",
     "export-all-matching-assets-description": "Alle übereinstimmenden Assets in allen Asset-Typen exportieren",
     "export-assets-limit-exceeded": "Der Export ist auf {{limit}} Assets beschränkt. Bitte optimieren Sie Ihre Filter oder wählen Sie sichtbare Ergebnisse.",
     "export-audit-logs-description": "Audit-Logs exportieren. Wählen Sie einen Datumsbereich aus, um Ereignisse zu filtern. Die Exportdatei ist auf 100.000 Einträge begrenzt.",

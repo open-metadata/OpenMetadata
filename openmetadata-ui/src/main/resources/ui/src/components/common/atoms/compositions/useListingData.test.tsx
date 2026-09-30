@@ -14,6 +14,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { useListingData } from './useListingData';
 
 // Mock dependencies
@@ -30,6 +31,7 @@ import { usePaginationState } from '../pagination/usePaginationState';
 import { useActionHandlers } from './useActionHandlers';
 
 const mockSetPageSize = jest.fn();
+const mockSearchEntities = jest.fn();
 const mockSetSearchQuery = jest.fn();
 const mockSetFilters = jest.fn();
 const mockSetCurrentPage = jest.fn();
@@ -78,7 +80,7 @@ describe('useListingData', () => {
       error: null,
       totalEntities: 0,
       refetch: jest.fn(),
-      searchEntities: jest.fn(),
+      searchEntities: mockSearchEntities,
       aggregations: {},
     });
 
@@ -307,5 +309,42 @@ describe('useListingData', () => {
         })
       );
     });
+  });
+
+  it('does not re-query when the NLQ toggle flips, leaving NLQ to the next submit', () => {
+    mockUseUrlState.mockReturnValue({
+      urlState: {
+        searchQuery: 'finance',
+        filters: {},
+        currentPage: 1,
+        pageSize: 10,
+      },
+      parsedFilters: [],
+      setSearchQuery: mockSetSearchQuery,
+      setFilters: mockSetFilters,
+      setCurrentPage: mockSetCurrentPage,
+      setPageSize: mockSetPageSize,
+      resetFilters: jest.fn(),
+      resetAll: jest.fn(),
+    });
+    act(() => {
+      useSearchStore.setState({ isNLPEnabled: true, isNLPActive: false });
+    });
+    renderHook(
+      () =>
+        useListingData({
+          searchIndex: SearchIndex.DOMAIN,
+          filterKeys: [],
+          columns: [],
+          enableNlq: true,
+        }),
+      { wrapper }
+    );
+
+    act(() => {
+      useSearchStore.setState({ isNLPActive: true });
+    });
+
+    expect(mockSearchEntities).toHaveBeenCalledTimes(1);
   });
 });

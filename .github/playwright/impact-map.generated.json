@@ -963,15 +963,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DataMarketplace.spec.ts",
-        "playwright/e2e/Pages/DataMarketplacePermissions.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataProducts/DataProductMetadataModal/DataProductMetadataModal.component.tsx"
       ],
       "specs": [
@@ -4788,6 +4779,15 @@
       "specs": [
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/explore/ExploreHeader/ExploreSearchInput.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataMarketplace.spec.ts",
+        "playwright/e2e/Pages/DataMarketplacePermissions.spec.ts"
       ]
     },
     {

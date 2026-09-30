@@ -101,4 +101,48 @@ describe('usePageHeader', () => {
 
     expect(screen.getByText('label.beta')).toBeInTheDocument();
   });
+
+  it('gives the search its own slot, apart from the title and the actions', () => {
+    render(
+      <Harness
+        {...baseConfig}
+        createPermission
+        addButtonLabelKey="label.add-data-product"
+        search={<input aria-label="search" data-testid="header-search" />}
+        variant="search"
+        onAddClick={jest.fn()}
+      />
+    );
+
+    const searchSlot = screen.getByTestId('search-header-search');
+
+    expect(searchSlot).toContainElement(screen.getByTestId('header-search'));
+    expect(searchSlot).toHaveClass('tw:mx-auto');
+    expect(searchSlot).toHaveClass('tw:max-w-[35vw]');
+    expect(screen.getByTestId('search-header-actions')).not.toContainElement(
+      screen.getByTestId('header-search')
+    );
+  });
+
+  it('keeps the title on one line so the subtitle is never truncated', () => {
+    render(
+      <Harness
+        {...baseConfig}
+        search={<input aria-label="search" data-testid="header-search" />}
+        variant="search"
+      />
+    );
+
+    // shrink-0 stops the flex row squeezing the subtitle.
+    expect(screen.getByTestId('search-header-title')).toHaveClass(
+      'tw:shrink-0'
+    );
+  });
+
+  it('renders the plain title block when the search variant has no search', () => {
+    render(<Harness {...baseConfig} variant="search" />);
+
+    expect(screen.queryByTestId('search-header-row')).not.toBeInTheDocument();
+    expect(screen.getByText('label.data-product-plural')).toBeInTheDocument();
+  });
 });
