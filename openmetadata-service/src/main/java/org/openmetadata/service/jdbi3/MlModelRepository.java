@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.getEntityReference;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
@@ -341,6 +342,22 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       }
     }
     return node;
+  }
+
+  /**
+   * Normalises a feature's tags on the way in, the way every other type with inline children does.
+   * Without it the entity a write returns carries the tag labels exactly as the client sent them,
+   * while a later read carries the labels rebuilt from tag_usage. A client that diffs the two, as
+   * a JSON Patch caller does, then writes a patch against fields the stored copy never had.
+   */
+  @Override
+  public void validateTags(MlModel entity) {
+    super.validateTags(entity);
+    for (MlFeature feature : listOrEmpty(entity.getMlFeatures())) {
+      validateTags(feature.getTags());
+      feature.setTags(addDerivedTags(feature.getTags()));
+      checkMutuallyExclusive(feature.getTags());
+    }
   }
 
   @Override

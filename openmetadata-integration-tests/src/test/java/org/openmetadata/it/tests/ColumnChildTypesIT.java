@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +67,7 @@ import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Covers /v1/columns for the entity types it did not serve before: their inline children are topic
@@ -427,6 +429,70 @@ public class ColumnChildTypesIT {
             feature -> feature.path("tags").forEach(t -> tagFqns.add(t.path("tagFQN").asText())));
     assertTrue(
         tagFqns.contains("PII.Sensitive"), "fields=tags must not blank a feature's tags: " + page);
+  }
+
+  @Test
+  void patchMlmodel_featureTagsComeBackTheWayTheyAreStored(TestNamespace ns) throws Exception {
+    // A write used to echo a feature's tag labels exactly as the caller sent them while a read
+    // rebuilt them from tag_usage. A JSON Patch client diffs one against the other, so the extra
+    // keys the write kept - displayName here - became patch operations against a stored copy that
+    // never had them, and the whole patch was rejected.
+    ChildFixture fixture = createFixture("mlmodel", ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String patch =
+        OBJECT_MAPPER.writeValueAsString(
+            List.of(
+                Map.of(
+                    "op", "add",
+                    "path", "/mlFeatures/0/tags",
+                    "value",
+                        List.of(
+                            Map.of(
+                                "tagFQN", "PII.Sensitive",
+                                "source", "Classification",
+                                "labelType", "Manual",
+                                "state", "Confirmed",
+                                "name", "Sensitive",
+                                "displayName", "Sensitive")))));
+    String modelUrl = "/v1/mlmodels/name/" + encodeURIComponent(fixture.parentFqn());
+    JsonNode written =
+        OBJECT_MAPPER.readTree(
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PATCH,
+                    modelUrl,
+                    patch,
+                    RequestOptions.builder()
+                        .header("Content-Type", "application/json-patch+json")
+                        .build()));
+    JsonNode read =
+        OBJECT_MAPPER.readTree(
+            client
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, modelUrl + "?fields=tags", null));
+
+    JsonNode writtenTag = written.path("mlFeatures").path(0).path("tags").path(0);
+    JsonNode readTag = read.path("mlFeatures").path(0).path("tags").path(0);
+    assertEquals(
+        "PII.Sensitive", writtenTag.path("tagFQN").asText(), "write did not apply the tag");
+    // One-directional on purpose: a key the read adds only ever produces a replace against a key
+    // the stored copy has, which applies. A key the write keeps and the read drops is the one that
+    // breaks, because the client's next patch addresses a field the stored copy never held.
+    List<String> writeOnly = new ArrayList<>(fieldNames(writtenTag));
+    writeOnly.removeAll(fieldNames(readTag));
+    assertTrue(
+        writeOnly.isEmpty(),
+        "a write must not describe a feature tag with fields a read drops, else a JSON Patch "
+            + "client patches keys the stored copy does not have; write-only fields: "
+            + writeOnly);
+  }
+
+  private static List<String> fieldNames(JsonNode node) {
+    List<String> names = new ArrayList<>();
+    node.fieldNames().forEachRemaining(names::add);
+    Collections.sort(names);
+    return names;
   }
 
   private String childUrl(ChildFixture fixture) {
