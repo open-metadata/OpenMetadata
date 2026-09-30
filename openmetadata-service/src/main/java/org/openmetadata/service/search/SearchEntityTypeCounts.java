@@ -1,7 +1,6 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -13,7 +12,6 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -21,7 +19,6 @@ import java.util.stream.StreamSupport;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.search.IndexMapping;
 
 /** Counts all requested types in one search while preserving each type's ranked matching rules. */
 public final class SearchEntityTypeCounts {
@@ -74,7 +71,8 @@ public final class SearchEntityTypeCounts {
 
   private Plan plan(SearchRequest request, String index, SearchSettings settings)
       throws IOException {
-    List<String> types = entityTypes(index);
+    List<String> types = searchRepository.getEntityTypesForIndex(index);
+    if (types.isEmpty()) throw new BadRequestException("No indexed entity types for " + index);
     boolean precision = SearchRankingHelper.hasPrunableFuzzyStage(settings);
     SearchSettings precise =
         precision ? SearchRankingHelper.withoutFuzzyStages(settings) : settings;
@@ -149,35 +147,6 @@ public final class SearchEntityTypeCounts {
     // Top hits inherit the root query's score. Disjoint index-scoped branches above preserve
     // each type's score, and its normal tie-breakers preserve the exact identity-probe window.
     probe.set("sort", broad.path("sort"));
-  }
-
-  private List<String> entityTypes(String index) {
-    List<String> targets =
-        Arrays.stream(index.split(","))
-            .map(String::trim)
-            .map(searchRepository::getIndexOrAliasName)
-            .toList();
-    List<String> types =
-        searchRepository.getIndexedEntityTypes().stream()
-            .filter(
-                type -> matchesCountTarget(targets, type, searchRepository.getIndexMapping(type)))
-            .toList();
-    if (types.isEmpty()) throw new BadRequestException("No indexed entity types for " + index);
-    return types;
-  }
-
-  private boolean matchesCountTarget(List<String> targets, String type, IndexMapping mapping) {
-    return targets.stream()
-        .anyMatch(
-            target ->
-                target.equals(searchRepository.getIndexOrAliasName(type))
-                    || ((target.equals(searchRepository.getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                            || target.equals(
-                                searchRepository.getIndexOrAliasName(DATA_ASSET_SEARCH_ALIAS)))
-                        && mapping.getParentAliases() != null
-                        && mapping.getParentAliases().stream()
-                            .map(searchRepository::getIndexOrAliasName)
-                            .anyMatch(target::equals)));
   }
 
   private void normalizeCounts(ObjectNode response, Plan plan, String query) throws IOException {

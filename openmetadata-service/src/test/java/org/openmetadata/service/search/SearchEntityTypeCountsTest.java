@@ -18,14 +18,10 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -35,7 +31,6 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.search.IndexMapping;
 
 class SearchEntityTypeCountsTest {
   private SearchRepository repository;
@@ -57,25 +52,17 @@ class SearchEntityTypeCountsTest {
   @BeforeEach
   void setUp() {
     repository = mock(SearchRepository.class);
-    Map<String, IndexMapping> mappings =
+    when(repository.getEntityTypesForIndex(anyString())).thenReturn(List.of());
+    when(repository.getEntityTypesForIndex("table")).thenReturn(List.of("table"));
+    when(repository.getEntityTypesForIndex("table,databaseSchema"))
+        .thenReturn(List.of("databaseSchema", "table"));
+    Map<String, String> indexes =
         Map.of(
-            "table", mapping("table", List.of("all", "dataAsset")),
-            "tableColumn", mapping("column", List.of("all", "dataAsset", "table")),
-            "databaseSchema", mapping("schema", List.of("all", "dataAsset")),
-            "team", mapping("team", List.of("all")),
-            "customEntity", mapping("custom", null));
-    when(repository.getIndexedEntityTypes()).thenReturn(new TreeSet<>(mappings.keySet()));
-    when(repository.getIndexMapping(anyString()))
-        .thenAnswer(call -> mappings.get(call.getArgument(0, String.class)));
+            "table", "cluster_table_search_index",
+            "databaseSchema", "cluster_schema_search_index",
+            "dataAsset", "cluster_dataAsset");
     when(repository.getIndexOrAliasName(anyString()))
-        .thenAnswer(
-            call -> {
-              String name = call.getArgument(0);
-              IndexMapping mapping = mappings.get(name);
-              return mapping != null
-                  ? mapping.getIndexName("cluster")
-                  : name.startsWith("cluster_") ? name : "cluster_" + name;
-            });
+        .thenAnswer(call -> indexes.get(call.getArgument(0, String.class)));
   }
 
   @Test
@@ -251,29 +238,6 @@ class SearchEntityTypeCountsTest {
   }
 
   @ParameterizedTest
-  @MethodSource("indexTargets")
-  void selectsOnlyTheRequestedEntityTypes(String index, List<String> expected) throws IOException {
-    JsonNode result = search(counts((body, target) -> response(body)), request(), index, ranked);
-    JsonNode buckets = result.at("/aggregations/entityType/buckets");
-    assertEquals(expected.size(), buckets.size());
-    for (int i = 0; i < expected.size(); i++)
-      assertEquals(expected.get(i), buckets.get(i).path("key").textValue());
-  }
-
-  static Stream<Arguments> indexTargets() {
-    return Stream.of(
-        Arguments.of("table", List.of("table")),
-        Arguments.of("table_search_index", List.of("table")),
-        Arguments.of("cluster_table_search_index", List.of("table")),
-        Arguments.of("table, table_search_index, table", List.of("table")),
-        Arguments.of(" table , databaseSchema ", List.of("databaseSchema", "table")),
-        Arguments.of("dataAsset", List.of("databaseSchema", "table", "tableColumn")),
-        Arguments.of("cluster_dataAsset", List.of("databaseSchema", "table", "tableColumn")),
-        Arguments.of("all", List.of("databaseSchema", "table", "tableColumn", "team")),
-        Arguments.of("customEntity", List.of("customEntity")));
-  }
-
-  @ParameterizedTest
   @ValueSource(strings = {"unknown", "", " , "})
   void rejectsTargetsWithNoRegisteredEntities(String index) {
     assertThrows(
@@ -346,7 +310,7 @@ class SearchEntityTypeCountsTest {
                 ((ObjectNode) bucket).put("doc_count", Long.MAX_VALUE);
               return response;
             });
-    assertThrows(IOException.class, () -> search(counts, request(), "dataAsset", null));
+    assertThrows(IOException.class, () -> search(counts, request(), "table,databaseSchema", null));
   }
 
   @ParameterizedTest
@@ -494,9 +458,5 @@ class SearchEntityTypeCountsTest {
       assertEquals(200, response.getStatus());
       return JsonUtils.readTree((String) response.getEntity());
     }
-  }
-
-  private static IndexMapping mapping(String name, List<String> parents) {
-    return IndexMapping.builder().indexName(name + "_search_index").parentAliases(parents).build();
   }
 }
