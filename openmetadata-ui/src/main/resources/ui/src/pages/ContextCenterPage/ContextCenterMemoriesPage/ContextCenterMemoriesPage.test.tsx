@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { getListContextMemories } from '../../../rest/contextMemoryAPI';
 import ContextCenterMemoriesPage from './ContextCenterMemoriesPage';
 
 // Resource-level permission (getResourcePermission(CONTEXT_MEMORY)) — no prior
@@ -168,5 +169,40 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       'data-can-edit',
       'false'
     );
+  });
+
+  it('uses the direct list and cursor pagination for memory history', async () => {
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    (getListContextMemories as jest.Mock).mockImplementation(async (params) =>
+      params.offset === undefined
+        ? {
+            data: [{ id: 'retired-memory', title: 'Retired Memory' }],
+            paging: { after: 'next-history-page' },
+          }
+        : {
+            data: [{ id: 'active-memory', title: 'Active Memory' }],
+            paging: { total: 1 },
+          }
+    );
+
+    renderPage();
+    fireEvent.click(await screen.findByText('label.history'));
+
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenCalledWith({
+        limit: 10,
+        after: undefined,
+        fields: expect.any(String),
+      });
+    });
+
+    fireEvent.click(screen.getByTestId('memory-history-next'));
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenCalledWith({
+        limit: 10,
+        after: 'next-history-page',
+        fields: expect.any(String),
+      });
+    });
   });
 });

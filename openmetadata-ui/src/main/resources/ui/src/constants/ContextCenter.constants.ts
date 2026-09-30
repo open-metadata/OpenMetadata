@@ -14,6 +14,7 @@
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import {
+  MemoryStatus,
   MemoryType,
   ShareVisibility,
 } from '../generated/entity/context/contextMemory';
@@ -129,9 +130,18 @@ export const MEMORIES_PER_PAGE = 10;
 export const MEMORY_FIELDS =
   'owners,tags,domains,primaryEntity,relatedEntities,sourceEntity';
 
+export const MEMORY_STATUS_LABEL_KEYS: Record<MemoryStatus, string> = {
+  [MemoryStatus.Active]: 'label.active',
+  [MemoryStatus.Archived]: 'label.archived',
+  [MemoryStatus.Draft]: 'label.draft',
+  [MemoryStatus.Invalidated]: 'label.invalidated',
+  [MemoryStatus.Superseded]: 'label.superseded',
+};
+
 export const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
   { id: 'created-by-me', label: 'label.created-by-me' },
+  { id: 'history', label: 'label.history' },
 ] as const;
 
 // utility-gray-blue-50 resolves to gray-blue-950 in dark, which reads as a

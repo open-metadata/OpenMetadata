@@ -95,6 +95,41 @@ const getSortLabel = (
   sortBy: MemorySortBy
 ): string => options.find((option) => option.id === sortBy)?.label ?? '';
 
+const getMemoryEmptyActions = (
+  canCreate: boolean,
+  newMemoryLabel: string,
+  historyLabel: string,
+  onNewMemory: () => void,
+  onHistory: () => void
+) => {
+  const actions: Array<{
+    color: 'primary' | 'secondary';
+    iconLeading?: typeof Plus;
+    key: string;
+    label: string;
+    onClick: () => void;
+  }> = [
+    {
+      color: 'secondary',
+      key: 'memory-history',
+      label: historyLabel,
+      onClick: onHistory,
+    },
+  ];
+
+  if (canCreate) {
+    actions.unshift({
+      color: 'primary',
+      iconLeading: Plus,
+      key: 'new-memory',
+      label: newMemoryLabel,
+      onClick: onNewMemory,
+    });
+  }
+
+  return actions;
+};
+
 const getMemoriesViewFlags = ({
   selectedAsset,
   selectedAuthor,
@@ -247,6 +282,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const [searchValue, setSearchValue] = useState('');
   const [activeFilter, setActiveFilter] = useState<MemoryFilterTab>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [historyHasNext, setHistoryHasNext] = useState(false);
+  const historyCursors = useRef<(string | undefined)[]>([undefined]);
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
   const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
   const [authorOptions, setAuthorOptions] = useState<MemoryFilterOption[]>([]);
@@ -309,6 +346,19 @@ const ContextCenterMemoriesPage: FC = () => {
         setIsMemoriesLoading(true);
       }
       try {
+        if (activeFilter === 'history') {
+          const response = await getListContextMemories({
+            limit: MEMORIES_PER_PAGE,
+            after: historyCursors.current[currentPage - 1],
+            fields: MEMORY_FIELDS,
+          });
+          setMemories(response.data ?? []);
+          setHistoryHasNext(Boolean(response.paging?.after));
+          historyCursors.current[currentPage] = response.paging?.after;
+
+          return;
+        }
+
         const sortConfig = getSortConfig(sortBy);
         const authorFilter =
           activeFilter === 'created-by-me'
@@ -476,15 +526,23 @@ const ContextCenterMemoriesPage: FC = () => {
 
   const handleFilterChange = useCallback((key: MemoryFilterTab) => {
     setActiveFilter(key);
-    if (key === 'all') {
+    if (key === 'all' || key === 'history') {
       setSelectedAsset(undefined);
       setSelectedAuthor(undefined);
+    }
+    if (key === 'history') {
+      setSearchValue('');
+      setDebouncedSearch('');
+      historyCursors.current = [undefined];
     }
     setCurrentPage(1);
   }, []);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchValue(value);
+    if (value.trim()) {
+      setActiveFilter((current) => (current === 'history' ? 'all' : current));
+    }
     setCurrentPage(1);
   }, []);
 
@@ -683,19 +741,13 @@ const ContextCenterMemoriesPage: FC = () => {
           {showMemoriesEmptyState ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
               <EmptyPlaceholder
-                actions={
-                  hasCreatePermission
-                    ? [
-                        {
-                          color: 'primary',
-                          iconLeading: Plus,
-                          key: 'new-memory',
-                          label: t('label.new-memory'),
-                          onClick: () => setIsCreateModalOpen(true),
-                        },
-                      ]
-                    : []
-                }
+                actions={getMemoryEmptyActions(
+                  hasCreatePermission,
+                  t('label.new-memory'),
+                  t('label.history'),
+                  () => setIsCreateModalOpen(true),
+                  () => handleFilterChange('history')
+                )}
                 description={t(
                   'message.context-center-memories-empty-subtitle'
                 )}
@@ -796,7 +848,12 @@ const ContextCenterMemoriesPage: FC = () => {
                   </Tabs.List>
                 </Tabs>
 
-                <Box align="center" gap={2}>
+                <Box
+                  align="center"
+                  className={classNames({
+                    'tw:hidden': activeFilter === 'history',
+                  })}
+                  gap={2}>
                   <DataAssetSelectList
                     allowAllOption
                     placeholder={t('label.search-assets-by-name-or-path')}
@@ -818,7 +875,10 @@ const ContextCenterMemoriesPage: FC = () => {
                     value={selectedAsset}
                     onChange={(value) => {
                       setSelectedAsset(value as DataAssetOption);
-                      if (activeFilter === 'all') {
+                      if (
+                        activeFilter === 'all' ||
+                        activeFilter === 'history'
+                      ) {
                         setActiveFilter('');
                       }
                       setCurrentPage(1);
@@ -873,7 +933,10 @@ const ContextCenterMemoriesPage: FC = () => {
                               next === selectedAuthor?.id ? undefined : option
                             );
                           }
-                          if (activeFilter === 'all') {
+                          if (
+                            activeFilter === 'all' ||
+                            activeFilter === 'history'
+                          ) {
                             setActiveFilter('');
                           }
                           setCurrentPage(1);
@@ -928,7 +991,12 @@ const ContextCenterMemoriesPage: FC = () => {
                   </Dropdown.Root>
                 </Box>
 
-                <Box align="center" className="tw:ml-auto" gap={4}>
+                <Box
+                  align="center"
+                  className={classNames('tw:ml-auto', {
+                    'tw:hidden': activeFilter === 'history',
+                  })}
+                  gap={4}>
                   {hasActiveFilters && (
                     <Button
                       color="link-color"
@@ -951,6 +1019,9 @@ const ContextCenterMemoriesPage: FC = () => {
                         selectionMode="single"
                         onAction={(key) => {
                           setSortBy((key as MemorySortBy) ?? 'updated');
+                          if (activeFilter === 'history') {
+                            setActiveFilter('all');
+                          }
                           setCurrentPage(1);
                         }}>
                         {SORT_OPTIONS.map((opt) => (
@@ -988,11 +1059,35 @@ const ContextCenterMemoriesPage: FC = () => {
                   />
                 </div>
 
-                <PaginationCardMinimal
-                  page={currentPage}
-                  total={totalPages}
-                  onPageChange={setCurrentPage}
-                />
+                {activeFilter === 'history' ? (
+                  <Box align="center" className="tw:p-4" gap={3} justify="end">
+                    <Button
+                      color="secondary"
+                      data-testid="memory-history-previous"
+                      isDisabled={currentPage === 1}
+                      size="sm"
+                      onClick={() => setCurrentPage((page) => page - 1)}>
+                      {t('label.previous')}
+                    </Button>
+                    <Typography size="text-sm">
+                      {t('label.page')} {currentPage}
+                    </Typography>
+                    <Button
+                      color="secondary"
+                      data-testid="memory-history-next"
+                      isDisabled={!historyHasNext}
+                      size="sm"
+                      onClick={() => setCurrentPage((page) => page + 1)}>
+                      {t('label.next')}
+                    </Button>
+                  </Box>
+                ) : (
+                  <PaginationCardMinimal
+                    page={currentPage}
+                    total={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                )}
               </Card>
             </>
           )}
