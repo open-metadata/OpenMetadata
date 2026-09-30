@@ -20,8 +20,42 @@ import org.openmetadata.schema.api.search.RankingSignals;
 import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.StopWordsByLanguage;
+import org.openmetadata.schema.search.SearchRequest;
 
 class SearchRankingHelperTest {
+
+  @Test
+  void projectedFirstPageUsesAnIndependentIdentityProbe() throws IOException {
+    SearchRequest request =
+        new SearchRequest()
+            .withQuery("orders")
+            .withFrom(0)
+            .withSize(15)
+            .withFetchSource(false)
+            .withSortFieldParam("name.keyword")
+            .withSortOrder("asc");
+    List<SearchRequest> calls = new ArrayList<>();
+    SearchSettings settings = settingsWithStages("exactName", "fuzzyName");
+    SearchRankingHelper.searchWithIdentifierPrecision(
+        request,
+        settings,
+        (used, window) -> {
+          SearchRequest actual = SearchRankingHelper.windowed(request, window);
+          calls.add(actual);
+          return Boolean.TRUE.equals(actual.getFetchSource())
+              ? List.of("orders")
+              : List.<String>of();
+        },
+        List::stream);
+    assertEquals(2, calls.size());
+    assertEquals(List.of("name", "fullyQualifiedName"), calls.get(0).getIncludeSourceFields());
+    assertEquals("_score", calls.get(0).getSortFieldParam());
+    assertEquals("desc", calls.get(0).getSortOrder());
+    assertFalse(calls.get(1).getFetchSource());
+    assertEquals("name.keyword", calls.get(1).getSortFieldParam());
+    assertEquals(15, calls.get(1).getSize());
+    assertFalse(request.getFetchSource());
+  }
 
   @Test
   void exactMatchTextsBuildsSeparatorVariantsAfterStopwordRemoval() {

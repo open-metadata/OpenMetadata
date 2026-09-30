@@ -15,9 +15,14 @@ import { FAILED_TO_FIND_INDEX_ERROR } from '../constants/explore.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { useExploreCache } from '../hooks/useExploreCache';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import * as miscAPI from '../rest/miscAPI';
-import { nlqSearch, searchQuery } from '../rest/searchAPI';
+import {
+  nlqSearch,
+  searchEntityTypeCounts,
+  searchQuery,
+} from '../rest/searchAPI';
 import {
   extractTermKeys,
   getExploreQueryFilterMust,
@@ -34,6 +39,7 @@ jest.mock('./ToastUtils');
 
 const mockSearchQuery = searchQuery as jest.Mock;
 const mockNlqSearch = nlqSearch as jest.Mock;
+const mockEntityTypeCounts = searchEntityTypeCounts as jest.Mock;
 
 describe('Explore Utils', () => {
   it('passes search text to independent aggregation requests', async () => {
@@ -769,6 +775,7 @@ describe('fetchEntityData', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    useExploreCache.getState().clearCache();
   });
 
   it('issues a single search on the given index when there is no query', async () => {
@@ -788,21 +795,17 @@ describe('fetchEntityData', () => {
   });
 
   it('runs a count then a results query and maps tab hit counts when a query is present', async () => {
-    mockSearchQuery
-      .mockResolvedValueOnce(COUNT_RESPONSE)
-      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    mockEntityTypeCounts.mockResolvedValueOnce(COUNT_RESPONSE);
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
     const params = buildParams({ searchQueryParam: 'customer' });
 
     await fetchEntityData(params);
 
-    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
-    expect(mockSearchQuery.mock.calls[0][0]).toEqual(
+    expect(mockSearchQuery).toHaveBeenCalledTimes(1);
+    expect(mockEntityTypeCounts.mock.calls[0][0]).toEqual(
       expect.objectContaining({
-        searchIndex: SearchIndex.DATA_ASSET,
-        pageNumber: 1,
-        pageSize: 1,
-        fetchSource: true,
-        includeFields: ['entityType'],
+        query: 'customer',
+        searchIndex: [SearchIndex.TABLE],
       })
     );
     expect(params.setSearchHitCounts).toHaveBeenCalledWith({
@@ -826,9 +829,8 @@ describe('fetchEntityData', () => {
         total: { value: 21 },
       },
     };
-    mockSearchQuery
-      .mockResolvedValueOnce(countResponse)
-      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    mockEntityTypeCounts.mockResolvedValueOnce(countResponse);
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
     const params = buildParams({
       searchQueryParam: 'revenue chart',
       tab: '',
@@ -845,7 +847,7 @@ describe('fetchEntityData', () => {
 
     await fetchEntityData(params);
 
-    expect(mockSearchQuery.mock.calls[1][0]).toEqual(
+    expect(mockSearchQuery.mock.calls[0][0]).toEqual(
       expect.objectContaining({ searchIndex: SearchIndex.CHART })
     );
     expect(params.setAutoSelectedSearchIndex).toHaveBeenCalledWith(
@@ -964,20 +966,21 @@ describe('fetchEntityData', () => {
 
   it('issues the results query without waiting for the count when a tab is selected', async () => {
     let resolveCount: (value: unknown) => void = (_value) => undefined;
-    mockSearchQuery
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveCount = resolve;
-          })
-      )
-      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    mockEntityTypeCounts.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCount = resolve;
+        })
+    );
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
     const params = buildParams({ searchQueryParam: 'customer', tab: 'tables' });
 
     const pending = fetchEntityData(params);
 
     // Results query is already in flight while the count is still pending.
-    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
+    expect(mockSearchQuery).toHaveBeenCalledTimes(1);
+
+    await Promise.resolve();
 
     resolveCount(COUNT_RESPONSE);
     await pending;
@@ -985,6 +988,46 @@ describe('fetchEntityData', () => {
     expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
     expect(params.setSearchHitCounts).toHaveBeenCalledWith({
       [SearchIndex.TABLE]: 42,
+    });
+  });
+
+  it('reuses counts across pagination but separates filters and deleted state', async () => {
+    mockEntityTypeCounts.mockResolvedValue(COUNT_RESPONSE);
+    mockSearchQuery.mockResolvedValue(RESULTS_RESPONSE);
+    await fetchEntityData(buildParams({ searchQueryParam: 'customer' }));
+    await fetchEntityData(
+      buildParams({ searchQueryParam: 'customer', page: 2, sortOrder: 'desc' })
+    );
+
+    expect(mockEntityTypeCounts).toHaveBeenCalledTimes(1);
+    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
+
+    await fetchEntityData(
+      buildParams({ searchQueryParam: 'customer', showDeleted: true })
+    );
+    await fetchEntityData(
+      buildParams({
+        searchQueryParam: 'customer',
+        queryFilter: {
+          query: { bool: { must: [{ term: { 'service.name': 'other' } }] } },
+        },
+      })
+    );
+
+    expect(mockEntityTypeCounts).toHaveBeenCalledTimes(3);
+  });
+
+  it('uses the returned results total when cached counts predate a catalog change', async () => {
+    mockEntityTypeCounts.mockResolvedValueOnce(COUNT_RESPONSE);
+    mockSearchQuery.mockResolvedValueOnce({
+      ...RESULTS_RESPONSE,
+      hits: { ...RESULTS_RESPONSE.hits, total: { value: 41 } },
+    });
+    const params = buildParams({ searchQueryParam: 'customer' });
+    await fetchEntityData(params);
+
+    expect(params.setSearchHitCounts).toHaveBeenLastCalledWith({
+      [SearchIndex.TABLE]: 41,
     });
   });
 });

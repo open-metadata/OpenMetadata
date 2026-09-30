@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -230,6 +231,41 @@ public class DomainIsolationIT {
     } finally {
       drain(cleanup);
     }
+  }
+
+  @Test
+  void test_entityTypeCounts_respectPermissionsAndCachePrincipal(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String prefix = ns.shortPrefix();
+      Domain own = createDomain(admin, prefix + "_own", cleanup);
+      createDomain(admin, prefix + "_foreign", cleanup);
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, prefix, own, cleanup);
+      boolean original = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, original));
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                assertEquals(2, domainCount(admin, prefix));
+                assertEquals(1, domainCount(restricted, prefix));
+                assertEquals(2, domainCount(admin, prefix));
+              });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private long domainCount(OpenMetadataClient client, String prefix) throws Exception {
+    JsonNode results =
+        MAPPER.readTree(client.search().query(prefix + "*").index("domain").size(100).execute());
+    JsonNode counts =
+        MAPPER.readTree(
+            client.search().entityTypeCounts().query(prefix + "*").index("domain").execute());
+    assertEquals(results.at("/hits/total/value").asLong(), counts.at("/hits/total/value").asLong());
+    return counts.at("/hits/total/value").asLong();
   }
 
   @Test

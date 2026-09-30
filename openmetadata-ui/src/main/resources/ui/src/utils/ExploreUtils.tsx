@@ -19,6 +19,7 @@ import React from 'react';
 import { SearchHitCounts } from '../components/Explore/ExplorePage.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { useExploreCache } from '../hooks/useExploreCache';
 import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { Aggregations, SearchResponse } from '../interface/search.interface';
 import {
@@ -29,7 +30,11 @@ import {
   getAggregateFieldOptions,
   postAggregateFieldOptions,
 } from '../rest/miscAPI';
-import { nlqSearch, searchQuery } from '../rest/searchAPI';
+import {
+  nlqSearch,
+  searchEntityTypeCounts,
+  searchQuery,
+} from '../rest/searchAPI';
 import { getCountBadge } from './EntityDisplayPureUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import {
@@ -248,20 +253,40 @@ export const fetchEntityData = async ({
         includeDeleted: showDeleted,
         filters: '',
       };
+      const normalizedCountPayload = {
+        query: countPayload.query,
+        queryFilter: combinedQueryFilter,
+        searchIndex: TABS_SEARCH_INDEXES,
+        includeDeleted: showDeleted,
+        includeTopHit: !tab.trim(),
+      };
       const runCountSearch = () =>
         isNlqSearch
           ? nlqSearch({ ...countPayload, fetchSource: false })
-          : searchQuery({
-              ...countPayload,
-              fetchSource: true,
-              includeFields: ['entityType'],
-            });
+          : useExploreCache
+              .getState()
+              .getOrLoad(
+                `counts:${JSON.stringify(normalizedCountPayload)}`,
+                () => searchEntityTypeCounts(normalizedCountPayload)
+              );
 
       const handleSearchError = (error: unknown) => {
         if (isElasticsearchError(error)) {
           setShowIndexNotFoundAlert(true);
         } else {
           showErrorToast(error as AxiosError);
+        }
+      };
+
+      let currentCounts: SearchHitCounts | undefined;
+      let resultCount: { index: ExploreSearchIndex; total: number } | undefined;
+      const publishCounts = () => {
+        if (currentCounts) {
+          setSearchHitCounts(
+            resultCount
+              ? { ...currentCounts, [resultCount.index]: resultCount.total }
+              : currentCounts
+          );
         }
       };
 
@@ -276,7 +301,8 @@ export const fetchEntityData = async ({
             counts[searchIndexKey ?? ''] = item.doc_count;
           }
         });
-        setSearchHitCounts(counts as SearchHitCounts);
+        currentCounts = counts as SearchHitCounts;
+        publishCounts();
 
         // The hybrid (NLQ) count query spans the whole dataAsset alias, and OpenSearch's
         // RRF score-ranker-processor is a phase_results_processors entry: it ranks per
@@ -330,6 +356,13 @@ export const fetchEntityData = async ({
           const searchRes = await searchRequest(updatedSearchPayload);
           setSearchResults(searchRes as SearchResponse<ExploreSearchIndex>);
           setUpdatedAggregations(searchRes.aggregations);
+          // A write can land inside the count-cache TTL. The visible tab must always
+          // show the total returned with its rows, whichever request finishes first.
+          resultCount = {
+            index: effectiveSearchIndex,
+            total: searchRes.hits.total.value,
+          };
+          publishCounts();
 
           // For NLQ searches, surface the backend-detected filters so the Explore
           // filters tab can mark them. Non-NLQ responses omit applied_quick_filters.

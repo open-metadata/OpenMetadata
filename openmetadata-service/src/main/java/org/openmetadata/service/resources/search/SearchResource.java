@@ -78,6 +78,7 @@ import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchEntityTypeCounts;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
@@ -267,6 +268,11 @@ public class SearchResource {
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
 
+    return cachedSearch(request, subjectContext);
+  }
+
+  private Response cachedSearch(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
     // Auth-aware response cache (Item 1). Bots bypass — they do bulk indexing reads with
     // cardinalities that would pollute the user-keyed cache. Uses the layer's loadOrCompute
     // to get single-flight semantics: 100 concurrent users hitting the same uncached query
@@ -906,7 +912,11 @@ public class SearchResource {
           String queryFilter,
       @Parameter(description = "Elasticsearch query that will be used as a post_filter")
           @QueryParam("post_filter")
-          String postFilter)
+          String postFilter,
+      @Parameter(description = "Include the global top hit as an Explore tab-selection hint")
+          @DefaultValue("false")
+          @QueryParam("include_top_hit")
+          boolean includeTopHit)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -922,16 +932,20 @@ public class SearchResource {
     SearchRequest request =
         new SearchRequest()
             .withQuery(query)
-            .withSize(0)
+            .withSize(includeTopHit ? 1 : 0)
             .withFrom(0)
             .withDeleted(deleted)
             .withFetchSource(false)
             .withTrackTotalHits(true)
             .withQueryFilter(queryFilter)
             .withPostFilter(postFilter)
-            .withDomains(domains);
+            .withDomains(domains)
+            .withApplyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .withIncludeAggregations(false);
 
-    return searchRepository.getEntityTypeCounts(request, index, subjectContext);
+    return new SearchEntityTypeCounts(searchRepository, this::cachedSearch)
+        .search(request, index, subjectContext);
   }
 
   @POST
