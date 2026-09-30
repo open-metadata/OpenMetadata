@@ -18,7 +18,7 @@ export interface RDFConfiguration {
      * Expose optional AI-assisted Ontology flows. Manual authoring remains available when
      * disabled.
      */
-    askCollateEnabled?: boolean;
+    aiEnabled?: boolean;
     /**
      * Base URI for RDF resources
      */

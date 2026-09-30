@@ -82,7 +82,7 @@ public class OntologyAiResourceIT {
             .getHttpClient()
             .execute(HttpMethod.GET, "/v1/rdf/status", null, RdfStatus.class);
 
-    assertFalse(status.getAskCollateEnabled());
+    assertFalse(status.getAiEnabled());
   }
 
   private static void assertNotFound(final Runnable request) {

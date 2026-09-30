@@ -190,6 +190,9 @@ public final class OntologyAiResource {
       @Context final SecurityContext securityContext,
       @Valid final OntologyMemoryDerivationRequest request) {
     service().requireAvailable();
+    if (!LLMClientHolder.isOntologyMemoryDerivationEnabled()) {
+      throw new NotFoundException("Ontology memory derivation is disabled");
+    }
     final OntologyMemoryDerivationService derivation = memoryDerivationService();
     if (request.getGlossary() != null) {
       derivation.loadGlossary(request.getGlossary());
@@ -284,7 +287,7 @@ public final class OntologyAiResource {
 
   private static boolean isEnabled(final OpenMetadataApplicationConfig config) {
     return config.getRdfConfiguration() != null
-        && Boolean.TRUE.equals(config.getRdfConfiguration().getAskCollateEnabled())
+        && Boolean.TRUE.equals(config.getRdfConfiguration().getAiEnabled())
         && LLMClientHolder.isEnabled();
   }
 }

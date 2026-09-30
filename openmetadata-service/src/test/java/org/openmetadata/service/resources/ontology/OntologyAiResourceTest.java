@@ -23,10 +23,13 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.time.Clock;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMProvider;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.ontology.OntologyAiCatalog;
 import org.openmetadata.service.ontology.OntologyAiCompletionGateway;
 import org.openmetadata.service.ontology.OntologyAiService;
@@ -58,6 +61,33 @@ class OntologyAiResourceTest {
         NotFoundException.class, () -> resource.generateDomainDraft(securityContext, null));
     assertEquals(0, gateway.invocationCount);
     verifyNoInteractions(authorizer, repository);
+  }
+
+  @Test
+  void memoryDerivationRequiresItsOwnGate() {
+    LLMClientHolder.initialize(
+        new LLMConfiguration().withEnabled(true).withProvider(LLMProvider.NOOP));
+    try {
+      final Authorizer authorizer = mock(Authorizer.class);
+      final CountingGateway gateway = new CountingGateway();
+      final OntologyAiService service =
+          new OntologyAiService(
+              true,
+              gateway,
+              new FailingCatalog(),
+              new OntologySparqlQueryValidator(new SparqlFederationGuard(null)),
+              Clock.systemUTC());
+      final OntologyAiResource resource =
+          new OntologyAiResource(authorizer, service, mock(GlossaryRepository.class));
+
+      assertThrows(
+          NotFoundException.class,
+          () -> resource.deriveTermsFromMemories(mock(SecurityContext.class), null));
+      assertEquals(0, gateway.invocationCount);
+      verifyNoInteractions(authorizer);
+    } finally {
+      LLMClientHolder.initialize(null);
+    }
   }
 
   private static final class FailingCatalog implements OntologyAiCatalog {

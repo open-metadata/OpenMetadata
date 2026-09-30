@@ -184,7 +184,7 @@
       "type": "boolean",
       "default": true
     },
-    "askCollateEnabled": {
+    "aiEnabled": {
       "description": "Expose optional AI-assisted Ontology flows. Manual authoring remains available when disabled.",
       "type": "boolean",
       "default": false

@@ -472,7 +472,8 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_SHACL_VALIDATION_MODE` | `REPORT` |
 | `RDF_DEREFERENCEABLE_IRIS` | `false` |
 | `RDF_STRICT_OWL_PROFILE` | `true` |
-| `RDF_ASK_COLLATE_ENABLED` | `false` |
+| `RDF_AI_ENABLED` | `false` |
+| `LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED` | `false` |
 | `RDF_FEDERATION_ENABLED` | `false` |
 
 Use `RDF_ENDPOINT` for new deployments. `RDF_REMOTE_ENDPOINT` remains a deprecated fallback for
