@@ -649,7 +649,10 @@ class OpenlineageSource(PipelineServiceSource):
                 schema_name=table_details.schema,
                 table_name=table_details.name,
             )
-            if result:
+            # When the search misses but the database and schema are known,
+            # fqn.build still returns a constructed FQN, so only a service that
+            # actually holds the table counts as a match.
+            if result and self._get_by_name_cached(Table, result):
                 if not resolved:
                     return result
                 found.append(result)

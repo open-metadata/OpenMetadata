@@ -2005,7 +2005,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "redshift_prod.warehouse.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
             # MySQL namespace -> scheme resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
@@ -2060,7 +2060,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "mysql_cluster_b.db.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
             # cluster-a namespace -> mapping resolves to mysql_cluster_a
             result_a = source._get_table_fqn(table, namespace="mysql://cluster-a:3306/db")
             assert result_a == "mysql_cluster_a.db.analytics.user_stat"
@@ -2105,7 +2105,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "custom_lakehouse.lake.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
             # mysql:// namespace -> scheme matches Mysql -> resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
@@ -2150,9 +2150,12 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         import logging
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):  # noqa: SIM117
-            with self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm:
-                result = source._get_table_fqn(table, namespace="mysql://some-host:3306/db")
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata"),
+            self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm,
+        ):
+            result = source._get_table_fqn(table, namespace="mysql://some-host:3306/db")
 
         assert result is None
         # The handler now logs the AmbiguousServiceException message itself
@@ -3086,6 +3089,75 @@ class TestKinesisMultiShardPolling(unittest.TestCase):
         events = list(source._poll_kinesis(broker))
 
         assert len(events) == 2
+
+
+class TestTableResolutionAcrossSameTypeServices:
+    """
+    Issue #22013: a three-part dataset name carries the database, so fqn.build
+    returns a constructed FQN for every configured service, including services
+    that never ingested the table. Only the service holding the table may match,
+    otherwise the table is reported as ambiguous or looked up in the wrong
+    service and the lineage edge is dropped.
+    """
+
+    TABLE_ID = UUID("aaaa1111-1111-1111-1111-111111111111")
+    PIPELINE_ID = UUID("cccc3333-3333-3333-3333-333333333333")
+    TABLE_FQN = "postgres1.postgres.public.source"
+
+    @staticmethod
+    def _spark_write_event(namespace: str) -> OpenLineageEvent:
+        """The Spark JDBC write from the issue: no inputs, one Postgres output."""
+        return OpenLineageEvent(
+            run_facet={"facets": {"parent": {"job": {"namespace": "default", "name": "spark_shell"}}}},
+            job={"namespace": "default", "name": "spark_shell.execute_save_into_data_source_command.public_source"},
+            event_type="COMPLETE",
+            inputs=[],
+            outputs=[{"namespace": namespace, "name": "postgres.public.source", "facets": {}}],
+        )
+
+    def _source(self, db_service_names: list[str]) -> OpenlineageSource:
+        """A prepared source whose server has two Postgres services, only postgres1 holding the table."""
+        table = Mock()
+        table.id.root = self.TABLE_ID
+        table.fullyQualifiedName.root = self.TABLE_FQN
+        pipeline = Mock()
+        pipeline.id.root = self.PIPELINE_ID
+
+        metadata = MagicMock()
+        metadata.client.get.return_value = {"serviceType": "Postgres"}
+        metadata.es_search_from_fqn.side_effect = lambda entity_type, fqn_search_string, **kwargs: (
+            [table] if fqn_search_string == self.TABLE_FQN else None
+        )
+        metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+            table if entity == Table and fqn == self.TABLE_FQN else pipeline if entity == Pipeline else None
+        )
+        metadata.get_lineage_by_id.return_value = None
+
+        with patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"):
+            source = OpenlineageSource.create(MOCK_OL_CONFIG["source"], metadata)
+        source.source_config.lineageInformation = LineageInformation(dbServiceNames=db_service_names)
+        source.context.get().pipeline = "default-spark_shell"
+        source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
+        source.prepare()
+        return source
+
+    def _lineage_edges(self, source: OpenlineageSource, namespace: str) -> list[tuple[UUID, UUID]]:
+        results = source.yield_pipeline_lineage_details(self._spark_write_event(namespace))
+        return [
+            (result.right.edge.fromEntity.id.root, result.right.edge.toEntity.id.root)
+            for result in results
+            if isinstance(result.right, AddLineageRequest)
+        ]
+
+    def test_scheme_resolved_services_match_only_the_service_holding_the_table(self):
+        source = self._source(["postgres1", "postgres2"])
+
+        assert self._lineage_edges(source, "postgres://pg1:5432") == [(self.PIPELINE_ID, self.TABLE_ID)]
+
+    def test_unresolved_namespace_walks_past_services_without_the_table(self):
+        source = self._source(["postgres2", "postgres1"])
+
+        assert self._lineage_edges(source, "pg1") == [(self.PIPELINE_ID, self.TABLE_ID)]
 
 
 if __name__ == "__main__":
