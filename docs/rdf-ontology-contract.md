@@ -20,13 +20,18 @@ their authoritative definitions remain in their original vocabularies.
 `changeDescription` and `votes` are outside the metadata projection. The JSON-LD
 context and SQL-to-SPARQL mappings do not advertise them, and the ontology does
 not declare their proposed predicates as `om:Stored`. SPARQL with
-`inference=none` cannot answer change-history or vote questions from the graph.
+`inference=none` cannot answer change-history questions, vote counts, or vote
+direction from the graph.
 
 Entity version APIs (`getVersion` and `listVersions`) own change history; an
 entity's current `changeDescription` is not durable history by itself. Entity
 reads with `fields=votes` return current vote counts and voter references. The
-vote relationship store owns those values. RDF indexing does not expose voter
-identities or aggregates.
+vote relationship store owns those values.
+
+The relationship writer still projects each vote as a `<user> om:voted <entity>`
+edge. The edge records who voted on an entity but not the vote direction, so
+counting `om:voted` edges mixes up-votes and down-votes and is not a popularity
+measure.
 
 ## Lineage direction
 
