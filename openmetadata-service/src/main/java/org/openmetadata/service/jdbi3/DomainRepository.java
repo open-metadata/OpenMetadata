@@ -550,15 +550,21 @@ public class DomainRepository extends EntityRepository<Domain> {
       domainHardDeleteSubtree.set(
           new DomainHardDeleteContext(collectDomainSubtreeIds(List.of(id)), updatedBy));
     }
+    boolean deleted = false;
     try {
       super.deleteChildren(id, recursive, hardDelete, updatedBy);
+      deleted = true;
     } finally {
       if (rootDomainHardDelete) {
         DomainHardDeleteContext context = domainHardDeleteSubtree.get();
         domainHardDeleteSubtree.remove();
         reindexDetachedDataProducts(context);
-        ((UserRepository) Entity.getEntityRepository(Entity.USER))
-            .clearDefaultDomainReferences(context.deletingDomainIds);
+        // Only a completed cascade orphans the persisted selections; a failed one leaves the
+        // domains (and the picks pointing at them) in place.
+        if (deleted) {
+          ((UserRepository) Entity.getEntityRepository(Entity.USER))
+              .clearDefaultDomainReferences(context.deletingDomainIds);
+        }
       }
     }
   }
