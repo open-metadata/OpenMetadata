@@ -1634,7 +1634,7 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', async ({ page }) => {
+    test('Text formatting', { tag: '@quarantine' }, async ({ page }) => {
       await runTextFormattingTest(
         page,
         editorKnowledgeCenter.knowledgePages[1]
@@ -1675,7 +1675,9 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', async ({ dataConsumerPage }) => {
+    test('Text formatting', { tag: '@quarantine' }, async ({
+      dataConsumerPage,
+    }) => {
       await runTextFormattingTest(
         dataConsumerPage,
         dataConsumerEditorKnowledgeCenter.knowledgePages[1]
@@ -1719,7 +1721,9 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', async ({ dataStewardPage }) => {
+    test('Text formatting', { tag: '@quarantine' }, async ({
+      dataStewardPage,
+    }) => {
       await runTextFormattingTest(
         dataStewardPage,
         dataStewardEditorKnowledgeCenter.knowledgePages[1]

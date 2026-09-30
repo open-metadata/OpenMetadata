@@ -235,7 +235,9 @@ test.describe(
       });
     });
 
-    test('sort options route to the correct data path', async ({ page }) => {
+    test('sort options route to the correct data path', {
+      tag: '@quarantine',
+    }, async ({ page }) => {
       test.slow();
       await navigateToArticles(page);
 

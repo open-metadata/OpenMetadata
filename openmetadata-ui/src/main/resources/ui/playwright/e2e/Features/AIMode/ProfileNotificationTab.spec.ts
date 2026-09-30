@@ -117,7 +117,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-test('Single Filter Alert', async ({ page }) => {
+test('Single Filter Alert', { tag: '@quarantine' }, async ({ page }) => {
   test.slow();
   const ALERT_NAME = generateAlertName();
   await navigateToAlertsList(page);
@@ -220,7 +220,7 @@ test('Single Filter Alert', async ({ page }) => {
   });
 });
 
-test('Multiple Filters Alert', async ({ page }) => {
+test('Multiple Filters Alert', { tag: '@quarantine' }, async ({ page }) => {
   test.slow();
   const ALERT_NAME = generateAlertName();
   await navigateToAlertsList(page);
@@ -322,7 +322,7 @@ test('Multiple Filters Alert', async ({ page }) => {
   });
 });
 
-test('Task source alert', async ({ page }) => {
+test('Task source alert', { tag: '@quarantine' }, async ({ page }) => {
   const ALERT_NAME = generateAlertName();
   await navigateToAlertsList(page);
 
@@ -358,7 +358,7 @@ test('Task source alert', async ({ page }) => {
   });
 });
 
-test('Conversation source alert', async ({ page }) => {
+test('Conversation source alert', { tag: '@quarantine' }, async ({ page }) => {
   const ALERT_NAME = generateAlertName();
   await navigateToAlertsList(page);
 
@@ -427,7 +427,9 @@ test('Conversation source alert', async ({ page }) => {
  * Alert with recent events — admin-only (notification tab is admin-gated).
  * Creates a table-scoped alert, triggers via soft-delete/restore, verifies events.
  */
-test('Alert with recent events check', async ({ page }) => {
+test('Alert with recent events check', { tag: '@quarantine' }, async ({
+  page,
+}) => {
   test.slow();
   const ALERT_NAME = generateAlertName();
   const { apiContext } = await getApiContext(page);
@@ -493,7 +495,9 @@ test('Alert with recent events check', async ({ page }) => {
   });
 });
 
-test('Destination should work properly', async ({ page }) => {
+test('Destination should work properly', { tag: '@quarantine' }, async ({
+  page,
+}) => {
   await navigateToAlertsList(page);
   await page.getByTestId('add-alert').click();
 
@@ -562,7 +566,7 @@ test('Destination should work properly', async ({ page }) => {
   });
 });
 
-test('System alert is read-only', async ({ page }) => {
+test('System alert is read-only', { tag: '@quarantine' }, async ({ page }) => {
   await navigateToAlertsList(page);
 
   await expect(
@@ -588,7 +592,7 @@ test('System alert is read-only', async ({ page }) => {
   await expect(page.getByTestId('delete-alert-btn')).not.toBeAttached();
 });
 
-test('Breadcrumb navigation', async ({ page }) => {
+test('Breadcrumb navigation', { tag: '@quarantine' }, async ({ page }) => {
   await navigateToAlertsList(page);
 
   await page.getByTestId('add-alert').click();

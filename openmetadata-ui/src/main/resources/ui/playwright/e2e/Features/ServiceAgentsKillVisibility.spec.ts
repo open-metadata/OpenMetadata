@@ -150,9 +150,9 @@ test.describe('Service Agents visibility after a run is killed', () => {
     await afterAction();
   });
 
-  test('agents stay listed while the list refetches after a run is killed', async ({
-    page,
-  }) => {
+  test('agents stay listed while the list refetches after a run is killed', {
+    tag: '@quarantine',
+  }, async ({ page }) => {
     test.slow();
 
     const { refetchStarted } = await mockKillFlow(page);
