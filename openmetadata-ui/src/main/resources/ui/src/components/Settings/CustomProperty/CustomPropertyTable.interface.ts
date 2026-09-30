@@ -13,6 +13,7 @@
 
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { CustomPropertyChanges } from '../../../rest/metadataTypeAPI';
+import { CustomPropertyTypeColor } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.interface';
 
 export interface CustomPropertyTableProp {
   hasAccess: boolean;
@@ -24,4 +25,26 @@ export interface CustomPropertyTableProp {
   ) => Promise<void>;
   isLoading: boolean;
   isButtonLoading: boolean;
+}
+
+export interface CustomPropertyTypeBadge {
+  color: CustomPropertyTypeColor;
+  label: string;
+}
+
+export interface CustomPropertyConfigSummary {
+  label: string;
+  values: string[];
+  testId: string;
+}
+
+export interface CustomPropertyConfigCellProps {
+  property: CustomProperty;
+}
+
+export interface CustomPropertyActionsProps {
+  property: CustomProperty;
+  hasAccess: boolean;
+  onEdit: (property: CustomProperty) => void;
+  onDelete: (property: CustomProperty) => void;
 }

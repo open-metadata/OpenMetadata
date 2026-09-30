@@ -969,34 +969,28 @@ export const editCreatedProperty = async (
   propertyName: string,
   type?: string
 ) => {
-  // Fetching for edit button
-  const editButton = page.locator(
-    `[data-row-key="${propertyName}"] [data-testid="edit-button"]`
-  );
+  const propertyRow = page.locator(`[data-row-key="${propertyName}"]`);
 
   if (type === 'Enum') {
     await expect(
-      page.locator(
-        `[data-row-key="${propertyName}"] [data-testid="enum-config"]`
-      )
-    ).toContainText('["enum1","enum2","enum3"]');
+      propertyRow.getByTestId('enum-config').getByTestId('config-value')
+    ).toHaveText(['enum1', 'enum2', 'enum3']);
   }
 
   if (type === 'Table') {
-    const tableConfig = page.locator(
-      `[data-row-key="${propertyName}"] [data-testid="table-config"]`
-    );
+    const tableConfig = propertyRow.getByTestId('table-config');
     await expect(tableConfig).toBeVisible();
-    await expect(tableConfig).toContainText('Columns:');
+    await expect(tableConfig).toContainText('Columns');
     await expect(
-      tableConfig.locator('li', { hasText: 'pw-column1' })
+      tableConfig.getByTestId('config-value').filter({ hasText: 'pw-column1' })
     ).toBeVisible();
     await expect(
-      tableConfig.locator('li', { hasText: 'pw-column2' })
+      tableConfig.getByTestId('config-value').filter({ hasText: 'pw-column2' })
     ).toBeVisible();
   }
 
-  await editButton.click();
+  await propertyRow.getByTestId('property-actions').click();
+  await page.getByTestId('edit-button').click();
 
   // displayName
   await page.fill('[data-testid="display-name"]', '');
@@ -1027,26 +1021,35 @@ export const editCreatedProperty = async (
   await saves.expectSaved();
 
   // Fetching for updated descriptions for the created custom property
-  await expect(
-    page.locator(
-      `[data-row-key="${propertyName}"] [data-testid="viewer-container"]`
-    )
-  ).toContainText('This is new description');
+  await expect(propertyRow.getByTestId('property-description')).toContainText(
+    'This is new description'
+  );
 
+  // The row shows the first three config values and counts the rest.
   if (type === 'Enum') {
-    await expect(
-      page.locator(
-        `[data-row-key="${propertyName}"] [data-testid="enum-config"]`
-      )
-    ).toContainText('["enum1","enum2","enum3","updatedValue"]');
+    const enumConfig = propertyRow.getByTestId('enum-config');
+
+    await expect(enumConfig.getByTestId('config-value')).toHaveText([
+      'enum1',
+      'enum2',
+      'enum3',
+    ]);
+    await expect(enumConfig.getByTestId('config-hidden-count')).toHaveText(
+      '+1'
+    );
   }
 
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
-    await expect(
-      page.locator(
-        `[data-row-key="${propertyName}"] [data-testid="${propertyName}-config"]`
-      )
-    ).toContainText('["user","team","metric","table"]');
+    const entityConfig = propertyRow.getByTestId(`${propertyName}-config`);
+
+    await expect(entityConfig.getByTestId('config-value')).toHaveText([
+      'User',
+      'Team',
+      'Metric',
+    ]);
+    await expect(entityConfig.getByTestId('config-hidden-count')).toHaveText(
+      '+1'
+    );
   }
 };
 
@@ -1059,8 +1062,10 @@ export const deleteCreatedProperty = async (
     .locator(`[data-row-key="${propertyName}"]`)
     .scrollIntoViewIfNeeded();
   await page
-    .locator(`[data-row-key="${propertyName}"] [data-testid="delete-button"]`)
+    .locator(`[data-row-key="${propertyName}"]`)
+    .getByTestId('property-actions')
     .click();
+  await page.getByTestId('delete-button').click();
 
   // Checking property name is present on the delete pop-up
   await expect(page.locator('[data-testid="body-text"]')).toContainText(
