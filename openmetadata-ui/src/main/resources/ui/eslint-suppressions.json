@@ -94,7 +94,7 @@
   },
   "playwright/e2e/Features/ContextCenterDocument.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 24
+      "count": 20
     }
   },
   "playwright/e2e/Features/ContextCenterMemories.spec.ts": {
@@ -237,11 +237,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts": {
-    "playwright/no-wait-for-selector": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 7
@@ -374,12 +369,7 @@
   },
   "playwright/e2e/Features/SSOConfiguration.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 31
-    }
-  },
-  "playwright/e2e/Features/SSOTestLogin.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
+      "count": 24
     }
   },
   "playwright/e2e/Features/SampleDataTableOperations.spec.ts": {
@@ -669,12 +659,7 @@
       "count": 1
     },
     "om-playwright/no-positional-locator": {
-      "count": 9
-    }
-  },
-  "playwright/e2e/Pages/GlossaryFormValidation.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 6
     }
   },
   "playwright/e2e/Pages/GlossaryImportExport.spec.ts": {
@@ -768,11 +753,6 @@
   "playwright/e2e/Pages/Tags.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 6
-    }
-  },
-  "playwright/e2e/Pages/TaskComments.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
     }
   },
   "playwright/e2e/Pages/TaskFormSettings.spec.ts": {
@@ -988,7 +968,7 @@
   },
   "playwright/utils/importUtils.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 37
+      "count": 27
     }
   },
   "playwright/utils/incidentManager.ts": {

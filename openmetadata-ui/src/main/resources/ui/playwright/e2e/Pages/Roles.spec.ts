@@ -386,7 +386,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .filter({ hasText: policies.organizationPolicy })
       ).toBeVisible();
 
-      const submitButton = page.locator('[type="button"]:has-text("Submit")');
+      const submitButton = page.locator('[type="button"]:has-text("Save")');
       await expect(submitButton).toBeVisible();
       await expect(submitButton).toBeEnabled();
 

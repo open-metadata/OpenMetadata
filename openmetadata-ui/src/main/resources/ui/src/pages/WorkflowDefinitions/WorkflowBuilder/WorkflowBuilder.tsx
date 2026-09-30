@@ -58,6 +58,10 @@ import {
 } from '../../../hooks/useWorkflowLogic';
 import { useWorkflowNavigationBlock } from '../../../hooks/useWorkflowNavigationBlock';
 import {
+  getWorkflowTriggerFields,
+  WorkflowTriggerFieldsConfig,
+} from '../../../rest/metadataTypeAPI';
+import {
   patchWorkflowDefinition,
   triggerWorkflow,
 } from '../../../rest/workflowDefinitionsAPI';
@@ -168,6 +172,18 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     nodes: Node[];
   } | null>(null);
   const [hasNodeConfigSaved, setHasNodeConfigSaved] = useState(false);
+
+  // The workflow trigger-fields registry is a static, entity-agnostic config. Fetch it once at the
+  // page level and pass it down so opening the start node's config panel triggers no per-open
+  // request.
+  const [triggerFieldsConfig, setTriggerFieldsConfig] =
+    useState<WorkflowTriggerFieldsConfig>({ common: [], entitySpecific: {} });
+
+  useEffect(() => {
+    getWorkflowTriggerFields()
+      .then(setTriggerFieldsConfig)
+      .catch((error) => showErrorToast(error as AxiosError));
+  }, []);
 
   const handleUndo = () => {
     const previousState = undo();
@@ -535,6 +551,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         node={selectedNode}
         setEdges={setEdges}
         setNodes={setNodes}
+        triggerFieldsConfig={triggerFieldsConfig}
         workflowDefinition={workflowDefinition || undefined}
         workflowMetadata={workflowMetadata || undefined}
         onClose={handleConfigSidebarClose}
