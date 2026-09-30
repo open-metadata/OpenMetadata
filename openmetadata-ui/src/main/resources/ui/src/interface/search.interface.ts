@@ -26,6 +26,7 @@ import { Container } from '../generated/entity/data/container';
 import { ContextFile } from '../generated/entity/data/contextFile';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { DataContract } from '../generated/entity/data/dataContract';
 import {
   Database,
   DatabaseServiceType,
@@ -188,6 +189,9 @@ export interface GlossaryTermSearchSource
     GlossaryTerm {} // extends EntityInterface
 
 export interface QuerySearchSource extends SearchSourceBase, Query {} // extends EntityInterface
+export interface DataContractSearchSource
+  extends SearchSourceBase,
+    DataContract {} // extends EntityInterface
 export interface TestCaseSearchSource
   extends SearchSourceBase,
     Exclude<TestCase, 'testSuite'> {
@@ -333,6 +337,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TAG]: TagClassSearchSource;
   [SearchIndex.CONTAINER]: ContainerSearchSource;
   [SearchIndex.QUERY]: QuerySearchSource;
+  [SearchIndex.DATA_CONTRACT]: DataContractSearchSource;
   [SearchIndex.TEST_CASE]: TestCaseSearchSource;
   [SearchIndex.DATABASE_SCHEMA]: DataBaseSchemaSearchSource;
   [SearchIndex.DATABASE]: DatabaseSearchSource;

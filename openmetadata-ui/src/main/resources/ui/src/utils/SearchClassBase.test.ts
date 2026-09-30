@@ -57,6 +57,17 @@ describe('SearchClassBase', () => {
     searchClassBase = new SearchClassBase();
   });
 
+  it('should map data contracts to their own search index both ways', () => {
+    expect(
+      searchClassBase.getEntityTypeSearchIndexMapping()[EntityType.DATA_CONTRACT]
+    ).toBe(SearchIndex.DATA_CONTRACT);
+    expect(
+      searchClassBase.getSearchIndexEntityTypeMapping()[
+        SearchIndex.DATA_CONTRACT
+      ]
+    ).toBe(EntityType.DATA_CONTRACT);
+  });
+
   it('should return the correct search index for each entity type', () => {
     const searchIndexMapping =
       searchClassBase.getEntityTypeSearchIndexMapping();
