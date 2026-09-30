@@ -170,6 +170,39 @@ describe('useCanvasMouseEvents', () => {
     expect(mockOnEdgeClick).toHaveBeenCalledWith(mockEdge, mockMouseEvent);
   });
 
+  it('keeps an edge click from reaching the pane click handler', () => {
+    const { result } = renderHook(() =>
+      useCanvasMouseEvents({
+        containerRef,
+        getEdgeAtPointRef,
+        getButtonAtPointRef,
+        setHoveredButtonRef,
+        onEdgeClickRef,
+        onEdgeHoverRef,
+        hoverTimeoutRef,
+        isOverPopoverRef,
+      })
+    );
+    const flowRoot = document.createElement('div');
+    const pane = document.createElement('div');
+    const onPaneClick = jest.fn();
+    flowRoot.appendChild(pane);
+    flowRoot.addEventListener('click', onPaneClick);
+    pane.addEventListener('click', result.current.handleClick);
+
+    mockGetButtonAtPoint.mockReturnValue(null);
+    mockGetEdgeAtPoint.mockReturnValue(mockEdge);
+    pane.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(mockOnEdgeClick).toHaveBeenCalledTimes(1);
+    expect(onPaneClick).not.toHaveBeenCalled();
+
+    mockGetEdgeAtPoint.mockReturnValue(null);
+    pane.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(onPaneClick).toHaveBeenCalledTimes(1);
+  });
+
   it('does not call click handlers when container is not available', () => {
     const nullContainerRef = { current: null };
 

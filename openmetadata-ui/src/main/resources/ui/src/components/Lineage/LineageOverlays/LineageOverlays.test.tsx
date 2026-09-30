@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { Edge } from 'reactflow';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -151,5 +151,68 @@ describe('LineageOverlays', () => {
         onEdgeDetailsUpdate: mockHandlers.onEdgeDetailsUpdate,
       })
     );
+  });
+
+  describe('edge drawer actions', () => {
+    const editableEdge = {
+      ...mockEdge,
+      data: { ...mockEdge.data, isEditable: true },
+    } as Edge;
+    const getDrawerProps = () => mockEdgeInfoDrawer.mock.lastCall[0];
+
+    it('lets an editor edit the pipeline or delete an editable edge', () => {
+      useLineageStore.setState({
+        canEditLineage: true,
+        selectedEdge: editableEdge,
+        isDrawerOpen: true,
+      });
+      render(<LineageOverlays handlers={mockHandlers} />);
+
+      act(() => getDrawerProps().onDelete());
+
+      expect(useLineageStore.getState().isDrawerOpen).toBe(false);
+      expect(useLineageStore.getState().showDeleteModal).toBe(true);
+
+      act(() => getDrawerProps().onEditPipeline());
+
+      expect(useLineageStore.getState().showAddEdgeModal).toBe(true);
+    });
+
+    it('offers only delete for a column edge', () => {
+      useLineageStore.setState({
+        canEditLineage: true,
+        selectedEdge: {
+          ...editableEdge,
+          data: { ...editableEdge.data, isColumnLineage: true },
+        } as Edge,
+        isDrawerOpen: true,
+      });
+      render(<LineageOverlays handlers={mockHandlers} />);
+
+      expect(getDrawerProps().onEditPipeline).toBeUndefined();
+      expect(getDrawerProps().onDelete).toEqual(expect.any(Function));
+    });
+
+    it('offers no actions without edit access or on a non-editable edge', () => {
+      useLineageStore.setState({
+        canEditLineage: false,
+        selectedEdge: editableEdge,
+        isDrawerOpen: true,
+      });
+      const { unmount } = render(<LineageOverlays handlers={mockHandlers} />);
+
+      expect(getDrawerProps().onDelete).toBeUndefined();
+      expect(getDrawerProps().onEditPipeline).toBeUndefined();
+
+      unmount();
+      useLineageStore.setState({
+        canEditLineage: true,
+        selectedEdge: mockEdge,
+      });
+      render(<LineageOverlays handlers={mockHandlers} />);
+
+      expect(getDrawerProps().onDelete).toBeUndefined();
+      expect(getDrawerProps().onEditPipeline).toBeUndefined();
+    });
   });
 });

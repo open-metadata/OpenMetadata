@@ -31,6 +31,7 @@ import {
   getEndpointNodeId,
   getRealEntityRef,
   hasSceneEntityConnection,
+  hasSceneLineageEdge,
   hydrateSelectedEdge,
   isEditableSceneEdge,
   isEditableSceneNode,
@@ -114,6 +115,59 @@ describe('LineageMap edit utils', () => {
       ).toBe(true);
       expect(
         hasSceneEntityConnection(scene, 'target-entity-id', 'source-entity-id')
+      ).toBe(false);
+    });
+  });
+
+  describe('hasSceneLineageEdge', () => {
+    const fieldEdge = createEdge({
+      id: 'field-edge',
+      from: `${sourceNode.id}${FIELD_SEPARATOR}source.column`,
+      to: `${targetNode.id}${FIELD_SEPARATOR}target.column`,
+    });
+    const columnPair = {
+      fromColumn: 'source.column',
+      toColumn: 'target.column',
+    };
+
+    it('confirms a column edge from an asset scene entity edge', () => {
+      const scene = {
+        nodes: [sourceNode, targetNode],
+        edges: [createEdge()],
+      } as LineageScene;
+
+      expect(
+        hasSceneLineageEdge(
+          scene,
+          'source-entity-id',
+          'target-entity-id',
+          columnPair
+        )
+      ).toBe(true);
+    });
+
+    it('confirms a column edge from a field scene that has no entity edge', () => {
+      const scene = {
+        nodes: [sourceNode, targetNode],
+        edges: [fieldEdge],
+      } as LineageScene;
+
+      expect(
+        hasSceneLineageEdge(
+          scene,
+          'source-entity-id',
+          'target-entity-id',
+          columnPair
+        )
+      ).toBe(true);
+      expect(
+        hasSceneLineageEdge(scene, 'source-entity-id', 'target-entity-id')
+      ).toBe(false);
+      expect(
+        hasSceneLineageEdge(scene, 'source-entity-id', 'target-entity-id', {
+          fromColumn: 'source.column',
+          toColumn: 'other.column',
+        })
       ).toBe(false);
     });
   });

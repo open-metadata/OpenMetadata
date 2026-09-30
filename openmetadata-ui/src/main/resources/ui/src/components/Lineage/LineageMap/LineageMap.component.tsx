@@ -95,7 +95,6 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import {
-  onAddPipelineClick,
   onColumnEdgeRemove,
   onEdgeClick,
 } from '../../../utils/Lineage/handlers/edgeMutations';
@@ -143,7 +142,7 @@ import {
   getEndpointHandle,
   getEndpointNodeId,
   getRealEntityRef,
-  hasSceneEntityConnection,
+  hasSceneLineageEdge,
   hydrateSelectedEdge,
   isEditableSceneEdge,
   isEditableSceneNode,
@@ -1000,6 +999,7 @@ const LineageMapCanvas = ({
   const pendingHoverPointRef = useRef<{ x: number; y: number }>();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const {
+    activeLayer,
     lineageMutationTick,
     openDeleteModal,
     platformView,
@@ -1020,6 +1020,7 @@ const LineageMapCanvas = ({
     setSelectedEdge,
     setSelectedNode,
     setTracedColumns,
+    updateActiveLayer,
   } = useLineageStore();
   const queryFilter = useMemo(() => {
     const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
@@ -1095,6 +1096,19 @@ const LineageMapCanvas = ({
     setActiveLayer(getActiveLayersFromBand(request.band));
     setIsPlatformLineage(Boolean(isPlatformLineage));
   }, [isPlatformLineage, request.band, setActiveLayer, setIsPlatformLineage]);
+
+  // The page applies the configured default layer in the same commit, after
+  // this map sets the band's layers, which drops the column layer the Field
+  // band needs on a direct load or reload. Keyed on the layer array, not the
+  // derived flag, because the flag flips back within one commit.
+  useEffect(() => {
+    if (
+      request.band === LineageBand.Field &&
+      !activeLayer.includes(LineageLayer.ColumnLevelLineage)
+    ) {
+      updateActiveLayer(LineageLayer.ColumnLevelLineage);
+    }
+  }, [activeLayer, request.band, updateActiveLayer]);
 
   useEffect(() => {
     setSceneBand(scene?.band);
@@ -1888,7 +1902,10 @@ const LineageMapCanvas = ({
         }
         setSelectedNode(undefined);
         setActiveNode(undefined);
-        onEdgeClick(hydratedEdge);
+        onEdgeClick({
+          ...hydratedEdge,
+          data: { ...hydratedEdge.data, isEditable: true },
+        });
       } catch (error) {
         if ((error as AxiosError).response?.status === 404) {
           showInfoToast(t('message.no-lineage-data-available'));
@@ -1926,9 +1943,8 @@ const LineageMapCanvas = ({
         await addLineageHandler(payload);
         setSelectedEdge(undefined);
         setSelectedNode(undefined);
-        // Wait for the entity edge only: column edges are not drawn in every band.
         await refetchCurrentScene((response) =>
-          hasSceneEntityConnection(response, fromEntity.id, toEntity.id)
+          hasSceneLineageEdge(response, fromEntity.id, toEntity.id, columnPair)
         );
 
         return true;
@@ -2202,8 +2218,6 @@ const LineageMapCanvas = ({
           pathHighlightedEdgeIds={pathHighlight?.edgeIds}
           onEdgeClick={handleEdgeClick}
           onEdgeHover={setHoveredEdge}
-          onEdgeRemove={onColumnEdgeRemove}
-          onPipelineClick={onAddPipelineClick}
         />
         <LineageMapControls
           canDrill={canDrillScene}

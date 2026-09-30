@@ -53,6 +53,7 @@ export interface LineageMapEdgeData {
   dataTestId?: string;
   edge: EdgeDetails;
   isColumnLineage: boolean;
+  isEditable?: boolean;
   isRollup?: boolean;
   label?: string;
   sceneEdge?: LineageSceneEdge;
@@ -140,6 +141,24 @@ export const hasSceneEntityConnection = (
       getEndpointHandle(edge.to) === targetHandle
   );
 };
+
+// A refreshed Asset scene shows a new column edge as its entity edge, while a
+// Field scene only carries the column edge, so accept either.
+export const hasSceneLineageEdge = (
+  scene: LineageScene,
+  fromEntityId: string,
+  toEntityId: string,
+  columnPair?: { fromColumn: string; toColumn: string }
+) =>
+  hasSceneEntityConnection(scene, fromEntityId, toEntityId) ||
+  (columnPair !== undefined &&
+    hasSceneEntityConnection(
+      scene,
+      fromEntityId,
+      toEntityId,
+      columnPair.fromColumn,
+      columnPair.toColumn
+    ));
 
 export const isEditableSceneNode = (
   node?: LineageSceneNode

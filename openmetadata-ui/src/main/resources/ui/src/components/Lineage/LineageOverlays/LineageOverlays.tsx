@@ -106,9 +106,35 @@ const LineageDrawerOverlay = ({
   onEdgeDetailsUpdate,
   onEntityUpdate,
 }: LineageDrawerOverlayProps) => {
+  const { canEditLineage, closeDrawer, openAddEdgeModal, openDeleteModal } =
+    useLineageStore(
+      useShallow((state) => ({
+        canEditLineage: state.canEditLineage,
+        closeDrawer: state.closeDrawer,
+        openAddEdgeModal: state.openAddEdgeModal,
+        openDeleteModal: state.openDeleteModal,
+      }))
+    );
+
   if (!selectedNode && !selectedEdge) {
     return null;
   }
+
+  const canEditEdge = canEditLineage && Boolean(selectedEdge?.data?.isEditable);
+  // The drawer is modal, so it closes before the pipeline or delete dialog opens.
+  const handleEditPipeline =
+    canEditEdge && !selectedEdge?.data?.isColumnLineage
+      ? () => {
+          closeDrawer();
+          openAddEdgeModal();
+        }
+      : undefined;
+  const handleDelete = canEditEdge
+    ? () => {
+        closeDrawer();
+        openDeleteModal();
+      }
+    : undefined;
 
   return (
     <SlideoutMenu
@@ -143,7 +169,9 @@ const LineageDrawerOverlay = ({
           edge={selectedEdge}
           nodes={nodes}
           onClose={onCloseDrawer}
+          onDelete={handleDelete}
           onEdgeDetailsUpdate={onEdgeDetailsUpdate}
+          onEditPipeline={handleEditPipeline}
         />
       )}
     </SlideoutMenu>

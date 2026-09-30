@@ -1663,10 +1663,9 @@ export const Lineage = ({
         await removeEdgeHandler(selectedEdge as Edge, true);
       }
 
-      // Close the modal and drop the selection in the same batch so the
-      // floating edit/delete button in EdgeInteractionOverlay unmounts
-      // right after removal. Doing this here (rather than inside the
-      // handlers) keeps `selectedEdge` populated while the confirmation
+      // Close the modal and drop the selection in the same batch. Doing
+      // this here (rather than inside the handlers) keeps `selectedEdge`
+      // populated while the confirmation
       // modal is still mounted — getModalBodyText() destructures it
       // during render and would crash the tree if `selectedEdge` were
       // cleared before the modal unmounts.

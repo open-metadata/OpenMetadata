@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Dropdown } from '@openmetadata/ui-core-components';
+import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
 import { GitMerge, X } from '@untitledui/icons';
 import { Button, Tooltip, Typography } from 'antd';
 import { TFunction } from 'i18next';
@@ -184,6 +186,43 @@ const buildEdgeOverviewData = (
   ].filter((item): item is OverviewDataItem => Boolean(item));
 };
 
+const EdgeActionsMenu = ({
+  onEditPipeline,
+  onDelete,
+}: Pick<EdgeInfoDrawerInfo, 'onEditPipeline' | 'onDelete'>) => {
+  const { t } = useTranslation();
+
+  if (!onEditPipeline && !onDelete) {
+    return null;
+  }
+
+  return (
+    <Dropdown.Root>
+      <Dropdown.DotsButton data-testid="edge-drawer-menu" />
+      <Dropdown.Popover>
+        <Dropdown.Menu
+          aria-label={t('label.action-plural')}
+          disallowEmptySelection={false}
+          selectionMode="none"
+          onAction={(key) =>
+            key === 'edit-pipeline' ? onEditPipeline?.() : onDelete?.()
+          }>
+          {onEditPipeline ? (
+            <Dropdown.Item icon={Edit} id="edit-pipeline">
+              {t('label.edit-entity', { entity: t('label.pipeline') })}
+            </Dropdown.Item>
+          ) : null}
+          {onDelete ? (
+            <Dropdown.Item icon={Delete} id="delete">
+              {t('label.delete')}
+            </Dropdown.Item>
+          ) : null}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
 const EdgeInfoDrawer = ({
   edge,
   visible,
@@ -191,6 +230,8 @@ const EdgeInfoDrawer = ({
   nodes,
   hasEditAccess,
   onEdgeDetailsUpdate,
+  onEditPipeline,
+  onDelete,
 }: EdgeInfoDrawerInfo) => {
   const [edgeData, setEdgeData] = useState<
     Array<{
@@ -463,6 +504,10 @@ const EdgeInfoDrawer = ({
                 </Tooltip>
               </div>
             </div>
+            <EdgeActionsMenu
+              onDelete={onDelete}
+              onEditPipeline={onEditPipeline}
+            />
             <Button
               aria-label={t('label.close')}
               className="drawer-close-icon flex-center mr-2"
