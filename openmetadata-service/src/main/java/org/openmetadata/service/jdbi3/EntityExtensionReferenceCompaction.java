@@ -77,6 +77,11 @@ public final class EntityExtensionReferenceCompaction {
     return new CompactionPage(rows.size(), tally.processed(), tally.rewritten());
   }
 
+  /** References still waiting for compaction, for the sweep's backlog log line. */
+  public long pendingCount() {
+    return daoCollection.entityExtensionReferenceDAO().countPending();
+  }
+
   /** Compacts every pending value of one holder; used by tests and the ops command. */
   public int compactPendingFor(UUID holderId) {
     return compactKeys(daoCollection.entityExtensionReferenceDAO().listPendingKeysFor(holderId))

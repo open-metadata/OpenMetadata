@@ -1389,6 +1389,7 @@ public class ColumnCustomPropertiesIT {
           client, columnFqn, "table", Map.of(propName, List.of(teamRef(first), teamRef(second))));
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitCompacted(table.getId(), first.getId());
 
       assertEquals(
           List.of(second.getId().toString()),
@@ -1419,6 +1420,7 @@ public class ColumnCustomPropertiesIT {
           client, table.getFullyQualifiedName() + ".id", "table", Map.of(propName, teamRef(team)));
 
       client.teams().delete(team.getId().toString(), HARD_DELETE);
+      awaitCompacted(table.getId(), team.getId());
 
       assertTrue(
           columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName)
@@ -1483,6 +1485,7 @@ public class ColumnCustomPropertiesIT {
                       .withColumns(List.of(metric)));
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitCompacted(dataModel.getId(), first.getId());
 
       DashboardDataModel reloaded =
           client.dashboardDataModels().get(dataModel.getId().toString(), "columns,extension");
@@ -1563,6 +1566,7 @@ public class ColumnCustomPropertiesIT {
       client.teams().delete(first.getId().toString(), HARD_DELETE);
 
       CustomPropertyReferenceBackfill.backfillCustomPropertyReferences(Entity.getCollectionDAO());
+      awaitCompacted(table.getId(), first.getId());
 
       assertEquals(
           List.of(second.getId().toString()),
@@ -1599,6 +1603,7 @@ public class ColumnCustomPropertiesIT {
           client.tables().getByName(schema.getFullyQualifiedName() + "." + create.getName());
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitCompacted(table.getId(), first.getId());
 
       assertEquals(
           List.of(second.getId().toString()),
@@ -1634,6 +1639,7 @@ public class ColumnCustomPropertiesIT {
               .execute();
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitCompacted(table.getId(), first.getId());
 
       Table reloaded = tableWith(client, table, "columns,extension");
       Column reloadedLeaf = getDeepestColumn(columnNamed(reloaded.getColumns(), "outer"));
@@ -1663,6 +1669,7 @@ public class ColumnCustomPropertiesIT {
           createTableWithColumnReferences(ns, propName, List.of(teamRef(first), teamRef(second)));
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitCompacted(table.getId(), first.getId());
 
       ListResponse<Table> page =
           client
@@ -1725,6 +1732,8 @@ public class ColumnCustomPropertiesIT {
       String modelColumn = dataModel.getFullyQualifiedName() + ".metric1";
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitCompacted(table.getId(), first.getId());
+      awaitCompacted(dataModel.getId(), first.getId());
 
       assertEquals(
           List.of(second.getId().toString()),
@@ -1902,6 +1911,10 @@ public class ColumnCustomPropertiesIT {
     return referenceIdsOf(columnNamed(stored.getColumns(), columnName), propName);
   }
 
+  /**
+   * A hard delete marks the references; the compaction sweep rewrites the values shortly after.
+   * Tests run one compaction pass for the holder and wait for the settled state.
+   */
   private static void awaitCompacted(UUID holderId, UUID deletedTarget) {
     Awaitility.await("column values compacted")
         .atMost(Duration.ofSeconds(30))

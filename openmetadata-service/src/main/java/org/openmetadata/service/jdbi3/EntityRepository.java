@@ -6207,17 +6207,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new ColumnExtensionReferences(daoCollection);
   }
 
-  /** Marks on this type's column values, by holder and column key; empty when none can exist. */
-  protected final Map<UUID, Map<String, Set<String>>> pendingColumnReferences(
-      List<UUID> holderIds) {
-    return columnReferences().pending(entityType, holderIds);
-  }
-
-  protected final void removePendingColumnReferences(
-      UUID holderId, List<Column> columns, Map<UUID, Map<String, Set<String>>> pending) {
-    ColumnExtensionReferences.removePending(entityType, holderId, columns, pending);
-  }
-
   public final void removeExtension(EntityInterface entity) {
     if (entity.getExtension() == null) {
       return;
@@ -6355,9 +6344,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return readBundle.getExtensionOrNull(entity.getId());
     }
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
-    // Marks before values; see EntityExtensionReferences.pendingReferences.
-    Map<UUID, Map<String, Set<String>>> pending =
-        extensionReferences().pendingReferences(List.of(entity.getId()));
     List<ExtensionRecord> records =
         daoCollection.entityExtensionDAO().getExtensions(entity.getId(), fieldFQNPrefix);
     if (records.isEmpty()) {
@@ -6379,8 +6365,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       objectNode.set(fieldName, fieldValue);
     }
-    EntityExtensionReferences.removePending(Map.of(entity.getId(), objectNode), pending);
-    return objectNode.isEmpty() ? null : objectNode;
+    return objectNode;
   }
 
   protected void applyColumnTags(List<Column> columns) {
@@ -12705,10 +12690,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return Collections.emptyMap();
     }
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
-    // Marks before values; see EntityExtensionReferences.pendingReferences.
-    Map<UUID, Map<String, Set<String>>> pending =
-        extensionReferences()
-            .pendingReferences(entities.stream().map(EntityInterface::getId).toList());
 
     List<CoreRelationshipDAOs.ExtensionRecordWithId> records =
         daoCollection
@@ -12719,7 +12700,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         records.stream()
             .collect(Collectors.groupingBy(CoreRelationshipDAOs.ExtensionRecordWithId::id));
 
-    Map<UUID, ObjectNode> nodes = new HashMap<>();
+    Map<UUID, Object> result = new HashMap<>();
 
     for (Entry<UUID, List<CoreRelationshipDAOs.ExtensionRecordWithId>> entry :
         extensionsMap.entrySet()) {
@@ -12733,17 +12714,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         objectNode.set(fieldName, extensionJsonNode);
       }
 
-      nodes.put(entityId, objectNode);
+      result.put(entityId, objectNode);
     }
-    EntityExtensionReferences.removePending(nodes, pending);
 
-    Map<UUID, Object> result = new HashMap<>();
-    nodes.forEach(
-        (entityId, node) -> {
-          if (!node.isEmpty()) {
-            result.put(entityId, node);
-          }
-        });
     return result;
   }
 

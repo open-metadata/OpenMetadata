@@ -1235,6 +1235,7 @@ public class TypeResourceIT {
           createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitSettled(domain.getId());
 
       assertEquals(
           List.of(second.getId().toString()),
@@ -1258,6 +1259,7 @@ public class TypeResourceIT {
       Domain domain = createDomain(client, ns, property, referenceOf(team));
 
       client.teams().delete(team.getId().toString(), HARD_DELETE);
+      awaitSettled(domain.getId());
 
       assertTrue(
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
@@ -1303,6 +1305,7 @@ public class TypeResourceIT {
       Domain domain =
           createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
       client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitSettled(domain.getId());
 
       Domain current = client.domains().get(domain.getId().toString(), "extension");
       current.setExtension(Map.of(property, List.of(referenceOf(second), referenceOf(third))));
@@ -1370,6 +1373,7 @@ public class TypeResourceIT {
           createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitSettled(domain.getId());
 
       Domain listed = findInDomainList(client, domain.getId());
       assertNotNull(listed, "domain is listed");
@@ -1397,6 +1401,7 @@ public class TypeResourceIT {
               .size());
 
       CustomPropertyReferenceBackfill.backfillCustomPropertyReferences(Entity.getCollectionDAO());
+      awaitSettled(domain.getId());
 
       assertEquals(
           List.of(second.getId().toString()),
@@ -1445,6 +1450,7 @@ public class TypeResourceIT {
       client.teams().delete(doomed.getId().toString(), HARD_DELETE);
       writers.shutdown();
       assertTrue(writers.awaitTermination(2, TimeUnit.MINUTES));
+      awaitSettled(domain.getId());
 
       assertFalse(
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
@@ -1488,6 +1494,7 @@ public class TypeResourceIT {
       Domain domain = createDomain(client, ns, property, List.of(referenceOf(child)));
 
       client.teams().delete(parent.getId().toString(), HARD_DELETE);
+      awaitSettled(domain.getId());
 
       assertTrue(
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
@@ -1519,6 +1526,7 @@ public class TypeResourceIT {
       client.domains().update(domain.getId().toString(), described);
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitSettled(domain.getId());
 
       Domain current = client.domains().get(domain.getId().toString(), "extension");
       current.setExtension(Map.of(property, List.of(referenceOf(second), referenceOf(third))));
@@ -1546,6 +1554,25 @@ public class TypeResourceIT {
       }
       params = new ListParams().setFields("extension").withLimit(100).setAfter(after);
     }
+  }
+
+  /**
+   * A hard delete marks the references; the compaction sweep rewrites the values shortly after.
+   * Tests run one compaction pass for the holder and wait until nothing is left pending.
+   */
+  private static void awaitSettled(UUID holderId) {
+    Awaitility.await("custom-property references compacted")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              new EntityExtensionReferenceCompaction(Entity.getCollectionDAO())
+                  .compactPendingFor(holderId);
+              assertTrue(
+                  Entity.getCollectionDAO()
+                      .entityExtensionReferenceDAO()
+                      .findPending(List.of(holderId.toString()))
+                      .isEmpty());
+            });
   }
 
   private static String addTeamReferenceProperty(

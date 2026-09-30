@@ -553,6 +553,9 @@ public interface CoreRelationshipDAOs {
       return nullOrEmpty(ids) ? List.of() : EntityDAO.queryInChunks(ids, this::findPendingInternal);
     }
 
+    @SqlQuery("SELECT COUNT(*) FROM entity_extension_reference WHERE pendingCompaction = TRUE")
+    long countPending();
+
     /** Non-locking candidate read for the sweep; one row per pending reference, dedupe in Java. */
     @SqlQuery(
         "SELECT id, extension, fromEntity FROM entity_extension_reference "

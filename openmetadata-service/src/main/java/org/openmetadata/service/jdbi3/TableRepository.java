@@ -218,15 +218,8 @@ public class TableRepository extends EntityRepository<Table> {
     if (fields.contains(CUSTOM_METRICS)) {
       metadataLoader.loadMetrics(List.of(table), fields.contains(COLUMN_FIELD));
     }
-    // Columns are served whether or not they were asked for, so the filter does not key on fields.
-    if (!nullOrEmpty(table.getColumns())) {
-      // Marks before side-table values. The inline copy came with the entity row, so a read that
-      // straddles a compaction can still serve a dead id once.
-      Map<UUID, Map<String, Set<String>>> pending = pendingColumnReferences(List.of(table.getId()));
-      if (fields.contains(COLUMN_FIELD) && fields.contains("extension")) {
-        metadataLoader.loadColumnExtensions(table.getId(), table.getColumns());
-      }
-      removePendingColumnReferences(table.getId(), table.getColumns(), pending);
+    if (fields.contains(COLUMN_FIELD) && fields.contains("extension")) {
+      metadataLoader.loadColumnExtensions(table.getId(), table.getColumns());
     }
   }
 
@@ -241,18 +234,6 @@ public class TableRepository extends EntityRepository<Table> {
     // Column tags come from tag_usage, not table JSON — fetched via fetchAndSetColumnTags when tags
     // requested
     entities.forEach(table -> clearFieldsInternal(table, fields));
-    filterPendingColumnReferences(entities);
-  }
-
-  /** List reads serve the inline copy of column values, so they take the same filter. */
-  private void filterPendingColumnReferences(List<Table> tables) {
-    if (tables.isEmpty()) {
-      return;
-    }
-    Map<UUID, Map<String, Set<String>>> pending =
-        pendingColumnReferences(tables.stream().map(Table::getId).toList());
-    tables.forEach(
-        table -> removePendingColumnReferences(table.getId(), table.getColumns(), pending));
   }
 
   // Individual field fetchers registered in constructor
@@ -2915,13 +2896,9 @@ public class TableRepository extends EntityRepository<Table> {
       metadataLoader.loadColumnMetrics(table.getId(), paginatedColumns);
     }
 
-    // Marks before side-table values. The inline copy came with the entity row, so a read that
-    // straddles a compaction can still serve a dead id once.
-    Map<UUID, Map<String, Set<String>>> pending = pendingColumnReferences(List.of(table.getId()));
     if (fieldsParam != null && fieldsParam.contains("extension")) {
       metadataLoader.loadColumnExtensions(table.getId(), paginatedColumns);
     }
-    removePendingColumnReferences(table.getId(), paginatedColumns, pending);
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(paginatedColumns);
@@ -2949,14 +2926,10 @@ public class TableRepository extends EntityRepository<Table> {
       List<EntityReference> piiOwners,
       Authorizer authorizer,
       SecurityContext securityContext) {
-    List<Column> singleton = new ArrayList<>(List.of(column));
-    // Marks before side-table values. The inline copy came with the entity row, so a read that
-    // straddles a compaction can still serve a dead id once.
-    Map<UUID, Map<String, Set<String>>> pending = pendingColumnReferences(List.of(table.getId()));
     if (fieldsParam == null) {
-      removePendingColumnReferences(table.getId(), singleton, pending);
       return column;
     }
+    List<Column> singleton = new ArrayList<>(List.of(column));
     if (fieldsParam.contains("tags")) {
       populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
     }
@@ -2966,7 +2939,6 @@ public class TableRepository extends EntityRepository<Table> {
     if (fieldsParam.contains("extension")) {
       metadataLoader.loadColumnExtensions(table.getId(), singleton);
     }
-    removePendingColumnReferences(table.getId(), singleton, pending);
     if (fieldsParam.contains("profile")) {
       setColumnProfile(singleton);
       if (!fieldsParam.contains("tags")) {

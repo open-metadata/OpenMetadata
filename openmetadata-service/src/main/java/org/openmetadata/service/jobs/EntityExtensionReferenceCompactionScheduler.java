@@ -112,6 +112,22 @@ public class EntityExtensionReferenceCompactionScheduler implements Managed {
     if (rewritten > 0) {
       LOG.info("Compacted {} custom-property values with hard-deleted references", rewritten);
     }
+    logBacklog(rewritten);
     return rewritten;
+  }
+
+  /**
+   * A backlog that survives a run is normal while writers hold rows; one that survives a run that
+   * rewrote nothing means compaction is not converging, which is what the warning is for.
+   */
+  private void logBacklog(int rewritten) {
+    long pending = compaction.pendingCount();
+    if (pending > 0 && rewritten == 0) {
+      LOG.warn(
+          "{} custom-property references are pending compaction and none could be processed",
+          pending);
+    } else if (pending > 0) {
+      LOG.info("{} custom-property references are still pending compaction", pending);
+    }
   }
 }

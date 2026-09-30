@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.EntityExtensionReferences.ENTITY_REFERENCE;
 import static org.openmetadata.service.jdbi3.EntityExtensionReferences.ENTITY_REFERENCE_LIST;
 
@@ -31,11 +30,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
-import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceRow;
 import org.openmetadata.service.jdbi3.EntityExtensionReferenceCompaction.Outcome;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -43,8 +40,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 /**
  * Column-level counterpart of {@link EntityExtensionReferences}. A column's value is one {@code
  * entity_extension} row keyed by the hash of the column FQN, holding every custom property of the
- * column, and a second copy lives inline in the holder's own JSON; both are filtered on read and
- * both are rewritten on compaction, or the inline copy would serve the dead reference again.
+ * column, and a second copy lives inline in the holder's own JSON; compaction rewrites both, or
+ * the inline copy would serve the dead reference again.
  */
 public final class ColumnExtensionReferences {
   static final String COLUMN_EXTENSION_SCHEMA = TableRepository.COLUMN_EXTENSION_JSON_SCHEMA;
@@ -69,12 +66,7 @@ public final class ColumnExtensionReferences {
     this.references = new EntityExtensionReferences(daoCollection);
   }
 
-  /**
-   * Whether this server knows a reference-typed column property for the holder type. Column reads
-   * are the hottest path that carries custom properties, so they skip the ledger when none exists.
-   * A server that has not yet seen a property created on a peer skips it until its registry
-   * reloads; the sweep still compacts the value, which is what that server then serves.
-   */
+  /** Whether this server's registry knows a reference-typed column property for the holder type. */
   public static boolean tracksReferences(String holderType) {
     String columnType = COLUMN_ENTITY_TYPES.get(holderType);
     return columnType != null && TypeRegistry.hasCustomPropertyOfType(columnType, REFERENCE_TYPES);
@@ -177,59 +169,6 @@ public final class ColumnExtensionReferences {
 
   public void delete(UUID holderId, String columnKey) {
     daoCollection.entityExtensionReferenceDAO().delete(holderId, columnKey);
-  }
-
-  /**
-   * Hard-deleted targets in column values not compacted yet, by holder and column key. Read before
-   * the values for the same reason as {@link EntityExtensionReferences#pendingReferences}.
-   */
-  public Map<UUID, Map<String, Set<String>>> pending(String holderType, List<UUID> holderIds) {
-    if (holderIds.isEmpty() || !tracksReferences(holderType)) {
-      return Map.of();
-    }
-    List<String> ids = holderIds.stream().map(UUID::toString).toList();
-    Map<UUID, Map<String, Set<String>>> pending = new HashMap<>();
-    for (ReferenceRow row : daoCollection.entityExtensionReferenceDAO().findPending(ids)) {
-      if (!EntityExtensionReferences.isEntityLevelKey(row.extension())) {
-        pending
-            .computeIfAbsent(row.id(), ignored -> new HashMap<>())
-            .computeIfAbsent(row.extension(), ignored -> new HashSet<>())
-            .add(row.toId());
-      }
-    }
-    return pending;
-  }
-
-  /** Drops pending references from the columns' values, nested columns included. */
-  public static void removePending(
-      String holderType,
-      UUID holderId,
-      List<Column> columns,
-      Map<UUID, Map<String, Set<String>>> pending) {
-    Map<String, Set<String>> byKey = pending.get(holderId);
-    if (byKey == null || nullOrEmpty(columns)) {
-      return;
-    }
-    Predicate<String> isReference = referencePropertiesOf(holderType);
-    for (Column column : EntityUtil.getFlattenedEntityField(columns)) {
-      Set<String> dead =
-          column.getFullyQualifiedName() == null
-              ? null
-              : byKey.get(columnKey(column.getFullyQualifiedName()));
-      if (dead != null && column.getExtension() != null) {
-        column.setExtension(withoutDead(column.getExtension(), dead, isReference));
-      }
-    }
-  }
-
-  private static Object withoutDead(
-      Object extension, Set<String> dead, Predicate<String> isReference) {
-    JsonNode node = JsonUtils.valueToTree(extension);
-    if (!node.isObject()) {
-      return extension;
-    }
-    removeDead((ObjectNode) node, dead, isReference);
-    return node.isEmpty() ? null : JsonUtils.treeToValue(node, Object.class);
   }
 
   /** Removes dead ids from every reference-typed property; a property it empties is dropped. */
