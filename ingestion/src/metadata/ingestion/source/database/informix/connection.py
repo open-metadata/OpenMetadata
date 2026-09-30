@@ -118,7 +118,7 @@ def _use_committed_read(engine: Engine) -> None:
             cursor.execute("SET ISOLATION TO COMMITTED READ")
             cursor.close()
         except Exception as exc:
-            logger.warning(f"Could not set Committed Read; reads may hold locks until the connection closes: {exc}")
+            logger.warning("Could not set Committed Read; reads may hold locks until the connection closes: %s", exc)
 
 
 class InformixConnection(BaseConnection[InformixConnectionConfig, Engine]):

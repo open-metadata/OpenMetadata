@@ -77,7 +77,7 @@ class InformixSampler(SQASampler):
             # Most tables have no such column, so sampling as-is is still worth
             # attempting.
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not read column types for {table.schema}.{table.name}: {exc}")
+            logger.warning("Could not read column types for %s.%s: %s", table.schema, table.name, exc)
             rows = []
 
         self._driver_unfriendly = {name: bool(casts_to_text) for name, casts_to_text in rows}
@@ -93,8 +93,10 @@ class InformixSampler(SQASampler):
         table = self._sqa_table()
         name = f"{table.schema}.{table.name}" if table is not None else "the table"
         logger.info(
-            f"Leaving out of the sample for {name} the columns whose type the "
-            f"Informix JDBC driver cannot convert and that cannot be cast to text: {', '.join(sorted(dropped))}"
+            "Leaving out of the sample for %s the columns whose type the Informix JDBC driver "
+            "cannot convert and that cannot be cast to text: %s",
+            name,
+            ", ".join(sorted(dropped)),
         )
         return [column for column in columns if column.name not in dropped]
 

@@ -142,8 +142,9 @@ class TestSslPolicy:
     @pytest.mark.parametrize("mode", [SslMode.verify_ca, SslMode.verify_full])
     def test_verify_modes_refuse_rather_than_downgrade(self, mode):
         """A verifying mode must never quietly become an unverified channel."""
+        verifying = config(sslMode=mode)
         with pytest.raises(NotImplementedError):
-            get_connection_url(config(sslMode=mode))
+            get_connection_url(verifying)
 
 
 class TestTestConnection:
@@ -194,8 +195,9 @@ class TestServiceSpec:
             },
             "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
         }
+        metadata = OpenMetadata.__new__(OpenMetadata)
         with pytest.raises(InvalidSourceException):
-            InformixSource.create(cockroach, OpenMetadata.__new__(OpenMetadata))
+            InformixSource.create(cockroach, metadata)
 
 
 class TestClasspath:

@@ -64,7 +64,7 @@ class InformixProfilerInterface(SQAProfilerInterface):
             return set(sampler.driver_unfriendly_columns())
         except Exception as exc:
             # The per-column backstop below still catches these.
-            logger.warning(f"Could not read column types for {model_str(self.table_entity.name)}: {exc}")
+            logger.warning("Could not read column types for %s: %s", model_str(self.table_entity.name), exc)
             return set()
 
     def get_columns(self):
@@ -74,8 +74,9 @@ class InformixProfilerInterface(SQAProfilerInterface):
             return super().get_columns()
 
         logger.info(
-            f"Skipping profiler metrics on {model_str(self.table_entity.name)} for the columns Informix "
-            f"will not aggregate: {', '.join(sorted(skipped))}"
+            "Skipping profiler metrics on %s for the columns Informix will not aggregate: %s",
+            model_str(self.table_entity.name),
+            ", ".join(sorted(skipped)),
         )
         return [column for column in super().get_columns() if column.name not in skipped]
 
@@ -85,6 +86,8 @@ class InformixProfilerInterface(SQAProfilerInterface):
         """Backstop for a type the skip above does not know: cost the column's
         metrics, not the whole table's."""
         logger.warning(
-            f"Skipping profiler metrics for {runner.table_name}.{column.name}: Informix rejected the query ({exc})"
+            "Skipping profiler metrics for %s.%s: Informix rejected the query (%s)",
+            runner.table_name,
+            column.name,
+            exc,
         )
-        return

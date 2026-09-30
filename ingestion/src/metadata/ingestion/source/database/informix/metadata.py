@@ -205,7 +205,7 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
                 yield new_database
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Error trying to connect to database {new_database}: {exc}")
+                logger.error("Error trying to connect to database %s: %s", new_database, exc)
 
     @staticmethod
     def _declared_length(basetype: int, collength: int | None) -> int | None:
@@ -217,6 +217,23 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
         if basetype in PLAIN_LENGTH_COLTYPES:
             return collength
         return None
+
+    @classmethod
+    def _override_for(cls, basetype: int, collength: int | None, xtype: str | None) -> ColumnOverride | None:
+        """What to correct on one syscolumns row, or None if the driver got it right."""
+        mapped = LOB_TYPES_BY_COLTYPE.get(basetype)
+        if mapped is None and basetype == COLTYPE_OPAQUE:
+            # 41 is also BOOLEAN and every other opaque type; only the named
+            # smart large objects belong here.
+            mapped = LOB_TYPES_BY_SUBTYPE.get((xtype or "").lower())
+        if mapped is None and basetype == COLTYPE_INTERVAL and collength is not None:
+            # The driver reports INTERVAL as CHAR, and LENGTH() -- which the
+            # profiler then sends -- is ambiguous on an INTERVAL.
+            mapped = (Interval, interval_display(collength))
+        if mapped:
+            return ColumnOverride(mapped[0], mapped[1], None)
+        length = cls._declared_length(basetype, collength)
+        return ColumnOverride(None, None, length) if length is not None else None
 
     def _column_overrides(self, db_name: str, schema_name: str) -> dict[tuple[str, str], ColumnOverride]:
         """Map (table, column) to what the JDBC driver got wrong, for one schema.
@@ -242,23 +259,13 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
             # Reflection still works without this; the columns just keep the
             # VARCHAR the driver reported, so degrade rather than fail the run.
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not read column types for schema {schema_name}: {exc}")
+            logger.warning("Could not read column types for schema %s: %s", schema_name, exc)
             rows = []
 
         for tabname, colname, basetype, collength, xtype in rows:
-            mapped = LOB_TYPES_BY_COLTYPE.get(basetype)
-            if mapped is None and basetype == COLTYPE_OPAQUE:
-                # 41 is also BOOLEAN and every other opaque type; only the named
-                # smart large objects belong here.
-                mapped = LOB_TYPES_BY_SUBTYPE.get((xtype or "").lower())
-            if mapped is None and basetype == COLTYPE_INTERVAL:
-                # The driver reports INTERVAL as CHAR, and LENGTH() -- which the
-                # profiler then sends -- is ambiguous on an INTERVAL.
-                mapped = (Interval, interval_display(collength))
-            sqa_type, display = mapped if mapped else (None, None)
-            length = None if mapped else self._declared_length(basetype, collength)
-            if sqa_type is not None or length is not None:
-                found[(tabname, colname)] = ColumnOverride(sqa_type, display, length)
+            override = self._override_for(basetype, collength, xtype)
+            if override is not None:
+                found[(tabname, colname)] = override
 
         self._column_overrides_cache[cache_key] = found
         while len(self._column_overrides_cache) > MAX_CACHED_SCHEMAS:
@@ -289,7 +296,7 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
             return "".join(row[0] for row in rows if row[0]) or None
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not read the body of stored procedure {proc_id}: {exc}")
+            logger.warning("Could not read the body of stored procedure %s: %s", proc_id, exc)
             return None
 
     def yield_stored_procedure(
@@ -340,9 +347,6 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
         """
         columns = super()._get_columns_internal(schema_name, table_name, db_name, inspector, table_type)
         overrides = self._column_overrides(db_name, schema_name)
-        if not overrides:
-            return columns
-
         for column in columns:
             override = overrides.get((table_name, column["name"]))
             if override is None:
@@ -350,7 +354,7 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
             if override.sqa_type is not None:
                 column["type"] = override.sqa_type()
                 column["system_data_type"] = override.display_name  # pyright: ignore[reportGeneralTypeIssues]
-                logger.debug(f"{table_name}.{column['name']} corrected to {override.display_name}")
+                logger.debug("%s.%s corrected to %s", table_name, column["name"], override.display_name)
             elif override.length is not None:
                 # Mutated rather than rebuilt so the reflected type keeps whatever
                 # else it carries (collation, charset).

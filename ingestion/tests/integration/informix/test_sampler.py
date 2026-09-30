@@ -112,7 +112,8 @@ class TestSamplerSkipsUnconvertibleTypes:
         """
         rows = metadata.get_sample_data(sampled_table).sampleData.rows
         value = rows[0][sample_columns.index("d_row")]
-        assert value is not None and value.startswith("ROW("), value
+        assert value is not None
+        assert value.startswith("ROW("), value
 
     def test_the_castable_opaque_column_keeps_its_data(self, sampled_table, sample_columns, metadata):
         """The point of the cast: the column is present *and* carries its value.
