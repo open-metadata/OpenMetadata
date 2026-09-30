@@ -639,6 +639,47 @@ describe('ExploreTree', () => {
     expect(await findByText('bigquery_prod')).toBeInTheDocument();
   };
 
+  it('retries a failed lazy load on the next expand', async () => {
+    jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(treeWithServiceMock());
+    const aggregateSpy = jest
+      .spyOn(miscAPI, 'postAggregateFieldOptions')
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValue(
+        buildFieldAggregationResponse('service.displayName.keyword', [
+          { key: 'bigquery_prod', doc_count: 900 },
+        ])
+      );
+
+    const { findByText, getByText, queryByTestId } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(getExpandButton(await findByText('BigQuery')));
+
+    // The failed load collapses the node instead of leaving it expanded and
+    // empty, so the next expand fetches again.
+    await waitFor(() => {
+      expect(aggregateSpy).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(getExpandButton(getByText('BigQuery'))).toHaveAttribute(
+        'aria-label',
+        'Expand'
+      );
+    });
+
+    fireEvent.click(getExpandButton(getByText('BigQuery')));
+
+    expect(await findByText('bigquery_prod')).toBeInTheDocument();
+    expect(aggregateSpy).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps the expanded subtree mounted when a node is selected (browse)', async () => {
     jest
       .spyOn(searchAPI, 'searchQuery')

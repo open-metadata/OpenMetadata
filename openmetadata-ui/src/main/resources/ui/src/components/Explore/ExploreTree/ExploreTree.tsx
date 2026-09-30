@@ -376,9 +376,24 @@ const ExploreTree = ({
     return [parsedSearch, searchQueryParam, defaultServiceType];
   }, [location.search]);
 
+  // A skipped or failed load must not stay marked as requested, or the node
+  // could never load again. Collapse it too, so the retry happens on the next
+  // expand rather than in a tight effect loop on a failing request.
+  const forgetLoadRequest = useCallback((key: string) => {
+    requestedKeysRef.current.delete(key);
+    setExpandedKeys((prev) =>
+      prev.filter((expandedKey) => expandedKey !== key)
+    );
+  }, []);
+
   const onLoadData = useCallback(
     async (treeNode: ExploreTreeNode) => {
-      if (isTourOpen || treeNode.children || treeNode.disabled) {
+      if (treeNode.children || treeNode.disabled) {
+        return;
+      }
+      if (isTourOpen) {
+        forgetLoadRequest(treeNode.key);
+
         return;
       }
       setLoadingKeys((prev) => new Set(prev).add(treeNode.key));
@@ -498,6 +513,7 @@ const ExploreTree = ({
           updateTreeData(origin, treeNode.key, children as ExploreTreeNode[])
         );
       } catch (error) {
+        forgetLoadRequest(treeNode.key);
         showErrorToast(error as AxiosError);
       } finally {
         setLoadingKeys((prev) => {
@@ -510,6 +526,7 @@ const ExploreTree = ({
     },
     [
       isTourOpen,
+      forgetLoadRequest,
       updateTreeData,
       searchQueryParam,
       defaultServiceType,

@@ -207,8 +207,8 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page
         .getByTestId('explore-tree')
         .getByRole('row')
-          .filter({
-            has: page.getByTestId('explore-tree-title-Governance'),
+        .filter({
+          has: page.getByTestId('explore-tree-title-Governance'),
         })
         .getByTestId('tree-expand-btn')
         .click();
@@ -477,8 +477,8 @@ test.describe('Explore page', () => {
     await page
       .getByTestId('explore-tree')
       .getByRole('row')
-        .filter({
-          has: page.getByTestId('explore-tree-title-Dashboards'),
+      .filter({
+        has: page.getByTestId('explore-tree-title-Dashboards'),
       })
       .getByTestId('tree-expand-btn')
       .click();
@@ -489,8 +489,8 @@ test.describe('Explore page', () => {
     await page
       .getByTestId('explore-tree')
       .getByRole('row')
-        .filter({
-          has: page.getByTestId('explore-tree-title-superset'),
+      .filter({
+        has: page.getByTestId('explore-tree-title-superset'),
       })
       .getByTestId('tree-expand-btn')
       .click();
@@ -503,8 +503,8 @@ test.describe('Explore page', () => {
     await page
       .getByTestId('explore-tree')
       .getByRole('row')
-        .filter({
-          has: page.getByTestId(`explore-tree-title-${serviceName}`),
+      .filter({
+        has: page.getByTestId(`explore-tree-title-${serviceName}`),
       })
       .getByTestId('tree-expand-btn')
       .click();
