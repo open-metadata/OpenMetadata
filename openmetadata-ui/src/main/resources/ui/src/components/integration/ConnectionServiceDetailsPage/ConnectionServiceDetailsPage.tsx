@@ -23,6 +23,7 @@ import {
 import { Settings01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { PagingWithoutTotal } from 'Models';
 import React, {
   FC,
   ReactNode,
@@ -35,39 +36,32 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
   pagingObject,
 } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { Include } from '../../../generated/type/include';
-import { Paging } from '../../../generated/type/paging';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import { ServicePageData } from '../../../interface/platform/service.interface';
 import { ConfigData, ServicesType } from '../../../interface/service.interface';
-import { getApiCollections } from '../../../rest/apiCollectionsAPI';
-import { getDashboards } from '../../../rest/dashboardAPI';
-import { getDatabases } from '../../../rest/databaseAPI';
-import { getMlModels } from '../../../rest/mlModelAPI';
-import { getPipelines } from '../../../rest/pipelineAPI';
-import { getSearchIndexes } from '../../../rest/SearchIndexAPI';
 import {
   exportDatabaseServiceDetailsInCSV,
   getServiceByFQN,
   patchService,
   restoreService,
 } from '../../../rest/serviceAPI';
-import { getContainers } from '../../../rest/storageAPI';
-import { getTopics } from '../../../rest/topicsAPI';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
+import { commonTableFields } from '../../../utils/DatasetDetailsUtils';
 import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
@@ -102,6 +96,7 @@ import {
   getConnectionsRootBreadcrumb,
   getServiceCategoryBreadcrumb,
 } from './connectionsBreadcrumb.utils';
+import { fetchServiceChildren } from './connectionServiceChildren.utils';
 import DataAssetHeaderDetailsRow from './DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow';
 import DataAssetsTab from './DataAssetsTab';
 
@@ -163,7 +158,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
 
   const decodedFqn = useMemo(() => decodeURIComponent(fqn ?? ''), [fqn]);
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { extensionRegistry } = useApplicationsProvider();
 
   const [activeTab, setActiveTab] = useState<TabKey>(() => tab ?? 'dataAssets');
@@ -193,10 +188,12 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const pagingInfo = usePaging();
   const { paging, pageSize, currentPage, handlePagingChange } = pagingInfo;
 
-  const { filters: tableFilters, setFilters } = useTableFilters(
-    INITIAL_TABLE_FILTERS
-  );
-  const { showDeletedTables: showDeleted } = tableFilters;
+  // `schema` is the data-assets search box's URL param, owned by ServiceMainTabContent.
+  const { filters: tableFilters, setFilters } = useTableFilters({
+    ...INITIAL_TABLE_FILTERS,
+    schema: undefined as string | undefined,
+  });
+  const { showDeletedTables, schema: searchValue } = tableFilters;
 
   const fetchServiceDetails = useCallback(async () => {
     if (!serviceCategory || !decodedFqn) {
@@ -278,6 +275,23 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [serviceDetails.deleted]
   );
 
+  // A soft-deleted service's children are soft-deleted with it, so asking for live ones would
+  // return nothing and the tab would read as empty rather than as deleted.
+  const showDeleted = showDeletedTables || isServiceDeleted;
+
+  const { handlePageChange } = pagingInfo;
+  const handleShowDeletedChange = useCallback(
+    (value: boolean) => {
+      setFilters({ showDeletedTables: value ? 'true' : undefined });
+      // A cursor from one list is meaningless in the other.
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    },
+    [setFilters, handlePageChange]
+  );
+
   // Ungated derivation (no `deleted` arg): the manage-surface and edit reads below were all
   // unconditional in the migrated source, and restore must keep working on a soft-deleted
   // service — the only path back from soft-delete lives behind the same menu. Mirrors
@@ -287,101 +301,62 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [servicePermission]
   );
 
+  // The header's domain / owner / tier edits, by contrast, are gated on `deleted` and read their
+  // own field permissions — as classic's DataAssetsHeader does.
+  const headerEditFlags = useMemo(
+    () => getDerivedPermissionFlags(servicePermission, isServiceDeleted),
+    [servicePermission, isServiceDeleted]
+  );
+
   const categoryBreadcrumb = useMemo(
     () => getServiceCategoryBreadcrumb(t, serviceCategory),
     [t, serviceCategory]
   );
 
+  // Usage is gated on ViewUsage, as in classic service details.
+  const databaseFields = useMemo(
+    () =>
+      getDerivedPermissionFlags(permissions.database).canViewUsage
+        ? `${commonTableFields},${TabSpecificField.USAGE_SUMMARY}`
+        : commonTableFields,
+    [permissions.database]
+  );
+
+  // Only the latest list request may write the table: a slower earlier one — the previous page,
+  // the other side of the Deleted switch, a list a search has since replaced — would overwrite it.
+  const latestListRequestRef = useRef(0);
+
   const getOtherDetails = useCallback(
-    async (paging?: Omit<Paging, 'total'>) => {
+    async (paging?: PagingWithoutTotal) => {
+      const requestId = ++latestListRequestRef.current;
+      const isLatest = () => requestId === latestListRequestRef.current;
       try {
         setIsServiceLoading(true);
-        const pagingParams = { ...paging, limit: pageSize };
-        // A soft-deleted service's children are soft-deleted with it, so asking for live ones
-        // returns nothing and the tab reads as empty rather than as deleted.
-        const childInclude = isServiceDeleted
-          ? Include.Deleted
-          : Include.NonDeleted;
-        switch (serviceCategory as ServiceCategory) {
-          case ServiceCategory.DATABASE_SERVICES: {
-            const res = await getDatabases(decodedFqn, '', pagingParams);
-            setData(res.data);
-            handlePagingChange(res.paging);
-
-            break;
+        const res = await fetchServiceChildren(
+          serviceCategory as ServiceCategory,
+          {
+            service: decodedFqn,
+            fields:
+              serviceCategory === ServiceCategory.DATABASE_SERVICES
+                ? databaseFields
+                : commonTableFields,
+            paging: { ...paging, limit: pageSize },
+            include: showDeleted ? Include.Deleted : Include.NonDeleted,
           }
-          case ServiceCategory.MESSAGING_SERVICES: {
-            const res = await getTopics(decodedFqn, '', pagingParams);
-            setData(res.data);
-            handlePagingChange(res.paging);
-
-            break;
-          }
-          case ServiceCategory.DASHBOARD_SERVICES: {
-            const res = await getDashboards(decodedFqn, '', pagingParams);
-            setData(res.data);
-            handlePagingChange(res.paging);
-
-            break;
-          }
-          case ServiceCategory.PIPELINE_SERVICES: {
-            const res = await getPipelines(decodedFqn, '', pagingParams);
-            setData(res.data);
-            handlePagingChange(res.paging);
-
-            break;
-          }
-          case ServiceCategory.ML_MODEL_SERVICES: {
-            const res = await getMlModels(decodedFqn, '', pagingParams);
-            setData(res.data);
-            handlePagingChange(res.paging);
-
-            break;
-          }
-          case ServiceCategory.STORAGE_SERVICES: {
-            const res = await getContainers({
-              service: decodedFqn,
-              fields: '',
-              paging: pagingParams,
-              include: childInclude,
-            });
-            setData(res.data);
-            handlePagingChange(res.paging);
-
-            break;
-          }
-          case ServiceCategory.SEARCH_SERVICES: {
-            const res = await getSearchIndexes({
-              service: decodedFqn,
-              fields: '',
-              paging: pagingParams,
-              include: childInclude,
-            });
-            setData(res.data);
-            handlePagingChange(res.paging);
-
-            break;
-          }
-          case ServiceCategory.API_SERVICES: {
-            const res = await getApiCollections({
-              service: decodedFqn,
-              fields: '',
-              paging: pagingParams,
-              include: childInclude,
-            });
-            setData(res.data);
-            handlePagingChange(res.paging);
-
-            break;
-          }
-          default:
-            break;
+        );
+        if (isLatest()) {
+          setData(res?.data ?? []);
+          handlePagingChange(res?.paging ?? pagingObject);
         }
       } catch {
-        setData([]);
-        handlePagingChange(pagingObject);
+        if (isLatest()) {
+          setData([]);
+          handlePagingChange(pagingObject);
+        }
       } finally {
-        setIsServiceLoading(false);
+        if (isLatest()) {
+          setIsServiceLoading(false);
+        }
       }
     },
     [
@@ -389,7 +364,8 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       decodedFqn,
       pageSize,
       handlePagingChange,
-      isServiceDeleted,
+      showDeleted,
+      databaseFields,
     ]
   );
 
@@ -574,11 +550,27 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     fetchServicePermission();
   }, []);
 
+  const { cursorType, cursorValue } = pagingInfo.pagingCursor;
+
+  // Refetches on every input of the list — page cursor, page size, the deleted switch, a restore —
+  // and yields to ServiceMainTabContent while a search is active, as classic service details does.
   useEffect(() => {
-    if (activeTab === 'dataAssets' && serviceDetails.fullyQualifiedName) {
-      getOtherDetails();
+    const isListShown =
+      activeTab === 'dataAssets' && Boolean(serviceDetails.fullyQualifiedName);
+    if (searchValue) {
+      // The search owns the table now; a list request still in flight must not land on it.
+      latestListRequestRef.current += 1;
+    } else if (isListShown) {
+      getOtherDetails(cursorType ? { [cursorType]: cursorValue } : undefined);
     }
-  }, [activeTab, serviceDetails.fullyQualifiedName]);
+  }, [
+    activeTab,
+    serviceDetails.fullyQualifiedName,
+    searchValue,
+    cursorType,
+    cursorValue,
+    getOtherDetails,
+  ]);
 
   const extensionContext: PluginEntityDetailsContext = useMemo(
     () => ({
@@ -655,11 +647,16 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           : t('label.data-asset-plural'),
         order: DATA_ASSETS_TAB_ORDER,
       },
-      {
-        key: 'connection',
-        label: t('label.connection'),
-        order: CONNECTION_TAB_ORDER,
-      },
+      // The connection config is for those who may edit it; classic hides the tab otherwise.
+      ...(canEditAll
+        ? [
+            {
+              key: 'connection' as const,
+              label: t('label.connection'),
+              order: CONNECTION_TAB_ORDER,
+            },
+          ]
+        : []),
     ];
     const contributed: DetailsTab[] = pluginTabs.map((pluginTab) => ({
       key: pluginTab.key,
@@ -672,7 +669,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     }));
 
     return [...builtIns, ...contributed].sort((a, b) => a.order - b.order);
-  }, [t, serviceCategory, pluginTabs]);
+  }, [t, serviceCategory, pluginTabs, canEditAll]);
 
   const allTabKeys = useMemo(
     () => tabs.map((detailsTab) => detailsTab.key),
@@ -698,12 +695,19 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     // its contribution's condition can evaluate against the loaded
     // `serviceDetails`. Hold the URL tab optimistically while the page is still
     // loading, and only fall back to the default once everything has settled —
-    // otherwise the tab flashes to the default before the plugin tab appears.
-    if (!isLoading) {
+    // otherwise the tab flashes to the default before the plugin tab appears. The
+    // same holds for the connection tab, which appears once permissions resolve.
+    if (!isLoading && !isServicePermissionLoading) {
       setActiveTab(defaultTabKey);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, tabKeysSignature, isLoading, defaultTabKey]);
+  }, [
+    tab,
+    tabKeysSignature,
+    isLoading,
+    isServicePermissionLoading,
+    defaultTabKey,
+  ]);
 
   if (isLoading) {
     return (
@@ -852,11 +856,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         }
         meta={
           <DataAssetHeaderDetailsRow
+            canEditDomains={headerEditFlags.canEditAll}
+            canEditOwners={headerEditFlags.canEditOwners}
+            canEditTier={headerEditFlags.canEditTier}
             domains={
               (serviceDetails as unknown as { domains?: EntityReference[] })
                 .domains
             }
-            hasEditPermission={canEditAll}
             owners={serviceDetails.owners}
             tags={serviceDetails.tags}
             onUpdateDomain={onUpdateDomain}
@@ -916,13 +922,11 @@ const ConnectionServiceDetailsPage: React.FC = () => {
               showDeleted={showDeleted}
               onDataProductUpdate={onDataProductUpdate}
               onDescriptionUpdate={onDescriptionUpdate}
-              onShowDeletedChange={(val) =>
-                setFilters({ showDeletedTables: val ? 'true' : undefined })
-              }
+              onShowDeletedChange={handleShowDeletedChange}
             />
           )}
 
-          {activeTab === 'connection' && (
+          {activeTab === 'connection' && canEditAll && (
             <div className="connection-tab-content">
               <div className="tw:flex tw:items-center tw:justify-end tw:mb-4 tw:gap-2 tw:min-h-9">
                 {isServicePermissionLoading || isLoading ? (

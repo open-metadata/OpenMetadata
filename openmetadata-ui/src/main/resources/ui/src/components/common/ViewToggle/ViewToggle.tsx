@@ -15,31 +15,26 @@ import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
 import { Grid01, Menu01 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/data-flow.svg';
-
-export enum ViewMode {
-  Table = 'table',
-  Card = 'card',
-  Tree = 'tree',
-}
+import { PageViewMode } from '../../../generated/type/personaPreferences';
 
 interface ViewToggleProps {
-  value: ViewMode;
-  onChange: (view: ViewMode) => void;
-  views?: ViewMode[];
+  value: PageViewMode;
+  onChange: (view: PageViewMode) => void;
+  views?: PageViewMode[];
 }
 
-const DEFAULT_VIEWS: ViewMode[] = [ViewMode.Table, ViewMode.Card];
+const DEFAULT_VIEWS: PageViewMode[] = [PageViewMode.Table, PageViewMode.Card];
 
-const getIconElement = (mode: ViewMode, isActive: boolean) => {
+const getIconElement = (mode: PageViewMode, isActive: boolean) => {
   const iconClass = `tw:size-4 ${
     isActive ? 'tw:text-fg-brand-primary' : 'tw:text-fg-secondary'
   }`;
   switch (mode) {
-    case ViewMode.Card:
+    case PageViewMode.Card:
       return <Grid01 className={iconClass} />;
-    case ViewMode.Tree:
+    case PageViewMode.Tree:
       return <WorkflowIcon aria-label="Tree view" className={iconClass} />;
-    case ViewMode.Table:
+    case PageViewMode.Table:
     default:
       return <Menu01 className={iconClass} />;
   }
@@ -58,7 +53,7 @@ const ViewToggle: FC<ViewToggleProps> = ({
       selectedKeys={new Set([value])}
       size="sm"
       onSelectionChange={(keys) => {
-        const selected = Array.from(keys as Set<string>)[0] as ViewMode;
+        const selected = Array.from(keys as Set<string>)[0] as PageViewMode;
         if (selected) {
           onChange(selected);
         }

@@ -22,7 +22,10 @@ import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
+import { VIEW_MODE_PAGE } from '../../../constants/platform/personaAppLayout.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { PageViewMode } from '../../../generated/type/personaPreferences';
+import { usePersonaViewMode } from '../../../hooks/platform/usePersonaViewMode';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
@@ -32,7 +35,7 @@ import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActi
 import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../../common/EntityListingTable/EntityListingTable.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ViewToggle, { ViewMode } from '../../common/ViewToggle/ViewToggle';
+import ViewToggle from '../../common/ViewToggle/ViewToggle';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
@@ -82,7 +85,9 @@ const SubDomainsTable = ({
     };
   }, [debouncedSearch]);
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.SubDomains);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
@@ -147,7 +152,7 @@ const SubDomainsTable = ({
       );
     }
 
-    if (view === ViewMode.Table) {
+    if (view === PageViewMode.Table) {
       return (
         <>
           <EntityListingTable

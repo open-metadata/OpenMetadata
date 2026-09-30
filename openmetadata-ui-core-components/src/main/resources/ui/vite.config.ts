@@ -107,6 +107,11 @@ export default defineConfig({
         'tailwindcss-react-aria-components',
         'i18next',
         'react-i18next',
+        // Charts: `/charts` imports echarts' modular entries (echarts/core,
+        // echarts/charts, ...) and echarts-for-react/lib/core. Keep every
+        // sub-path external so consumers resolve their own single copy.
+        /^echarts(\/.*)?$/,
+        /^echarts-for-react(\/.*)?$/,
       ],
       output: {
         entryFileNames: (chunkInfo) => {

@@ -10,9 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Page, Response } from '@playwright/test';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
+
+// The child-asset list the AI-mode service details page reads, by service category.
+const SERVICE_CHILD_LIST_PATHS: Record<string, string> = {
+  databaseServices: 'databases',
+  storageServices: 'containers',
+  driveServices: 'drives/directories',
+};
 
 export const searchServiceFromSettingPage = async (
   page: Page,
@@ -61,4 +69,63 @@ export const visitServiceDetailsPage = async (
       service.displayName
     );
   }
+};
+
+/** The AI-mode service details page's child-asset list request, optionally narrowed by its params. */
+export const waitForServiceChildList = (
+  page: Page,
+  category: string,
+  serviceFqn: string,
+  matchesParams: (params: URLSearchParams) => boolean = () => true
+): Promise<Response> =>
+  waitForResponseWithStatus(
+    page,
+    (response) => {
+      const url = new URL(response.url());
+
+      return (
+        response.request().method() === 'GET' &&
+        url.pathname === `/api/v1/${SERVICE_CHILD_LIST_PATHS[category]}` &&
+        url.searchParams.get('service') === serviceFqn &&
+        matchesParams(url.searchParams)
+      );
+    },
+    200
+  );
+
+/**
+ * Opens a service on the AI-mode details page (`/connections/<category>/<fqn>[/<tab>]`) and waits
+ * for its child-asset list. The caller puts the page in AI mode first (`enableAiAppMode`).
+ */
+export const visitAiModeServiceDetailsPage = async (
+  page: Page,
+  {
+    category,
+    fqn,
+    tab = '',
+    query = '',
+    include = 'non-deleted',
+  }: {
+    category: string;
+    fqn: string;
+    tab?: string;
+    query?: string;
+    include?: string;
+  }
+) => {
+  const list = waitForServiceChildList(
+    page,
+    category,
+    fqn,
+    (params) => params.get('include') === include
+  );
+  await page.goto(
+    `/connections/${category}/${encodeURIComponent(fqn)}${
+      tab ? `/${tab}` : ''
+    }${query}`,
+    { waitUntil: 'domcontentloaded' }
+  );
+  await list;
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('entity-header-display-name')).toBeVisible();
 };

@@ -398,6 +398,7 @@ export { ZapFast } from './ZapFast';
 export { Zap } from './Zap';
 export { ZoomIn } from './ZoomIn';
 export { ZoomOut } from './ZoomOut';
+export { AppLayout } from './AppLayout';
 export { Bronze } from './Bronze';
 export { Gold } from './Gold';
 export { None } from './None';
