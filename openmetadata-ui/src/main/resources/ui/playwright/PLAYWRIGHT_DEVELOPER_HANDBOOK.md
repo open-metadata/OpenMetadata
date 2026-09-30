@@ -3,13 +3,19 @@
 ## Table of Contents
 
 - [Testing Philosophy](#testing-philosophy)
+- [Why Tests Flake Here](#why-tests-flake-here)
 - [Test Standards to Follow](#test-standards-to-follow)
 - [API Setups for Test Data](#api-setups-for-test-data)
+- [Test Data Isolation](#test-data-isolation)
 - [Locator Priority Order](#locator-priority-order)
 - [Anti-Flakiness Patterns](#anti-flakiness-patterns)
+- [Waiting for Asynchronous State](#waiting-for-asynchronous-state)
 - [Test Timeouts](#test-timeouts)
 - [Test File Structure Template](#test-file-structure-template)
 - [Common Test Patterns](#common-test-patterns)
+- [Flake-Avoidance Helpers](#flake-avoidance-helpers)
+- [Diagnosing a Flaky Test](#diagnosing-a-flaky-test)
+- [Quarantine Policy](#quarantine-policy)
 - [Visual Snapshot Testing](#visual-snapshot-testing)
 - [Support Classes Reference](#support-classes-reference)
 - [Domain Tags](#domain-tags)
@@ -135,6 +141,34 @@ Use stable selectors that won't change with visual updates. Prefer `data-testid`
 
 ---
 
+## Why Tests Flake Here
+
+Almost every flake fixed in this suite traces back to one of five facts about how it runs. A test
+that ignores them passes locally and fails in CI or in the merge queue.
+
+1. **One shared server, many parallel workers.** `fullyParallel: true`, 3+ workers per shard, many
+   shards against the same instance. Every other spec is creating, renaming and deleting entities
+   while your test runs. Lists, counts, "first item" defaults and search results are not yours.
+2. **One shared admin session.** Most specs act as the same admin user. Websocket notifications,
+   toasts, activity feeds and "my data" views fan out to *every* worker logged in as that user.
+3. **Search is eventually consistent.** An API create/update returns 200 before Elasticsearch /
+   OpenSearch has indexed it. Any search-backed UI (explore, pickers, user/domain lists, asset counts)
+   can show the pre-change state for seconds.
+4. **HTTP 200 does not mean "done".** Moves, contract validation, inheritance propagation, reindex,
+   RDF projection and deletes run asynchronously after the response.
+5. **CI runners are slow and noisy.** A degraded shard runs 1.5–3.5x slower than a healthy one.
+   Animations, debounces and lazy chunks that finish "instantly" on a laptop land mid-click in CI.
+
+And one fact about how failures surface: **retries hide first-attempt failures.** CI runs with
+`retries: 1`; a test that passes on retry is reported `flaky` and the shard goes green. Fix the cause
+— do not rely on the retry (see [Quarantine Policy](#quarantine-policy)).
+
+> **Rule of thumb:** before writing an assertion, ask *"could another worker, a slow index, or a slow
+> runner change this?"* If yes, scope it to data the test owns or wait on the signal that proves the
+> state is final.
+
+---
+
 ## Test Standards to Follow
 
 1. **Descriptive Names**: Use clear, descriptive test names that explain the expected behaviour
@@ -175,19 +209,23 @@ describe('Outer describe', () => {
 
 Ex. wait on API/elements/loaders
 ```typescript
-// Wait for API response.
-await page.waitForResponse(response => 
-  response.url().includes('/api/v1/tables') && response.status() === 200
+// Wait for API response — register BEFORE the action, match the request, assert status after.
+const tablesResponse = waitForResponseWithStatus(
+  page,
+  (response) =>
+    response.url().includes('/api/v1/tables') &&
+    response.request().method() === 'GET',
+  200
 );
+await page.getByTestId('tables-tab').click();
+await tablesResponse;
 
 // Wait for specific elements
 await expect(page.getByTestId('success-message')).toBeVisible();
 
-// Wait for loader to disappear
-await page.waitForSelector('[data-testid="Loader"]', { state: 'hidden' });
-
-// Use custom wait utilities
+// Wait for loaders (and lazy right-panel widgets) to disappear
 await waitForAllLoadersToDisappear(page);
+await waitForWidgetsToRender(page);
 ```
 
 7. **API Awaits**: While putting waits on the API calls, keep the following things in check.
@@ -197,6 +235,23 @@ await waitForAllLoadersToDisappear(page);
     2. Avoid some common parameters or their values in the API unless they are necessary.
     Ex. prefer `/api/tables?*` than `/api/tables?limit=12&include=deleted` since the parameter values or order may change in future. 
     `Note: Exception would be when we are intentionally waiting on something, like '/api/tables?*filter=new*' after applying some filter.`
+
+    3. **Match on the request, assert the status afterwards.** Never put `response.status() === 200`
+    inside the predicate: a 400/500 then never matches, and the test hangs until timeout and reports
+    `Target page, context or browser has been closed` — pointing nowhere near the failed call. Use
+    `waitForResponseWithStatus` or `clickAndWaitFor` (`playwright/utils/waitHelpers.ts`), which throw a
+    legible `expected HTTP 200, received 400` at the call that failed.
+
+    4. **Include the HTTP method** when a GET and a PATCH/PUT share a path, and a distinguishing
+    parameter (`value=`, `size=25`, `track_total_hits=true`, the typed search text) when one action
+    fires several requests to the same endpoint — e.g. a list query plus a `size=0` count query. A
+    looser predicate resolves on whichever arrives first.
+
+    5. **A bare `waitForResponse` is satisfied by an error.** If you do not use the helpers above,
+    assert `expect(response.status()).toBe(200)` on every awaited response. Support classes must read
+    bodies with `okJson()` (`playwright/utils/apiResponse.ts`), never a bare `response.json()` — the
+    latter returns the error body, the entity's `id` silently becomes `undefined`, and the run breaks
+    several steps later somewhere unrelated.
 
 ---
 
@@ -211,38 +266,155 @@ Using API calls instead of UI interactions for test setup provides:
 
 ### Best Practices
 
-1. **Create test data via API in `beforeAll`/`beforeEach` hooks**:
+1. **Create test data via API in `beforeAll`/`beforeEach` hooks**. Prefer the support classes
+   (`new TableClass().create(apiContext)`) — they build a valid payload and its parent hierarchy.
+   When you call the API directly, send every field the create schema requires and read the body
+   with `okJson` so a failed create throws here instead of leaking `undefined` ids downstream:
 ```typescript
-describe('Table operations', () => {
+test.describe('Table operations', () => {
   let testTable: Table;
-  
-  beforeAll(async ({ apiContext }) => {
-    // Create test data via API
-    testTable = await apiContext.post('/api/v1/tables', {
-      data: { name: 'test-table', database: 'test-db' }
-    });
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    testTable = await okJson<Table>(
+      await apiContext.post('/api/v1/tables', {
+        data: {
+          name: `pw-table-${uuid()}`,
+          databaseSchema: schemaFqn,
+          columns: [{ name: 'id', dataType: 'INT' }],
+        },
+      }),
+      'Create table'
+    );
+    await afterAction();
   });
 });
 ```
 
-2. **Use unique identifiers for test data** to avoid conflicts:
+2. **Use unique identifiers for test data** to avoid conflicts — `uuid()` from
+   `playwright/utils/common.ts`:
 ```typescript
-const uniqueName = `test-entity-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const uniqueName = `pw-entity-${uuid()}`;
 ```
 
-3. **Leverage fixtures for reusable data setup**:
+3. **Generate names inside the hook, not at module scope or in a constructor.** On retry Playwright
+   re-runs `beforeAll` in the same worker; a name fixed at module load is reused and every create
+   answers **409**. When a retry may legitimately hit its own leftovers, create through
+   `createOrFetch()` (`playwright/utils/apiResponse.ts`) — it fetches on 409 and refuses to hand back a
+   soft-deleted entity.
+
+4. **Create independent fixtures concurrently** with `settleAll()` — faster `beforeAll`, and partial
+   successes are still reported before the `AggregateError` throws:
+```typescript
+await settleAll([table.create(apiContext), user.create(apiContext), domain.create(apiContext)]);
+```
+
+5. **Clean up with `deleteFixtureEntity()`** — idempotent (tolerates 400/401/404) but still fails on
+   403/5xx, so a real permission bug is not swallowed. A leaked fixture is not harmless: it shifts
+   sort order, pagination and counts for every other spec (see
+   [Test Data Isolation](#test-data-isolation)).
+
+6. **Leverage fixtures for reusable data setup**:
 ```typescript
 // In fixtures file
-export const test = base.extend({
-  testUser: async ({ apiContext }, use) => {
-    const user = await apiContext.post('/api/v1/users', { data: userData });
+export const test = base.extend<{ testUser: UserClass }>({
+  testUser: async ({ browser }, use) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const user = new UserClass();
+    await user.create(apiContext);
     await use(user);
-    await apiContext.delete(`/api/v1/users/${user.id}`);
+    await user.delete(apiContext);
+    await afterAction();
   },
 });
 ```
 
-4. **Only test UI flows once** — if a UI flow is already tested, use API for setup in other tests that depend on that state.
+7. **Only test UI flows once** — if a UI flow is already tested, use API for setup in other tests that depend on that state.
+
+---
+
+## Test Data Isolation
+
+Your test shares the server with every other worker. Anything global is a moving target.
+
+### Own your data — never mutate shared fixtures
+
+- Assets from `entity-data.setup.ts` are **read-only**. Edit/delete/rename them and you break a test
+  in another file on another shard. Create a dedicated entity in `beforeAll` instead.
+- Instantiate entity classes **inside** the `describe`/test that uses them, not in an outer
+  `forEach` or at module scope shared by several describes. Two workers creating and deleting "the
+  same" instance produces 404s and "node is not in the graph".
+- If a test must mutate shared state (an edge, a setting, a type definition), restore it in a
+  `finally` block so a failure midway does not poison later tests.
+
+### Never assert on global counts, totals, or "the first item"
+
+```typescript
+// ❌ WRONG — the total includes other workers' entities and changes mid-test
+const before = await page.getByTestId('count').textContent();
+await createTag();
+await expect(page.getByTestId('count')).toHaveText(String(Number(before) + 1));
+
+// ❌ WRONG — the default selection is "first by name"; a leaked fixture that sorts earlier wins
+await sidebarClick(page, SidebarItem.TAGS);
+await expect(page.getByTestId('manage-button')).not.toBeVisible();
+
+// ✅ CORRECT — assert on the entity the test owns, navigate to it explicitly
+await visitClassificationPage(page, classification.data.name, classification.data.displayName);
+await expect(getRowByName(page, tag.data.name)).toBeVisible();
+```
+
+- Replace `toHaveCount(n)` on search/list results with a content assertion on your own rows, or
+  `>= 1` when presence is all that matters.
+- Do not compare a list's count before and after an action — with pagination it is vacuous or wrong.
+- Pages that open "the first item" (Tags → first classification, Glossary → first glossary, landing
+  widgets) must be navigated by URL or by the helper that pins the item (`visitClassificationPage`,
+  `entity.visitEntityPage`). A classification whose name sorts before `Certification` changes the
+  default for every other spec.
+
+### Do not depend on list, page, or bucket caps
+
+Leftover fixtures from other shards routinely push your entity past a UI or ES cap: a 50-page
+pagination walk, a 9-result page, a top-N aggregation bucket, an infinite-scroll tree.
+
+- Prefer the **detail page by URL** (`/table/<fqn>`, `/domain/<fqn>`, `/settings/access/roles/<name>`)
+  over finding the row in a list.
+- If the list itself is under test, **search / filter by the test's unique suffix** first.
+- For infinite-scroll hierarchies use `scrollHierarchyToNode` (`playwright/utils/ContextCenterUtil.ts`).
+
+### Actor-scoped and capped feeds need a dedicated user
+
+Activity feeds, "my data", notifications and task inboxes are scoped to the viewer and often capped
+(e.g. the newest 200 events). Every parallel spec acting as the shared admin fills that feed, burying
+your seeded rows — it passes on the first test locally and fails later in CI. **Seed and view as a
+spec-dedicated user** (`new UserClass()` + its own logged-in page), and poll the exact endpoint the UI
+reads.
+
+### Global settings and read-modify-write races
+
+- A full-document `PUT` of a global setting or type definition overwrites whatever another worker
+  wrote between your GET and your PUT. Batch changes into **one read + one write** and re-verify
+  (`addRelationTypesWithCardinality` in `playwright/utils/ontologyStudio.ts`).
+- Never JSON-Patch by array index (`/tags/1`, `/customProperties/3`) on shared documents — indexes
+  shift under concurrent writes. Append with `/-`, address by name, or guard with a JSON Patch `test`
+  op.
+- Specs that toggle server-wide config (auth config, search settings, `enableAccessControl`, data
+  asset rules) or trigger a **full reindex** must run in their dedicated single-worker project in
+  `playwright.config.ts` (`sso-auth`, `DomainIsolation`, `Reindex`, `DataAssetRules*`, …). Never
+  add them to the parallel `chromium` lane.
+
+### The shared admin session broadcasts to every worker
+
+Websocket events and toasts are fanned out to every socket of the user. Another worker's
+`"pw-xxx" deleted successfully!` toast can cover your button or trip a strict-mode `alert-bar`
+locator.
+
+- Scope toast assertions by message: `waitForToastToDisappear(page, message)`,
+  `expectNoErrorToast(page, message?)`; clear stragglers with `dismissToasts(page)` before clicking
+  under the toast stack (`playwright/utils/common.ts`).
+- When the UI under test is websocket-driven, isolate it with `setupWebSocketMock` /
+  `emitWebSocketEvent` (`playwright/utils/websocket.ts`), set up **before** navigating, instead of
+  waiting for a real event another job may also emit.
 
 ---
 
@@ -429,6 +601,180 @@ await expect(
 ).toBeVisible();
 ```
 
+### ⚠️ CRITICAL: React Aria Popovers Close on Scroll
+
+React Aria closes a non-modal popover (Select, ComboBox, MultiSelect from `ui-core-components`)
+when an ancestor of its trigger scrolls. Playwright's click-time actionability scroll lands one
+frame after the popover opens, closes it, and the option click hangs with `element was detached`.
+
+```typescript
+// ❌ WRONG - the actionability scroll closes the popover under the click
+await trigger.click();
+await page.getByRole('option', { name: 'Table' }).click();
+
+// ✅ CORRECT - settle the trigger in view first, then open and pick with retry
+await scrollIntoViewAndSettle(trigger);
+await selectOptionWithRetry(trigger, page.getByRole('option', { name: 'Table' }));
+await expect(trigger).toContainText('Table');
+```
+
+Helpers (`playwright/utils/common.ts`): `scrollIntoViewAndSettle` (centre + two animation frames),
+`selectOptionWithRetry(trigger, option, open?)` (re-opens if the popover closed),
+`chooseSelectOption` (keyboard path for comboboxes).
+
+A trace showing `detached` during a click is often a **product re-render bug** (unstable `options`
+identity rebuilding the collection, unmemoized handlers cancelling a debounced fetch). Check the
+component before adding test-side retries.
+
+### Point-in-Time Reads Are Races
+
+`isVisible()`, `isChecked()`, `textContent()`, `count()` and `getAttribute()` return the state *at
+that instant* and never wait. Branching on them or comparing their result is a race with rendering.
+
+```typescript
+// ❌ WRONG - branches on whatever rendered first; hydrating views read ""
+if (await editButton.isVisible()) {
+  await expect(editButton).toBeDisabled();
+}
+const name = await header.textContent();
+expect(name).toBe(entity.displayName);
+
+// ✅ CORRECT - web-first assertions retry until the state settles
+await expect(header).toContainText(entity.displayName);
+
+// ✅ CORRECT - wait for either of two MUTUALLY EXCLUSIVE outcomes, then assert the one you expect
+await expect(emptyState.or(resultsTable)).toBeVisible();
+await expect(resultsTable).toBeVisible();
+
+// ✅ CORRECT - poll a derived value
+await expect.poll(async () => (await rows.allTextContents()).join()).toContain(tag.data.name);
+```
+
+`.or()` is strict: if either side can match more than one element it throws, so only use it for
+mutually exclusive affordances.
+
+### Assert Something Positive Before Anything Negative
+
+`not.toBeVisible()` / `toHaveCount(0)` pass immediately on a blank or still-loading page.
+`waitForAllLoadersToDisappear` also passes in the frame *before* a loader mounts. Always prove the
+view rendered first.
+
+```typescript
+// ❌ WRONG - vacuously true before the page renders
+await expect(page.getByTestId('delete-button')).not.toBeVisible();
+
+// ✅ CORRECT - anchor on content that must exist, then assert absence
+await expect(page.getByTestId('entity-header-name')).toContainText(table.entity.name);
+await expect(page.getByTestId('delete-button')).not.toBeVisible();
+```
+
+### Prefer Idempotent Actions Over Toggles
+
+A click-toggle races any async state restore (saved selections, persisted filters, form hydration):
+the toggle lands before the restore, the restore re-applies, and the net state is inverted.
+
+```typescript
+// ❌ WRONG - toggles before the saved selection is restored, nets back to checked
+await selectAll.click();
+
+// ✅ CORRECT - wait for the restored state (also the persistence proof), then act idempotently
+await expect(selectAll).toBeChecked();
+await selectAll.uncheck();
+await expect(selectAll).not.toBeChecked();
+```
+
+Use `check()` / `uncheck()` / `fill()` / `selectOption()` — they converge on a target state.
+`click()` flips whatever the state happens to be.
+
+### Ambiguous Page-Global Locators
+
+A locator that matches both a modal's editor and the page behind it is not fixed by `.first()` — the
+click lands on the page and fails with `ant-modal-wrap intercepts pointer events`. Scope it to the
+dialog (`page.getByRole('dialog').getByTestId(...)`), or use the dedicated resolvers such as
+`fillDescriptionBox` / `getDescriptionBox` (`playwright/utils/common.ts`), which prefer the editor
+inside an open dialog.
+
+---
+
+## Waiting for Asynchronous State
+
+Pick the wait that proves the state the **next step depends on** — not a generic "page is idle".
+
+| The next step depends on… | Wait on | Not |
+|---|---|---|
+| A request your action fires | `waitForResponseWithStatus` / `clickAndWaitFor`, registered before the action | `waitForResponse` after the action |
+| Page chrome and data loaders | `waitForAllLoadersToDisappear(page)` | `networkidle` |
+| Right-panel widgets (tags, owners, glossary, domain) | `waitForWidgetsToRender(page)` or `waitForPageLoaded(page)` | loaders alone — the Suspense skeleton is not `data-testid="loader"` |
+| An entity created/updated via API showing up in search-backed UI | `waitForSearchIndexed` / `waitForOwnerIndexed` / `waitForOwnedAssetCount` (`playwright/utils/polling.ts`) | a bare `/search/query` wait — the component's initial query satisfies it |
+| A dropdown's aggregation for typed text | `waitForAggregation(page, { field, value })` (`playwright/utils/searchAggregation.ts`) | `waitForResponse('/search/aggregate*')` |
+| An async backend job (move, validation, propagation) | `expect.poll` on the entity GET | the 200 of the triggering call |
+| An Ant Design overlay/dropdown to finish animating | `waitForAntOverlayToOpen(overlay)` / `waitForAntdPopupToSettle(page)` | `toBeVisible()` alone |
+| Client-side persistence with no network call | poll the store (`waitForDraftPersisted`, `waitForRecentlyViewed` in `playwright/utils/ContextCenterUtil.ts`) | a hard wait |
+
+### Search index lag
+
+API writes return before the index catches up, and most list UIs issue **one** search on mount and
+re-query only when the search text changes — so a late index update is never picked up.
+
+In order of preference:
+
+1. **Don't go through search.** Navigate to the detail page by URL and wait on its immediately
+   consistent GET (`/api/v1/tables/name/<fqn>`, `/api/v1/users/name/<name>`).
+2. **Gate on the index** before the first search-backed UI step:
+   ```typescript
+   await table.create(apiContext);
+   await waitForSearchIndexed(apiContext, table.entityResponseData.fullyQualifiedName, 'table_search_index');
+   ```
+   Use `waitForOwnerIndexed` after an owner PATCH (owners is a nested field — a plain term query
+   silently matches nothing).
+3. **Only then** retry the UI query inside `toPass` (re-type or reload), bounding each attempt.
+
+### Async backend work: poll the entity, check `ok()` inside the poll
+
+```typescript
+await expect
+  .poll(
+    async () => {
+      const res = await apiContext.get(`/api/v1/glossaryTerms/name/${encodeURIComponent(fqn)}?fields=parent`);
+      expect(res.ok()).toBe(true); // an error body must not satisfy the check below
+      return (await res.json()).parent?.fullyQualifiedName;
+    },
+    { timeout: 30_000, intervals: [500, 1_000, 2_000] }
+  )
+  .toBe(newParent.responseData.fullyQualifiedName);
+```
+
+Size the poll **below** the enclosing test/hook budget, or its own failure message never surfaces —
+the test just times out.
+
+### Debounced search: wait out the focus-time query
+
+Focusing a search box fires an empty query; typing fires another. `debounce` only coalesces within
+its window, so both run and the slower empty one can win, leaving results for `''` while the input
+shows your text.
+
+- Register a wait for the focus-time/initial query and await it **before** typing.
+- Match the typed-query predicate on the typed text, not just the path.
+- Re-typing the same term (`fill('')` + `fill(x)` inside the debounce window) dispatches nothing — a
+  wait for a "new" response then hangs. Change the term or reload instead.
+
+### Navigation
+
+- Navigate by URL (`page.goto(route, { waitUntil: 'domcontentloaded' })`) rather than hovering the
+  sidebar — the sidebar may not be mounted at `domcontentloaded`, and hover menus are timing-sensitive.
+- For routes that auto-redirect (e.g. `/glossary` → first glossary), use `waitUntil: 'commit'`
+  to avoid `net::ERR_ABORTED`.
+- Import route constants from `playwright/constant/`, never from app `src/constants` (that pulls SVG
+  and i18n into the test bundle).
+
+### Route interception must survive teardown
+
+A request still in flight when the page closes makes a `page.route` handler throw
+`Route is already handled!`, `Response has been disposed` or `socket hang up`, and fails an otherwise
+green test. Narrow the glob to the exact request, guard bodies (`body.data ?? []` — error responses
+have no `data`), and swallow closed-target errors the way `support/fixtures/serverLoad.ts`
+(`ignoreClosedTarget`, `fetchRouteResponse`) does.
+
 ---
 
 ## Test Timeouts
@@ -467,6 +813,43 @@ test.describe.configure({ timeout: 300000 });
 ```
 
 **Why avoid**: Less flexible, harder to maintain. Prefer `test.slow()` inside individual tests.
+`om-playwright/no-blanket-test-slow` rejects `test.slow()` at file or describe scope.
+
+### Budget Sizing Rules
+
+Defaults: test `60s`, `expect` `15s`, navigation `60s`. Size against a **degraded CI shard**
+(1.5–3.5x a healthy one), not your laptop.
+
+- **Measure before raising.** Add `test.slow()` only when CI timings show the test body over ~40s on
+  healthy shards. A hang does not get fixed by more time — it just burns 180s instead of 60s.
+- **`beforeAll`/`afterAll` inherit the test timeout.** A hook that seeds many entities or polls an
+  index needs its own `test.setTimeout(...)` inside the hook; or make it faster with `settleAll`.
+- **Inner waits must fit inside the outer budget.** A 90s poll inside a 60s test never reports its
+  own message. Keep `expect.poll` / `toPass` / helper timeouts below the enclosing budget.
+- **Bound the actions inside `toPass` / `expect.poll` callbacks.** An unbounded `click()` or `fill()`
+  inside a retry block waits the whole test timeout on its first attempt, so it never retries. Pass
+  an explicit `{ timeout }` to each action inside the block.
+- **`page.goto` waits for `load` by default.** Use `waitUntil: 'domcontentloaded'` and then wait for
+  the specific content you need.
+
+### "Test timeout exceeded" Is Usually Not Where It Says
+
+When the budget expires, Playwright reports whichever action happened to be running — often
+`Target page, context or browser has been closed`. Before touching code:
+
+1. Open the trace and check whether the test was **progressing steadily** (budget cliff) or **stuck
+   on one wait** (hang — usually a predicate that can never match, see
+   [Test Standards §7](#test-standards-to-follow)).
+2. Check whether the **whole shard** was slow. CI uploads `playwright-timings-<shard>` artifacts
+   with per-test `durationMs`:
+   ```bash
+   gh run download <runId> --pattern 'playwright-timings-*' -D failing
+   gh run download <passingRunId> --pattern 'playwright-timings-*' -D passing
+   ```
+   Join the two by test `id`. If the shard-wide median slowdown is **> 1.3x**, the runner was degraded
+   and the failure is a budget cliff, not a code regression.
+3. Trace trap: the long red `Wait for selector #email` in login is the losing branch of the
+   `Promise.any` in `authenticateAdminPage` (`playwright/utils/admin.ts`) — not a login stall.
 
 ---
 
@@ -597,14 +980,12 @@ test("data consumer has restricted access", async ({ dataConsumerPage: page }) =
   await entity.visitEntityPage(page);
   await waitForAllLoadersToDisappear(page);
 
-  const editButton = page.getByTestId("edit-description");
-  const isVisible = await editButton.isVisible();
+  // Anchor on rendered content first — a negative assertion on a blank page is vacuous.
+  await expect(page.getByTestId("entity-header-name")).toBeVisible();
 
-  if (isVisible) {
-    await expect(editButton).toBeDisabled();
-  } else {
-    await expect(editButton).not.toBeVisible();
-  }
+  // Assert the ONE expected outcome. Never branch on isVisible(): it reads a single
+  // instant, and "either outcome passes" means the test verifies nothing.
+  await expect(page.getByTestId("edit-description")).not.toBeVisible();
 });
 ```
 
@@ -618,6 +999,116 @@ await test.step("Verify persistence after reload", async () => {
   await expect(page.getByTestId("description")).toContainText(testValue);
 });
 ```
+
+---
+
+## Flake-Avoidance Helpers
+
+Search here before writing a new wait or locator helper. Every entry exists because a flake was
+root-caused to the problem it solves. Paths are relative to `playwright/`.
+
+### Waits and responses
+
+| Helper | File | Use when |
+|---|---|---|
+| `waitForResponseWithStatus(page, predicate, status)` | `utils/waitHelpers.ts` | Awaiting a response: matches the request, then throws a legible error on the wrong status |
+| `clickAndWaitFor(page, locator, urlPattern, status?)` | `utils/waitHelpers.ts` | Click + hoisted response listener + status check in one call |
+| `waitForAntOverlayToOpen(overlay)` | `utils/waitHelpers.ts` | Before clicking inside an Ant modal/popover still running its zoom animation |
+| `waitForAntdPopupToSettle(page)` | `utils/common.ts` | Before clicking an Ant dropdown menu item (scale animation drift) |
+| `waitForAllLoadersToDisappear(page)` | `utils/entity.ts` | Data loaders gone |
+| `waitForWidgetsToRender(page)` | `utils/entity.ts` | Right-panel Suspense skeletons gone (tags, owners, glossary, domain) |
+| `waitForPageLoaded(page)` | `utils/polling.ts` | `domcontentloaded` + loaders + widgets; the `networkidle` replacement |
+| `waitForSearchIndexed(apiContext, fqn, index, opts?)` | `utils/polling.ts` | After an API create/update, before any search-backed UI step |
+| `waitForOwnerIndexed(page, fqn, index, ownerId, present)` | `utils/polling.ts` | After an owner PATCH, before reading owners from search |
+| `waitForOwnedAssetCount(apiContext, ownerId, count)` | `utils/polling.ts` | Before opening a page that reads an owner's asset count once on load |
+| `waitForAggregation(page, { field, value })` | `utils/searchAggregation.ts` | Filter dropdown aggregation for the typed value (lint-enforced) |
+| `triggerContractValidation` | `utils/dataContracts.ts` | Polls contract validation to a terminal status |
+
+### Fixtures and API
+
+| Helper | File | Use when |
+|---|---|---|
+| `okJson(response, label)` | `utils/apiResponse.ts` | Reading any API body in setup/support classes — throws at the failed call |
+| `createOrFetch(apiContext, opts)` | `utils/apiResponse.ts` | Creates that may 409 on retry; rejects soft-deleted matches |
+| `settleAll(promises)` | `utils/apiResponse.ts` | Parallel fixture creation with aggregated errors |
+| `deleteFixtureEntity(apiContext, url)` | `utils/apiResponse.ts` | Idempotent cleanup that still surfaces 403/5xx |
+| `withNotFoundRetry(send)` | `utils/apiResponse.ts` | A brief 404 on a just-created id while the reference lookup lags |
+| `buildFqn(...segments)` / `quoteFqnSegment(name)` | `utils/apiResponse.ts` | Names that may contain `.` or `"` |
+
+### Locators and interactions
+
+| Helper | File | Use when |
+|---|---|---|
+| `getRowByName(page, name, rowSelector?)` | `utils/scopedLocators.ts` | Table rows by your entity's name instead of `.nth()` |
+| `getCellByName(page, name)` | `utils/scopedLocators.ts` | Cells across Ant `Table` and react-aria `TableV2` |
+| `scrollIntoViewAndSettle(locator)` | `utils/common.ts` | Before opening a React Aria popover near a scroll container |
+| `selectOptionWithRetry(trigger, option, open?)` | `utils/common.ts` | React Aria Select/ComboBox option picks |
+| `chooseSelectOption(trigger, option)` | `utils/common.ts` | Keyboard-driven combobox selection |
+| `waitForToastToDisappear` / `expectNoErrorToast` / `dismissToasts` | `utils/common.ts` | Toasts under cross-worker notifications |
+| `dismissHoverPopovers(page)` | `utils/common.ts` | Lingering Ant hover popovers covering the next target |
+| `fillDescriptionBox` / `getDescriptionBox` | `utils/common.ts` | The description editor, preferring the one inside an open dialog |
+| `scrollHierarchyToNode` | `utils/ContextCenterUtil.ts` | Infinite-scroll trees |
+| `setupWebSocketMock` / `emitWebSocketEvent` / `cleanupWebSocketMock` | `utils/websocket.ts` | Websocket-driven UI isolated from other workers' events |
+| `guardStorageStateBoot` / `claimFirstBoot` | `utils/storageStateRecovery.ts` | Contexts that boot to `/signin` despite valid storage state (already wired into shared login paths) |
+
+---
+
+## Diagnosing a Flaky Test
+
+Fix the cause, once, where it lives. Adding a wait, raising a timeout, or wrapping in `toPass` without
+knowing the mechanism moves the flake instead of removing it.
+
+1. **Get the evidence.** Download the trace for the failing attempt (`trace: 'on-first-retry'`) and
+   the shard's `playwright-timings-*` artifact. Note the exact error and the last *successful* step.
+2. **Rule out the runner** (see [Test Timeouts](#test-timeouts)): a shard-wide median slowdown
+   > 1.3x means a budget cliff, not a regression.
+3. **Classify the failure** against [Why Tests Flake Here](#why-tests-flake-here):
+
+   | Trace shows | Likely cause | Go to |
+   |---|---|---|
+   | Row/entity not found, 404, 409 on retry, wrong count | Shared data, leaked fixtures, caps | [Test Data Isolation](#test-data-isolation) |
+   | Just-created entity missing from a list/picker | Search index lag | [Waiting for Asynchronous State](#waiting-for-asynchronous-state) |
+   | Stuck on `waitForResponse` until timeout | Predicate never matches (status in predicate, wrong request, listener registered late) | [Test Standards §7](#test-standards-to-follow) |
+   | Click selected the item above | Ant dropdown scale animation | [Anti-Flakiness Patterns](#anti-flakiness-patterns) → Ant Design dropdown |
+   | `element was detached` during a click | Popover closed on scroll, or a product re-render | [Anti-Flakiness Patterns](#anti-flakiness-patterns) → React Aria popovers |
+   | `... intercepts pointer events` | A toast, modal wrap or hover popover on top | [Test Data Isolation](#test-data-isolation), [Ambiguous locators](#ambiguous-page-global-locators) |
+   | State inverted after reload/reopen | Toggle raced an async restore | [Idempotent actions](#prefer-idempotent-actions-over-toggles) |
+   | `Route is already handled!` / `Response has been disposed` | Route handler outlived the page | [Route interception](#route-interception-must-survive-teardown) |
+
+4. **Reproduce under load, not on an idle laptop.** Contention-dependent flakes rarely reproduce
+   with a single worker:
+   ```bash
+   npx playwright test path/to/Spec.spec.ts --repeat-each=10 --workers=4
+   ```
+   Pair it with CPU throttling or run the whole affected directory alongside it. A 10/10 pass on an
+   idle machine is not evidence of a fix.
+5. **Run a control.** Before blaming your change, run the same spec on unpatched `main`. A test that
+   fails on both is pre-existing — fix it separately and say so in the PR.
+6. **Look for a product bug.** Several "test flakes" were real races in the product (stale debounced
+   responses, lost multi-page selections, unstable component identity). If the user could hit the
+   same race, fix the component and keep the test strict.
+7. **Write down the mechanism** in the PR description (symptom → mechanism → fix), and in a short
+   *why* comment at the call site when the fix is non-obvious (an extra wait, an unusual predicate).
+
+---
+
+## Quarantine Policy
+
+Retries turn first-attempt failures into a green `flaky` status, which hides them. Quarantine makes
+the lost coverage visible instead.
+
+- **Threshold:** a test that fails its first attempt in **2 or more** merge-queue / AUT runs (counted
+  per generated variant) is quarantined while it is diagnosed.
+- **How:** add `{ tag: '@quarantine' }` to the test and record the evidence (runs, error, suspected
+  mechanism, owner) in [`QUARANTINE.md`](./QUARANTINE.md). `playwright.config.ts` excludes the tag
+  from every lane.
+- **Soak:** `PLAYWRIGHT_RUN_QUARANTINED=true npx playwright test` runs only the quarantined set (setup
+  and teardown projects still run so login and seeding happen).
+- **Release:** root-cause, fix, remove the tag in the same PR, and move the entry to the released
+  table in `QUARANTINE.md`. Quarantine is a holding pen, not a resting place — a tag without an entry
+  or an owner is a bug.
+- **Never** fix a flake by `test.skip`, deleting assertions, loosening an assertion until it cannot
+  fail, or raising `retries`.
 
 ---
 
@@ -860,17 +1351,43 @@ Before finalizing tests, verify:
 - [ ] No positional selectors (`.first()`, `.last()`, `.nth()`)
 - [ ] No stored `:visible` locator references
 - [ ] All dropdowns use `:visible` chain pattern correctly
-- [ ] All buttons check `.toBeEnabled()` before clicking
-- [ ] Elements in modals use `scrollIntoViewIfNeeded()`
+- [ ] Ant dropdown items clicked only after `waitForAntdPopupToSettle`; post-click selection asserted
+- [ ] React Aria pickers use `scrollIntoViewAndSettle` / `selectOptionWithRetry`
+- [ ] No branching on `isVisible()` / `textContent()` / `count()` — web-first assertions only
+- [ ] Every negative assertion is preceded by a positive one proving the view rendered
+- [ ] State changes use idempotent actions (`check`/`uncheck`/`fill`), not click-toggles
+
+### Test Data Isolation
+- [ ] Every entity the test mutates is created by the test, with a `uuid()` name generated inside the hook
+- [ ] No edits to `entity-data.setup.ts` assets; shared state mutated in a test is restored in `finally`
+- [ ] No assertions on global counts/totals or on "the first item" of a list sorted by name
+- [ ] Rows found by the test's unique name (or detail page by URL), not by position or page walk
+- [ ] Viewer-scoped feeds (activity, inbox, my data) seeded and viewed as a dedicated user
+- [ ] Specs that change server-wide settings or reindex run in their single-worker project
+- [ ] Toast assertions scoped by message
 
 ### API & Network
-- [ ] All API calls have `.waitForResponse()` listeners set up BEFORE action
-- [ ] All API responses validate status code (200, 201, 204)
+- [ ] All response listeners registered BEFORE the action that triggers them
+- [ ] Predicates match URL + method (+ distinguishing param); status asserted after, never inside
+- [ ] All API responses validate status code (200, 201, 204) — `waitForResponseWithStatus` / `clickAndWaitFor`
+- [ ] Support-class bodies read with `okJson`, creates that may 409 go through `createOrFetch`
+- [ ] Search-backed UI after an API write is gated by `waitForSearchIndexed` (or bypassed via URL)
+- [ ] Async backend work verified with `expect.poll` on the entity, `res.ok()` checked inside the poll
 
 ### Waits & Assertions
-- [ ] All actions followed by `waitForAllLoadersToDisappear(page)`
+- [ ] Each wait proves the state the next step depends on (see [Waiting for Asynchronous State](#waiting-for-asynchronous-state))
+- [ ] Right-panel widgets awaited with `waitForWidgetsToRender`, not loaders alone
 - [ ] Semantic locators (getByRole, getByTestId) used
 - [ ] Assertions use `.toBeVisible()` instead of `.waitForSelector()`
+
+### Timeouts
+- [ ] `test.slow()` only inside tests measured > ~40s in CI; never at file/describe scope
+- [ ] Heavy `beforeAll` hooks set their own timeout; inner polls sized below the enclosing budget
+- [ ] Actions inside `toPass` / `expect.poll` callbacks carry an explicit `{ timeout }`
+
+### Stability Proof
+- [ ] Spec passes `--repeat-each=10 --workers=4` locally
+- [ ] New or re-enabled spec files have entries in `.github/playwright/timing-baseline.json` — `build_playwright_shards.py` fails the plan for a file with ≥ 5 tests and no timing history, and under-budgets its shard otherwise
 
 ### ESLint
 - [ ] `yarn lint:playwright` passes with zero errors (this is what CI runs)
