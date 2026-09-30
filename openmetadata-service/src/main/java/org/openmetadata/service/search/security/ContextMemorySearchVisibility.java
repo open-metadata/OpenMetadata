@@ -82,14 +82,21 @@ public class ContextMemorySearchVisibility {
   }
 
   /**
-   * Returns a filter admitting only org-wide ({@link MemoryVisibility#ENTITY}) memories. This is the
+   * Returns a filter admitting only org-wide memories. This is the
    * fail-closed default for search paths that carry no {@link SubjectContext} and therefore cannot
    * decide who a restricted memory belongs to — they get the memories everyone may read and nothing
    * else. Like {@link #buildVisibilityFilter}, non-memory documents always pass.
    */
   public OMQueryBuilder buildOrgWideOnlyFilter() {
     return scopeMemoriesTo(
-        queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+        queryBuilderFactory
+            .boolQuery()
+            .should(
+                List.of(
+                    queryBuilderFactory.termQuery(
+                        FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()),
+                    queryBuilderFactory.termQuery(
+                        FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()))));
   }
 
   /**
@@ -100,7 +107,9 @@ public class ContextMemorySearchVisibility {
   public static boolean isOrgWideReadable(Map<String, Object> document) {
     boolean readable = true;
     if (document != null && Entity.CONTEXT_MEMORY.equals(document.get(FIELD_ENTITY_TYPE))) {
-      readable = MemoryVisibility.ENTITY.value().equals(document.get(FIELD_VISIBILITY));
+      readable =
+          MemoryVisibility.ENTITY.value().equals(document.get(FIELD_VISIBILITY))
+              || MemoryVisibility.PUBLIC.value().equals(document.get(FIELD_VISIBILITY));
     }
     return readable;
   }
@@ -150,6 +159,7 @@ public class ContextMemorySearchVisibility {
   private OMQueryBuilder buildVisibleToUserClause(User user) {
     List<OMQueryBuilder> clauses = new ArrayList<>();
     clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()));
     clauses.add(
         queryBuilderFactory.nestedQuery(
             FIELD_OWNERS, queryBuilderFactory.termQuery(FIELD_OWNERS_ID, user.getId().toString())));

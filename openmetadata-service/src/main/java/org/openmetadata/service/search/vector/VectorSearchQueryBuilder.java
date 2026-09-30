@@ -254,7 +254,11 @@ public class VectorSearchQueryBuilder {
     sb.append("{\"bool\":{\"should\":[")
         .append(
             termClause(
-                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()))
+        .append(',')
+        .append(
+            termClause(
+                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()));
     if (subjectContext != null) {
       User user = subjectContext.user();
       // ignore_unmapped mirrors QueryBuilderFactory#nestedQuery, and is not optional: a KNN query

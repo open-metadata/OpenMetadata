@@ -50,6 +50,7 @@ import { OntologyIRIPreview } from '../generated/api/data/ontologyIriPreview';
 import { OntologyIRIPreviewRequest } from '../generated/api/data/ontologyIriPreviewRequest';
 import { OntologyMappingSuggestionList } from '../generated/api/data/ontologyMappingSuggestionList';
 import { OntologyMappingSuggestionRequest } from '../generated/api/data/ontologyMappingSuggestionRequest';
+import { OntologyMemoryDerivationRequest } from '../generated/api/data/ontologyMemoryDerivationRequest';
 import { OntologyNaturalLanguageQueryRequest } from '../generated/api/data/ontologyNaturalLanguageQueryRequest';
 import { OntologyNaturalLanguageQueryResult } from '../generated/api/data/ontologyNaturalLanguageQueryResult';
 import { OntologyPackInstallResult } from '../generated/api/data/ontologyPackInstallResult';
@@ -69,6 +70,7 @@ import { UpdateOntologyChangeSet } from '../generated/api/data/updateOntologyCha
 import { OntologyAxiom } from '../generated/entity/data/ontologyAxiom';
 import { OntologyChangeSet } from '../generated/entity/data/ontologyChangeSet';
 import { RelationshipType } from '../generated/entity/data/relationshipType';
+import { BackgroundJob } from '../generated/jobs/backgroundJob';
 import { OntologyEditLock } from '../generated/type/ontologyEditLock';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
@@ -92,6 +94,15 @@ const ONTOLOGY_SUBSETS_PATH = '/ontology/subsets';
 type OntologyChangeSetCreation =
   | CreateOntologyChangeSet
   | CreateOntologyChangeSetRequest;
+
+export const proposeTermFromMemory = async (memoryId: string) => {
+  const response = await APIClient.post<
+    OntologyMemoryDerivationRequest,
+    AxiosResponse<BackgroundJob>
+  >(`${ONTOLOGY_AI_PATH}/memories/jobs`, { memoryIds: [memoryId] });
+
+  return response.data;
+};
 
 export const listRelationshipTypes = async (params?: ListParams) => {
   const response = await APIClient.get<PagingResponse<RelationshipType[]>>(

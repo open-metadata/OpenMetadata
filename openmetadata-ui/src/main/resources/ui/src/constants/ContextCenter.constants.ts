@@ -103,6 +103,13 @@ export const MEMORY_TYPE_OPTIONS = [
 
 export const VISIBILITY_OPTIONS = [
   {
+    id: ShareVisibility.Public,
+    labelKey: 'label.visibility-public',
+    descriptionKey: 'message.visible-to-everyone-in-workspace',
+    badgeColor: 'blue' as const,
+    iconName: 'Share07' as const,
+  },
+  {
     id: ShareVisibility.Shared,
     labelKey: 'label.shared',
     descriptionKey: 'message.visible-to-specific-people',

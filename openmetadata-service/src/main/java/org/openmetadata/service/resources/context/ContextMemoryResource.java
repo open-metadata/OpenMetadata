@@ -46,13 +46,17 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -63,6 +67,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
@@ -527,7 +533,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Valid CreateContextMemory create) {
     ContextMemory memory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, memory);
+    final Response response = create(uriInfo, securityContext, memory);
+    queueOntologyDerivation((ContextMemory) response.getEntity(), securityContext);
+    return response;
   }
 
   @PUT
@@ -550,7 +558,11 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Valid CreateContextMemory create) {
     ContextMemory memory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, memory);
+    final Response response = createOrUpdate(uriInfo, securityContext, memory);
+    if (response.getStatus() == Response.Status.CREATED.getStatusCode()) {
+      queueOntologyDerivation((ContextMemory) response.getEntity(), securityContext);
+    }
+    return response;
   }
 
   @PATCH
@@ -578,7 +590,54 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                       examples =
                           @ExampleObject("[{op:replace, path:/displayName, value: 'New name'}]")))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    final ContextMemory previous = repository.get(null, id, repository.getFields(""));
+    final Response response = patchInternal(uriInfo, securityContext, id, patch);
+    final ContextMemory updated = (ContextMemory) response.getEntity();
+    if (hasNewPublishedContent(previous, updated)) {
+      queueOntologyDerivation(updated, securityContext);
+    }
+    return response;
+  }
+
+  private static boolean isPublishedForOntology(final ContextMemory memory) {
+    if (memory == null
+        || memory.getStatus() != ContextMemoryStatus.ACTIVE
+        || memory.getShareConfig() == null
+        || memory.getQuestion() == null
+        || memory.getQuestion().isBlank()
+        || memory.getAnswer() == null
+        || memory.getAnswer().isBlank()) {
+      return false;
+    }
+    final MemoryVisibility visibility = memory.getShareConfig().getVisibility();
+    return visibility == MemoryVisibility.ENTITY || visibility == MemoryVisibility.PUBLIC;
+  }
+
+  private static boolean hasNewPublishedContent(
+      final ContextMemory previous, final ContextMemory updated) {
+    return isPublishedForOntology(updated)
+        && (!isPublishedForOntology(previous)
+            || !Objects.equals(previous.getQuestion(), updated.getQuestion())
+            || !Objects.equals(previous.getAnswer(), updated.getAnswer()));
+  }
+
+  private void queueOntologyDerivation(
+      final ContextMemory memory, final SecurityContext securityContext) {
+    if (!isPublishedForOntology(memory) || !LLMClientHolder.isOntologyMemoryDerivationEnabled()) {
+      return;
+    }
+    try {
+      Entity.getJobDAO()
+          .insertJobInternal(
+              BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION.name(),
+              OntologyMemoryDerivationJobHandler.HANDLER_NAME,
+              JsonUtils.pojoToJson(
+                  new OntologyMemoryDerivationJobHandler.Args(null, List.of(memory.getId()))),
+              securityContext.getUserPrincipal().getName(),
+              null);
+    } catch (RuntimeException exception) {
+      LOG.error("Could not queue ontology derivation for memory {}", memory.getId(), exception);
+    }
   }
 
   @PUT

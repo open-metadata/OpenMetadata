@@ -194,11 +194,18 @@ public final class OntologyAiResource {
       throw new NotFoundException("Ontology memory derivation is disabled");
     }
     final OntologyMemoryDerivationService derivation = memoryDerivationService();
+    if (request.getMemoryIds() == null) {
+      throw new BadRequestException("memoryIds are required");
+    }
+    final List<UUID> memoryIds = List.copyOf(request.getMemoryIds());
+    final String user = securityContext.getUserPrincipal().getName();
+    final List<ContextMemory> memories = derivation.loadMemories(memoryIds, user);
+    memories.forEach(memory -> authorizeMemory(securityContext, memory));
     if (request.getGlossary() != null) {
       derivation.loadGlossary(request.getGlossary());
       authorizeGlossary(
           securityContext, request.getGlossary(), MetadataOperation.EDIT_GLOSSARY_TERMS);
-    } else {
+    } else if (!OntologyMemoryDerivationService.ownsAll(memories, user)) {
       authorizer.authorize(
           securityContext,
           new OperationContext(Entity.ONTOLOGY_CHANGE_SET, MetadataOperation.CREATE),
@@ -206,13 +213,6 @@ public final class OntologyAiResource {
               Entity.ONTOLOGY_CHANGE_SET,
               new OntologyChangeSet().withName("memory-glossary-draft")));
     }
-    if (request.getMemoryIds() == null) {
-      throw new BadRequestException("memoryIds are required");
-    }
-    final List<UUID> memoryIds = List.copyOf(request.getMemoryIds());
-    final List<ContextMemory> memories = derivation.loadMemories(memoryIds);
-    memories.forEach(memory -> authorizeMemory(securityContext, memory));
-    final String user = securityContext.getUserPrincipal().getName();
     final long jobId =
         Entity.getJobDAO()
             .insertJobInternal(

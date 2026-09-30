@@ -14,7 +14,9 @@
 package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -31,6 +33,7 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -69,21 +72,34 @@ class OntologyMemoryDerivationServiceTest {
     when(memories.get(isNull(), eq(id), isNull(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(memory);
 
-    assertEquals(List.of(memory), service.loadMemories(List.of(id)));
+    assertEquals(List.of(memory), service.loadMemories(List.of(id), "alice"));
+    assertTrue(OntologyMemoryDerivationService.ownsAll(List.of(memory), "alice"));
+    assertFalse(OntologyMemoryDerivationService.ownsAll(List.of(memory), "bob"));
 
     memory.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
-    assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(id)));
+    assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(id), "bob"));
+    assertEquals(List.of(memory), service.loadMemories(List.of(id), "alice"));
+
+    memory.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.SHARED));
+    assertEquals(List.of(memory), service.loadMemories(List.of(id), "alice"));
+
+    memory.setShareConfig(null);
+    assertEquals(List.of(memory), service.loadMemories(List.of(id), "alice"));
+    assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(id), "bob"));
+
+    memory.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PUBLIC));
+    assertEquals(List.of(memory), service.loadMemories(List.of(id), "bob"));
 
     memory.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
     memory.setStatus(ContextMemoryStatus.ARCHIVED);
-    assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(id)));
+    assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(id), "alice"));
   }
 
   @Test
   void rejectsOversizedOrDuplicateInput() {
     final UUID id = UUID.randomUUID();
-    assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(id, id)));
-    assertThrows(BadRequestException.class, () -> service.loadMemories(List.of()));
+    assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(id, id), "alice"));
+    assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(), "alice"));
   }
 
   private static ContextMemory memory(
@@ -92,6 +108,7 @@ class OntologyMemoryDerivationServiceTest {
         .withId(id)
         .withQuestion("What is a customer?")
         .withAnswer("A person who bought a product.")
+        .withOwners(List.of(new EntityReference().withType("user").withName("alice")))
         .withStatus(status)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }

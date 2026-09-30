@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -22,6 +22,7 @@ import {
 } from 'react-hook-form';
 import { MemoryRouter } from 'react-router-dom';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { proposeTermFromMemory } from '../../../rest/ontologyAPI';
 import CreateMemoryModal from './CreateMemoryModal.component';
 
 jest.mock('react-markdown', () => ({
@@ -41,6 +42,10 @@ jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
   updateContextMemory: jest.fn(),
   deleteContextMemory: jest.fn(),
+}));
+
+jest.mock('../../../rest/ontologyAPI', () => ({
+  proposeTermFromMemory: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -362,5 +367,36 @@ describe('CreateMemoryModal', () => {
     fireEvent.click(termLink);
 
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the creator propose a restricted memory for Studio review', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'inactive-customer',
+      owners: [{ type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Shared' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (proposeTermFromMemory as jest.Mock).mockResolvedValue({ id: 42 });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText('message.memory-proposal-reviewer-visibility')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.propose-term' }));
+    await waitFor(() =>
+      expect(proposeTermFromMemory).toHaveBeenCalledWith('memory-id')
+    );
   });
 });

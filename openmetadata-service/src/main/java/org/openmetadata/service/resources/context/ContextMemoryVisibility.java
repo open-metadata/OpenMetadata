@@ -66,7 +66,7 @@ public final class ContextMemoryVisibility {
       return false;
     }
     MemoryVisibility visibility = memory.getShareConfig().getVisibility();
-    if (visibility == MemoryVisibility.ENTITY) {
+    if (visibility == MemoryVisibility.ENTITY || visibility == MemoryVisibility.PUBLIC) {
       return true;
     }
     if (visibility == MemoryVisibility.SHARED) {

@@ -77,12 +77,14 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ContextMemory,
+  MemoryStatus,
   MemoryType,
   ShareVisibility,
   TagLabel,
 } from '../../../generated/entity/context/contextMemory';
 import { queryClient } from '../../../queryClient';
 import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
+import { proposeTermFromMemory } from '../../../rest/ontologyAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
@@ -120,7 +122,7 @@ const DEFAULT_FORM_VALUES: MemoryFormValues = {
   title: '',
   memory: '',
   memoryType: null,
-  visibility: ShareVisibility.Shared,
+  visibility: ShareVisibility.Private,
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -721,8 +723,19 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
 
 const MemoryDerivedOntology: FC<{
   memory?: ContextMemory;
+  canPropose: boolean;
+  isProposing: boolean;
+  proposalQueued: boolean;
   onNavigate: () => void;
-}> = ({ memory, onNavigate }) => {
+  onPropose: () => void;
+}> = ({
+  memory,
+  canPropose,
+  isProposing,
+  proposalQueued,
+  onNavigate,
+  onPropose,
+}) => {
   const { t } = useTranslation();
 
   if (!memory) {
@@ -733,6 +746,10 @@ const MemoryDerivedOntology: FC<{
     memory.derivedEntities?.filter(
       (entity) => entity.type === EntityType.GLOSSARY_TERM
     ) ?? [];
+  const visibility = memory.shareConfig?.visibility ?? ShareVisibility.Private;
+  const isRestricted =
+    visibility === ShareVisibility.Private ||
+    visibility === ShareVisibility.Shared;
 
   return (
     <div
@@ -756,7 +773,50 @@ const MemoryDerivedOntology: FC<{
           {t('message.no-derived-ontology')}
         </Typography>
       )}
+      {canPropose && (
+        <>
+          {isRestricted && (
+            <Typography className="tw:text-tertiary" size="text-xs">
+              {t('message.memory-proposal-reviewer-visibility')}
+            </Typography>
+          )}
+          <Button
+            color="secondary"
+            isLoading={isProposing}
+            size="sm"
+            type="button"
+            onClick={onPropose}>
+            {t('label.propose-term')}
+          </Button>
+        </>
+      )}
+      {proposalQueued && (
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {t('label.queued')}
+        </Typography>
+      )}
     </div>
+  );
+};
+
+const canProposeRestrictedMemory = (
+  memory: ContextMemory | undefined,
+  isOwner: boolean,
+  isViewOnly: boolean,
+  proposalQueued: boolean
+): boolean => {
+  if (!memory || !isOwner) {
+    return false;
+  }
+  if (!isViewOnly || proposalQueued) {
+    return false;
+  }
+  if (memory.status && memory.status !== MemoryStatus.Active) {
+    return false;
+  }
+
+  return [ShareVisibility.Private, ShareVisibility.Shared].includes(
+    memory.shareConfig?.visibility ?? ShareVisibility.Private
   );
 };
 
@@ -823,6 +883,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [memoryTab, setMemoryTab] = useState<'edit' | 'preview'>('edit');
   const [isEditingVisibility, setIsEditingVisibility] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isProposing, setIsProposing] = useState(false);
+  const [proposalQueued, setProposalQueued] = useState(false);
   const [modalError, setModalError] = useState<string>('');
   const [linkedAssets, setLinkedAssets] = useState<DataAssetOption[]>([]);
   const [selectedTags, setSelectedTags] = useState<TagLabel[]>([]);
@@ -847,6 +909,10 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   useEffect(() => {
     setIsViewOnly(viewOnly);
   }, [viewOnly]);
+
+  useEffect(() => {
+    setProposalQueued(false);
+  }, [memoryToEdit?.id]);
 
   // Populate / reset form whenever the memory being edited changes
   useEffect(() => {
@@ -959,6 +1025,25 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       );
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleProposeTerm = async () => {
+    if (!memoryToEdit) {
+      return;
+    }
+    setIsProposing(true);
+    setModalError('');
+    try {
+      await proposeTermFromMemory(memoryToEdit.id);
+      setProposalQueued(true);
+      showSuccessToast(t('label.queued'));
+    } catch (err) {
+      setModalError(
+        getErrorText(err as AxiosError, t('server.unexpected-error'))
+      );
+    } finally {
+      setIsProposing(false);
     }
   };
 
@@ -1178,8 +1263,17 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     />
 
                     <MemoryDerivedOntology
+                      canPropose={canProposeRestrictedMemory(
+                        memoryToEdit,
+                        isOwner,
+                        isViewOnly,
+                        proposalQueued
+                      )}
+                      isProposing={isProposing}
                       memory={memoryToEdit}
+                      proposalQueued={proposalQueued}
                       onNavigate={handleClose}
+                      onPropose={handleProposeTerm}
                     />
                   </div>
 

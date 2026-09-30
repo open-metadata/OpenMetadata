@@ -1140,6 +1140,7 @@ class VectorSearchQueryBuilderTest {
     assertNotNull(clause, "every vector query must carry a memory visibility clause");
     String rendered = clause.toString();
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()), "org-wide memories still match");
+    assertTrue(rendered.contains(MemoryVisibility.PUBLIC.value()), "public memories still match");
     assertFalse(rendered.contains("owners.id"), "no subject means no owner branch");
     assertFalse(rendered.contains("sharedWithIds"), "no subject means no shared branch");
     assertFalse(
@@ -1158,6 +1159,7 @@ class VectorSearchQueryBuilderTest {
     assertTrue(rendered.contains(TEAM_ID.toString()), "the shared branch must include their team");
     assertTrue(rendered.contains(MemoryVisibility.SHARED.value()));
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()));
+    assertTrue(rendered.contains(MemoryVisibility.PUBLIC.value()));
   }
 
   /**

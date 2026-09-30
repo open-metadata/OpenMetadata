@@ -25,6 +25,7 @@ import {
   listOntologyPacks,
   listRelationshipTypes,
   materializeInferenceRules,
+  proposeTermFromMemory,
   releaseOntologyEditLock,
   submitOntologyBulkOperation,
   suggestOntologyMappings,
@@ -57,6 +58,19 @@ describe('ontologyAPI', () => {
     expect(mockedApiClient.get).toHaveBeenCalledWith('/relationshipTypes', {
       params: { limit: 25 },
     });
+    expect(result).toEqual(response.data);
+  });
+
+  it('queues an ontology proposal from a memory', async () => {
+    const response = { data: { id: 42, status: 'PENDING' } };
+    mockedApiClient.post.mockResolvedValue(response);
+
+    const result = await proposeTermFromMemory('memory-id');
+
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontology/ai/memories/jobs',
+      { memoryIds: ['memory-id'] }
+    );
     expect(result).toEqual(response.data);
   });
 

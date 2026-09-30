@@ -67,7 +67,7 @@ public final class OntologyMemoryDerivationService {
     if (previous.isPresent()) {
       return Optional.of(previous.get().getId());
     }
-    final List<ContextMemory> memories = loadMemories(memoryIds);
+    final List<ContextMemory> memories = loadMemories(memoryIds, user);
     final List<OntologyAiCompletionGateway.MemoryContext> contexts =
         memories.stream().map(this::context).toList();
     final OntologyMemoryGlossarySelector.Selection selection =
@@ -112,7 +112,7 @@ public final class OntologyMemoryDerivationService {
     return glossary;
   }
 
-  public List<ContextMemory> loadMemories(final List<UUID> memoryIds) {
+  public List<ContextMemory> loadMemories(final List<UUID> memoryIds, final String user) {
     if (memoryIds == null
         || memoryIds.isEmpty()
         || memoryIds.size() > MAX_MEMORIES
@@ -120,17 +120,28 @@ public final class OntologyMemoryDerivationService {
         || Set.copyOf(memoryIds).size() != memoryIds.size()) {
       throw new BadRequestException("memoryIds must contain 1 to 20 unique memories");
     }
-    return memoryIds.stream().map(this::loadMemory).toList();
+    return memoryIds.stream().map(id -> loadMemory(id, user)).toList();
   }
 
-  private ContextMemory loadMemory(final UUID id) {
+  private ContextMemory loadMemory(final UUID id, final String user) {
     final ContextMemory memory =
         memoryRepository.get(
-            null, id, memoryRepository.getFields("primaryEntity"), Include.NON_DELETED, false);
-    if (memory.getStatus() != ContextMemoryStatus.ACTIVE
-        || memory.getShareConfig() == null
-        || memory.getShareConfig().getVisibility() != MemoryVisibility.ENTITY) {
-      throw new BadRequestException("Memory is not active and published: " + id);
+            null,
+            id,
+            memoryRepository.getFields("primaryEntity,owners"),
+            Include.NON_DELETED,
+            false);
+    if (memory.getStatus() != ContextMemoryStatus.ACTIVE) {
+      throw new BadRequestException("Memory is not active: " + id);
+    }
+    final MemoryVisibility visibility =
+        memory.getShareConfig() == null
+            ? MemoryVisibility.PRIVATE
+            : memory.getShareConfig().getVisibility();
+    if (visibility != MemoryVisibility.ENTITY
+        && visibility != MemoryVisibility.PUBLIC
+        && !isDirectOwner(memory, user)) {
+      throw new BadRequestException("Restricted memory requires an owner-initiated job: " + id);
     }
     if (memory.getQuestion() == null
         || memory.getQuestion().isBlank()
@@ -143,6 +154,16 @@ public final class OntologyMemoryDerivationService {
       throw new BadRequestException("Memory exceeds the derivation content limit: " + id);
     }
     return memory;
+  }
+
+  private static boolean isDirectOwner(final ContextMemory memory, final String user) {
+    return memory.getOwners() != null
+        && memory.getOwners().stream()
+            .anyMatch(owner -> Entity.USER.equals(owner.getType()) && user.equals(owner.getName()));
+  }
+
+  public static boolean ownsAll(final List<ContextMemory> memories, final String user) {
+    return memories.stream().allMatch(memory -> isDirectOwner(memory, user));
   }
 
   private OntologyAiCompletionGateway.MemoryContext context(final ContextMemory memory) {
