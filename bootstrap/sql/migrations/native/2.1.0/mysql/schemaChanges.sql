@@ -497,14 +497,10 @@ PREPARE announcement_type_index_stmt FROM @announcement_type_index_ddl;
 EXECUTE announcement_type_index_stmt;
 DEALLOCATE PREPARE announcement_type_index_stmt;
 
--- Data Consumer can run agent SPARQL queries by default (#34231). Seed data never updates a policy
--- that already exists, so existing installs get the rule here. As a schema-changes statement it is
--- recorded in SERVER_MIGRATION_SQL_LOGS and runs once, so an admin who later removes the rule does
--- not get it back on a subsequent upgrade. The NOT EXISTS guard keeps a replay from duplicating it.
--- The rule is only added while Data Consumer still has an unconditional allow rule for ViewAll (or
--- All) on every resource, because the grant is acceptable only where Data Consumers can already
--- view everything. Deny rules in other policies are not visible here, so instances that restrict
--- viewing that way must remove the rule themselves.
+-- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
+-- that already exists, so existing installs get the rule here. The rule is only added while an allow
+-- rule of the policy still lists ViewAll, since the grant is acceptable only where Data Consumers can
+-- already view everything. Deny rules in other policies are not visible to this statement.
 UPDATE policy_entity
 SET json = JSON_ARRAY_APPEND(
     json,
@@ -517,25 +513,9 @@ SET json = JSON_ARRAY_APPEND(
         'effect', 'allow'
     )
 )
-WHERE name = 'DataConsumerPolicy'
-  AND JSON_SEARCH(json, 'one', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule', NULL, '$.rules[*].name') IS NULL
-  AND EXISTS (
-    SELECT 1
-    FROM JSON_TABLE(
-        policy_entity.json,
-        '$.rules[*]' COLUMNS (
-            effect VARCHAR(16) PATH '$.effect' NULL ON EMPTY,
-            rule_condition VARCHAR(2048) PATH '$.condition' NULL ON EMPTY,
-            resources JSON PATH '$.resources' NULL ON EMPTY,
-            operations JSON PATH '$.operations' NULL ON EMPTY
-        )
-    ) AS existing_rule
-    WHERE LOWER(existing_rule.effect) = 'allow'
-      AND (existing_rule.rule_condition IS NULL OR TRIM(existing_rule.rule_condition) = '')
-      AND LOWER(CAST(existing_rule.resources AS CHAR)) LIKE '%"all"%'
-      AND (LOWER(CAST(existing_rule.operations AS CHAR)) LIKE '%"viewall"%'
-           OR LOWER(CAST(existing_rule.operations AS CHAR)) LIKE '%"all"%')
-  );
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'), '$.rules')
+  AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('ViewAll')), '$.rules');
 
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.

@@ -42,9 +42,10 @@ import org.testcontainers.utility.DockerImageName;
  * (#34231) against real MySQL and PostgreSQL. The statement is read from the shipped {@code
  * schemaChanges.sql}, so the test fails if either dialect drifts from what upgrades really run.
  *
- * <p>The grant is only added while Data Consumer still has an unconditional allow rule for {@code
- * ViewAll} (or {@code All}) on every resource, which is the premise the grant's risk acceptance
- * rests on. Deny rules in other policies are not visible to the statement and are not tested.
+ * <p>The grant is only added while some allow rule of Data Consumer still lists {@code ViewAll},
+ * which is the premise the grant's risk acceptance rests on. The check is deliberately as simple as
+ * the 2.0 policy backfills: it does not look at conditions or resources, and it cannot see deny
+ * rules in other policies. The "known limit" scenarios pin those gaps so they stay visible.
  *
  * <p>That the statement runs only once per installation is the migration framework's guarantee for
  * schema-changes statements, not something SQL can show, so it is not asserted here.
@@ -100,29 +101,20 @@ class DataConsumerSparqlGrantSqlMigrationTest {
     return List.of(
         new Scenario("seeded policy", List.of(viewRule(ALL_RESOURCES, null)), true),
         new Scenario("capitalised resource", List.of(viewRule("All", null)), true),
-        new Scenario("blank condition", List.of(viewRule(ALL_RESOURCES, " ")), true),
+        new Scenario("ViewAll dropped", List.of(ruleWithout(MetadataOperation.EDIT_TAGS)), false),
+        new Scenario("ViewAll denied", List.of(deniedViewRule()), false),
         new Scenario(
-            "wildcard operation",
-            List.of(rule(List.of(ALL_RESOURCES), MetadataOperation.ALL, Rule.Effect.ALLOW, null)),
+            "wildcard operation without ViewAll",
+            List.of(ruleWithout(MetadataOperation.ALL)),
+            false),
+        new Scenario(
+            "known limit: conditional ViewAll is not detected",
+            List.of(viewRule(ALL_RESOURCES, "isOwner()")),
             true),
         new Scenario(
-            "ViewAll dropped",
-            List.of(
-                rule(List.of(ALL_RESOURCES), MetadataOperation.EDIT_TAGS, Rule.Effect.ALLOW, null)),
-            false),
-        new Scenario("conditional ViewAll", List.of(viewRule(ALL_RESOURCES, "isOwner()")), false),
-        new Scenario("ViewAll on one resource only", List.of(viewRule("table", null)), false),
-        new Scenario(
-            "ViewAll denied",
-            List.of(
-                rule(List.of(ALL_RESOURCES), MetadataOperation.VIEW_ALL, Rule.Effect.DENY, null)),
-            false),
-        new Scenario(
-            "conditions met by different rules",
-            List.of(
-                rule(List.of(ALL_RESOURCES), MetadataOperation.EDIT_TAGS, Rule.Effect.ALLOW, null),
-                viewRule("table", null)),
-            false));
+            "known limit: ViewAll on one resource is not detected",
+            List.of(viewRule("table", null)),
+            true));
   }
 
   @ParameterizedTest(name = "{0}: {1}")
@@ -166,6 +158,14 @@ class DataConsumerSparqlGrantSqlMigrationTest {
   private static Rule viewRule(String resource, String condition) {
     return rule(List.of(resource), MetadataOperation.VIEW_ALL, Rule.Effect.ALLOW, condition)
         .withName(EDIT_RULE);
+  }
+
+  private static Rule ruleWithout(MetadataOperation operation) {
+    return rule(List.of(ALL_RESOURCES), operation, Rule.Effect.ALLOW, null);
+  }
+
+  private static Rule deniedViewRule() {
+    return rule(List.of(ALL_RESOURCES), MetadataOperation.VIEW_ALL, Rule.Effect.DENY, null);
   }
 
   private static Rule rule(

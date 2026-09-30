@@ -138,14 +138,17 @@ what a given worker was authored against.
 >   migration was rejected because its identity is a fingerprint of the version's migration
 >   classes, and changing any of them re-runs it on installs whose latest version is 2.1.0.
 > - **Upgrade guard.** The accepted risk above holds only while Data Consumer can view
->   everything, so the migration adds the rule only if the policy still has an unconditional
->   allow rule for `ViewAll` (or `All`) on every resource. An install where an admin removed or
->   conditioned that rule keeps its restriction and does not receive the grant; such an admin
->   who wants it adds the rule by hand. This narrows "works after upgrade" to installs that
->   have not customised Data Consumer's view access. The guard reads `DataConsumerPolicy` only.
->   It cannot see deny rules in other policies (for example `DomainOnlyAccessPolicy` or a
->   conditional deny on a team's role), so an instance that restricts viewing that way still
->   receives the grant and must remove the rule itself (§7).
+>   everything, so the migration adds the rule only if some allow rule of the policy still
+>   lists `ViewAll`, in the same plain style as the 2.0 policy backfills. An install where an
+>   admin removed `ViewAll` from Data Consumer keeps that restriction and does not receive the
+>   grant; such an admin who wants it adds the rule by hand. This narrows "works after
+>   upgrade" to installs that still have `ViewAll` in Data Consumer. The check is deliberately
+>   simple: it does not look at a rule's condition or resources, so a `ViewAll` that was
+>   narrowed by a condition or to specific resources still lets the grant through, and it does
+>   not treat the wildcard `All` operation as `ViewAll`. It reads `DataConsumerPolicy` only,
+>   so it cannot see deny rules in other policies (for example `DomainOnlyAccessPolicy` or a
+>   conditional deny on a team's role). Instances that restrict viewing in any of these ways
+>   must remove the rule themselves (§7).
 > The sections below record the original opt-in decision and remain the reference for how the
 > operation is matched. Where they say no default role grants the operation, read them as
 > superseded by this amendment.
