@@ -4783,6 +4783,15 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/explore/ExploreHeader/ExploreSearchInput.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataMarketplace.spec.ts",
+        "playwright/e2e/Pages/DataMarketplacePermissions.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/constants/Date.constants.ts"
       ],
       "specs": [
