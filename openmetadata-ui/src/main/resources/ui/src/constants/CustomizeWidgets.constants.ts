@@ -56,7 +56,7 @@ export const GLOSSARY_TERMS_WIDGET: CommonWidgetType = {
 export const CUSTOM_PROPERTIES_WIDGET: CommonWidgetType = {
   fullyQualifiedName: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
   name: i18n.t('label.custom-property-plural'),
-  data: { gridSizes: ['small'] },
+  data: { gridSizes: ['small', 'large'] },
 };
 
 export const DOMAIN_WIDGET: CommonWidgetType = {

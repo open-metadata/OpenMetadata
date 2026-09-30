@@ -48,6 +48,7 @@ import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
+import org.openmetadata.service.jobs.JobDAO;
 
 @ExtendWith(MockitoExtension.class)
 class ContextFileProcessingServiceTest {
@@ -61,6 +62,7 @@ class ContextFileProcessingServiceTest {
   @Mock private ContextFileTextExtractor textExtractor;
   @Mock private ContextMemoryExtractor memoryExtractor;
   @Mock private FileContextProcessingEngine fileEngine;
+  @Mock private JobDAO jobDao;
 
   @Captor private ArgumentCaptor<ContextFile> updatedFileCaptor;
   @Captor private ArgumentCaptor<ContextFileContent> updatedContentCaptor;
@@ -145,7 +147,12 @@ class ContextFileProcessingServiceTest {
     when(textExtractor.extract(any(InputStream.class), same(file)))
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
 
-    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+    ContextFileProcessingService service = service(Runnable::run, () -> assetService, true);
+    service.process(fileId, contentId);
+    verify(jobDao)
+        .enqueueFileMemoryJob(
+            eq(fileId.toString()), anyString(), anyString(), anyString(), eq(true));
+    service.runMemoryExtraction(fileId, contentId);
 
     // The shared engine owns derive/reconcile/stat-stamping (covered by its own tests); the
     // service is responsible for driving the status machine around it.
@@ -159,7 +166,7 @@ class ContextFileProcessingServiceTest {
   }
 
   @Test
-  void llmRejectionMarksFailureAndKeepsExtractedText() throws Exception {
+  void memoryJobEnqueueFailureKeepsExtractedText() throws Exception {
     when(assetService.read(asset))
         .thenReturn(
             CompletableFuture.completedFuture(
@@ -168,13 +175,11 @@ class ContextFileProcessingServiceTest {
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
     file.setExtractedText("indexed text");
     content.setExtractedText("Quarterly results canonical");
-    Executor rejectingLlmExecutor =
-        task -> {
-          throw new RejectedExecutionException("queue full");
-        };
+    org.mockito.Mockito.doThrow(new IllegalStateException("queue unavailable"))
+        .when(jobDao)
+        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), eq(true));
 
-    service(Runnable::run, () -> assetService, rejectingLlmExecutor, true)
-        .process(fileId, contentId);
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
 
     verify(repository, times(3))
         .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
@@ -188,7 +193,7 @@ class ContextFileProcessingServiceTest {
     ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
     assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
     assertEquals(
-        "Knowledge pill extraction queue is full. Please retry later.",
+        "Unable to queue knowledge pill extraction. Please retry later.",
         failedContent.getProcessingError());
     assertEquals("Quarterly results canonical", failedContent.getExtractedText());
   }
@@ -207,7 +212,9 @@ class ContextFileProcessingServiceTest {
         .when(fileEngine)
         .runExtraction(fileId);
 
-    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+    ContextFileProcessingService service = service(Runnable::run, () -> assetService, true);
+    service.process(fileId, contentId);
+    assertThrows(RuntimeException.class, () -> service.runMemoryExtraction(fileId, contentId));
 
     verify(repository, times(3))
         .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
@@ -230,18 +237,38 @@ class ContextFileProcessingServiceTest {
     ContextFile extracting = transientFile(ProcessingStatus.ExtractingContext);
     ContextFile uploaded = transientFile(ProcessingStatus.Uploaded);
     ContextFile processed = transientFile(ProcessingStatus.Processed);
+    ContextFile invalid =
+        new ContextFile()
+            .withId(UUID.randomUUID())
+            .withHeadContentId("invalid-content-id")
+            .withProcessingStatus(ProcessingStatus.Uploaded);
     ContextFile noContent =
         new ContextFile()
             .withId(UUID.randomUUID())
             .withProcessingStatus(ProcessingStatus.Analyzing);
     when(repository.listAll(any(), any()))
-        .thenReturn(List.of(analyzing, extracting, uploaded, processed, noContent));
+        .thenReturn(List.of(invalid, analyzing, extracting, uploaded, processed, noContent));
     List<Runnable> queued = new ArrayList<>();
 
     int resubmitted = service(queued::add, () -> assetService).recoverInterruptedProcessing();
 
     assertEquals(3, resubmitted);
-    assertEquals(3, queued.size());
+    assertEquals(2, queued.size());
+    verify(jobDao)
+        .enqueueFileMemoryJob(
+            eq(extracting.getId().toString()), anyString(), anyString(), anyString(), eq(true));
+  }
+
+  @Test
+  void memoryStageContentionQueuesRetryDespiteRunningJob() {
+    when(repository.updateIfCurrent(isNull(), same(file), any(ContextFile.class), anyString()))
+        .thenThrow(new PreconditionFailedException("Concurrent file update"));
+
+    service(Runnable::run, () -> assetService, true).runMemoryExtraction(fileId, contentId);
+
+    verify(jobDao)
+        .enqueueFileMemoryJob(
+            eq(fileId.toString()), anyString(), anyString(), anyString(), eq(false));
   }
 
   private ContextFile transientFile(ProcessingStatus status) {
@@ -467,20 +494,12 @@ class ContextFileProcessingServiceTest {
 
   private ContextFileProcessingService service(
       Executor executor, Supplier<AssetService> assetServiceSupplier, boolean llmEnabled) {
-    return service(executor, assetServiceSupplier, Runnable::run, llmEnabled);
-  }
-
-  private ContextFileProcessingService service(
-      Executor executor,
-      Supplier<AssetService> assetServiceSupplier,
-      Executor llmExecutor,
-      boolean llmEnabled) {
     return new ContextFileProcessingService(
         repository,
         assetServiceSupplier,
         executor,
         textExtractor,
-        llmExecutor,
+        jobDao,
         () -> memoryExtractor,
         () -> llmEnabled,
         () -> fileEngine);

@@ -28,11 +28,11 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
-  assignSingleSelectDomain,
   getApiContext,
   redirectToHomePage,
   searchDataProductOptions,
 } from '../../utils/common';
+import { setDomain } from '../../utils/domainPicker';
 import {
   softDeleteEntity,
   waitForAllLoadersToDisappear,
@@ -366,7 +366,7 @@ entities.forEach((EntityClass) => {
         await page.getByTestId('breadcrumb').getByRole('link').first().click();
       }
 
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await waitForAllLoadersToDisappear(page);
 
       // Entities that navigate to a parent entity page (Table/StoredProcedure →
