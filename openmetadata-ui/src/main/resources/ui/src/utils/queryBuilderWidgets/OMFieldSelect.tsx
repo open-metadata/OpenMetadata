@@ -14,6 +14,7 @@ import { Select, SelectItemType } from '@openmetadata/ui-core-components';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
 import { useMemo, useRef, useState } from 'react';
+import { QUERY_BUILDER_POPOVER_CLASS } from '../queryBuilder/types';
 
 type FieldNode = {
   key?: string;
@@ -126,6 +127,7 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
       isDisabled={readonly}
       items={filteredItems}
       placeholder={placeholder ?? 'Select field'}
+      popoverClassName={QUERY_BUILDER_POPOVER_CLASS}
       selectedKey={selectedKey ?? undefined}
       shortcut={false}
       showSearchIcon={false}
