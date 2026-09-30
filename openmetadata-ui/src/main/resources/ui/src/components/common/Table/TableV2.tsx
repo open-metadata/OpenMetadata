@@ -721,7 +721,8 @@ const TableToolbar = ({
       {(extraTableFilters || isCustomizeColumnEnable) && (
         <div
           className={classNames(
-            'd-flex justify-end items-center gap-5',
+            // min-w-0: else the row takes min-content width and overflows the clip.
+            'd-flex justify-end items-center gap-5 tw:min-w-0',
             extraTableFiltersClassName
           )}
           style={{ flex: 1 }}>

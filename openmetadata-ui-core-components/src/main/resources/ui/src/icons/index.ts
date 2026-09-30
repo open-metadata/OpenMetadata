@@ -364,6 +364,7 @@ export { Trash02 } from './Trash02';
 export { TreeView } from './TreeView';
 export { TrendDown01 } from './TrendDown01';
 export { TrendUp01 } from './TrendUp01';
+export { TrendUp02 } from './TrendUp02';
 export { Type01 } from './Type01';
 export { Uniqueness } from './Uniqueness';
 export { UploadCloud01 } from './UploadCloud01';
