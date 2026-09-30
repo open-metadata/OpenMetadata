@@ -324,7 +324,7 @@
     "on-headers": "1.1.0",
     "form-data": "4.0.6",
     "tar-fs": "2.1.4",
-    "brace-expansion": "1.1.18",
+    "brace-expansion": "1.1.21",
     "browserslist": "4.28.8",
     "fast-uri": "3.1.8",
     "linkify-it": "5.0.2",
