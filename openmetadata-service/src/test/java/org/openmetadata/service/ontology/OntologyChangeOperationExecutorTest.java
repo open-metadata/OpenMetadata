@@ -33,6 +33,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -128,6 +129,20 @@ class OntologyChangeOperationExecutorTest {
 
     assertThrows(BadRequestException.class, () -> executor.execute(uriInfo, USER, operation));
     verify(glossaryRepository, never()).createOrUpdate(any(), any(), any());
+  }
+
+  @Test
+  void createTermPersistsItsSourceMemory() {
+    final UUID memoryId = UUID.randomUUID();
+    stubTermUpsertEchoesEntity();
+    final OntologyChangeOperation operation =
+        operation(OntologyChangeOperationType.CREATE_TERM, null)
+            .withTerm(term(UUID.randomUUID()))
+            .withSourceMemoryIds(Set.of(memoryId));
+
+    executor.execute(uriInfo, USER, operation);
+
+    assertEquals(Set.of(memoryId), capturePersistedTerm().getSourceMemoryIds());
   }
 
   @Test

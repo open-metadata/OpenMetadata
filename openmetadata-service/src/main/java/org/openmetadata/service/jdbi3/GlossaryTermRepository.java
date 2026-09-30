@@ -2785,6 +2785,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       recordChange("conceptType", original.getConceptType(), updated.getConceptType());
       recordChange(
           "ontologySource", original.getOntologySource(), updated.getOntologySource(), true);
+      if (updated.getSourceMemoryIds() == null) {
+        updated.setSourceMemoryIds(original.getSourceMemoryIds());
+      }
+      recordChange("sourceMemoryIds", original.getSourceMemoryIds(), updated.getSourceMemoryIds());
       compareAndUpdate("relatedTerms", () -> updateRelatedTerms(original, updated));
       compareAndUpdate(FIELD_REALIZED_IN, () -> updateRealizedIn(original, updated));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "glossary");

@@ -1061,7 +1061,11 @@ export interface GlossaryTerm {
      * User names of the reviewers for this glossary.
      */
     reviewers?: EntityReference[];
-    style?:     Style;
+    /**
+     * Context memories that supported the derivation of this glossary term.
+     */
+    sourceMemoryIds?: string[];
+    style?:           Style;
     /**
      * Alternate names that are synonyms or near-synonyms for the glossary term.
      */

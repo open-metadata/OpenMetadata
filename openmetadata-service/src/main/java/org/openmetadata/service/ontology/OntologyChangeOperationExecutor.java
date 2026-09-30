@@ -109,6 +109,9 @@ public final class OntologyChangeOperationExecutor {
     prepareTerm(term, user);
     final boolean isUpdate =
         operation.getOperationType() == OntologyChangeOperationType.UPDATE_TERM;
+    if (!isUpdate) {
+      term.setSourceMemoryIds(operation.getSourceMemoryIds());
+    }
     termRepository.prepareInternal(term, isUpdate);
     return outcome(termRepository.createOrUpdate(uriInfo, term, user).getEntity());
   }
