@@ -59,8 +59,6 @@ export interface LineageConfigModalProps {
 
 export interface NodeHandlesProps {
   nodeType: string;
-  id: string;
-  isConnectable: boolean;
   expandCollapseHandles: ReactNode;
 }
 

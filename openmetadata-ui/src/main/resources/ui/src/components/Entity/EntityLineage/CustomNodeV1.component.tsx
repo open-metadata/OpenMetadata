@@ -23,7 +23,7 @@ import {
   type RefObject,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Handle, NodeProps, Position } from 'reactflow';
+import { NodeProps } from 'reactflow';
 import { ReactComponent as ZoomInIcon } from '../../../assets/svg/ic-zoom-in.svg';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
@@ -49,66 +49,10 @@ import LineageNodeLabelV1 from './LineageNodeLabelV1';
 import NodeChildren from './NodeChildren/NodeChildren.component';
 
 const NodeHandles = memo(
-  ({
-    nodeType,
-    id,
-    isConnectable,
-    expandCollapseHandles,
-  }: NodeHandlesProps) => {
-    switch (nodeType) {
-      case EntityLineageNodeType.OUTPUT:
-        return (
-          <>
-            <Handle
-              className="lineage-node-handle"
-              id={id}
-              isConnectable={isConnectable}
-              position={Position.Left}
-              type="target"
-            />
-            {expandCollapseHandles}
-          </>
-        );
-
-      case EntityLineageNodeType.INPUT:
-        return (
-          <>
-            <Handle
-              className="lineage-node-handle"
-              id={id}
-              isConnectable={isConnectable}
-              position={Position.Right}
-              type="source"
-            />
-            {expandCollapseHandles}
-          </>
-        );
-
-      case EntityLineageNodeType.NOT_CONNECTED:
-        return null;
-
-      default:
-        return (
-          <>
-            <Handle
-              className="lineage-node-handle"
-              id={id}
-              isConnectable={isConnectable}
-              position={Position.Left}
-              type="target"
-            />
-            <Handle
-              className="lineage-node-handle"
-              id={id}
-              isConnectable={isConnectable}
-              position={Position.Right}
-              type="source"
-            />
-            {expandCollapseHandles}
-          </>
-        );
-    }
-  }
+  ({ nodeType, expandCollapseHandles }: NodeHandlesProps) =>
+    nodeType === EntityLineageNodeType.NOT_CONNECTED ? null : (
+      <>{expandCollapseHandles}</>
+    )
 );
 
 const getHandleVisibility = ({
@@ -465,8 +409,6 @@ const CustomNodeV1 = (props: NodeProps) => {
         </div>
         <NodeHandles
           expandCollapseHandles={handlesElement}
-          id={id}
-          isConnectable={isConnectable}
           nodeType={nodeType}
         />
         {childElement}

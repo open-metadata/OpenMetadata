@@ -34,7 +34,6 @@ import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
   applyNodeChanges,
   Background,
-  Connection,
   Edge,
   MiniMap,
   Node,
@@ -1997,40 +1996,6 @@ const LineageMapCanvas = ({
     [lineageEditRequest]
   );
 
-  const handleConnect = useCallback(
-    async (connection: Connection) => {
-      if (!canEditScene) {
-        return;
-      }
-      const nodeById = new Map(
-        nodesRef.current.map((node) => [node.id, node.data.sceneNode])
-      );
-      const sourceNode = connection.source
-        ? nodeById.get(connection.source)
-        : undefined;
-      const targetNode = connection.target
-        ? nodeById.get(connection.target)
-        : undefined;
-      if (
-        !isEditableSceneNode(sourceNode) ||
-        !isEditableSceneNode(targetNode)
-      ) {
-        showInfoToast(t('label.zoom-in'));
-
-        return;
-      }
-
-      const fromEntity = getRealEntityRef(sourceNode);
-      const toEntity = getRealEntityRef(targetNode);
-      if (!fromEntity || !toEntity) {
-        return;
-      }
-
-      await createLineageEdge(fromEntity, toEntity);
-    },
-    [canEditScene, createLineageEdge, t]
-  );
-
   const handlePaneClick = useCallback(() => {
     setSelectedEdge(undefined);
     setSelectedNode(undefined);
@@ -2186,11 +2151,8 @@ const LineageMapCanvas = ({
         minZoom={MIN_ZOOM_VALUE}
         nodeTypes={nodeTypes}
         nodes={renderedNodes}
-        nodesConnectable={canEditScene}
+        nodesConnectable={false}
         selectNodesOnDrag={false}
-        onConnect={handleConnect}
-        onConnectEnd={() => setIsCreatingEdge(false)}
-        onConnectStart={() => setIsCreatingEdge(true)}
         onInit={setReactFlowInstance}
         onMove={handleMove}
         onMoveStart={handleMoveStart}

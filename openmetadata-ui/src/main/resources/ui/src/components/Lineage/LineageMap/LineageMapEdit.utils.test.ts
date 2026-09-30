@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { Connection, Edge } from 'reactflow';
+import type { Edge } from 'reactflow';
 import {
   LineageBand,
   LineageLevelKind,
@@ -24,7 +24,6 @@ import {
   type LineageDetails,
 } from '../../../generated/type/entityLineage';
 import {
-  buildConnectPayload,
   buildLineagePayload,
   FIELD_SEPARATOR,
   findDeletableSelectedNode,
@@ -530,124 +529,6 @@ describe('LineageMap edit utils', () => {
       expect(toFlowEdges(nodeById, [sceneEdge], true)).toEqual([
         toFlowEdge(nodeById, sceneEdge),
       ]);
-    });
-  });
-
-  describe('connect payloads', () => {
-    const assetConnection: Connection = {
-      source: sourceNode.id,
-      target: targetNode.id,
-      sourceHandle: sourceNode.id,
-      targetHandle: targetNode.id,
-    };
-
-    it('uses real ids and preserves existing asset-edge metadata', () => {
-      const existingDetails: LineageDetails = {
-        columnsLineage: [
-          {
-            fromColumns: ['existing.source'],
-            toColumn: 'existing.target',
-          },
-        ],
-        description: 'description',
-        pipeline: {
-          id: 'pipeline-id',
-          type: 'pipeline',
-        },
-        source: Source.Manual,
-        sqlQuery: 'select 1',
-      };
-
-      expect(
-        buildConnectPayload(assetConnection, nodeById, existingDetails)
-      ).toEqual({
-        edge: {
-          fromEntity: {
-            id: 'source-entity-id',
-            type: 'table',
-          },
-          toEntity: {
-            id: 'target-entity-id',
-            type: 'table',
-          },
-          lineageDetails: {
-            columnsLineage: existingDetails.columnsLineage,
-            description: existingDetails.description,
-            pipeline: existingDetails.pipeline,
-            source: Source.Manual,
-            sqlQuery: existingDetails.sqlQuery,
-          },
-        },
-      });
-    });
-
-    it('merges a column connection without erasing existing lineage metadata', () => {
-      const existingDetails: LineageDetails = {
-        columnsLineage: [
-          {
-            fromColumns: ['source.existing'],
-            function: 'coalesce',
-            toColumn: 'target.column',
-          },
-        ],
-        description: 'description',
-        pipeline: {
-          id: 'pipeline-id',
-          type: 'pipeline',
-        },
-        sqlQuery: 'select source.column',
-      };
-
-      const payload = buildConnectPayload(
-        {
-          source: sourceNode.id,
-          target: targetNode.id,
-          sourceHandle: 'source.column',
-          targetHandle: 'target.column',
-        },
-        nodeById,
-        existingDetails
-      );
-
-      expect(payload?.edge.lineageDetails).toEqual({
-        columnsLineage: [
-          {
-            fromColumns: ['source.existing', 'source.column'],
-            function: 'coalesce',
-            toColumn: 'target.column',
-          },
-        ],
-        description: existingDetails.description,
-        pipeline: existingDetails.pipeline,
-        source: undefined,
-        sqlQuery: existingDetails.sqlQuery,
-        tempLineageTables: undefined,
-      });
-    });
-
-    it('rejects self-links and mixed asset/field endpoints', () => {
-      expect(
-        buildConnectPayload(
-          {
-            source: sourceNode.id,
-            target: sourceNode.id,
-            sourceHandle: sourceNode.id,
-            targetHandle: sourceNode.id,
-          },
-          nodeById
-        )
-      ).toBeNull();
-      expect(
-        buildConnectPayload(
-          {
-            source: sourceNode.id,
-            target: targetNode.id,
-            sourceHandle: 'source.column',
-            targetHandle: targetNode.id,
-          },
-          nodeById
-        )
-      ).toBeNull();
     });
   });
 });

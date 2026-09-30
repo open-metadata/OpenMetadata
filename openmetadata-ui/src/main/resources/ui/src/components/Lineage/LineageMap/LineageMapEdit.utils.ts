@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { Connection, Edge } from 'reactflow';
+import type { Edge } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
 import type { AddLineage } from '../../../generated/api/lineage/addLineage';
 import {
@@ -83,11 +83,6 @@ export const getEndpointHandle = (endpoint: string) => {
     ? undefined
     : endpoint.slice(separatorIndex + FIELD_SEPARATOR.length);
 };
-
-const getConnectionHandle = (
-  handle: string | null | undefined,
-  nodeId: string | null | undefined
-) => (handle && handle !== nodeId ? handle : undefined);
 
 export const getRealEntityRef = (
   node?: LineageSceneNode
@@ -493,38 +488,4 @@ export const buildLineagePayload = (
       },
     },
   };
-};
-
-export const buildConnectPayload = (
-  connection: Connection,
-  nodeById: Map<string, LineageSceneNode>,
-  existingDetails: LineageDetails = {}
-): AddLineage | null => {
-  const fromEntity = getRealEntityRef(nodeById.get(connection.source ?? ''));
-  const toEntity = getRealEntityRef(nodeById.get(connection.target ?? ''));
-  const sourceHandle = getConnectionHandle(
-    connection.sourceHandle,
-    connection.source
-  );
-  const targetHandle = getConnectionHandle(
-    connection.targetHandle,
-    connection.target
-  );
-
-  if (
-    !fromEntity ||
-    !toEntity ||
-    Boolean(sourceHandle) !== Boolean(targetHandle)
-  ) {
-    return null;
-  }
-
-  return buildLineagePayload(
-    fromEntity,
-    toEntity,
-    existingDetails,
-    sourceHandle && targetHandle
-      ? { fromColumn: sourceHandle, toColumn: targetHandle }
-      : undefined
-  );
 };
