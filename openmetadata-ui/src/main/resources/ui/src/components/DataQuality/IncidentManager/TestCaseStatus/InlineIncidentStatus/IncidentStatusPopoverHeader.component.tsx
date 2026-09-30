@@ -17,7 +17,7 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowLeft as ArrowBackIcon } from '@openmetadata/ui-core-components/icons';
+import { ArrowLeft } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { BlackCloseIcon, WhiteCheckIcon } from './IncidentStatusIcons';
 
@@ -52,7 +52,7 @@ export const IncidentStatusPopoverHeader = ({
       <ButtonUtility
         className="tw:outline-none"
         color="tertiary"
-        icon={ArrowBackIcon}
+        icon={ArrowLeft}
         size="sm"
         tooltip={t('label.back')}
         onClick={onBack}
