@@ -290,6 +290,16 @@ public class AgentSparqlResourceIT {
 
   @Test
   void impersonatedUserWithoutGrantGetsNoBotFallback() throws Exception {
+    withoutDataConsumerGrant(
+        () ->
+            assertError(
+                post(impersonatingBotToken, query(selectFixture()), plainUserName),
+                403,
+                AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN));
+  }
+
+  @Test
+  void impersonatedUserWithDeniedOperationGetsNoBotFallback() throws Exception {
     assertError(
         post(impersonatingBotToken, query(selectFixture()), namedDenyUserName),
         403,
