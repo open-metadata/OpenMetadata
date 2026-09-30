@@ -195,6 +195,7 @@ const FileActions: FC<FileActionsProps> = ({
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isSharePickerOpen, setIsSharePickerOpen] = useState(false);
 
   const applyShareConfig = async (shareConfig: ShareConfig) => {
     try {
@@ -217,14 +218,24 @@ const FileActions: FC<FileActionsProps> = ({
    * Shared without anybody named is indistinguishable from Private, so the two are set together:
    * picking people IS the act of sharing.
    */
-  const handleShareWithPeople = async (people: EntityReference[]) =>
-    applyShareConfig({
+  const handleShareWithPeople = async (people: EntityReference[]) => {
+    await applyShareConfig({
       visibility: ShareVisibility.Shared,
       sharedWith: people.map((principal) => ({
         principal,
         role: ShareRole.Viewer,
       })),
     });
+    setIsSharePickerOpen(false);
+  };
+
+  const handleVisibilityAction = (visibility: ShareVisibility) => {
+    if (visibility === ShareVisibility.Shared) {
+      setIsSharePickerOpen(true);
+    } else {
+      applyShareConfig({ visibility });
+    }
+  };
 
   const sharedPrincipals =
     file.shareConfig?.sharedWith
@@ -265,167 +276,170 @@ const FileActions: FC<FileActionsProps> = ({
   }
 
   return (
-    <Dropdown.Root>
-      <ButtonUtility
-        color="tertiary"
-        data-testid="manage-button"
-        icon={<DotsVerticalIcon height={20} width={20} />}
-        size="sm"
-        tooltip={t('label.manage-entity', { entity: t('label.document') })}
-      />
-      <Dropdown.Popover className="tw:w-46">
-        <Dropdown.Menu
-          onAction={(key) => {
-            if (key === 'delete') {
-              onDeleteFile?.(file);
-            }
-          }}>
-          {canEdit && (
-            <SubmenuTrigger>
-              <Dropdown.Item
-                data-testid="visibility-btn"
-                isDisabled={isSharing}>
-                {() => (
-                  <Box align="center" justify="between">
-                    <Box align="center" gap={2}>
-                      <Share07
-                        className="tw:text-secondary"
-                        height={20}
-                        width={20}
-                      />
-                      <Typography
-                        ellipsis
-                        className="tw:grow tw:text-secondary">
-                        {t('label.visibility')}
-                      </Typography>
-                    </Box>
-                    <ChevronRight
-                      aria-hidden="true"
-                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
-                      strokeWidth={2}
-                    />
-                  </Box>
-                )}
-              </Dropdown.Item>
-              <Dropdown.Popover
-                className="tw:w-80"
-                offset={-6}
-                placement="right top">
-                <Dropdown.Menu
-                  aria-label={t('label.visibility')}
-                  onAction={(key) =>
-                    applyShareConfig({ visibility: key as ShareVisibility })
-                  }>
+    // The people picker is a popover of its own, anchored where the menu was. It cannot live inside
+    // the menu: a press in a second overlay reads to the menu as a press outside, and closes both.
+    <UserSelectableList
+      multiSelect
+      hasPermission={!isSharing}
+      popoverProps={{
+        open: isSharePickerOpen,
+        placement: 'bottomRight',
+        // Opened by the menu's Shared option only; a press on the anchor opens the menu instead.
+        onOpenChange: (open) => !open && setIsSharePickerOpen(false),
+      }}
+      selectedUsers={sharedPrincipals}
+      onClose={() => setIsSharePickerOpen(false)}
+      onUpdate={handleShareWithPeople}>
+      <span className="tw:inline-flex">
+        <Dropdown.Root>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="manage-button"
+            icon={<DotsVerticalIcon height={20} width={20} />}
+            size="sm"
+            tooltip={t('label.manage-entity', { entity: t('label.document') })}
+          />
+          <Dropdown.Popover className="tw:w-46">
+            <Dropdown.Menu
+              onAction={(key) => {
+                if (key === 'delete') {
+                  onDeleteFile?.(file);
+                }
+              }}>
+              {canEdit && (
+                <SubmenuTrigger>
                   <Dropdown.Item
-                    data-testid="visibility-Private"
-                    id={ShareVisibility.Private}>
-                    <VisibilityOption
-                      description={t('message.visible-only-to-you')}
-                      label={t('label.private')}
-                    />
+                    data-testid="visibility-btn"
+                    isDisabled={isSharing}>
+                    {() => (
+                      <Box align="center" justify="between">
+                        <Box align="center" gap={2}>
+                          <Share07
+                            className="tw:text-secondary"
+                            height={20}
+                            width={20}
+                          />
+                          <Typography
+                            ellipsis
+                            className="tw:grow tw:text-secondary">
+                            {t('label.visibility')}
+                          </Typography>
+                        </Box>
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          strokeWidth={2}
+                        />
+                      </Box>
+                    )}
                   </Dropdown.Item>
+                  <Dropdown.Popover
+                    className="tw:w-80"
+                    offset={-6}
+                    placement="right top">
+                    <Dropdown.Menu
+                      aria-label={t('label.visibility')}
+                      onAction={(key) =>
+                        handleVisibilityAction(key as ShareVisibility)
+                      }>
+                      <Dropdown.Item
+                        data-testid="visibility-Private"
+                        id={ShareVisibility.Private}>
+                        <VisibilityOption
+                          description={t('message.visible-only-to-you')}
+                          label={t('label.private')}
+                        />
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        data-testid="visibility-Entity"
+                        id={ShareVisibility.Entity}>
+                        <VisibilityOption
+                          description={t(
+                            'message.visible-to-everyone-in-workspace'
+                          )}
+                          label={t('label.workspace')}
+                        />
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        data-testid="visibility-Shared"
+                        id={ShareVisibility.Shared}>
+                        <VisibilityOption
+                          description={t('message.visible-to-specific-people')}
+                          label={t('label.shared')}
+                        />
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </SubmenuTrigger>
+              )}
+
+              {canEdit && (
+                <SubmenuTrigger>
                   <Dropdown.Item
-                    data-testid="visibility-Entity"
-                    id={ShareVisibility.Entity}>
-                    <VisibilityOption
-                      description={t(
-                        'message.visible-to-everyone-in-workspace'
-                      )}
-                      label={t('label.workspace')}
-                    />
+                    data-testid="move-btn"
+                    isDisabled={isMoving || folders.length === 0}>
+                    {() => (
+                      <Box align="center" justify="between">
+                        <Box align="center" gap={2}>
+                          <MoveFolderIcon
+                            className="tw:text-secondary"
+                            height={20}
+                            width={20}
+                          />
+                          <Typography
+                            ellipsis
+                            className="tw:grow tw:text-secondary">
+                            {t('label.move-to-folder')}
+                          </Typography>
+                        </Box>
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          strokeWidth={2}
+                        />
+                      </Box>
+                    )}
                   </Dropdown.Item>
-                </Dropdown.Menu>
-                {/* Outside the menu: choosing people is a second step, and a menu item that
-                    closes on click cannot host a picker. */}
-                <UserSelectableList
-                  multiSelect
-                  hasPermission={!isSharing}
-                  selectedUsers={sharedPrincipals}
-                  onUpdate={handleShareWithPeople}>
-                  {/* Mirrors Dropdown.Item's own padding so this row lines up with the two above
-                      it — it sits outside the menu because a menu item closes on click and cannot
-                      host a picker. */}
-                  <button
-                    className="tw:block tw:w-full tw:cursor-pointer tw:px-1.5 tw:py-px tw:text-left"
-                    data-testid="visibility-Shared"
-                    type="button">
-                    <span className="tw:flex tw:rounded-md tw:px-2.5 tw:py-2 tw:transition tw:duration-100 tw:ease-linear hover:tw:bg-secondary">
-                      <VisibilityOption
-                        description={t('message.visible-to-specific-people')}
-                        label={t('label.shared')}
-                      />
-                    </span>
-                  </button>
-                </UserSelectableList>
-              </Dropdown.Popover>
-            </SubmenuTrigger>
-          )}
-
-          {canEdit && (
-            <SubmenuTrigger>
-              <Dropdown.Item
-                data-testid="move-btn"
-                isDisabled={isMoving || folders.length === 0}>
-                {() => (
-                  <Box align="center" justify="between">
-                    <Box align="center" gap={2}>
-                      <MoveFolderIcon
-                        className="tw:text-secondary"
-                        height={20}
-                        width={20}
-                      />
-                      <Typography
-                        ellipsis
-                        className="tw:grow tw:text-secondary">
-                        {t('label.move-to-folder')}
-                      </Typography>
-                    </Box>
-                    <ChevronRight
-                      aria-hidden="true"
-                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
-                      strokeWidth={2}
+                  <Dropdown.Popover
+                    className="tw:w-52"
+                    offset={-6}
+                    placement="right top">
+                    <FolderPickerMenu
+                      currentFolderId={file.folder?.id}
+                      folders={folders}
+                      hasMoreFolders={hasMoreFolders}
+                      isLoadingMoreFolders={isLoadingMoreFolders}
+                      onLoadMoreFolders={onLoadMoreFolders}
+                      onPick={handleMoveToFolder}
                     />
-                  </Box>
-                )}
-              </Dropdown.Item>
-              <Dropdown.Popover
-                className="tw:w-52"
-                offset={-6}
-                placement="right top">
-                <FolderPickerMenu
-                  currentFolderId={file.folder?.id}
-                  folders={folders}
-                  hasMoreFolders={hasMoreFolders}
-                  isLoadingMoreFolders={isLoadingMoreFolders}
-                  onLoadMoreFolders={onLoadMoreFolders}
-                  onPick={handleMoveToFolder}
-                />
-              </Dropdown.Popover>
-            </SubmenuTrigger>
-          )}
+                  </Dropdown.Popover>
+                </SubmenuTrigger>
+              )}
 
-          {canDelete && (
-            <Dropdown.Item data-testid="delete-btn" id="delete">
-              <Box align="center" gap={2}>
-                <TrashIcon
-                  aria-hidden="true"
-                  className="tw:shrink-0 tw:text-error-primary"
-                  height={20}
-                  width={20}
-                />
-                <Typography
-                  ellipsis
-                  className="tw:grow tw:text-error-primary"
-                  size="text-sm"
-                  weight="medium">
-                  {t('label.delete')}
-                </Typography>
-              </Box>
-            </Dropdown.Item>
-          )}
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown.Root>
+              {canDelete && (
+                <Dropdown.Item data-testid="delete-btn" id="delete">
+                  <Box align="center" gap={2}>
+                    <TrashIcon
+                      aria-hidden="true"
+                      className="tw:shrink-0 tw:text-error-primary"
+                      height={20}
+                      width={20}
+                    />
+                    <Typography
+                      ellipsis
+                      className="tw:grow tw:text-error-primary"
+                      size="text-sm"
+                      weight="medium">
+                      {t('label.delete')}
+                    </Typography>
+                  </Box>
+                </Dropdown.Item>
+              )}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      </span>
+    </UserSelectableList>
   );
 };
 
