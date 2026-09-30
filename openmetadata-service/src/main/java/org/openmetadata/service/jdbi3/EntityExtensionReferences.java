@@ -24,6 +24,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -201,41 +202,36 @@ public final class EntityExtensionReferences {
   }
 
   /**
-   * Drops references whose target was hard-deleted from values that are not compacted yet. Only
-   * holders that carry a reference-typed property pay the ledger lookup.
+   * Hard-deleted targets whose values are not compacted yet, by holder and property name. Read
+   * this before the values: the sweep rewrites a value and deletes its marks in one transaction,
+   * so a reader that takes the values first and the marks second can straddle that commit and
+   * serve the old value with nothing left to filter. In the other order the worst case is a mark
+   * for an id the new value no longer carries, which the filter ignores.
    */
-  public void removePending(String entityType, Map<UUID, ObjectNode> extensionsByHolder) {
-    List<String> ids =
-        extensionsByHolder.entrySet().stream()
-            .filter(entry -> hasReferenceProperty(entityType, entry.getValue()))
-            .map(entry -> entry.getKey().toString())
-            .toList();
-    if (ids.isEmpty()) {
-      return;
+  public Map<UUID, Map<String, Set<String>>> pendingReferences(List<UUID> holderIds) {
+    if (holderIds.isEmpty()) {
+      return Map.of();
     }
-    List<ReferenceRow> pending = daoCollection.entityExtensionReferenceDAO().findPending(ids);
-    Map<ReferenceKey, Set<String>> deadByKey =
-        pending.stream()
-            .collect(
-                Collectors.groupingBy(
-                    reference -> new ReferenceKey(reference.id(), reference.extension()),
-                    Collectors.mapping(ReferenceRow::toId, Collectors.toSet())));
-    deadByKey.forEach(
-        (key, dead) ->
-            removeFrom(
-                extensionsByHolder.get(key.id()),
-                TypeRegistry.getPropertyName(key.extension()),
-                dead));
+    List<String> ids = holderIds.stream().map(UUID::toString).toList();
+    Map<UUID, Map<String, Set<String>>> pending = new HashMap<>();
+    for (ReferenceRow row : daoCollection.entityExtensionReferenceDAO().findPending(ids)) {
+      pending
+          .computeIfAbsent(row.id(), ignored -> new HashMap<>())
+          .computeIfAbsent(
+              TypeRegistry.getPropertyName(row.extension()), ignored -> new HashSet<>())
+          .add(row.toId());
+    }
+    return pending;
   }
 
-  private static boolean hasReferenceProperty(String entityType, ObjectNode extension) {
-    Iterator<String> names = extension.fieldNames();
-    while (names.hasNext()) {
-      if (isReferenceProperty(entityType, names.next())) {
-        return true;
-      }
-    }
-    return false;
+  /** Drops the pending references from the values they belong to. */
+  public static void removePending(
+      Map<UUID, ObjectNode> extensionsByHolder, Map<UUID, Map<String, Set<String>>> pending) {
+    pending.forEach(
+        (holderId, byProperty) ->
+            byProperty.forEach(
+                (propertyName, dead) ->
+                    removeFrom(extensionsByHolder.get(holderId), propertyName, dead)));
   }
 
   /** A value with no live reference left is absent, the same shape the sweep leaves behind. */

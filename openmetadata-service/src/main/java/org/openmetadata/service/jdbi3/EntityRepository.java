@@ -6224,6 +6224,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return readBundle.getExtensionOrNull(entity.getId());
     }
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
+    // Marks before values; see EntityExtensionReferences.pendingReferences.
+    Map<UUID, Map<String, Set<String>>> pending =
+        extensionReferences().pendingReferences(List.of(entity.getId()));
     List<ExtensionRecord> records =
         daoCollection.entityExtensionDAO().getExtensions(entity.getId(), fieldFQNPrefix);
     if (records.isEmpty()) {
@@ -6245,7 +6248,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       objectNode.set(fieldName, fieldValue);
     }
-    extensionReferences().removePending(entityType, Map.of(entity.getId(), objectNode));
+    EntityExtensionReferences.removePending(Map.of(entity.getId(), objectNode), pending);
     return objectNode.isEmpty() ? null : objectNode;
   }
 
@@ -12559,6 +12562,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return Collections.emptyMap();
     }
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
+    // Marks before values; see EntityExtensionReferences.pendingReferences.
+    Map<UUID, Map<String, Set<String>>> pending =
+        extensionReferences()
+            .pendingReferences(entities.stream().map(EntityInterface::getId).toList());
 
     List<CoreRelationshipDAOs.ExtensionRecordWithId> records =
         daoCollection
@@ -12585,7 +12592,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       nodes.put(entityId, objectNode);
     }
-    extensionReferences().removePending(entityType, nodes);
+    EntityExtensionReferences.removePending(nodes, pending);
 
     Map<UUID, Object> result = new HashMap<>();
     nodes.forEach(
