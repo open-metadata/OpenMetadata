@@ -22,7 +22,7 @@ import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
-import { VIEW_MODE_PAGE } from '../../../constants/platform/personaViewMode.constants';
+import { VIEW_MODE_PAGE } from '../../../constants/platform/personaAppLayout.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { PageViewMode } from '../../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../../hooks/platform/usePersonaViewMode';

@@ -35,7 +35,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
-import { VIEW_MODE_PAGE } from '../../constants/platform/personaViewMode.constants';
+import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { PageViewMode } from '../../generated/type/personaPreferences';

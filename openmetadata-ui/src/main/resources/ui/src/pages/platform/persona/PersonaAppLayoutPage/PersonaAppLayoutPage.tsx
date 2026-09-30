@@ -37,13 +37,11 @@ import PageLayoutV1 from '../../../../components/PageLayoutV1/PageLayoutV1';
 import {
   DEFAULT_LANDING_PAGE,
   LANDING_PAGE_SECTIONS,
-} from '../../../../constants/platform/personaLandingPage.constants';
-import {
   DEFAULT_PAGE_VIEW_MODE,
   PAGE_VIEW_MODE_LABEL_KEYS,
   ViewModePage,
   VIEW_MODE_PAGES,
-} from '../../../../constants/platform/personaViewMode.constants';
+} from '../../../../constants/platform/personaAppLayout.constants';
 import {
   AppMode,
   DefaultViewModes,

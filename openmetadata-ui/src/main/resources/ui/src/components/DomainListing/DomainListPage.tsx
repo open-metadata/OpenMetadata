@@ -26,7 +26,7 @@ import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
-import { VIEW_MODE_PAGE } from '../../constants/platform/personaViewMode.constants';
+import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { PageViewMode } from '../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';

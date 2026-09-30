@@ -14,7 +14,7 @@ import { CookieStorage } from 'cookie-storage';
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
-import { DEFAULT_LANDING_PAGE } from '../../../../constants/platform/personaLandingPage.constants';
+import { DEFAULT_LANDING_PAGE } from '../../../../constants/platform/personaAppLayout.constants';
 import { REDIRECT_PATHNAME } from '../../../../constants/router.constants';
 import { usePersonaDocument } from '../../../../hooks/platform/usePersonaDocument';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';

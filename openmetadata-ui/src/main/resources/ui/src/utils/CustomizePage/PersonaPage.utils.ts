@@ -15,12 +15,10 @@ import { isUndefined, omit, omitBy } from 'lodash';
 import {
   DEFAULT_LANDING_PAGE,
   LANDING_PAGE_SECTIONS,
-} from '../../constants/platform/personaLandingPage.constants';
-import {
   DEFAULT_PAGE_VIEW_MODE,
   ViewModePage,
   VIEW_MODE_PAGES,
-} from '../../constants/platform/personaViewMode.constants';
+} from '../../constants/platform/personaAppLayout.constants';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { Page } from '../../generated/system/ui/page';

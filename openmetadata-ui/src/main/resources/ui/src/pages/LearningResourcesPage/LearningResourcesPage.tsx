@@ -53,7 +53,7 @@ import {
   MAX_VISIBLE_TAGS,
   PAGE_IDS,
 } from '../../constants/Learning.constants';
-import { VIEW_MODE_PAGE } from '../../constants/platform/personaViewMode.constants';
+import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { LearningResource } from '../../rest/learningResourceAPI';

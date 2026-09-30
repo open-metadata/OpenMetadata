@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ViewModePage } from '../../constants/platform/personaViewMode.constants';
+import { ViewModePage } from '../../constants/platform/personaAppLayout.constants';
 import { resolvePersonaViewMode } from '../../utils/CustomizePage/PersonaPage.utils';
 import { usePersonaDocument } from './usePersonaDocument';
 
