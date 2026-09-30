@@ -10,17 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
-  Button,
-  Checkbox,
-  Col,
+  Box,
   Divider,
-  List,
-  Row,
-  Space,
-  Typography,
-} from 'antd';
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
+import { Button, Checkbox, Col, List, Row, Space, Typography } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Button, Popover, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -215,14 +216,7 @@ const UserProfileTeams = ({
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <div className="user-page-icon d-flex-center">
-          <Divider
-            style={{
-              height: '100%',
-              width: '1px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
-          />
+          <Divider className="tw:h-full" orientation="vertical" />
         </div>
         {teamsRenderElement}
       </div>

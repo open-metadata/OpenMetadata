@@ -189,6 +189,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Divider,
     Dropdown,
     PaginationCardWithControls,
+    Skeleton: jest.requireActual('@openmetadata/ui-core-components').Skeleton,
     Toggle,
     Typography,
   };

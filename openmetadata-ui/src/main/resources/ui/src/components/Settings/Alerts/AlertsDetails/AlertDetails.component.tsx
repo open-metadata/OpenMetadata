@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,7 +91,7 @@ export const AlertDetailsComponent = ({
                 ?.join(', ')}
             </Typography.Text>
           </Space>
-          <Divider />
+          <Divider className="tw:my-6" />
           <Typography.Title level={5}>
             {t('label.filter-plural')}
           </Typography.Title>
@@ -114,7 +115,7 @@ export const AlertDetailsComponent = ({
               );
             })}
           </Typography.Paragraph>
-          <Divider />
+          <Divider className="tw:my-6" />
           <Typography.Title level={5}>
             {t('label.destination')}
           </Typography.Title>

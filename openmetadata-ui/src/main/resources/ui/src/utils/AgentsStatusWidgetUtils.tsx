@@ -29,7 +29,8 @@ import { ReactComponent as MetadataIcon } from '../assets/svg/ic-empty-doc.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-stack-quality.svg';
 import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.svg';
 
-import { Skeleton, Typography } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
+import { Typography } from 'antd';
 import { isEmpty, isUndefined, reduce } from 'lodash';
 import type { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
 import type {
@@ -253,9 +254,7 @@ export const getAgentRunningStatusMessage = (
   liveAutoPilotStatusData?: WorkflowInstance
 ) => {
   if (isLoading) {
-    return (
-      <Skeleton active paragraph={{ rows: 1, width: '100%' }} title={false} />
-    );
+    return <Skeleton height={16} width="100%" />;
   }
 
   let message = '';

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Progress, Skeleton, Space, Typography } from 'antd';
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Progress, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isNumber, round } from 'lodash';
 import { useMemo } from 'react';
@@ -44,7 +45,7 @@ export const SummaryCard = ({
       <div
         className={classNames('summary-card', className)}
         data-testid="skeleton-loading">
-        <Skeleton active loading />
+        <SkeletonParagraph />
       </div>
     );
   }

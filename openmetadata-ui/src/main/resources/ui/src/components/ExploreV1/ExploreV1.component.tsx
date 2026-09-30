@@ -19,6 +19,7 @@ import {
   Divider,
   Dropdown,
   PaginationCardWithControls,
+  Skeleton,
   Toggle,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
@@ -29,7 +30,7 @@ import {
   InfoCircle,
   Trash01,
 } from '@untitledui/icons';
-import { Card, Col, Menu, Modal, Radio, Row, Skeleton } from 'antd';
+import { Card, Col, Menu, Modal, Radio, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
@@ -140,7 +141,7 @@ const ExportScopeVisibleCount = ({
   t: (key: string) => string;
 }) =>
   isSearchMode && isCountLoading ? (
-    <Skeleton.Input active size="small" style={{ width: 60, height: 16 }} />
+    <Skeleton height={16} variant="rounded" width={60} />
   ) : (
     <CoreTypography
       className="tw:text-tertiary"
@@ -162,7 +163,7 @@ const ExportScopeAllCount = ({
   t: (key: string) => string;
 }) =>
   isCountLoading ? (
-    <Skeleton.Input active size="small" style={{ width: 60, height: 16 }} />
+    <Skeleton height={16} variant="rounded" width={60} />
   ) : (
     allAssetsCount !== undefined && (
       <CoreTypography

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Button, Popover, Select, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import {
@@ -370,14 +371,7 @@ const UserProfileRoles = ({
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <div className="d-flex flex-center user-page-icon">
-          <Divider
-            style={{
-              height: '100%',
-              width: '1px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
-          />
+          <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
         <div>{rolesRenderElement}</div>
       </div>

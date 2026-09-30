@@ -12,17 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Badge,
-  Button,
-  Card,
-  Col,
-  Divider,
-  Row,
-  Space,
-  Table,
-  Typography,
-} from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Badge, Button, Card, Col, Row, Space, Table, Typography } from 'antd';
 import { capitalize, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -136,7 +127,10 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                         <span>{capitalize(status)}</span>
                       </Space>
                     </div>
-                    <Divider type="vertical" />
+                    <Divider
+                      className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                      orientation="vertical"
+                    />
                   </>
                 )}
                 <div className="flex">
@@ -207,7 +201,10 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
 
                   return (
                     <>
-                      <Divider type="vertical" />
+                      <Divider
+                        className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                        orientation="vertical"
+                      />
                       <div className="flex">
                         <span className="text-grey-muted">{`${t(
                           latencyLabelKey ?? 'label.latency'
@@ -227,7 +224,10 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                 })()}
                 {showStatus && (
                   <>
-                    <Divider type="vertical" />
+                    <Divider
+                      className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                      orientation="vertical"
+                    />
                     <div className="flex">
                       <span className="text-grey-muted">{`${t(
                         'label.last-updated'

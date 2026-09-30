@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import './test-suite-summary-widget.less';
@@ -24,7 +24,7 @@ const TestSuiteSummaryWidget = ({
   size?: 'medium' | 'small';
 }) => {
   if (isLoading) {
-    return <Skeleton.Button active data-tesid="loader" size="small" />;
+    return <Skeleton height={24} variant="rounded" width={48} />;
   }
 
   return (

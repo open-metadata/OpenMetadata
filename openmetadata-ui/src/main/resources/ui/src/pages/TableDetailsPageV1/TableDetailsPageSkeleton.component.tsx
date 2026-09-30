@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Skeleton, Space } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Space } from 'antd';
+
+const CONTENT_ROW_WIDTHS = ['90%', '85%', '80%', '88%', '75%', '70%'];
 
 /**
  * Above-the-fold placeholder for an entity detail page while the initial table-fetch is
@@ -22,7 +25,7 @@ import { Card, Col, Row, Skeleton, Space } from 'antd';
  *    placeholder), not a centered spinner.
  *  - The skeleton's vertical rhythm roughly matches the real header so swapping in the real
  *    {@code DataAssetsHeader} doesn't shift content below.
- *  - Cheap: pure antd `Skeleton`, no images / SVGs / theme tokens. The cost we pay for the
+ *  - Cheap: pure core `Skeleton`, no images / SVGs / theme tokens. The cost we pay for the
  *    perception win is one extra render of placeholder shapes.
  */
 export const TableDetailsPageSkeleton = () => {
@@ -32,30 +35,43 @@ export const TableDetailsPageSkeleton = () => {
       data-testid="loader"
       gutter={[0, 12]}>
       <Col className="p-x-lg p-t-md" span={24}>
-        <Skeleton
-          active
-          paragraph={{ rows: 1, width: ['30%'] }}
-          title={{ width: '15%' }}
-        />
+        <div className="tw:flex tw:flex-col tw:gap-3">
+          <Skeleton height={16} width="15%" />
+          <Skeleton height={16} width="30%" />
+        </div>
       </Col>
       <Col className="p-x-lg" span={24}>
         <Card className="data-asset-header-skeleton">
           <Row align="middle" gutter={16} justify="space-between">
             <Col flex="auto">
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                <Skeleton.Avatar active shape="square" size="large" />
-                <Skeleton
-                  active
-                  paragraph={{ rows: 1, width: ['60%'] }}
-                  title={{ width: '40%' }}
-                />
+                <Skeleton height={40} variant="rounded" width={40} />
+                <div className="tw:flex tw:flex-col tw:gap-3">
+                  <Skeleton height={16} width="40%" />
+                  <Skeleton height={16} width="60%" />
+                </div>
               </Space>
             </Col>
             <Col flex="240px">
               <Space>
-                <Skeleton.Button active shape="round" size="small" />
-                <Skeleton.Button active shape="round" size="small" />
-                <Skeleton.Button active shape="round" size="small" />
+                <Skeleton
+                  className="tw:rounded-full"
+                  height={24}
+                  variant="rounded"
+                  width={48}
+                />
+                <Skeleton
+                  className="tw:rounded-full"
+                  height={24}
+                  variant="rounded"
+                  width={48}
+                />
+                <Skeleton
+                  className="tw:rounded-full"
+                  height={24}
+                  variant="rounded"
+                  width={48}
+                />
               </Space>
             </Col>
           </Row>
@@ -64,20 +80,18 @@ export const TableDetailsPageSkeleton = () => {
       <Col className="p-x-lg" span={24}>
         <Space size={24}>
           {[0, 1, 2, 3, 4].map((i) => (
-            <Skeleton.Button active key={i} size="small" />
+            <Skeleton height={24} key={i} variant="rounded" width={48} />
           ))}
         </Space>
       </Col>
       <Col className="p-x-lg" span={24}>
         <Card>
-          <Skeleton
-            active
-            paragraph={{
-              rows: 6,
-              width: ['90%', '85%', '80%', '88%', '75%', '70%'],
-            }}
-            title={{ width: '20%' }}
-          />
+          <div className="tw:flex tw:flex-col tw:gap-3">
+            <Skeleton height={16} width="20%" />
+            {CONTENT_ROW_WIDTHS.map((width) => (
+              <Skeleton height={16} key={width} width={width} />
+            ))}
+          </div>
         </Card>
       </Col>
     </Row>

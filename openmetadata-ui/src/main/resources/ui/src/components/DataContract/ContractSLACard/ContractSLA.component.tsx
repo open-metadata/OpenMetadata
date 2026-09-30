@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Divider, Tooltip, Typography } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Col, Tooltip, Typography } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -170,7 +171,7 @@ const ContractSLA: React.FC<{
           </Typography.Text>
           {inheritedIcon}
         </div>
-        <Divider className="contract-dash-separator" />
+        <Divider dashed className="contract-dash-separator" />
       </div>
 
       <div className="sla-item-container">

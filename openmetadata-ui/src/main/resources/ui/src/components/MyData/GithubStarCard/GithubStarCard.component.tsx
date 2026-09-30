@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Affix, Button, Card, Skeleton, Space, Typography } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
+import { Affix, Button, Card, Space, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -161,7 +162,7 @@ const GithubStarCard = () => {
             <Button className="github-modal-action-button">
               {isLoading ? (
                 <div data-testid="skeleton-loader">
-                  <Skeleton.Button active size="small" />
+                  <Skeleton height={24} variant="rounded" width={48} />
                 </div>
               ) : (
                 starredCount

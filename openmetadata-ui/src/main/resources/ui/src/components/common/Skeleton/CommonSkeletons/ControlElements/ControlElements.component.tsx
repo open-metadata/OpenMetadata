@@ -10,11 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { ButtonSkeletonProps } from '../../Skeleton.interfaces';
 
-const ButtonSkeleton = (props: ButtonSkeletonProps) => {
-  return <Skeleton.Button active block size="small" {...props} />;
+const HEIGHT_BY_SIZE = { small: 24, default: 32, large: 40 };
+
+const ButtonSkeleton = ({ size = 'small', ...props }: ButtonSkeletonProps) => {
+  return (
+    <Skeleton
+      height={HEIGHT_BY_SIZE[size]}
+      variant="rounded"
+      width="100%"
+      {...props}
+    />
+  );
 };
 
 export default ButtonSkeleton;

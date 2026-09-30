@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Collapse, Row, Skeleton, Typography } from 'antd';
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Card, Col, Collapse, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -96,11 +97,7 @@ function PlatformInsightsWidget({
                   <Card
                     className="widget-info-card other-charts-card"
                     key={chartType}>
-                    <Skeleton
-                      active
-                      loading={isLoading}
-                      paragraph={{ rows: 2 }}
-                    />
+                    <SkeletonParagraph rows={2} />
                   </Card>
                 ))
               : filteredChartsData.map((chart) => {

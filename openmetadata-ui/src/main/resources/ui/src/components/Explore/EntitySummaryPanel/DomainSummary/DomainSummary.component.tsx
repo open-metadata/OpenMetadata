@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row, Typography } from 'antd';
+import { Divider, Owner } from '@openmetadata/ui-core-components';
+import { Col, Row, Typography } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Collapse, List, Row, Skeleton, Typography } from 'antd';
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Collapse, List, Row, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
@@ -32,7 +33,7 @@ export default function SummaryList({
   if (loading) {
     return (
       <Row align="middle" data-testid="summary-list-loader">
-        <Skeleton active paragraph={{ rows: 1 }} />
+        <SkeletonParagraph rows={1} />
       </Row>
     );
   }

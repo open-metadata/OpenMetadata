@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Button,
@@ -19,7 +20,6 @@ import {
   MenuProps,
   notification,
   Row,
-  Skeleton,
   Space,
   Tooltip,
   Typography,
@@ -1271,9 +1271,9 @@ const AssetsTabs = forwardRef(
                   data-testid="loader"
                   direction="vertical"
                   size={16}>
-                  <Skeleton />
-                  <Skeleton />
-                  <Skeleton />
+                  <SkeletonParagraph />
+                  <SkeletonParagraph />
+                  <SkeletonParagraph />
                 </Space>
               </Col>
             ) : (

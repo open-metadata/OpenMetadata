@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/ic-inherited-roles.svg';
 import { EntityType } from '../../../../../enums/entity.enum';
@@ -39,14 +40,7 @@ const UserProfileInheritedRoles = ({
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <div className="d-flex flex-center user-page-icon">
-          <Divider
-            style={{
-              height: '100%',
-              width: '1px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
-          />
+          <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
         <Chip
           data={inheritedRoles ?? []}

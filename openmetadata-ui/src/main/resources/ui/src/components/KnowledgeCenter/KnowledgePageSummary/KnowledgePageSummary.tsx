@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row, Typography } from 'antd';
+import { Divider, Owner } from '@openmetadata/ui-core-components';
+import { Col, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { Link } from 'react-router-dom';

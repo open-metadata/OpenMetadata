@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Skeleton, Typography } from 'antd';
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -138,7 +139,7 @@ function EmailConfigSettingsPage() {
     return (
       <>
         {loading ? (
-          <Skeleton title paragraph={{ rows: 8 }} />
+          <SkeletonParagraph rows={8} />
         ) : (
           <Row align="middle" gutter={[16, 16]}>
             {configValues}

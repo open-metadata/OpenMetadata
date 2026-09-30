@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Skeleton,
+} from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
 import {
   Button,
@@ -19,7 +23,6 @@ import {
   Collapse,
   Dropdown,
   Row,
-  Skeleton,
   Tooltip,
   Typography,
 } from 'antd';
@@ -145,7 +148,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           ).map((skeletonKey) => (
             <Panel
               data-testid="skeleton-loading-panel"
-              header={<Skeleton active paragraph={false} />}
+              header={<Skeleton height={16} width="100%" />}
               key={skeletonKey}
             />
           ))}

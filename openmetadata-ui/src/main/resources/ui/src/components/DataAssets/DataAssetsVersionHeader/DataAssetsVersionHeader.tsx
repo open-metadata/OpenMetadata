@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Owner } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
+import { Divider, Owner } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -96,7 +96,10 @@ function DataAssetsVersionHeader({
                     entityType={entityType}
                     hasPermission={false}
                   />
-                  <Divider className="self-center m-x-sm" type="vertical" />
+                  <Divider
+                    className="self-center m-x-sm tw:h-[0.9em]"
+                    orientation="vertical"
+                  />
                 </>
               )}
               <Owner
@@ -105,7 +108,10 @@ function DataAssetsVersionHeader({
                 owners={currentVersionData?.owners ?? ownerRef}
                 showLabel={false}
               />
-              <Divider className="self-center m-x-sm" type="vertical" />
+              <Divider
+                className="self-center m-x-sm tw:h-[0.9em]"
+                orientation="vertical"
+              />
 
               <Space>
                 {tierDisplayName ? (

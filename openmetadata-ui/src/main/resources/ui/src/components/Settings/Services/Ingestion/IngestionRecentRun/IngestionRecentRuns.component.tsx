@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
+import { Popover, Space, Tag, Typography } from 'antd';
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -143,7 +144,7 @@ export const IngestionRecentRuns = <
   const handleModalCancel = () => setSelectedStatus(undefined);
 
   if (isAppRunsLoading || loading) {
-    return <Skeleton.Input active size="small" />;
+    return <Skeleton height={24} variant="rounded" width={120} />;
   }
 
   return (

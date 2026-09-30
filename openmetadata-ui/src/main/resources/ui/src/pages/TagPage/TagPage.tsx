@@ -13,12 +13,13 @@
 import {
   Box,
   Button,
+  Divider,
   PageHeader,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Divider, Space } from 'antd';
+import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -795,7 +796,7 @@ const TagPage = () => {
 
     const disabledBadge = tagItem.disabled ? (
       <>
-        <Divider className="m-x-xs h-6" type="vertical" />
+        <Divider className="m-x-xs h-6 tw:self-center" orientation="vertical" />
         <StatusBadge
           dataTestId="disabled"
           label={t('label.disabled')}

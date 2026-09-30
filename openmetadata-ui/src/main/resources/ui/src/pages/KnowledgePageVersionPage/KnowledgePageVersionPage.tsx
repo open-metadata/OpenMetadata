@@ -27,7 +27,8 @@ import {
   getKnowledgePageVersionsList,
 } from '../../rest/knowledgeCenterAPI';
 
-import { Skeleton, Space } from 'antd';
+import { Skeleton, SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import contextCenterClassBase from '../../utils/ContextCenterClassBase';
 import i18n from '../../utils/i18next/LocalUtil';
 import { getKnowledgePageName } from '../../utils/KnowledgePagePureUtils';
@@ -146,13 +147,13 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
       <>
         <div className="version-data">
           <Space direction="vertical" style={{ width: '650px' }}>
-            <Skeleton active avatar paragraph={{ rows: 2 }} title={false} />
-            <Skeleton
-              active
-              className="m-t-sm"
-              paragraph={{ rows: 8 }}
-              title={false}
-            />
+            <div className="tw:flex tw:gap-4">
+              <Skeleton className="tw:shrink-0" variant="circular" width={32} />
+              <div className="tw:flex-1">
+                <SkeletonParagraph rows={2} title={false} />
+              </div>
+            </div>
+            <SkeletonParagraph className="m-t-sm" rows={8} title={false} />
           </Space>
         </div>
       </>

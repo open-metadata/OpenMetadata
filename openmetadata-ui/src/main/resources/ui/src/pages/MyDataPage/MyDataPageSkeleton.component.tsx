@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Skeleton } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
+import { Card, Col, Row } from 'antd';
 import './my-data.less';
 
 /**
@@ -30,11 +31,12 @@ export const MyDataPageSkeleton = () => {
       {[0, 1, 2, 3].map((i) => (
         <Col key={i} lg={12} md={24} sm={24} xl={12} xs={24}>
           <Card className="landing-page-skeleton-card">
-            <Skeleton
-              active
-              paragraph={{ rows: 4, width: ['90%', '85%', '80%', '70%'] }}
-              title={{ width: '30%' }}
-            />
+            <div className="tw:flex tw:flex-col tw:gap-3">
+              {['30%', '90%', '85%', '80%', '70%'].map((width, index) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <Skeleton height={16} key={index} width={width} />
+              ))}
+            </div>
           </Card>
         </Col>
       ))}

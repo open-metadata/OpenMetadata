@@ -15,15 +15,8 @@ import {
   ClockCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import {
-  Avatar,
-  Button,
-  Card,
-  Collapse,
-  Divider,
-  Space,
-  Typography,
-} from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Avatar, Button, Card, Collapse, Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -49,9 +42,11 @@ const AppInstallVerifyCard = ({
     <div className="flex-center flex-col">
       <Space className="p-t-lg">
         <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
-        <Divider dashed className="w-44 app-card-divider">
-          <CheckCircleTwoTone twoToneColor={LIGHT_GREEN_COLOR} />
-        </Divider>
+        <Divider
+          dashed
+          className="tw:w-44 app-card-divider"
+          label={<CheckCircleTwoTone twoToneColor={LIGHT_GREEN_COLOR} />}
+        />
         <Avatar
           className="app-marketplace-avatar flex-center bg-white border"
           icon={
@@ -113,7 +108,7 @@ const AppInstallVerifyCard = ({
           />
         </Collapse>
 
-        <Divider />
+        <Divider className="tw:my-6" />
         <div className="d-flex justify-end gap-2">
           <Button block data-testid="cancel" onClick={onCancel}>
             {t('label.cancel')}

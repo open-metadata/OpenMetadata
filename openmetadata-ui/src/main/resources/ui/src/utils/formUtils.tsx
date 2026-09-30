@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Divider,
   Input as UTInput,
   Select as UTSelect,
   SelectItemType,
@@ -20,7 +21,6 @@ import {
 import {
   Alert,
   Checkbox,
-  Divider,
   Form,
   FormItemProps,
   Input,
@@ -415,7 +415,7 @@ export const getField = (field: FieldProp) => {
         />
       )}
 
-      {hasSeparator && <Divider />}
+      {hasSeparator && <Divider className="tw:my-6" />}
     </Fragment>
   );
 };

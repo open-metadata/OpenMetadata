@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Space, Typography } from 'antd';
+import { Divider } from '@openmetadata/ui-core-components';
+import { Space, Typography } from 'antd';
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -459,8 +460,8 @@ export const getTableDetailPageBaseTabs = ({
               </div>
 
               <Divider
-                className="self-center vertical-divider"
-                type="vertical"
+                className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                orientation="vertical"
               />
 
               <div>
