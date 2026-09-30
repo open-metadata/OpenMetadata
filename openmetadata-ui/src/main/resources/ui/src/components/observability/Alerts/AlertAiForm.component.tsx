@@ -46,16 +46,23 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
   const [validationErrors, setValidationErrors] =
     useState<AlertAiFormValidationErrors>({});
 
-  const handleChange = (nextValue: ModifiedCreateEventSubscription) => {
+  const handleChange = (
+    updater: (
+      prev: ModifiedCreateEventSubscription
+    ) => ModifiedCreateEventSubscription
+  ) => {
     if (mode === 'view') {
       return;
     }
 
+    // Derive the pending value from the current one to refresh the error preview. setValueAtPath is
+    // pure, so applying the updater here (and again in the owner) is side-effect free; the actual
+    // write still flows through the functional updater so rapid edits compose instead of clobbering.
     if (Object.keys(validationErrors).length > 0) {
-      setValidationErrors(validateAlertAiForm(nextValue, t));
+      setValidationErrors(validateAlertAiForm(updater(props.value), t));
     }
 
-    props.onChange(nextValue);
+    props.onChange(updater);
   };
 
   /** Prevents browser form submission and delegates valid add/edit submits to the OSS hook. */

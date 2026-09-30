@@ -43,7 +43,11 @@ export interface AlertAiFormFieldsProps {
   filterResources: ObservabilityFilterResourceDescriptor[];
   inlineAlert?: ComponentProps<typeof InlineAlert>;
   isViewOnly?: boolean;
-  onChange?: (value: ModifiedCreateEventSubscription) => void;
+  onChange?: (
+    updater: (
+      prev: ModifiedCreateEventSubscription
+    ) => ModifiedCreateEventSubscription
+  ) => void;
   showBasicFields?: boolean;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
@@ -71,7 +75,11 @@ interface AlertAiFormBaseProps
 
 export interface AlertAiEditableFormProps extends AlertAiFormBaseProps {
   mode: Exclude<AlertAiFormMode, 'view'>;
-  onChange: (value: ModifiedCreateEventSubscription) => void;
+  onChange: (
+    updater: (
+      prev: ModifiedCreateEventSubscription
+    ) => ModifiedCreateEventSubscription
+  ) => void;
   onSubmit: (value: ModifiedCreateEventSubscription) => Promise<void> | void;
   value: ModifiedCreateEventSubscription;
 }
