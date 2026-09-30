@@ -82,7 +82,10 @@ public final class ContextFileVisibility {
     }
     String userName = callerName(securityContext);
     boolean admin = isAdmin(securityContext);
-    return files.filter(file -> isVisibleToUser(file, userName, admin));
+    // ResultList.filter rebuilds the paging for an offset read and leaves the cursors out.
+    return files
+        .filter(file -> isVisibleToUser(file, userName, admin))
+        .setPaging(files.getPaging());
   }
 
   /**

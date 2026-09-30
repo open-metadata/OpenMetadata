@@ -27,8 +27,8 @@ import {
 import { Eye } from '@openmetadata/ui-core-components/icons';
 import { Check, ChevronRight, Share07 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import classNames from 'classnames';
+import { compare } from 'fast-json-patch';
 import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -57,8 +57,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
-import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
+import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentsViewProps,
