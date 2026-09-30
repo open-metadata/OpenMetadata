@@ -83,6 +83,23 @@ public interface KnowledgeAssetDAOs {
 
     @ConnectionAwareSqlQuery(
         value =
+            "SELECT json FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.extractionStats.sourceHash')) = :sourceHash "
+                + "AND id <> :excludeId AND (deleted = false OR deleted IS NULL) "
+                + "ORDER BY updatedAt DESC LIMIT 10",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE json->'extractionStats'->>'sourceHash' = :sourceHash "
+                + "AND id <> :excludeId AND deleted = false "
+                + "ORDER BY updatedAt DESC LIMIT 10",
+        connectionType = POSTGRES)
+    List<String> listByExtractedSourceHash(
+        @Bind("sourceHash") String sourceHash, @Bind("excludeId") String excludeId);
+
+    @ConnectionAwareSqlQuery(
+        value =
             "SELECT count(*) FROM context_file cf "
                 + "LEFT JOIN entity_relationship er "
                 + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
