@@ -1812,8 +1812,13 @@ jobs:
             echo "### Passed only on retry ($SHARD_ID)" >> "$GITHUB_STEP_SUMMARY"
             while read -r test; do
               echo "- $test" >> "$GITHUB_STEP_SUMMARY"
-              echo "::warning title=Retry pass in merge queue::$test"
             done <<< "$retried"
+            # One annotation carrying the whole list: GitHub keeps only 10 warning
+            # annotations per step, and the queue's #pw-health alert reads these.
+            # Workflow-command escaping: % -> %25, newline -> %0A.
+            encoded=${retried//'%'/'%25'}
+            encoded=${encoded//$'\n'/'%0A'}
+            echo "::warning title=Retry pass in merge queue::$encoded"
           fi
 
       - name: Record shard phase metrics
