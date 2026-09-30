@@ -114,6 +114,25 @@ const simulateTwoChipsPerLine = () =>
       return siblings.indexOf(this) > 2 ? 24 : 0;
     });
 
+// Four children per line, centred like the real row: the "+N more" toggle is
+// shorter than a chip and sits 3px lower on the same line.
+const simulateCentredRowWithShortToggle = () => {
+  const isToggle = (element: HTMLElement) => element.tagName === 'BUTTON';
+  jest
+    .spyOn(HTMLElement.prototype, 'offsetTop', 'get')
+    .mockImplementation(function (this: HTMLElement) {
+      const siblings = Array.from(this.parentElement?.children ?? []);
+      const row = siblings.indexOf(this) > 3 ? 32 : 0;
+
+      return row + (isToggle(this) ? 3 : 0);
+    });
+  jest
+    .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
+    .mockImplementation(function (this: HTMLElement) {
+      return isToggle(this) ? 20 : 26;
+    });
+};
+
 const renderCard = (property: CustomProperty, value: unknown) => {
   const onValueSave = jest.fn().mockResolvedValue(undefined);
 
@@ -236,6 +255,16 @@ describe('Custom property renderers', () => {
       await user.click(toggle);
 
       expect(screen.queryByTestId('enum-option-CC-6')).not.toBeInTheDocument();
+    });
+
+    it('keeps every chip that fits beside the "+N more" toggle', () => {
+      const values = ['CC-1', 'CC-2', 'CC-3', 'CC-4', 'CC-5', 'CC-6'];
+      simulateCentredRowWithShortToggle();
+      renderCard(createProperty('enum', { values, multiSelect: true }), values);
+
+      expect(screen.getByTestId('enum-option-CC-3')).toBeInTheDocument();
+      expect(screen.queryByTestId('enum-option-CC-4')).not.toBeInTheDocument();
+      expect(screen.getByTestId('toggle-collapsed-values')).toBeInTheDocument();
     });
 
     it('saves the selection and reports the count', async () => {
