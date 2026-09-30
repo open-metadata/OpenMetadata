@@ -13,12 +13,12 @@
 import {
   BadgeWithDot,
   Box,
+  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TestCase,
@@ -65,7 +65,7 @@ const RunDuration = ({
       data-testid="run-details-duration"
       gap={1}>
       <Clock aria-hidden className="tw:size-3.5" />
-      <Typography as="span" size="text-xs">
+      <Typography size="text-xs">
         {isTimeoutError(errorType)
           ? t('label.duration-with-timeout', { duration: text })
           : text}
@@ -92,7 +92,7 @@ const ComparisonBars = ({
       {bars.map(({ kind, value, width }) => (
         <Box direction="col" gap={1} key={kind}>
           <Box justify="between">
-            <Typography className="tw:text-tertiary" size="text-xs">
+            <Typography color="secondary" size="text-xs">
               {t(`label.${kind}`)}
             </Typography>
             <Typography
@@ -129,29 +129,28 @@ const RunNote = ({ style }: { style: RunDetailsStatusStyle }) => {
   const { icon: Icon, iconClassName, messageKey } = style.note;
 
   return (
-    <Box
-      align="start"
-      className={classNames(
-        'tw:rounded-lg tw:border tw:px-3 tw:py-2.5',
-        style.headerClassName,
-        style.borderClassName
-      )}
-      data-testid="run-details-note"
-      gap={2}>
-      <Icon
-        aria-hidden
-        className={classNames('tw:mt-0.5 tw:size-4 tw:shrink-0', iconClassName)}
-      />
-      <Typography className="tw:text-secondary" size="text-sm">
-        {t(messageKey)}
-      </Typography>
-    </Box>
+    <Card
+      className="tw:rounded-lg"
+      color={style.color}
+      data-testid="run-details-note">
+      <Box align="start" className="tw:px-3 tw:py-2.5" gap={2}>
+        <Icon
+          aria-hidden
+          className={classNames(
+            'tw:mt-0.5 tw:size-4 tw:shrink-0',
+            iconClassName
+          )}
+        />
+        <Typography className="tw:text-secondary" size="text-sm">
+          {t(messageKey)}
+        </Typography>
+      </Box>
+    </Card>
   );
 };
 
 const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
   const { t } = useTranslation();
-  const titleId = useId();
   const selectedRunTimestamp = useTestCaseStore(
     (state) => state.selectedRunTimestamp
   );
@@ -201,38 +200,34 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
   ];
 
   return (
-    <section
-      aria-labelledby={titleId}
-      className={classNames(
-        'tw:overflow-hidden tw:rounded-xl tw:border',
-        style.borderClassName
-      )}
+    <Card
+      // The dark-mode border is translucent; keep the tint from showing through it.
+      className="tw:bg-clip-padding"
+      color={style.color}
       data-status={status}
       data-testid="run-details-card">
       <Box
         align="center"
-        className={classNames(
-          'tw:border-b tw:px-4 tw:py-3',
-          style.headerClassName,
-          style.borderClassName
-        )}
+        className="tw:border-b tw:border-inherit tw:px-4 tw:py-3"
         gap={3}
         wrap="wrap">
         {/* White on the tinted header, as in the mock; text, border and dot keep the status colour. */}
         <BadgeWithDot
           className="tw:bg-surface tw:font-bold"
-          color={style.badgeColor}
+          color={style.color}
           size="sm"
           type="pill-color">
           {t(STATUS_CONFIG[status].statusLabel)}
         </BadgeWithDot>
-        {/* A plain heading, as the Result history title: Typography gives an h3
-            .prose, whose heading style (20px, margins) outranks the size classes. */}
-        <h3
-          className="tw:m-0 tw:text-sm tw:font-semibold tw:text-primary"
-          id={titleId}>
+        {/* not-prose: Typography wraps a heading in .prose, whose h3 style
+            (20px, margins) would otherwise outrank the size classes. */}
+        <Typography
+          as="h3"
+          className="not-prose tw:m-0 tw:text-primary"
+          size="text-sm"
+          weight="semibold">
           {t('label.run-details')}
-        </h3>
+        </Typography>
         <Typography className="tw:text-quaternary" size="text-sm">
           {formatDateTime(result.timestamp)}
         </Typography>
@@ -244,21 +239,24 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
         )}
       </Box>
       <Box className="tw:bg-surface tw:p-4" direction="col" gap={4}>
-        <dl className="tw:m-0 tw:grid tw:grid-cols-2 tw:gap-x-8 tw:gap-y-3 tw:md:grid-cols-[max-content_repeat(3,minmax(0,1fr))]">
+        <div className="tw:grid tw:grid-cols-2 tw:gap-x-8 tw:gap-y-3 tw:md:grid-cols-[max-content_repeat(3,minmax(0,1fr))]">
           {details.map(({ className, labelKey, testId, value }) => (
-            <div className="tw:min-w-0" key={labelKey}>
-              <dt className="tw:text-xs tw:text-quaternary">{t(labelKey)}</dt>
-              <dd
-                className={classNames(
-                  'tw:m-0 tw:mt-1 tw:break-words tw:font-mono tw:text-sm',
-                  className
-                )}
-                data-testid={testId}>
+            <Box className="tw:min-w-0" direction="col" gap={1} key={labelKey}>
+              <Typography
+                className="tw:text-quaternary"
+                size="text-xs"
+                weight="medium">
+                {t(labelKey)}
+              </Typography>
+              <Typography
+                className={classNames('tw:break-words tw:font-mono', className)}
+                data-testid={testId}
+                size="text-sm">
                 {value}
-              </dd>
-            </div>
+              </Typography>
+            </Box>
           ))}
-        </dl>
+        </div>
         {bars.length > 0 && (
           <ComparisonBars barClassName={style.barClassName} bars={bars} />
         )}
@@ -272,7 +270,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           <RunNote style={style} />
         )}
       </Box>
-    </section>
+    </Card>
   );
 };
 

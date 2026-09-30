@@ -77,8 +77,8 @@ const RunExecutionError = ({
       gap={2}>
       <Box align="center" gap={2}>
         <Typography
-          as="span"
-          className="tw:uppercase tw:tracking-wide tw:text-warning-primary"
+          className="tw:uppercase tw:tracking-wide"
+          color="warning"
           size="text-xs"
           weight="bold">
           {t('label.execution-error')}
@@ -96,7 +96,8 @@ const RunExecutionError = ({
       </Box>
       {message && (
         <Typography
-          className="tw:text-tertiary tw:break-words"
+          className="tw:break-words"
+          color="secondary"
           data-testid="run-execution-error-message"
           size="text-sm">
           {message}
@@ -107,35 +108,34 @@ const RunExecutionError = ({
           className={TRACEBACK_CLASS_NAME}
           data-testid="run-execution-error-traceback">
           {tracebackLines.map(({ kind, text }, index) => (
-            <span
+            <Typography
               className={`tw:block ${TRACEBACK_LINE_CLASS[kind]}`}
               data-kind={kind}
               // A traceback is rendered once and never reordered.
               // eslint-disable-next-line react/no-array-index-key
               key={index}>
               {text}
-            </span>
+            </Typography>
           ))}
         </pre>
       )}
       {canRun && !disabledReasonKey && (
-        <div>
-          <Button
-            color="secondary"
-            data-testid="run-execution-error-retry"
-            iconLeading={RefreshCcw01}
-            // A retry already queued or running is the retry; another would only duplicate it.
-            isDisabled={runInProgress}
-            isLoading={isTriggering}
-            size="sm"
-            onClick={run}>
-            {t(
-              runInProgress
-                ? getRunButtonLabelKey(activeRunState)
-                : 'label.retry-run'
-            )}
-          </Button>
-        </div>
+        <Button
+          className="tw:self-start"
+          color="secondary"
+          data-testid="run-execution-error-retry"
+          iconLeading={RefreshCcw01}
+          // A retry already queued or running is the retry; another would only duplicate it.
+          isDisabled={runInProgress}
+          isLoading={isTriggering}
+          size="sm"
+          onClick={run}>
+          {t(
+            runInProgress
+              ? getRunButtonLabelKey(activeRunState)
+              : 'label.retry-run'
+          )}
+        </Button>
       )}
     </Box>
   );

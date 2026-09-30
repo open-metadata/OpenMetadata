@@ -20,10 +20,8 @@ import { TestCaseStatus } from '../../../../generated/tests/testCase';
  * the source, so every class is spelled out rather than built from the colour.
  */
 export interface RunDetailsStatusStyle {
-  badgeColor: 'brand' | 'error' | 'success' | 'warning';
   barClassName: string;
-  borderClassName: string;
-  headerClassName: string;
+  color: 'brand' | 'error' | 'success' | 'warning';
   note?: {
     icon: FC<SVGProps<SVGSVGElement>>;
     iconClassName: string;
@@ -37,17 +35,13 @@ export const RUN_DETAILS_STATUS_STYLE: Record<
   RunDetailsStatusStyle
 > = {
   [TestCaseStatus.Aborted]: {
-    badgeColor: 'warning',
     barClassName: 'tw:bg-fg-warning-primary',
-    borderClassName: 'tw:border-utility-warning-200',
-    headerClassName: 'tw:bg-utility-warning-50',
+    color: 'warning',
     valueClassName: 'tw:text-tertiary',
   },
   [TestCaseStatus.Failed]: {
-    badgeColor: 'error',
     barClassName: 'tw:bg-fg-error-primary',
-    borderClassName: 'tw:border-utility-error-200',
-    headerClassName: 'tw:bg-utility-error-50',
+    color: 'error',
     note: {
       icon: AlertTriangle,
       iconClassName: 'tw:text-fg-error-primary',
@@ -56,10 +50,8 @@ export const RUN_DETAILS_STATUS_STYLE: Record<
     valueClassName: 'tw:text-utility-error-700',
   },
   [TestCaseStatus.Queued]: {
-    badgeColor: 'brand',
     barClassName: 'tw:bg-fg-brand-primary',
-    borderClassName: 'tw:border-utility-brand-200',
-    headerClassName: 'tw:bg-utility-brand-50',
+    color: 'brand',
     note: {
       icon: Clock,
       iconClassName: 'tw:text-fg-brand-primary',
@@ -68,10 +60,8 @@ export const RUN_DETAILS_STATUS_STYLE: Record<
     valueClassName: 'tw:text-tertiary',
   },
   [TestCaseStatus.Success]: {
-    badgeColor: 'success',
     barClassName: 'tw:bg-fg-success-primary',
-    borderClassName: 'tw:border-utility-success-200',
-    headerClassName: 'tw:bg-utility-success-50',
+    color: 'success',
     note: {
       icon: CheckCircle,
       iconClassName: 'tw:text-fg-success-primary',
