@@ -31,11 +31,12 @@ class HiveMetaStoreDialectMixin:
     # Every backend quotes metastore identifiers differently, so each dialect brings its own copy.
     table_providers_query: str
 
-    def get_table_providers(self, connection: Connection, schema: str) -> dict[str, str]:
+    def get_table_providers(self, connection: Connection, schema: str) -> dict[str, str | None]:
         """Map table name to its `spark.sql.sources.provider` for one schema.
 
         Spark, Databricks and Trino all register a Delta table in the Hive metastore by writing
         that provider into TABLE_PARAMS, so one query per schema types every Delta table in it.
+        The value is optional because TABLE_PARAMS.PARAM_VALUE is nullable in the metastore DDL.
         """
         rows = connection.execute(text(self.table_providers_query), {"schema_name": schema})
         return {row[0]: row[1] for row in rows}

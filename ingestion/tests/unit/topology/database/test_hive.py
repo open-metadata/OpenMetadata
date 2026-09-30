@@ -1572,6 +1572,17 @@ class TestHiveMetastoreDeltaDetection:
             result = source.query_table_names_and_types("hive_schema")
         assert result == [TableNameAndType(name="hive_orders", type_=TableType.Regular)]
 
+    def test_null_provider_value_stays_regular(self):
+        """TABLE_PARAMS.PARAM_VALUE is nullable, so the driver can hand back a real None.
+
+        Verified against a live Hive metastore: `PARAM_VALUE mediumtext ... DEFAULT NULL`.
+        Without the `or ""` guard in metadata.py this row raises AttributeError and takes the
+        whole schema down, so the guard — and the `str | None` value type — is load-bearing.
+        """
+        with self._source(["ghost_table"], [("ghost_table", None)]) as (source, _):
+            result = source.query_table_names_and_types("hive_schema")
+        assert result == [TableNameAndType(name="ghost_table", type_=TableType.Regular)]
+
     def test_external_parquet_table_stays_regular_for_now(self):
         """PINNING, not endorsing: EXTERNAL_TABLE is not mapped to TableType.External yet.
 
