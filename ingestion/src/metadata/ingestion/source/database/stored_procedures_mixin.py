@@ -86,37 +86,78 @@ class StoredProcedureLineageMixin(ABC):
         """
         yield self.engine
 
+    def get_stored_procedure_sql_statements(self) -> Iterator[str]:
+        """
+        Statements to read stored-procedure query history with. Defaults to the single
+        statement returned by `get_stored_procedure_sql_statement`. Sources that split the
+        read across several statements override this.
+        """
+        yield self.get_stored_procedure_sql_statement()
+
+    def narrow_stored_procedure_statement(self, statement: str, exc: Exception) -> Iterator[str]:
+        """
+        Statements to try instead of one that failed, for sources that can read the same
+        history over a narrower window (Snowflake halves the date window when the engine
+        cancels the scan). Yielding nothing means the failure is final and is reported.
+        """
+        yield from ()
+
     def yield_stored_procedure_queries(self) -> Iterator[QueryByProcedure]:
         """
         Yield query and stored procedure object for lineage processing.
         """
         for engine in self.get_stored_procedure_engines():
-            query = self.get_stored_procedure_sql_statement()
+            for query in self.get_stored_procedure_sql_statements():
+                yield from self._yield_queries_for_statement(engine, query)
+
+    def _yield_queries_for_statement(self, engine: Engine, query: str) -> Iterator[QueryByProcedure]:
+        """
+        Read one history statement. A statement that fails is retried over whatever narrower
+        statements the source offers, and otherwise recorded and skipped rather than raised:
+        the exception would otherwise escape the lineage producer and abort the whole
+        workflow, so a query history too large to scan used to cost the run its query
+        lineage as well.
+        """
+        try:
             with engine.connect() as conn:
                 results = conn.execute(text(query)).all()
-
-            for row in results:
-                # Bound outside the try so the handler can still name the procedure, and
-                # assigned inside it so an unreadable row cannot escape and silently drop
-                # every row after it.
-                row_data = {}
-                try:
-                    row_data = row._asdict()
-                    query_by_procedure = QueryByProcedure.model_validate(row_data)
-                    if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
-                        query_by_procedure.procedure_name = get_procedure_name_from_call(
-                            query_text=query_by_procedure.procedure_text
-                        )
-                    yield query_by_procedure
-                except Exception as exc:
-                    self.status.failed(
-                        StackTraceError(
-                            name="Stored Procedure",
-                            error=f"Error trying to get procedure name for "
-                            f"[{row_data.get('PROCEDURE_NAME') or 'unknown procedure'}] due to [{exc}]",
-                            stackTrace=traceback.format_exc(),
-                        )
+        except Exception as exc:
+            narrowed = list(self.narrow_stored_procedure_statement(query, exc))
+            if not narrowed:
+                self.status.failed(
+                    StackTraceError(
+                        name="Stored Procedure",
+                        error=f"Error reading stored procedure query history due to [{exc}]",
+                        stackTrace=traceback.format_exc(),
                     )
+                )
+                return
+            for narrower_query in narrowed:
+                yield from self._yield_queries_for_statement(engine, narrower_query)
+            return
+
+        for row in results:
+            # Bound outside the try so the handler can still name the procedure, and
+            # assigned inside it so an unreadable row cannot escape and silently drop
+            # every row after it.
+            row_data = {}
+            try:
+                row_data = row._asdict()
+                query_by_procedure = QueryByProcedure.model_validate(row_data)
+                if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
+                    query_by_procedure.procedure_name = get_procedure_name_from_call(
+                        query_text=query_by_procedure.procedure_text
+                    )
+                yield query_by_procedure
+            except Exception as exc:
+                self.status.failed(
+                    StackTraceError(
+                        name="Stored Procedure",
+                        error=f"Error trying to get procedure name for "
+                        f"[{row_data.get('PROCEDURE_NAME') or 'unknown procedure'}] due to [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     @staticmethod
     def _reference_name(reference: EntityReference | None) -> str:
