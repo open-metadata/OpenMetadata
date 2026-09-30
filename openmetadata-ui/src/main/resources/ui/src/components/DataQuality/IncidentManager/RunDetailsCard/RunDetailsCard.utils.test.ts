@@ -243,6 +243,9 @@ describe('RunDetailsCard utils', () => {
     [999.6, '1.0s'],
     [2600, '2.6s'],
     [30000, '30.0s'],
+    [59_949, '59.9s'],
+    [59_950, '1m'],
+    [59_999, '1m'],
     [95000, '1m 35s'],
   ])('formats a %dms duration as %s', (milliseconds, text) => {
     expect(formatRunDuration(milliseconds)).toBe(text);

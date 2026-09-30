@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AlertTriangle, CheckCircle, Clock } from '@untitledui/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
+import { CheckCircle, Clock } from '@untitledui/icons';
+import type { FC, SVGProps } from 'react';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
-
-export const NO_VALUE = '—';
 
 /**
  * Per-status styling of the card. Tailwind only ships classes it can read in
@@ -25,7 +25,7 @@ export interface RunDetailsStatusStyle {
   borderClassName: string;
   headerClassName: string;
   note?: {
-    icon: typeof Clock;
+    icon: FC<SVGProps<SVGSVGElement>>;
     iconClassName: string;
     messageKey: string;
   };

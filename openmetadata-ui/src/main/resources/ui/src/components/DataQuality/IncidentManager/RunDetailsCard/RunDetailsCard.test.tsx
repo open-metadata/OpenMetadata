@@ -10,26 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import {
   TestCase,
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import RunDetailsCard from './RunDetailsCard';
 
+// Only the REST and permission boundaries are stubbed; the Retry run hook runs for real.
+jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
+  getIngestionPipelines: jest.fn().mockResolvedValue({ data: [] }),
+  runIngestionPipelineForEntity: jest.fn(),
+}));
+
 jest.mock(
-  '../../../observability/TestCaseDetail/RunTestCaseButton/useRunTestCase',
+  '../../../../hooks/useEntityPermissions/useEntityPermissions',
   () => ({
-    useRunTestCase: jest.fn().mockReturnValue({
-      canRun: true,
-      disabledReasonKey: undefined,
-      isTriggering: false,
-      run: jest.fn(),
+    useEntityPermissions: () => ({
+      permissions: {},
+      isLoading: false,
+      error: null,
+      refresh: jest.fn(),
     }),
   })
 );
+
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: {} }),
+}));
 
 const TEST_CASE = {
   name: 'row_count_equal',
@@ -51,7 +62,9 @@ const FAILED_RUN: TestCaseResult = {
 };
 
 const renderCard = (results: TestCaseResult[], testCase = TEST_CASE) =>
-  render(<RunDetailsCard results={results} testCase={testCase} />);
+  renderWithQueryClient(
+    <RunDetailsCard results={results} testCase={testCase} />
+  );
 
 describe('RunDetailsCard', () => {
   afterEach(() => {

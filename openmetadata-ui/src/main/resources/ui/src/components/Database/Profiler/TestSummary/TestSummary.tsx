@@ -13,9 +13,9 @@
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, isEqual, pick } from 'lodash';
+import { isEqual, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import {
@@ -83,37 +83,60 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     }
   };
 
-  const fetchTestResults = async (dateRangeObj: DateRangeObject) => {
-    if (isEmpty(data)) {
-      return;
-    }
-    setIsGraphLoading(true);
-    try {
-      const resultsApi = dimensionKey
-        ? getTestCaseDimensionResultsByFqn(data.fullyQualifiedName ?? '', {
-            dimensionalityKey: dimensionKey,
-            ...pick(dateRangeObj, ['startTs', 'endTs']),
-          })
-        : getListTestCaseResults(
-            data.fullyQualifiedName ?? '',
-            pick(dateRangeObj, ['startTs', 'endTs'])
-          );
-      const { data: chartData } = await resultsApi;
+  const testCaseFqn = data.fullyQualifiedName ?? '';
+  const latestRunTimestamp = data.testCaseResult?.timestamp;
 
-      setResults(chartData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-      setIsGraphLoading(false);
-    }
-  };
+  const fetchTestResults = useCallback(
+    async (dateRangeObj: DateRangeObject, { quietly = false } = {}) => {
+      if (!testCaseFqn) {
+        return;
+      }
+      if (!quietly) {
+        setIsGraphLoading(true);
+      }
+      try {
+        const range = pick(dateRangeObj, ['startTs', 'endTs']);
+        const { data: chartData } = await (dimensionKey
+          ? getTestCaseDimensionResultsByFqn(testCaseFqn, {
+              dimensionalityKey: dimensionKey,
+              ...range,
+            })
+          : getListTestCaseResults(testCaseFqn, range));
+
+        setResults(chartData);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+        setIsGraphLoading(false);
+      }
+    },
+    [testCaseFqn, dimensionKey]
+  );
+
+  // What the last fetch was for. When only the latest run changed (a run
+  // finished, e.g. after Retry run), the window is reloaded without the graph
+  // loader, so the chart, tiles and card update in place.
+  const lastFetch = useRef<string>();
 
   useEffect(() => {
-    if (dateRangeObject) {
-      fetchTestResults(dateRangeObject);
-    }
-  }, [dateRangeObject, dimensionKey]);
+    const fetchKey = [
+      testCaseFqn,
+      dimensionKey,
+      dateRangeObject.startTs,
+      dateRangeObject.endTs,
+    ].join('|');
+    const quietly = lastFetch.current === fetchKey;
+    lastFetch.current = fetchKey;
+
+    fetchTestResults(dateRangeObject, { quietly });
+  }, [
+    fetchTestResults,
+    testCaseFqn,
+    dimensionKey,
+    dateRangeObject,
+    latestRunTimestamp,
+  ]);
 
   if (isLoading) {
     return <Loader />;

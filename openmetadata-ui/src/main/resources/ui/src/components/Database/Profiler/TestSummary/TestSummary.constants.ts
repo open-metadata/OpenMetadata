@@ -77,6 +77,9 @@ export const RESULT_METRIC_BY_DEFINITION: Record<string, ResultMetric> = {
   },
 };
 
+/** Shown where a run has no value to report. */
+export const NO_VALUE = '—';
+
 export const DEFAULT_RESULT_METRIC: ResultMetric = {
   labelKey: 'label.result-metric-values',
 };

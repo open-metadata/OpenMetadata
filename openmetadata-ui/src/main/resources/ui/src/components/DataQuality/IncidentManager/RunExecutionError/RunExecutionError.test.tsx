@@ -10,23 +10,57 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../../../generated/entity/policies/policy';
+import {
+  IngestionPipeline,
+  PipelineState,
+  PipelineType,
+} from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
-import { useRunTestCase } from '../../../observability/TestCaseDetail/RunTestCaseButton/useRunTestCase';
+import {
+  getIngestionPipelines,
+  runIngestionPipelineForEntity,
+} from '../../../../rest/ingestionPipelineAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RunExecutionError from './RunExecutionError';
 import { parseTraceback } from './RunExecutionError.utils';
 
+const mockUseEntityPermissions = jest.fn();
+
+jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
+  getIngestionPipelines: jest.fn(),
+  runIngestionPipelineForEntity: jest.fn(),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock(
-  '../../../observability/TestCaseDetail/RunTestCaseButton/useRunTestCase',
-  () => ({ useRunTestCase: jest.fn() })
+  '../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: (...args: unknown[]) =>
+      mockUseEntityPermissions(...args),
+  })
 );
 
-const mockRun = jest.fn();
-const mockUseRunTestCase = useRunTestCase as jest.Mock;
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: {} }),
+}));
 
 const TEST_CASE = {
   name: 'row_count_equal',
   fullyQualifiedName: 'svc.db.schema.orders.row_count_equal',
+  testSuite: {
+    id: 'suite-id',
+    type: 'testSuite',
+    fullyQualifiedName: 'svc.db.schema.orders.testSuite',
+  },
 } as TestCase;
 
 const STACK_TRACE = [
@@ -36,33 +70,68 @@ const STACK_TRACE = [
   'psycopg2.OperationalError: connection timed out',
 ].join('\n');
 
-const setRunAccess = (access: {
-  canRun: boolean;
-  disabledReasonKey?: string;
-}) =>
-  mockUseRunTestCase.mockReturnValue({
-    isTriggering: false,
-    run: mockRun,
-    ...access,
+const pipeline = (overrides: Partial<IngestionPipeline> = {}) =>
+  ({
+    name: 'suite_pipeline',
+    fullyQualifiedName: 'svc.db.schema.orders.testSuite.suite_pipeline',
+    pipelineType: PipelineType.TestSuite,
+    enabled: true,
+    deployed: true,
+    airflowConfig: {},
+    sourceConfig: {},
+    pipelineStatuses: [],
+    ...overrides,
+  } as IngestionPipeline);
+
+const setPipelines = (pipelines: IngestionPipeline[]) =>
+  (getIngestionPipelines as jest.Mock).mockResolvedValue({ data: pipelines });
+
+const setTriggerPermission = (canTrigger: boolean) => {
+  const permissions = {
+    [Operation.Trigger]: canTrigger,
+  } as unknown as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
   });
+};
+
+// Retry is hidden until the pipelines and the permission are known, so a
+// "hidden" assertion only means something once the query has settled.
+const waitForPipelinesLoaded = (queryClient: QueryClient) =>
+  waitFor(() => {
+    const queries = queryClient.getQueryCache().getAll();
+
+    expect(queries.length).toBeGreaterThan(0);
+    expect(queries.every((query) => query.state.status === 'success')).toBe(
+      true
+    );
+  });
+
+const renderError = (props: Partial<Parameters<typeof RunExecutionError>[0]>) =>
+  renderWithQueryClient(
+    <RunExecutionError result="Error" testCase={TEST_CASE} {...props} />
+  );
 
 describe('RunExecutionError', () => {
   beforeEach(() => {
-    setRunAccess({ canRun: true });
+    jest.clearAllMocks();
+    setPipelines([pipeline()]);
+    setTriggerPermission(true);
   });
 
   it('shows the structured error type, message and traceback', () => {
-    render(
-      <RunExecutionError
-        errorDetails={{
-          errorType: 'OperationalError',
-          message: 'connection timed out',
-          stackTrace: STACK_TRACE,
-        }}
-        result="Error computing row count"
-        testCase={TEST_CASE}
-      />
-    );
+    renderError({
+      errorDetails: {
+        errorType: 'OperationalError',
+        message: 'connection timed out',
+        stackTrace: STACK_TRACE,
+      },
+      result: 'Error computing row count',
+    });
 
     expect(screen.getByTestId('run-execution-error-type')).toHaveTextContent(
       'OperationalError'
@@ -76,12 +145,7 @@ describe('RunExecutionError', () => {
   });
 
   it('falls back to the plain-text result without structured details', () => {
-    render(
-      <RunExecutionError
-        result="Error computing row count"
-        testCase={TEST_CASE}
-      />
-    );
+    renderError({ result: 'Error computing row count' });
 
     expect(screen.getByTestId('run-execution-error-message')).toHaveTextContent(
       'Error computing row count'
@@ -94,29 +158,60 @@ describe('RunExecutionError', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('retries the run', () => {
-    render(<RunExecutionError result="Error" testCase={TEST_CASE} />);
+  it('retries the run', async () => {
+    (runIngestionPipelineForEntity as jest.Mock).mockResolvedValue({});
+    renderError({});
 
-    fireEvent.click(screen.getByTestId('run-execution-error-retry'));
+    fireEvent.click(await screen.findByTestId('run-execution-error-retry'));
 
-    expect(mockRun).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(runIngestionPipelineForEntity).toHaveBeenCalledWith({
+        entityLink: '<#E::testCase::svc.db.schema.orders.row_count_equal>',
+        pipelineType: 'TestSuite',
+      })
+    );
   });
 
-  it('hides retry without permission', () => {
-    setRunAccess({ canRun: false });
-    render(<RunExecutionError result="Error" testCase={TEST_CASE} />);
+  it('disables retry, and says so, while a run is in progress', async () => {
+    setPipelines([
+      pipeline({
+        pipelineStatuses: [
+          {
+            runId: 'running-run',
+            pipelineState: PipelineState.Running,
+            timestamp: Date.now(),
+          },
+        ],
+      }),
+    ]);
+    renderError({});
+
+    const retry = await screen.findByTestId('run-execution-error-retry');
+
+    expect(retry).toBeDisabled();
+    expect(retry).toHaveTextContent('label.running');
+
+    fireEvent.click(retry);
+
+    expect(runIngestionPipelineForEntity).not.toHaveBeenCalled();
+  });
+
+  it('hides retry without permission', async () => {
+    setTriggerPermission(false);
+    const { queryClient } = renderError({});
+
+    await waitForPipelinesLoaded(queryClient);
 
     expect(
       screen.queryByTestId('run-execution-error-retry')
     ).not.toBeInTheDocument();
   });
 
-  it('hides retry when the test case cannot be run', () => {
-    setRunAccess({
-      canRun: true,
-      disabledReasonKey: 'message.no-test-suite-pipeline',
-    });
-    render(<RunExecutionError result="Error" testCase={TEST_CASE} />);
+  it('hides retry when the test case cannot be run', async () => {
+    setPipelines([pipeline({ deployed: false })]);
+    const { queryClient } = renderError({});
+
+    await waitForPipelinesLoaded(queryClient);
 
     expect(
       screen.queryByTestId('run-execution-error-retry')
@@ -125,6 +220,15 @@ describe('RunExecutionError', () => {
 });
 
 describe('parseTraceback', () => {
+  it('tags each line by its role', () => {
+    expect(parseTraceback(`${STACK_TRACE}\n`).map(({ kind }) => kind)).toEqual([
+      'header',
+      'location',
+      'code',
+      'exception',
+    ]);
+  });
+
   it('tags every exception of a chained traceback', () => {
     const chained = [
       'Traceback (most recent call last):',
@@ -157,11 +261,34 @@ describe('parseTraceback', () => {
     ]);
   });
 
-  it('tags each line by its role', () => {
-    expect(parseTraceback(`${STACK_TRACE}\n`).map(({ kind }) => kind)).toEqual([
-      'header',
+  it("tags ingestion's truncation marker and the fragment cut after it", () => {
+    const truncated = [
+      '... [truncated 18423 characters]',
+      'ction(statement, parameters)',
+      '  File "/metadata/validator.py", line 64, in run',
+      '    row = runner.select_first(metric)',
+      'psycopg2.errors.QueryCanceled: canceling statement due to statement timeout',
+    ].join('\n');
+
+    expect(parseTraceback(truncated).map(({ kind }) => kind)).toEqual([
+      'truncated',
+      'code',
       'location',
       'code',
+      'exception',
+    ]);
+  });
+
+  it('keeps a known line after the marker in its own role', () => {
+    const truncated = [
+      '... [truncated 42 characters]',
+      'Traceback (most recent call last):',
+      'ValueError: boom',
+    ].join('\n');
+
+    expect(parseTraceback(truncated).map(({ kind }) => kind)).toEqual([
+      'truncated',
+      'header',
       'exception',
     ]);
   });

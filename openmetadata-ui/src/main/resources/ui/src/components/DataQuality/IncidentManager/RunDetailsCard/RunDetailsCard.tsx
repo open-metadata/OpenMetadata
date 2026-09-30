@@ -18,6 +18,7 @@ import {
 import { Clock } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TestCase,
@@ -26,10 +27,10 @@ import {
 } from '../../../../generated/tests/testCase';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
 import {
-  NO_VALUE,
   RunDetailsStatusStyle,
   RUN_DETAILS_STATUS_STYLE,
 } from './RunDetailsCard.constants';
@@ -150,6 +151,7 @@ const RunNote = ({ style }: { style: RunDetailsStatusStyle }) => {
 
 const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
   const { t } = useTranslation();
+  const titleId = useId();
   const selectedRunTimestamp = useTestCaseStore(
     (state) => state.selectedRunTimestamp
   );
@@ -200,7 +202,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
 
   return (
     <section
-      aria-labelledby="run-details-title"
+      aria-labelledby={titleId}
       className={classNames(
         'tw:overflow-hidden tw:rounded-xl tw:border',
         style.borderClassName
@@ -216,12 +218,19 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
         )}
         gap={3}
         wrap="wrap">
-        <BadgeWithDot color={style.badgeColor} size="sm" type="pill-color">
+        {/* White on the tinted header, as in the mock; text, border and dot keep the status colour. */}
+        <BadgeWithDot
+          className="tw:bg-surface tw:font-bold"
+          color={style.badgeColor}
+          size="sm"
+          type="pill-color">
           {t(STATUS_CONFIG[status].statusLabel)}
         </BadgeWithDot>
+        {/* A plain heading, as the Result history title: Typography gives an h3
+            .prose, whose heading style (20px, margins) outranks the size classes. */}
         <h3
           className="tw:m-0 tw:text-sm tw:font-semibold tw:text-primary"
-          id="run-details-title">
+          id={titleId}>
           {t('label.run-details')}
         </h3>
         <Typography className="tw:text-quaternary" size="text-sm">

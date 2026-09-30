@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TEST_SUITE_PIPELINE_LIMIT } from '../../../../constants/Ingestions.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -23,7 +24,6 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { TEST_SUITE_PIPELINE_LIMIT } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.constants';
 import {
   getIngestionPipelines,
   runIngestionPipelineForEntity,

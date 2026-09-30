@@ -17,13 +17,13 @@ import {
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
-import {
-  getParameterBounds,
-  toFiniteNumber,
-} from '../../../../utils/DataQuality/TestSummaryGraphUtils';
+import { toFiniteNumber } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { convertMillisecondsToHumanReadableFormat } from '../../../../utils/date-time/DateTimeUtils';
-import { RESULT_METRIC_BY_DEFINITION } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
-import { NO_VALUE } from './RunDetailsCard.constants';
+import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
+import {
+  formatNumber,
+  resolveParameterExpectation,
+} from '../../../Database/Profiler/TestSummary/TestSummary.utils';
 
 export type RunResult = TestCaseResult | TestCaseDimensionResult;
 
@@ -46,8 +46,6 @@ const TIMEOUT_ERROR = /time(d)?[\s_-]?out/i;
  * under a name that does not say "timeout".
  */
 const TIMEOUT_ERROR_TYPES = new Set(['QueryCanceled']);
-
-const format = (value: number) => value.toLocaleString();
 
 const withSign = (value: string, number: number) =>
   number > 0 ? `+${value}` : value;
@@ -75,31 +73,23 @@ export const getRunExpectation = (
       : {};
   }
 
-  const { expected, min, max } = getParameterBounds(
-    testCase.parameterValues ?? []
-  );
-  const expectedValue =
-    expected ??
-    RESULT_METRIC_BY_DEFINITION[testCase.testDefinition?.name ?? '']
-      ?.impliedExpected;
+  const { expected, min, max } = resolveParameterExpectation(testCase);
 
-  return isUndefined(expectedValue)
-    ? { min, max }
-    : { expected: expectedValue };
+  return isUndefined(expected) ? { min, max } : { expected };
 };
 
 export const formatExpectation = ({ expected, min, max }: RunExpectation) => {
   if (!isUndefined(expected)) {
-    return format(expected);
+    return formatNumber(expected);
   }
   if (!isUndefined(min) && !isUndefined(max)) {
-    return `${format(min)} – ${format(max)}`;
+    return `${formatNumber(min)} – ${formatNumber(max)}`;
   }
   if (!isUndefined(max)) {
-    return `≤ ${format(max)}`;
+    return `≤ ${formatNumber(max)}`;
   }
 
-  return isUndefined(min) ? NO_VALUE : `≥ ${format(min)}`;
+  return isUndefined(min) ? NO_VALUE : `≥ ${formatNumber(min)}`;
 };
 
 /** The observed number, only when the run measured exactly one thing. */
@@ -118,18 +108,18 @@ export const formatFound = (result: RunResult) => {
     return NO_VALUE;
   }
   if (values.length === 1) {
-    return format(Number(values[0].value));
+    return formatNumber(Number(values[0].value));
   }
 
   return values
-    .map(({ name, value }) => `${name} ${format(Number(value))}`)
+    .map(({ name, value }) => `${name} ${formatNumber(Number(value))}`)
     .join(', ');
 };
 
 /** Signed absolute and percent difference, e.g. "-9,890 (-98.9%)". */
 export const formatDifference = (found: number, expected: number) => {
   const difference = found - expected;
-  const absolute = withSign(format(difference), difference);
+  const absolute = withSign(formatNumber(difference), difference);
 
   // A percentage of zero is undefined, so the absolute difference stands alone.
   if (expected === 0) {
@@ -210,9 +200,14 @@ export const formatRunDuration = (milliseconds: number) => {
     return `${Math.max(1, Math.round(milliseconds))}ms`;
   }
 
-  return milliseconds < 60_000
-    ? `${(milliseconds / 1000).toFixed(1)}s`
-    : convertMillisecondsToHumanReadableFormat(milliseconds);
+  // Rounded before the unit is chosen, so 59,950 ms reads as a minute rather than "60.0s".
+  const seconds = Math.round(milliseconds / 100) / 10;
+
+  return seconds < 60
+    ? `${seconds.toFixed(1)}s`
+    : convertMillisecondsToHumanReadableFormat(
+        Math.round(milliseconds / 1000) * 1000
+      );
 };
 
 export const isTimeoutError = (errorType?: string) =>

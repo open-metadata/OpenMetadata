@@ -16,19 +16,21 @@ import {
   Button,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@untitledui/icons';
+import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TestCase,
   TestCaseErrorDetails,
 } from '../../../../generated/tests/testCase';
+import { getRunButtonLabelKey } from '../../../observability/TestCaseDetail/RunTestCaseButton/RunTestCaseButton.utils';
 import { useRunTestCase } from '../../../observability/TestCaseDetail/RunTestCaseButton/useRunTestCase';
 import { parseTraceback, TracebackLineKind } from './RunExecutionError.utils';
 
 const TRACEBACK_LINE_CLASS: Record<TracebackLineKind, string> = {
   header: 'tw:text-error-primary',
   location: 'tw:text-quaternary',
+  truncated: 'tw:text-quaternary tw:italic',
   code: 'tw:text-secondary',
   exception: 'tw:text-warning-primary',
 };
@@ -52,8 +54,14 @@ const RunExecutionError = ({
   testCase,
 }: RunExecutionErrorProps) => {
   const { t } = useTranslation();
-  const { canRun, disabledReasonKey, isTriggering, run } =
-    useRunTestCase(testCase);
+  const {
+    activeRunState,
+    canRun,
+    disabledReasonKey,
+    isTriggering,
+    run,
+    runInProgress,
+  } = useRunTestCase(testCase);
   const message = errorDetails?.message ?? result;
   const tracebackLines = useMemo(
     () =>
@@ -116,10 +124,16 @@ const RunExecutionError = ({
             color="secondary"
             data-testid="run-execution-error-retry"
             iconLeading={RefreshCcw01}
+            // A retry already queued or running is the retry; another would only duplicate it.
+            isDisabled={runInProgress}
             isLoading={isTriggering}
             size="sm"
             onClick={run}>
-            {t('label.retry-run')}
+            {t(
+              runInProgress
+                ? getRunButtonLabelKey(activeRunState)
+                : 'label.retry-run'
+            )}
           </Button>
         </div>
       )}
