@@ -315,6 +315,76 @@ class PersonaAIContextIT extends McpTestBase {
     }
   }
 
+  /**
+   * The settings controls PUT only their own three fields, so a null prompt has to mean "leave it
+   * alone" — otherwise flipping the Enabled toggle would silently delete the admin's instructions.
+   */
+  @Test
+  void promptSurvivesASettingsOnlyUpdateAndClearsWhenBlank() throws Exception {
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("persona_prompt_" + shortId())
+                .withDescription("Persona prompt integration test"),
+            Persona.class);
+    String ownedContextPath = "personas/" + owned.getId() + "/aiContext";
+    String documentPath = "personas/name/" + owned.getFullyQualifiedName() + "/context";
+    String prompt = "You assist finance analysts with quarterly revenue questions.";
+
+    try {
+      PersonaContextDefinition written =
+          put(
+              ownedContextPath,
+              settings(true).withPrompt("  " + prompt + "\n"),
+              PersonaContextDefinition.class);
+      assertThat(written.getPrompt()).isEqualTo(prompt);
+
+      PersonaContextDefinition afterSettingsOnly =
+          put(ownedContextPath, settings(true), PersonaContextDefinition.class);
+      assertThat(afterSettingsOnly.getPrompt()).isEqualTo(prompt);
+
+      JsonNode structured =
+          OBJECT_MAPPER.readTree(
+              getResponse(documentPath + "?format=json&refresh=true", authToken).body());
+      assertThat(structured.path("prompt").asText()).isEqualTo(prompt);
+      // Consumers read the markdown as reference data, never as instructions.
+      assertThat(getResponse(documentPath + "?refresh=true", authToken).body())
+          .doesNotContain(prompt);
+
+      // MCP clients get the prompt on part 1 under its own key, outside the paged document.
+      JsonNode toolResult =
+          executeMcp(
+                  McpTestUtils.createToolCallRequest(
+                      "get_persona_context", Map.of("personaName", owned.getFullyQualifiedName())),
+                  authToken)
+              .path("result");
+      JsonNode page =
+          OBJECT_MAPPER.readTree(toolResult.path("content").get(0).path("text").asText());
+      assertThat(page.path("instructions").asText()).isEqualTo(prompt);
+      assertThat(page.path("content").asText()).doesNotContain(prompt);
+
+      put(ownedContextPath, settings(false), PersonaContextDefinition.class);
+      JsonNode disabled =
+          OBJECT_MAPPER.readTree(
+              getResponse(documentPath + "?format=json&refresh=true", authToken).body());
+      assertThat(disabled.hasNonNull("prompt")).isFalse();
+
+      PersonaContextDefinition cleared =
+          put(ownedContextPath, settings(true).withPrompt(""), PersonaContextDefinition.class);
+      assertThat(cleared.getPrompt()).isNull();
+    } finally {
+      deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  private static PersonaContextDefinition settings(boolean enabled) {
+    return new PersonaContextDefinition()
+        .withEnabled(enabled)
+        .withCharacterBudget(400_000)
+        .withCacheTtlMinutes(30);
+  }
+
   private static ContextRule ruleNamed(PersonaContextDefinition definition, String name) {
     return definition.getRules().stream()
         .filter(rule -> name.equals(rule.getName()))
