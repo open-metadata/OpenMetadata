@@ -14,6 +14,7 @@ bigquery unit tests
 """
 
 # pylint: disable=line-too-long
+import logging
 import types
 from copy import deepcopy
 from types import SimpleNamespace
@@ -21,6 +22,10 @@ from typing import ClassVar
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
+import pytest
+from google.api_core.exceptions import Forbidden
+from google.cloud.bigquery.table import Table as BQTable
+from google.cloud.bigquery.table import TableListItem
 from sqlalchemy import Integer, String
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -66,6 +71,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.utils.lru_cache import LRUCache
 
 mock_bq_config = {
@@ -1177,3 +1183,191 @@ class TestBigqueryPerSchemaCaching:
         table_obj = self.bq_source.get_table_obj(table_name="events")
 
         assert table_obj.description == "events"
+
+
+class TestBigqueryDeltaLakeDetection:
+    """`externalDataConfiguration.sourceFormat` is the only Delta signal BigQuery gives.
+
+    `tables.list` omits `externalDataConfiguration` entirely — confirmed against project
+    `modified-leaf-330420` with google-cloud-bigquery 3.42.2, where an external
+    `TableListItem` carries nothing but
+    `{"creationTime", "id", "kind", "tableReference", "type": "EXTERNAL"}` — so a Delta
+    table is indistinguishable from any other external table until `tables.get` runs.
+
+    Every payload below is a real `tables.get` response from that project, reduced to the
+    keys this code path reads (byte counters, `etag` and `selfLink` dropped). The one
+    exception is `DELTA_LAKE`: the probe service account was denied
+    `bigquery.tables.create`, so no Delta table could be created and **no live DELTA_LAKE
+    response was ever observed**. That row is the real ICEBERG external-table payload with
+    `sourceFormat` swapped to the value Google's own `CREATE EXTERNAL TABLE` example uses
+    (https://cloud.google.com/bigquery/docs/create-delta-lake-table).
+    """
+
+    # Real `test_omd.icebeag_tbl` external table; `partitionDefinition` is genuinely there.
+    EXTERNAL_PAYLOAD: ClassVar[dict] = {
+        "id": "modified-leaf-330420:test_omd.icebeag_tbl",
+        "kind": "bigquery#table",
+        "tableReference": {
+            "projectId": "modified-leaf-330420",
+            "datasetId": "test_omd",
+            "tableId": "icebeag_tbl",
+        },
+        "type": "EXTERNAL",
+        "externalDataConfiguration": {
+            "autodetect": True,
+            "sourceFormat": "ICEBERG",
+            "sourceUris": ["gs://test-om-bucket/iceberg_example.json"],
+        },
+        "partitionDefinition": {"partitionedColumn": [{"field": "event_time"}]},
+        "schema": {"fields": [{"mode": "NULLABLE", "name": "id", "type": "INTEGER"}]},
+    }
+
+    # Real `test_omd.orders` native table: no `externalDataConfiguration` key at all.
+    # It must stay absent — `ExternalConfig.from_api_repr({})` raises KeyError('sourceFormat').
+    NATIVE_PAYLOAD: ClassVar[dict] = {
+        "id": "modified-leaf-330420:test_omd.orders",
+        "kind": "bigquery#table",
+        "tableReference": {
+            "projectId": "modified-leaf-330420",
+            "datasetId": "test_omd",
+            "tableId": "orders",
+        },
+        "type": "TABLE",
+        "schema": {"fields": [{"mode": "NULLABLE", "name": "order_id", "type": "INTEGER"}]},
+    }
+
+    # Real `dbt_jaffle.customers_view_copied`.
+    VIEW_PAYLOAD: ClassVar[dict] = {
+        "id": "modified-leaf-330420:dbt_jaffle.customers_view_copied",
+        "kind": "bigquery#table",
+        "tableReference": {
+            "projectId": "modified-leaf-330420",
+            "datasetId": "dbt_jaffle",
+            "tableId": "customers_view_copied",
+        },
+        "type": "VIEW",
+        "view": {"query": "SELECT * FROM dbt_jaffle.customers LIMIT 100", "useLegacySql": False},
+    }
+
+    def setup_method(self):
+        self._patchers = [
+            patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"),
+            patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"),
+            patch(
+                "metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client",
+                return_value=Mock(),
+            ),
+        ]
+        for patcher in self._patchers:
+            patcher.start()
+
+        metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.bq_source = BigquerySource.create(mock_bq_config["source"], metadata)
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        self.bq_source.context.get().__dict__["database_schema"] = MOCK_SCHEMA_NAME
+        self.bq_source.source_config.includeDDL = False
+        self.bq_source.client = Mock()
+
+    def teardown_method(self):
+        for patcher in self._patchers:
+            patcher.stop()
+
+    @staticmethod
+    def _list_item(table_id: str, table_type: str) -> TableListItem:
+        """`tables.list` never carries `externalDataConfiguration`; keep it that way."""
+        return TableListItem(
+            {
+                "creationTime": "1738910302030",
+                "id": f"modified-leaf-330420:{MOCK_SCHEMA_NAME}.{table_id}",
+                "kind": "bigquery#table",
+                "tableReference": {
+                    "projectId": "modified-leaf-330420",
+                    "datasetId": MOCK_SCHEMA_NAME,
+                    "tableId": table_id,
+                },
+                "type": table_type,
+            }
+        )
+
+    def _stub_client(self, tables: dict):
+        """tables: table_id -> (list-level `type`, full `tables.get` payload or an Exception)."""
+        self.bq_source.client.list_tables.return_value = [
+            self._list_item(table_id, list_type) for table_id, (list_type, _) in tables.items()
+        ]
+
+        def get_table(bq_table_fqn: str):
+            _, payload = tables[bq_table_fqn.rsplit(".", maxsplit=1)[-1].strip("`")]
+            if isinstance(payload, Exception):
+                raise payload
+            return BQTable.from_api_repr(payload)
+
+        self.bq_source.client.get_table.side_effect = get_table
+
+    def _external_payload(self, source_format):
+        payload = deepcopy(self.EXTERNAL_PAYLOAD)
+        if source_format is None:
+            del payload["externalDataConfiguration"]
+        else:
+            payload["externalDataConfiguration"]["sourceFormat"] = source_format
+        return payload
+
+    @pytest.mark.parametrize(
+        "source_format, expected",
+        [
+            ("DELTA_LAKE", TableType.DeltaLake),
+            ("PARQUET", TableType.External),
+            ("CSV", TableType.External),
+            # Iceberg reaches External today because `_bigquery_table_types` keys on the
+            # list-level `type` (EXTERNAL), not on the format. Delta must not change that.
+            ("ICEBERG", TableType.External),
+            # An external table whose payload has no externalDataConfiguration at all.
+            (None, TableType.External),
+        ],
+    )
+    def test_source_format_decides_the_external_table_type(self, source_format, expected):
+        self._stub_client({"delta_sales": ("EXTERNAL", self._external_payload(source_format))})
+
+        result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
+
+        assert result == [TableNameAndType(name="delta_sales", type_=expected)]
+
+    def test_native_table_stays_regular_without_a_tables_get(self):
+        self._stub_client({"orders": ("TABLE", self.NATIVE_PAYLOAD)})
+
+        result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
+
+        assert result == [TableNameAndType(name="orders", type_=TableType.Regular)]
+        self.bq_source.client.get_table.assert_not_called()
+
+    def test_view_stays_view_without_a_tables_get(self):
+        self._stub_client({"customers_view_copied": ("VIEW", self.VIEW_PAYLOAD)})
+
+        result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
+
+        assert result == [TableNameAndType(name="customers_view_copied", type_=TableType.View)]
+        self.bq_source.client.get_table.assert_not_called()
+
+    def test_failed_tables_get_falls_back_to_external_and_keeps_listing(self, caplog):
+        """A 403/404/quota error on one table must not cost the rest of the dataset."""
+        self._stub_client(
+            {
+                "unreadable": ("EXTERNAL", Forbidden("Permission bigquery.tables.get denied")),
+                "delta_sales": ("EXTERNAL", self._external_payload("DELTA_LAKE")),
+            }
+        )
+
+        with caplog.at_level(logging.WARNING):
+            result = list(self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME))
+
+        assert result == [
+            TableNameAndType(name="unreadable", type_=TableType.External),
+            TableNameAndType(name="delta_sales", type_=TableType.DeltaLake),
+        ]
+        warnings = [
+            record
+            for record in caplog.records
+            if record.levelno == logging.WARNING and "unreadable" in record.getMessage()
+        ]
+        assert len(warnings) == 1
