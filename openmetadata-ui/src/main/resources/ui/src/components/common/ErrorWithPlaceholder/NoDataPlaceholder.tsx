@@ -48,7 +48,7 @@ const NoDataPlaceholder = ({
       />
 
       <div className="m-t-xss text-center text-sm font-normal">
-        <Typography className="text-sm">
+        <Typography className="text-sm tw:text-primary">
           {placeholderText ?? t('message.no-data-available')}
         </Typography>
         {children ? children : ''}

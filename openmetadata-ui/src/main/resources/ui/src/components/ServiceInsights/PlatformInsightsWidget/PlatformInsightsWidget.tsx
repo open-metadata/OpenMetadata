@@ -74,7 +74,7 @@ function PlatformInsightsWidget({
       <Collapse.Panel
         header={
           <div className="flex flex-col gap-1">
-            <Typography className="font-medium text-lg">
+            <Typography className="font-medium text-lg tw:text-primary">
               {t('label.entity-insight-plural', {
                 entity: t('label.platform'),
               })}
