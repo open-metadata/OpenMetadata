@@ -151,14 +151,24 @@ public final class CustomPropertyReferenceBackfill {
         dao.entityExtensionDAO().listColumnExtensionKeysAfter("", "", COLUMN_PAGE_SIZE);
     while (!page.isEmpty()) {
       Map<UUID, String> holderTypes = holderTypesOf(page, propertiesByHolderType.keySet());
+      Set<UUID> filledHolders = new HashSet<>();
       for (ReferenceKey key : page) {
         String holderType = holderTypes.get(key.id());
-        if (holderType != null) {
-          values +=
-              indexColumnValue(
-                  dao, key, holderType, propertiesByHolderType.get(holderType), deadTargets);
+        ColumnValue indexed =
+            holderType == null
+                ? ColumnValue.ABSENT
+                : indexColumnValue(
+                    dao, key, holderType, propertiesByHolderType.get(holderType), deadTargets);
+        values += indexed == ColumnValue.ABSENT ? 0 : 1;
+        if (indexed == ColumnValue.FILLED) {
+          filledHolders.add(key.id());
         }
       }
+      filledHolders.forEach(
+          id -> {
+            String holderType = holderTypes.get(id);
+            fillInlineIds(id, holderType, propertiesByHolderType.get(holderType));
+          });
       ReferenceKey last = page.getLast();
       page =
           page.size() < COLUMN_PAGE_SIZE
@@ -183,7 +193,13 @@ public final class CustomPropertyReferenceBackfill {
     return types;
   }
 
-  private static int indexColumnValue(
+  private enum ColumnValue {
+    ABSENT,
+    INDEXED,
+    FILLED
+  }
+
+  private static ColumnValue indexColumnValue(
       CollectionDAO dao,
       ReferenceKey key,
       String holderType,
@@ -191,12 +207,13 @@ public final class CustomPropertyReferenceBackfill {
       Set<String> deadTargets) {
     String json = dao.entityExtensionDAO().getExtension(key.id(), key.extension());
     if (json == null) {
-      return 0;
+      return ColumnValue.ABSENT;
     }
     JsonNode value = JsonUtils.readTree(json);
     String before = value.toString();
     ColumnExtensionReferences.fillIds(value, referenceProperties::contains);
-    if (!before.equals(value.toString())) {
+    boolean filled = !before.equals(value.toString());
+    if (filled) {
       dao.entityExtensionDAO()
           .insert(key.id(), key.extension(), COLUMN_EXTENSION_SCHEMA, value.toString());
     }
@@ -205,7 +222,22 @@ public final class CustomPropertyReferenceBackfill {
         new ValueKey(key.id(), key.extension(), holderType),
         ColumnExtensionReferences.referencedIdsByType(value, referenceProperties::contains),
         deadTargets);
-    return 1;
+    return filled ? ColumnValue.FILLED : ColumnValue.INDEXED;
+  }
+
+  /**
+   * The sweep matches dead references in the holder's inline column copy by id, so ids completed
+   * in a side row are completed in the inline copy too; otherwise that copy would keep them.
+   */
+  private static void fillInlineIds(UUID holderId, String holderType, Set<String> properties) {
+    EntityDAO<?> holderDao = Entity.getEntityRepository(holderType).getDao();
+    String json = holderDao.findById(holderDao.getTableName(), holderId, "");
+    JsonNode root = json == null ? null : JsonUtils.readTree(json);
+    if (root != null
+        && root.hasNonNull("fullyQualifiedName")
+        && ColumnExtensionReferences.fillInlineIds(root.get("columns"), properties::contains)) {
+      holderDao.update(holderId, root.get("fullyQualifiedName").asText(), root.toString());
+    }
   }
 
   private record ValueKey(UUID holderId, String extension, String holderType) {}

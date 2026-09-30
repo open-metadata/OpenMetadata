@@ -6316,6 +6316,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return JsonUtils.treeToValue(fields, Object.class);
   }
 
+  /** Drops ids already marked dead from the reference values this request changes. */
+  private Object dropPendingReferences(UUID holderId, Object original, Object updated) {
+    JsonNode before = original == null ? null : JsonUtils.valueToTree(original);
+    JsonNode after = updated == null ? null : JsonUtils.valueToTree(updated);
+    if (before == null || !before.isObject() || !(after instanceof ObjectNode fields)) {
+      return updated;
+    }
+    List<String> names = new ArrayList<>();
+    fields.fieldNames().forEachRemaining(names::add);
+    boolean dropped = false;
+    for (String name : names) {
+      dropped |=
+          isChangedReference(name, before.get(name), fields.get(name))
+              && extensionReferences()
+                  .dropPending(
+                      fields,
+                      name::equals,
+                      holderId,
+                      TypeRegistry.getCustomPropertyFQN(entityType, name));
+    }
+    return dropped ? JsonUtils.treeToValue(fields, Object.class) : updated;
+  }
+
+  /** Only a stored value can carry marks, and only a changed one is validated again. */
+  private boolean isChangedReference(String name, JsonNode stored, JsonNode incoming) {
+    return stored != null
+        && !stored.equals(incoming)
+        && EntityExtensionReferences.isReferenceProperty(entityType, name);
+  }
+
   private void markCustomPropertyReferencesPending(List<UUID> deletedIds) {
     extensionReferences().markPending(deletedIds);
   }
@@ -10246,6 +10276,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // hard-deleted since; proving it would fail the request. The final pass reconciles.
       if (!consolidatingChanges) {
         updatedExtension = fillReferenceIds(updatedExtension);
+        updatedExtension = dropPendingReferences(updated.getId(), origExtension, updatedExtension);
         updated.setExtension(updatedExtension);
       }
 

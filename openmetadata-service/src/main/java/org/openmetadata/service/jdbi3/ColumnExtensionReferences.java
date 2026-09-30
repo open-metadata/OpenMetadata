@@ -151,6 +151,21 @@ public final class ColumnExtensionReferences {
     }
   }
 
+  /** Completes name-only references in every column of an inline copy, nested ones included. */
+  public static boolean fillInlineIds(JsonNode columns, Predicate<String> isReference) {
+    boolean changed = false;
+    if (columns != null && columns.isArray()) {
+      for (JsonNode column : columns) {
+        JsonNode extension = column.get(FIELD_EXTENSION);
+        String before = String.valueOf(extension);
+        fillIds(extension, isReference);
+        changed |= !before.equals(String.valueOf(extension));
+        changed |= fillInlineIds(column.get(FIELD_CHILDREN), isReference);
+      }
+    }
+    return changed;
+  }
+
   /**
    * Diffs one column's value against the ledger rows it already has, so only ids new to the column
    * are locked; an id that is already marked dead stays marked and is filtered on read.
@@ -165,6 +180,22 @@ public final class ColumnExtensionReferences {
     daoCollection.entityExtensionReferenceDAO().deleteMany(holderId, columnKey, removed);
     references.insertLocked(
         holderId, holderType, columnKey, EntityExtensionReferences.withoutIds(after, before));
+  }
+
+  /**
+   * Drops ids a hard delete already marked dead from an incoming column value before it is
+   * validated, as {@link EntityExtensionReferences#dropPending} does for entity-level values.
+   */
+  public Object dropPending(UUID holderId, String holderType, String columnFqn, Object extension) {
+    JsonNode value = extension == null ? null : JsonUtils.valueToTree(extension);
+    boolean dropped =
+        carriesReferences(holderType, value)
+            && references.dropPending(
+                (ObjectNode) value,
+                referencePropertiesOf(holderType),
+                holderId,
+                columnKey(columnFqn));
+    return dropped ? JsonUtils.treeToValue(value, Object.class) : extension;
   }
 
   public void delete(UUID holderId, String columnKey) {

@@ -63,6 +63,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceKey;
 import org.openmetadata.service.jdbi3.EntityExtensionReferenceCompaction;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceBackfill;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
@@ -1738,6 +1739,33 @@ public class ColumnCustomPropertiesIT {
     }
   }
 
+  /** A value from before the ledger may name its targets without ids, inline and side row alike. */
+  @Test
+  void test_tableColumn_backfillCompletesNameOnlyInlineCopy(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      Table table =
+          createTableWithColumnReferences(ns, propName, List.of(teamRef(first), teamRef(second)));
+      writeNameOnlyValue(table, "id", Map.of(propName, List.of(nameOnly(first), nameOnly(second))));
+
+      CustomPropertyReferenceBackfill.backfillCustomPropertyReferences(Entity.getCollectionDAO());
+
+      assertEquals(
+          List.of(first.getId().toString(), second.getId().toString()),
+          inlineReferenceIds(table, "id", propName));
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+      awaitCompacted(table.getId(), first.getId());
+      assertEquals(List.of(second.getId().toString()), inlineReferenceIds(table, "id", propName));
+      assertEquals(List.of(second.getId().toString()), storedReferenceIds(table, "id", propName));
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
   @Test
   void test_tableColumn_bulkCreateTracksReferences(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1961,6 +1989,27 @@ public class ColumnCustomPropertiesIT {
         team.getName(),
         "fullyQualifiedName",
         team.getFullyQualifiedName());
+  }
+
+  private static Map<String, Object> nameOnly(Team team) {
+    return Map.of("type", TEAM, "fullyQualifiedName", team.getFullyQualifiedName());
+  }
+
+  /** Rewrites a column value the way it was stored before the ledger, with no ledger rows. */
+  private static void writeNameOnlyValue(
+      Table table, String columnName, Map<String, Object> extension) {
+    String columnFqn = table.getFullyQualifiedName() + "." + columnName;
+    Entity.getCollectionDAO()
+        .entityExtensionDAO()
+        .insert(
+            table.getId(),
+            FullyQualifiedName.buildHash(columnFqn),
+            TableRepository.COLUMN_EXTENSION_JSON_SCHEMA,
+            JsonUtils.pojoToJson(extension));
+    Table stored = Entity.getCollectionDAO().tableDAO().findEntityById(table.getId());
+    columnNamed(stored.getColumns(), columnName).setExtension(extension);
+    Entity.getCollectionDAO().tableDAO().update(stored);
+    Entity.getCollectionDAO().entityExtensionReferenceDAO().deleteAll(table.getId());
   }
 
   private Table createTableWithColumnReferences(

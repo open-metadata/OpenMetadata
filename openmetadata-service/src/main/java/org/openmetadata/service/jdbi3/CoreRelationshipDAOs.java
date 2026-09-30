@@ -499,6 +499,11 @@ public interface CoreRelationshipDAOs {
         "SELECT toId FROM entity_extension_reference WHERE id = :id AND extension = :extension")
     List<String> findToIds(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT toId FROM entity_extension_reference "
+            + "WHERE id = :id AND extension = :extension AND pendingCompaction = TRUE")
+    List<String> findPendingToIds(@BindUUID("id") UUID id, @Bind("extension") String extension);
+
     /** Plain consistent read: no locks, so a delete never holds a gap on the target index. */
     @SqlQuery(
         "SELECT id, extension, toId FROM entity_extension_reference "

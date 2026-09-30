@@ -18,6 +18,7 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -207,6 +209,19 @@ public final class EntityExtensionReferences {
       throw new IllegalArgumentException(
           String.format("Referenced %s '%s' does not exist", type, missing.getFirst()));
     }
+  }
+
+  /**
+   * Drops ids a hard delete already marked dead from one incoming value, so an edit is not rejected
+   * for them (e.g. a client read the list before the sweep ran, added one element and sent it
+   * back). A property this empties is removed. Returns whether anything was dropped.
+   */
+  boolean dropPending(
+      ObjectNode extension, Predicate<String> isReference, UUID holderId, String key) {
+    Set<String> pending =
+        new HashSet<>(daoCollection.entityExtensionReferenceDAO().findPendingToIds(holderId, key));
+    return !pending.isEmpty()
+        && ColumnExtensionReferences.removeDead(extension, pending, isReference);
   }
 
   static boolean removeDeadElements(ArrayNode list, Set<String> dead) {
