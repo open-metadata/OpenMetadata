@@ -29,6 +29,7 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.feed.CreateAnnouncement;
 import org.openmetadata.schema.api.feed.CreateConversation;
 import org.openmetadata.schema.api.policies.CreatePolicy;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -280,6 +282,39 @@ class FeedAccessAuthzIT {
             SdkClients.adminClient()
                 .getHttpClient()
                 .executeForString(HttpMethod.GET, ACTIVITY_PATH + "/about", null, options));
+  }
+
+  // ==================== Targets that carry no domains field ====================
+
+  /**
+   * Domain is the only entity type with no {@code domains} field of its own, so resolving a feed
+   * target must not ask for that field by name - every conversation scoped to a domain used to fail
+   * with 400 "Invalid field name domains" (issue #34274).
+   */
+  @Test
+  void listConversationsByEntityLink_domainTarget_returnsConversation(TestNamespace ns)
+      throws Exception {
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("feed-domain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain target for feed regression coverage"));
+    String about = "<#E::domain::" + domain.getFullyQualifiedName() + ">";
+    Conversation conversation = createConversation(about, "Conversation on a domain");
+    RequestOptions options = RequestOptions.builder().queryParam("entityLink", about).build();
+
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options);
+
+    assertEquals(
+        conversation.getId().toString(),
+        MAPPER.readTree(json).get("data").get(0).get("id").asText(),
+        "Conversations on a domain must be listable, not rejected for an unsupported field");
   }
 
   // ==================== Conditional writes still honoured ====================
