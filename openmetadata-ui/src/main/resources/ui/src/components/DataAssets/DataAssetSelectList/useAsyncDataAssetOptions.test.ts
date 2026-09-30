@@ -321,4 +321,33 @@ describe('useAsyncDataAssetOptions', () => {
     expect(result.current.options.map((o) => o.name)).toEqual(['orders']);
     expect(result.current.searchText).toBe('orders');
   });
+
+  it('still runs a search typed while the list was closed once it opens', async () => {
+    jest.useFakeTimers();
+    (searchQuery as jest.Mock).mockResolvedValue(buildSearchResponse([], 0));
+
+    const { result, rerender } = renderHook(
+      ({ isOpen }) =>
+        useAsyncDataAssetOptions({
+          ...DEFAULT_PARAMS,
+          debounceTimeout: 800,
+          isOpen,
+        }),
+      { initialProps: { isOpen: false } }
+    );
+
+    act(() => {
+      result.current.handleSearchChange('orders');
+    });
+    rerender({ isOpen: true });
+    await act(async () => {
+      jest.advanceTimersByTime(800);
+    });
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: '*orders*' })
+    );
+
+    jest.useRealTimers();
+  });
 });

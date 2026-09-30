@@ -127,11 +127,11 @@ export const useAsyncDataAssetOptions = ({
     if (!isOpen) {
       debouncedLoad.cancel();
     }
-
-    return () => {
-      debouncedLoad.cancel();
-    };
   }, [debouncedLoad, isOpen]);
+
+  // Separate from the effect above: its cleanup would also run when the list
+  // opens, cancelling the search typed into a closed combobox.
+  useEffect(() => () => debouncedLoad.cancel(), [debouncedLoad]);
 
   const handleSearchChange = useCallback(
     (value: string) => {
