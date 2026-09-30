@@ -23,7 +23,7 @@ from itertools import groupby, product
 from typing import Any
 from urllib.parse import quote, urlparse
 
-from cachetools import LRUCache
+from cachetools import LRUCache, TTLCache
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -106,6 +106,13 @@ logger = ingestion_logger()
 # The cache is reset for every event and capped at this size, so it can never
 # grow without bound or exhaust memory.
 RESOLUTION_CACHE_MAXSIZE = 1000
+
+# Every event re-resolves its datasets against each candidate service, so a
+# table missing from one of them would cost a request per event. Misses are
+# remembered only briefly, so a table ingested during a long run still becomes
+# visible.
+MISSING_ENTITY_CACHE_MAXSIZE = 1000
+MISSING_ENTITY_CACHE_TTL_SECONDS = 300
 
 # Kinesis Producer Library (KPL) aggregated-record framing.
 # When the OpenLineage Kinesis transport runs with AggregationEnabled, KPL packs
@@ -216,6 +223,9 @@ class OpenlineageSource(PipelineServiceSource):
             ownership_update_mode=self.source_config.ownershipUpdateMode,
         )
         self._entity_cache: LRUCache = LRUCache(maxsize=10000)
+        self._missing_entity_cache: TTLCache = TTLCache(
+            maxsize=MISSING_ENTITY_CACHE_MAXSIZE, ttl=MISSING_ENTITY_CACHE_TTL_SECONDS
+        )
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
         self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
         self._db_service_type_map: dict[str, str] = self._build_db_service_type_map()
@@ -525,17 +535,25 @@ class OpenlineageSource(PipelineServiceSource):
         The cache key includes the requested ``fields`` so a call asking for
         e.g. ``fields=["columns"]`` never gets served a stale response cached
         by an earlier, differently-fielded call for the same entity.
+
+        An entity that does not exist is remembered for a short time,
+        regardless of the requested fields.
         """
         if not hasattr(self, "_entity_cache"):
             return self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
         fields_key = ",".join(sorted(kwargs.get("fields") or []))
         key = f"{entity_class.__name__}:{fqn_str}:{fields_key}"
-        if key not in self._entity_cache:
-            result = self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
-            if result is not None:
-                self._entity_cache[key] = result
-            return result
-        return self._entity_cache[key]
+        if key in self._entity_cache:
+            return self._entity_cache[key]
+        missing_key = f"{entity_class.__name__}:{fqn_str}"
+        if missing_key in self._missing_entity_cache:
+            return None
+        result = self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
+        if result is None:
+            self._missing_entity_cache[missing_key] = True
+        else:
+            self._entity_cache[key] = result
+        return result
 
     @staticmethod
     def _match_column_name(table, field_name: str) -> str:
