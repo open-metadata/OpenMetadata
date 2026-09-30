@@ -192,6 +192,23 @@ export default defineConfig(async ({ mode }) => {
       return 'vendor-aria';
     }
 
+    // The core charts entry and echarts render only on chart routes. Left
+    // unassigned they stay behind those routes' dynamic imports; inside
+    // vendor-untitled (an entry-graph chunk) they would load on every page.
+    if (
+      normalizedId.includes('/ui-core-components/') &&
+      normalizedId.includes('/dist/charts/')
+    ) {
+      return undefined;
+    }
+    if (
+      ['echarts', 'echarts-for-react', 'zrender', 'size-sensor'].includes(
+        packageName
+      )
+    ) {
+      return undefined;
+    }
+
     // Antd and the core component library are shared by nearly every route,
     // so stable cache buckets pay off. Route-specific dependencies are left
     // to the bundler so they stay behind their dynamic import.
