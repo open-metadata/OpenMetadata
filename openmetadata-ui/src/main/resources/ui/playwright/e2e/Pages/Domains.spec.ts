@@ -47,6 +47,7 @@ import {
   visitGlossaryPage,
   waitForAntdPopupToSettle,
 } from '../../utils/common';
+import { getCustomPropertyEditButton } from '../../utils/customProperty';
 import {
   addAssetsToDataProduct,
   addAssetsToDomain,
@@ -1498,7 +1499,7 @@ test.describe('Domains', () => {
         );
         await expect(propertyCard).toBeVisible();
 
-        const editIcon = propertyCard.getByTestId('edit-icon');
+        const editIcon = getCustomPropertyEditButton(propertyCard);
         await expect(editIcon).toBeVisible();
         await editIcon.click();
 
