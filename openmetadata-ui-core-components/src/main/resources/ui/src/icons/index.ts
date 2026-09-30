@@ -232,6 +232,7 @@ export { WorkflowSetAction } from './WorkflowSetAction';
 export { WorkflowStart } from './WorkflowStart';
 export { WorkflowUndo } from './WorkflowUndo';
 export { XClose } from './XClose';
+export { AppLayout } from './AppLayout';
 export { Bronze } from './Bronze';
 export { Gold } from './Gold';
 export { None } from './None';
