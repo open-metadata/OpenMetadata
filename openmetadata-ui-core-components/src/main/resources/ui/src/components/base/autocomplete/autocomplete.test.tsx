@@ -62,3 +62,38 @@ describe('Autocomplete – selection commit', () => {
     expect(onItemInserted).not.toHaveBeenCalled();
   });
 });
+
+// Above the virtualization threshold. jsdom has no layout, so the virtualizer
+// cannot window rows here; this guards filtering and selection on that path.
+const LARGE_OPTIONS: SelectItemType[] = Array.from(
+  { length: 250 },
+  (_, index) => ({ id: `value-${index}`, label: `Value ${index}` })
+);
+
+describe('Autocomplete – large option lists', () => {
+  it('filters the full list and inserts a match', async () => {
+    const onItemInserted = vi.fn();
+    render(
+      <Autocomplete
+        items={LARGE_OPTIONS}
+        placeholder="Select"
+        selectedItems={[]}
+        onItemInserted={onItemInserted}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('Value 249');
+
+    expect(screen.getAllByRole('option')).toHaveLength(1);
+
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+
+    expect(onItemInserted).toHaveBeenCalledWith('value-249');
+  });
+});
