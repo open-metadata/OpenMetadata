@@ -18,10 +18,13 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -146,7 +149,22 @@ public final class ContextMemoryVisibility {
 
   public static List<ContextMemory> filterByVisibility(
       List<ContextMemory> memories, String userName, boolean isAdmin) {
-    return memories.stream().filter(m -> isVisibleToUser(m, userName, isAdmin)).toList();
+    return filterByVisibility(memories, userName, isAdmin, ContextMemoryAnchorAccess::canView);
+  }
+
+  static List<ContextMemory> filterByVisibility(
+      List<ContextMemory> memories, String userName, boolean isAdmin, AnchorAccess anchorAccess) {
+    Map<UUID, Boolean> anchorDecisions = new HashMap<>();
+    AnchorAccess cachedAccess =
+        (name, anchor) -> {
+          UUID anchorId = anchor.getId();
+          return anchorId == null
+              ? anchorAccess.canView(name, anchor)
+              : anchorDecisions.computeIfAbsent(anchorId, id -> anchorAccess.canView(name, anchor));
+        };
+    return memories.stream()
+        .filter(m -> isVisibleToUser(m, userName, isAdmin, cachedAccess))
+        .toList();
   }
 
   public static List<ContextMemory> filterByVisibility(

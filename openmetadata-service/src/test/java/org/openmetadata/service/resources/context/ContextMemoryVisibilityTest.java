@@ -26,6 +26,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -218,6 +219,24 @@ class ContextMemoryVisibilityTest {
             List.of(alicePrivate, bobPrivate), "admin", true);
 
     assertEquals(2, visibleToAdmin.size());
+  }
+
+  @Test
+  void testFilterByVisibility_checksEachAnchorOncePerPage() {
+    ContextMemory first = memoryOwnedBy(ALICE, MemoryVisibility.ENTITY).withPrimaryEntity(ANCHOR);
+    ContextMemory second = memoryOwnedBy(ALICE, MemoryVisibility.ENTITY).withPrimaryEntity(ANCHOR);
+    AtomicInteger checks = new AtomicInteger();
+    ContextMemoryVisibility.AnchorAccess denied =
+        (userName, anchor) -> {
+          checks.incrementAndGet();
+          return false;
+        };
+
+    List<ContextMemory> visible =
+        ContextMemoryVisibility.filterByVisibility(List.of(first, second), BOB, false, denied);
+
+    assertTrue(visible.isEmpty());
+    assertEquals(1, checks.get());
   }
 
   @Test

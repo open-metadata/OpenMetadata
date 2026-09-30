@@ -38,7 +38,9 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
+import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -402,17 +404,28 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       if (memory.getStatus() == null) {
         memory.setStatus(ContextMemoryStatus.ACTIVE);
       }
-      ContextMemoryLifecycle.applyCreate(memory, ContextMemoryRepository::resolveLiveMemory);
+      ContextMemoryLifecycle.applyCreate(
+          memory, (reference, field) -> resolveLiveMemory(reference, field, memory.getUpdatedBy()));
     }
   }
 
-  private static EntityReference resolveLiveMemory(EntityReference reference, String field) {
+  private static EntityReference resolveLiveMemory(
+      EntityReference reference, String field, String userName) {
     try {
-      return Entity.getEntityReference(reference, Include.NON_DELETED);
+      ContextMemory target =
+          Entity.getEntity(
+              reference,
+              ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, ""),
+              Include.NON_DELETED);
+      boolean admin = SubjectContext.getSubjectContext(userName).isAdmin();
+      if (ContextMemoryVisibility.isVisibleToUser(target, userName, admin)) {
+        return target.getEntityReference();
+      }
     } catch (EntityNotFoundException e) {
-      throw new BadRequestException(
-          String.format("%s must reference an existing, non-deleted context memory", field));
+      // Report the same error for missing and unreadable memories.
     }
+    throw new BadRequestException(
+        String.format("%s must reference a readable, non-deleted context memory", field));
   }
 
   /** A new memory follows its anchor's single domain for policy and search access. */
@@ -615,9 +628,19 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
 
     private void updateLifecycle(boolean consolidatingChanges) {
+      if (operation == Operation.PUT) {
+        if (updated.getStatus() == null) {
+          updated.setStatus(original.getStatus());
+        }
+        updated.setStatusReason(original.getStatusReason());
+        updated.setSupersededBy(original.getSupersededBy());
+        updated.setDisputes(original.getDisputes());
+      }
       if (!consolidatingChanges) {
         ContextMemoryLifecycle.applyUpdate(
-            original, updated, ContextMemoryRepository::resolveLiveMemory);
+            original,
+            updated,
+            (reference, field) -> resolveLiveMemory(reference, field, updated.getUpdatedBy()));
       }
       recordChange("status", original.getStatus(), updated.getStatus());
       recordChange("statusReason", original.getStatusReason(), updated.getStatusReason());

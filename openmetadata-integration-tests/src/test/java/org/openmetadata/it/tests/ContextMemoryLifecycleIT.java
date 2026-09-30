@@ -27,6 +27,8 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -203,6 +205,57 @@ public class ContextMemoryLifecycleIT {
                 .patch(
                     idOf(untouched),
                     JsonUtils.readTree(ADD_DISPUTE.formatted(untouched.getId(), "self"))));
+  }
+
+  @Test
+  void putPreservesLifecycleWhenStatusIsOmitted(TestNamespace ns) {
+    ContextMemory keeper = admin().create(memory(ns, "put-keeper"));
+    ContextMemory other = admin().create(memory(ns, "put-dispute"));
+    ContextMemory original = admin().create(memory(ns, "put-lifecycle"));
+    ContextMemory superseded =
+        admin().patch(idOf(original), supersede(keeper, "Duplicate fact"));
+    admin().patch(
+        idOf(original), JsonUtils.readTree(ADD_DISPUTE.formatted(other.getId(), "Conflicts")));
+
+    ContextMemory updated =
+        admin().put(memory(ns, "put-lifecycle").withAnswer("Re-extracted answer"));
+
+    assertEquals(ContextMemoryStatus.SUPERSEDED, updated.getStatus());
+    assertEquals(keeper.getId(), updated.getSupersededBy().getId());
+    assertEquals("Duplicate fact", updated.getStatusReason());
+    assertEquals(other.getId(), updated.getDisputes().getFirst().getMemory().getId());
+    assertEquals("Re-extracted answer", updated.getAnswer());
+    assertEquals(ContextMemoryStatus.SUPERSEDED, superseded.getStatus());
+  }
+
+  @Test
+  void lifecycleReferencesMustBeReadableByTheEditor(TestNamespace ns) {
+    ContextMemory privateTarget =
+        admin()
+            .create(
+                memory(ns, "private-target")
+                    .withOwners(List.of(SharedEntities.get().USER2_REF))
+                    .withShareConfig(
+                        new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)));
+    ContextMemory editable =
+        admin().create(memory(ns, "editable").withOwners(List.of(SharedEntities.get().USER1_REF)));
+
+    InvalidRequestException supersedeError =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> user1().patch(idOf(editable), supersede(privateTarget, "Hidden keeper")));
+    InvalidRequestException disputeError =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                user1()
+                    .patch(
+                        idOf(editable),
+                        JsonUtils.readTree(
+                            ADD_DISPUTE.formatted(privateTarget.getId(), "Hidden dispute"))));
+
+    assertTrue(supersedeError.getMessage().contains("readable, non-deleted"));
+    assertTrue(disputeError.getMessage().contains("readable, non-deleted"));
   }
 
   /** Two PATCHes by one user inside the session merge; the merge must not replay Active→Draft. */
