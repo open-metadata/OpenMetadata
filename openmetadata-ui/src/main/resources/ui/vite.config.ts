@@ -15,110 +15,18 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 import type { PreRenderedAsset } from 'rollup';
-import { defineConfig, loadEnv, type Plugin, type PluginOption } from 'vite';
+import { defineConfig, loadEnv, type PluginOption } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
-
-/**
- * Vite plugin: capture hashed asset filenames at bundle time and inject
- * <link rel="preload"> tags into index.html so the browser discovers the
- * Inter variable font and the landing-page hero SVG before the JS bundle
- * executes.  `transformIndexHtml: { order: 'post' }` ensures this hook runs
- * after the existing `html-transform` plugin (which adds `${basePath}`
- * prefixes), so we write `${basePath}` directly into the href and let the
- * Java backend replace it at runtime — exactly the same mechanism used for
- * script/link/image tags elsewhere.
- */
-const injectCriticalPreloads = (): Plugin => {
-  let fontPath = '';
-  let heroPath = '';
-
-  return {
-    name: 'inject-critical-preloads',
-    generateBundle(_opts, bundle) {
-      for (const file of Object.values(bundle)) {
-        if (file.type !== 'asset') {
-          continue;
-        }
-        if (
-          file.fileName?.includes('inter-latin-wght-normal') &&
-          file.fileName.endsWith('.woff2')
-        ) {
-          fontPath = file.fileName;
-        }
-        if (
-          file.fileName?.includes('landing-page-header-bg') &&
-          file.fileName.endsWith('.svg')
-        ) {
-          heroPath = file.fileName;
-        }
-      }
-    },
-    transformIndexHtml: {
-      order: 'post' as const,
-      handler(html: string) {
-        const tags: string[] = [];
-        if (fontPath) {
-          tags.push(
-            `<link rel="preload" as="font" type="font/woff2" crossorigin href="\${basePath}${fontPath}">`
-          );
-        }
-        if (heroPath) {
-          tags.push(
-            `<link rel="preload" as="image" fetchpriority="high" href="\${basePath}${heroPath}">`
-          );
-        }
-
-        return tags.length
-          ? html.replace('</head>', `  ${tags.join('\n    ')}\n  </head>`)
-          : html;
-      },
-    },
-  };
-};
-
-const TS_ENUM_IIFE = /\(function\([\w$]+\)\{return [^{}]*\}\)\(\{\}\)/g;
-
-/**
- * Fails the build when a chunk holds nothing but TS enum objects. That means an
- * enum module escaped the `app-enums` group: it imports something, or it does
- * not follow the *.enum.ts / *.interface.ts / types.ts / src/enums convention.
- * Fix the module; do not add an allowlist.
- */
-const noEnumOnlyChunks = (): Plugin => ({
-  name: 'no-enum-only-chunks',
-  generateBundle(_opts, bundle) {
-    const offenders = Object.values(bundle).flatMap((chunk) => {
-      if (chunk.type !== 'chunk' || !chunk.code.match(TS_ENUM_IIFE)) {
-        return [];
-      }
-      const rest = chunk.code
-        .replace(/\/\/# sourceMappingURL=.*$/m, '')
-        .replace(/import(\{[^}]*\}from)?"[^"]+";/g, '')
-        .replace(/export\{[^}]*\}(from"[^"]+")?;?/g, '')
-        .replace(TS_ENUM_IIFE, '')
-        .replace(/(let|var|const)\s|[\w$]+=|[,;\s]/g, '');
-
-      return rest
-        ? []
-        : [
-            `${chunk.fileName} <- ${chunk.moduleIds
-              .map((id) => path.relative(__dirname, id))
-              .join(', ')}`,
-          ];
-    });
-
-    if (offenders.length) {
-      this.error(
-        `Enum-only chunks emitted; make the enum module import-free and name it *.enum.ts / *.interface.ts / types.ts:\n  ${offenders.join(
-          '\n  '
-        )}`
-      );
-    }
-  },
-});
+import { createChunkClassifier } from './vite/chunks';
+import {
+  barrelOptimizeUntitledIcons,
+  htmlBasePathTransform,
+  injectCriticalPreloads,
+  noEnumOnlyChunks,
+} from './vite/plugins';
 
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -154,182 +62,7 @@ export default defineConfig(async ({ mode }) => {
     'http://localhost:8585/';
   const isPlaywrightBundle = env.PW_E2E_BUNDLE === 'true';
   const isPlaywrightBuild = env.PW_E2E_BUILD === 'true' || isPlaywrightBundle;
-
-  // Classifier used by both bundlers to assign modules to vendor buckets.
-  // Rollup consumes it via `rollupOptions.output.manualChunks`, Rolldown via
-  // `rollupOptions.output.advancedChunks.groups[].name`. Same logic, one
-  // source of truth. Return a string to force the module into that bucket, or
-  // `undefined` to let the bundler auto-split at the nearest dynamic-import
-  // boundary.
-  type ModuleGraph = {
-    getModuleInfo: (id: string) => {
-      importers: readonly string[];
-      importedIds: readonly string[];
-      isEntry: boolean;
-    } | null;
-  };
-  const shellReachable = new Map<string, boolean>();
-  // Walks static importers only: a module is on the shell (entry) graph iff
-  // some chain of static imports leads back to an entry.
-  const isShellReachable = (id: string, graph: ModuleGraph): boolean => {
-    const cached = shellReachable.get(id);
-    if (cached !== undefined) {
-      return cached;
-    }
-    const seen = new Set([id]);
-    const queue = [id];
-    let result = false;
-    while (queue.length && !result) {
-      const info = graph.getModuleInfo(queue.pop() as string);
-      if (!info) {
-        continue;
-      }
-      if (info.isEntry) {
-        result = true;
-        break;
-      }
-      for (const importer of info.importers) {
-        if (shellReachable.get(importer)) {
-          result = true;
-          break;
-        }
-        if (!seen.has(importer)) {
-          seen.add(importer);
-          queue.push(importer);
-        }
-      }
-    }
-    shellReachable.set(id, result);
-
-    return result;
-  };
-  // Type/enum modules by convention. At runtime they are only TS `enum`
-  // objects (interfaces/types erase), and each one used by several lazy routes
-  // otherwise becomes its own sub-1 KiB chunk.
-  const isEnumOnlyModule = (id: string) =>
-    id.includes('/src/generated/') ||
-    id.includes('/src/enums/') ||
-    /(\.enum|\.interface|\/types)\.ts$/.test(id);
-
-  const classifyChunk = (
-    id: string,
-    graph?: ModuleGraph
-  ): string | undefined => {
-    const normalizedId = id.split('?')[0].replaceAll('\\', '/');
-
-    // Lazy-only enum modules share one chunk. Import-free only: a group also
-    // captures its members' dependencies, so an enum file importing a
-    // shell-used module would drag the whole group onto the entry graph.
-    if (
-      graph &&
-      !isPlaywrightBundle &&
-      isEnumOnlyModule(normalizedId) &&
-      graph.getModuleInfo(id)?.importedIds.length === 0 &&
-      !isShellReachable(id, graph)
-    ) {
-      return 'app-enums';
-    }
-
-    if (isPlaywrightBundle) {
-      if (
-        normalizedId.includes('/src/components/MyData/') ||
-        normalizedId.includes('/src/pages/MyDataPage/') ||
-        normalizedId.includes('/src/components/KnowledgeCenter/') ||
-        normalizedId.includes('/src/utils/LandingPageWidget/') ||
-        /\/src\/utils\/(?:CustomizeMyDataPage|CustomizableLandingPage|DataAssetService|LandingPageWidgetIconUtils)/.test(
-          normalizedId
-        )
-      ) {
-        return 'app-e2e-runtime';
-      }
-    }
-
-    if (!normalizedId.includes('/node_modules/')) {
-      return undefined;
-    }
-
-    if (isPlaywrightBundle) {
-      if (
-        id.includes('node_modules/elkjs') ||
-        id.includes('node_modules/@reactflow') ||
-        id.includes('node_modules/reactflow')
-      ) {
-        return 'vendor-e2e-lineage';
-      }
-      const e2ePkgPath = id.split(/node_modules[\\/]/).pop() ?? id;
-      const [e2eScopeOrName, e2eScopedName] = e2ePkgPath.split(/[\\/]/);
-      const e2ePackageName = e2eScopeOrName.startsWith('@')
-        ? `${e2eScopeOrName}/${e2eScopedName}`
-        : e2eScopeOrName;
-
-      return ['react', 'react-dom', 'scheduler'].includes(e2ePackageName)
-        ? 'vendor-e2e-framework'
-        : 'app-e2e-runtime';
-    }
-
-    const packagePath =
-      normalizedId.split('/node_modules/').pop() ?? normalizedId;
-    const [scopeOrName, scopedName] = packagePath.split('/');
-    const packageName = scopeOrName.startsWith('@')
-      ? `${scopeOrName}/${scopedName}`
-      : scopeOrName;
-
-    if (
-      ['react', 'react-dom', 'scheduler'].includes(packageName) ||
-      packageName.startsWith('react-router')
-    ) {
-      return 'vendor-react';
-    }
-
-    // `oidc-client` is the only vendor the /silent-callback entry path
-    // needs. Pin it into its own chunk so the min-chunk-size merger
-    // cannot fold it into vendor-antd — that merge makes vendor-antd a
-    // static sibling of the entry chunk and pulls a >1 MB Antd chunk
-    // into the silent-refresh iframe, violating the scenario-7 budget
-    // in SsoScenarios.spec.
-    if (packageName === 'oidc-client') {
-      return 'vendor-oidc-client';
-    }
-
-    if (
-      packageName.startsWith('@react-aria/') ||
-      packageName.startsWith('@react-stately/') ||
-      packageName.startsWith('@react-types/') ||
-      packageName === 'react-aria' ||
-      packageName === 'react-aria-components' ||
-      packageName === 'react-stately'
-    ) {
-      return 'vendor-aria';
-    }
-
-    // Antd and the core component library are shared by nearly every route,
-    // so stable cache buckets pay off. Route-specific dependencies are left
-    // to the bundler so they stay behind their dynamic import.
-    if (normalizedId.includes('/node_modules/antd/')) {
-      return 'vendor-antd';
-    }
-    if (
-      normalizedId.includes('/node_modules/@openmetadata/ui-core-components/')
-    ) {
-      return 'vendor-untitled';
-    }
-    if (normalizedId.includes('/node_modules/@untitledui/icons/')) {
-      return 'vendor-untitled-icons';
-    }
-
-    // NOTE: earlier revisions grouped viz (@antv, three, reactflow, recharts,
-    // elkjs, dagre), editors (@tiptap, prosemirror, codemirror, quill), and
-    // forms (@rjsf, react-hook-form, query-builder) into three named vendor
-    // buckets. That produced a single 4.8 MB vendor-viz chunk (max 1.75 MB)
-    // and pulled 2.55 MB brotli of JS onto index.html because one static
-    // importer forced the whole bucket onto the entry graph. Rollup already
-    // lazy-splits these packages behind their consumers' `import()`
-    // boundaries, so leave the auto-splitter to do its job here. Reintroduce
-    // a bucket only after checking (a) every consumer is behind a dynamic
-    // import and (b) the resulting chunk stays under MAX_SINGLE_JS_BYTES.
-
-    return undefined;
-  };
+  const classifyChunk = createChunkClassifier({ isPlaywrightBundle });
 
   // Use empty base so dynamic imports use relative paths
   // The actual BASE_PATH is injected at runtime by the Java backend via ${basePath} replacement
@@ -339,62 +72,9 @@ export default defineConfig(async ({ mode }) => {
       cspNonce: '${cspNonce}', // Placeholder replaced by Java backend at runtime
     },
     plugins: [
-      // Rewrites `import { Home02, User01 } from '@untitledui/icons'` (a barrel
-      // import that forces Rollup to visit ~1,200 icon files during transform)
-      // into per-icon deep imports. sideEffects: false in the package, so this
-      // is behaviour-preserving; the icons library ships one .mjs per icon.
-      // Measured: ~1,000 fewer transforms → ~35 s off vite build on M-series,
-      // more on 2-core Actions runners. Kept minimal on purpose; other barrel
-      // packages (@ant-design/icons, lodash, react-aria) did not move the
-      // needle in the same experiment because their code paths default-import
-      // or transitively re-import the barrel from antd internals.
-      {
-        name: 'barrel-optimize-untitled-icons',
-        enforce: 'pre' as const,
-        transform(code: string, id: string) {
-          if (!/\.(tsx?|jsx?)$/.test(id.split('?')[0])) return null;
-          if (!code.includes('@untitledui/icons')) return null;
-          const out = code.replace(
-            /import\s*\{([^}]+)\}\s*from\s*['"]@untitledui\/icons['"];?/g,
-            (_m, names: string) =>
-              names
-                .split(',')
-                .map((n) => n.trim())
-                .filter(Boolean)
-                .map((spec) => {
-                  const [orig] = spec.split(/\s+as\s+/);
-                  return `import { ${spec} } from '@untitledui/icons/${orig.trim()}';`;
-                })
-                .join('\n')
-          );
-          return out === code ? null : { code: out, map: null };
-        },
-      },
+      barrelOptimizeUntitledIcons(),
       isProductionBundle && !isPlaywrightBundle && noEnumOnlyChunks(),
-      {
-        name: 'html-transform',
-        transformIndexHtml(html: string) {
-          // Don't replace ${basePath} placeholder - it will be replaced at runtime by Java backend
-          // Add ${basePath} prefix to asset paths (with or without leading slash)
-          return html
-            .replaceAll(
-              /(<script[^>]*src=["'])(\.\/)?assets\//g,
-              '$1${basePath}assets/'
-            )
-            .replaceAll(
-              /(<link[^>]*href=["'])(\.\/)?assets\//g,
-              '$1${basePath}assets/'
-            )
-            .replaceAll(
-              /(<img[^>]*src=["'])(\.\/)?assets\//g,
-              '$1${basePath}assets/'
-            )
-            .replaceAll(
-              /(<img[^>]*src=["'])(\.\/)?images\//g,
-              '$1${basePath}images/'
-            );
-        },
-      },
+      htmlBasePathTransform(),
       tailwindcss(),
       react(),
       svgr(),
