@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -31,6 +32,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.resources.dqtests.TestCaseResultResource;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
@@ -39,6 +41,7 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
+  private static final String TEST_CASE_STATUS_FIELD = "testCaseStatus";
   private static final String TEST_CASE_INDEX_FIELDS =
       "testDefinition,testSuite,testSuites,owners,tags,followers";
   private static final int STATUS_UPDATE_ATTEMPTS = 3;
@@ -270,8 +273,14 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     syncTestCaseStatus(changed, operationType, false);
   }
 
-  private void syncTestCaseStatus(
-      TestCaseResult changed, OperationType operationType, boolean optimistic) {
+  @VisibleForTesting
+  void syncTestCaseStatus(TestCaseResult changed, OperationType operationType, boolean optimistic) {
+    // Snapshot the test case before reading its newest result. A newer result stored after that
+    // read bumps the test case version when it syncs, so this optimistic update then conflicts and
+    // retries instead of writing back an older status.
+    TestCase original =
+        Entity.getEntityByName(
+            TEST_CASE, changed.getTestCaseFQN(), TEST_CASE_INDEX_FIELDS, Include.ALL);
     TestCaseResult latest = getLatestRecord(changed.getTestCaseFQN());
     if (!isCurrentResult(changed, latest)) {
       LOG.warn(
@@ -283,16 +292,12 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
           latest.getTimestamp());
       return;
     }
-    TestCaseResult current = currentResultAfter(changed, latest, operationType);
-    // Load the index-relevant relationship fields without testCaseResult: the row never stores it,
-    // so it stays null here and a new current result always registers as a change to reindex.
-    TestCase original =
-        Entity.getEntityByName(
-            TEST_CASE, changed.getTestCaseFQN(), TEST_CASE_INDEX_FIELDS, Include.ALL);
+    // The row never stores testCaseResult, so it is null on original and the newest result always
+    // registers as a change to reindex.
     TestCase updated = JsonUtils.deepCopy(original, TestCase.class);
-    updated.setTestCaseResult(current);
-    updated.setTestCaseStatus(current == null ? null : current.getTestCaseStatus());
-    updated.setIncidentId(current == null ? null : current.getIncidentId());
+    updated.setTestCaseResult(latest);
+    updated.setTestCaseStatus(latest == null ? null : latest.getTestCaseStatus());
+    updated.setIncidentId(latest == null ? null : latest.getIncidentId());
 
     EntityRepository.EntityUpdater entityUpdater =
         testCaseRepository.getUpdater(
@@ -302,6 +307,9 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     } else {
       entityUpdater.update();
     }
+    if (latest == null) {
+      clearIndexedStatus(original);
+    }
   }
 
   /** Whether {@code result} is (or was, for a delete) the newest result of its test case. */
@@ -309,10 +317,19 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     return newest == null || result.getTimestamp() >= newest.getTimestamp();
   }
 
-  /** The result a test case shows once {@code changed} has been written or deleted. */
-  static TestCaseResult currentResultAfter(
-      TestCaseResult changed, TestCaseResult newest, OperationType operationType) {
-    return operationType == OperationType.DELETE ? newest : changed;
+  /**
+   * A reindex only sends the fields a test case has, so the status of a test case whose last result
+   * was deleted would otherwise stay in search. Removed here, where the missing result is known,
+   * rather than whenever a test case is indexed without its result loaded.
+   */
+  private void clearIndexedStatus(TestCase testCase) {
+    searchRepository
+        .getSearchClient()
+        .updateEntity(
+            searchRepository.getWriteIndexName(searchRepository.getIndexMapping(TEST_CASE)),
+            testCase.getId().toString(),
+            Map.of("fieldsToRemove", List.of(TEST_CASE_RESULT_FIELD, TEST_CASE_STATUS_FIELD)),
+            SearchClient.DEFAULT_UPDATE_SCRIPT);
   }
 
   @Override

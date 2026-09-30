@@ -8,8 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -19,8 +21,10 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -147,6 +151,66 @@ class TestCaseLatestStatusIT {
               assertNotNull(indexed);
               assertEquals(now, indexed.getTimestamp());
             });
+  }
+
+  @Test
+  void editsThatDoNotTouchResultsKeepTheStatusInSearch(TestNamespace ns) {
+    Fixture f = fixture(ns, "unrelated_edits");
+    postResult(f, System.currentTimeMillis(), TestCaseStatus.Failed);
+    awaitCurrentStatus(f, TestCaseStatus.Failed);
+
+    patchTestCase(f, "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"edited\"}]");
+    awaitIndexedThenStatus(f, tc -> "edited".equals(tc.getDescription()), "description edit");
+
+    patchTestCase(
+        f, "[{\"op\":\"replace\",\"path\":\"/parameterValues/0/value\",\"value\":\"200\"}]");
+    awaitIndexedThenStatus(
+        f,
+        tc ->
+            tc.getParameterValues() != null
+                && "200".equals(tc.getParameterValues().get(0).getValue()),
+        "parameter edit");
+
+    TestSuite suite =
+        client.testSuites().create(new CreateTestSuite().withName(ns.prefix("logical_edit")));
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/dataQuality/testCases/logicalTestCases",
+            Map.of(
+                "testSuiteId", suite.getId().toString(),
+                "testCaseIds", List.of(f.testCase().getId().toString())),
+            RequestOptions.builder().build());
+    awaitIndexedThenStatus(
+        f,
+        tc ->
+            tc.getTestSuites() != null
+                && tc.getTestSuites().stream().anyMatch(s -> s.getId().equals(suite.getId())),
+        "added to a logical suite");
+  }
+
+  /** Waits until search shows the edit, then requires the status to still be there. */
+  private void awaitIndexedThenStatus(Fixture f, Predicate<TestCase> edited, String edit) {
+    await(edit)
+        .atMost(SEARCH_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(() -> edited.test(indexedTestCase(f).orElseThrow()));
+    TestCase indexed = indexedTestCase(f).orElseThrow();
+    assertNotNull(indexed.getTestCaseResult(), edit + " dropped testCaseResult from search");
+    assertEquals(TestCaseStatus.Failed, indexed.getTestCaseResult().getTestCaseStatus(), edit);
+    assertEquals(List.of(f.testCase().getName()), namesListedWithStatus(f, "Failed"), edit);
+  }
+
+  private void patchTestCase(Fixture f, String patch) {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/dataQuality/testCases/" + f.testCase().getId(),
+            patch,
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
   }
 
   private record Fixture(Table table, TestCase testCase) {

@@ -3,7 +3,6 @@ package org.openmetadata.service.search.indexes;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -150,21 +149,15 @@ class TestCaseIndexTest {
   }
 
   @Test
-  void testTestCaseWithoutResultSendsExplicitNullStatus() {
-    // A partial search update only removes a field when it is sent as null; a test case whose last
-    // result was deleted must not keep that result's status in search.
-    TestCase tc = createTestCaseWithDefinition();
+  void testTestCaseWithoutALoadedResultLeavesTheIndexedResultAlone() {
+    // Most test case updates never load the latest result. Sending it as null would remove the
+    // indexed result and status that the data quality filters and dashboards read.
+    TestCase tc = createTestCaseWithDefinition().withTestCaseStatus(TestCaseStatus.Failed);
 
     Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDoc();
 
-    assertTrue(result.containsKey("testCaseResult"));
-    assertNull(result.get("testCaseResult"));
-    assertTrue(result.containsKey("testCaseStatus"));
-    assertNull(result.get("testCaseStatus"));
-    assertTrue(
-        SearchClient.FIELDS_TO_REMOVE_WHEN_NULL.containsAll(
-            List.of("testCaseResult", "testCaseStatus")),
-        "every search update path must turn these nulls into removals");
+    assertFalse(result.containsKey("testCaseResult"));
+    assertEquals(TestCaseStatus.Failed.value(), String.valueOf(result.get("testCaseStatus")));
   }
 
   @Test
