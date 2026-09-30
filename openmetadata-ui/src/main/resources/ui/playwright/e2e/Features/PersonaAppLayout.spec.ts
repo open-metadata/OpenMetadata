@@ -18,6 +18,7 @@
  * mode) and list pages open in the chosen view.
  */
 
+import { Browser, Page } from '@playwright/test';
 import { Document } from '../../../src/generated/entity/docStore/document';
 import {
   AppMode,
@@ -27,8 +28,7 @@ import { expect } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { deleteFixtureEntity, settleAll } from '../../utils/apiResponse';
-import { selectOptionWithRetry } from '../../utils/common';
+import { deleteFixtureEntity } from '../../utils/apiResponse';
 import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
@@ -38,188 +38,190 @@ import {
   setDefaultPersona,
 } from '../../utils/persona';
 import { performUserLogin } from '../../utils/user';
-import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 // Glossary opens its first glossary (`/glossary/<name>`) when one exists.
 const GLOSSARY_URL = /\/glossary(\/|\?|#|$)/;
 
+/** A persona with saved App Layout preferences, held by a user as default. */
+class PersonaWithLayout {
+  persona = new PersonaClass();
+  user = new UserClass();
+  layoutDoc = {} as Document;
+
+  constructor(
+    private readonly preferences: Parameters<
+      typeof createPersonaAppLayoutDoc
+    >[2]
+  ) {}
+
+  async create(browser: Browser) {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await this.user.create(apiContext);
+    await this.persona.create(apiContext, [this.user.responseData.id]);
+    this.layoutDoc = await createPersonaAppLayoutDoc(
+      apiContext,
+      this.persona,
+      this.preferences
+    );
+    await setDefaultPersona(apiContext, this.user, this.persona);
+    await afterAction();
+  }
+
+  async delete(browser: Browser) {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await this.user.delete(apiContext);
+    await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/docStore/${this.layoutDoc.id}?hardDelete=true`
+    );
+    await this.persona.delete(apiContext);
+    await afterAction();
+  }
+
+  /** Signs the user in from a fresh context and closes it afterwards. */
+  async signIn(browser: Browser, run: (page: Page) => Promise<void>) {
+    const { page, afterAction } = await performUserLogin(browser, this.user);
+    try {
+      await run(page);
+    } finally {
+      await afterAction();
+    }
+  }
+}
+
 test.describe(
-  'Persona App Layout for the persona users',
+  'Persona default landing page',
   { tag: ['@Features', '@Platform'] },
   () => {
-    const classicUser = new UserClass();
-    const aiUser = new UserClass();
-    const classicPersona = new PersonaClass();
-    const aiPersona = new PersonaClass();
-    const layoutDocs: Document[] = [];
+    const classic = new PersonaWithLayout({
+      appMode: AppMode.Classic,
+      defaultLandingPage: '/glossary',
+    });
+    const ai = new PersonaWithLayout({
+      appMode: AppMode.AI,
+      defaultLandingPage: '/glossary',
+    });
 
     test.beforeAll(
-      'Create the personas, their users and App Layout documents',
+      'Create the personas and their users',
       async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-
-        await settleAll([
-          classicUser.create(apiContext),
-          aiUser.create(apiContext),
-        ]);
-        await settleAll([
-          classicPersona.create(apiContext, [classicUser.responseData.id]),
-          aiPersona.create(apiContext, [aiUser.responseData.id]),
-        ]);
-        layoutDocs.push(
-          ...(await Promise.all([
-            createPersonaAppLayoutDoc(apiContext, classicPersona, {
-              appMode: AppMode.Classic,
-              defaultLandingPage: '/glossary',
-              defaultViewModes: {
-                domains: PageViewMode.Tree,
-                dataProducts: PageViewMode.Card,
-              },
-            }),
-            createPersonaAppLayoutDoc(apiContext, aiPersona, {
-              appMode: AppMode.AI,
-              defaultLandingPage: '/glossary',
-            }),
-          ]))
-        );
-        await settleAll([
-          setDefaultPersona(apiContext, classicUser, classicPersona),
-          setDefaultPersona(apiContext, aiUser, aiPersona),
-        ]);
-
-        await afterAction();
+        await classic.create(browser);
+        await ai.create(browser);
       }
     );
 
     test.afterAll(
-      'Delete the personas, their users and App Layout documents',
+      'Delete the personas and their users',
       async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-
-        await settleAll([
-          ...layoutDocs.map((doc) =>
-            deleteFixtureEntity(
-              apiContext,
-              `/api/v1/docStore/${doc.id}?hardDelete=true`
-            )
-          ),
-          classicUser.delete(apiContext),
-          aiUser.delete(apiContext),
-        ]);
-        await settleAll([
-          classicPersona.delete(apiContext),
-          aiPersona.delete(apiContext),
-        ]);
-
-        await afterAction();
+        await ai.delete(browser);
+        await classic.delete(browser);
       }
     );
 
     test('lands on the default landing page after sign-in', async ({
       browser,
     }) => {
-      const { page, afterAction } = await performUserLogin(
-        browser,
-        classicUser
-      );
-
-      await expect(page).toHaveURL(GLOSSARY_URL);
-
-      await afterAction();
+      await classic.signIn(browser, async (page) => {
+        await expect(page).toHaveURL(GLOSSARY_URL);
+      });
     });
 
     test('lands on it again after signing out and back in', async ({
       browser,
     }) => {
-      const { page, afterAction } = await performUserLogin(
-        browser,
-        classicUser
-      );
+      await classic.signIn(browser, async (page) => {
+        await test.step('Sign out from another page', async () => {
+          await page.goto('/explore');
+          await waitForAllLoadersToDisappear(page);
+          await classic.user.logout(page);
+        });
 
-      await test.step('Sign out from another page', async () => {
-        await page.goto('/explore', { waitUntil: 'domcontentloaded' });
-        await waitForAllLoadersToDisappear(page);
-        await classicUser.logout(page);
+        await test.step('Sign back in', async () => {
+          await classic.user.login(page);
+
+          await expect(page).toHaveURL(GLOSSARY_URL);
+        });
       });
-
-      await test.step('Sign back in', async () => {
-        await classicUser.login(page);
-
-        await expect(page).toHaveURL(GLOSSARY_URL);
-      });
-
-      await afterAction();
     });
 
     test('a new tab at / opens the landing page; a deep link stays put', async ({
       browser,
     }) => {
-      const { page, afterAction } = await performUserLogin(
-        browser,
-        classicUser
-      );
+      await classic.signIn(browser, async (page) => {
+        await test.step('Open the app root in a new tab', async () => {
+          const rootTab = await page.context().newPage();
+          await rootTab.goto('/');
 
-      await test.step('Open the app root in a new tab', async () => {
-        const rootTab = await page.context().newPage();
-        // `/` redirects, so wait only for the first commit.
-        await rootTab.goto('/', { waitUntil: 'commit' });
+          await expect(rootTab).toHaveURL(GLOSSARY_URL);
+        });
 
-        await expect(rootTab).toHaveURL(GLOSSARY_URL);
+        await test.step('Open a deep link in a new tab', async () => {
+          const deepLinkTab = await page.context().newPage();
+          await deepLinkTab.goto('/explore');
+          await waitForAllLoadersToDisappear(deepLinkTab);
+
+          await expect(deepLinkTab).toHaveURL(/\/explore/);
+        });
       });
-
-      await test.step('Open a deep link in a new tab', async () => {
-        const deepLinkTab = await page.context().newPage();
-        await deepLinkTab.goto('/explore', { waitUntil: 'domcontentloaded' });
-        await waitForAllLoadersToDisappear(deepLinkTab);
-
-        await expect(deepLinkTab).toHaveURL(/\/explore/);
-      });
-
-      await afterAction();
     });
 
     test('an AI persona lands on its default landing page too', async ({
       browser,
     }) => {
-      const { page, afterAction } = await performUserLogin(browser, aiUser);
+      await ai.signIn(browser, async (page) => {
+        // The AI sidebar proves the AI route tree mounted.
+        await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+        await expect(page).toHaveURL(GLOSSARY_URL);
+      });
+    });
+  }
+);
 
-      // The AI sidebar proves the AI route tree mounted.
-      await expect(page.getByTestId('ask-sidebar')).toBeVisible();
-      await expect(page).toHaveURL(GLOSSARY_URL);
+test.describe(
+  'Persona default view mode',
+  { tag: ['@Features', '@Platform'] },
+  () => {
+    const tableAndTree = new PersonaWithLayout({
+      appMode: AppMode.Classic,
+      defaultViewModes: {
+        domains: PageViewMode.Tree,
+        dataProducts: PageViewMode.Card,
+      },
+    });
 
-      await afterAction();
+    test.beforeAll('Create the persona and its user', async ({ browser }) => {
+      await tableAndTree.create(browser);
+    });
+
+    test.afterAll('Delete the persona and its user', async ({ browser }) => {
+      await tableAndTree.delete(browser);
     });
 
     test('list pages open in the view the persona picked', async ({
       browser,
     }) => {
-      const { page, afterAction } = await performUserLogin(
-        browser,
-        classicUser
-      );
+      await tableAndTree.signIn(browser, async (page) => {
+        await test.step('Domains opens in Tree view', async () => {
+          await page.goto('/domain');
+          await waitForAllLoadersToDisappear(page);
 
-      await test.step('Domains opens in Tree view', async () => {
-        await page.goto('/domain', { waitUntil: 'domcontentloaded' });
-        await waitForAllLoadersToDisappear(page);
+          await expect(page.getByTestId('tree-view-toggle')).toHaveAttribute(
+            'aria-checked',
+            'true'
+          );
+        });
 
-        await expect(page.getByTestId('tree-view-toggle')).toHaveAttribute(
-          'aria-checked',
-          'true'
-        );
+        await test.step('Data Products opens in Grid view', async () => {
+          await page.goto('/dataProduct');
+          await waitForAllLoadersToDisappear(page);
+
+          await expect(page.getByTestId('card-view-toggle')).toHaveAttribute(
+            'aria-checked',
+            'true'
+          );
+        });
       });
-
-      await test.step('Data Products opens in Grid view', async () => {
-        await page.goto('/dataProduct', { waitUntil: 'domcontentloaded' });
-        await waitForAllLoadersToDisappear(page);
-
-        await expect(page.getByTestId('card-view-toggle')).toHaveAttribute(
-          'aria-checked',
-          'true'
-        );
-      });
-
-      await afterAction();
     });
   }
 );
@@ -228,91 +230,56 @@ test.describe(
   'Persona App Layout page',
   { tag: ['@Features', '@Platform'] },
   () => {
-    const blankPersona = new PersonaClass();
-    const configuredPersona = new PersonaClass();
-    const configuredLayoutUrl = `/customize-page/${getEncodedFqn(
-      configuredPersona.data.name
-    )}/app-layout`;
-    const layoutDocs: Document[] = [];
-    let blankLayoutDoc: Document;
+    const blank = new PersonaWithLayout({});
+    const configured = new PersonaWithLayout({
+      appMode: AppMode.AI,
+      defaultLandingPage: '/glossary',
+      defaultViewModes: { domains: PageViewMode.Tree },
+    });
 
-    test.beforeAll(
-      'Create the personas and their App Layout documents',
-      async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll('Create the personas', async ({ browser }) => {
+      await blank.create(browser);
+      await configured.create(browser);
+    });
 
-        await settleAll([
-          blankPersona.create(apiContext),
-          configuredPersona.create(apiContext),
-        ]);
-        const [blankDoc, configuredDoc] = await Promise.all([
-          createPersonaAppLayoutDoc(apiContext, blankPersona),
-          createPersonaAppLayoutDoc(apiContext, configuredPersona, {
-            appMode: AppMode.AI,
-            defaultLandingPage: '/glossary',
-            defaultViewModes: { domains: PageViewMode.Tree },
-          }),
-        ]);
-        layoutDocs.push(blankDoc, configuredDoc);
-        blankLayoutDoc = blankDoc;
-
-        await afterAction();
-      }
-    );
-
-    test.afterAll(
-      'Delete the personas and their App Layout documents',
-      async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-
-        await settleAll(
-          layoutDocs.map((doc) =>
-            deleteFixtureEntity(
-              apiContext,
-              `/api/v1/docStore/${doc.id}?hardDelete=true`
-            )
-          )
-        );
-        await settleAll([
-          blankPersona.delete(apiContext),
-          configuredPersona.delete(apiContext),
-        ]);
-
-        await afterAction();
-      }
-    );
+    test.afterAll('Delete the personas', async ({ browser }) => {
+      await configured.delete(browser);
+      await blank.delete(browser);
+    });
 
     test('an admin saves App Layout settings and they persist', async ({
       page,
     }) => {
-      const landingPageSelect = page.getByTestId('default-landing-page-select');
-      const saveButton = page.getByTestId('save-button');
-
       await test.step('Open App Layout from the persona page', async () => {
         // By URL rather than the sidebar: the shared admin may be in AI mode,
         // whose shell has no Settings entry.
         await page.goto(
-          `/settings/persona/${getEncodedFqn(blankPersona.data.name)}`,
-          { waitUntil: 'domcontentloaded' }
+          `/settings/persona/${getEncodedFqn(blank.persona.data.name)}`
         );
         await waitForAllLoadersToDisappear(page);
         await page.getByTestId('app-layout').click();
         await waitForAllLoadersToDisappear(page);
 
-        await expect(page).toHaveURL(/\/app-layout$/);
-        await expect(page.getByTestId('app-mode-radio-group')).toBeVisible();
-        await expect(saveButton).toBeDisabled();
+        await expect(page.getByTestId('customize-page-title')).toContainText(
+          'App Layout'
+        );
+        await expect(page.getByTestId('save-button')).toBeDisabled();
       });
 
       await test.step('Choose Classic, Glossary and Tree for Domains', async () => {
         await page.getByTestId('app-mode-option-classic').click();
 
-        await selectOptionWithRetry(
-          landingPageSelect.getByRole('button'),
-          page.getByRole('option', { name: /Glossary/ })
-        );
+        await page
+          .getByTestId('default-landing-page-select')
+          .getByRole('button')
+          .click();
+        const glossary = page.getByRole('option', { name: /Glossary/ });
+        await expect(glossary).toBeVisible();
+        await glossary.click();
 
-        await expect(landingPageSelect).toContainText('/glossary');
+        await expect(
+          page.getByTestId('default-landing-page-select')
+        ).toContainText('Glossary');
 
         await page.getByTestId('add-view-mode-page').click();
         await page.getByTestId('add-view-mode-page-domains').click();
@@ -324,25 +291,29 @@ test.describe(
       });
 
       await test.step('Save', async () => {
+        const saveButton = page.getByTestId('save-button');
         await expect(saveButton).toBeEnabled();
 
-        await clickAndWaitFor(
-          page,
-          saveButton,
-          `/api/v1/docStore/${blankLayoutDoc.id}`
+        const saveResponse = page.waitForResponse(
+          `/api/v1/docStore/${blank.layoutDoc.id}`
         );
+        await saveButton.click();
+        const response = await saveResponse;
 
+        expect(response.status()).toBe(200);
         await expect(saveButton).toBeDisabled();
       });
 
       await test.step('The settings are still there after a reload', async () => {
-        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.reload();
         await waitForAllLoadersToDisappear(page);
 
         await expect(
           page.getByTestId('app-mode-option-classic').getByRole('radio')
         ).toBeChecked();
-        await expect(landingPageSelect).toContainText('/glossary');
+        await expect(
+          page.getByTestId('default-landing-page-select')
+        ).toContainText('/glossary');
         await expect(
           page.getByTestId('view-mode-domains-tree')
         ).toHaveAttribute('aria-selected', 'true');
@@ -351,7 +322,12 @@ test.describe(
 
     test('Reset returns every setting to its default', async ({ page }) => {
       await test.step('Open App Layout for a configured persona', async () => {
-        await page.goto(configuredLayoutUrl, { waitUntil: 'domcontentloaded' });
+        await page.goto(
+          `/customize-page/${getEncodedFqn(
+            configured.persona.responseData.fullyQualifiedName ??
+              configured.persona.responseData.name
+          )}/app-layout`
+        );
         await waitForAllLoadersToDisappear(page);
 
         await expect(
@@ -369,7 +345,7 @@ test.describe(
         ).toBeChecked();
         await expect(
           page.getByTestId('default-landing-page-select')
-        ).toContainText('/my-data');
+        ).toContainText('Home (My Data)');
         await expect(page.getByTestId('view-mode-row-domains')).toBeHidden();
         await expect(page.getByTestId('save-button')).toBeEnabled();
       });
@@ -378,22 +354,30 @@ test.describe(
     test('clicking elsewhere on the page closes the landing page list', async ({
       page,
     }) => {
-      const landingPageSelect = page.getByTestId('default-landing-page-select');
-
-      await page.goto(configuredLayoutUrl, { waitUntil: 'domcontentloaded' });
+      await page.goto(
+        `/customize-page/${getEncodedFqn(
+          configured.persona.responseData.fullyQualifiedName ??
+            configured.persona.responseData.name
+        )}/app-layout`
+      );
       await waitForAllLoadersToDisappear(page);
 
       await test.step('Open the list', async () => {
-        await landingPageSelect.getByRole('button').click();
+        await page
+          .getByTestId('default-landing-page-select')
+          .getByRole('button')
+          .click();
 
         await expect(page.getByRole('listbox')).toBeVisible();
       });
 
-      await test.step('Click the page title', async () => {
-        await page.getByTestId('customize-page-title').click();
+      await test.step('Click plain text on the page', async () => {
+        await page.getByText(/Starting view for pages/).click();
 
         await expect(page.getByRole('listbox')).toBeHidden();
-        await expect(landingPageSelect).toContainText('/glossary');
+        await expect(
+          page.getByTestId('default-landing-page-select')
+        ).toContainText('Glossary');
       });
     });
   }
