@@ -15,6 +15,8 @@ A table is never linked to itself.
 streaming or CDC write legitimately names its target table as its own source.
 Carried through as lineage it renders as a loop on the node and tells the reader
 nothing, so those rows are dropped before an edge is built.
+
+Rows naming only one side are not dropped: they are routed through the job.
 """
 
 import uuid
@@ -109,11 +111,77 @@ class TestSelfReferencingTableLineage:
         edge = edges[0].edge
         assert edge.fromEntity.id != edge.toEntity.id
 
-    def test_rows_with_a_missing_name_are_still_skipped(self):
+    def test_rows_naming_no_table_are_skipped(self):
+        source = _source([{"source_table_full_name": None, "target_table_full_name": None}])
+        assert _edges(source) == []
+
+
+BRONZE = "uc_core.dfac_agora_bronze.ext_equa_compta_detaillees"
+SILVER = "uc_aas.gds_vault_silver.ext_reconciliation_equa_compta_agora"
+SILVER_MVT = "uc_aas.gds_vault_silver.ext_reconciliation_mvt_equa_compta_agora"
+
+
+class TestOneSidedTableLineage:
+    """
+    A job that reads and writes in separate statements leaves only a read row (no
+    target) and a write row (no source). The job is the only thing linking them, so
+    it becomes the node between the tables instead of the edge being dropped.
+    """
+
+    def test_a_read_links_the_table_to_the_job(self):
+        edges = _edges(_source([{"source_table_full_name": BRONZE, "target_table_full_name": None}]))
+        assert len(edges) == 1
+        edge = edges[0].edge
+        assert (edge.fromEntity.type, edge.toEntity.type) == ("table", "pipeline")
+        assert edge.lineageDetails.pipeline is None
+
+    def test_a_write_links_the_job_to_the_table(self):
+        edges = _edges(_source([{"source_table_full_name": None, "target_table_full_name": SILVER}]))
+        assert len(edges) == 1
+        edge = edges[0].edge
+        assert (edge.fromEntity.type, edge.toEntity.type) == ("pipeline", "table")
+
+    def test_split_read_and_writes_route_through_the_job_without_table_edges(self):
+        """The reported shape: one bronze read, two silver writes, no row naming both."""
+        edges = _edges(
+            _source(
+                [
+                    {"source_table_full_name": BRONZE, "target_table_full_name": None},
+                    {"source_table_full_name": None, "target_table_full_name": SILVER},
+                    {"source_table_full_name": None, "target_table_full_name": SILVER_MVT},
+                ]
+            )
+        )
+        kinds = sorted((e.edge.fromEntity.type, e.edge.toEntity.type) for e in edges)
+        assert kinds == [("pipeline", "table"), ("pipeline", "table"), ("table", "pipeline")]
+
+    def test_tables_already_on_a_table_edge_get_no_hop_through_the_job(self):
         source = _source(
             [
-                {"source_table_full_name": None, "target_table_full_name": SNAPSHOT},
-                {"source_table_full_name": EVENT_LOG, "target_table_full_name": None},
+                {"source_table_full_name": BRONZE, "target_table_full_name": SILVER},
+                {"source_table_full_name": BRONZE, "target_table_full_name": None},
+                {"source_table_full_name": None, "target_table_full_name": SILVER},
+                {"source_table_full_name": None, "target_table_full_name": SILVER_MVT},
             ]
         )
-        assert _edges(source) == []
+        edges = _edges(source)
+        kinds = sorted((e.edge.fromEntity.type, e.edge.toEntity.type) for e in edges)
+        assert kinds == [("pipeline", "table"), ("table", "table")]
+        table_edge = next(
+            e.edge for e in edges if e.edge.toEntity.type == "table" and e.edge.fromEntity.type == "table"
+        )
+        assert table_edge.lineageDetails.pipeline is not None
+
+    def test_an_unresolved_table_yields_no_dangling_job_edge(self):
+        source = _source(
+            [
+                {"source_table_full_name": BRONZE, "target_table_full_name": None},
+                {"source_table_full_name": None, "target_table_full_name": SILVER},
+            ]
+        )
+        resolve = source.metadata.get_by_name.side_effect
+        source.metadata.get_by_name.side_effect = lambda entity=None, fqn=None, **kw: (
+            None if entity is Table and str(fqn).endswith(BRONZE) else resolve(entity=entity, fqn=fqn, **kw)
+        )
+        edges = _edges(source)
+        assert [(e.edge.fromEntity.type, e.edge.toEntity.type) for e in edges] == [("pipeline", "table")]
