@@ -116,6 +116,10 @@ function PlatformInsightsWidget({
                   );
 
                   const showIcon = chart.percentageChange !== 0;
+                  const unit =
+                    chart.chartType === SystemChartType.HealthyDataAssets
+                      ? ''
+                      : '%';
 
                   return (
                     <Card
@@ -129,7 +133,7 @@ function PlatformInsightsWidget({
                           <Typography.Text className="current-percentage">
                             {`${getReadableCountString(
                               chart.currentPercentage
-                            )}%`}
+                            )}${unit}`}
                           </Typography.Text>
                         </Col>
                         {!isUndefined(chart.percentageChange) && (
@@ -145,7 +149,7 @@ function PlatformInsightsWidget({
                                 }}>
                                 {`${getReadableCountString(
                                   chart.percentageChange
-                                )}%`}
+                                )}${unit}`}
                               </Typography.Text>
                             </div>
                             <Typography.Text className="font-small text-grey-muted text-xs text-no-wrap">
