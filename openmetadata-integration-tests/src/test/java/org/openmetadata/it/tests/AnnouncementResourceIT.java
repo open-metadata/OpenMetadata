@@ -442,6 +442,21 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
     patchEntity(created.getId().toString(), created);
 
     assertEquals(AnnouncementStatus.Expired, getEntity(created.getId().toString()).getStatus());
+
+    // And on the list path, which reaches setFieldsInBulk rather than setFields. Asserting only
+    // the GET above is how the two came to disagree: `?status=Expired` matched this row while the
+    // payload it returned still said `Active`.
+    Announcement listed =
+        listEntities(
+                new ListParams()
+                    .addQueryParam("status", AnnouncementStatus.Expired.value())
+                    .setLimit(100))
+            .getData()
+            .stream()
+            .filter(a -> a.getId().equals(created.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(AnnouncementStatus.Expired, listed.getStatus());
   }
 
   @Test

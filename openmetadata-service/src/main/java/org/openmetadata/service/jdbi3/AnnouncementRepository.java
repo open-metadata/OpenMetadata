@@ -148,6 +148,21 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
         fields.contains(FIELD_DOMAINS) ? getDomains(announcement) : announcement.getDomains());
   }
 
+  /**
+   * The list path never reaches {@link #setFields}: {@code setFieldsInBulk} goes straight to the
+   * registered field fetchers. Deriving status only there left a row reporting {@code Expired} on a
+   * GET by id and the stored write-time snapshot in the list that the status filter had already
+   * matched it into — so the filter and the payload disagreed for exactly the rows the filter
+   * exists to find.
+   */
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Announcement> entities) {
+    if (!nullOrEmpty(entities)) {
+      entities.forEach(announcement -> announcement.setStatus(deriveStatus(announcement)));
+    }
+    super.setFieldsInBulk(fields, entities);
+  }
+
   @Override
   public void clearFields(Announcement announcement, Fields fields) {
     announcement.setOwners(fields.contains(FIELD_OWNERS) ? announcement.getOwners() : null);
