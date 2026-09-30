@@ -19,13 +19,17 @@ from sqlalchemy.sql.sqltypes import TypeEngine
 from metadata.generated.schema.entity.data.database import databaseService
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.profiler.orm.converter.common import CommonMapTypes
+from metadata.profiler.orm.types.bigquery_json import BigQueryJSON
 from metadata.profiler.source.database.bigquery.type_mapper import bigquery_type_mapper
 
 
 class BigqueryMapTypes(CommonMapTypes):
     def return_custom_type(self, col: Column, table_service_type):
-        if table_service_type == databaseService.DatabaseServiceType.BigQuery and col.dataType == DataType.STRUCT:
-            return bigquery_type_mapper(self._TYPE_MAP, col)
+        if table_service_type == databaseService.DatabaseServiceType.BigQuery:
+            if col.dataType == DataType.STRUCT:
+                return bigquery_type_mapper(self._TYPE_MAP, col)
+            if col.dataType == DataType.JSON:
+                return BigQueryJSON
         return super().return_custom_type(col, table_service_type)
 
     @staticmethod

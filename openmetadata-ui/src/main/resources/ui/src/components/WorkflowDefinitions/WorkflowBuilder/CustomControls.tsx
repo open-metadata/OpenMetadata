@@ -71,7 +71,7 @@ export const CustomControls: React.FC<CustomControlsProps> = ({
 
   return (
     <Card
-      className="tw:absolute tw:bottom-5 tw:right-5 tw:flex tw:items-center tw:gap-0.5 tw:z-10 tw:p-1"
+      className="tw:absolute tw:bottom-5 tw:right-5 tw:flex tw:items-center tw:gap-0.5 tw:z-10 tw:p-1 tw:bg-canvas"
       data-testid="workflow-controls">
       <Button
         color="tertiary"
