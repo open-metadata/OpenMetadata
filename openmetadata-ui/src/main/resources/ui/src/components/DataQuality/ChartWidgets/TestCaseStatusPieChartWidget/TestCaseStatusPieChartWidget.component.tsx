@@ -119,6 +119,7 @@ const TestCaseStatusPieChartWidget = ({
         </div>
         <CustomPieChart
           showLegends
+          ariaLabel={t('label.test-case-result')}
           data={data}
           label={chartLabel}
           name="test-case-result"

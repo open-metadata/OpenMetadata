@@ -10,92 +10,59 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { PieDatum } from '@openmetadata/ui-core-components/charts';
+import { PieChart } from '@openmetadata/ui-core-components/charts';
 import { Space, Typography } from 'antd';
-import { isString, isUndefined } from 'lodash';
-import { useMemo } from 'react';
-import { Cell, Pie, PieChart, Tooltip } from 'recharts';
+import { isString } from 'lodash';
+import { useCallback } from 'react';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
-import { useChartColors } from '../../../hooks/useChartColors';
 import { formatNumberWithComma } from '../../../utils/NumberUtils';
 import { CustomPieChartProps } from './Chart.interface';
 import './chart.less';
 
+const LEGEND_HIDDEN = { show: false };
+
 const CustomPieChart = ({
   name,
+  ariaLabel,
   data,
   label,
   minAngle = 3,
   showLegends = false,
   onSegmentClick,
 }: CustomPieChartProps) => {
-  const { emptyFill, inactive } = useChartColors();
-  const hasClickHandler = Boolean(onSegmentClick);
+  const centerLabel = isString(label) ? (
+    <span className="tw:text-sm tw:font-medium tw:text-tertiary">{label}</span>
+  ) : (
+    label
+  );
 
-  const centerLabel = useMemo(() => {
-    if (isUndefined(label)) {
-      return '';
-    }
-
-    if (isString(label)) {
-      return (
-        <text dy={8} fill={inactive} textAnchor="middle" x="50%" y="50%">
-          {label}
-        </text>
-      );
-    }
-
-    return label;
-  }, [inactive, label]);
+  const handleSliceClick = useCallback(
+    (slice: PieDatum) => {
+      const index = data.findIndex((entry) => entry.name === slice.name);
+      if (index >= 0) {
+        onSegmentClick?.(data[index], index);
+      }
+    },
+    [data, onSegmentClick]
+  );
 
   return (
     <div className="custom-pie-chart">
-      <PieChart
-        height={CHART_SMALL_SIZE}
-        id={`${name}-pie-chart`}
-        width={CHART_SMALL_SIZE}>
-        <Pie
-          cx="50%"
-          cy="50%"
-          // to show the empty pie chart when there is no data
-          data={[{ value: 1 }]}
-          dataKey="value"
-          endAngle={-270}
-          fill={emptyFill}
-          innerRadius={55}
-          outerRadius={80}
-          // to hide tooltip when there is no data
-          pointerEvents="none"
-          startAngle={90}>
-          <Cell fill={emptyFill} />
-        </Pie>
-        <Pie
-          className={hasClickHandler ? 'custom-pie-chart-clickable' : ''}
-          cx="50%"
-          cy="50%"
+      <div className="tw:w-50" id={`${name}-pie-chart`}>
+        <PieChart
+          track
+          ariaLabel={ariaLabel}
+          centerLabel={centerLabel}
           data={data}
-          dataKey="value"
-          endAngle={-270}
-          innerRadius={60}
+          height={CHART_SMALL_SIZE}
+          innerRadius="60%"
+          legend={LEGEND_HIDDEN}
           minAngle={minAngle}
-          outerRadius={80}
-          startAngle={90}
-          onClick={
-            onSegmentClick
-              ? (_, index) => {
-                  const entry = data[index];
-                  if (entry) {
-                    onSegmentClick(entry, index);
-                  }
-                }
-              : undefined
-          }>
-          {data.map((entry) => (
-            <Cell fill={entry.color} key={`cell-${entry.name}`} />
-          ))}
-        </Pie>
-        <Tooltip />
-        {centerLabel}
-      </PieChart>
+          outerRadius="80%"
+          onSliceClick={onSegmentClick ? handleSliceClick : undefined}
+        />
+      </div>
 
       {showLegends && (
         <Space wrap size={16}>

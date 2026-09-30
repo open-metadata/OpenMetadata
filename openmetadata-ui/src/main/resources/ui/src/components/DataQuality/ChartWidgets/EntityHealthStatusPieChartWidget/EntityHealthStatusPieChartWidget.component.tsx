@@ -115,6 +115,7 @@ const EntityHealthStatusPieChartWidget = ({
         </div>
         <CustomPieChart
           showLegends
+          ariaLabel={t('label.healthy-data-asset-plural')}
           data={data}
           label={chartLabel}
           name="healthy-data-assets"

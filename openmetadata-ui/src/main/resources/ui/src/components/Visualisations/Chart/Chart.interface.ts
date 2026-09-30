@@ -37,6 +37,8 @@ export type CustomPieChartData = {
 };
 export interface CustomPieChartProps {
   name: string;
+  /** Accessible name of the chart, e.g. the card title. Translated by the caller. */
+  ariaLabel: string;
   data: CustomPieChartData[];
   label?: React.ReactNode;
   /** Minimum slice angle in degrees, used to keep small non-zero values visible. */

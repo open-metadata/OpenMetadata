@@ -131,6 +131,7 @@ const DataAssetsCoveragePieChartWidget = ({
         </div>
         <CustomPieChart
           showLegends
+          ariaLabel={t('label.data-asset-plural-coverage')}
           data={data}
           label={chartLabel}
           name="data-assets-coverage"
