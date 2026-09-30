@@ -212,10 +212,10 @@ public class ContextMemoryLifecycleIT {
     ContextMemory keeper = admin().create(memory(ns, "put-keeper"));
     ContextMemory other = admin().create(memory(ns, "put-dispute"));
     ContextMemory original = admin().create(memory(ns, "put-lifecycle"));
-    ContextMemory superseded =
-        admin().patch(idOf(original), supersede(keeper, "Duplicate fact"));
-    admin().patch(
-        idOf(original), JsonUtils.readTree(ADD_DISPUTE.formatted(other.getId(), "Conflicts")));
+    ContextMemory superseded = admin().patch(idOf(original), supersede(keeper, "Duplicate fact"));
+    admin()
+        .patch(
+            idOf(original), JsonUtils.readTree(ADD_DISPUTE.formatted(other.getId(), "Conflicts")));
 
     ContextMemory updated =
         admin().put(memory(ns, "put-lifecycle").withAnswer("Re-extracted answer"));
