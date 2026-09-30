@@ -85,8 +85,10 @@ uses the configured dataset strategy and durable live-write recovery process.
 `RdfOntologyContractTest` projects populated fields from every entity JSON Schema,
 structured fixtures, every built-in relationship enum value, detailed lineage,
 and every built-in glossary relationship definition. It checks predicate
-coverage in both directions, checks JSON-LD and nested SQL mappings against
-stored projected predicates, and requires explicit annotations for unprojected
+coverage in both directions, checks `base.jsonld` and the nested SQL mappings
+against stored projected predicates, pins pre-existing unprojected flat SQL
+mappings as known gaps (the other JSON-LD contexts and those gaps are tracked in
+issue #34307), and requires explicit annotations for unprojected
 terms. A Java syntax-tree scan additionally checks constant predicates in
 conditional mapper branches. The tests never derive the writer's predicate list
 from the ontology itself.

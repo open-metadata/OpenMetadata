@@ -26,6 +26,23 @@ import org.openmetadata.service.rdf.sql2sparql.SqlMappingContext;
 
 class RdfOntologyContractTest {
   private static final String OM = "https://open-metadata.org/ontology/";
+
+  // Pre-existing SQL mappings to predicates the projection never writes, tracked in
+  // https://github.com/open-metadata/OpenMetadata/issues/34307. Exact equality makes a new
+  // gap fail and forces an entry to be removed once its mapping is fixed.
+  private static final Set<String> KNOWN_UNPROJECTED_SQL_COLUMNS =
+      Set.of(
+          "columns.datatype -> om:dataType",
+          "columns.id -> om:id",
+          "columns.tableid -> om:table",
+          "databases.id -> om:id",
+          "lineage.downstream -> prov:wasInfluencedBy",
+          "pipelines.id -> om:id",
+          "tables.database -> om:database",
+          "tables.id -> om:id",
+          "teams.id -> om:id",
+          "users.email -> om:email",
+          "users.id -> om:id");
   private static Model projection;
   private static Model ontology;
 
@@ -129,6 +146,35 @@ class RdfOntologyContractTest {
                                           column.getRdfProperty(),
                                           table + "." + field + "." + subfield));
                         }));
+  }
+
+  @Test
+  void flatSqlMappingsOnlyAdvertiseProjectedPredicates() {
+    SqlMappingContext context = SqlMappingContext.createDefault();
+    Set<String> written = predicates(projection);
+    Set<String> unprojected = new TreeSet<>();
+    context
+        .getTableMappings()
+        .forEach(
+            (table, mapping) ->
+                mapping
+                    .getColumnMappings()
+                    .forEach(
+                        (column, mapped) -> {
+                          if (!written.contains(expand(context, mapped.getRdfProperty()))) {
+                            unprojected.add(
+                                table + "." + column + " -> " + mapped.getRdfProperty());
+                          }
+                        }));
+    assertEquals(KNOWN_UNPROJECTED_SQL_COLUMNS, unprojected);
+  }
+
+  private static String expand(SqlMappingContext context, String qualifiedPredicate) {
+    int colon = qualifiedPredicate.indexOf(':');
+    String namespace = context.getPrefixes().get(qualifiedPredicate.substring(0, colon));
+    return namespace == null
+        ? qualifiedPredicate
+        : namespace + qualifiedPredicate.substring(colon + 1);
   }
 
   private static void assertStoredProjection(String qualifiedPredicate, String source) {
