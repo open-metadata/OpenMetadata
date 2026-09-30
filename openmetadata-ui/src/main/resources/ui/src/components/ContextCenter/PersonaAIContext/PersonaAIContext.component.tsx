@@ -51,6 +51,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import { ContextPreviewModal } from './ContextPreviewModal/ContextPreviewModal.component';
+import { ContextPromptCard } from './ContextPromptCard/ContextPromptCard.component';
 import { ContextRuleCard } from './ContextRuleCard/ContextRuleCard.component';
 import { ContextRuleEditor } from './ContextRuleEditor/ContextRuleEditor.component';
 import { VersionHistoryDrawer } from './VersionHistoryDrawer/VersionHistoryDrawer.component';
@@ -521,6 +522,41 @@ export const PersonaAIContext = ({
     [applyServerDefinition, persona.id]
   );
 
+  // The endpoint overwrites all three settings from the body, so they ride along unchanged.
+  const persistPrompt = useCallback(
+    async (prompt: string) => {
+      const mutationId = ++mutationIdRef.current;
+      try {
+        const response = await updatePersonaAIContext(persona.id, {
+          cacheTtlMinutes:
+            definition.cacheTtlMinutes ??
+            DEFAULT_PERSONA_CONTEXT_DEFINITION.cacheTtlMinutes,
+          characterBudget:
+            definition.characterBudget ??
+            DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget,
+          enabled: definition.enabled,
+          prompt,
+        });
+        if (mutationId === mutationIdRef.current) {
+          applyServerDefinition(response);
+        }
+        showSuccessToast(
+          t('message.entity-saved-successfully', { entity: t('label.prompt') })
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [
+      applyServerDefinition,
+      definition.cacheTtlMinutes,
+      definition.characterBudget,
+      definition.enabled,
+      persona.id,
+      t,
+    ]
+  );
+
   const handleRuleSubmit = useCallback(
     async (rule: ContextRule) => {
       const previous = definition;
@@ -647,6 +683,12 @@ export const PersonaAIContext = ({
         setTtlDraft={setTtlDraft}
         settingsDisabled={settingsDisabled}
         ttlDraft={ttlDraft}
+      />
+
+      <ContextPromptCard
+        canEdit={canEdit}
+        prompt={definition.prompt}
+        onSave={persistPrompt}
       />
 
       <PersonaAIContextRulesSection

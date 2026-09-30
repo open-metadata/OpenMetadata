@@ -900,7 +900,11 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   protected void postDelete(Page entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     if (LLMClientHolder.isMemoryExtractionEnabled()) {
-      PageContextProcessingEngineHolder.get().cancel(entity.getId());
+      try {
+        PageContextProcessingEngineHolder.get().cancel(entity.getId());
+      } catch (RuntimeException e) {
+        LOG.warn("Unable to cancel memory extraction for deleted page {}", entity.getId(), e);
+      }
     }
   }
 
@@ -933,12 +937,16 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   /**
-   * Hands the page to the in-memory throttle, which coalesces autosaves and runs extraction once the
-   * body settles. A no-op when the LLM is disabled, mirroring the file pipeline.
+   * Enqueues a delayed job, coalescing autosaves in the persistent background job table. A no-op
+   * when the LLM is disabled, mirroring the file pipeline.
    */
   private void schedulePillExtraction(UUID pageId) {
     if (isExtractionEnabled()) {
-      PageContextProcessingEngineHolder.get().schedule(pageId);
+      try {
+        PageContextProcessingEngineHolder.get().schedule(pageId);
+      } catch (RuntimeException e) {
+        LOG.warn("Unable to queue memory extraction for page {}", pageId, e);
+      }
     }
   }
 

@@ -213,14 +213,13 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
           createAlertAPI: createNotificationAlert,
           updateAlertAPI: updateNotificationAlert,
           afterSaveAction: async (savedFqn: string) => {
-            if (isEditMode) {
-              onNavigate({
-                type: 'detail',
-                fqn: savedFqn,
-                name: data.displayName ?? '',
-              });
-            } else {
-              onNavigate({ type: 'list' });
+            onNavigate({
+              type: 'detail',
+              fqn: savedFqn,
+              name: data.displayName ?? '',
+            });
+
+            if (!isEditMode) {
               await getResourceLimit('eventsubscription', true, true);
             }
           },
