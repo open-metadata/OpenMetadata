@@ -342,23 +342,21 @@ class SnowflakeSource(
                 )
             }
 
-    def is_tag_value_ingestible(self, tag_name: str, tag_value: str | None, target: str) -> bool:
+    def has_tag_value(self, tag_name: str, tag_value: str | None, target: str) -> bool:
         """
-        Return whether a Snowflake tag value can become an OpenMetadata tag, recording a warning when not.
+        Return whether a Snowflake tag carries a value, logging a warning when it does not.
 
-        Empty values carry no tag, and values with a double quote (e.g. JSON payloads) cannot be
-        expressed as a tag FQN, so both are skipped instead of failing the run.
+        Snowflake tags carry their meaning in the value, so one without a value is skipped. Values the server
+        cannot use as tag names are skipped by the shared ``define_tag`` check.
         """
-        reason = None
-        if not tag_value:
-            reason = "TAG_VALUE is empty. Snowflake tags require a value to be ingested."
-        elif '"' in tag_value:
-            reason = "TAG_VALUE contains a double quote, which is not supported in tag names."
-        if reason:
-            message = f"Skipping tag '{tag_name}' for '{target}' - {reason}"
-            logger.warning(message)
-            self.status.warning(f"{tag_name}.{tag_value}", message)
-        return reason is None
+        if tag_value:
+            return True
+        logger.warning(
+            "Skipping tag '%s' for '%s' - TAG_VALUE is empty. Snowflake tags require a value to be ingested.",
+            tag_name,
+            target,
+        )
+        return False
 
     def set_schema_tags_map(self, database_name: str) -> None:
         """Fetch and store all schema-level tags for the current database"""
@@ -377,7 +375,7 @@ class SnowflakeSource(
                     {"database_name": fqn.unquote_name(database_name)},
                 ):
                     schema_name = row.SCHEMA_NAME
-                    if not self.is_tag_value_ingestible(row.TAG_NAME, row.TAG_VALUE, schema_name):
+                    if not self.has_tag_value(row.TAG_NAME, row.TAG_VALUE, schema_name):
                         continue
                     if schema_name not in self.schema_tags_map:
                         self.schema_tags_map[schema_name] = []
@@ -404,7 +402,7 @@ class SnowflakeSource(
                     {"database_name": fqn.unquote_name(database_name)},
                 ):
                     db_name = row.DATABASE_NAME
-                    if not self.is_tag_value_ingestible(row.TAG_NAME, row.TAG_VALUE, db_name):
+                    if not self.has_tag_value(row.TAG_NAME, row.TAG_VALUE, db_name):
                         continue
                     if db_name not in self.database_tags_map:
                         self.database_tags_map[db_name] = []
@@ -669,7 +667,7 @@ class SnowflakeSource(
                 fqn_elements = [name for name in row[2:] if name]
 
                 # row[0] = TAG_NAME, row[1] = TAG_VALUE
-                if not self.is_tag_value_ingestible(row[0], row[1], ".".join(fqn_elements)):
+                if not self.has_tag_value(row[0], row[1], ".".join(fqn_elements)):
                     continue
 
                 entity_fqn = fqn._build(self.context.get().database_service, *fqn_elements)  # pyright: ignore[reportAttributeAccessIssue]
@@ -679,6 +677,7 @@ class SnowflakeSource(
                         tag_name=row[1],
                         classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                         tag_description=SNOWFLAKE_TAG_DESCRIPTION,
+                        entity_fqn=entity_fqn,
                     )
                     if tag is not None:
                         self.attach_tag(entity_fqn=entity_fqn, tag=tag)
@@ -702,6 +701,7 @@ class SnowflakeSource(
                             tag_name=tag_info["tag_value"],
                             classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                             tag_description=SNOWFLAKE_TAG_DESCRIPTION,
+                            entity_fqn=schema_fqn,
                         )
                         if tag is not None:
                             self.attach_tag(entity_fqn=schema_fqn, tag=tag)
@@ -740,6 +740,7 @@ class SnowflakeSource(
                     tag_name=tag_info["tag_value"],
                     classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
                     tag_description=SNOWFLAKE_TAG_DESCRIPTION,
+                    entity_fqn=database_fqn,
                 )
                 if tag is not None:
                     self.attach_tag(entity_fqn=database_fqn, tag=tag)

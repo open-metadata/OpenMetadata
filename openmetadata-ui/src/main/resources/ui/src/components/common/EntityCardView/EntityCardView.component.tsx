@@ -42,7 +42,8 @@ const EntityCardView = <T extends { id: string }>({
   return (
     <div
       className={cx(
-        'tw:grid tw:gap-4 tw:p-6',
+        // auto-rows-max: `auto` lets a definite-height grid squash rows and clip cards.
+        'tw:grid tw:auto-rows-max tw:gap-4 tw:p-6',
         className ?? DEFAULT_GRID_COLUMNS
       )}
       data-testid="card-view-container">
