@@ -23,7 +23,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
+import { Trash01, Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { debounce, isEmpty, toLower, uniqBy } from 'lodash';
@@ -132,7 +132,7 @@ function useDetailHeaderInjection({
       <ButtonUtility
         color="tertiary"
         data-testid="rename-bot-btn"
-        icon={Edit}
+        icon={Edit01}
         isDisabled={!canEditAll}
         size="xs"
         tooltip={String(
@@ -149,7 +149,7 @@ function useDetailHeaderInjection({
       <ButtonUtility
         color="tertiary"
         data-testid="delete-bot-btn"
-        icon={Delete}
+        icon={Trash01}
         isDisabled={!canDelete}
         size="xs"
         tooltip={String(

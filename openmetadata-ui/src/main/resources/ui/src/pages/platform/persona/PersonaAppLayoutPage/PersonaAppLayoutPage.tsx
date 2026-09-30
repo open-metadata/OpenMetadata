@@ -25,7 +25,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, Plus } from '@openmetadata/ui-core-components/icons';
+import { Trash01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop, omit } from 'lodash';
 import { useState } from 'react';
@@ -312,7 +312,7 @@ export const PersonaAppLayoutPage = ({
                       <ButtonUtility
                         color="tertiary"
                         data-testid={`remove-view-mode-${page}`}
-                        icon={Delete}
+                        icon={Trash01}
                         tooltip={t('label.remove-entity', {
                           entity: t(labelKey),
                         })}
