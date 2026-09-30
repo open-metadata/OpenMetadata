@@ -92,5 +92,9 @@ const SERVICE_CHILDREN_FETCHERS = new Map<
 export const fetchServiceChildren = (
   serviceCategory: ServiceCategory,
   params: ServiceChildrenParams
-): Promise<PagingResponse<ServicePageData[]>> | undefined =>
-  SERVICE_CHILDREN_FETCHERS.get(serviceCategory)?.(params);
+): Promise<PagingResponse<ServicePageData[]>> | undefined => {
+  const fetcher = SERVICE_CHILDREN_FETCHERS.get(serviceCategory);
+
+  // The category is read from the URL, so call only a fetcher the table actually holds.
+  return typeof fetcher === 'function' ? fetcher(params) : undefined;
+};
