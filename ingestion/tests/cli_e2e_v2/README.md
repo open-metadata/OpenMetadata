@@ -62,7 +62,9 @@ Running the Oracle suite against a **Collate** virtualenv needs care: its `metad
 `metadata.collate_cmd`, which exists only in the installed package. Putting an OSS checkout's
 `ingestion/src` first on `PYTHONPATH` shadows the package, and every CLI invocation then dies at
 import before writing a status file — which surfaces as `CLI status is missing or malformed`, not as
-an import error. Install the checkout instead of shadowing it.
+an import error. Install the checkout (`pip install -e 'ingestion[test]'`) instead of shadowing it,
+so the CLI subprocess and the test process agree on which connector source is under test. CI does
+this already; only mixed local environments hit it.
 
 Oracle identifiers are declared lowercase throughout. SQLAlchemy emits them unquoted, Oracle folds
 them to uppercase in the dictionary, and the connector normalises them back to lowercase because
