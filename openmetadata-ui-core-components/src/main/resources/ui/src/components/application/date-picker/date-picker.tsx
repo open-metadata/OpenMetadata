@@ -13,6 +13,7 @@ import {
   Popover as AriaPopover,
 } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { Calendar } from './calendar';
 
@@ -33,6 +34,7 @@ export const DatePicker = ({
   onCancel,
   ...props
 }: DatePickerProps) => {
+  const { t } = useCoreTranslation();
   const formatter = useDateFormatter({
     month: 'short',
     day: 'numeric',
@@ -46,7 +48,7 @@ export const DatePicker = ({
 
   const formattedDate = value
     ? formatter.format(value.toDate(getLocalTimeZone()))
-    : 'Select date';
+    : t('label.select-date', 'Select date');
 
   return (
     <AriaDatePicker
@@ -87,7 +89,7 @@ export const DatePicker = ({
                     onCancel?.();
                     close();
                   }}>
-                  Cancel
+                  {t('label.cancel', 'Cancel')}
                 </Button>
                 <Button
                   color="primary"
@@ -96,7 +98,7 @@ export const DatePicker = ({
                     onApply?.();
                     close();
                   }}>
-                  Apply
+                  {t('label.apply', 'Apply')}
                 </Button>
               </div>
             </>

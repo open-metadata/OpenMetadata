@@ -1,160 +1,119 @@
 package org.openmetadata.service.context.center;
 
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
+import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.jobs.JobDAO;
 
 /**
  * {@link ContextProcessingEngine} for Page (Knowledge Center article) sources. A page's markdown
- * body is its text, so there is no text-extraction stage. Because pages autosave every few seconds,
- * extraction is debounced through an in-memory, per-page trailing throttle: each body change
- * (re)schedules a run {@code quietPeriodMillis} after the last edit, so an entire editing session
- * yields a single extraction. The hash gate makes a run a no-op when the body is unchanged, so a
- * throttle entry lost on restart is recovered by the next edit — no sweep, no extra process.
+ * body is its text, so there is no text-extraction stage. Delayed jobs in {@code background_jobs}
+ * coalesce autosaves and survive server restarts. The source hash still prevents redundant LLM
+ * calls when an already-processed page is queued twice.
  */
 @Slf4j
 public class PageContextProcessingEngine extends ContextProcessingEngine {
   static final long DEFAULT_QUIET_PERIOD_MILLIS = TimeUnit.MINUTES.toMillis(5);
-  static final int DEFAULT_MAX_PENDING_PAGES = 10_000;
 
   private final KnowledgePageRepository pageRepository;
+  private final JobDAO jobDao;
   private final long quietPeriodMillis;
-  private final int maxPendingPages;
-  private final ScheduledExecutorService scheduler;
-  private final Map<UUID, ScheduledFuture<?>> pending = new ConcurrentHashMap<>();
 
   public PageContextProcessingEngine(
       KnowledgePageRepository pageRepository,
       DocumentMemoryExtractor extractor,
-      ContextMemoryReconciler reconciler) {
-    this(
-        pageRepository,
-        extractor,
-        reconciler,
-        DEFAULT_QUIET_PERIOD_MILLIS,
-        DEFAULT_MAX_PENDING_PAGES);
+      ContextMemoryReconciler reconciler,
+      JobDAO jobDao) {
+    this(pageRepository, extractor, reconciler, jobDao, DEFAULT_QUIET_PERIOD_MILLIS);
   }
 
   public PageContextProcessingEngine(
       KnowledgePageRepository pageRepository,
       DocumentMemoryExtractor extractor,
       ContextMemoryReconciler reconciler,
-      long quietPeriodMillis,
-      int maxPendingPages) {
-    this(
-        pageRepository,
-        extractor,
-        reconciler,
-        quietPeriodMillis,
-        maxPendingPages,
-        defaultScheduler());
-  }
-
-  PageContextProcessingEngine(
-      KnowledgePageRepository pageRepository,
-      DocumentMemoryExtractor extractor,
-      ContextMemoryReconciler reconciler,
-      long quietPeriodMillis,
-      int maxPendingPages,
-      ScheduledExecutorService scheduler) {
+      JobDAO jobDao,
+      long quietPeriodMillis) {
     super(extractor, reconciler);
     this.pageRepository = pageRepository;
+    this.jobDao = jobDao;
     this.quietPeriodMillis = quietPeriodMillis;
-    this.maxPendingPages = maxPendingPages;
-    this.scheduler = scheduler;
-  }
-
-  private static ScheduledExecutorService defaultScheduler() {
-    return Executors.newSingleThreadScheduledExecutor(
-        runnable -> {
-          Thread thread = new Thread(runnable, "page-context-extraction");
-          thread.setDaemon(true);
-          return thread;
-        });
   }
 
   /**
-   * (Re)schedules extraction for a page after the quiet period, cancelling any pending run so a
-   * burst of autosaves collapses into one. Bounded: when too many pages are already pending, one is
-   * dropped with a warning (its next edit re-arms it, and the hash gate keeps the eventual run
-   * correct).
+   * Coalesces pending page jobs in the database. A body edit while a job is RUNNING inserts another
+   * PENDING job, so the later content cannot be lost when the first run stamps its old source hash.
    */
   public void schedule(UUID pageId) {
-    // Only a new page can grow the map: rescheduling one that is already pending replaces its
-    // entry, so evicting there would cost an unrelated page its run for no gain in headroom.
-    if (!pending.containsKey(pageId)) {
-      evictIfFull();
-    }
-    AtomicReference<ScheduledFuture<?>> holder = new AtomicReference<>();
-    holder.set(
-        scheduler.schedule(
-            () -> runScheduled(pageId, holder.get()), quietPeriodMillis, TimeUnit.MILLISECONDS));
-    ScheduledFuture<?> previous = pending.put(pageId, holder.get());
-    if (previous != null) {
-      previous.cancel(false);
-    }
+    scheduleAt(pageId, System.currentTimeMillis() + quietPeriodMillis);
   }
 
-  /** Cancels a pending run, e.g. when the page is deleted. */
+  private void scheduleAt(UUID pageId, long runAt) {
+    long now = System.currentTimeMillis();
+    ContextMemoryExtractionJobHandler.Args jobArgs =
+        ContextMemoryExtractionJobHandler.Args.page(pageId);
+    jobDao.enqueuePageMemoryJob(
+        pageId.toString(),
+        jobArgs.jobKey(),
+        JsonUtils.pojoToJson(jobArgs),
+        Entity.ADMIN_USER_NAME,
+        runAt,
+        now);
+  }
+
+  /** Cancels work whose source has been deleted. A claimed job will skip the missing page. */
   public void cancel(UUID pageId) {
-    ScheduledFuture<?> previous = pending.remove(pageId);
-    if (previous != null) {
-      previous.cancel(false);
-    }
+    jobDao.cancelPendingPageMemoryJobs(
+        BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+        ContextMemoryExtractionJobHandler.class.getSimpleName(),
+        ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey(),
+        System.currentTimeMillis());
   }
 
-  private void evictIfFull() {
-    // Best-effort bound: size() and the caller's put() are not atomic, so concurrent schedulers can
-    // briefly push pending past maxPendingPages by the number of in-flight callers. The dropped
-    // entry is whatever the hash order yields first rather than the least-recent; at the (large)
-    // default cap that is acceptable — a dropped page re-arms on its next edit and the hash gate
-    // keeps the eventual run correct.
-    if (pending.size() >= maxPendingPages) {
-      UUID dropped = pending.keySet().stream().findFirst().orElse(null);
-      if (dropped != null) {
-        cancel(dropped);
-        LOG.warn(
-            "Page extraction throttle is full ({} pending); dropped page {}. It re-arms on its next edit.",
-            maxPendingPages,
-            dropped);
-      }
-    }
-  }
-
-  private void runScheduled(UUID pageId, ScheduledFuture<?> firedFuture) {
-    // Only clear the entry if it is still the future that just fired. A concurrent schedule() may
-    // have already installed a newer future for this page, which must stay tracked so a later
-    // cancel() (e.g. on delete) can reach it.
-    pending.remove(pageId, firedFuture);
+  /** Called by the persistent background worker once a delayed job is due. */
+  public void runQueued(UUID pageId) {
     try {
+      Page page = getPage(pageId);
+      if (page == null) {
+        return;
+      }
+      long quietUntil = page.getUpdatedAt() == null ? 0L : page.getUpdatedAt() + quietPeriodMillis;
+      if (System.currentTimeMillis() < quietUntil && deferUntilQuiet(pageId, quietUntil)) {
+        return;
+      }
       ExtractionOutcome outcome = runExtraction(pageId);
       if (outcome.skipped()) {
         stampStatus(pageId, PageProcessingStatus.Processed, null);
       }
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.error("Knowledge pill extraction failed for page {}", pageId, e);
       stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
+      throw e;
+    }
+  }
+
+  private boolean deferUntilQuiet(UUID pageId, long quietUntil) {
+    try {
+      scheduleAt(pageId, quietUntil);
+      return true;
+    } catch (RuntimeException e) {
+      LOG.warn("Unable to defer memory extraction for page {}; processing now", pageId, e);
+      return false;
     }
   }
 
   /**
-   * Persists a processing status from the scheduler thread (post-commit, so it never races the body
+   * Persists a processing status from the worker thread (post-commit, so it never races the body
    * edit that armed the run) for the paths the pipeline does not stamp itself: the start of a run
    * ({@link PageProcessingStatus#Processing}), a skip (content unchanged since the last run) and a
    * failure. The success path stamps {@link PageProcessingStatus#Processed} through {@link
@@ -172,7 +131,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
   }
 
   /**
-   * An article's status is shown in the UI, and the throttle's quiet period means it would otherwise
+   * An article's status is shown in the UI, and the job's quiet period means it would otherwise
    * read {@link PageProcessingStatus#Queued} for minutes and then jump straight to Processed — with
    * no way to tell a run in flight from one still waiting. Stamped only once the hash gate has
    * decided there is work to do, so it costs one extra write per real run and none per skip.
