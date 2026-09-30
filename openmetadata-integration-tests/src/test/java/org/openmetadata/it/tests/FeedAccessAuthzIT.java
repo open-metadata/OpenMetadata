@@ -13,12 +13,14 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +31,7 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.feed.CreateAnnouncement;
 import org.openmetadata.schema.api.feed.CreateConversation;
 import org.openmetadata.schema.api.policies.CreatePolicy;
@@ -39,6 +42,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -222,6 +226,47 @@ class FeedAccessAuthzIT {
                     "{\"message\":\"comment from a denied user\"}",
                     RequestOptions.builder().header("Content-Type", "application/json").build()),
         "A user who cannot view the task's target entity must not comment on / read the task");
+  }
+
+  // ==================== Domain-only guard on a target that carries no domains ====================
+
+  /**
+   * A domain-only-access user is denied a task about a Domain, which has no domains field of its
+   * own. The guard must evaluate the empty result, not fail resolving the unsupported field.
+   */
+  @Test
+  void createTaskAboutDomain_asDomainOnlyUser_deniedWithoutFieldError(TestNamespace ns) {
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("feed-domain-guard"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain target for the domain-only guard regression"));
+    OpenMetadataClient domainOnly = domainOnlyClient(domain);
+
+    ForbiddenException denied =
+        assertThrows(
+            ForbiddenException.class,
+            () ->
+                domainOnly
+                    .tasks()
+                    .create(
+                        new CreateTask()
+                            .withName(ns.prefix("task-about-domain"))
+                            .withDescription("Task about a domain")
+                            .withCategory(TaskCategory.MetadataUpdate)
+                            .withType(TaskEntityType.DescriptionUpdate)
+                            .withAbout("<#E::domain::" + domain.getFullyQualifiedName() + ">")),
+            "A domain-only user must be denied a task about a domainless target");
+    assertFalse(
+        denied.getMessage().contains("Invalid field name"),
+        "Guard must evaluate the domainless target, not leak 'Invalid field name domains': "
+            + denied.getMessage());
+    assertTrue(
+        denied.getMessage().toLowerCase().contains("no domain"),
+        "Denial must be the clean domain-scope message: " + denied.getMessage());
   }
 
   // ==================== Contract preserved for unresolvable links ====================
@@ -488,6 +533,28 @@ class FeedAccessAuthzIT {
                 .withName(prefix + "u")
                 .withEmail(email)
                 .withTeams(List.of(team.getId())));
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  /**
+   * Builds a user carrying the seeded {@code DomainOnlyAccessRole} scoped to {@code domain}, so the
+   * task create path runs {@code enforceDomainOnlyPolicyForTask}. Mirrors the domain-only setup in
+   * ActivityResourceIT.
+   */
+  private static OpenMetadataClient domainOnlyClient(Domain domain) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
+    String prefix = "domonly_" + UUID.randomUUID().toString().substring(0, 8);
+    String email = prefix + "@test.openmetadata.org";
+    admin
+        .users()
+        .create(
+            new CreateUser()
+                .withName(prefix)
+                .withEmail(email)
+                .withDescription("Domain-only access user for feed guard regression")
+                .withRoles(List.of(domainOnlyRole.getId()))
+                .withDomains(List.of(domain.getFullyQualifiedName())));
     return SdkClients.createClient(email, email, new String[] {});
   }
 }
