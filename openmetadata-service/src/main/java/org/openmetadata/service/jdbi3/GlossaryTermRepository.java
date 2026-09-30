@@ -2901,8 +2901,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     @Override
-    protected void updateTags(
+    protected List<TagLabel> updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      final List<TagLabel> requestedTags = updatedTags;
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
       origTags = listOrEmpty(origTags);
@@ -2937,6 +2938,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         updatedTags.sort(compareTagLabel);
         applyTags(updatedTags, fqn);
       }
+      return updatedTags.isEmpty() ? requestedTags : updatedTags;
     }
 
     private void updateSynonyms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {

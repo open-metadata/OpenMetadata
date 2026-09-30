@@ -663,11 +663,12 @@ public class TopicRepository extends EntityRepository<Topic> {
         updateFieldDescription(schemaFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
         updateFieldDisplayName(schemaFieldPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateSchemaFields(

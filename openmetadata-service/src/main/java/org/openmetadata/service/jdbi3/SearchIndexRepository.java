@@ -514,11 +514,12 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         updateFieldDescription(searchFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(searchFieldPrefix, stored, updated);
         updateFieldDisplayName(searchFieldPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(searchFieldPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(searchFieldPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateSearchIndexFields(
