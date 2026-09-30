@@ -30,6 +30,7 @@ import {
   within,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import { AlertType } from '../../../generated/events/api/createEventSubscription';
 import {
@@ -49,11 +50,10 @@ import {
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import alertsClassBase from '../../../utils/AlertsClassBase';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import alertsClassBase from '../../../utils/AlertsClassBase';
 import AlertAiForm from './AlertAiForm.component';
 import AlertAiFormFields from './AlertAiFormFields.component';
 import AlertAiRuleSection from './AlertAiRuleSection.component';
