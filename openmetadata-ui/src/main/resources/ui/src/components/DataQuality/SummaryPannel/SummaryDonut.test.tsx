@@ -10,52 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  PieChart,
+  type PieChartProps,
+} from '@openmetadata/ui-core-components/charts';
 import { render, screen } from '@testing-library/react';
 import { SummaryDonut } from './SummaryDonut.component';
 import { ChartData } from './SummaryPanel.interface';
 
-jest.mock('../../../hooks/useChartColors', () => ({
-  useChartColors: jest.fn().mockReturnValue({ emptyFill: '#123456' }),
-}));
-
-jest.mock('recharts', () => {
-  const PieChart = ({
-    children,
-    height,
-    width,
-  }: React.PropsWithChildren<{ height?: number; width?: number }>) => (
-    <svg data-height={height} data-testid="pie-chart" data-width={width}>
-      {children}
-    </svg>
-  );
-
-  const Pie = ({
-    children,
-    data,
-    innerRadius,
-    outerRadius,
-  }: React.PropsWithChildren<{
-    data?: unknown[];
-    innerRadius?: number;
-    outerRadius?: number;
-  }>) => (
-    <g
-      data-inner-radius={innerRadius}
-      data-length={(data || []).length}
-      data-outer-radius={outerRadius}
-      data-testid="pie">
-      {children}
-    </g>
-  );
-
-  const Cell = ({ fill }: { fill?: string }) => (
-    <rect data-fill={fill} data-testid="cell" />
-  );
-
-  const Tooltip = () => <g data-testid="tooltip" />;
-
-  return { Cell, Pie, PieChart, Tooltip };
-});
+const mockPieChart = PieChart as unknown as jest.Mock<null, [PieChartProps]>;
+const pieProps = () =>
+  mockPieChart.mock.calls[mockPieChart.mock.calls.length - 1]?.[0];
 
 const chartData: ChartData[] = [
   { name: 'success', value: 8, color: '#21bf73' },
@@ -63,88 +28,73 @@ const chartData: ChartData[] = [
 ];
 
 describe('SummaryDonut component', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  it('renders a tracked donut sized to `size`', () => {
+    render(
+      <SummaryDonut ariaLabel="Tests" chartData={chartData} percentage="80%" />
+    );
+
+    expect(pieProps()).toEqual(
+      expect.objectContaining({
+        ariaLabel: 'Tests',
+        data: chartData,
+        track: true,
+        innerRadius: '75%',
+        outerRadius: '100%',
+        padAngle: 0,
+        height: 120,
+        legend: { show: false },
+      })
+    );
   });
 
-  it('should render the centered percentage text', () => {
-    render(<SummaryDonut chartData={chartData} percentage="80%" />);
+  it('renders the centred percentage', () => {
+    render(
+      <SummaryDonut ariaLabel="Tests" chartData={chartData} percentage="80%" />
+    );
 
     expect(screen.getByText('80%')).toBeInTheDocument();
-    expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
-    expect(screen.getByTestId('tooltip')).toBeInTheDocument();
   });
 
-  it('should render a numeric percentage', () => {
-    render(<SummaryDonut chartData={chartData} percentage={42} />);
+  it('renders a numeric percentage', () => {
+    render(
+      <SummaryDonut ariaLabel="Tests" chartData={chartData} percentage={42} />
+    );
 
     expect(screen.getByText('42')).toBeInTheDocument();
   });
 
-  it('should render two pies (grey track + data ring)', () => {
-    render(<SummaryDonut chartData={chartData} percentage="80%" />);
+  it('scales the chart and the label with size', () => {
+    render(
+      <SummaryDonut
+        ariaLabel="Tests"
+        chartData={chartData}
+        percentage="80%"
+        size={100}
+      />
+    );
 
-    const pies = screen.getAllByTestId('pie');
-
-    expect(pies).toHaveLength(2);
+    expect(pieProps()?.height).toBe(100);
+    expect(screen.getByText('80%')).toHaveStyle({ fontSize: '14px' });
   });
 
-  it('should render a grey track cell plus one colored cell per data entry', () => {
-    render(<SummaryDonut chartData={chartData} percentage="80%" />);
+  it('passes the padding angle', () => {
+    render(
+      <SummaryDonut
+        ariaLabel="Tests"
+        chartData={chartData}
+        paddingAngle={2}
+        percentage="80%"
+      />
+    );
 
-    const cells = screen.getAllByTestId('cell');
-
-    // 1 grey track cell + 2 data cells
-    expect(cells).toHaveLength(chartData.length + 1);
-
-    const greyCells = cells.filter((cell) => cell.dataset.fill === '#123456');
-
-    expect(greyCells).toHaveLength(1);
-
-    chartData.forEach((entry) => {
-      expect(cells.some((cell) => cell.dataset.fill === entry.color)).toBe(
-        true
-      );
-    });
+    expect(pieProps()?.padAngle).toBe(2);
   });
 
-  it('should render an empty data ring when chartData is empty', () => {
-    render(<SummaryDonut chartData={[]} percentage="0%" />);
+  it('keeps the track and label when there is no data', () => {
+    render(<SummaryDonut ariaLabel="Tests" chartData={[]} percentage="0%" />);
 
-    const cells = screen.getAllByTestId('cell');
-
-    // only the grey track cell remains
-    expect(cells).toHaveLength(1);
-    expect(cells[0].dataset.fill).toBe('#123456');
+    expect(pieProps()?.data).toEqual([]);
+    expect(pieProps()?.track).toBe(true);
     expect(screen.getByText('0%')).toBeInTheDocument();
-  });
-
-  it('should render at the default size of 120', () => {
-    render(<SummaryDonut chartData={chartData} percentage="80%" />);
-
-    const chart = screen.getByTestId('pie-chart');
-
-    expect(chart.dataset.height).toBe('120');
-    expect(chart.dataset.width).toBe('120');
-
-    const pies = screen.getAllByTestId('pie');
-
-    expect(pies[0].dataset.innerRadius).toBe('45');
-    expect(pies[0].dataset.outerRadius).toBe('60');
-  });
-
-  it('should scale the ring radii with the size prop', () => {
-    render(<SummaryDonut chartData={chartData} percentage="80%" size={240} />);
-
-    const chart = screen.getByTestId('pie-chart');
-
-    expect(chart.dataset.height).toBe('240');
-    expect(chart.dataset.width).toBe('240');
-
-    const pies = screen.getAllByTestId('pie');
-
-    // innerRadius = 240 * 45 / 120 = 90, outerRadius = 240 * 60 / 120 = 120
-    expect(pies[0].dataset.innerRadius).toBe('90');
-    expect(pies[0].dataset.outerRadius).toBe('120');
   });
 });

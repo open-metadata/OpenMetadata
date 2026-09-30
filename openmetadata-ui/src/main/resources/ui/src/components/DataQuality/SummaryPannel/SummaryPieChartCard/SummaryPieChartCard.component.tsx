@@ -86,6 +86,7 @@ const SummaryPieChartCard = ({
           )}
 
           <SummaryDonut
+            ariaLabel={title}
             chartData={chartData}
             paddingAngle={paddingAngle}
             percentage={percentage}

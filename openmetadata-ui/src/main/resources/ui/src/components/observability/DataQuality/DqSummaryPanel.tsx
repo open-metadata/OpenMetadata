@@ -94,6 +94,7 @@ const DqSummaryPanel = ({
                 </Box>
               )}
               <SummaryDonut
+                ariaLabel={card.title}
                 chartData={chartData}
                 percentage={card.percentage}
                 size={100}

@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PieChart } from '@openmetadata/ui-core-components/charts';
+import {
+  PieChart,
+  type PieChartProps,
+} from '@openmetadata/ui-core-components/charts';
 import { render, screen } from '@testing-library/react';
 import CustomPieChart from './CustomPieChart.component';
 
-const pieProps = () => jest.mocked(PieChart).mock.calls.at(-1)?.[0];
+const mockPieChart = PieChart as unknown as jest.Mock<null, [PieChartProps]>;
+const pieProps = () =>
+  mockPieChart.mock.calls[mockPieChart.mock.calls.length - 1]?.[0];
 
 const mockData = [
   { name: 'Success', value: 400, color: '#0088FE' },

@@ -15,8 +15,8 @@ import type { ReactNode } from 'react';
 /**
  * Jest stand-in for `@openmetadata/ui-core-components/charts`. The real entry
  * loads the ESM `echarts/core`, which jest cannot run, and app tests assert on
- * the props they pass rather than on echarts output. Read them with
- * `jest.mocked(PieChart).mock.calls.at(-1)?.[0]`.
+ * the props they pass rather than on echarts output. Read them from
+ * `(PieChart as unknown as jest.Mock<null, [PieChartProps]>).mock.calls`.
  *
  * Only what app code imports is mocked; add exports here as migrations need them.
  */
