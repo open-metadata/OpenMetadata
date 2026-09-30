@@ -21,6 +21,8 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
 public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
+  private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
+  private static final String TEST_CASE_STATUS_FIELD = "testCaseStatus";
   private static final Set<String> excludeFields =
       Set.of("changeDescription", "failedRowsSample", "incrementalChangeDescription");
 
@@ -73,6 +75,10 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put(
         "originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
+    // An explicit null removes the field on a partial update; left out, a test case whose last
+    // result was deleted would keep showing that result's status in search.
+    doc.putIfAbsent(TEST_CASE_RESULT_FIELD, null);
+    doc.putIfAbsent(TEST_CASE_STATUS_FIELD, null);
     TestCaseResolutionStatusRepository tcrsRepo =
         (TestCaseResolutionStatusRepository)
             Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
