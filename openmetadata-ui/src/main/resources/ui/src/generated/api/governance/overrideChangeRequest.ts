@@ -11,23 +11,15 @@
  *  limitations under the License.
  */
 /**
- * An authenticated reviewer decision on one exact revision. Append-only.
+ * An administrator publishing a pending change request without review.
  */
-export interface ApprovalDecision {
-    changeRequestId: string;
-    comment?:        string;
-    decidedAt:       number;
-    decidedBy:       string;
-    decision:        DecisionType;
-    digest:          string;
-    id:              string;
-    revisionId:      string;
-    revisionNumber:  number;
-    taskId?:         string;
-}
-
-export enum DecisionType {
-    Approve = "Approve",
-    Override = "Override",
-    Reject = "Reject",
+export interface OverrideChangeRequest {
+    /**
+     * Revision number the administrator is publishing.
+     */
+    expectedRevision: number;
+    /**
+     * Why review is being bypassed; recorded with the publication.
+     */
+    reason: string;
 }
