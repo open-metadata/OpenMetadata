@@ -19,6 +19,7 @@ import { getPropertyTypeMeta } from '../../common/CustomPropertyTable/CustomProp
 import {
   CustomPropertyConfigSummary,
   CustomPropertyTypeBadge,
+  CustomPropertyTypeOption,
 } from './CustomPropertyTable.interface';
 
 export const getPropertyTypeBadge = (
@@ -81,4 +82,53 @@ export const getPropertyConfigSummary = (
   }
 
   return undefined;
+};
+
+const matchesSearch = (property: CustomProperty, query: string) =>
+  property.name.toLowerCase().includes(query) ||
+  getEntityName(property).toLowerCase().includes(query);
+
+export const filterCustomProperties = (
+  properties: CustomProperty[],
+  searchText: string,
+  propertyTypeNames: string[] = []
+): CustomProperty[] => {
+  const query = searchText.trim().toLowerCase();
+
+  return properties.filter((property) => {
+    if (
+      propertyTypeNames.length > 0 &&
+      !propertyTypeNames.includes(property.propertyType.name ?? '')
+    ) {
+      return false;
+    }
+
+    return !query || matchesSearch(property, query);
+  });
+};
+
+export const getPropertyTypeOptions = (
+  properties: CustomProperty[],
+  t: TFunction
+): CustomPropertyTypeOption[] => {
+  const options = new Map<string, CustomPropertyTypeOption>();
+
+  properties.forEach(({ propertyType }) => {
+    if (!propertyType.name) {
+      return;
+    }
+    const option = options.get(propertyType.name);
+
+    if (option) {
+      option.count += 1;
+    } else {
+      options.set(propertyType.name, {
+        value: propertyType.name,
+        label: getPropertyTypeBadge(propertyType, t).label,
+        count: 1,
+      });
+    }
+  });
+
+  return [...options.values()].sort((a, b) => a.label.localeCompare(b.label));
 };

@@ -226,12 +226,12 @@ describe('CustomPropertyTable', () => {
     );
   });
 
-  it('disables the row menu without edit access', () => {
+  it('hides the row menu without edit access', () => {
     render(<CustomPropertyTable {...mockProp} hasAccess={false} />);
 
     expect(
-      within(getRow('priority')).getByTestId('property-actions')
-    ).toBeDisabled();
+      within(getRow('priority')).queryByTestId('property-actions')
+    ).not.toBeInTheDocument();
   });
 
   it('renders the empty placeholder when there are no properties', () => {

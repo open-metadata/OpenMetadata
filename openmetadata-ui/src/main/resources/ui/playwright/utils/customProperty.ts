@@ -32,7 +32,6 @@ import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import { CODE_EDITOR_CONTENT, typeInCodeEditor } from './codeEditor';
 import {
-  clickOutside,
   descriptionBoxReadOnly,
   fillDescriptionBox,
   getDescriptionBox,
@@ -989,35 +988,44 @@ export const editCreatedProperty = async (
     ).toBeVisible();
   }
 
-  await propertyRow.getByTestId('property-actions').click();
-  await page.getByTestId('edit-button').click();
+  await selectOptionWithRetry(
+    propertyRow.getByTestId('property-actions'),
+    page.getByRole('menuitem', { name: 'Edit' })
+  );
 
-  // displayName
-  await page.fill('[data-testid="display-name"]', '');
-  await page.fill('[data-testid="display-name"]', propertyName.toUpperCase());
+  const modal = page.getByTestId('edit-custom-property-modal');
+  const displayNameInput = modal
+    .getByTestId('edit-custom-property-display-name')
+    .getByRole('textbox');
+
+  await displayNameInput.fill(propertyName.toUpperCase());
 
   await fillDescriptionBox(page, '');
   await fillDescriptionBox(page, 'This is new description');
 
   if (type === 'Enum') {
-    await page.click(String.raw`#root\/customPropertyConfig`);
-    await page.fill(String.raw`#root\/customPropertyConfig`, 'updatedValue');
-    await page.press(String.raw`#root\/customPropertyConfig`, 'Enter');
-    await clickOutside(page);
+    const enumInput = modal
+      .getByTestId('edit-custom-property-enum-config')
+      .locator('input');
+
+    await enumInput.fill('updatedValue');
+    await enumInput.press('Enter');
   }
 
   if (ENTITY_REFERENCE_PROPERTIES.includes(type ?? '')) {
-    await page.click(String.raw`#root\/customPropertyConfig`);
-    await page.fill(String.raw`#root\/customPropertyConfig`, 'Table');
-    await page.press(String.raw`#root\/customPropertyConfig`, 'Enter');
-    await clickOutside(page);
+    await selectOptionWithRetry(
+      modal
+        .getByTestId('edit-custom-property-entity-ref-config')
+        .locator('input'),
+      page.getByRole('option', { exact: true, name: 'Table' })
+    );
   }
 
   const saves = recordCustomPropertySaves(page);
 
-  await page.locator('button[type="submit"]').click();
+  await modal.getByTestId('edit-custom-property-save').click();
 
-  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
+  await expect(modal).not.toBeVisible();
   await saves.expectSaved();
 
   // Fetching for updated descriptions for the created custom property
@@ -1057,15 +1065,12 @@ export const deleteCreatedProperty = async (
   page: Page,
   propertyName: string
 ) => {
-  // Fetching for delete button
-  await page
-    .locator(`[data-row-key="${propertyName}"]`)
-    .scrollIntoViewIfNeeded();
-  await page
-    .locator(`[data-row-key="${propertyName}"]`)
-    .getByTestId('property-actions')
-    .click();
-  await page.getByTestId('delete-button').click();
+  await selectOptionWithRetry(
+    page
+      .locator(`[data-row-key="${propertyName}"]`)
+      .getByTestId('property-actions'),
+    page.getByRole('menuitem', { name: 'Delete' })
+  );
 
   // Checking property name is present on the delete pop-up
   await expect(page.locator('[data-testid="body-text"]')).toContainText(

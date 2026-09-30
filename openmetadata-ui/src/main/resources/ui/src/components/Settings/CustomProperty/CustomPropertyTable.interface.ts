@@ -38,13 +38,8 @@ export interface CustomPropertyConfigSummary {
   testId: string;
 }
 
-export interface CustomPropertyConfigCellProps {
-  property: CustomProperty;
-}
-
-export interface CustomPropertyActionsProps {
-  property: CustomProperty;
-  hasAccess: boolean;
-  onEdit: (property: CustomProperty) => void;
-  onDelete: (property: CustomProperty) => void;
+export interface CustomPropertyTypeOption {
+  value: string;
+  label: string;
+  count: number;
 }

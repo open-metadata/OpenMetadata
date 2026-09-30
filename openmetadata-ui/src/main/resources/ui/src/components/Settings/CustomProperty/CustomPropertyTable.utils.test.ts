@@ -13,8 +13,10 @@
 import { TFunction } from 'i18next';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import {
+  filterCustomProperties,
   getPropertyConfigSummary,
   getPropertyTypeBadge,
+  getPropertyTypeOptions,
 } from './CustomPropertyTable.utils';
 
 const t = ((key: string) => key) as unknown as TFunction;
@@ -111,5 +113,59 @@ describe('getPropertyConfigSummary', () => {
         t
       )?.label
     ).toBe('label.value-plural · label.multi-select');
+  });
+});
+
+describe('filterCustomProperties', () => {
+  const properties = [
+    { ...buildProperty('string'), name: 'ownerTeam', displayName: 'Owner' },
+    { ...buildProperty('integer'), name: 'retentionDays' },
+  ];
+
+  it('returns every property for a blank query', () => {
+    expect(filterCustomProperties(properties, '  ')).toEqual(properties);
+  });
+
+  it('matches name or display name case-insensitively', () => {
+    expect(
+      filterCustomProperties(properties, 'OWNER').map(({ name }) => name)
+    ).toEqual(['ownerTeam']);
+    expect(
+      filterCustomProperties(properties, 'days').map(({ name }) => name)
+    ).toEqual(['retentionDays']);
+  });
+
+  it('keeps only the selected types, combined with the query', () => {
+    expect(
+      filterCustomProperties(properties, '', ['integer', 'string']).map(
+        ({ name }) => name
+      )
+    ).toEqual(['ownerTeam', 'retentionDays']);
+    expect(
+      filterCustomProperties(properties, '', ['integer']).map(
+        ({ name }) => name
+      )
+    ).toEqual(['retentionDays']);
+    expect(filterCustomProperties(properties, 'owner', ['integer'])).toEqual(
+      []
+    );
+  });
+});
+
+describe('getPropertyTypeOptions', () => {
+  it('lists each type once with its property count, sorted by label', () => {
+    expect(
+      getPropertyTypeOptions(
+        [
+          buildProperty('string'),
+          buildProperty('enum'),
+          buildProperty('string'),
+        ],
+        t
+      )
+    ).toEqual([
+      { value: 'enum', label: 'label.enum', count: 1 },
+      { value: 'string', label: 'label.string', count: 2 },
+    ]);
   });
 });

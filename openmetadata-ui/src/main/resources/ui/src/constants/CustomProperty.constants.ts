@@ -31,6 +31,10 @@ import { ReactComponent as HyperlinkIcon } from '../assets/svg/link.svg';
 
 export const PROPERTY_TYPES_WITH_FORMAT = ['date-cp', 'dateTime-cp', 'time-cp'];
 
+// Enums can carry thousands of values; rendering one removable tag per value
+// in the edit forms blocks the main thread for seconds.
+export const ENUM_CONFIG_MAX_VISIBLE_VALUES = 20;
+
 export const PROPERTY_TYPES_WITH_ENTITY_REFERENCE = [
   'entityReference',
   'entityReferenceList',
