@@ -963,7 +963,7 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component.tsx"
+        "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/MarketplaceSearchBar/MarketplaceSearchControl.component.tsx"
       ],
       "specs": [
         "playwright/e2e/Pages/DataMarketplace.spec.ts",
