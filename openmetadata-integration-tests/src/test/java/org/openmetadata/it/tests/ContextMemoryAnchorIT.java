@@ -1,14 +1,17 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -126,6 +129,51 @@ public class ContextMemoryAnchorIT {
     assertEquals(
         List.of(anchored.getId()), ids(memoriesAs(createUser(ns, null, null)).list(byAnchor)));
     assertTrue(ids(memoriesAs(createUser(ns, denyTableView(ns), null)).list(byAnchor)).isEmpty());
+  }
+
+  @Test
+  void searchOnlyReturnsUnanchoredEntityMemoriesToNonOwners(TestNamespace ns) {
+    Table anchor = ShortStackFactory.table(ns);
+    String query = "anchorcheck" + UUID.randomUUID().toString().substring(0, 8);
+    ContextMemory anchored =
+        adminMemories()
+            .create(
+                entityMemory(ns, "search-anchored")
+                    .withQuestion(query)
+                    .withPrimaryEntity(ref(Entity.TABLE, anchor.getId())));
+    ContextMemory unanchored =
+        adminMemories().create(entityMemory(ns, "search-unanchored").withQuestion(query));
+    ListParams params = new ListParams().setLimit(100).addQueryParam("q", query);
+    User readerUser = createUser(ns, null, null);
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(readerUser.getEmail(), readerUser.getEmail(), new String[] {});
+    ContextMemoryService reader = new ContextMemoryService(readerClient.getHttpClient());
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    ids(adminMemories().list(params))
+                        .containsAll(List.of(anchored.getId(), unanchored.getId()))));
+
+    assertEquals(anchored.getId(), reader.get(anchored.getId().toString()).getId());
+    assertEquals(List.of(unanchored.getId()), ids(reader.list(params)));
+    assertTrue(
+        readerClient
+            .search()
+            .query(query)
+            .index("context_memory_search_index")
+            .execute()
+            .contains(unanchored.getId().toString()));
+    assertFalse(
+        readerClient
+            .search()
+            .query(query)
+            .index("context_memory_search_index")
+            .execute()
+            .contains(anchored.getId().toString()));
   }
 
   @Test

@@ -23,17 +23,18 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.utils.JsonUtils;
 
-/** Pins the memory index's lifecycle fields in every language and keeps the four in step. */
+/** Pins the memory index's security and lifecycle fields in every language. */
 class ContextMemoryIndexMappingTest {
 
   private static final List<String> LANGUAGES = List.of("en", "jp", "ru", "zh");
-  private static final List<String> LIFECYCLE_FIELDS =
-      List.of("status", "statusReason", "supersededBy", "disputes");
+  private static final List<String> INDEX_FIELDS =
+      List.of("status", "statusReason", "supersededBy", "disputes", "anchorId");
 
   @Test
   void lifecycleFieldsAreMappedInEveryLanguage() throws IOException {
     for (String language : LANGUAGES) {
       JsonNode properties = loadProperties(language);
+      assertEquals("keyword", properties.at("/anchorId/type").asText(), language);
       assertEquals("text", properties.at("/statusReason/type").asText(), language);
       assertEquals("keyword", properties.at("/supersededBy/properties/id/type").asText(), language);
       assertEquals(
@@ -55,7 +56,7 @@ class ContextMemoryIndexMappingTest {
     JsonNode english = loadProperties("en");
     for (String language : LANGUAGES) {
       JsonNode other = loadProperties(language);
-      for (String field : LIFECYCLE_FIELDS) {
+      for (String field : INDEX_FIELDS) {
         assertEquals(english.get(field), other.get(field), field + " diverged in " + language);
       }
     }

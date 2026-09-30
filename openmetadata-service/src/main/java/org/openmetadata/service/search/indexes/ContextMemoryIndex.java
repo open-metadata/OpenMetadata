@@ -32,6 +32,8 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 public class ContextMemoryIndex implements TaggableIndex {
 
   public static final String FIELD_STATUS = "status";
+  public static final String FIELD_ANCHOR_ID = "anchorId";
+  public static final String UNANCHORED = "unanchored";
 
   private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
       Set.of(
@@ -123,7 +125,15 @@ public class ContextMemoryIndex implements TaggableIndex {
     Map<String, Object> fields = new LinkedHashMap<>();
     fields.put("visibility", visibility == null ? null : visibility.value());
     fields.put("sharedWithIds", sharedWithIds(shareConfig));
+    fields.put(FIELD_ANCHOR_ID, anchorId(memory));
     return fields;
+  }
+
+  public static String anchorId(ContextMemory memory) {
+    EntityReference anchor = memory.getPrimaryEntity();
+    return anchor == null
+        ? UNANCHORED
+        : anchor.getId() == null ? "anchored" : anchor.getId().toString();
   }
 
   private static List<String> sharedWithIds(MemoryShareConfig shareConfig) {

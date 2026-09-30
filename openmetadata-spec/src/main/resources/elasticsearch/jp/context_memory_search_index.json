@@ -254,6 +254,9 @@
       "sharedWithIds": {
         "type": "keyword"
       },
+      "anchorId": {
+        "type": "keyword"
+      },
       "primaryEntity": {
         "properties": {
           "id": {

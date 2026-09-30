@@ -267,15 +267,23 @@ public class VectorSearchQueryBuilder {
       StringBuilder sb, SubjectContext subjectContext, boolean allowPublic) {
     // This clause excludes unstamped memories until Search Reindex restamps them; the file wrapper
     // above separately admits unstamped files because those predate document sharing.
-    sb.append("{\"bool\":{\"should\":[")
-        .append(
-            termClause(
-                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    sb.append("{\"bool\":{\"should\":[");
     if (allowPublic) {
-      sb.append(',')
+      sb.append("{\"bool\":{\"must\":[{\"bool\":{\"should\":[")
           .append(
               termClause(
-                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()));
+                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()))
+          .append(',')
+          .append(
+              termClause(
+                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()))
+          .append("]}},")
+          .append(termClause(ContextMemoryIndex.FIELD_ANCHOR_ID, ContextMemoryIndex.UNANCHORED))
+          .append("]}}");
+    } else {
+      sb.append(
+          termClause(
+              ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
     }
     if (subjectContext != null) {
       User user = subjectContext.user();

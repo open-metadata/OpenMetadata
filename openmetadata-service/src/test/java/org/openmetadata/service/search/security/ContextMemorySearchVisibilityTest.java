@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
@@ -111,8 +112,8 @@ class ContextMemorySearchVisibilityTest {
         "the memory branch is scoped to contextMemory documents");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Entity')]",
-        "Entity-visibility memories are visible to everyone");
+        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.term['anchorId'].value=='unanchored')])]",
+        "non-owner Entity memories must have an explicit unanchored marker");
     assertFieldExists(
         json,
         "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Public')]",
@@ -269,12 +270,16 @@ class ContextMemorySearchVisibilityTest {
 
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Entity')]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.term['visibility'].value=='Entity')]",
         "the memory branch admits Entity-visibility memories");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Public')]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.term['visibility'].value=='Public')]",
         "the memory branch admits Public memories");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.must[?(@.term['anchorId'].value=='unanchored')]",
+        "anonymous search admits only explicitly unanchored memories");
     assertFieldDoesNotExist(
         json, "$..term['owners.id']", "a subject-less path must not match by ownership");
     assertFieldDoesNotExist(
@@ -315,6 +320,24 @@ class ContextMemorySearchVisibilityTest {
         ContextMemorySearchVisibility.isOrgWideReadable(
             Map.of("entityType", Entity.CONTEXT_MEMORY)),
         "a memory with no indexed visibility is not org-wide");
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType",
+                Entity.CONTEXT_MEMORY,
+                "visibility",
+                MemoryVisibility.ENTITY.value())),
+        "old memory documents without an anchor marker remain hidden");
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType",
+                Entity.CONTEXT_MEMORY,
+                "visibility",
+                MemoryVisibility.ENTITY.value(),
+                "anchorId",
+                UUID.randomUUID().toString())),
+        "an anchored Entity memory is not readable without a subject");
   }
 
   @Test
@@ -339,7 +362,13 @@ class ContextMemorySearchVisibilityTest {
   }
 
   private Map<String, Object> memoryDocument(MemoryVisibility visibility) {
-    return Map.of("entityType", Entity.CONTEXT_MEMORY, "visibility", visibility.value());
+    return Map.of(
+        "entityType",
+        Entity.CONTEXT_MEMORY,
+        "visibility",
+        visibility.value(),
+        "anchorId",
+        ContextMemoryIndex.UNANCHORED);
   }
 
   private String orgWideOnlyJson() {

@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
@@ -343,11 +344,28 @@ class VectorDocBuilderChunkTest {
 
     assertTrue(docs.size() > 1, "fixture must span multiple chunks to catch chunk-0-only stamping");
     for (Map<String, Object> doc : docs) {
+      assertEquals(ContextMemoryIndex.UNANCHORED, doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
       assertEquals(MemoryVisibility.SHARED.value(), doc.get("visibility"));
       assertEquals(List.of(sharedPrincipal.toString()), doc.get("sharedWithIds"));
       List<Map<String, Object>> owners = (List<Map<String, Object>>) doc.get("owners");
       assertEquals(ownerId.toString(), owners.get(0).get("id"), "the filter matches on owners.id");
       assertEquals("alice", owners.get(0).get("name"));
+    }
+  }
+
+  @Test
+  void chunkDocs_markAnchoredMemoriesOnEveryChunk() {
+    UUID anchorId = UUID.randomUUID();
+    ContextMemory memory =
+        memory(MemoryVisibility.ENTITY)
+            .withPrimaryEntity(new EntityReference().withId(anchorId).withType("table"))
+            .withDescription("revenue ".repeat(900));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1);
+    for (Map<String, Object> doc : docs) {
+      assertEquals(anchorId.toString(), doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
     }
   }
 
