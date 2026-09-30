@@ -638,6 +638,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 tag_name=tag_name,
                 tag_description=f"Bigquery {tag_type} {'Tag' if tag_type == 'Policy' else 'Label'}",
                 classification_description=f"BigQuery {tag_type} Classification",
+                entity_fqn=entity_fqn,
             )
             if definition and entity_fqn:
                 self.attach_tag(entity_fqn=entity_fqn, tag=definition)

@@ -39,24 +39,24 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
-  removeSingleSelectDomain,
   resolveDescriptionBox,
   toastNotification,
   uuid,
   verifyDomainPropagation,
 } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   assignTagToChildren,
   closeColumnDetailPanel,
   copyAndGetClipboardText,
+  openClassificationTagPicker,
   openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
@@ -195,10 +195,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           false
         );
 
-        await assignSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
+        await setDomain(page, EntityDataClass.domain1.responseData);
         await verifyDomainPropagation(
           page,
           EntityDataClass.domain1.responseData,
@@ -215,10 +212,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           },
           false
         );
-        await removeSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
+        await setDomain(page, EntityDataClass.domain1.responseData, {
+          verify: 'cleared',
+        });
       }
     });
 
@@ -449,12 +445,14 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         );
 
         // Open Tag Selector
-        await tagRow
-          .getByTestId('tags-container')
-          .getByTestId('add-tag')
-          .click();
+        await openClassificationTagPicker(
+          page,
+          tagRow.getByTestId('tags-container').getByTestId('add-tag')
+        );
 
-        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.getByTestId('classification-tag-picker-popover')
+        ).toBeVisible();
         await expect(
           page.getByTestId('glossary-term-picker-popover')
         ).not.toBeAttached();
@@ -468,16 +466,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         );
 
         await expect(
-          page.locator('.async-select-list-dropdown')
+          page.getByTestId('classification-tag-picker-popover')
         ).not.toBeVisible();
 
         // Re-open Tag Selector — should close Glossary Selector
-        await tagRow
-          .getByTestId('tags-container')
-          .getByTestId('add-tag')
-          .click();
+        await openClassificationTagPicker(
+          page,
+          tagRow.getByTestId('tags-container').getByTestId('add-tag')
+        );
 
-        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.getByTestId('classification-tag-picker-popover')
+        ).toBeVisible();
         await expect(
           page.getByTestId('glossary-term-picker-popover')
         ).not.toBeAttached();

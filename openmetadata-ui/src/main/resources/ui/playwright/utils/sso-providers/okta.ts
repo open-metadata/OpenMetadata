@@ -120,6 +120,8 @@ export const oktaProviderFixture: SsoProviderFixture = {
   supportsSelfSignup: true,
   supportsSilentCallback: false,
   usesBackendRefresh: false,
+  hasBackendIssuedRefreshCookie: false,
+  usesPkce: true,
   supportsColdLoadRefresh: true,
   supportsSilentReauth: false,
 
@@ -144,7 +146,7 @@ export const oktaProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: this.signInButtonPattern }).click();
     await performProviderLogin(page, {
       username: process.env[SSO_ENV.USERNAME] ?? '',

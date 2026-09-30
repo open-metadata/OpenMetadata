@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, PageLayout, Typography } from '@openmetadata/ui-core-components';
+import { PageLayout } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MarketplaceIcon } from '../../../../assets/svg/marketplace-default.svg';
 import { ROUTES } from '../../../../constants/constants';
 import HeaderBreadcrumb from '../../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import MarketplaceSearchBar from '../../../DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component';
+import { SearchHeaderRow } from '../../../common/ListPageHeader/ListPageHeader';
+import MarketplaceSearchInput from '../../../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import { AddNewMenu } from '../AddNewMenu/AddNewMenu';
 
 /**
@@ -30,34 +31,6 @@ import { AddNewMenu } from '../AddNewMenu/AddNewMenu';
  */
 export const MarketplaceOverviewHeader: FC = () => {
   const { t } = useTranslation();
-
-  // PageHeader's title slot owns the full content width. Keeping the text and
-  // controls in one row mirrors Explore and lets the search center correctly.
-  const headerLayout = (
-    <Box
-      align="start"
-      className="tw:w-full tw:min-w-0 tw:flex-1"
-      data-testid="marketplace-header-layout"
-      direction="row"
-      gap={4}>
-      <div className="tw:shrink-0">
-        <Typography as="h3" size="text-xl" weight="semibold">
-          {t('label.data-marketplace')}
-        </Typography>
-        <Typography className="tw:text-secondary" size="text-sm">
-          {t('message.discover-data-products-subtitle')}
-        </Typography>
-      </div>
-      <div
-        className="tw:mx-auto tw:flex tw:w-full tw:max-w-5xl tw:min-w-0 tw:flex-1 tw:items-center tw:gap-4 tw:px-8"
-        data-testid="marketplace-actions-group">
-        <div className="tw:w-full tw:min-w-0 tw:flex-1">
-          <MarketplaceSearchBar compact />
-        </div>
-        <AddNewMenu />
-      </div>
-    </Box>
-  );
 
   return (
     <PageLayout.PageHeader
@@ -76,10 +49,24 @@ export const MarketplaceOverviewHeader: FC = () => {
           showHome={false}
         />
       }
-      className="tw:mb-5"
+      className="tw:mb-4"
       data-testid="marketplace-overview-header"
-      density="compact"
-      title={headerLayout}
+      title={
+        <SearchHeaderRow
+          actions={<AddNewMenu />}
+          search={
+            <MarketplaceSearchInput
+              placeholder={t('label.search-for-type', {
+                type: `${t('label.data-product-plural')}, ${t(
+                  'label.domain-plural'
+                )}`,
+              })}
+            />
+          }
+          subtitle={t('message.discover-data-products-subtitle')}
+          title={t('label.data-marketplace')}
+        />
+      }
       variant="gradient"
     />
   );

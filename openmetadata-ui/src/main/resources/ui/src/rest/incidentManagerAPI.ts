@@ -62,6 +62,23 @@ export interface IncidentTaskListParams
 export const MAX_BULK_INCIDENT_UPDATE_SIZE = 100;
 
 /**
+ * Transition ids the incident task accepts on `POST /tasks/{id}/resolve`. They
+ * are the workflow's own edge names, not the resolution status the transition
+ * produces, so they are spelled out once here rather than derived from
+ * {@link TestCaseResolutionStatusTypes}.
+ */
+export const INCIDENT_TRANSITION_ID = {
+  New: 'new',
+  Ack: 'ack',
+  Assign: 'assign',
+  Reassign: 'reassign',
+  Resolve: 'resolve',
+} as const;
+
+export type IncidentTransitionId =
+  (typeof INCIDENT_TRANSITION_ID)[keyof typeof INCIDENT_TRANSITION_ID];
+
+/**
  * Cursor returned by the server in `paging.before`/`paging.after`. It is opaque:
  * callers pass the value back verbatim as `offset` and never parse or compute
  * with it.

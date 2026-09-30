@@ -53,6 +53,7 @@ import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchPropagationLimits;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
@@ -68,6 +69,7 @@ import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.Result;
+import os.org.opensearch.client.opensearch._types.SlicesCalculation;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -552,6 +554,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
    * scan and trips {@code socketTimeoutSecs} with a {@link java.net.SocketTimeoutException};
    * submitting it as a background task returns immediately and lets the cluster finish the
    * propagation and the post-task {@code refresh} on its own.
+   *
+   * <p>Sliced and throttled because the widest parent here is a service, whose children are every
+   * asset it ever ingested. Unsliced, that is a single-threaded scroll over millions of documents;
+   * unthrottled, it runs as fast as the cluster allows and starves concurrent ingestion and search
+   * for the duration. {@code slices=auto} gives one slice per shard and
+   * {@link SearchPropagationLimits#REQUESTS_PER_SECOND} caps the sustained write rate.
    */
   UpdateByQueryRequest buildUpdateChildrenRequest(
       List<String> indexNames,
@@ -565,6 +573,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                 .query(exactFieldQuery(fieldAndValue))
                 .conflicts(Conflicts.Proceed)
                 .waitForCompletion(false)
+                .slices(s -> s.calculation(SlicesCalculation.Auto))
+                .requestsPerSecond(SearchPropagationLimits.REQUESTS_PER_SECOND)
                 .script(
                     s ->
                         s.inline(

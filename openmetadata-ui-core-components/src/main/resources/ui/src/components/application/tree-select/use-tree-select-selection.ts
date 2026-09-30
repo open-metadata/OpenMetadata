@@ -27,7 +27,9 @@ interface UseTreeSelectSelectionReturn<T> {
   getDescendantSelection: (node: TreeSelectNode<T>) => DescendantSelection;
   toggleNodeSelection: (
     node: TreeSelectNode<T>,
-    parentNode?: TreeSelectNode<T>
+    parentNode?: TreeSelectNode<T>,
+    /** Clear the branch rather than select it, per the row's rendered state. */
+    deselect?: boolean
   ) => void;
   setSelection: (nodes: TreeSelectNode<T>[]) => void;
   clearSelection: () => void;
@@ -43,8 +45,20 @@ export interface DescendantSelection {
 // A loaded branch's children decide the row outright; unexpanded, its own membership does.
 export const getNodeSelectionState = (
   { selected, total, hasLoadedChildren }: DescendantSelection,
-  isSelected: boolean
+  isSelected: boolean,
+  /**
+   * Whether a branch's state is derived from its descendants (checkbox
+   * semantics). True for multi-select. In single-choice mode a branch is a
+   * value in its own right — deriving from descendants meant a selected parent
+   * that had loaded children could never render as selected, because `selected
+   * === total` ignores `isSelected` entirely.
+   */
+  derivesFromDescendants = true
 ) => {
+  if (!derivesFromDescendants) {
+    return { isFullySelected: isSelected, isPartiallySelected: false };
+  }
+
   const isFullySelected = hasLoadedChildren
     ? selected === total
     : isSelected || (total > 0 && selected === total);
@@ -127,7 +141,11 @@ export const useTreeSelectSelection = <T = unknown>({
   );
 
   const toggleNodeSelection = useCallback(
-    (node: TreeSelectNode<T>, parentNode?: TreeSelectNode<T>) => {
+    (
+      node: TreeSelectNode<T>,
+      parentNode?: TreeSelectNode<T>,
+      deselect?: boolean
+    ) => {
       const next = new Map(selectedNodes);
       const isSelected = selectedNodes.has(node.id);
 
@@ -166,8 +184,15 @@ export const useTreeSelectSelection = <T = unknown>({
           next.set(node.id, node);
         }
       } else if (cascadeSelection) {
-        if (isSelected) {
-          getAllChildrenIds(node).forEach((id) => next.delete(id));
+        // `deselect` is the rendered state; the consumer may drop this node from `value`.
+        if (deselect ?? isSelected) {
+          // Loaded children, plus any selection naming this node as its parent.
+          const ids = Array.from(next.values()).reduce<string[]>(
+            (acc, child) =>
+              child.parentId === node.id ? [...acc, child.id] : acc,
+            getAllChildrenIds(node)
+          );
+          ids.forEach((id) => next.delete(id));
         } else {
           collectNodes(node).forEach((n) => next.set(n.id, n));
         }

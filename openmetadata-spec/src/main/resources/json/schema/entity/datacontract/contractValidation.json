@@ -28,6 +28,10 @@
       "items": {
         "type": "string"
       }
+    },
+    "odcsImportReport": {
+      "description": "For ODCS imports: what the import keeps, changes and leaves out of the ODCS document.",
+      "$ref": "odcs/odcsImportReport.json"
     }
   },
   "additionalProperties": false

@@ -23,9 +23,9 @@ describe('getServiceCategoryBreadcrumb', () => {
     // The crumb it replaced showed the connector ("Mysql") and went nowhere. The level above a
     // service is its category, and the listing tabs by exactly that, so it is a real destination.
     expect(crumb).toEqual({
-      ariaLabel: 'label.database-service',
+      ariaLabel: 'label.database-plural',
       href: '/connections?category=databaseServices',
-      label: 'label.database-service',
+      label: 'label.database-plural',
     });
   });
 

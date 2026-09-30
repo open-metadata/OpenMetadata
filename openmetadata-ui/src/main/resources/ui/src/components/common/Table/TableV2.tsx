@@ -111,6 +111,7 @@ import {
   getColumnStickyStyle,
   getSelectedKeysSet,
   getSortDescriptorProp,
+  getStickyBodyCellClass,
   getTableContainerStyle,
   getTableLayoutClasses,
   getTableWidthStyle,
@@ -716,7 +717,8 @@ const TableToolbar = ({
       {(extraTableFilters || isCustomizeColumnEnable) && (
         <div
           className={classNames(
-            'd-flex justify-end items-center gap-5',
+            // min-w-0: else the row takes min-content width and overflows the clip.
+            'd-flex justify-end items-center gap-5 tw:min-w-0',
             extraTableFiltersClassName
           )}
           style={{ flex: 1 }}>
@@ -1788,7 +1790,7 @@ const TableV2 = <T extends object>(
         // overlay's `inset-0` resolves against the viewport instead of the
         // table, so it dims the whole page and centres the spinner wherever
         // the viewport happens to be rather than over the rows it is masking.
-        className="tw:relative tw:flex tw:flex-col tw:w-full"
+        className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:w-full"
         data-testid={dataTestId}
         ref={scrollWrapRef}
         style={scrollStyle}>
@@ -1832,6 +1834,7 @@ const TableV2 = <T extends object>(
                 'tw:table-fixed': tableLayoutClasses.fixed,
                 'tw:table-auto': tableLayoutClasses.auto,
               })}
+              containerClassName={rest.scrollContainerClassName}
               containerStyle={getTableContainerStyle(
                 scroll?.y as string | number | undefined
               )}
@@ -1890,7 +1893,11 @@ const TableV2 = <T extends object>(
                     columnWidths[colKey] ??
                     (colType.width as number | undefined);
 
-                  const stickyStyle = getColumnStickyStyle(colType.fixed, 2);
+                  const stickyStyle = getColumnStickyStyle(
+                    colType.fixed,
+                    2,
+                    'var(--om-color-bg-secondary)'
+                  );
 
                   return (
                     <UntitledTable.Head
@@ -1966,7 +1973,8 @@ const TableV2 = <T extends object>(
                               // outside a Dropdown falls back to its roomy
                               // vertical-nav metrics, so compress it here.
                               className={classNames(
-                                'tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
+                                'tw:bg-overlay-surface tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
+                                'tw:[&_.ant-menu]:bg-transparent',
                                 'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto',
                                 'tw:[&_.ant-menu-vertical]:border-r-0 tw:[&_.ant-menu-item]:h-8',
                                 'tw:[&_.ant-menu-item]:leading-8 tw:[&_.ant-menu-item]:my-0'
@@ -2168,6 +2176,7 @@ const TableV2 = <T extends object>(
                                   'tw:align-top'
                                 ),
                               getAlignClass(colType.align),
+                              getStickyBodyCellClass(colType.fixed),
                               pingShadowClass(
                                 colType.fixed,
                                 colIdx,

@@ -115,6 +115,8 @@ export const ldapProviderFixture: SsoProviderFixture = {
   supportsSelfSignup: false,
   supportsSilentCallback: false,
   usesBackendRefresh: true,
+  hasBackendIssuedRefreshCookie: true,
+  usesPkce: false,
   supportsColdLoadRefresh: true,
   supportsSilentReauth: false,
 
@@ -137,7 +139,7 @@ export const ldapProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByLabel(/email/i).fill(LDAP_USER_EMAIL);
     await page.getByLabel(/password/i).fill(LDAP_USER_PASSWORD);
     await page.getByRole('button', { name: /^(sign in|log in)$/i }).click();

@@ -113,6 +113,8 @@ export const auth0ProviderFixture: SsoProviderFixture = {
   // (OidcAuthenticator/keycloak-oidc-public only).
   supportsSilentCallback: false,
   usesBackendRefresh: false,
+  hasBackendIssuedRefreshCookie: false,
+  usesPkce: true,
   // false because @auth0/auth0-react's default `cacheLocation: "memory"`
   // (the setting OM ships in AuthProvider.tsx, `renderAzureAuthenticator`
   // sibling) is wiped by a page reload — after `forceTokenExpiry` mangles
@@ -152,7 +154,7 @@ export const auth0ProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: this.signInButtonPattern }).click();
     // Auth0 SDK redirects to ${domain}/authorize; the mock's interaction
     // handler auto-approves as `admin` and redirects back to /callback with

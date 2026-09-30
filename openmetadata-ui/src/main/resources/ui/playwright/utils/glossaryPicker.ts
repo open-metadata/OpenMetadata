@@ -23,6 +23,8 @@ export type GlossaryTermRef = {
 
 // The popover's testid varies per instance; this class is set by the component.
 const POPOVER = '.glossary-term-picker-popover';
+// Long enough for the close transition, short enough to fall back quickly.
+const POPOVER_CLOSE_TIMEOUT = 3000;
 
 // Only the button and custom-trigger variants put a search box in the popover.
 const popoverSearchBox = (page: Page) => page.locator(POPOVER).locator('input');
@@ -168,17 +170,35 @@ export const removeGlossaryTermChip = async (
 };
 
 // A form picker commits on click, so there is no Apply step to wait on.
+//
+// `dismissWith: 'escape'` is for pickers inside a dismissable drawer
+// (SlideoutMenu): an outside click lands on the drawer's backdrop and closes
+// the drawer too, while the picker's own document-level Escape handler only
+// closes the popover. Keep the default for modals that close on Escape.
 export const pickGlossaryTermInField = async (
   page: Page,
   trigger: Locator,
-  term: GlossaryTermRef
+  term: GlossaryTermRef,
+  { dismissWith = 'outside' }: { dismissWith?: 'outside' | 'escape' } = {}
 ) => {
   await openGlossaryPicker(page, trigger);
   await toggleGlossaryTermInPicker(page, term);
 
-  // Not Escape: these pickers sit in editors and drawers that close on it too.
-  await clickOutside(page);
-  await expect(page.locator(POPOVER)).not.toBeVisible();
+  const popover = page.locator(POPOVER);
+  const closedItself = await popover
+    .waitFor({ state: 'hidden', timeout: POPOVER_CLOSE_TIMEOUT })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!closedItself) {
+    if (dismissWith === 'escape') {
+      await page.keyboard.press('Escape');
+    } else {
+      await clickOutside(page);
+    }
+  }
+
+  await expect(popover).not.toBeVisible();
 };
 
 // Open, pick one term, apply — the whole flow for a single-term assignment.

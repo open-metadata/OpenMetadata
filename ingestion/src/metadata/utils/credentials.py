@@ -154,7 +154,7 @@ def build_google_credentials_dict(
         return {
             "type": gcp_values.type,
             "project_id": project_id,
-            "private_key_id": gcp_values.privateKeyId.get_secret_value() if gcp_values.privateKeyId else None,
+            "private_key_id": gcp_values.privateKeyId,
             "private_key": private_key_str,
             "client_email": gcp_values.clientEmail,
             "client_id": gcp_values.clientId,
