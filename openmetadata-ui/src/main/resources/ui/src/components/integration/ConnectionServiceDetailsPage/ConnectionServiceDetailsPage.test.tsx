@@ -19,7 +19,9 @@ import {
   waitFor,
 } from '@testing-library/react';
 import React from 'react';
+import { getDatabases } from '../../../rest/databaseAPI';
 import { getServiceByFQN } from '../../../rest/serviceAPI';
+import { getTopics } from '../../../rest/topicsAPI';
 import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
 import ConnectionServiceDetailsPage from './ConnectionServiceDetailsPage';
 
@@ -38,6 +40,15 @@ const MOCK_SERVICE = {
 const mockNavigate = jest.fn();
 let mockTabParam: string | undefined = undefined;
 let mockServiceCategory = 'databaseServices';
+const mockPermissions: { database: Record<string, boolean> } = { database: {} };
+const mockTableFilters: { showDeletedTables: boolean; schema?: string } = {
+  showDeletedTables: false,
+};
+const mockSetFilters = jest.fn();
+const mockPagingCursor: { cursorType?: string; cursorValue?: string } = {};
+const mockHandlePageChange = jest.fn();
+// Stable like the real hook's `setPaging`: a fresh function per render would refetch forever.
+const mockHandlePagingChange = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -50,6 +61,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
+    permissions: mockPermissions,
     getEntityPermissionByFqn: jest.fn().mockResolvedValue({
       EditAll: true,
       Delete: true,
@@ -155,14 +167,16 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
     paging: { total: 0 },
     pageSize: 15,
     currentPage: 1,
-    handlePagingChange: jest.fn(),
+    handlePagingChange: mockHandlePagingChange,
+    handlePageChange: mockHandlePageChange,
+    pagingCursor: mockPagingCursor,
   }),
 }));
 
 jest.mock('../../../hooks/useTableFilters', () => ({
   useTableFilters: () => ({
-    filters: { showDeletedTables: false },
-    setFilters: jest.fn(),
+    filters: mockTableFilters,
+    setFilters: mockSetFilters,
   }),
 }));
 
@@ -336,7 +350,15 @@ jest.mock(
 
 jest.mock('./DataAssetsTab', () => ({
   __esModule: true,
-  default: () => <div data-testid="data-assets-tab" />,
+  default: ({
+    onShowDeletedChange,
+  }: {
+    onShowDeletedChange: (value: boolean) => void;
+  }) => (
+    <div data-testid="data-assets-tab">
+      <button onClick={() => onShowDeletedChange(true)}>show-deleted</button>
+    </div>
+  ),
 }));
 
 // Exercises the owner/domain/tier editing UI on its own OSS primitives (DomainSelectableList,
@@ -352,6 +374,7 @@ jest.mock('@untitledui/icons', () => ({
 }));
 
 jest.mock('../../../constants/constants', () => ({
+  INITIAL_PAGING_VALUE: 1,
   INITIAL_TABLE_FILTERS: { showDeletedTables: false },
   pagingObject: {},
 }));
@@ -372,6 +395,11 @@ describe('ConnectionServiceDetailsPage', () => {
     jest.clearAllMocks();
     mockTabParam = undefined;
     mockServiceCategory = 'databaseServices';
+    mockPermissions.database = {};
+    mockTableFilters.showDeletedTables = false;
+    delete mockTableFilters.schema;
+    delete mockPagingCursor.cursorType;
+    delete mockPagingCursor.cursorValue;
     Object.keys(contributionsByPoint).forEach(
       (key) => delete contributionsByPoint[key]
     );
@@ -468,6 +496,131 @@ describe('ConnectionServiceDetailsPage', () => {
 
     expect(screen.getByText('label.delete')).toBeInTheDocument();
     expect(screen.queryByText('label.restore')).not.toBeInTheDocument();
+  });
+
+  describe('data assets fetch', () => {
+    // The table renders owner, domain, data product, tag, tier and certification columns;
+    // requesting no fields left every one of them empty.
+    const ASSET_FIELDS = 'tags,owners,domains,dataProducts,certification';
+
+    it('requests the fields the databases table renders', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getDatabases).toHaveBeenCalledWith(
+        'test-service',
+        ASSET_FIELDS,
+        expect.anything(),
+        'non-deleted'
+      );
+    });
+
+    it('also requests usage when the user may view it', async () => {
+      mockPermissions.database = { ViewUsage: true };
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getDatabases).toHaveBeenCalledWith(
+        'test-service',
+        `${ASSET_FIELDS},usageSummary`,
+        expect.anything(),
+        'non-deleted'
+      );
+    });
+
+    it('requests the same fields for other service categories', async () => {
+      mockServiceCategory = 'messagingServices';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getTopics).toHaveBeenCalledWith(
+        'test-service',
+        ASSET_FIELDS,
+        expect.anything(),
+        'non-deleted'
+      );
+    });
+
+    it('lists the soft-deleted children of a soft-deleted service', async () => {
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        deleted: true,
+      });
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getDatabases).toHaveBeenCalledWith(
+        'test-service',
+        ASSET_FIELDS,
+        expect.anything(),
+        'deleted'
+      );
+    });
+
+    it('lists deleted children of a live service when the deleted switch is on', async () => {
+      mockTableFilters.showDeletedTables = true;
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getDatabases).toHaveBeenCalledWith(
+        'test-service',
+        ASSET_FIELDS,
+        expect.anything(),
+        'deleted'
+      );
+    });
+
+    it('returns to the first page when the deleted switch flips', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      fireEvent.click(await screen.findByText('show-deleted'));
+
+      expect(mockSetFilters).toHaveBeenCalledWith({
+        showDeletedTables: 'true',
+      });
+      expect(mockHandlePageChange).toHaveBeenCalledWith(1, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    });
+
+    it('fetches the page the URL cursor points at', async () => {
+      mockPagingCursor.cursorType = 'after';
+      mockPagingCursor.cursorValue = 'cursor-2';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      // Without this the pager advanced the page number while the rows stayed on page one.
+      expect(getDatabases).toHaveBeenCalledWith(
+        'test-service',
+        ASSET_FIELDS,
+        { after: 'cursor-2', limit: 15 },
+        'non-deleted'
+      );
+    });
+
+    it('leaves the list to the search while one is active', async () => {
+      mockTableFilters.schema = 'sales';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getDatabases).not.toHaveBeenCalled();
+    });
   });
 
   describe('deleted service', () => {
