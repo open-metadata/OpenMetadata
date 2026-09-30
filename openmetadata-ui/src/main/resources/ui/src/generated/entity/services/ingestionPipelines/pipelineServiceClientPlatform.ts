@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.add-glossary {
-  .form-item-horizontal {
-    margin-bottom: var(--om-space-8);
-  }
+/**
+ * Values the server itself reports as the `platform` of a Pipeline Service Client response,
+ * independently of any client. That field stays a free string, since every pipeline service
+ * client reports its own platform name. `disabled` means no pipeline service client is
+ * configured: the status is still a 200, so the platform is the only thing that tells a
+ * caller that deploying or running a pipeline will do nothing.
+ */
+export enum PipelineServiceClientPlatform {
+    Disabled = "disabled",
 }

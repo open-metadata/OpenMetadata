@@ -301,6 +301,7 @@ export { Schema } from './Schema';
 export { SearchIndex } from './SearchIndex';
 export { SearchLg } from './SearchLg';
 export { SearchMd } from './SearchMd';
+export { SearchRefraction } from './SearchRefraction';
 export { SearchService } from './SearchService';
 export { Search } from './Search';
 export { SecurityService } from './SecurityService';

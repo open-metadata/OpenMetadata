@@ -13,7 +13,19 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
 import CustomPropertiesPanel from './CustomPropertiesPanel';
+
+const mockGetTypeByFQN = getTypeByFQN as jest.Mock;
+const mockOnHeaderChange = jest.fn();
+
+const renderPanel = () =>
+  render(
+    <MemoryRouter>
+      <CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />
+    </MemoryRouter>
+  );
 
 const mockEntityType = {
   id: 'type-1',
@@ -176,122 +188,117 @@ jest.mock('../../../../../../constants/GlobalSettings.constants', () => ({
   },
 }));
 
-jest.mock('./CustomPropertiesPanel.utils', () => ({
-  getBreadcrumbItems: jest.fn().mockReturnValue([
-    { id: 'workspace', label: 'label.workspace' },
-    { id: 'landing', label: 'label.custom-property-plural' },
-  ]),
-  getPageTitle: jest.fn().mockReturnValue('label.custom-property-plural'),
+jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
+  getTypeByFQN: jest.fn(),
+}));
+
+jest.mock('../../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 describe('CustomPropertiesPanel', () => {
-  const mockOnHeaderChange = jest.fn();
-
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetTypeByFQN.mockResolvedValue(mockEntityType);
   });
 
   it('renders the landing page by default', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+    renderPanel();
 
     expect(screen.getByTestId('landing-page')).toBeInTheDocument();
     expect(screen.queryByTestId('detail-page')).not.toBeInTheDocument();
   });
 
   it('calls onHeaderChange when component mounts', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+    renderPanel();
 
     expect(mockOnHeaderChange).toHaveBeenCalled();
   });
 
-  it('transitions to detail page when an entity type is selected', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+  it('transitions to detail page when an entity type is selected', async () => {
+    renderPanel();
 
     fireEvent.click(screen.getByTestId('select-entity-btn'));
 
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
     expect(screen.queryByTestId('landing-page')).not.toBeInTheDocument();
-    expect(screen.getByTestId('detail-page')).toBeInTheDocument();
   });
 
-  it('calls onHeaderChange again after transitioning to detail', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+  it('calls onHeaderChange again after transitioning to detail', async () => {
+    renderPanel();
     const callCountAfterMount = mockOnHeaderChange.mock.calls.length;
 
     fireEvent.click(screen.getByTestId('select-entity-btn'));
+    await screen.findByTestId('detail-page');
 
     expect(mockOnHeaderChange.mock.calls.length).toBeGreaterThan(
       callCountAfterMount
     );
   });
 
-  it('transitions to add page when onAddProperty is triggered from detail', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+  it('transitions to add page when onAddProperty is triggered from detail', async () => {
+    renderPanel();
     fireEvent.click(screen.getByTestId('select-entity-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
 
-    fireEvent.click(screen.getByTestId('add-prop-btn'));
-
+    expect(await screen.findByTestId('add-page')).toBeInTheDocument();
     expect(screen.queryByTestId('detail-page')).not.toBeInTheDocument();
-    expect(screen.getByTestId('add-page')).toBeInTheDocument();
   });
 
-  it('transitions to edit page when onEditProperty is triggered from detail', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+  it('transitions to edit page when onEditProperty is triggered from detail', async () => {
+    renderPanel();
     fireEvent.click(screen.getByTestId('select-entity-btn'));
+    fireEvent.click(await screen.findByTestId('edit-prop-btn'));
 
-    fireEvent.click(screen.getByTestId('edit-prop-btn'));
-
+    expect(await screen.findByTestId('edit-page')).toBeInTheDocument();
     expect(screen.queryByTestId('detail-page')).not.toBeInTheDocument();
-    expect(screen.getByTestId('edit-page')).toBeInTheDocument();
   });
 
-  it('returns to detail page when onSuccess is called from add page', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+  it('returns to detail page when onSuccess is called from add page', async () => {
+    renderPanel();
     fireEvent.click(screen.getByTestId('select-entity-btn'));
-    fireEvent.click(screen.getByTestId('add-prop-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
+    fireEvent.click(await screen.findByTestId('add-success-btn'));
 
-    fireEvent.click(screen.getByTestId('add-success-btn'));
-
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
     expect(screen.queryByTestId('add-page')).not.toBeInTheDocument();
-    expect(screen.getByTestId('detail-page')).toBeInTheDocument();
   });
 
-  it('returns to detail page when onCancel is called from add page', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+  it('returns to detail page when onCancel is called from add page', async () => {
+    renderPanel();
     fireEvent.click(screen.getByTestId('select-entity-btn'));
-    fireEvent.click(screen.getByTestId('add-prop-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
+    fireEvent.click(await screen.findByTestId('add-cancel-btn'));
 
-    fireEvent.click(screen.getByTestId('add-cancel-btn'));
-
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
     expect(screen.queryByTestId('add-page')).not.toBeInTheDocument();
-    expect(screen.getByTestId('detail-page')).toBeInTheDocument();
   });
 
-  it('returns to detail page when onSuccess is called from edit page', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+  it('returns to detail page when onSuccess is called from edit page', async () => {
+    renderPanel();
     fireEvent.click(screen.getByTestId('select-entity-btn'));
-    fireEvent.click(screen.getByTestId('edit-prop-btn'));
+    fireEvent.click(await screen.findByTestId('edit-prop-btn'));
+    fireEvent.click(await screen.findByTestId('edit-success-btn'));
 
-    fireEvent.click(screen.getByTestId('edit-success-btn'));
-
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
     expect(screen.queryByTestId('edit-page')).not.toBeInTheDocument();
-    expect(screen.getByTestId('detail-page')).toBeInTheDocument();
   });
 
-  it('returns to detail page when onCancel is called from edit page', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+  it('returns to detail page when onCancel is called from edit page', async () => {
+    renderPanel();
     fireEvent.click(screen.getByTestId('select-entity-btn'));
-    fireEvent.click(screen.getByTestId('edit-prop-btn'));
+    fireEvent.click(await screen.findByTestId('edit-prop-btn'));
+    fireEvent.click(await screen.findByTestId('edit-cancel-btn'));
 
-    fireEvent.click(screen.getByTestId('edit-cancel-btn'));
-
+    expect(await screen.findByTestId('detail-page')).toBeInTheDocument();
     expect(screen.queryByTestId('edit-page')).not.toBeInTheDocument();
-    expect(screen.getByTestId('detail-page')).toBeInTheDocument();
   });
 
-  it('shows hint toggle on add page', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+  it('shows hint toggle on add page', async () => {
+    renderPanel();
     fireEvent.click(screen.getByTestId('select-entity-btn'));
-    fireEvent.click(screen.getByTestId('add-prop-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
+    await screen.findByTestId('add-page');
 
     // The actions area with toggle is passed to the header; verify onHeaderChange was
     // called with a non-undefined actions argument
@@ -301,7 +308,7 @@ describe('CustomPropertiesPanel', () => {
   });
 
   it('does not show hint toggle on landing page', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+    renderPanel();
 
     const lastCall = mockOnHeaderChange.mock.calls.at(-1)?.[0];
 
@@ -309,7 +316,7 @@ describe('CustomPropertiesPanel', () => {
   });
 
   it('passes breadcrumbs and title to onHeaderChange', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+    renderPanel();
 
     const lastCall = mockOnHeaderChange.mock.calls.at(-1)?.[0];
 
@@ -319,12 +326,13 @@ describe('CustomPropertiesPanel', () => {
     });
   });
 
-  it('calls onHeaderChange multiple times as state changes', () => {
-    render(<CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />);
+  it('calls onHeaderChange multiple times as state changes', async () => {
+    renderPanel();
     const mountCallCount = mockOnHeaderChange.mock.calls.length;
 
     fireEvent.click(screen.getByTestId('select-entity-btn'));
-    fireEvent.click(screen.getByTestId('add-prop-btn'));
+    fireEvent.click(await screen.findByTestId('add-prop-btn'));
+    await screen.findByTestId('add-page');
 
     expect(mockOnHeaderChange.mock.calls.length).toBeGreaterThan(
       mountCallCount

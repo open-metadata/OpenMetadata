@@ -438,12 +438,13 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     try {
       const data = await getRoleByName(fqn, 'policies,teams,users');
       setRole(data);
+      onRename?.(getEntityName(data));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [fqn]);
+  }, [fqn, onRename]);
 
   useEffect(() => {
     fetchRole();

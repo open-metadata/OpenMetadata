@@ -26,6 +26,7 @@ import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
+import { okJson } from './apiResponse';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
@@ -1544,31 +1545,45 @@ export const fetchCompletedCsvAsyncJobResult = async (
   apiContext: APIRequestContext,
   jobId: string
 ) => {
+  if (!jobId) {
+    throw new Error('CSV export returned no job ID');
+  }
+
+  const jobUrl = `/api/v1/csvAsyncJobs/${encodeURIComponent(jobId)}`;
   await expect
     .poll(
       async () => {
-        const response = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
-
-        if (!response.ok()) {
-          return undefined;
+        const response = await apiContext.get(jobUrl);
+        const job = await okJson<CsvAsyncJob>(response, `CSV export ${jobId}`);
+        if (job.jobId !== jobId) {
+          throw new Error(
+            `CSV export ${jobId}: received a different job ${job.jobId}`
+          );
+        }
+        if (!['QUEUED', 'RUNNING', 'COMPLETED'].includes(job.status)) {
+          throw new Error(
+            `CSV export ${jobId} ended with ${job.status}; expected COMPLETED`
+          );
         }
 
-        const jobs = (await response.json()) as CsvAsyncJob[];
-
-        return jobs.find((job) => job.jobId === jobId)?.status;
+        return job.status;
       },
-      { timeout: 90_000 }
+      {
+        timeout: 90_000,
+        message: `CSV export ${jobId} must complete successfully`,
+      }
     )
     .toBe('COMPLETED');
 
-  const resultResponse = await apiContext.get(
-    `/api/v1/csvAsyncJobs/${jobId}/result`,
-    {
-      headers: { Accept: 'text/csv' },
-    }
-  );
+  const resultResponse = await apiContext.get(`${jobUrl}/result`, {
+    headers: { Accept: 'text/csv' },
+  });
 
-  expect(resultResponse.ok()).toBeTruthy();
+  if (!resultResponse.ok()) {
+    throw new Error(
+      `CSV export ${jobId} result: HTTP ${resultResponse.status()}`
+    );
+  }
 
   return resultResponse.text();
 };

@@ -20,7 +20,7 @@ import {
 import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState, ServicesUpdateRequest } from 'Models';
 import React, {
   lazy,
@@ -59,7 +59,10 @@ import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { getServiceType } from '../../utils/ServicePureUtils';
+import {
+  getServiceCategoryLabel,
+  getServiceType,
+} from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -190,7 +193,7 @@ function EditConnectionFormPage() {
       setServiceDetails(response);
       setSlashedBreadcrumb([
         {
-          label: startCase(serviceCategory),
+          label: getServiceCategoryLabel(serviceCategory),
           id: 'service-category',
         },
         {

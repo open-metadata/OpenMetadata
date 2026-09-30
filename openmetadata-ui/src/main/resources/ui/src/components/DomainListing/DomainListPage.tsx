@@ -45,6 +45,7 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
@@ -52,10 +53,10 @@ import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
 const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
-  const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const domainListing = useDomainListingData({ enableNlq: isAiMode });
   const { permissions } = usePermissionProvider();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
@@ -116,7 +117,14 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   });
 
   const headerSearch = showHeaderSearch ? (
-    <Input className="tw:w-72" {...searchInputProps} />
+    <MarketplaceSearchInput
+      placeholder={t('label.search-for-type', {
+        type: t('label.domain-plural'),
+      })}
+      searchQuery={domainListing.urlState.searchQuery}
+      onRefresh={domainListing.refetch}
+      onSearchChange={domainListing.handleSearchChange}
+    />
   ) : undefined;
 
   const canCreateDomain = permissions.domain?.Create || false;

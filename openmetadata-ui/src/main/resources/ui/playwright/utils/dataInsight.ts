@@ -30,6 +30,30 @@ export const deleteKpiRequest = async (
   );
 };
 
+// The server allows one KPI per chart and the Add KPI dropdown hides charts
+// that already have one. Collate seeds a "Migration ... KPI" on each chart, so
+// free the chart before creating a KPI on it; KPIs other specs create are left alone.
+export const deleteSeededKpisOnChart = async (
+  apiRequest: APIRequestContext,
+  chart: 'description' | 'owner'
+) => {
+  const { data } = await okJson<{ data: Kpi[] }>(
+    await apiRequest.get('/api/v1/kpi?fields=dataInsightChart&limit=100'),
+    'List KPIs'
+  );
+
+  await deleteKpiRequest(
+    apiRequest,
+    data
+      .filter(
+        (kpi) =>
+          kpi.displayName?.startsWith('Migration') &&
+          kpi.dataInsightChart.fullyQualifiedName?.includes(chart)
+      )
+      .map((kpi) => kpi.id as string)
+  );
+};
+
 export const addKpi = async (page: Page, data: KPIData) => {
   const currentDate = new Date();
   const month =

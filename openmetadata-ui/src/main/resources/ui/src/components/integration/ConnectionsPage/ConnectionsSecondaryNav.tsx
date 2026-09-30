@@ -29,6 +29,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import {
   CATEGORY_CONFIGS,
   ConnectionsServiceCategory,
@@ -141,7 +142,7 @@ const ConnectionsSecondaryNav = ({
         />
 
         <div className="tw:mb-2 tw:mt-5 tw:px-3 tw:text-xs tw:font-semibold tw:leading-[18px] tw:tracking-[0.04em] tw:text-utility-gray-400 tw:uppercase">
-          {t('label.browse-by-service-type')}
+          {t('label.browse-by-service-category')}
         </div>
 
         {CATEGORY_CONFIGS.map((config) => (
@@ -151,7 +152,7 @@ const ConnectionsSecondaryNav = ({
             isActive={category === config.key}
             isLoading={category === config.key && isCountLoading}
             key={config.key}
-            label={t(config.titleKey)}
+            label={getServiceCategoryLabel(config.key)}
             testId={`connections-nav-${config.key}`}
             onClick={() => onCategoryChange(config.key)}
           />

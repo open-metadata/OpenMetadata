@@ -773,6 +773,12 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
 
   const [activeTab, setActiveTab] = useState<PolicyTab>('rules');
 
+  useEffect(() => {
+    if (policy) {
+      onRename?.(getEntityName(policy));
+    }
+  }, [policy, onRename]);
+
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [isSavingDesc, setIsSavingDesc] = useState(false);
   const descEditorRef = useRef<EditorContentRef>(null);

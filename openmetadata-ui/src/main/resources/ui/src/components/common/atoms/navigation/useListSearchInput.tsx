@@ -14,7 +14,7 @@
 import { CloseButton } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -24,6 +24,16 @@ interface ListSearchInputConfig {
   searchQuery?: string;
   /** Push a new query to the listing. Debounced while typing, immediate on clear. */
   onSearchChange: (value: string) => void;
+  /**
+   * Push only on submit, never while typing. For a query too costly to run on
+   * every pause, such as natural-language search, which runs an LLM step per call.
+   */
+  submitOnly?: boolean;
+  /**
+   * Re-run the current query. Enter on unchanged text calls this instead of
+   * pushing the same value again, e.g. to run it as NLQ once the toggle is on.
+   */
+  onRefresh?: () => void;
 }
 
 /**
@@ -37,13 +47,27 @@ interface ListSearchInputConfig {
 export const useListSearchInput = ({
   searchQuery,
   onSearchChange,
+  submitOnly = false,
+  onRefresh,
 }: ListSearchInputConfig) => {
   const { t } = useTranslation();
   const [searchInputValue, setSearchInputValue] = useState(searchQuery ?? '');
 
+  // Held in a ref so the debounce is built once. The callback usually chains
+  // down to react-router's `setSearchParams`, whose identity changes on every
+  // URL change - rebuilding the debounce there would cancel it mid-flight.
+  const onSearchChangeRef = useRef(onSearchChange);
+  onSearchChangeRef.current = onSearchChange;
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
+
   const debouncedSearch = useMemo(
-    () => debounce(onSearchChange, SEARCH_DEBOUNCE_MS),
-    [onSearchChange]
+    () =>
+      debounce(
+        (value: string) => onSearchChangeRef.current(value),
+        SEARCH_DEBOUNCE_MS
+      ),
+    []
   );
 
   useEffect(() => {
@@ -57,21 +81,42 @@ export const useListSearchInput = ({
     };
   }, [debouncedSearch]);
 
+  // A push still waiting on the debounce must not land once pushes are
+  // submit-only, or it would run as the costly query after all.
+  useEffect(() => {
+    if (submitOnly) {
+      debouncedSearch.cancel();
+    }
+  }, [submitOnly, debouncedSearch]);
+
   const handleChange = useCallback(
     (value: string) => {
       setSearchInputValue(value);
-      debouncedSearch(value);
+      if (!submitOnly) {
+        debouncedSearch(value);
+      }
     },
-    [debouncedSearch]
+    [debouncedSearch, submitOnly]
   );
+
+  // Enter applies the query now rather than waiting out the debounce.
+  const handleSubmit = useCallback(() => {
+    debouncedSearch.cancel();
+    const isUnchanged = searchInputValue === (searchQuery ?? '');
+    if (isUnchanged && onRefreshRef.current) {
+      onRefreshRef.current();
+    } else {
+      onSearchChangeRef.current(searchInputValue);
+    }
+  }, [debouncedSearch, searchInputValue, searchQuery]);
 
   // Clearing skips the debounce - the intent is unambiguous, so holding the
   // stale result set for another 300ms just reads as lag.
   const handleClear = useCallback(() => {
     debouncedSearch.cancel();
     setSearchInputValue('');
-    onSearchChange('');
-  }, [debouncedSearch, onSearchChange]);
+    onSearchChangeRef.current('');
+  }, [debouncedSearch]);
 
   const searchInputProps = useMemo(
     () => ({
@@ -95,5 +140,11 @@ export const useListSearchInput = ({
     [handleChange, handleClear, searchInputValue, t]
   );
 
-  return { searchInputValue, searchInputProps };
+  return {
+    searchInputValue,
+    searchInputProps,
+    handleChange,
+    handleSubmit,
+    handleClear,
+  };
 };

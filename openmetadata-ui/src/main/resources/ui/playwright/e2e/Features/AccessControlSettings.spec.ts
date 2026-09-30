@@ -1079,7 +1079,7 @@ test.describe(
               }
             })
             .toBe(true);
-          await page.keyboard.press('Escape');
+          await page.getByTestId('rule-name').click();
           await expect
             .poll(async () => {
               const operationsAutocomplete = page.getByTestId('operations');
@@ -1099,7 +1099,7 @@ test.describe(
               }
             })
             .toBe(true);
-          await page.keyboard.press('Escape');
+          await page.getByTestId('rule-name').click();
         });
 
         await test.step('Save rule and verify new card appears', async () => {
