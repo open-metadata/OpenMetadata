@@ -23,7 +23,7 @@ const hostProps = vi.hoisted(() => ({
 
 // jsdom cannot lay out a real chart, so capture what EChart hands the
 // echarts-for-react host instead.
-vi.mock('echarts-for-react/lib/core', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: (props: Record<string, unknown>) => {
     hostProps.calls.push(props);
 

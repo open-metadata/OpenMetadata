@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import ReactEChartsCore from 'echarts-for-react/lib/core';
+// The ESM build: `lib/core` is CommonJS, and Vite's dev interop hands a
+// default import of it the module object instead of the component.
+import ReactEChartsCore from 'echarts-for-react/esm/core';
 import type { ECElementEvent } from 'echarts';
 import { ReactNode, useMemo, useRef } from 'react';
 import { Skeleton } from '@/components/base/skeleton/skeleton';

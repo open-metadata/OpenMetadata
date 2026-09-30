@@ -574,7 +574,7 @@ export default defineConfig(async ({ mode }) => {
         'echarts/components',
         'echarts/features',
         'echarts/renderers',
-        'echarts-for-react/lib/core',
+        'echarts-for-react/esm/core',
       ],
       esbuildOptions: {
         target: 'esnext',
