@@ -13,7 +13,6 @@
 
 import { Browser, expect, Page } from '@playwright/test';
 import { EntityClass } from '../../../support/entity/EntityClass';
-import { test as baseTest } from '../../../support/fixtures/userPages';
 import { ApiServiceClass } from '../../../support/entity/service/ApiServiceClass';
 import { DashboardServiceClass } from '../../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
@@ -22,6 +21,7 @@ import { MlmodelServiceClass } from '../../../support/entity/service/MlmodelServ
 import { PipelineServiceClass } from '../../../support/entity/service/PipelineServiceClass';
 import { SearchIndexServiceClass } from '../../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../../support/entity/service/StorageServiceClass';
+import { test as baseTest } from '../../../support/fixtures/userPages';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 
