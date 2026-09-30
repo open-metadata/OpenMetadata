@@ -12,6 +12,7 @@
     {
       "projects": ["Basic"],
       "specs": [
+        "playwright/e2e/Auth/Login.spec.ts",
         "playwright/e2e/Flow/Navbar.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
@@ -353,7 +354,7 @@
       "specs": [
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
-        "playwright/e2e/Pages/LoginConfiguration.spec.ts",
+        "playwright/e2e/Auth/LoginConfiguration.spec.ts",
         "playwright/e2e/Pages/OmdURLConfiguration.spec.ts",
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
@@ -392,7 +393,7 @@
       "projects": ["chromium", "Basic", "Ingestion", "SearchRBAC", "ImportExport"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
-        "playwright/e2e/Pages/Login*.spec.ts",
+        "playwright/e2e/Auth/Login*.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts"
       ]
     },
@@ -465,7 +466,10 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/i18next/**"
       ],
       "projects": ["chromium", "Basic"],
-      "specs": ["playwright/e2e/Flow/Navbar.spec.ts"]
+      "specs": [
+        "playwright/e2e/Auth/Login.spec.ts",
+        "playwright/e2e/Flow/Navbar.spec.ts"
+      ]
     },
     {
       "sources": [
