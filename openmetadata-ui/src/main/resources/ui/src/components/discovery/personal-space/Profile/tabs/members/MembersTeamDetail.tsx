@@ -20,6 +20,7 @@ import {
   Dropdown,
   EmptyPlaceholder,
   Input,
+  PaginationCardWithControls,
   SelectItemType,
   Tabs,
   Toggle,
@@ -36,22 +37,38 @@ import {
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, noop } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useFilter } from 'react-aria';
 import type { Key } from 'react-aria-components';
 import { DropZone, useDragAndDrop } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-    PAGE_SIZE_LARGE,
-    ROUTES
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
 } from '../../../../../../constants/constants';
 import { ExportTypes } from '../../../../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../../../../enums/Assets.enum';
-import { EntityType, TabSpecificField } from '../../../../../../enums/entity.enum';
-import { Operation, Policy } from '../../../../../../generated/entity/policies/policy';
+import {
+  EntityType,
+  TabSpecificField,
+} from '../../../../../../enums/entity.enum';
+import { CursorType } from '../../../../../../enums/pagination.enum';
+import {
+  Operation,
+  Policy,
+} from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
@@ -60,27 +77,33 @@ import { Include } from '../../../../../../generated/type/include';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { getPolicies, getRoles } from '../../../../../../rest/rolesAPIV1';
 import {
-    deleteUserFromTeam,
-    exportTeam,
-    getTeamByName,
-    getTeams,
-    patchTeamDetail,
-    restoreTeam
+  deleteUserFromTeam,
+  exportTeam,
+  exportUserOfTeam,
+  getTeamByName,
+  getTeams,
+  patchTeamDetail,
+  restoreTeam,
 } from '../../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
-import { checkPermission, LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 import {
-    getRoleWithFqnPath,
-    getUserPath
+  checkPermission,
+  LIST_CAP,
+} from '../../../../../../utils/PermissionsUtils';
+import {
+  getRoleWithFqnPath,
+  getUserPath,
 } from '../../../../../../utils/RouterUtils';
+import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { isDropRestricted } from '../../../../../../utils/TeamUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
@@ -95,15 +118,13 @@ import Table from '../../../../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { MembersTeamDetailProps } from './Members.types';
-import MembersPagination from './MembersPagination';
+import MembersImportModal, { MembersImportType } from './MembersImportModal';
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 
 const AssetsTabs = withSuspenseFallback(
   React.lazy(
     () =>
-      import(
-        '../../../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component'
-      )
+      import('../../../../../Glossary/GlossaryTerms/tabs/AssetsTabs.component')
   )
 );
 
@@ -148,6 +169,26 @@ const getAvailableTabs = (teamType?: TeamType): TeamTab[] => {
   }
 };
 
+const getTabLabel = (
+  tab: TeamTab,
+  t: (key: string) => string,
+  team: Team,
+  childTeamsCount: number
+): string => {
+  switch (tab) {
+    case 'teams':
+      return `${t('label.team-plural')} (${childTeamsCount})`;
+    case 'users':
+      return `${t('label.user-plural')} (${team.users?.length ?? 0})`;
+    case 'assets':
+      return t('label.asset-plural');
+    case 'roles':
+      return `${t('label.role-plural')} (${team.defaultRoles?.length ?? 0})`;
+    default:
+      return `${t('label.policy-plural')} (${team.policies?.length ?? 0})`;
+  }
+};
+
 const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   fqn,
   onNavigate,
@@ -161,6 +202,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const { permissions: globalPermissions } = usePermissionProvider();
   const { showModal } = useEntityExportModalProvider();
   const { currentUser } = useApplicationStore();
+  const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
 
   const [team, setTeam] = useState<Team>();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
@@ -172,6 +214,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const [editNameValue, setEditNameValue] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [usersSearchTerm, setUsersSearchTerm] = useState('');
+  const [importModalType, setImportModalType] = useState<MembersImportType>();
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [movedTeam, setMovedTeam] = useState<{
     from: Team;
@@ -192,7 +236,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const { contains } = useFilter({ sensitivity: 'base' });
 
   // Adding users
-  const [isAddingUser, setIsAddingUser] = useState(false);
 
   // Inline description edit
   const [isDescEditing, setIsDescEditing] = useState(false);
@@ -218,15 +261,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     showPagination: showUsersPagination,
   } = usePaging();
 
-  const {
-    canEditAll,
-    canEditDescription,
-    canEditDisplayName,
-    permissions,
-  } = useEntityPermissions(ResourceEntity.TEAM, fqn, {
-    deleted: team?.deleted,
-    enabled: Boolean(fqn),
-  });
+  const { canEditAll, canEditDescription, canEditDisplayName, permissions } =
+    useEntityPermissions(ResourceEntity.TEAM, fqn, {
+      deleted: team?.deleted,
+      enabled: Boolean(fqn),
+    });
 
   const canCreateTeam = useMemo(
     () =>
@@ -323,6 +362,24 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     },
     [team?.name, usersPageSize, handleUsersPagingChange]
   );
+
+  const handleTeamUsersPageNavigation = (newPage: number) => {
+    if (newPage === usersPage) {
+      return;
+    }
+
+    // ponytail: cursor paging only supports ±1 steps; numbered/jump beyond adjacent no-ops.
+    const cursorType =
+      newPage > usersPage ? CursorType.AFTER : CursorType.BEFORE;
+    const cursor = usersPaging[cursorType];
+
+    if (Math.abs(newPage - usersPage) !== 1 || !cursor) {
+      return;
+    }
+
+    handleUsersPageChange(newPage);
+    fetchTeamUsers({ [cursorType]: cursor });
+  };
 
   useEffect(() => {
     fetchTeam();
@@ -422,7 +479,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     };
     try {
       const patch = compare(currentUser, updatedUser);
-      const { updateUserDetail } = await import('../../../../../../rest/userAPI');
+      const { updateUserDetail } = await import(
+        '../../../../../../rest/userAPI'
+      );
       await updateUserDetail(currentUser.id, patch);
       showSuccessToast(
         t('server.join-team-success', { team: getEntityName(team) })
@@ -460,11 +519,21 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   }, [team, showModal]);
 
   const handleTeamImport = useCallback(() => {
+    if (team?.name) {
+      setImportModalType('teams');
+    }
+  }, [team]);
+
+  const handleUsersExport = useCallback(() => {
     if (!team?.name) {
       return;
     }
-    onNavigate({ type: 'team-import', fqn: team.name });
-  }, [team, onNavigate]);
+    showModal({
+      name: team.name,
+      exportTypes: [ExportTypes.CSV],
+      onExport: (name) => exportUserOfTeam(name),
+    });
+  }, [team, showModal]);
 
   const handleRemoveUser = useCallback(
     async (userId: string) => {
@@ -486,16 +555,13 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   );
 
   const handleAddUsers = useCallback(
+    // The selectable-list popover returns the full updated member set (seeded
+    // with team.users), so replace rather than append.
     async (users: EntityReference[]) => {
       if (!team) {
         return;
       }
-      const updated = {
-        ...team,
-        users: [...(team.users ?? []), ...users],
-      };
-      await handlePatchTeam(updated);
-      setIsAddingUser(false);
+      await handlePatchTeam({ ...team, users });
       fetchTeamUsers();
     },
     [team, handlePatchTeam, fetchTeamUsers]
@@ -505,9 +571,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     setIsAddingRole(true);
     try {
       const data = await getRoles('', undefined, undefined, false, 100);
-      const existingIds = new Set(
-        (team?.defaultRoles ?? []).map((r) => r.id)
-      );
+      const existingIds = new Set((team?.defaultRoles ?? []).map((r) => r.id));
       setAvailableRoles(
         (data.data ?? []).filter((r) => !existingIds.has(r.id))
       );
@@ -561,9 +625,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     setIsAddingPolicy(true);
     try {
       const data = await getPolicies('', undefined, undefined, 100);
-      const existingIds = new Set(
-        (team?.policies ?? []).map((p) => p.id)
-      );
+      const existingIds = new Set((team?.policies ?? []).map((p) => p.id));
       setAvailablePolicies(
         (data.data ?? []).filter((p) => !existingIds.has(p.id))
       );
@@ -579,8 +641,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     const newRefs = selectedNewPolicies
       .map((fqnOrName) => {
         const p = availablePolicies.find(
-          (ap) =>
-            ap.fullyQualifiedName === fqnOrName || ap.name === fqnOrName
+          (ap) => ap.fullyQualifiedName === fqnOrName || ap.name === fqnOrName
         );
 
         return p
@@ -654,9 +715,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   // DnD hooks for the team hierarchy table
   const teamByName = useMemo(() => {
     const map = new Map<string, Team>();
-    childTeams.forEach((ct) =>
-      map.set(ct.fullyQualifiedName ?? ct.name, ct)
-    );
+    childTeams.forEach((ct) => map.set(ct.fullyQualifiedName ?? ct.name, ct));
 
     return map;
   }, [childTeams]);
@@ -679,9 +738,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       setIsTableHovered(false);
     },
     getDropOperation: (target, types) =>
-      types.has(TEAM_DRAG_TYPE) && isTeamDropTarget(target)
-        ? 'move'
-        : 'cancel',
+      types.has(TEAM_DRAG_TYPE) && isTeamDropTarget(target) ? 'move' : 'cancel',
     onItemDrop: (event) => {
       const dragRecord = draggedTeamRef.current;
       const targetRecord = teamByName.get(String(event.target.key));
@@ -784,6 +841,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         title: t('label.username'),
         dataIndex: 'name',
         key: 'username',
+        ellipsis: true,
         render: (_: unknown, record: User) =>
           record.name ? (
             <UserPopOverCard
@@ -799,8 +857,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'name',
+        ellipsis: true,
         render: (_: unknown, record: User) => (
-          <Link to={getUserPath(record.name ?? '')}>
+          <Link
+            className="tw:truncate tw:block tw:max-w-full"
+            to={getUserPath(record.name ?? '')}>
             {getEntityName(record)}
           </Link>
         ),
@@ -901,9 +962,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       }
       const updated = {
         ...team,
-        policies: (team.policies ?? []).filter(
-          (p) => p.id !== policyRef.id
-        ),
+        policies: (team.policies ?? []).filter((p) => p.id !== policyRef.id),
       };
       setIsSavingInline(true);
       try {
@@ -944,8 +1003,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (_: unknown, record: EntityReference) =>
-          getEntityName(record),
+        render: (_: unknown, record: EntityReference) => getEntityName(record),
       },
       {
         title: t('label.description'),
@@ -981,14 +1039,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   );
 
   const roleColumns = useMemo(
-    () =>
-      makeEntityColumns((ref) => setRemoveEntity({ ref, kind: 'role' })),
+    () => makeEntityColumns((ref) => setRemoveEntity({ ref, kind: 'role' })),
     [makeEntityColumns]
   );
 
   const policyColumns = useMemo(
-    () =>
-      makeEntityColumns((ref) => setRemoveEntity({ ref, kind: 'policy' })),
+    () => makeEntityColumns((ref) => setRemoveEntity({ ref, kind: 'policy' })),
     [makeEntityColumns]
   );
 
@@ -1010,6 +1066,19 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     );
   }, [childTeams, searchTerm]);
 
+  const filteredTeamUsers = useMemo(() => {
+    if (!usersSearchTerm) {
+      return teamUsers;
+    }
+    const lower = usersSearchTerm.toLowerCase();
+
+    return teamUsers.filter(
+      (u) =>
+        (u.name ?? '').toLowerCase().includes(lower) ||
+        getEntityName(u).toLowerCase().includes(lower)
+    );
+  }, [teamUsers, usersSearchTerm]);
+
   const roleItems = useMemo<SelectItemType[]>(
     () =>
       availableRoles.map((r) => ({
@@ -1028,12 +1097,13 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [availablePolicies]
   );
 
+  // Match the legacy team assets query (TeamDetailsV1): AssetsTabs expects the
+  // getTermQuery shape, and tableColumn hits must be excluded.
   const assetsQueryFilter = useMemo(
-    () => ({
-      query: {
-        bool: { must: [{ term: { 'owners.id': team?.id } }] },
-      },
-    }),
+    () =>
+      getTermQuery({ 'owners.id': team?.id ?? '' }, 'must', undefined, {
+        mustNotTerms: { entityType: ['tableColumn'] },
+      }),
     [team?.id]
   );
 
@@ -1067,7 +1137,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       isEditingName ? (
         <Box align="center" direction="row" gap={2}>
           <Input
-            autoFocus
             data-testid="display-name-input"
             size="sm"
             value={editNameValue}
@@ -1108,9 +1177,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             }
             size="sm"
             onPress={isCurrentUserMember ? handleLeaveTeam : handleJoinTeam}>
-            {isCurrentUserMember
-              ? t('label.leave-team')
-              : t('label.join-team')}
+            {isCurrentUserMember ? t('label.leave-team') : t('label.join-team')}
           </Button>
         )}
         <Dropdown.Root>
@@ -1206,8 +1273,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     return null;
   }
 
-  const canEditDescInline =
-    (canEditAll || canEditDescription) && !team.deleted;
+  const canEditDescInline = (canEditAll || canEditDescription) && !team.deleted;
 
   return (
     <Box
@@ -1223,7 +1289,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
       {/* Description (inline editor — no modal) */}
       <Card className="tw:mx-8 tw:mb-4">
-        <Card.Content>
+        <Card.Content className="tw:px-3">
           <Box direction="col" gap={2}>
             <Box align="center" direction="row" gap={2}>
               <Typography className="tw:text-primary" weight="medium">
@@ -1290,15 +1356,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           <Tabs.List size="sm" type="underline">
             {availableTabs.map((tab) => (
               <Tabs.Item id={tab} key={tab}>
-                {tab === 'teams'
-                  ? `${t('label.team-plural')} (${childTeams.length})`
-                  : tab === 'users'
-                    ? `${t('label.user-plural')} (${team.users?.length ?? 0})`
-                    : tab === 'assets'
-                      ? t('label.asset-plural')
-                      : tab === 'roles'
-                        ? `${t('label.role-plural')} (${team.defaultRoles?.length ?? 0})`
-                        : `${t('label.policy-plural')} (${team.policies?.length ?? 0})`}
+                {getTabLabel(tab, t, team, childTeams.length)}
               </Tabs.Item>
             ))}
           </Tabs.List>
@@ -1325,9 +1383,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                   }
                 }}>
                 <Table
-                  className={
-                    isTableHovered ? 'drop-over-table' : undefined
-                  }
+                  className={isTableHovered ? 'drop-over-table' : undefined}
                   columns={childTeamColumns}
                   data-testid="sub-teams-table"
                   dataSource={filteredChildTeams}
@@ -1366,9 +1422,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                         align="center"
                         className="tw:min-h-32 tw:relative"
                         justify="center">
-                        <EmptyPlaceholder
-                          title={t('label.no-data-found')}
-                        />
+                        <EmptyPlaceholder title={t('label.no-data-found')} />
                       </Box>
                     ),
                   }}
@@ -1417,56 +1471,52 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           {/* Users tab */}
           {activeTab === 'users' && (
             <Box direction="col" gap={3}>
-              {canEditAll && !team.deleted && (
-                <Box
-                  align="center"
-                  className="tw:pb-3"
-                  direction="row"
-                  gap={3}
-                  justify="end">
-                  <Button
-                    color="primary"
-                    data-testid="add-user"
-                    size="sm"
-                    onPress={() => setIsAddingUser(true)}>
-                    {t('label.add-entity', {
-                      entity: t('label.user'),
-                    })}
-                  </Button>
-                </Box>
-              )}
-              {isAddingUser && (
-                <Box
-                  className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
-                  direction="col"
-                  gap={4}>
-                  <Typography
-                    className="tw:text-primary"
-                    size="text-sm"
-                    weight="semibold">
-                    {t('label.add-entity', {
-                      entity: t('label.user'),
-                    })}
-                  </Typography>
-                  <UserTeamSelectableList
-                    hasPermission
-                    owner={[]}
-                    onUpdate={(users) => handleAddUsers(users ?? [])}
-                  />
-                  <Box direction="row" gap={3} justify="end">
-                    <Button
-                      color="tertiary"
-                      size="sm"
-                      onPress={() => setIsAddingUser(false)}>
-                      {t('label.cancel')}
-                    </Button>
-                  </Box>
-                </Box>
-              )}
               <Table
                 columns={userColumns}
                 data-testid="team-users-table"
-                dataSource={teamUsers}
+                dataSource={filteredTeamUsers}
+                extraTableFilters={
+                  <Box align="center" direction="row" gap={2}>
+                    {canEditAll && !team.deleted && (
+                      <UserTeamSelectableList
+                        hasPermission
+                        owner={team.users ?? []}
+                        onUpdate={(users) => handleAddUsers(users ?? [])}>
+                        <Button
+                          color="primary"
+                          data-testid="add-user"
+                          size="sm">
+                          {t('label.add-entity', { entity: t('label.user') })}
+                        </Button>
+                      </UserTeamSelectableList>
+                    )}
+                    <Dropdown.Root>
+                      <Dropdown.DotsButton />
+                      <Dropdown.Popover className="tw:w-min">
+                        <Dropdown.Menu>
+                          <Dropdown.Item
+                            data-testid="export-users"
+                            icon={Download01}
+                            onAction={handleUsersExport}>
+                            {t('label.export-entity', {
+                              entity: t('label.user-plural'),
+                            })}
+                          </Dropdown.Item>
+                          {isGroupType && canEditAll && !team.deleted && (
+                            <Dropdown.Item
+                              data-testid="import-users"
+                              icon={Upload01}
+                              onAction={() => setImportModalType('users')}>
+                              {t('label.import-entity', {
+                                entity: t('label.user-plural'),
+                              })}
+                            </Dropdown.Item>
+                          )}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
+                    </Dropdown.Root>
+                  </Box>
+                }
                 loading={isTeamUsersLoading}
                 locale={{
                   emptyText: (
@@ -1488,39 +1538,51 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                 }}
                 pagination={false}
                 rowKey="id"
+                searchProps={{
+                  placeholder: t('label.search-for-type', {
+                    type: t('label.user-lowercase'),
+                  }),
+                  searchValue: usersSearchTerm,
+                  onSearch: setUsersSearchTerm,
+                  typingInterval: 500,
+                }}
                 size="small"
               />
               {showUsersPagination && (
-                <MembersPagination
-                  currentPage={usersPage}
-                  isLoading={isTeamUsersLoading}
+                <PaginationCardWithControls
+                  page={usersPage}
                   pageSize={usersPageSize}
-                  paging={usersPaging}
-                  pagingHandler={({ currentPage: page, cursorType }) => {
-                    handleUsersPageChange(page);
-                    if (cursorType && usersPaging[cursorType]) {
-                      fetchTeamUsers({
-                        [cursorType === 'after' ? 'after' : 'before']:
-                          usersPaging[cursorType],
-                      });
-                    }
-                  }}
-                  onShowSizeChange={handleUsersPageSizeChange}
+                  pageSizeOptions={[
+                    PAGE_SIZE_BASE,
+                    PAGE_SIZE_MEDIUM,
+                    PAGE_SIZE_LARGE,
+                  ]}
+                  total={Math.max(
+                    1,
+                    Math.ceil((usersPaging.total ?? 0) / usersPageSize)
+                  )}
+                  onPageChange={handleTeamUsersPageNavigation}
+                  onPageSizeChange={handleUsersPageSizeChange}
                 />
               )}
             </Box>
           )}
 
-          {/* Assets tab (Group only) */}
+          {/* Assets tab (Group only) — full width: cancel the parent px-8 gutter */}
           {activeTab === 'assets' && isGroupType && (
-            <Box className="tw:w-full tw:h-full">
+            <Box className="tw:w-full tw:h-full tw:-mx-8">
               <AssetsTabs
+                assetCount={team.owns?.length ?? 0}
                 entityFqn={team.fullyQualifiedName ?? ''}
                 isSummaryPanelOpen={false}
+                noDataPlaceholder={t('message.adding-new-asset-to-team')}
                 permissions={permissions}
                 queryFilter={assetsQueryFilter}
-                type={AssetsOfEntity.MY_DATA}
-                onAddAsset={() => navigate(ROUTES.EXPLORE)}
+                type={AssetsOfEntity.TEAM}
+                onAddAsset={() => {
+                  navigate(ROUTES.EXPLORE);
+                  closePersonalSpace();
+                }}
                 onAssetClick={noop}
               />
             </Box>
@@ -1568,10 +1630,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                       )
                     }
                     onItemInserted={(key: Key) =>
-                      setSelectedNewRoles((prev) => [
-                        ...prev,
-                        String(key),
-                      ])
+                      setSelectedNewRoles((prev) => [...prev, String(key)])
                     }>
                     {(item) => (
                       <Autocomplete.Item id={item.id} key={item.id}>
@@ -1674,14 +1733,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                     })}
                     selectedItems={selectedNewPolicies.map((id) => {
                       const match = availablePolicies.find(
-                        (p) =>
-                          (p.fullyQualifiedName ?? p.name) === id
+                        (p) => (p.fullyQualifiedName ?? p.name) === id
                       );
 
                       return {
                         id,
-                        label:
-                          match?.displayName || match?.name || id,
+                        label: match?.displayName || match?.name || id,
                       };
                     })}
                     onItemCleared={(key: Key) =>
@@ -1690,10 +1747,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                       )
                     }
                     onItemInserted={(key: Key) =>
-                      setSelectedNewPolicies((prev) => [
-                        ...prev,
-                        String(key),
-                      ])
+                      setSelectedNewPolicies((prev) => [...prev, String(key)])
                     }>
                     {(item) => (
                       <Autocomplete.Item id={item.id} key={item.id}>
@@ -1796,6 +1850,22 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           )}
           onCancel={() => setRemoveEntity(undefined)}
           onDelete={handleConfirmRemove}
+        />
+      )}
+
+      {importModalType && (
+        <MembersImportModal
+          fqn={team.name}
+          importType={importModalType}
+          open={Boolean(importModalType)}
+          onCancel={() => setImportModalType(undefined)}
+          onSuccess={() => {
+            setImportModalType(undefined);
+            fetchTeam();
+            if (activeTab === 'users') {
+              fetchTeamUsers();
+            }
+          }}
         />
       )}
     </Box>

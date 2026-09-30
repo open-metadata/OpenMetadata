@@ -96,12 +96,15 @@ jest.mock(
   })
 );
 
-jest.mock(
-  '../../../../../common/DomainLabel/DomainLabel.component',
-  () => ({
-    DomainLabel: () => <div data-testid="domain-label" />,
-  })
-);
+jest.mock('../../../../../common/DomainSelect/DomainSelect', () => ({
+  __esModule: true,
+  default: () => <div data-testid="domain-select" />,
+}));
+
+jest.mock('../../../../../common/PersonaSelect/PersonaSelect', () => ({
+  __esModule: true,
+  default: () => <div data-testid="persona-select" />,
+}));
 
 jest.mock(
   '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component',

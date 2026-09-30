@@ -12,14 +12,14 @@
  */
 
 import {
-    Box,
-    Button,
-    FieldProp,
-    FieldTypes,
-    FormFields,
-    FormItemLabel,
-    HookForm,
-    Typography
+  Box,
+  Button,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  FormItemLabel,
+  HookForm,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -28,16 +28,16 @@ import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../../../constants/regex.constants';
 import {
-    CreateTeam,
-    TeamType
+  CreateTeam,
+  TeamType,
 } from '../../../../../../generated/api/teams/createTeam';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { createTeam, getTeamByName } from '../../../../../../rest/teamsAPI';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import { getTeamOptionsFromType } from '../../../../../../utils/TeamUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';

@@ -23,7 +23,7 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
 
   return (
     <Box
-      className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pt-2 tw:px-8 tw:pb-8"
+      className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:px-8 tw:pb-8"
       data-testid="members-landing">
       {LANDING_CARDS.map((card) => {
         const Icon = card.icon;

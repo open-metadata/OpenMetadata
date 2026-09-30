@@ -14,11 +14,13 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
   FileUploadDropZone,
+  Modal,
+  ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SOCKET_EVENTS } from '../../../../../../constants/constants';
@@ -31,35 +33,40 @@ import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
 } from '../../../../../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
-import { importTeam } from '../../../../../../rest/teamsAPI';
+import { importTeam, importUserInTeam } from '../../../../../../rest/teamsAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import { TeamImportResult } from '../../../../../Settings/Team/TeamImportResult/TeamImportResult.component';
+import { UserImportResult } from '../../../../../Settings/Team/UserImportResult/UserImportResult.component';
 
-interface MembersImportFormProps {
+export type MembersImportType = 'teams' | 'users';
+
+interface MembersImportModalProps {
   fqn: string;
+  importType: MembersImportType;
+  open: boolean;
   onCancel: () => void;
   onSuccess: () => void;
 }
 
-const UploadStep: FC<{
+const UploadContent: FC<{
+  entity: string;
   fileName: string;
-  onCancel: () => void;
   onDropFiles: (files: FileList) => void;
   onUnsupported: () => void;
-}> = ({ fileName, onCancel, onDropFiles, onUnsupported }) => {
+}> = ({ entity, fileName, onDropFiles, onUnsupported }) => {
   const { t } = useTranslation();
 
   return (
-    <>
+    <Box direction="col" gap={4}>
       <Typography className="tw:text-secondary" size="text-sm">
-        {t('message.import-entity-help', { entity: t('label.team') })}
+        {t('message.import-entity-help', { entity })}
       </Typography>
       <FileUploadDropZone
         accept=".csv"
         allowsMultiple={false}
         clickToUploadLabel={t('label.click-to-upload')}
         hint={t('label.csv')}
-        input-data-testid="team-import-input"
+        input-data-testid="members-import-input"
         orDragAndDropLabel={t('label.or-drag-and-drop')}
         onDropFiles={onDropFiles}
         onDropUnacceptedFiles={onUnsupported}
@@ -73,96 +80,114 @@ const UploadStep: FC<{
           {fileName}
         </Typography>
       )}
-      <Box direction="row" gap={2} justify="end">
-        <Button
-          color="tertiary"
-          data-testid="cancel-import"
-          size="sm"
-          onPress={onCancel}>
-          {t('label.cancel')}
-        </Button>
-      </Box>
-    </>
+    </Box>
   );
 };
 
-const PreviewStep: FC<{
+const PreviewContent: FC<{
+  importType: MembersImportType;
   result: CSVImportResult;
-  isImporting: boolean;
-  onBack: () => void;
-  onImport: () => void;
-}> = ({ result, isImporting, onBack, onImport }) => {
+}> = ({ importType, result }) => {
   const { t } = useTranslation();
   const isFailure = result.status === Status.Failure;
   const isAborted = result.status === Status.Aborted;
 
+  if (isAborted) {
+    return (
+      <Alert
+        data-testid="import-aborted"
+        title={result.abortReason ?? t('label.aborted')}
+        variant="error"
+      />
+    );
+  }
+
   return (
-    <>
-      {isAborted ? (
-        <Alert
-          data-testid="import-aborted"
-          title={result.abortReason ?? t('label.aborted')}
-          variant="error"
-        />
+    <Box direction="col" gap={4}>
+      <Alert
+        data-testid="import-summary"
+        title={t('message.import-result-summary', {
+          passed: result.numberOfRowsPassed ?? 0,
+          failed: result.numberOfRowsFailed ?? 0,
+          processed: result.numberOfRowsProcessed ?? 0,
+        })}
+        variant={isFailure ? 'error' : 'success'}
+      />
+      {importType === 'users' ? (
+        <UserImportResult csvImportResult={result} />
       ) : (
-        <>
-          <Alert
-            data-testid="import-summary"
-            title={t('message.import-result-summary', {
-              passed: result.numberOfRowsPassed ?? 0,
-              failed: result.numberOfRowsFailed ?? 0,
-              processed: result.numberOfRowsProcessed ?? 0,
-            })}
-            variant={isFailure ? 'error' : 'success'}
-          />
-          <TeamImportResult csvImportResult={result} />
-        </>
+        <TeamImportResult csvImportResult={result} />
       )}
-      <Box direction="row" gap={2} justify="end">
+    </Box>
+  );
+};
+
+const ImportFooter: FC<{
+  activeStep: 1 | 2 | 3;
+  isImporting: boolean;
+  canConfirm: boolean;
+  onBack: () => void;
+  onCancel: () => void;
+  onImport: () => void;
+  onDone: () => void;
+}> = ({
+  activeStep,
+  isImporting,
+  canConfirm,
+  onBack,
+  onCancel,
+  onImport,
+  onDone,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Dialog.Footer>
+      {activeStep === 2 && (
         <Button
-          color="tertiary"
+          color="secondary"
           data-testid="back-import"
           isDisabled={isImporting}
           size="sm"
           onPress={onBack}>
           {t('label.back')}
         </Button>
-        {!isFailure && !isAborted && (
-          <Button
-            color="primary"
-            data-testid="confirm-import"
-            isLoading={isImporting}
-            size="sm"
-            onPress={onImport}>
-            {t('label.import')}
-          </Button>
-        )}
-      </Box>
-    </>
-  );
-};
-
-const DoneStep: FC<{ onView: () => void }> = ({ onView }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Box align="center" direction="col" gap={4} justify="center">
-      <Typography className="tw:text-primary" weight="semibold">
-        {t('message.entity-imported-successfully', { entity: t('label.team') })}
-      </Typography>
+      )}
       <Button
-        color="primary"
-        data-testid="view-import"
+        color="secondary"
+        data-testid="cancel-import"
+        isDisabled={isImporting}
         size="sm"
-        onPress={onView}>
-        {t('label.view')}
+        onPress={onCancel}>
+        {t('label.cancel')}
       </Button>
-    </Box>
+      {canConfirm && (
+        <Button
+          color="primary"
+          data-testid="confirm-import"
+          isLoading={isImporting}
+          size="sm"
+          onPress={onImport}>
+          {t('label.import')}
+        </Button>
+      )}
+      {activeStep === 3 && (
+        <Button
+          color="primary"
+          data-testid="done-import"
+          size="sm"
+          onPress={onDone}>
+          {t('label.done')}
+        </Button>
+      )}
+    </Dialog.Footer>
   );
 };
 
-const MembersImportForm: FC<MembersImportFormProps> = ({
+const MembersImportModal: FC<MembersImportModalProps> = ({
   fqn,
+  importType,
+  open,
   onCancel,
   onSuccess,
 }) => {
@@ -176,6 +201,16 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const activeJobRef = useRef<CSVImportJobType>();
 
+  const entity = importType === 'users' ? t('label.user') : t('label.team');
+
+  const runImport = useCallback(
+    (data: string, dryRun: boolean) =>
+      importType === 'users'
+        ? importUserInTeam(fqn, data, dryRun)
+        : importTeam(fqn, data, dryRun),
+    [fqn, importType]
+  );
+
   const handleDropFiles = useCallback(
     (files: FileList) => {
       const file = files[0];
@@ -188,7 +223,7 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
         setFileName(file.name);
         setCsvContent(content);
         try {
-          const response = await importTeam(fqn, content, true);
+          const response = await runImport(content, true);
           activeJobRef.current = {
             ...response,
             type: 'initialLoad',
@@ -201,27 +236,24 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
       reader.onerror = () => showErrorToast(t('server.unexpected-error'));
       reader.readAsText(file);
     },
-    [fqn, t]
+    [runImport, t]
   );
 
   const handleUnsupportedFile = useCallback(
-    () =>
-      showErrorToast(
-        t('message.invalid-file-format', { formats: '.csv' })
-      ),
+    () => showErrorToast(t('message.invalid-file-format', { formats: '.csv' })),
     [t]
   );
 
   const handleImport = useCallback(async () => {
     setIsImporting(true);
     try {
-      const response = await importTeam(fqn, csvContent, false);
+      const response = await runImport(csvContent, false);
       activeJobRef.current = { ...response, type: 'onValidate' };
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsImporting(false);
     }
-  }, [fqn, csvContent]);
+  }, [runImport, csvContent]);
 
   const handleBack = useCallback(() => {
     setCsvImportResult(undefined);
@@ -238,10 +270,7 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
       }
       const response = JSON.parse(payload) as CSVImportAsyncWebsocketResponse;
       const job = activeJobRef.current;
-      if (
-        response.jobId !== job?.jobId ||
-        response.status !== 'COMPLETED'
-      ) {
+      if (response.jobId !== job?.jobId || response.status !== 'COMPLETED') {
         return;
       }
       setCsvImportResult(response.result);
@@ -259,33 +288,59 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
     };
   }, [socket]);
 
+  const canConfirmImport =
+    activeStep === 2 &&
+    csvImportResult?.status !== Status.Failure &&
+    csvImportResult?.status !== Status.Aborted;
+
   return (
-    <Box
-      className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:py-4"
-      data-testid="team-import"
-      direction="col"
-      gap={4}>
-      {activeStep === 1 && (
-        <UploadStep
-          fileName={fileName}
-          onCancel={onCancel}
-          onDropFiles={handleDropFiles}
-          onUnsupported={handleUnsupportedFile}
-        />
-      )}
+    <ModalOverlay
+      isDismissable={!isImporting}
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && !isImporting && onCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          title={t('label.import-entity', { entity })}
+          width={720}
+          onClose={onCancel}>
+          <Dialog.Content>
+            <div data-testid="members-import-modal">
+              {activeStep === 1 && (
+                <UploadContent
+                  entity={entity}
+                  fileName={fileName}
+                  onDropFiles={handleDropFiles}
+                  onUnsupported={handleUnsupportedFile}
+                />
+              )}
+              {activeStep === 2 && csvImportResult && (
+                <PreviewContent
+                  importType={importType}
+                  result={csvImportResult}
+                />
+              )}
+              {activeStep === 3 && (
+                <Typography className="tw:text-primary" weight="semibold">
+                  {t('message.entity-imported-successfully', { entity })}
+                </Typography>
+              )}
+            </div>
+          </Dialog.Content>
 
-      {activeStep === 2 && !isUndefined(csvImportResult) && (
-        <PreviewStep
-          isImporting={isImporting}
-          result={csvImportResult}
-          onBack={handleBack}
-          onImport={handleImport}
-        />
-      )}
-
-      {activeStep === 3 && <DoneStep onView={onSuccess} />}
-    </Box>
+          <ImportFooter
+            activeStep={activeStep}
+            canConfirm={canConfirmImport}
+            isImporting={isImporting}
+            onBack={handleBack}
+            onCancel={onCancel}
+            onDone={onSuccess}
+            onImport={handleImport}
+          />
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 
-export default MembersImportForm;
+export default MembersImportModal;

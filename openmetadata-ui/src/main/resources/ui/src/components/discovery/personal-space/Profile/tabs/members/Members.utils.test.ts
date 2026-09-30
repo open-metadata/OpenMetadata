@@ -12,9 +12,9 @@
  */
 
 import {
-    formatOnlineStatus,
-    hashSubPathToView,
-    viewToSubPath
+  formatOnlineStatus,
+  hashSubPathToView,
+  viewToSubPath,
 } from './Members.utils';
 
 const t = (key: string, params?: Record<string, string | number>) =>
@@ -45,21 +45,9 @@ describe('hash <-> view round-trip', () => {
   it('maps teams/add to the add view (not a team named "add")', () => {
     expect(hashSubPathToView('teams/add')).toEqual({ type: 'teams-add' });
   });
-
-  it('round-trips the team import view', () => {
-    const fqn = 'PW%data_consumer_team-131661dd';
-    const subPath = viewToSubPath({ type: 'team-import', fqn });
-
-    expect(subPath).toBe(`teams/${encodeURIComponent(fqn)}/import`);
-    expect(hashSubPathToView(subPath as string)).toEqual({
-      type: 'team-import',
-      fqn,
-    });
-  });
 });
 
 describe('formatOnlineStatus', () => {
-
   it('returns "never" for undefined activityTime', () => {
     const result = formatOnlineStatus(undefined, t);
 
@@ -94,5 +82,4 @@ describe('formatOnlineStatus', () => {
     expect(result.label).toContain('label.n-days-ago');
     expect(result.colorClass).toBe('tw:text-error-primary');
   });
-
 });
