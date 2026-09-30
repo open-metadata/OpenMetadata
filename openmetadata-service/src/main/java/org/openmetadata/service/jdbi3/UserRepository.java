@@ -1744,6 +1744,15 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /** Handles entity updated from PUT and POST operation. */
+  /**
+   * Evicts a cached subject twice: now, so this request reads its own write, and again after the
+   * commit, so a concurrent load that captured the pre-commit row cannot outlive the update.
+   */
+  private static void evictNowAndAfterCommit(Runnable evict) {
+    evict.run();
+    PostCommitActionQueue.runOrDefer(evict);
+  }
+
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, Operation operation) {
       super(original, updated, operation);
@@ -1851,9 +1860,12 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
       compareAndUpdate(
           "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
-      compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
       compareAndUpdateAny(
-          () -> SubjectCache.invalidateUserContext(updated.getName()),
+          () -> evictNowAndAfterCommit(() -> SubjectCache.invalidateUser(updated.getName())),
+          "roles",
+          "teams");
+      compareAndUpdateAny(
+          () -> evictNowAndAfterCommit(() -> SubjectCache.invalidateUserContext(updated.getName())),
           "personas",
           "defaultPersona",
           "defaultDomain");
