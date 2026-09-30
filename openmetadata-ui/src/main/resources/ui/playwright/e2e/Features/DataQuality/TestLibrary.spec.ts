@@ -15,7 +15,6 @@ import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
   redirectToHomePage,
-  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../../utils/common';
@@ -29,7 +28,7 @@ const TEST_DEFINITION_DESCRIPTION =
   'Aaro This is a custom test definition for E2E testing';
 
 // Only for the multi-select combobox — its popup is typing-driven, so
-// selectOptionWithRetry's aria-expanded guard does not apply.
+// chooseSelectOption's aria-expanded guard does not apply.
 const selectOptionWithMouse = async (page: Page, option: Locator) => {
   await expect(option).toBeVisible();
 
@@ -52,12 +51,17 @@ const selectOptionWithMouse = async (page: Page, option: Locator) => {
 const selectEntityType = async (page: Page, entityType: string) => {
   const entityTypeTrigger = page.getByTestId('entity-type').getByRole('button');
 
-  await selectOptionWithRetry(
-    entityTypeTrigger,
-    page.getByRole('option', { name: entityType, exact: true })
-  );
+  await entityTypeTrigger.focus();
+  await expect(entityTypeTrigger).toBeFocused();
+  await entityTypeTrigger.click();
+  const entityTypeOption = page.getByRole('option', {
+    name: entityType,
+    exact: true,
+  });
+  await expect(entityTypeOption).toBeVisible();
+  await entityTypeOption.click();
 
-  await expect(entityTypeTrigger).toContainText(entityType);
+  await expect(entityTypeTrigger).toHaveText(entityType);
 };
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -72,7 +76,7 @@ test.describe(
 
     test('should navigate to Test Library page', async ({ page }) => {
       // Navigate directly to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Wait for page to load
       await page.getByTestId('test-definition-table').waitFor({
@@ -94,7 +98,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       await responsePromise;
 
       // Verify table is displayed
@@ -109,7 +113,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       await responsePromise;
 
       // Verify at least one test definition is displayed
@@ -125,7 +129,7 @@ test.describe(
     }) => {
       await test.step('Create a new test definition', async () => {
         // Navigate to Test Library
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         const testDefinitionFormDoc = page.waitForResponse(
           '/locales/en-US/OpenMetadata/TestDefinitionForm.md'
@@ -340,7 +344,7 @@ test.describe(
 
     test('should validate required fields in create form', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -357,7 +361,9 @@ test.describe(
       await expect(page.getByTestId('test-definition-form-body')).toBeVisible();
     });
 
-    test('should require supported data types only when OpenMetadata platform is selected', async ({
+    // Leaving supported data types empty means "all data types", so the form must
+    // submit without them on any platform, OpenMetadata included. See issue #27718.
+    test('should create a test definition without supported data types', async ({
       page,
     }) => {
       test.slow();
@@ -365,54 +371,21 @@ test.describe(
 
       try {
         await test.step('Open create form', async () => {
-          await page.goto('/test-library');
+          await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
           await page.getByTestId('add-test-definition-button').click();
           await page
             .getByTestId('test-definition-form-body')
             .waitFor({ state: 'visible' });
         });
 
-        await test.step('Verify supported data types is required with default OpenMetadata platform', async () => {
-          // Fill required fields except supportedDataTypes
+        await test.step('Submit with the default OpenMetadata platform and no supported data types', async () => {
+          // Fill every required field, leaving supportedDataTypes untouched
           await page
             .getByTestId('test-definition-name')
             .locator('input')
             .fill(`validation-test-${uuid()}`);
           await selectEntityType(page, 'TABLE');
 
-          // Submit the form
-          await page.getByTestId('save-test-definition').click();
-
-          // Expect validation error on supportedDataTypes
-          await expect(page.getByTestId('supported-data-types')).toBeVisible();
-        });
-
-        await test.step('Remove OpenMetadata and select only dbt — field should not be required', async () => {
-          // Remove OpenMetadata from testPlatforms via its chip's remove button,
-          // then assert it is gone so a mis-matched selector can't silently no-op.
-          await page
-            .getByTestId('test-platforms')
-            .locator('div')
-            .filter({ hasText: 'OpenMetadata' })
-            .getByRole('button')
-            .first()
-            .click();
-          await expect(
-            page
-              .getByTestId('test-platforms')
-              .getByText('OpenMetadata', { exact: true })
-          ).toHaveCount(0);
-
-          // Add dbt
-          await selectOptionWithRetry(
-            page.getByTestId('test-platforms'),
-            page.getByRole('option', { name: 'dbt', exact: true })
-          );
-
-          // Close dropdown
-          await page.keyboard.press('Escape');
-
-          // Submit the form — supportedDataTypes should no longer block submission
           const testDefinitionResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/dataQuality/testDefinitions') &&
@@ -442,7 +415,7 @@ test.describe(
 
     test('should cancel form and close drawer', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -477,7 +450,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       const response = await responsePromise;
       const data = await response.json();
 
@@ -496,7 +469,7 @@ test.describe(
 
     test('should display test platform badges correctly', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Wait for table to load
       await page.getByTestId('test-definition-table').waitFor({
@@ -510,17 +483,35 @@ test.describe(
       expect(tagCount).toBeGreaterThan(0);
     });
 
-    test('should not show edit and delete buttons for system test definitions', async ({
+    test('should keep system test definitions editable but not deletable', async ({
       page,
     }) => {
       const systemTestDef = await findSystemTestDefinition(page);
 
-      // Verify edit button does not exist for system test definition
+      // The form opens for a system test definition because its data quality dimension can be
+      // reclassified — every other field stays read-only — but it can never be deleted.
       const editButton = page.getByTestId(
         `edit-test-definition-${systemTestDef.name}`
       );
 
-      await expect(editButton).toBeDisabled();
+      await expect(editButton).toBeEnabled();
+
+      // An enabled edit button on its own says nothing about what the form lets through, so
+      // open it and check that a field other than the dimension is still read-only.
+      await editButton.click();
+      await page
+        .getByTestId('test-definition-form-body')
+        .waitFor({ state: 'visible' });
+
+      await expect(page.locator('[id="root/entityType"]')).toBeDisabled();
+      await expect(
+        page.getByTestId('data-quality-dimension')
+      ).not.toBeDisabled();
+
+      await page.getByRole('button', { name: /Cancel/i }).click();
+      await expect(
+        page.getByTestId('test-definition-form-body')
+      ).not.toBeVisible();
 
       // Verify delete button does not exist for system test definition
       const deleteButton = page.getByTestId(
@@ -586,7 +577,7 @@ test.describe(
           response.url().includes('/api/v1/dataQuality/testDefinitions') &&
           response.request().method() === 'GET'
       );
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       const response = await responsePromise;
       const data = await response.json();
 
@@ -619,7 +610,7 @@ test.describe(
       let createdTestDisplayName = EXTERNAL_TEST_DISPLAY_NAME;
 
       await test.step('Create external test definition', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -765,9 +756,14 @@ test.describe(
           exact: true,
         });
 
-        await selectOptionWithRetry(dimensionTrigger, accuracyOption);
-
-        await expect(dimensionTrigger).toContainText('Accuracy');
+        await dimensionTrigger.focus();
+        await expect(dimensionTrigger).toBeFocused();
+        await dimensionTrigger.click();
+        await expect(accuracyOption).toBeVisible();
+        await accuracyOption.click();
+        // The field's hidden native select contains every option's text even
+        // when empty, so only the visible trigger proves selection succeeded.
+        await expect(dimensionTrigger).toHaveText('Accuracy');
 
         // Save without providing parameter dataType or description — both are optional.
         const patchResponse = page.waitForResponse(
@@ -825,12 +821,16 @@ test.describe(
     test('should handle supported services field correctly', async ({
       page,
     }) => {
+      // Creates a test definition, filters the library, edits, deletes —
+      // 4+ heavy modal round-trips. Under load the 60 s default is tight.
+      test.slow();
+
       const SUPPORTED_SERVICES_TEST_NAME = `AaaaServiceFilterTest${uuid()}`;
       const SUPPORTED_SERVICES_DISPLAY_NAME = `Aaaa Service Filter Test ${uuid()}`;
       let createdTestId: string;
 
       await test.step('Create test definition with specific supported services', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -1170,7 +1170,7 @@ test.describe(
       const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
 
       await test.step('Create a test definition starting with "z"', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('add-test-definition-button').click();
         await expect(
           page.getByTestId('test-definition-form-body')

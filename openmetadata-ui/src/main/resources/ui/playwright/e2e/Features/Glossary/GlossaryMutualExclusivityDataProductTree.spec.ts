@@ -36,6 +36,7 @@ test.describe('Glossary Mutual Exclusivity Feature - Data Product Tree', () => {
     test('ME-R01: Children of ME parent should render Radio buttons', async ({
       page,
     }) => {
+      test.slow(); // drawer-settle + ES-indexing retries can each take up to 30 s
       const { apiContext, afterAction } = await getApiContext(page);
       const domain = new Domain();
       const glossary = new Glossary();
@@ -80,6 +81,7 @@ test.describe('Glossary Mutual Exclusivity Feature - Data Product Tree', () => {
     test('ME-R02: Children of non-ME parent should render Checkboxes', async ({
       page,
     }) => {
+      test.slow(); // drawer-settle + ES-indexing retries can each take up to 30 s
       const { apiContext, afterAction } = await getApiContext(page);
       const domain = new Domain();
       const glossary = new Glossary();
@@ -126,6 +128,7 @@ test.describe('Glossary Mutual Exclusivity Feature - Data Product Tree', () => {
     test('ME-S01: Selecting ME child should auto-deselect siblings', async ({
       page,
     }) => {
+      test.slow(); // drawer-settle + ES-indexing retries can each take up to 30 s
       const { apiContext, afterAction } = await getApiContext(page);
       const domain = new Domain();
       const glossary = new Glossary();
@@ -189,6 +192,7 @@ test.describe('Glossary Mutual Exclusivity Feature - Data Product Tree', () => {
     test('ME-S02: Can select multiple children under non-ME parent', async ({
       page,
     }) => {
+      test.slow(); // drawer-settle + ES-indexing retries can each take up to 30 s
       const { apiContext, afterAction } = await getApiContext(page);
       const domain = new Domain();
       const glossary = new Glossary();
@@ -253,6 +257,7 @@ test.describe('Glossary Mutual Exclusivity Feature - Data Product Tree', () => {
     test('ME-S03: Can deselect currently selected ME term', async ({
       page,
     }) => {
+      test.slow(); // drawer-settle + ES-indexing retries can each take up to 30 s
       const { apiContext, afterAction } = await getApiContext(page);
       const domain = new Domain();
       const glossary = new Glossary();
@@ -298,6 +303,7 @@ test.describe('Glossary Mutual Exclusivity Feature - Data Product Tree', () => {
     test('ME-T01: Apply single ME glossary term and save Data Product', async ({
       page,
     }) => {
+      test.slow(); // drawer-settle + ES-indexing retries can each take up to 30 s
       const { apiContext, afterAction } = await getApiContext(page);
       const domain = new Domain();
       const glossary = new Glossary();
@@ -365,6 +371,7 @@ test.describe('Glossary Mutual Exclusivity Feature - Data Product Tree', () => {
     test('ME-H01: ME glossary (top level) children render Radio with ME behavior', async ({
       page,
     }) => {
+      test.slow(); // drawer-settle + ES-indexing retries can each take up to 30 s
       const { apiContext, afterAction } = await getApiContext(page);
       const domain = new Domain();
 

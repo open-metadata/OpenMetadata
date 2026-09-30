@@ -39,6 +39,7 @@ import {
   connectEdgeBetweenNodesViaAPI,
   fitToScreen,
   openImpactAnalysisTab,
+  performZoomOut,
   rearrangeNodes,
   setLineageDepthAndVerify,
   visitLineageTab,
@@ -132,12 +133,22 @@ test.describe('Lineage Filters', () => {
   const [depth1Entity, ...depth2ndEntities] = entities;
 
   test.beforeAll(async ({ browser }) => {
+    // Explicit hook budget: 15 sequential entity creations (each also creating
+    // its own service), then 15 lineage edges, then the index polling — well
+    // past the 60s default. Do NOT use test.slow() here; an explicit number
+    // keeps a failing attempt from grinding, per ExplorePageRightPanel.
+    test.setTimeout(240_000);
+
     const { apiContext, afterAction } = await getDefaultAdminAPIContext(
       browser
     );
 
     await lineageEntity.create(apiContext);
-    await Promise.all(entities.map((entity) => entity.create(apiContext)));
+    // Sequential: 15 entities each also create their own service, and firing
+    // them in parallel makes the server reset connections (socket hang up).
+    for (const entity of entities) {
+      await entity.create(apiContext);
+    }
 
     await connectEdgeBetweenNodesViaAPI(
       apiContext,
@@ -360,7 +371,7 @@ test.describe('Lineage Filters', () => {
         }
 
         await test.step('Verify filters working for Lineage tab', async () => {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
           await setLineageDepthAndVerify(page, 2, 2);
           await waitForAllLoadersToDisappear(page);
@@ -368,10 +379,17 @@ test.describe('Lineage Filters', () => {
           await page.getByTestId('filters-button').click();
           await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
-          await page.getByTitle(filterValue).click();
+          await page
+            .getByTestId('drop-down-menu')
+            .getByTestId('loader')
+            .waitFor({ state: 'hidden' });
+          await page
+            .getByTestId('drop-down-menu')
+            .getByText(filterValue)
+            .click();
 
           const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await lineageRes;
 
           await rearrangeNodes(page);
@@ -412,12 +430,15 @@ test.describe('Lineage Filters', () => {
             .getByTestId('drop-down-menu')
             .getByTestId('loader')
             .waitFor({ state: 'hidden' });
-          await page.getByTitle(filterValue).click();
+          await page
+            .getByTestId('drop-down-menu')
+            .getByText(filterValue)
+            .click();
 
           const lineageRes = page.waitForResponse(
             '/api/v1/lineage/getLineageByEntityCount?*'
           );
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await lineageRes;
 
           for (const entity of entitiesToShow) {
@@ -472,6 +493,13 @@ test.describe('Lineage Filters', () => {
   });
 
   test('Verify Impact Analysis service filter selection', async ({ page }) => {
+    // The last of this file's four service-filter tests to get a longer slot,
+    // and the only reason it stands out is that it was missed: its three
+    // siblings already call slow() and all three landed at 62.5s/71.0s/76.6s
+    // in the same run where this one timed out at 64.5s. Same shape of work,
+    // same band -- the 60s default simply does not fit any of the four.
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
@@ -525,12 +553,9 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
+          .getByText(serviceName)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceName).click();
 
         const entitiesToShow = [entity];
 
@@ -552,7 +577,7 @@ test.describe('Lineage Filters', () => {
           );
         });
 
-        await page.getByRole('button', { name: 'Update' }).click();
+        await page.getByTestId('update-btn').click();
         expect((await lineageResponse).status()).toBe(200);
 
         for (const entity of entitiesToShow) {
@@ -629,12 +654,9 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
+          .getByText(serviceName)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceName).click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
 
@@ -644,8 +666,8 @@ test.describe('Lineage Filters', () => {
           (_, idx) => idx !== index
         );
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await expect(page.getByRole('button', { name: 'Update' })).toBeHidden();
+        await page.getByTestId('update-btn').click();
+        await expect(page.getByTestId('update-btn')).toBeHidden();
 
         await rearrangeNodes(page);
         await fitToScreen(page);
@@ -680,6 +702,15 @@ test.describe('Lineage Filters', () => {
   test('Verify Impact Analysis service type filter selection', async ({
     page,
   }) => {
+    // Measured from a failing run's trace: the beforeEach costs 17.8s and each
+    // of the 13 service-type selections ~3.2s, so the body alone is 41.8s --
+    // 59.6s against a 60s budget, which is why this times out while its
+    // siblings (57.6s) squeak through. The work is inherent to asserting every
+    // entity type, so give this one test the longer slot rather than trimming
+    // coverage. Scoped to the test, not the hook: a `beforeEach` slow() would
+    // hand every test in the file a budget it has not earned.
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
@@ -708,12 +739,9 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
+          .getByText(serviceType)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceType).click();
 
         const entitiesToShow = [entity];
 
@@ -728,7 +756,7 @@ test.describe('Lineage Filters', () => {
         const lineageRes = page.waitForResponse(
           '/api/v1/lineage/getLineageByEntityCount?*'
         );
-        await page.getByRole('button', { name: 'Update' }).click();
+        await page.getByTestId('update-btn').click();
         await lineageRes;
 
         for (const entity of entitiesToShow) {
@@ -788,12 +816,9 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
+          .getByText(serviceType)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceType).click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
 
@@ -808,7 +833,7 @@ test.describe('Lineage Filters', () => {
             get(record, 'entityResponseData.serviceType', '').toLowerCase()
         );
 
-        await page.getByRole('button', { name: 'Update' }).click();
+        await page.getByTestId('update-btn').click();
         await waitForAllLoadersToDisappear(page);
 
         await rearrangeNodes(page);
@@ -900,10 +925,14 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.database.name',
         ''
       );
-      await page.getByTitle(databaseName).click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('loader')
+        .waitFor({ state: 'hidden' });
+      await page.getByTestId('drop-down-menu').getByText(databaseName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await lineageRes;
 
       await rearrangeNodes(page);
@@ -945,10 +974,17 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.databaseSchema.name',
         ''
       );
-      await page.getByTitle(databaseSchemaName).click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('loader')
+        .waitFor({ state: 'hidden' });
+      await page
+        .getByTestId('drop-down-menu')
+        .getByText(databaseSchemaName)
+        .click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await lineageRes;
 
       await rearrangeNodes(page);
@@ -990,10 +1026,14 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.columns[0].name',
         ''
       );
-      await page.getByTitle(columnName).click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('loader')
+        .waitFor({ state: 'hidden' });
+      await page.getByTestId('drop-down-menu').getByText(columnName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await lineageRes;
 
       await rearrangeNodes(page);
@@ -1029,6 +1069,9 @@ test.describe('Lineage Filters', () => {
     const searchSelect = page.getByTestId('lineage-search');
     await expect(searchSelect).toBeVisible();
     const topicEntity = entities[1];
+    const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
+    await performZoomOut(page);
+    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 
     await searchSelect.click();
     await page
@@ -1036,8 +1079,6 @@ test.describe('Lineage Filters', () => {
       .getByRole('combobox')
       .fill(topicEntity.entity.name);
 
-    const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
     await page.getByTestId(`option-${topicFqn}`).click();
 
     await page.locator('.lineage-entity-panel').waitFor();

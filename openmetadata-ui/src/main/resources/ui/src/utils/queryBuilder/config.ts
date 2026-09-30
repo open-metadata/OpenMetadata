@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type {
-  Config,
-  Conjunctions,
-  RenderSettings,
-} from '@react-awesome-query-builder/ui';
+import type { Config, Conjunctions } from '@react-awesome-query-builder/ui';
 import { isArray } from 'lodash';
 import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -31,9 +27,6 @@ import {
   QUERY_BUILDER_CONJUNCTION_MODE,
   QUERY_BUILDER_GROUP_MODE,
 } from './types';
-
-// Button types that create or destroy a user-authored bracket.
-const GROUP_BUTTON_TYPES = new Set(['addGroup', 'delGroup']);
 
 // A caller's escape hatch.
 export interface QueryBuilderConfigOverrides
@@ -55,21 +48,6 @@ interface BuildQueryBuilderConfigOptions extends QueryBuilderConfigModes {
   // Merged last, so a caller can always win.
   configOverrides?: QueryBuilderConfigOverrides;
 }
-
-// Wraps a button renderer so flat mode cannot produce a bracket, whichever renderer the caller supplied.
-const withGroupModeButtons = (
-  renderButton: RenderSettings['renderButton'],
-  groupMode: GroupMode
-): RenderSettings['renderButton'] => {
-  if (groupMode === QUERY_BUILDER_GROUP_MODE.NESTED) {
-    return renderButton;
-  }
-
-  return ((props, ctx) =>
-    GROUP_BUTTON_TYPES.has(props?.type)
-      ? null
-      : renderButton?.(props, ctx)) as RenderSettings['renderButton'];
-};
 
 // Restricts the AND/OR control to a single conjunction when the caller has fixed it.
 const applyConjunctionMode = (
@@ -99,13 +77,11 @@ export const buildQueryBuilderConfig = ({
   configOverrides,
   showLabels,
   useFriendlyOperatorLabels,
-  renderButton,
 }: BuildQueryBuilderConfigOptions): Config => {
   const indexes = isArray(searchIndex) ? searchIndex : [searchIndex];
   const modes: QueryBuilderConfigModes = {
     showLabels,
     useFriendlyOperatorLabels,
-    renderButton,
   };
 
   const base = (
@@ -134,7 +110,6 @@ export const buildQueryBuilderConfig = ({
         omEntityType: entityType === EntityType.ALL ? undefined : entityType,
       } as Record<string, unknown>),
       canRegroup: groupMode === QUERY_BUILDER_GROUP_MODE.NESTED,
-      renderButton: withGroupModeButtons(baseSettings.renderButton, groupMode),
       ...(readonly ? READONLY_SETTINGS : {}),
       ...configOverrides?.settings,
     },

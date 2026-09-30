@@ -89,7 +89,7 @@ export const styles = sortCx({
     },
     secondary: {
       root: [
-        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover tw:dark:data-loading:bg-raised',
         `${borderAfter} tw:after:outline-primary`,
         // Disabled styles
         'tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
@@ -115,16 +115,22 @@ export const styles = sortCx({
     },
     'link-color': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover',
+        // Dark keeps light frozen (brand-secondary) but flips to the blue link
+        // tone (blue-300) per the dark-mode palette guideline — links are blue,
+        // not the gray brand-secondary text step.
+        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
-        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover',
+        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
       ].join(' '),
     },
     'primary-destructive': {
       root: [
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        // Dark fill softened to 90% opacity per the palette guideline — scoped to
+        // this button so the shared `bg-error-solid` token stays opaque for
+        // badges, error FeaturedIcons, and other solid-error consumers.
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover tw:dark:bg-error-solid/90 tw:dark:hover:bg-error-solid_hover/90 tw:dark:data-loading:bg-error-solid_hover/90',
         `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
@@ -136,10 +142,10 @@ export const styles = sortCx({
     },
     'secondary-destructive': {
       root: [
-        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        'tw:bg-surface tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
         `${borderAfter} tw:after:outline-error_subtle`,
         // Disabled styles
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-fg-error-secondary tw:hover:*:data-icon:text-fg-error-primary',
       ].join(' '),
@@ -162,28 +168,28 @@ export const styles = sortCx({
     },
     'secondary-success': {
       root: [
-        'tw:bg-primary tw:text-success-primary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-success-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-success-300`,
         'tw:hover:bg-success-primary tw:hover:text-success-primary tw:data-loading:bg-success-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-success-primary',
       ].join(' '),
     },
     'secondary-warning': {
       root: [
-        'tw:bg-primary tw:text-warning-primary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-warning-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-warning-300`,
         'tw:hover:bg-warning-primary tw:hover:text-warning-primary tw:data-loading:bg-warning-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-warning-primary',
       ].join(' '),
     },
     'secondary-brand': {
       root: [
-        'tw:bg-primary tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-brand`,
         'tw:hover:bg-brand-primary tw:hover:text-brand-secondary_hover tw:data-loading:bg-brand-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:bg-surface tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-brand-secondary',
       ].join(' '),
     },

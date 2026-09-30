@@ -24,7 +24,6 @@ import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OntologyExplorer } from '../../components/OntologyExplorer';
 import { useOntologyAiCapability } from '../../components/OntologyExplorer/hooks/useOntologyAiCapability';
 import {
   OntologyEditLeaseState,
@@ -32,6 +31,7 @@ import {
 } from '../../components/OntologyExplorer/hooks/useOntologyEditLease';
 import OntologyAiAssistant from '../../components/OntologyExplorer/OntologyAiAssistant';
 import OntologyEditLeaseStatus from '../../components/OntologyExplorer/OntologyEditLeaseStatus';
+import OntologyExplorer from '../../components/OntologyExplorer/OntologyExplorer';
 import { OntologyGraphData } from '../../components/OntologyExplorer/OntologyExplorer.interface';
 import OntologyImportExportMenu from '../../components/OntologyExplorer/OntologyImportExportMenu';
 import OntologyLibrary from '../../components/OntologyExplorer/OntologyLibrary';
@@ -41,11 +41,9 @@ import OntologyStudioQueryConsole from '../../components/OntologyExplorer/Ontolo
 import OntologyVisualQueryBuilder from '../../components/OntologyExplorer/OntologyVisualQueryBuilder';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';

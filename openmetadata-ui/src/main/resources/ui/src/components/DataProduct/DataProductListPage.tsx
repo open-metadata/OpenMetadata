@@ -39,7 +39,6 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
-import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
@@ -65,6 +64,7 @@ import EntityListingTable from '../common/EntityListingTable/EntityListingTable.
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
@@ -142,11 +142,10 @@ const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
 const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
-  const dataProductListing = useDataProductListingData();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const dataProductListing = useDataProductListingData({ enableNlq: isAiMode });
   const { permissions } = usePermissionProvider();
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
@@ -198,7 +197,14 @@ const DataProductListPage = ({
   });
 
   const headerSearch = showHeaderSearch ? (
-    <Input className="tw:w-72" {...searchInputProps} />
+    <MarketplaceSearchInput
+      placeholder={t('label.search-for-type', {
+        type: t('label.data-product-plural'),
+      })}
+      searchQuery={dataProductListing.urlState.searchQuery}
+      onRefresh={dataProductListing.refetch}
+      onSearchChange={dataProductListing.handleSearchChange}
+    />
   ) : undefined;
 
   const { pageHeader } = usePageHeader({
@@ -243,12 +249,9 @@ const DataProductListPage = ({
             dataProductListing.actionHandlers.onEntityClick
           );
         case 'owners':
-          return renderDomainOwnersCell(
-            entity,
-            toOwnersWithHref,
-            renderOwnerContent,
-            { showDashPlaceholder: true }
-          );
+          return renderDomainOwnersCell(entity, {
+            showDashPlaceholder: true,
+          });
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(entity);
         case 'domains':
@@ -256,21 +259,14 @@ const DataProductListPage = ({
         case 'tags':
           return renderDomainClassificationTagsCell(entity);
         case 'experts':
-          return renderDomainExpertsCell(
-            entity,
-            toOwnersWithHref,
-            renderOwnerContent,
-            { showDashPlaceholder: true }
-          );
+          return renderDomainExpertsCell(entity, {
+            showDashPlaceholder: true,
+          });
         default:
           return null;
       }
     },
-    [
-      dataProductListing.actionHandlers.onEntityClick,
-      toOwnersWithHref,
-      renderOwnerContent,
-    ]
+    [dataProductListing.actionHandlers.onEntityClick]
   );
 
   const selectedDataProductEntities = useMemo(
@@ -429,6 +425,8 @@ const DataProductListPage = ({
       <Card
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
           'tw:mb-5': !isAiMode,
+          // Compact layout pads 8px; AI content sits on the 16px gutter.
+          'tw:mx-2': isAiMode,
         })}
         variant={isAiMode ? 'default' : 'elevated'}>
         <Box

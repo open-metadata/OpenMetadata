@@ -207,7 +207,7 @@ def generate_source_hash(create_request: C, exclude_fields: dict | None = None) 
         normalized_json = json.dumps(normalized_dict, sort_keys=True, default=str)
 
         json_bytes = normalized_json.encode("utf-8")
-        return hashlib.md5(json_bytes).hexdigest()
+        return hashlib.md5(json_bytes, usedforsecurity=False).hexdigest()
 
     except Exception as exc:
         logger.warning(f"Failed to generate source hash due to - {exc}")

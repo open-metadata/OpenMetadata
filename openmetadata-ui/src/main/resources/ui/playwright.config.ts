@@ -51,11 +51,16 @@ const entityDependencies = hasPreseededState
   : ['setup', 'entity-data-setup'];
 const entityTeardown = hasPreseededState ? undefined : 'entity-data-teardown';
 const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
+// SearchIndexApplication.spec.ts triggers a full reindex, which swaps the shared search indexes
+// under every co-scheduled worker: an owner change made mid-reindex is missing from the
+// rebuilt index (Teams.spec.ts "Team assets should" read 0 assets). It runs in the
+// single-worker Reindex lane alongside the other reindexing specs.
 const dedicatedStateTestIgnore = hasDedicatedIngestionLane
   ? [
       '**/SearchSettings.spec.ts',
       '**/SearchSeparation/**',
       '**/*AfterReindex.spec.ts',
+      '**/SearchIndexApplication.spec.ts',
     ]
   : [];
 // Tests tagged @quarantine are known-flaky and must not run in any lane, so a
@@ -227,6 +232,15 @@ export default defineConfig({
     /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
     ignoreHTTPSErrors: isH2Mode,
 
+    /* Emulate prefers-reduced-motion so CSS/react-aria trigger and overlay
+     * transitions resolve instantly — a click landing before the animation
+     * settles is a common flake source. Pixel/geometry-sensitive projects
+     * (visual-regression, Knowledge Graph, Ontology RDF) opt back out via
+     * reducedMotion: 'no-preference' below, because the graph's fit/centering
+     * geometry shifts under reduced motion and the snapshot/geometry
+     * assertions are calibrated for the default motion path. */
+    reducedMotion: 'reduce',
+
     /* Collect trace and video on every failure (not just retries) for debugging */
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -281,13 +295,17 @@ export default defineConfig({
       testIgnore: [
         '**/nightly/**',
         '**/Search/**',
+        // Every SSO/login/auth-config spec lives under /Auth/** and
+        // runs under the `sso-auth` project (fullyParallel:false,
+        // workers:1) so its backend `authenticationConfiguration`
+        // mutations via applyProviderConfig can't race feature
+        // specs here.
         '**/Auth/**',
         '**/Http2/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
-        '**/SSOLogin.spec.ts',
         '**/IntakeForm.spec.ts',
         '**/AdvancedSearch.spec.ts',
         ...dedicatedStateTestIgnore,
@@ -303,6 +321,8 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
         storageState: 'playwright/.auth/admin.json',
+        // Snapshots are captured under the default motion path.
+        reducedMotion: 'no-preference',
       },
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
@@ -319,14 +339,28 @@ export default defineConfig({
         ]
       : []),
     {
+      // Isolated from the main `chromium` project — the primary project's
+      // testIgnore excludes '**/Auth/**' so nothing here can race the
+      // entity/domain/search suites on global backend config mutations
+      // (each SSO fixture calls applyProviderConfig which swaps the
+      // authenticationConfiguration server-wide). Legacy per-provider
+      // specs listed here plus the new parametrized SsoScenarios file
+      // that runs 9 flows against every SsoProviderFixture in the matrix.
       name: 'sso-auth',
-      testMatch: [
-        '**/OktaSelfSignupClaims.spec.ts',
-        '**/OktaSessionRenewalPublic.spec.ts',
-        '**/SSOLogin.spec.ts',
-        '**/SSORenewal.spec.ts',
-        '**/SSOSessionLimit.spec.ts',
-      ],
+      // Every auth/login-related spec lives under /Auth/**. The
+      // `chromium` and `Basic` projects testIgnore that same tree,
+      // so the mid-run backend `authenticationConfiguration`
+      // mutations this suite performs can't race feature specs.
+      testMatch: ['**/Auth/**/*.spec.ts'],
+      // Login.spec.ts and LoginConfiguration.spec.ts read
+      // `playwright/.auth/admin.json` (written by auth.setup.ts) via
+      // test.use({storageState}), so the setup project must run
+      // before this one. Per-provider SsoScenarios legs that mutate
+      // the backend still work — auth.setup.ts runs BEFORE the
+      // scenario's beforeAll swaps the provider, and the Basic-only
+      // moved specs run only on the Basic leg where the setup's
+      // admin session stays valid.
+      dependencies: authDependencies,
       use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
       fullyParallel: false,
       workers: 1,
@@ -359,14 +393,18 @@ export default defineConfig({
     },
     {
       name: 'Knowledge Graph',
-      use: { ...devices['Desktop Chrome'] },
+      // The graph's fit/centering geometry differs under reduced motion, so
+      // its boundingBox assertions run on the default motion path.
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
       dependencies: ['setup', 'entity-data-setup'],
       grep: /knowledge-graph/,
       teardown: 'entity-data-teardown',
     },
     {
       name: 'Ontology RDF',
-      use: { ...devices['Desktop Chrome'] },
+      // Same graph canvas as Knowledge Graph — keep the default motion path so
+      // fit/centering geometry matches the assertions.
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
       dependencies: ['ontology-rdf-setup'],
       grep: /ontology-rdf/,
       teardown: 'entity-data-teardown',
@@ -402,7 +440,20 @@ export default defineConfig({
     {
       name: 'Basic',
       grep: combineGrep(/@basic/),
-      testIgnore: dedicatedStateTestIgnore,
+      // The SSO scenario matrix (SsoScenarios.spec.ts) tags its Basic-provider
+      // row with `@basic` because each leg is labelled by its fixture slug.
+      // The `sso-auth` project already owns those specs via testMatch, but
+      // this project's `@basic` grep would otherwise pull them in and run
+      // them concurrently with real `@basic` feature tests — where the
+      // fixture's `beforeAll` (`configureBackend`) mutates
+      // `authenticationConfiguration` server-wide, so a co-scheduled test
+      // hitting `/api/v1/users/signup` sees Self Signup toggled off and
+      // fails with 501. Ignoring `**/Auth/**` here keeps the `Basic`
+      // project focused on feature specs and lets the `sso-auth` project
+      // (fullyParallel:false, workers:1) own auth-config mutations
+      // exclusively, mirroring the same guard the primary `chromium`
+      // project already has on its testIgnore.
+      testIgnore: [...dedicatedStateTestIgnore, '**/Auth/**'],
       use: { ...devices['Desktop Chrome'] },
       dependencies: entityDependencies,
       fullyParallel: true,
@@ -463,6 +514,7 @@ export default defineConfig({
             testMatch: [
               '**/SearchSeparation/*.spec.ts',
               '**/*AfterReindex.spec.ts',
+              '**/SearchIndexApplication.spec.ts',
             ],
             grep: shardGrep,
             use: { ...devices['Desktop Chrome'] },

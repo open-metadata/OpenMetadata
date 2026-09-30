@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -7,14 +8,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -32,6 +37,7 @@ import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
@@ -40,6 +46,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -63,6 +70,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
+
+  private static final String CERTIFICATION_GOLD = "Certification.Gold";
 
   {
     supportsLifeCycle = true;
@@ -1298,6 +1307,101 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
             client
                 .pipelines()
                 .addBulkPipelineStatus(pipeline.getFullyQualifiedName(), Arrays.asList(ps)));
+  }
+
+  /**
+   * A status push loads the pipeline without its relationship fields, so it must refresh only the
+   * status in search. The bulk endpoint used to rebuild the whole document from that bare entity,
+   * blanking owners, domains, tags and certification until the next reindex (#34044).
+   */
+  @Test
+  void put_pipelineStatus_keepsRelationshipsInSearchDoc(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Pipeline pipeline = createPipelineWithRelationships(ns);
+    awaitPipelineSearchDoc(pipeline.getId(), this::assertRelationshipsIndexed);
+
+    long baseTime = System.currentTimeMillis() - 3600000;
+    PipelineStatus bulkLatest = successfulStatus(baseTime + 60000);
+    client
+        .pipelines()
+        .addBulkPipelineStatus(
+            pipeline.getFullyQualifiedName(), List.of(successfulStatus(baseTime), bulkLatest));
+    awaitStatusIndexedWithRelationships(pipeline.getId(), bulkLatest);
+
+    PipelineStatus single = successfulStatus(baseTime + 120000);
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), single);
+    awaitStatusIndexedWithRelationships(pipeline.getId(), single);
+  }
+
+  private Pipeline createPipelineWithRelationships(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request =
+        new CreatePipeline()
+            .withName(ns.prefix("pipeline_status_search_doc"))
+            .withService(service.getFullyQualifiedName())
+            .withOwners(List.of(testUser1Ref()))
+            .withDomains(List.of(testDomain().getFullyQualifiedName()))
+            .withTags(List.of(personalDataTagLabel(), glossaryTermLabel()));
+    Pipeline pipeline = createEntity(request);
+    pipeline.setCertification(
+        new AssetCertification()
+            .withTagLabel(
+                new TagLabel()
+                    .withTagFQN(CERTIFICATION_GOLD)
+                    .withSource(TagLabel.TagSource.CLASSIFICATION)
+                    .withLabelType(TagLabel.LabelType.MANUAL)));
+    return patchEntity(pipeline.getId().toString(), pipeline);
+  }
+
+  private static PipelineStatus successfulStatus(long timestamp) {
+    return new PipelineStatus().withExecutionStatus(StatusType.Successful).withTimestamp(timestamp);
+  }
+
+  private void awaitStatusIndexedWithRelationships(UUID pipelineId, PipelineStatus status) {
+    awaitPipelineSearchDoc(
+        pipelineId,
+        doc -> {
+          assertEquals(
+              status.getTimestamp(), doc.path("pipelineStatus").path("timestamp").asLong());
+          assertRelationshipsIndexed(doc);
+        });
+  }
+
+  private void awaitPipelineSearchDoc(UUID pipelineId, Consumer<JsonNode> assertion) {
+    String docPath = "/v1/search/get/" + getSearchIndex() + "/doc/" + pipelineId;
+    Awaitility.await("pipeline " + pipelineId + " search doc")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () ->
+                assertion.accept(
+                    JsonUtils.readTree(
+                        SdkClients.adminClient()
+                            .getHttpClient()
+                            .executeForString(HttpMethod.GET, docPath, null))));
+  }
+
+  private void assertRelationshipsIndexed(JsonNode doc) {
+    Set<String> tagFqns = new HashSet<>();
+    doc.path("tags").forEach(tag -> tagFqns.add(tag.path("tagFQN").asText()));
+    assertAll(
+        () ->
+            assertEquals(
+                testUser1Ref().getId().toString(), doc.path("owners").path(0).path("id").asText()),
+        () -> assertEquals(testUser1Ref().getName(), doc.path("ownerName").path(0).asText()),
+        () ->
+            assertEquals(
+                testDomain().getFullyQualifiedName(),
+                doc.path("domains").path(0).path("fullyQualifiedName").asText()),
+        () ->
+            assertTrue(
+                tagFqns.containsAll(
+                    Set.of(personalDataTagLabel().getTagFQN(), glossaryTermLabel().getTagFQN())),
+                "indexed tags: " + tagFqns),
+        () ->
+            assertEquals(
+                CERTIFICATION_GOLD,
+                doc.path("certification").path("tagLabel").path("tagFQN").asText()));
   }
 
   @Test

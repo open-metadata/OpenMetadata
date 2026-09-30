@@ -21,6 +21,7 @@
     "no-data-found": "Nenhum dado encontrado",
     "no-owners": "Sem proprietários",
     "none-selected": "Nenhum selecionado",
+    "ok": "Confirmar",
     "open-menu": "Abrir menu",
     "owners": "Proprietários",
     "page": "Página",
@@ -28,12 +29,15 @@
     "pagination-navigation": "Navegação de paginação",
     "previous-page": "Ir para a página anterior",
     "records": "Registos",
+    "remove-entity": "Remover {{entity}}",
     "remove-filter": "Remover filtro",
     "search": "Pesquisar",
     "select-all": "Selecionar tudo",
+    "select-date": "Selecionar data",
     "select-dates": "Selecionar datas",
     "select-only-one-row": "Selecionar uma linha",
     "show-hidden-breadcrumbs": "Mostrar migalhas de pão ocultas",
-    "today": "Hoje"
+    "today": "Hoje",
+    "tree-select": "Seleção em árvore"
   }
 }

@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
+import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../enums/permissions.enum';
+import { AuthProvider } from '../generated/settings/settings';
 import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import globalSettingsClassBase, {
   GlobalSettingsClassBase,
@@ -30,6 +29,19 @@ jest.mock('./PermissionsUtils', () => ({
     hasViewPermissions: jest.fn(),
   },
 }));
+
+// `openmetadata` is a second name for the same native-password authenticator as `basic`, and
+// `ldap` has its own authenticator reading the same settings — the server enforces the login
+// configuration for all three, so all three must keep the page.
+const LOGIN_CONFIG_PROVIDERS = [
+  AuthProvider.Basic,
+  AuthProvider.LDAP,
+  AuthProvider.Openmetadata,
+];
+
+const EXTERNAL_IDP_PROVIDERS = Object.values(AuthProvider).filter(
+  (provider) => !LOGIN_CONFIG_PROVIDERS.includes(provider)
+);
 
 describe('GlobalSettingsClassBase', () => {
   const mockPermissions: UIPermission = {
@@ -54,7 +66,52 @@ describe('GlobalSettingsClassBase', () => {
     jest.clearAllMocks();
   });
 
+  const getLoginConfigurationItem = (
+    isAdminUser: boolean,
+    authProvider?: AuthProvider
+  ) =>
+    globalSettingsClassBase
+      .getGlobalSettingsMenuWithPermission(
+        mockNoPermissions,
+        isAdminUser,
+        authProvider
+      )
+      .find((item) => item.key === 'preferences')
+      ?.items?.find((item) => item.key === 'preferences.loginConfiguration');
+
   describe('getGlobalSettingsMenuWithPermission', () => {
+    it.each([
+      { isAdmin: false, auditLogs: false, expected: false },
+      { isAdmin: false, auditLogs: true, expected: true },
+      { isAdmin: true, auditLogs: false, expected: true },
+    ])(
+      'requires AuditLogs access independently of ViewAll: %j',
+      ({ isAdmin, auditLogs, expected }) => {
+        (userPermissions.hasViewPermissions as jest.Mock).mockImplementation(
+          jest.requireActual('./PermissionsUtils').userPermissions
+            .hasViewPermissions
+        );
+        const permissions = {
+          [ResourceEntity.AUDIT_LOG]: {
+            ...ENTITY_PERMISSIONS,
+            ViewAll: true,
+            ViewBasic: true,
+            AuditLogs: auditLogs,
+          },
+        } as UIPermission;
+        const menu =
+          globalSettingsClassBase.getGlobalSettingsMenuWithPermission(
+            permissions,
+            isAdmin
+          );
+        const auditItem = menu
+          .find((item) => item.key === 'access')
+          ?.items?.find((item) => item.key === 'access.audit-logs');
+
+        expect(auditItem?.isProtected).toBe(expected);
+      }
+    );
+
     it('should return menu items for admin user with all permissions', () => {
       (userPermissions.hasViewPermissions as jest.Mock).mockReturnValue(true);
 
@@ -532,6 +589,39 @@ describe('GlobalSettingsClassBase', () => {
       );
 
       expect(searchSettingsItem?.items).toBeDefined();
+    });
+
+    it.each(LOGIN_CONFIG_PROVIDERS)(
+      'should expose login configuration to an admin under %s, whose login the server drives',
+      (provider) => {
+        expect(getLoginConfigurationItem(true, provider)?.isProtected).toBe(
+          true
+        );
+      }
+    );
+
+    // Derived from the enum rather than hand-listed so a provider added to the schema is covered
+    // here by default — the safe direction, since a new provider is far likelier to be an external
+    // IdP than one whose login the server drives itself.
+    it.each(EXTERNAL_IDP_PROVIDERS)(
+      'should hide login configuration under %s, where the settings never take effect',
+      (provider) => {
+        expect(getLoginConfigurationItem(true, provider)?.isProtected).toBe(
+          false
+        );
+      }
+    );
+
+    // Callers that only want another category omit the provider; they must keep working, and the
+    // entry stays visible rather than being hidden on a caller's behalf.
+    it('should leave login configuration visible when no provider is passed', () => {
+      expect(getLoginConfigurationItem(true)?.isProtected).toBe(true);
+    });
+
+    it('should keep login configuration hidden from a non-admin even under basic auth', () => {
+      expect(
+        getLoginConfigurationItem(false, AuthProvider.Basic)?.isProtected
+      ).toBe(false);
     });
 
     it('should mark data asset rules as beta', () => {

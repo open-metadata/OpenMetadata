@@ -34,8 +34,6 @@ import { BlockEditorRef } from '../../../components/BlockEditor/BlockEditor.inte
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
-import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
-import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
   KNOWLEDGE_CENTER_CLASSIFICATION,
@@ -49,8 +47,8 @@ import {
   KNOWLEDGE_PAGE_FIELDS,
   KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE,
 } from '../../../constants/KnowledgeCenter.constant';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -60,6 +58,10 @@ import {
 } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
+import {
+  QueryVoteType,
+  VotingDataProps,
+} from '../../../interface/entity/vote.interface';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
   ContentChangeState,
@@ -859,8 +861,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   useEffect(() => {
-    knowledgePageIdRef.current = knowledgePage?.id;
-  }, [knowledgePage?.id]);
+    // A route can change before its page fetch resolves. Saves for the previous
+    // article must stop controlling the new route's badge during that gap.
+    knowledgePageIdRef.current =
+      knowledgePage?.fullyQualifiedName === fqn ? knowledgePage.id : undefined;
+  }, [fqn, knowledgePage?.fullyQualifiedName, knowledgePage?.id]);
 
   useEffect(() => {
     if (tab) {
@@ -869,6 +874,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   }, [tab]);
 
   useEffect(() => {
+    // Clear eagerly so a stale debounced save from the previous article cannot
+    // match this ref and set SAVING state after we've already navigated away.
+    knowledgePageIdRef.current = undefined;
     setContentChangeState(ContentChangeState.SAVED);
   }, [fqn]);
 

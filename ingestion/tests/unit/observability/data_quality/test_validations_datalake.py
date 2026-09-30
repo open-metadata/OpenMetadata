@@ -18,6 +18,7 @@ Each test should validate the Success, Failure and Aborted statuses
 from datetime import datetime, timedelta
 
 import pytest
+from freezegun import freeze_time
 from pandas import DataFrame
 
 from metadata.data_quality.validations.base_test_handler import PandasRunner
@@ -45,7 +46,7 @@ DL_DATA = (
         "John Doe",
         "johnny b goode",
         30,
-        datetime.utcnow() - timedelta(days=1),
+        EXECUTION_DATE - timedelta(days=1),
         60001,
         49.6852237,
         1.7743058,
@@ -58,7 +59,7 @@ DL_DATA = (
         "Jone Doe",
         "Johnny d",
         31,
-        datetime.utcnow() - timedelta(days=2),
+        EXECUTION_DATE - timedelta(days=2),
         19005,
         45.2589385,
         1.4731471,
@@ -71,7 +72,7 @@ DL_DATA = (
         "John Doe",
         None,
         None,
-        datetime.utcnow() - timedelta(days=3),
+        EXECUTION_DATE - timedelta(days=3),
         11008,
         42.9974445,
         2.2518325,
@@ -84,7 +85,7 @@ DL_DATA = (
         "Alice Smith",
         "Ally",
         30,
-        datetime.utcnow() - timedelta(days=4),
+        EXECUTION_DATE - timedelta(days=4),
         60001,
         49.6852237,
         1.7743058,
@@ -97,7 +98,7 @@ DL_DATA = (
         "Bob Johnson",
         "Bobby",
         31,
-        datetime.utcnow() - timedelta(days=5),
+        EXECUTION_DATE - timedelta(days=5),
         60001,
         49.6852237,
         1.7743058,
@@ -110,7 +111,7 @@ DL_DATA = (
         "Charlie Brown",
         "Chuck",
         30,
-        datetime.utcnow() - timedelta(days=6),
+        EXECUTION_DATE - timedelta(days=6),
         60001,
         49.6852237,
         1.7743058,
@@ -123,7 +124,7 @@ DL_DATA = (
         "Diana Prince",
         "Di",
         31,
-        datetime.utcnow() - timedelta(days=7),
+        EXECUTION_DATE - timedelta(days=7),
         60001,
         49.6852237,
         1.7743058,
@@ -136,7 +137,7 @@ DL_DATA = (
         "Eve Wilson",
         "Evie",
         None,
-        datetime.utcnow() - timedelta(days=8),
+        EXECUTION_DATE - timedelta(days=8),
         60001,
         49.6852237,
         1.7743058,
@@ -164,6 +165,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(  # noqa: E73
 
 
 # pylint: disable=line-too-long
+@freeze_time(EXECUTION_DATE)
 @pytest.mark.parametrize(
     "test_case_name,test_case_type,test_type,expected,expected_dimension",
     [

@@ -16,14 +16,14 @@
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
-          "filter": ["lowercase"]
+          "filter": ["lowercase", "asciifolding"]
         }
       },
       "analyzer": {
         "ontology_ngram": {
           "type": "custom",
           "tokenizer": "ontology_ngram_tokenizer",
-          "filter": ["lowercase"]
+          "filter": ["lowercase", "asciifolding"]
         }
       }
     }

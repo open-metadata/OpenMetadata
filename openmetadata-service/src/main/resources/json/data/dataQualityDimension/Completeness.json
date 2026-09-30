@@ -1,0 +1,8 @@
+{
+  "name": "Completeness",
+  "fullyQualifiedName": "Completeness",
+  "displayName": "Completeness",
+  "description": "Expected values are present — no unexpected nulls or missing rows.",
+  "style": { "color": "#175CD3" },
+  "provider": "system"
+}

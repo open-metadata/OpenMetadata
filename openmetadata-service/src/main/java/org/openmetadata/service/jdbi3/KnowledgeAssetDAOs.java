@@ -83,6 +83,23 @@ public interface KnowledgeAssetDAOs {
 
     @ConnectionAwareSqlQuery(
         value =
+            "SELECT json FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.extractionStats.sourceHash')) = :sourceHash "
+                + "AND id <> :excludeId AND (deleted = false OR deleted IS NULL) "
+                + "ORDER BY updatedAt DESC LIMIT 10",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE json->'extractionStats'->>'sourceHash' = :sourceHash "
+                + "AND id <> :excludeId AND deleted = false "
+                + "ORDER BY updatedAt DESC LIMIT 10",
+        connectionType = POSTGRES)
+    List<String> listByExtractedSourceHash(
+        @Bind("sourceHash") String sourceHash, @Bind("excludeId") String excludeId);
+
+    @ConnectionAwareSqlQuery(
+        value =
             "SELECT count(*) FROM context_file cf "
                 + "LEFT JOIN entity_relationship er "
                 + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
@@ -106,6 +123,40 @@ public interface KnowledgeAssetDAOs {
                 + "AND (cf.deleted = false OR cf.deleted IS NULL)",
         connectionType = POSTGRES)
     int countByFileNameInFolder(
+        @Bind("fileName") String fileName,
+        @Bind("folderId") String folderId,
+        @Bind("excludeId") String excludeId,
+        @Bind("containsRelation") int containsRelation);
+
+    // Same lookup as above but for soft-deleted (archived) files. A soft-deleted file keeps its
+    // nameHash, so it still reserves the name against the unique constraint even though the live
+    // count ignores it (e.g. blocks a same-name upload until the archived copy is restored or
+    // permanently deleted).
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file cf "
+                + "LEFT JOIN entity_relationship er "
+                + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
+                + "AND er.toEntity = 'contextFile' AND er.relation = :containsRelation "
+                + "AND er.deleted = false "
+                + "WHERE LOWER(cf.name) = LOWER(:fileName) "
+                + "AND ((:folderId IS NULL AND er.fromId IS NULL) OR er.fromId = :folderId) "
+                + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
+                + "AND cf.deleted = true",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file cf "
+                + "LEFT JOIN entity_relationship er "
+                + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
+                + "AND er.toEntity = 'contextFile' AND er.relation = :containsRelation "
+                + "AND er.deleted = false "
+                + "WHERE LOWER(cf.name) = LOWER(:fileName) "
+                + "AND ((:folderId IS NULL AND er.fromId IS NULL) OR er.fromId = :folderId) "
+                + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
+                + "AND cf.deleted = true",
+        connectionType = POSTGRES)
+    int countArchivedByFileNameInFolder(
         @Bind("fileName") String fileName,
         @Bind("folderId") String folderId,
         @Bind("excludeId") String excludeId,

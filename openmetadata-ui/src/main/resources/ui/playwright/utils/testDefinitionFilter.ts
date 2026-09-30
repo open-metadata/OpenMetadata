@@ -22,7 +22,7 @@ export const navigateToTestLibrary = async (page: Page) => {
       response.url().includes('/api/v1/dataQuality/testDefinitions') &&
       response.request().method() === 'GET'
   );
-  await page.goto('/test-library');
+  await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
   await testDefinitionResponse;
   await waitForAllLoadersToDisappear(page);
 };

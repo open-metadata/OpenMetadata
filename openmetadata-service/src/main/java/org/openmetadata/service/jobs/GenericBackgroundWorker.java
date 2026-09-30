@@ -40,6 +40,7 @@ public class GenericBackgroundWorker implements Managed {
   private final JobDAO jobDao;
   private final JobHandlerRegistry handlerRegistry;
   private final Semaphore workerSlots = new Semaphore(WORKER_POOL_SIZE);
+  private final AtomicInteger memoryJobsInFlight = new AtomicInteger();
   // Bounded by WORKER_POOL_SIZE — a job is added when claimed and removed when it finishes.
   private final Set<Long> inFlightJobIds = ConcurrentHashMap.newKeySet();
   private volatile boolean running = true;
@@ -169,9 +170,12 @@ public class GenericBackgroundWorker implements Managed {
       if (!running) {
         return false;
       }
-      Optional<BackgroundJob> jobOpt = jobDao.fetchPendingJob();
+      Optional<BackgroundJob> jobOpt = jobDao.fetchPendingJob(memoryJobsInFlight.get() == 0);
       if (running && jobOpt.isPresent() && jobDao.claimPendingJob(jobOpt.get().getId()) > 0) {
         BackgroundJob job = jobOpt.get();
+        if (isMemoryJob(job)) {
+          memoryJobsInFlight.incrementAndGet();
+        }
         workerPool.submit(() -> runClaimedJob(job));
         slotHandedToTask = true;
         dispatched = true;
@@ -197,8 +201,15 @@ public class GenericBackgroundWorker implements Managed {
       jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
     } finally {
       inFlightJobIds.remove(job.getId());
+      if (isMemoryJob(job)) {
+        memoryJobsInFlight.decrementAndGet();
+      }
       workerSlots.release();
     }
+  }
+
+  private boolean isMemoryJob(BackgroundJob job) {
+    return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION;
   }
 
   private void processJob(BackgroundJob job) {

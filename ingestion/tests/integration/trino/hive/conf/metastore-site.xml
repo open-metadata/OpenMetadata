@@ -34,15 +34,15 @@
 
     <property>
         <name>fs.s3a.access.key</name>
-        <value>minioadmin</value>
+        <value>hiveaccesskey</value>
     </property>
     <property>
         <name>fs.s3a.secret.key</name>
-        <value>minioadmin</value>
+        <value>hivesecretkey</value>
     </property>
     <property>
         <name>fs.s3a.endpoint</name>
-        <value>%MINIO_ENDPOINT%</value>
+        <value>%S3_ENDPOINT%</value>
     </property>
     <property>
         <name>fs.s3a.path.style.access</name>

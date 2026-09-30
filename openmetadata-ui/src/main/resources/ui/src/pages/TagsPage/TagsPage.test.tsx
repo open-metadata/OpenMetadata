@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   findAllByTestId,
   findByTestId,
@@ -57,13 +58,20 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
 }));
 
+// ClassificationDetails reads tag usage counts through React Query
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <MemoryRouter>{children}</MemoryRouter>
+  <QueryClientProvider client={queryClient}>
+    <MemoryRouter>{children}</MemoryRouter>
+  </QueryClientProvider>
 );
 
 // TagsPage now fetches the classification's own permission via useEntityPermissions rather
 // than the raw PermissionProvider.getEntityPermission REST boundary — mock the hook directly
-// (TableDetailsPageV1.test.tsx pattern) since this test file never wraps a QueryClientProvider.
+// (TableDetailsPageV1.test.tsx pattern) rather than the REST boundary.
 const mockUseEntityPermissions = jest.fn();
 
 const setMockClassificationPermissions = (
@@ -299,12 +307,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Button: ({
     children,
     onClick,
+    onPress,
     isDisabled,
     'data-testid': testId,
     className,
   }: {
     children: React.ReactNode;
     onClick?: () => void;
+    onPress?: () => void;
     isDisabled?: boolean;
     'data-testid'?: string;
     className?: string;
@@ -313,7 +323,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       className={className}
       data-testid={testId}
       disabled={isDisabled}
-      onClick={onClick}>
+      onClick={onClick ?? onPress}>
       {children}
     </button>
   ),
@@ -466,8 +476,8 @@ jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
 
-jest.mock('../../components/DataAssets/DomainLabelV2/DomainLabelV2', () => ({
-  DomainLabelV2: jest
+jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => ({
+  DomainLabel: jest
     .fn()
     .mockImplementation(() => <div data-testid="domain-label-v2" />),
 }));
@@ -489,7 +499,7 @@ jest.mock('../../utils/LazyTagComponents', () => ({
   LazyCommonWidgets: jest
     .fn()
     .mockImplementation(() => <div data-testid="common-widgets" />),
-  LazyDomainLabelV2: jest
+  LazyDomainLabel: jest
     .fn()
     .mockImplementation(() => <div data-testid="domain-label-v2" />),
   LazyOwnerLabelV2: jest
@@ -630,6 +640,26 @@ describe('Test TagsPage page', () => {
     expect(getByText(getAllCounts[0], '2')).toBeInTheDocument();
     expect(getByText(getAllCounts[1], '3')).toBeInTheDocument();
     expect(getByText(getAllCounts[2], '5')).toBeInTheDocument();
+  });
+
+  it('Classification LeftPanel should render links with the current one marked', async () => {
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    const sidePanelCategories = await screen.findAllByTestId(
+      'side-panel-classification'
+    );
+    const currentCategories = sidePanelCategories.filter(
+      (item) => item.getAttribute('aria-current') === 'page'
+    );
+
+    sidePanelCategories.forEach((item) => expect(item).toHaveAttribute('href'));
+
+    expect(currentCategories).toHaveLength(1);
+    expect(currentCategories[0]).toHaveTextContent(
+      MOCK_ALL_CLASSIFICATIONS.data[0].displayName ??
+        MOCK_ALL_CLASSIFICATIONS.data[0].name
+    );
   });
 
   it('OnClick of add new tag, Form should display in drawer', async () => {

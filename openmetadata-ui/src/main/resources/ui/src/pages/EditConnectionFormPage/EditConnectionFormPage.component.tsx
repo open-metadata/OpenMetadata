@@ -20,7 +20,7 @@ import {
 import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState, ServicesUpdateRequest } from 'Models';
 import React, {
   lazy,
@@ -59,7 +59,10 @@ import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { getServiceType } from '../../utils/ServicePureUtils';
+import {
+  getServiceCategoryLabel,
+  getServiceType,
+} from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -95,6 +98,9 @@ function EditConnectionFormPage() {
     useState<LoadingState>('initial');
   const [isConnectionVerified, setIsConnectionVerified] = useState(false);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
+  // Leaving with nothing to save never enters the 'waiting' state that
+  // otherwise disarms the blocker, so it disarms it explicitly.
+  const [isLeaving, setIsLeaving] = useState(false);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
   const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
@@ -146,7 +152,10 @@ function EditConnectionFormPage() {
 
     const jsonPatch = compare(serviceDetails, configData);
 
+    // Nothing to persist, but the form still has to close.
     if (isEmpty(jsonPatch)) {
+      setIsLeaving(true);
+
       return;
     }
 
@@ -184,7 +193,7 @@ function EditConnectionFormPage() {
       setServiceDetails(response);
       setSlashedBreadcrumb([
         {
-          label: startCase(serviceCategory),
+          label: getServiceCategoryLabel(serviceCategory),
           id: 'service-category',
         },
         {
@@ -207,6 +216,19 @@ function EditConnectionFormPage() {
       setIsLoading(false);
     }
   };
+
+  // From an effect, not inline: NavigationBlocker is a child, so its effects
+  // have detached the history patches by the time this runs.
+  useEffect(() => {
+    if (isLeaving) {
+      navigate(
+        connectionsRouterClassBase.getPathByServiceFQN(
+          serviceCategory,
+          serviceFQN
+        )
+      );
+    }
+  }, [isLeaving, navigate, serviceCategory, serviceFQN]);
 
   const onCancel = () => {
     navigate(-1);
@@ -377,7 +399,13 @@ function EditConnectionFormPage() {
 
   return (
     <NavigationBlocker
-      enabled={!isSavingService}
+      enabled={!isSavingService && !isLeaving}
+      // Otherwise a confirmed back falls through to history.go(-2), which
+      // assumes one guard entry; two are pushed, so it lands back on this page.
+      leaveTo={connectionsRouterClassBase.getPathByServiceFQN(
+        serviceCategory,
+        serviceFQN
+      )}
       renderModal={({ isOpen, onLeave, onStay }) => (
         <NavigationGuardModal
           isOpen={isOpen}

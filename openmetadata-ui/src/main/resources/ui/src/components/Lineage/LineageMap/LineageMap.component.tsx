@@ -20,6 +20,7 @@ import {
   Dialog,
   Modal,
   ModalOverlay,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowsUp, Home02, LayersThree01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -50,6 +51,7 @@ import ReactFlow, {
   ReactFlowProvider,
   type FitViewOptions,
 } from 'reactflow';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import {
   COLUMN_NODE_HEIGHT,
   LINEAGE_CHILD_ITEMS_PER_PAGE,
@@ -59,7 +61,6 @@ import {
   NODE_HEIGHT_WITH_CHILDREN,
   NODE_WIDTH,
 } from '../../../constants/Lineage.constants';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
@@ -76,7 +77,17 @@ import { PipelineViewMode } from '../../../generated/configuration/lineageSettin
 import { EntityReference } from '../../../generated/entity/type';
 import { LineageLayer } from '../../../generated/settings/settings';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import {
+  EntityChildren,
+  LineageConfig,
+  LineageNodeType,
+} from '../../../interface/lineage.interface';
+import {
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from '../../../interface/queryFilter.interface';
 import type { LineageSceneFocus } from '../../../rest/lineageAPI';
 import {
   getLineageEdgeDetails,
@@ -86,19 +97,25 @@ import {
   addLineageHandler,
   removeLineageHandler,
 } from '../../../utils/EntityLineagePureUtils';
+import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
+import {
+  onAddPipelineClick,
+  onColumnEdgeRemove,
+  onEdgeClick,
+} from '../../../utils/Lineage/handlers/edgeMutations';
+import { onPaneClick } from '../../../utils/Lineage/handlers/nodeMutations';
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import CustomNodeV1 from '../../Entity/EntityLineage/CustomNodeV1.component';
-import { LineageConfig } from '../../Entity/EntityLineage/EntityLineage.interface';
 import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../../Entity/EntityLineage/LineageLayers/LineageLayers';
-import { EntityChildren } from '../../Entity/EntityLineage/NodeChildren/NodeChildren.interface';
 import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapper';
-import { LineageNodeType, LineageProps } from '../Lineage.interface';
+import { LineageProps } from '../Lineage.interface';
+import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
 import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import LineageSkeleton from '../LineageSkeleton.component';
 import type { LineageSceneRequest } from './LineageMap.utils';
@@ -812,9 +829,11 @@ const LineageMapBreadcrumbs = ({
       id: breadcrumb.id,
       icon: isRootBreadcrumb ? Home02 : undefined,
       label: (
-        <span data-testid={`lineage-map-breadcrumb-${index}`} title={label}>
+        <Typography
+          data-testid={`lineage-map-breadcrumb-${index}`}
+          tooltip={label}>
           {label}
-        </span>
+        </Typography>
       ),
     };
   });
@@ -947,15 +966,8 @@ const LineageMapCanvas = ({
   const location = useCustomLocation();
   const navigate = useNavigate();
   const { isTourOpen, isTourPage } = useTourProvider();
-  const {
-    queryFilter,
-    onAddPipelineClick,
-    onColumnEdgeRemove,
-    onEdgeClick: onProviderEdgeClick,
-    onNodeClick: onProviderNodeClick,
-    onPaneClick: onProviderPaneClick,
-    setSceneNodes,
-  } = useLineageProvider();
+  const { activeDomain, isDomainRestricted } = useDomainStore();
+  const { onNodeClick: onProviderNodeClick } = useLineageHandlers();
   const request = useMemo(
     () =>
       getSceneRequestFromSearch(
@@ -983,6 +995,7 @@ const LineageMapCanvas = ({
   const onProviderNodeClickRef = useRef(onProviderNodeClick);
   const sceneRef = useRef<LineageScene>();
   const sceneRequestIdRef = useRef(0);
+  const pendingFetchRef = useRef(false);
   const preserveViewportRef = useRef(false);
   const lastSemanticZoomAtRef = useRef(0);
   const previousZoomRef = useRef<number>();
@@ -997,18 +1010,60 @@ const LineageMapCanvas = ({
     isEditMode,
     selectedColumn,
     selectedNode,
+    selectedQuickFilters,
     setActiveLayer,
     setActiveNode,
     setColumnsHavingLineage,
     setColumnsInCurrentPages,
     setIsCreatingEdge,
     setIsPlatformLineage,
+    setNodes: setSceneNodes,
     setSceneBand,
     setSelectedColumn,
     setSelectedEdge,
     setSelectedNode,
     setTracedColumns,
   } = useLineageStore();
+  const queryFilter = useMemo(() => {
+    const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
+    const shouldScopeToDomain =
+      isDomainRestricted && activeDomain !== DEFAULT_DOMAIN_VALUE;
+
+    if (!shouldScopeToDomain) {
+      return JSON.stringify(quickFilterQuery) ?? '';
+    }
+
+    const domainClause: QueryFieldInterface = {
+      bool: {
+        should: [
+          { term: { 'domains.fullyQualifiedName': activeDomain } },
+          {
+            prefix: { 'domains.fullyQualifiedName': `${activeDomain}.` },
+          } as QueryFieldInterface,
+        ],
+        minimum_should_match: 1,
+      },
+    };
+
+    const existingMust = quickFilterQuery?.query?.bool?.must;
+    let mustArray: QueryFieldInterface[] = [];
+    if (Array.isArray(existingMust)) {
+      mustArray = [...existingMust];
+    } else if (existingMust) {
+      mustArray = [existingMust];
+    }
+
+    const scopedQuery: QueryFilterInterface = {
+      query: {
+        bool: {
+          ...quickFilterQuery?.query?.bool,
+          must: [...mustArray, domainClause],
+        },
+      },
+    };
+
+    return JSON.stringify(scopedQuery);
+  }, [selectedQuickFilters, activeDomain, isDomainRestricted]);
   const previousMutationTickRef = useRef(lineageMutationTick);
   const canEditScene = isEditMode && scene?.band !== LineageBand.Layer;
 
@@ -1120,12 +1175,20 @@ const LineageMapCanvas = ({
         : sceneCache.get(cacheKey);
       preserveViewportRef.current = Boolean(options.preserveViewport);
       if (cachedScene) {
+        // Clear the flag so the scene-layout effect's layoutNodes.then() is
+        // allowed to call setLoading(false). Without this, a cache hit that
+        // races an in-flight fetch leaves pendingFetchRef true indefinitely:
+        // the stale response is dropped (request-id guard), the flag is never
+        // cleared, and the loader stays stuck.
+        pendingFetchRef.current = false;
         setScene(cachedScene);
         setSceneError(undefined);
-        setLoading(false);
+        // setLoading(false) deferred to layoutNodes.then() in the scene useEffect
+        // so the loader stays visible until nodes are positioned in the DOM.
 
         return cachedScene;
       }
+      pendingFetchRef.current = true;
       setLoading(true);
       let response: LineageScene | undefined;
       try {
@@ -1135,16 +1198,23 @@ const LineageMapCanvas = ({
           options.bypassCache
         );
         if (sceneRequestIdRef.current === requestId) {
+          // Clear before setScene so the layout effect's .then() sees
+          // pendingFetchRef.current === false and is allowed to clear the loader.
+          pendingFetchRef.current = false;
           setScene(response);
           setSceneError(undefined);
+          // setLoading(false) deferred to layoutNodes.then() in the scene
+          // useEffect — the loader must stay up until ELK finishes positioning
+          // nodes so that waitForAllLoadersToDisappear (in tests) and any
+          // user-visible spinner correctly represent "graph ready", not just
+          // "HTTP response received".
         }
       } catch (error) {
         if (sceneRequestIdRef.current === requestId) {
+          pendingFetchRef.current = false;
           setSceneError(error as AxiosError);
           showErrorToast(error as AxiosError);
-        }
-      } finally {
-        if (sceneRequestIdRef.current === requestId) {
+          // Error — no layout will run; clear the loader immediately.
           setLoading(false);
         }
       }
@@ -1366,6 +1436,13 @@ const LineageMapCanvas = ({
   useEffect(() => {
     if (!scene) {
       setSceneNodes([]);
+      // Only clear the loader when no fetch is in flight. On initial mount
+      // scene is undefined while the first HTTP request is pending, so an
+      // unconditional setLoading(false) here would dismiss the loader before
+      // the graph is ready — the race this pendingFetchRef pattern exists to prevent.
+      if (!pendingFetchRef.current) {
+        setLoading(false);
+      }
 
       return;
     }
@@ -1420,17 +1497,31 @@ const LineageMapCanvas = ({
     });
     setSceneNodes(nextNodes);
     let isMounted = true;
-    layoutNodes(nextNodes, nextEdges, scene.band).then((layoutedNodes) => {
-      if (isMounted) {
-        setNodes(layoutedNodes);
-        setEdges(nextEdges);
-        if (preserveViewportRef.current) {
-          preserveViewportRef.current = false;
-        } else {
-          setPendingFitNodeIds(layoutedNodes.map((node) => node.id));
+    layoutNodes(nextNodes, nextEdges, scene.band)
+      .then((layoutedNodes) => {
+        // Guard against both stale layout runs (isMounted) and spurious
+        // re-layouts triggered while a newer fetch is still in flight
+        // (pendingFetchRef). Without the pendingFetchRef check, deps like
+        // removeSceneNode changing simultaneously with a fetchScene call can
+        // re-run this effect against the old scene; if that layout finishes
+        // before the HTTP response, setLoading(false) fires prematurely and
+        // waitForAllLoadersToDisappear returns before the new graph is ready.
+        if (isMounted && !pendingFetchRef.current) {
+          setNodes(layoutedNodes);
+          setEdges(nextEdges);
+          setLoading(false);
+          if (preserveViewportRef.current) {
+            preserveViewportRef.current = false;
+          } else {
+            setPendingFitNodeIds(layoutedNodes.map((node) => node.id));
+          }
         }
-      }
-    });
+      })
+      .catch(() => {
+        if (isMounted && !pendingFetchRef.current) {
+          setLoading(false);
+        }
+      });
 
     return () => {
       isMounted = false;
@@ -1754,7 +1845,7 @@ const LineageMapCanvas = ({
         return;
       }
       if (!isEditable) {
-        onProviderEdgeClick(edge);
+        onEdgeClick(edge);
 
         return;
       }
@@ -1775,7 +1866,7 @@ const LineageMapCanvas = ({
         if (isEditMode) {
           setSelectedEdge(hydratedEdge);
         } else {
-          onProviderEdgeClick(hydratedEdge);
+          onEdgeClick(hydratedEdge);
         }
       } catch (error) {
         if ((error as AxiosError).response?.status === 404) {
@@ -1789,7 +1880,6 @@ const LineageMapCanvas = ({
     },
     [
       isEditMode,
-      onProviderEdgeClick,
       refetchCurrentScene,
       scene,
       setActiveNode,
@@ -1878,8 +1968,8 @@ const LineageMapCanvas = ({
     setSelectedEdge(undefined);
     setSelectedNode(undefined);
     setActiveNode(undefined);
-    onProviderPaneClick();
-  }, [onProviderPaneClick, setActiveNode, setSelectedEdge, setSelectedNode]);
+    onPaneClick();
+  }, [setActiveNode, setSelectedEdge, setSelectedNode]);
 
   const handleNewNodeSelect = useCallback(
     (nodeId: string, value: EntityReference) => {

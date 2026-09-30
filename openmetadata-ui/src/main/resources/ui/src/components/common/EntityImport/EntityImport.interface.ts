@@ -12,7 +12,7 @@
  */
 import React from 'react';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
-import { CSVImportAsyncResponse } from '../../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+import { CSVImportAsyncResponse } from '../../../interface/entity/csv.interface';
 
 export interface EntityImportProps {
   entityName: string;

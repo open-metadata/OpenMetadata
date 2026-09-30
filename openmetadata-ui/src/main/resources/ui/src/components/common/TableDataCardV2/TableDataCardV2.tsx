@@ -26,7 +26,6 @@ import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
 import { handleKeyboardActivation } from '../../../utils/KeyboardUtil';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
@@ -87,11 +86,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       const _otherDetails: ExtraInfo[] = [
         {
           key: 'Owner',
-          value: (
-            <Owner
-              owners={toOwnerRefs((source.owners as EntityReference[]) ?? [])}
-            />
-          ),
+          value: <Owner owners={(source.owners as EntityReference[]) ?? []} />,
         },
       ];
 

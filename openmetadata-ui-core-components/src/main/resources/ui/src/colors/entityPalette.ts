@@ -11,16 +11,84 @@
  *  limitations under the License.
  */
 
-export const ENTITY_PALETTE_HEX: string[] = [
-  '#175CD3',
-  '#026AA2',
-  '#3538CD',
-  '#5925DC',
-  '#C11574',
-  '#B93815',
-  '#414651',
-  '#363F72',
-  '#067647',
-  '#B54708',
-  '#B42318',
-];
+export interface EntityPaletteColor {
+  presentation: string;
+  value: string;
+}
+
+// Entity colors are stored by value in metadata. Keeping the concrete value
+// separate from its tokenized presentation prevents a theme change from
+// rewriting persisted data.
+//
+// Every token carries its hex value as a var() fallback: this library is
+// consumed by apps (e.g. the Collate build) that may not ship these custom
+// properties, and without a fallback `var(--…)` resolves to nothing, painting
+// the swatches transparent. The fallback guarantees the color renders in any
+// consumer while a theme can still override the property.
+export const ENTITY_PALETTE = [
+  {
+    value: '#1470EF',
+    presentation: 'var(--color-entity-palette-blue, #1470EF)',
+  },
+  {
+    value: '#7D81E9',
+    presentation: 'var(--color-entity-palette-indigo, #7D81E9)',
+  },
+  {
+    value: '#F14C75',
+    presentation: 'var(--color-entity-palette-rose, #F14C75)',
+  },
+  {
+    value: '#F689A6',
+    presentation: 'var(--color-entity-palette-pink, #F689A6)',
+  },
+  {
+    value: '#05C4EA',
+    presentation: 'var(--color-entity-palette-cyan, #05C4EA)',
+  },
+  {
+    value: '#05A580',
+    presentation: 'var(--color-entity-palette-teal, #05A580)',
+  },
+  {
+    value: '#FFB01A',
+    presentation: 'var(--color-entity-palette-amber, #FFB01A)',
+  },
+  {
+    value: '#BF4CF1',
+    presentation: 'var(--color-entity-palette-purple, #BF4CF1)',
+  },
+  {
+    value: '#99AADF',
+    presentation: 'var(--color-entity-palette-blue-muted, #99AADF)',
+  },
+  {
+    value: '#C0B3F2',
+    presentation: 'var(--color-entity-palette-indigo-muted, #C0B3F2)',
+  },
+  {
+    value: '#EDB3B3',
+    presentation: 'var(--color-entity-palette-rose-muted, #EDB3B3)',
+  },
+  {
+    value: '#ECB892',
+    presentation: 'var(--color-entity-palette-orange-muted, #ECB892)',
+  },
+  {
+    value: '#90DAE3',
+    presentation: 'var(--color-entity-palette-cyan-muted, #90DAE3)',
+  },
+  {
+    value: '#82E6C4',
+    presentation: 'var(--color-entity-palette-teal-muted, #82E6C4)',
+  },
+] as const satisfies readonly EntityPaletteColor[];
+
+export const ENTITY_PALETTE_HEX: string[] = ENTITY_PALETTE.map(
+  ({ value }) => value
+);
+
+export const getEntityPalettePresentationColor = (color: string): string =>
+  ENTITY_PALETTE.find(
+    ({ value }) => value.toLowerCase() === color.toLowerCase()
+  )?.presentation ?? color;

@@ -20,7 +20,7 @@ import {
   type ListValues,
   type SelectFieldSettings,
 } from '@react-awesome-query-builder/ui';
-import { debounce, isEmpty, sortBy, toLower } from 'lodash';
+import { debounce, isEmpty, sortBy } from 'lodash';
 import {
   SearchOutputType,
   type CustomPropertyEnumConfig,
@@ -45,14 +45,14 @@ import type { Config } from '../generated/api/data/createCustomProperty';
 import { EntityStatus } from '../generated/entity/data/searchIndex';
 import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
-import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
-import { parseBucketsData } from './SearchPureUtils';
+import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
+import { matchesTagSelectOption, parseBucketsData } from './SearchPureUtils';
 
 const CLASSIFICATION_NAME_KEYWORD = 'classification.name.keyword';
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
@@ -237,9 +237,10 @@ class AdvancedSearchClassBase {
     let pendingResolve: ((result: AsyncFetchListValuesResult) => void) | null =
       null;
     const debouncedFetch = debounce((search: string) => {
-      // An in-flight response must settle its own search, even if a newer search is queued.
+      // Started requests own their resolvers; only queued searches share this slot.
       const resolve = pendingResolve;
       pendingResolve = null;
+
       getAggregateFieldOptions(
         searchIndex,
         entityField,
@@ -683,11 +684,7 @@ class AdvancedSearchClassBase {
   public getInitialConfigWithoutFields = (
     modes: QueryBuilderConfigModes = {}
   ) => {
-    const {
-      showLabels = true,
-      useFriendlyOperatorLabels = false,
-      renderButton = renderAdvanceSearchButtons,
-    } = modes;
+    const { showLabels = true, useFriendlyOperatorLabels = false } = modes;
 
     const initialConfigWithoutFields: BasicConfig = {
       ...this.baseConfig,
@@ -740,7 +737,6 @@ class AdvancedSearchClassBase {
         removeEmptyGroupsOnLoad: false,
         setOpOnChangeField: ['none'],
         defaultField: EntityFields.OWNERS,
-        renderButton,
 
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,
@@ -764,14 +760,12 @@ class AdvancedSearchClassBase {
     return async (search) => {
       const resolvedTierOptions = (await tierOptions) as ListItem[];
 
+      const query = Array.isArray(search) ? search.join(',') : search;
+
       return {
-        values: search
+        values: query
           ? resolvedTierOptions.filter((tier) =>
-              tier.title
-                ?.toLowerCase()
-                ?.includes(
-                  toLower(Array.isArray(search) ? search.join(',') : search)
-                )
+              matchesTagSelectOption(tier, query)
             )
           : resolvedTierOptions,
         hasMore: false,
@@ -941,14 +935,14 @@ class AdvancedSearchClassBase {
         label: t('label.glossary-term-plural'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
-        fieldSettings: {
+        fieldSettings: withGlossaryTermField({
           asyncFetch: this.autocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
             sourceFields: 'fullyQualifiedName',
           }),
           useAsyncSearch: true,
-        },
+        }),
       },
 
       [EntityFields.CERTIFICATION]: {

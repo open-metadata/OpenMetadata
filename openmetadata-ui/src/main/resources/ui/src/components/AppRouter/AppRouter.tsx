@@ -58,7 +58,7 @@ const PageNotFound = withPageSuspenseFallback(
 );
 
 const SamlCallback = withPageSuspenseFallback(
-  lazy(() => import('../../pages/SamlCallback'))
+  lazy(() => import('../../pages/SamlCallback/SamlCallback'))
 );
 
 const SignUpPage = withPageSuspenseFallback(

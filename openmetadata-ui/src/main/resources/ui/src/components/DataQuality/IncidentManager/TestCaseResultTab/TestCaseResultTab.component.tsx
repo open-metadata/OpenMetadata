@@ -17,6 +17,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { ChangeDescription } from '../../../../generated/tests/testCase';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
@@ -41,6 +42,7 @@ import {
   shouldShowAILearningBanner,
   shouldShowEditParameterButton,
 } from './TestCaseResultTab.utils';
+import TestCaseTestSuitesCard from './TestCaseTestSuitesCard/TestCaseTestSuitesCard';
 import { useTestCaseResultTab } from './useTestCaseResultTab';
 
 function TestCaseSidePanel({
@@ -92,6 +94,9 @@ function TestCaseSidePanel({
             showCommentsIcon={false}
             onDescriptionUpdate={handleDescriptionChange}
           />
+        </div>
+        <div className="tw:w-full">
+          <TestCaseTestSuitesCard testSuites={testCaseData?.testSuites} />
         </div>
         <div className="tw:w-full">
           <TagsContainerV2
@@ -170,6 +175,7 @@ const TestCaseResultTab = ({
     additionalComponents,
     shouldRenderDefaultGraph,
   } = useTestCaseResultTab();
+  const isAiMode = useIsAiMode();
   const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TEST_CASE);
   const isSidePanelVisible = resolveIsSidePanelVisible(
     showSidePanel,
@@ -183,6 +189,9 @@ const TestCaseResultTab = ({
    * row is passed through here.
    */
   const parameterRows = useMemo<ConfigurationParameterRow[]>(() => {
+    const dataQualityDimension =
+      testCaseData?.dataQualityDimension?.displayName ??
+      testCaseData?.dataQualityDimension?.name;
     const rows: ConfigurationParameterRow[] =
       isVersionPage || testCaseData?.useDynamicAssertion
         ? []
@@ -198,6 +207,13 @@ const TestCaseResultTab = ({
       });
     }
 
+    if (!isVersionPage && dataQualityDimension) {
+      rows.push({
+        label: t('label.data-quality-dimension'),
+        value: dataQualityDimension,
+      });
+    }
+
     return rows;
   }, [
     withoutSqlParams,
@@ -205,6 +221,7 @@ const TestCaseResultTab = ({
     testCaseData?.useDynamicAssertion,
     showComputeRowCount,
     computeRowCountDisplay,
+    testCaseData?.dataQualityDimension,
     t,
   ]);
 
@@ -239,7 +256,13 @@ const TestCaseResultTab = ({
               </div>
             )}
           {shouldRenderTestSummary(testCaseData, shouldRenderDefaultGraph) && (
-            <div className="test-case-result-tab-graph tw:w-full">
+            // AI mode sets the result history straight on the page, as the mock
+            // does: the tiles carry the only borders in that section.
+            <div
+              className={
+                isAiMode ? 'tw:w-full' : 'test-case-result-tab-graph tw:w-full'
+              }
+              data-testid="test-case-result-tab-graph">
               <TestSummary data={testCaseData} />
             </div>
           )}
@@ -281,7 +304,8 @@ const TestCaseResultTab = ({
           showEditParameterButton={shouldShowEditParameterButton(
             hasEditPermission,
             testCaseData,
-            showComputeRowCount
+            showComputeRowCount,
+            Boolean(testCaseData?.dataQualityDimension)
           )}
           testCaseData={testCaseData}
           testDefinition={testDefinition}

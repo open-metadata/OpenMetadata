@@ -10,20 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Breadcrumbs, Card, Owner } from '@openmetadata/ui-core-components';
+import {
+  Breadcrumbs,
+  Card,
+  ClassificationTag,
+  Owner,
+} from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
-import { forwardRef, ReactNode, useCallback, useMemo } from 'react';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { OwnerType } from '../../../enums/user.enum';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -40,18 +43,17 @@ import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
 import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
-import { getOwnerPath } from '../../../utils/ownerUtils';
+import {
+  highlightEntityNameAndDescription,
+  renderHighlightedText,
+} from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { stripMarkdown } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { ClassificationTag } from '../../common/atoms/Tag';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
-import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
+import DomainTags from '../../common/DomainTags/DomainTags';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -301,7 +303,7 @@ const EntityTitleColumn = ({
         <Typography.Text
           className="text-lg font-medium text-link-color"
           data-testid="entity-header-display-name">
-          {stringToHTML(searchClassBase.getEntityName(source))}
+          {renderHighlightedText(searchClassBase.getEntityName(source))}
         </Typography.Text>
       </Button>
     ) : (
@@ -325,19 +327,21 @@ const EntityTitleColumn = ({
           <Typography.Text
             className="text-lg font-medium text-link-color break-word whitespace-normal"
             data-testid="entity-header-display-name">
-            {stringToHTML(searchClassBase.getEntityName(source))}
+            {renderHighlightedText(searchClassBase.getEntityName(source))}
           </Typography.Text>
         </Link>
 
-        {!isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
-          <div className="tw:ml-1.5">
-            <CertificationTag
-              certification={
-                (source as Table).certification as AssetCertification
-              }
-            />
-          </div>
-        )}
+        {/* Column docs carry the parent table's certification; a column isn't certified itself */}
+        {source.entityType !== EntityType.TABLE_COLUMN &&
+          !isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
+            <div className="tw:ml-1.5">
+              <CertificationTag
+                certification={
+                  (source as Table).certification as AssetCertification
+                }
+              />
+            </div>
+          )}
 
         {hasGlossaryTermStatus && (
           <EntityStatusBadge
@@ -551,11 +555,16 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { isTourOpen } = useTourProvider();
     const queryClient = useQueryClient();
 
-    const source = useMemo(() => {
-      return highlight
-        ? highlightEntityNameAndDescription(_source, highlight)
-        : _source;
-    }, [_source, highlight]);
+    const source = useMemo(
+      () =>
+        highlight
+          ? highlightEntityNameAndDescription(_source, highlight, true)
+          : {
+              ..._source,
+              description: stripMarkdown(_source.description ?? ''),
+            },
+      [_source, highlight]
+    );
 
     const rankingStages = useMemo(() => {
       const stageNames = new Set<string>();
@@ -687,31 +696,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       }
     }, [queryClient, source.entityType, source.fullyQualifiedName]);
 
-    const toOwnersWithHref = useCallback(
-      (refs: EntityReference[]) =>
-        toOwnerRefs(refs).map((o) => ({
-          ...o,
-          href: getOwnerPath({
-            id: o.id,
-            name: o.name,
-            type: o.type,
-          } as EntityReference),
-          icon: o.type === 'team' ? IconTeams : undefined,
-        })),
-      []
-    );
-
-    const renderOwnerContent = useCallback(
-      (owner: { name?: string; type?: string }, chip: ReactNode) => (
-        <UserPopOverCard
-          type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-          userName={owner.name ?? ''}>
-          {chip}
-        </UserPopOverCard>
-      ),
-      []
-    );
-
     const otherDetails = useMemo(() => {
       const buildColumnDetails = (): ExtraInfo[] => {
         const columnSource = source as TableColumnSearchSource;
@@ -740,13 +724,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <Owner
               avatarSize={24}
               isCompactView={false}
-              owners={toOwnersWithHref(
-                (source as TableColumnSearchSource)?.owners ?? []
-              )}
+              owners={(source as TableColumnSearchSource)?.owners ?? []}
               placeHolder={t('label.no-entity', {
                 entity: t('label.owner-plural'),
               })}
-              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           ),
@@ -800,7 +781,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             ? [
                 {
                   key: 'Domains',
-                  value: <DomainDisplay domains={source.domains} />,
+                  value: <DomainTags domains={source.domains} maxVisible={1} />,
                 },
               ]
             : emptyDomainInfo;
@@ -813,13 +794,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               <Owner
                 avatarSize={24}
                 isCompactView={false}
-                owners={toOwnersWithHref(
-                  (source?.owners as EntityReference[]) ?? []
-                )}
+                owners={(source?.owners as EntityReference[]) ?? []}
                 placeHolder={t('label.no-entity', {
                   entity: t('label.owner-plural'),
                 })}
-                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             ),
@@ -832,7 +810,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return source?.entityType === EntityType.TABLE_COLUMN
         ? buildColumnDetails()
         : buildEntityDetails();
-    }, [source]);
+    }, [source, t]);
 
     const breadcrumbs = useMemo(
       () =>
@@ -851,11 +829,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             return (
               <img
                 alt={source.entityType}
-                className="align-middle m-r-xs object-contain"
+                className="align-middle tw:mr-1.5 object-contain"
                 data-testid="icon"
-                height={24}
+                height={20}
                 src={source.style.iconURL}
-                width={24}
+                width={20}
               />
             );
           }
@@ -864,10 +842,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         }
 
         return (
-          <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
+          <span className="tw:mr-1.5 d-inline-flex text-xl align-middle">
             {searchClassBase.getEntityIcon(
               source.entityType ?? '',
-              'text-link-color'
+              'text-link-color tw:w-5 tw:h-5'
             )}
           </span>
         );

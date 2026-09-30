@@ -19,16 +19,15 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
   descriptionBox,
-  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import {
-  openAddGlossaryTermModal,
   performExpandAll,
   selectActiveGlossary,
 } from '../../../utils/glossary';
+import { createGlossaryTermFromForm } from '../../../utils/glossaryForm';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -77,10 +76,6 @@ test.afterAll('Cleanup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.beforeEach(async ({ page }) => {
-  await redirectToHomePage(page);
-});
-
 test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
   const glossaryNoReviewers = new Glossary();
   const glossaryWithReviewer = new Glossary();
@@ -121,23 +116,11 @@ test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossaryNoReviewers.data.displayName);
 
-    // Click add term button
-    await openAddGlossaryTermModal(page);
-
-    // Fill in term details
     const termName = `ApprovedTerm${Date.now()}`;
-    await page.fill('[data-testid="name"]', termName);
-    await fillDescriptionBox(page, 'Test description for status');
-
-    // Submit the term
-    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    await createResponse;
-
-    // Wait for modal to close
-    await expect(
-      page.locator('[role="dialog"].edit-glossary-modal')
-    ).not.toBeVisible();
+    await createGlossaryTermFromForm(page, {
+      name: termName,
+      description: 'Test description for status',
+    });
 
     // Wait for the table to update
 
@@ -158,23 +141,11 @@ test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossaryWithReviewer.data.displayName);
 
-    // Click add term button
-    await openAddGlossaryTermModal(page);
-
-    // Fill in term details
     const termName = `DraftTerm${Date.now()}`;
-    await page.fill('[data-testid="name"]', termName);
-    await fillDescriptionBox(page, 'Test description for draft');
-
-    // Submit the term
-    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    await createResponse;
-
-    // Wait for modal to close
-    await expect(
-      page.locator('[role="dialog"].edit-glossary-modal')
-    ).not.toBeVisible();
+    await createGlossaryTermFromForm(page, {
+      name: termName,
+      description: 'Test description for draft',
+    });
 
     // Wait for the table to update
 
@@ -194,23 +165,11 @@ test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossaryWithReviewer.data.displayName);
 
-    // Click add term button
-    await openAddGlossaryTermModal(page);
-
-    // Fill in term details
     const termName = `InheritReviewerTerm${Date.now()}`;
-    await page.fill('[data-testid="name"]', termName);
-    await fillDescriptionBox(page, 'Test term to verify reviewer inheritance');
-
-    // Submit the term
-    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    await createResponse;
-
-    // Wait for modal to close
-    await expect(
-      page.locator('[role="dialog"].edit-glossary-modal')
-    ).not.toBeVisible();
+    await createGlossaryTermFromForm(page, {
+      name: termName,
+      description: 'Test term to verify reviewer inheritance',
+    });
 
     // Click on the term name to navigate to term details
     await page.click(`[data-testid="${termName}"]`);
@@ -230,10 +189,11 @@ test.describe('Term Status Transitions', { tag: ['@workflow'] }, () => {
 test(
   'non-reviewer should not see approve/reject buttons',
   { tag: ['@workflow'] },
-  async ({ page, reviewer2Page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
+  async ({ browser, reviewer2Page }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     const glossary = new Glossary();
-    const termName = `TermForReview${Date.now()}`;
+    const term = new GlossaryTerm(glossary);
+    const termName = term.data.name;
 
     try {
       await glossary.create(apiContext);
@@ -252,29 +212,16 @@ test(
         },
       ]);
 
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      await openAddGlossaryTermModal(page);
-
-      await page.fill('[data-testid="name"]', termName);
-      await fillDescriptionBox(page, 'Term for review testing');
-
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      await createResponse;
-
-      await expect(
-        page.locator('[role="dialog"].edit-glossary-modal')
-      ).not.toBeVisible();
-
-      await redirectToHomePage(reviewer2Page);
+      await term.create(apiContext);
       await sidebarClick(reviewer2Page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(reviewer2Page, glossary.data.displayName);
 
       const termRow = reviewer2Page.locator(`[data-row-key*="${termName}"]`);
 
       await expect(termRow).toBeVisible();
+      await expect(termRow.locator('.status-badge')).toHaveText(
+        /^(Draft|In Review)$/
+      );
 
       const approveBtn = reviewer2Page.getByTestId(`${termName}-approve-btn`);
       const rejectBtn = reviewer2Page.getByTestId(`${termName}-reject-btn`);
@@ -316,18 +263,10 @@ test(
       await selectActiveGlossary(page, glossary.data.displayName);
 
       const termName = `StatusBadgeTerm${Date.now()}`;
-      await openAddGlossaryTermModal(page);
-
-      await page.fill('[data-testid="name"]', termName);
-      await fillDescriptionBox(page, 'Test term for status badge');
-
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      await createResponse;
-
-      await expect(
-        page.locator('[role="dialog"].edit-glossary-modal')
-      ).not.toBeVisible();
+      await createGlossaryTermFromForm(page, {
+        name: termName,
+        description: 'Test term for status badge',
+      });
 
       const termRow = page.locator(`[data-row-key*="${termName}"]`);
 
@@ -336,7 +275,7 @@ test(
       const statusBadge = termRow.locator('.status-badge');
 
       await expect(async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await expect(statusBadge).toHaveText('In Review', { timeout: 5000 });
       }).toPass({ timeout: 30000 });
 
@@ -388,18 +327,10 @@ test(
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
-
-      await page.fill('[data-testid="name"]', termName);
-      await fillDescriptionBox(page, 'Term for owner approval test');
-
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      await createResponse;
-
-      await expect(
-        page.locator('[role="dialog"].edit-glossary-modal')
-      ).not.toBeVisible();
+      await createGlossaryTermFromForm(page, {
+        name: termName,
+        description: 'Term for owner approval test',
+      });
 
       await redirectToHomePage(reviewer2Page);
       await sidebarClick(reviewer2Page, SidebarItem.GLOSSARY);
@@ -670,7 +601,7 @@ test(
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
 
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
       await fillDeleteConfirmationIfPresent(page);

@@ -46,8 +46,19 @@ import {
   selectOptionWithRetry,
   uuid,
 } from './common';
-import { addOwner, waitForAllLoadersToDisappear } from './entity';
+import {
+  addOwner,
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
+import {
+  applyGlossaryPicker,
+  openGlossaryPicker,
+  toggleGlossaryTermInPicker,
+} from './glossaryPicker';
 import { sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
@@ -245,85 +256,6 @@ export const removeCertificationFromWidget = async (
   await expect(page.getByTestId('add-certification')).toBeVisible();
 };
 
-export const assignDomainWidget = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  multiSelect = false,
-  isUpdate = false
-) => {
-  await openWidgetEditor(page, 'add-domain', 'edit-domain', isUpdate);
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
-  await searchDomain;
-
-  const domainTag = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
-  await domainTag.waitFor({ state: 'visible' });
-
-  if (multiSelect) {
-    await domainTag.click();
-    const patchReq = page.waitForResponse(
-      (req) => req.request().method() === 'PATCH'
-    );
-    await page.getByTestId('saveAssociatedTag').click();
-    await patchReq;
-  } else {
-    const patchReq = page.waitForResponse(
-      (req) => req.request().method() === 'PATCH'
-    );
-    await domainTag.click();
-    await patchReq;
-  }
-
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(
-    page.getByTestId('domain-link').filter({ hasText: domain.displayName })
-  ).toBeVisible();
-};
-
-export const removeDomainWidget = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
-) => {
-  // Removing implies a domain is already assigned, so the widget shows edit.
-  await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
-  await waitForAllLoadersToDisappear(page);
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .clear();
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.name);
-  await searchDomain;
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(page.getByTestId('domain-link')).not.toBeVisible();
-};
-
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
   await waitForAllLoadersToDisappear(page);
@@ -427,7 +359,7 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     .poll(
       async () => {
         if (hasSearched) {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
         }
         hasSearched = true;
@@ -552,7 +484,7 @@ export const selectDataProduct = async (
     .poll(
       async () => {
         if (hasSearched) {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
           await searchBox.waitFor({ state: 'visible' });
         }
@@ -780,7 +712,7 @@ export const checkSubDomainCount = async (page: Page, count: number) => {
     .poll(
       async () => {
         if (shouldReload) {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
         }
         shouldReload = true;
@@ -942,7 +874,7 @@ export const addAssetsToDomain = async (
 
   await searchRes;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await checkAssetsCount(page, assets.length);
@@ -996,9 +928,19 @@ export const addAssetsToDataProduct = async (
 
   await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
-  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
+  // Must match size=25 specifically: the drawer also fires a size=0 count query
+  // that matches a broader string pattern and can take 50+ s under load.
+  const assetRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('q=&') &&
+      response.url().includes('index=all') &&
+      response.url().includes('size=25')
+  );
   await page.getByTestId('data-product-details-add-button').click();
   await assetRes;
+
+  await expect(page.getByTestId('searchbar')).toBeVisible();
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name') as string | undefined;
@@ -1013,7 +955,11 @@ export const addAssetsToDataProduct = async (
     }
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(`q=${name}`) &&
+        response.url().includes('index=all') &&
+        response.url().includes('size=25')
     );
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
@@ -1047,7 +993,7 @@ export const addAssetsToDataProduct = async (
         .getByTestId(`data-product-${dataProductFqn}`)
     ).toBeVisible();
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
   }
 };
@@ -1246,51 +1192,56 @@ export const addTagsAndGlossaryToDomain = async (
   {
     tagFqn,
     glossaryTermFqn,
+    glossaryTermName,
     isDomain = true,
   }: {
     tagFqn: string;
     glossaryTermFqn: string;
+    // From the term, never split out of the FQN: a name can contain dots.
+    glossaryTermName: string;
     isDomain?: boolean;
   }
 ) => {
-  const addTagOrTerm = async (
-    containerType: 'tags' | 'glossary',
-    value: string
-  ) => {
-    const container = `[data-testid="${containerType}-container"]`;
+  const patchUrl = (response: import('@playwright/test').Response) =>
+    response
+      .url()
+      .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
+    response.request().method() === 'PATCH';
 
-    // Click add button
-    await page.locator(`${container} [data-testid="add-tag"]`).click();
+  // Add classification tag via ClassificationTagPicker
+  const tagsContainer = '[data-testid="tags-container"]';
+  const trigger = page.locator(`${tagsContainer} [data-testid="add-tag"]`);
 
-    // Fill and select tag/term
-    const input = page.locator(`${container} #tagsForm_tags`);
-    await input.click();
-    await input.fill(value);
-    const tag = page.getByTestId(`tag-${value}`);
-    if (containerType === 'glossary') {
-      // To avoid clicking on white space between checkbox and text
-      await tag.locator('.ant-select-tree-checkbox').click();
-    } else {
-      await tag.click();
-    }
+  await openClassificationTagPicker(page, trigger);
 
-    // Save and wait for response
-    const updateResponse = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
-        response.request().method() === 'PATCH'
-    );
-    await page.getByTestId('saveAssociatedTag').click();
-    await updateResponse;
-  };
+  const searchTagResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response
+        .url()
+        .includes(encodeURIComponent(escapeESReservedCharacters(tagFqn))) &&
+      response.request().method() === 'GET'
+  );
+  await page.getByTestId('classification-tag-picker-search').fill(tagFqn);
+  await searchTagResponse;
+  await page.getByTestId(`tree-node-${tagFqn}`).click();
 
-  // Add tag
-  await addTagOrTerm('tags', tagFqn);
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+  const tagPatchResponse = page.waitForResponse(patchUrl);
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
+  await tagPatchResponse;
 
-  // Add glossary term
-  await addTagOrTerm('glossary', glossaryTermFqn);
+  // Add glossary term (uses the new GlossaryTermPicker)
+  await openGlossaryPicker(
+    page,
+    page.locator('[data-testid="glossary-container"] [data-testid="add-tag"]')
+  );
+  await toggleGlossaryTermInPicker(page, {
+    name: glossaryTermName,
+    fullyQualifiedName: glossaryTermFqn,
+  });
+  await applyGlossaryPicker(page, patchUrl);
 };
 
 /**
@@ -2053,20 +2004,22 @@ export const renameDomain = async (page: Page, newName: string) => {
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
 
-  const patchRes = page.waitForResponse(
+  const patchRes = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/domains/') &&
-      response.request().method() === 'PATCH' &&
-      response.ok()
+      response.request().method() === 'PATCH',
+    'ok'
   );
   await page.getByTestId('save-button').click();
   await patchRes;
-  await page.waitForURL((url) =>
-    url.pathname.includes(encodeURIComponent(newName))
+  await page.waitForURL(
+    (url) => url.pathname.includes(encodeURIComponent(newName)),
+    { waitUntil: 'domcontentloaded' }
   );
 
   const domainRes = page.waitForResponse('/api/v1/domains/name/*');
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await domainRes;
 };
 
@@ -2079,21 +2032,17 @@ export const selectDomainFromNavbar = async (
   domain: Domain['responseData']
 ) => {
   const domainDropdown = page.getByTestId('domain-dropdown');
-  const domainTree = page.getByTestId('domain-selectable-tree');
+  const domainSearch = page.getByTestId('domain-dropdown-search');
   const searchTerm = domain.displayName ?? domain.name;
 
   await domainDropdown.click();
-  await page
-    .getByTestId('domain-selectable-tree')
-    .waitFor({ state: 'visible' });
+  await domainSearch.waitFor({ state: 'visible' });
 
-  await domainTree.getByTestId('searchbar').waitFor({ state: 'visible' });
-
-  await domainTree.getByTestId('searchbar').click();
+  await domainSearch.click();
   await page.keyboard.press('Control+a');
-  await domainTree.getByTestId('searchbar').pressSequentially(searchTerm);
+  await domainSearch.pressSequentially(searchTerm);
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -2238,7 +2187,9 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
 
   await page.getByTestId('name').locator('input').fill(`test-dp-${Date.now()}`);
 
-  const descriptionEditor = page.locator('[contenteditable="true"]').first();
+  const descriptionEditor = page
+    .locator('.add-domain-form-description')
+    .locator('[contenteditable="true"]');
   await descriptionEditor.waitFor({ state: 'visible', timeout: 10000 });
   await descriptionEditor.click();
   await page.keyboard.type('Test data product description');
@@ -2258,6 +2209,11 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
   const domainOption = page.getByText(domain.data.displayName);
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
+
+  // Wait for the DomainSelectableList Popover overlay to close before returning.
+  await page
+    .locator('.domain-select-popover')
+    .waitFor({ state: 'hidden', timeout: 5000 });
 };
 
 const parseRequestBody = (postData: string | null | undefined) => {

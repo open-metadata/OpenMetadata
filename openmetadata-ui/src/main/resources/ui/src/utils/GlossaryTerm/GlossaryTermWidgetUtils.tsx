@@ -16,6 +16,7 @@ import { isEmpty } from 'lodash';
 import { lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import { useGenericDomainLabel } from '../../components/common/DomainLabel/useGenericDomainLabel';
 import {
   WidgetEditButton,
   WidgetPlusButton,
@@ -25,7 +26,6 @@ import { useGenericContext } from '../../components/Customization/GenericProvide
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import type { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getOwnerVersionLabel } from '../EntityVersionUtils';
 
@@ -37,10 +37,10 @@ const CommonWidgets = withSuspenseFallback(
   )
 );
 
-const DomainLabelV2 = withSuspenseFallback(
+const DomainLabel = withSuspenseFallback(
   lazy(() =>
-    import('../../components/DataAssets/DomainLabelV2/DomainLabelV2').then(
-      (module) => ({ default: module.DomainLabelV2 })
+    import('../../components/common/DomainLabel/DomainLabel.component').then(
+      (module) => ({ default: module.DomainLabel })
     )
   )
 );
@@ -99,7 +99,6 @@ const GlossaryTermOwnerWidget = () => {
   const { data, onUpdate, permissions, isVersionView, entityRules } =
     useGenericContext<{ owners?: EntityReference[]; id: string }>();
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const hasPermission = permissions?.EditOwners || permissions?.EditAll;
 
@@ -153,8 +152,7 @@ const GlossaryTermOwnerWidget = () => {
       ) : (
         <Owner
           isCompactView={false}
-          owners={toOwnersWithHref(data.owners ?? [])}
-          renderOwnerContent={renderOwnerContent}
+          owners={data.owners ?? []}
           showLabel={false}
         />
       )}
@@ -164,11 +162,14 @@ const GlossaryTermOwnerWidget = () => {
 
 const GlossaryTermDomainWidget = () => {
   const { entityRules } = useGenericContext();
+  const domainProps = useGenericDomainLabel();
 
   return (
-    <DomainLabelV2
+    <DomainLabel
+      {...domainProps}
       showDomainHeading
       multiple={entityRules?.canAddMultipleDomains ?? true}
+      variant="widget"
     />
   );
 };

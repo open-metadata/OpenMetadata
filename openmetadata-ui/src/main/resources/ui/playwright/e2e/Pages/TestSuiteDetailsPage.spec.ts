@@ -14,7 +14,7 @@ import { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  addTestCaseListFilterByFirstColumnInAddTestCasesDialog,
+  addTestCaseListFilterByColumnInAddTestCasesDialog,
   addTestCaseListFilterByStatusInAddTestCasesDialog,
   addTestCaseListFilterByTableInAddTestCasesDialog,
   addTestCaseListFilterByTestTypeInAddTestCasesDialog,
@@ -50,7 +50,7 @@ test.beforeEach(async ({ page }) => {
 
 test(
   'Add test case modal on Test Suite details page - filters and select',
-  { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag, '@quarantine'] },
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {
     test.slow();
 
@@ -64,7 +64,9 @@ test(
       const initialListResponse = page.waitForResponse(
         `/api/v1/dataQuality/testCases/search/list*`
       );
-      await page.goto('/data-quality/test-suites/bundle-suites');
+      await page.goto('/data-quality/test-suites/bundle-suites', {
+        waitUntil: 'domcontentloaded',
+      });
       await page.click('[data-testid="add-test-suite-btn"]');
       await initialListResponse;
       await page
@@ -97,7 +99,9 @@ test(
     });
 
     await test.step('Find and open the test suite from the bundle suite list', async () => {
-      await page.goto('/data-quality/test-suites/bundle-suites');
+      await page.goto('/data-quality/test-suites/bundle-suites', {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
 
       const testSuiteSearchResponse = page.waitForResponse(
@@ -109,7 +113,8 @@ test(
       await testSuiteSearchResponse;
 
       const testSuiteDetailsPage = page.waitForURL(
-        (url) => url.pathname === `/test-suites/${NEW_TEST_SUITE.name}`
+        (url) => url.pathname === `/test-suites/${NEW_TEST_SUITE.name}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await page
         .getByRole('link', { exact: true, name: NEW_TEST_SUITE.name })
@@ -174,13 +179,17 @@ test(
     });
 
     await test.step('Filter by Column and wait for API', async () => {
-      await addTestCaseListFilterByFirstColumnInAddTestCasesDialog(page);
+      await addTestCaseListFilterByColumnInAddTestCasesDialog(
+        page,
+        table.columnsName[0]
+      );
     });
 
     await test.step('Reset Test Type to All and clear filters, wait for API', async () => {
       await addTestCaseListResetFiltersInAddTestCasesDialog(
         page,
-        table.entityResponseData?.fullyQualifiedName ?? ''
+        table.entityResponseData?.fullyQualifiedName ?? '',
+        table.columnsName[0]
       );
     });
 

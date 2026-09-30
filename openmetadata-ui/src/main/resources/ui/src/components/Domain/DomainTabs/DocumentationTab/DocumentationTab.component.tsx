@@ -17,8 +17,8 @@ import { useTranslation } from 'react-i18next';
 import Description from '../../../../components/common/EntityDescription/Description';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   DataProduct,
   TagLabel,
@@ -29,7 +29,6 @@ import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtilsPure';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
@@ -56,7 +55,6 @@ const DocumentationTab = ({
   type = DocumentationEntity.DOMAIN,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const resourceType =
     type === DocumentationEntity.DOMAIN
       ? ResourceEntity.DOMAIN
@@ -216,10 +214,7 @@ const DocumentationTab = ({
               title={t('label.owner-plural')}>
               <Owner
                 isCompactView={false}
-                owners={toOwnersWithHref(
-                  (domain as Domain | DataProduct).owners ?? []
-                )}
-                renderOwnerContent={renderOwnerContent}
+                owners={(domain as Domain | DataProduct).owners ?? []}
                 showLabel={false}
               />
             </WidgetCard>

@@ -41,7 +41,7 @@ import {
 } from '../../../../../utils/ChartUtils';
 import { CustomDQTooltip } from '../../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
-import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import {
   showErrorToast,
   showSuccessToast,
@@ -63,7 +63,7 @@ const CustomMetricGraphs = ({
   customMetrics,
 }: CustomMetricGraphsProps) => {
   const { t } = useTranslation();
-  const { grid, primary, primaryArea } = useChartColors();
+  const { axis, grid, primary, primaryArea } = useChartColors();
   const [form] = Form.useForm<CustomMetric>();
   const {
     permissions,
@@ -72,7 +72,7 @@ const CustomMetricGraphs = ({
   } = useTableProfiler();
   const editPermission =
     permissions &&
-    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
+    getDerivedPermissionFlags(permissions).can(Operation.EditDataProfile);
   const deletePermission = permissions?.Delete || false;
 
   const [selectedMetrics, setSelectedMetrics] = useState<CustomMetric>();
@@ -254,7 +254,7 @@ const CustomMetricGraphs = ({
                         axisLine={false}
                         dataKey="formattedTimestamp"
                         padding={{ left: 16, right: 16 }}
-                        tick={{ fontSize: 12 }}
+                        tick={{ fill: axis, fontSize: 12 }}
                         tickLine={false}
                       />
 
@@ -262,7 +262,7 @@ const CustomMetricGraphs = ({
                         axisLine={false}
                         domain={['min', 'max']}
                         padding={{ top: 16, bottom: 16 }}
-                        tick={{ fontSize: 12 }}
+                        tick={{ fill: axis, fontSize: 12 }}
                         tickFormatter={(props) => axisTickFormatter(props)}
                         tickLine={false}
                         type="number"

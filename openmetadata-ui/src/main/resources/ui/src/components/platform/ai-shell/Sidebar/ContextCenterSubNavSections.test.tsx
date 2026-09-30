@@ -37,8 +37,10 @@ describe('ContextCenterSubNavSections', () => {
         />
       </MemoryRouter>
     );
+    // Typography no longer wraps a span in a block-level `.prose` div — the
+    // span carries `prose` itself — so the heading is a direct child here.
     const heading = container.querySelector(
-      '.ask-sub-panel__section > .prose > span'
+      '.ask-sub-panel__section > span.prose'
     );
 
     expect(heading).toHaveClass('tw:text-quaternary');

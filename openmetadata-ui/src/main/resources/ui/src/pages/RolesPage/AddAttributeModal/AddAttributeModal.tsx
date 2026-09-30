@@ -28,8 +28,10 @@ import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getPolicies, getRoles } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../utils/EntitySearchUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../utils/EntitySearchUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './add-attribute-modal.less';
 
@@ -138,7 +140,7 @@ const AddAttributeModal: FC<Props> = ({
       confirmLoading={isModalLoading}
       data-testid="modal-container"
       maskClosable={false}
-      okText="Submit"
+      okText={t('label.save')}
       open={isOpen}
       title={
         <span data-testid="modal-title">
@@ -183,7 +185,7 @@ const AddAttributeModal: FC<Props> = ({
                 key={option.id}
                 onClick={() => handleValueSelect(option.id)}>
                 <Col span={6}>
-                  {stringToHTML(
+                  {renderHighlightedText(
                     highlightSearchText(getEntityName(option), searchTerm)
                   )}
                 </Col>

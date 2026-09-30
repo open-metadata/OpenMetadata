@@ -228,6 +228,7 @@ class StoredProcedureClassBase {
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.TABLE_CONSTRAINTS:
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:
         return 1;

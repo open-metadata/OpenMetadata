@@ -14,7 +14,9 @@ import {
   Box,
   ButtonUtility,
   Card,
+  ClassificationTag,
   Dot,
+  GlossaryTag,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -25,9 +27,9 @@ import { OwnerType } from '../../../enums/user.enum';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
+import type { VotingDataProps } from '../../../interface/entity/vote.interface';
 import {
   KnowledgePage,
   PageType,
@@ -58,7 +60,6 @@ import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { ClassificationTag, GlossaryTag } from '../../common/atoms/Tag';
 
 export interface KnowledgeCardProps {
   knowledgeItem: KnowledgePage;

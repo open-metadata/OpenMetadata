@@ -95,12 +95,9 @@ describe('useDomainTableColumns', () => {
 
     result.current.renderCell(DOMAIN, 'owners');
 
-    expect(renderDomainOwnersCell).toHaveBeenCalledWith(
-      DOMAIN,
-      expect.any(Function),
-      expect.any(Function),
-      { showDashPlaceholder: true }
-    );
+    expect(renderDomainOwnersCell).toHaveBeenCalledWith(DOMAIN, {
+      showDashPlaceholder: true,
+    });
   });
 
   it('renders the glossaryTerms column via renderDomainGlossaryTagsCell', () => {
