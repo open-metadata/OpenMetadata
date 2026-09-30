@@ -259,6 +259,10 @@ class TestCaseIndexTest {
     assertNull(result.get("testCaseResult"));
     assertTrue(result.containsKey("testCaseStatus"));
     assertNull(result.get("testCaseStatus"));
+    assertTrue(
+        SearchClient.FIELDS_TO_REMOVE_WHEN_NULL.containsAll(
+            List.of("testCaseResult", "testCaseStatus")),
+        "every search update path must turn these nulls into removals");
   }
 
   @Test
