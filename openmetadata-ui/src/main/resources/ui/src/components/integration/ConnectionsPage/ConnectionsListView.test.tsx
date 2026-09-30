@@ -386,6 +386,8 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
 // `canCreateAnyServiceCategory` mirrors the real implementation (any category is enough) so the
 // All-tab permission cases exercise the same rule through the mocked checkPermission.
 jest.mock('../../../utils/ServicePureUtils', () => ({
+  getServiceCategoryLabel: jest.requireActual('../../../utils/ServicePureUtils')
+    .getServiceCategoryLabel,
   getResourceEntityFromServiceCategory: (category: string) => category,
   canCreateAnyServiceCategory: (permissions: unknown) =>
     Object.values(
@@ -600,7 +602,7 @@ describe('ConnectionsListView', () => {
       />
     );
 
-    expect(screen.getByText('label.database-service (24)')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural (24)')).toBeInTheDocument();
     expect(
       screen.getByTestId(`connections-nav-${ServiceCategory.DATABASE_SERVICES}`)
     ).toHaveTextContent('24');
@@ -841,7 +843,7 @@ describe('ConnectionsListView', () => {
       />
     );
 
-    expect(screen.getByText('label.database-service (3)')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural (3)')).toBeInTheDocument();
     expect(
       screen.getByTestId(`connections-nav-${ServiceCategory.DATABASE_SERVICES}`)
     ).toHaveTextContent('24');
