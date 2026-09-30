@@ -1605,6 +1605,19 @@ class TestHiveMetastoreDeltaDetection:
             result = source.query_table_names_and_types("lake_schema")
         assert result == [TableNameAndType(name="iceberg_events", type_=TableType.Regular)]
 
+    def test_only_the_delta_table_is_retyped_in_a_mixed_schema(self):
+        """A schema holds both kinds, and exactly one provider row comes back for it.
+
+        Without this case a regression that retyped every table as soon as any provider row
+        matched would still pass the single-table tests above.
+        """
+        with self._source(["delta_sales", "hive_orders"], [("delta_sales", "DELTA")]) as (source, _):
+            result = source.query_table_names_and_types("mixed_schema")
+        assert result == [
+            TableNameAndType(name="delta_sales", type_=TableType.DeltaLake),
+            TableNameAndType(name="hive_orders", type_=TableType.Regular),
+        ]
+
     def test_views_are_untouched_by_the_delta_override(self):
         """Views go through query_view_names_and_types, which the override must not reach."""
         with self._source([], [("delta_view", "DELTA")], view_names=["delta_view"]) as (source, connection):

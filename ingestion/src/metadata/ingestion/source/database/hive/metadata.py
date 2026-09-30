@@ -42,6 +42,9 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.hive.connection import (
     get_validated_metastore_connection,
 )
+from metadata.ingestion.source.database.hive.metastore_dialects.mixin import (
+    HiveMetaStoreDialectMixin,
+)
 from metadata.ingestion.source.database.hive.utils import (
     get_columns,
     get_table_comment,
@@ -93,8 +96,12 @@ class HiveSource(CommonDbSourceService):
         if not get_validated_metastore_connection(self.service_connection.metastoreConnection):
             return tables
 
+        dialect = self.connection.dialect
+        if not isinstance(dialect, HiveMetaStoreDialectMixin):
+            return tables
+
         try:
-            providers = self.connection.dialect.get_table_providers(self.connection, schema_name)
+            providers = dialect.get_table_providers(self.connection, schema_name)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Skipping Delta detection for schema %s: %s", schema_name, exc)
