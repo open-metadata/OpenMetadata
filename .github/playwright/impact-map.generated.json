@@ -6648,8 +6648,13 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Explore/ExploreTree/ExploreTree.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
+        "playwright/e2e/Features/ExploreUrlState.spec.ts",
         "playwright/e2e/Features/RTL.spec.ts",
-        "playwright/e2e/Pages/ExploreResilience.spec.ts"
+        "playwright/e2e/Pages/ExploreBrowse.spec.ts",
+        "playwright/e2e/Pages/ExploreResilience.spec.ts",
+        "playwright/e2e/Pages/ExploreTree.spec.ts"
       ]
     },
     {
@@ -6673,13 +6678,19 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ExploreV1/ExploreV1.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
         "playwright/e2e/Features/SearchExport.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
+        "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
         "playwright/e2e/Pages/ExploreResilience.spec.ts",
-        "playwright/e2e/Pages/ExploreTree.spec.ts"
+        "playwright/e2e/Pages/ExploreTree.spec.ts",
+        "playwright/e2e/Pages/Glossary.spec.ts",
+        "playwright/e2e/Pages/Tags.spec.ts"
       ]
     },
     {
