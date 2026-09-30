@@ -34,7 +34,9 @@ import {
   ListingData,
 } from '../../common/atoms/shared/types';
 
-export const useDataProductListingData = (): ListingData<DataProduct> => {
+export const useDataProductListingData = ({
+  enableNlq,
+}: { enableNlq?: boolean } = {}): ListingData<DataProduct> => {
   const { dataProductBasePath } = useMarketplaceStore();
   const filterKeys = DATAPRODUCT_DEFAULT_QUICK_FILTERS;
   const filterConfigs = DATAPRODUCT_FILTERS;
@@ -116,6 +118,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
     columns,
     renderers,
     basePath: dataProductBasePath,
+    enableNlq,
   });
 
   return listingData;

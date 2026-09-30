@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { startCase } from 'lodash';
 import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -23,13 +22,16 @@ import { getBreadcrumbForEntitiesWithServiceOnly } from './EntityDataBreadcrumbU
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
-import { getEntityTypeFromServiceCategory } from './ServicePureUtils';
+import {
+  getEntityTypeFromServiceCategory,
+  getServiceCategoryLabel,
+} from './ServicePureUtils';
 
 export const getServiceCategoryBreadcrumb = (
   serviceCategory: ServiceCategory
 ): TitleLink[] => [
   {
-    name: startCase(serviceCategory),
+    name: getServiceCategoryLabel(serviceCategory),
     // Delegated rather than built here so the destination follows whatever surface owns the
     // service listing. The base implementation returns this same settings path; an embedded
     // experience that lists services elsewhere overrides it, and every entity breadcrumb that
