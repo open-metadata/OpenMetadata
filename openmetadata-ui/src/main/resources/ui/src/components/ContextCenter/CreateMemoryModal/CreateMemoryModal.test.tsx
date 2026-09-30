@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -340,12 +340,27 @@ describe('CreateMemoryModal', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('memory-derived-ontology')).toBeInTheDocument();
+    const derivedOntology = screen.getByTestId('memory-derived-ontology');
+
+    expect(derivedOntology).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: 'Monthly recurring revenue' })
-    ).toHaveAttribute(
+      screen
+        .getByTestId('memory-metadata-section')
+        .compareDocumentPosition(derivedOntology) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    const termLink = screen.getByRole('link', {
+      name: 'Monthly recurring revenue',
+    });
+
+    expect(termLink).toHaveAttribute(
       'href',
       '/glossary/subscription_metrics.monthly_recurring_revenue'
     );
+
+    fireEvent.click(termLink);
+
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
 });

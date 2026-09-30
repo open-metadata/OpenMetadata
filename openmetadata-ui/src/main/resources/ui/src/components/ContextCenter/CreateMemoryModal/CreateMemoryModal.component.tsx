@@ -687,7 +687,7 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
   handleTagSave,
   t,
 }) => (
-  <div>
+  <div data-testid="memory-metadata-section">
     <Typography className="tw:text-tertiary" size="text-xs" weight="semibold">
       {t('label.metadata')}
     </Typography>
@@ -719,7 +719,10 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
   </div>
 );
 
-const MemoryDerivedOntology: FC<{ memory?: ContextMemory }> = ({ memory }) => {
+const MemoryDerivedOntology: FC<{
+  memory?: ContextMemory;
+  onNavigate: () => void;
+}> = ({ memory, onNavigate }) => {
   const { t } = useTranslation();
 
   if (!memory) {
@@ -743,7 +746,8 @@ const MemoryDerivedOntology: FC<{ memory?: ContextMemory }> = ({ memory }) => {
           <Link
             className="tw:text-link tw:hover:underline"
             key={term.id}
-            to={getGlossaryPath(term.fullyQualifiedName)}>
+            to={getGlossaryPath(term.fullyQualifiedName)}
+            onClick={onNavigate}>
             {getEntityName(term)}
           </Link>
         ))
@@ -1157,8 +1161,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       t={t}
                     />
 
-                    <MemoryDerivedOntology memory={memoryToEdit} />
-
                     {/* Section 5: Metadata */}
                     <MemoryMetadataSection
                       control={form.control}
@@ -1173,6 +1175,11 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       setShowTagForm={setShowTagForm}
                       showTagForm={showTagForm}
                       t={t}
+                    />
+
+                    <MemoryDerivedOntology
+                      memory={memoryToEdit}
+                      onNavigate={handleClose}
                     />
                   </div>
 
