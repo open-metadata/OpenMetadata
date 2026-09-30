@@ -59,7 +59,11 @@ LANE_WORKERS = {
 TARGET_MS = 20 * 60 * 1000
 COMMON_SHARD_BUDGET_MS = 19 * 60 * 1000
 EFFICIENCY = 0.85
-COMMON_MAX_SHARDS = 24
+# Raised 24 → 28 (backport of #31732). At a 19-minute budget, broad
+# targeted selections need more than 24 chromium shards and planning aborts.
+# 28 leaves ~12% content-growth headroom; if the lane grows past that, split
+# heavy suites (see AUDITED_PARALLEL_SUITES) before considering another raise.
+COMMON_MAX_SHARDS = 28
 FALLBACK_TEST_MS = 20_000
 AUDITED_PARALLEL_SUITES = {
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
