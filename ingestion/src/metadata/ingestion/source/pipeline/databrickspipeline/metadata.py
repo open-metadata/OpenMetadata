@@ -1176,24 +1176,25 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 logger.debug(f"No table lineage found for {entity_id}")
                 return
             if pipeline_entity is None:
-                logger.warning(f"Pipeline {pipeline_fqn} not found, skipping its table lineage")
+                logger.warning("Pipeline %s not found, skipping its table lineage", pipeline_fqn)
                 return
             pipeline_ref = EntityReference(id=pipeline_entity.id.root, type="pipeline")
 
             # A job that reads and writes in separate statements leaves only one-sided
             # rows: a read with no target, a write with no source. Those become
             # table -> job and job -> table edges, the same picture Catalog Explorer
-            # draws. A table already on a table -> table edge of this job is left
-            # there, so a well-recorded job gains no redundant hop through itself.
-            table_edges = [
-                (row["source_table_full_name"], row["target_table_full_name"])
-                for row in table_lineage_list
-                if row.get("source_table_full_name") and row.get("target_table_full_name")
-            ]
-            linked_sources = {source for source, _ in table_edges}
-            linked_targets = {target for _, target in table_edges}
+            # draws. A table that already got a table -> table edge of this job is left
+            # there, so a well-recorded job gains no redundant hop through itself. Only
+            # edges actually emitted count: two-sided rows go first, and a self-reference
+            # or an unresolved table never marks its tables as linked.
+            linked_sources: set[str] = set()
+            linked_targets: set[str] = set()
+            two_sided_first = sorted(
+                table_lineage_list,
+                key=lambda row: not (row.get("source_table_full_name") and row.get("target_table_full_name")),
+            )
 
-            for table_lineage in table_lineage_list:
+            for table_lineage in two_sided_first:
                 source_table_full_name = table_lineage.get("source_table_full_name")
                 target_table_full_name = table_lineage.get("target_table_full_name")
                 if not (source_table_full_name or target_table_full_name):
@@ -1240,6 +1241,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                 ),
                             ),
                         )
+                        linked_sources.add(source_table_full_name)
+                        linked_targets.add(target_table_full_name)
                     elif from_entity:
                         edge = EntitiesEdge(
                             fromEntity=EntityReference(id=from_entity.id, type="table"),

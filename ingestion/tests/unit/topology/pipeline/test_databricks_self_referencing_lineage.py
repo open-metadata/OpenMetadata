@@ -185,3 +185,30 @@ class TestOneSidedTableLineage:
         )
         edges = _edges(source)
         assert [(e.edge.fromEntity.type, e.edge.toEntity.type) for e in edges] == [("pipeline", "table")]
+
+    def test_a_self_reference_does_not_hide_the_write_through_the_job(self):
+        """A streaming job records A -> A next to its write of A; the write must survive."""
+        edges = _edges(
+            _source(
+                [
+                    {"source_table_full_name": SILVER, "target_table_full_name": SILVER},
+                    {"source_table_full_name": None, "target_table_full_name": SILVER},
+                ]
+            )
+        )
+        assert [(e.edge.fromEntity.type, e.edge.toEntity.type) for e in edges] == [("pipeline", "table")]
+
+    def test_an_unresolved_table_edge_does_not_hide_the_read_through_the_job(self):
+        """BRONZE -> X never becomes an edge when X is not ingested, so BRONZE -> job must."""
+        source = _source(
+            [
+                {"source_table_full_name": BRONZE, "target_table_full_name": SILVER_MVT},
+                {"source_table_full_name": BRONZE, "target_table_full_name": None},
+            ]
+        )
+        resolve = source.metadata.get_by_name.side_effect
+        source.metadata.get_by_name.side_effect = lambda entity=None, fqn=None, **kw: (
+            None if entity is Table and str(fqn).endswith(SILVER_MVT) else resolve(entity=entity, fqn=fqn, **kw)
+        )
+        edges = _edges(source)
+        assert [(e.edge.fromEntity.type, e.edge.toEntity.type) for e in edges] == [("table", "pipeline")]
