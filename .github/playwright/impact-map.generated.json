@@ -78,6 +78,7 @@
         "playwright/e2e/Features/AutoPilot.spec.ts",
         "playwright/e2e/Features/ChangeSummaryBadge.spec.ts",
         "playwright/e2e/Features/CronValidations.spec.ts",
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
@@ -713,6 +714,7 @@
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
@@ -1241,6 +1243,7 @@
       "specs": [
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
@@ -2391,6 +2394,7 @@
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePrecedence.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
@@ -2795,6 +2799,7 @@
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
@@ -3129,6 +3134,7 @@
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomMetric.spec.ts",
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
@@ -3447,7 +3453,11 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/BulkEditEntity.spec.ts",
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
+        "playwright/e2e/Features/Permissions/DomainPermissions.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
+        "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/GlossaryImportExport.spec.ts"
       ]
     },
@@ -3582,7 +3592,6 @@
       "specs": [
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
-        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/DataProductDomainMigration.spec.ts",
         "playwright/e2e/Features/DataProductRename.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
@@ -3591,7 +3600,6 @@
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
         "playwright/e2e/Features/ExploreUrlState.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivityDataProductTree.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainWidgetFilter.spec.ts",
@@ -3624,6 +3632,21 @@
         "playwright/e2e/Features/DomainIsolation/DomainSearchIsolation.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainTaskIsolation.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/domainPicker.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
+        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
+        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
+        "playwright/e2e/Pages/Entity.spec.ts",
+        "playwright/e2e/Pages/TestSuite.spec.ts"
       ]
     },
     {
@@ -3684,6 +3707,7 @@
         "playwright/e2e/Features/CronValidations.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomMetric.spec.ts",
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
@@ -5398,6 +5422,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Customization/CustomizeTabWidget/CustomizeTabWidget.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
@@ -5474,6 +5499,14 @@
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/InputOutputPorts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
       ]
     },
     {
@@ -7179,6 +7212,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Pages/DescriptionVisibility.spec.ts"
@@ -7186,9 +7220,18 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddWidgetPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/AddWidgetModal/AddWidgetModal.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Pages/DescriptionVisibility.spec.ts"
@@ -8372,6 +8415,105 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidgetEditor.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertyLayoutEditor.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertyListItem.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertyPicker.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/CollapsibleChipList.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts",
+        "playwright/e2e/Pages/Domains.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/renderers/EntityReferencePropertyValue.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/renderers/EnumPropertyValue.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/renderers/HyperlinkPropertyValue.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/renderers/SqlPropertyValue.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/renderers/TablePropertyValue.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/PropertyValue.tsx"
       ],
       "specs": [
@@ -8381,6 +8523,14 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/TableTypeProperty/EditTableTypePropertyModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/TableTypeProperty/TableTypePropertyView.tsx"
       ],
       "specs": [
         "playwright/e2e/Pages/CustomProperties.spec.ts"
@@ -10227,6 +10377,7 @@
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomMetric.spec.ts",
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",

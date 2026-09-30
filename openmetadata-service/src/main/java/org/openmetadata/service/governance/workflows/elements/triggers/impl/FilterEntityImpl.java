@@ -7,9 +7,9 @@ import static org.openmetadata.service.governance.workflows.elements.triggers.Ev
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -19,11 +19,11 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
-import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -84,7 +84,8 @@ public class FilterEntityImpl implements JavaDelegate {
       passesFilter = true;
     } else {
       passesFilter =
-          passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
+          passesExcludedFilter(
+              entityLinkStr, entityType, excludedFilter, includeFields, filterLogic);
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -203,6 +204,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
   private boolean passesExcludedFilter(
       String entityLinkStr,
+      String entityType,
       List<String> excludedFilter,
       List<String> includeFields,
       String filterLogic) {
@@ -222,7 +224,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
       fieldBasedFilter =
           changedFields.isEmpty()
-              || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
+              || passesFieldBasedFilter(entityType, changedFields, includeFields, excludedFilter);
     }
 
     return fieldBasedFilter && !matchesExclusionFilter(filterLogic, entity);
@@ -251,15 +253,21 @@ public class FilterEntityImpl implements JavaDelegate {
   }
 
   private boolean passesFieldBasedFilter(
-      List<FieldChange> changedFields, List<String> includeFields, List<String> excludedFilter) {
+      String entityType,
+      List<FieldChange> changedFields,
+      List<String> includeFields,
+      List<String> excludedFilter) {
+    // effectiveFields = the common trigger fields plus this entity's own (e.g. `columns` for a
+    // table). A change fires the workflow when it touches one of them, subject to include/exclude:
+    // include set -> only those fields; exclude set -> everything but those; neither -> all of
+    // them.
+    Set<String> effectiveFields = WorkflowTriggerFieldsRegistry.getEffectiveFields(entityType);
     return changedFields.stream()
         .anyMatch(
             field -> {
               String fieldName = field.getName();
               boolean isTriggerField =
-                  Arrays.stream(WorkflowTriggerFields.values())
-                      .map(WorkflowTriggerFields::value)
-                      .anyMatch(tf -> matchesField(fieldName, tf));
+                  effectiveFields.stream().anyMatch(tf -> matchesField(fieldName, tf));
               if (!isTriggerField) {
                 return false;
               }
