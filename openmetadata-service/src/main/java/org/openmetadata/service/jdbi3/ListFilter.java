@@ -1621,10 +1621,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskType == null) {
       return "";
     }
-    String safeType = escapeApostrophe(taskType);
-    return tableName == null
-        ? String.format("type = '%s'", safeType)
-        : String.format("%s.type = '%s'", tableName, safeType);
+    return tableName == null ? "type = :taskType" : String.format("%s.type = :taskType", tableName);
   }
 
   private String getTaskFormTypeCondition(String tableName) {
@@ -1632,10 +1629,9 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskFormType == null) {
       return "";
     }
-    String safeType = escapeApostrophe(taskFormType);
     return tableName == null
-        ? String.format("taskType = '%s'", safeType)
-        : String.format("%s.taskType = '%s'", tableName, safeType);
+        ? "taskType = :taskFormType"
+        : String.format("%s.taskType = :taskFormType", tableName);
   }
 
   private String getTaskFormCategoryCondition(String tableName) {
@@ -1643,10 +1639,9 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskFormCategory == null) {
       return "";
     }
-    String safeCategory = escapeApostrophe(taskFormCategory);
     return tableName == null
-        ? String.format("taskCategory = '%s'", safeCategory)
-        : String.format("%s.taskCategory = '%s'", tableName, safeCategory);
+        ? "taskCategory = :taskFormCategory"
+        : String.format("%s.taskCategory = :taskFormCategory", tableName);
   }
 
   private String getTaskPriorityCondition(String tableName) {
@@ -1654,9 +1649,8 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskPriority == null) {
       return "";
     }
-    String safePriority = escapeApostrophe(taskPriority);
     return tableName == null
-        ? String.format("priority = '%s'", safePriority)
-        : String.format("%s.priority = '%s'", tableName, safePriority);
+        ? "priority = :taskPriority"
+        : String.format("%s.priority = :taskPriority", tableName);
   }
 }

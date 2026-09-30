@@ -78,8 +78,9 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../enums/permissions.enum';
+import { Operation } from '../generated/entity/policies/accessControl/resourcePermission';
 import { AuthProvider } from '../generated/settings/settings';
-import { userPermissions } from '../utils/PermissionsUtils';
+import { checkPermission, userPermissions } from '../utils/PermissionsUtils';
 import { isLoginConfigurationApplicable } from './AuthProvider.util';
 import { t } from './i18next/LocalUtil';
 
@@ -238,7 +239,7 @@ class GlobalSettingsClassBase {
             icon: MlModelIcon,
           },
           {
-            label: t('label.storage-plural'),
+            label: t('label.storage'),
             description: t('message.page-sub-header-for-storages'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.STORAGE_SERVICE,
@@ -248,7 +249,7 @@ class GlobalSettingsClassBase {
             icon: StorageIcon,
           },
           {
-            label: t('label.search'),
+            label: t('label.search-engine-plural'),
             description: t('message.page-sub-header-for-search'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.SEARCH_SERVICE,
@@ -258,7 +259,7 @@ class GlobalSettingsClassBase {
             icon: SearchIconV1,
           },
           {
-            label: t('label.metadata'),
+            label: t('label.catalog-plural'),
             description: t('message.page-sub-header-for-metadata'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.METADATA_SERVICE,
@@ -390,9 +391,13 @@ class GlobalSettingsClassBase {
           {
             label: t('label.audit-log-plural'),
             description: t('message.page-sub-header-for-audit-logs'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.AUDIT_LOG,
-              permissions
+            isProtected: Boolean(
+              isAdminUser ||
+                checkPermission(
+                  Operation.AuditLogs,
+                  ResourceEntity.AUDIT_LOG,
+                  permissions
+                )
             ),
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
             icon: ManagementIcon,

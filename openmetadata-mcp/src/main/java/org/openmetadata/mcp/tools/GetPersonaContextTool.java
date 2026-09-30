@@ -12,6 +12,8 @@
  */
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -20,6 +22,7 @@ import java.util.Map;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.PersonaContextAccess;
@@ -32,6 +35,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 /** Returns one deterministic, line-bounded part of a persona's shared AI context document. */
 public class GetPersonaContextTool implements McpTool {
   private static final int PART_RESPONSE_BUDGET = McpResponseTrim.MAX_RESPONSE_CHARS - 10_000;
+  private static final String INSTRUCTIONS_KEY = "instructions";
 
   @Override
   public Map<String, Object> execute(
@@ -41,14 +45,22 @@ public class GetPersonaContextTool implements McpTool {
     PersonaContextAccess.authorize(securityContext, persona);
     PersonaContextBuilder.MaterializedPersonaContext materialized =
         PersonaContextCache.getInstance().get(persona, false).value();
-    String format = stringParam(params, "format");
-    String content =
-        "json".equalsIgnoreCase(format)
-            ? JsonUtils.pojoToJson(materialized.context())
-            : materialized.markdown();
-    List<String> parts = split(content);
-    int requestedPart = intParam(params.get("part"), 1);
-    if (requestedPart < 1 || requestedPart > parts.size()) {
+    return page(materialized, stringParam(params, "format"), intParam(params.get("part"), 1));
+  }
+
+  /**
+   * One part of the document. Part 1 also carries the persona's prompt under its own key: the
+   * document is reference data, the prompt is how an admin wants this persona's users assisted.
+   */
+  static Map<String, Object> page(
+      PersonaContextBuilder.MaterializedPersonaContext materialized, String format, int part) {
+    boolean json = "json".equalsIgnoreCase(format);
+    Map<String, Object> instructions = instructions(materialized.context());
+    List<String> parts =
+        split(
+            json ? JsonUtils.pojoToJson(materialized.context()) : materialized.markdown(),
+            instructions.isEmpty() ? 0 : McpResponseTrim.serializedLength(instructions));
+    if (part < 1 || part > parts.size()) {
       return Map.of(
           McpResponseTrim.ERROR_KEY,
           "part must be between 1 and " + parts.size(),
@@ -57,13 +69,22 @@ public class GetPersonaContextTool implements McpTool {
     }
 
     Map<String, Object> result = new LinkedHashMap<>();
-    result.put("format", "json".equalsIgnoreCase(format) ? "json" : "markdown");
-    result.put("content", parts.get(requestedPart - 1));
-    result.put("part", requestedPart);
+    result.put("format", json ? "json" : "markdown");
+    if (part == 1) {
+      result.putAll(instructions);
+    }
+    result.put("content", parts.get(part - 1));
+    result.put("part", part);
     result.put("totalParts", parts.size());
-    result.put(McpResponseTrim.HAS_MORE_KEY, requestedPart < parts.size());
+    result.put(McpResponseTrim.HAS_MORE_KEY, part < parts.size());
     result.put("fingerprint", materialized.context().getFingerprint());
     return result;
+  }
+
+  private static Map<String, Object> instructions(PersonaContext context) {
+    return nullOrEmpty(context.getPrompt())
+        ? Map.of()
+        : Map.of(INSTRUCTIONS_KEY, context.getPrompt());
   }
 
   @Override
@@ -86,13 +107,19 @@ public class GetPersonaContextTool implements McpTool {
   }
 
   static List<String> split(String content) {
+    return split(content, 0);
+  }
+
+  /** {@code firstPartReserve} is what part 1 carries besides its content (the instructions). */
+  static List<String> split(String content, int firstPartReserve) {
     List<String> parts = new ArrayList<>();
     if (content == null || content.isEmpty()) {
       return List.of("");
     }
     int start = 0;
     while (start < content.length()) {
-      int candidateEnd = largestSerializableEnd(content, start);
+      int budget = PART_RESPONSE_BUDGET - (parts.isEmpty() ? firstPartReserve : 0);
+      int candidateEnd = largestSerializableEnd(content, start, budget);
       int end = candidateEnd;
       if (candidateEnd < content.length()) {
         int lineEnd = content.lastIndexOf('\n', candidateEnd);
@@ -106,7 +133,7 @@ public class GetPersonaContextTool implements McpTool {
     return parts;
   }
 
-  private static int largestSerializableEnd(String content, int start) {
+  private static int largestSerializableEnd(String content, int start, int budget) {
     int low = start + 1;
     int high = content.length();
     int result = low;
@@ -114,7 +141,7 @@ public class GetPersonaContextTool implements McpTool {
       int midpoint = low + (high - low) / 2;
       int serializedLength =
           McpResponseTrim.serializedLength(Map.of("content", content.substring(start, midpoint)));
-      if (serializedLength <= PART_RESPONSE_BUDGET) {
+      if (serializedLength <= budget) {
         result = midpoint;
         low = midpoint + 1;
       } else {

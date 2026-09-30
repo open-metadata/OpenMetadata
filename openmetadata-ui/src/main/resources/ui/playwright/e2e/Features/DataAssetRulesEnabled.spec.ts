@@ -46,9 +46,13 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { authenticateAdminPage, performAdminLogin } from '../../utils/admin';
-import { assignDataProduct, clickOutside } from '../../utils/common';
+import {
+  assignDataProduct,
+  clickOutside,
+  searchDataProductOptions,
+} from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { assignDomainWidget } from '../../utils/domain';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addOwner,
   assignGlossaryTerm,
@@ -102,6 +106,7 @@ const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  createdDataProducts.length = 0;
   test.slow(true);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -170,7 +175,7 @@ test.describe(
         });
 
         // Single Domain Add Check
-        await assignDomainWidget(page, domain.responseData);
+        await setDomain(page, domain.responseData);
 
         // Exclude this check at Service Level Entities
         if (!entityName.includes('Service')) {
@@ -252,7 +257,8 @@ test.describe(
         await page.goto(
           `/glossary/${encodeURIComponent(
             testGlossaryTerm.responseData.fullyQualifiedName
-          )}`
+          )}`,
+          { waitUntil: 'domcontentloaded' }
         );
 
         await page.waitForLoadState('domcontentloaded');
@@ -262,43 +268,53 @@ test.describe(
         await page.getByTestId('add-domain').click();
         await waitForAllLoadersToDisappear(page);
 
-        // Verify checkboxes are NOT visible (single-select mode)
+        // Verify checkboxes are NOT present (single-select mode)
         await expect(
-          page.locator('.domain-selectable-tree .ant-tree-checkbox')
+          page
+            .getByTestId('domain-selectable-tree-popover')
+            .locator('[data-testid^="checkbox-"]')
         ).toHaveCount(0);
 
         // Close the selector by clicking outside
         await clickOutside(page);
 
         // Wait for domain selector to be fully closed
-        await page.getByTestId('domain-selectable-tree').waitFor({
+        await page.getByTestId('domain-selectable-tree-search').waitFor({
           state: 'detached',
         });
 
         // Assign first domain (single-select mode)
-        await assignDomainWidget(page, testDomain1.responseData);
+        await setDomain(page, testDomain1.responseData);
 
         // Verify first domain is visible
-        await expect(page.getByTestId('domain-link')).toContainText(
-          testDomain1.data.displayName
-        );
+        await expect(
+          page.getByTestId(
+            `domain-tag-${testDomain1.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
 
         // Assign second domain (should REPLACE first, not add to it)
-        await assignDomainWidget(page, testDomain2.responseData, false, true);
+        await setDomain(page, testDomain2.responseData, {
+          trigger: 'edit-domain',
+        });
 
         // Verify second domain is visible
-        await expect(page.getByTestId('domain-link')).toContainText(
-          testDomain2.data.displayName
-        );
+        await expect(
+          page.getByTestId(
+            `domain-tag-${testDomain2.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
 
         // Verify first domain is NOT visible (replaced, not added)
         // This confirms single-select mode is enforced by entity rules
-        await expect(page.getByTestId('domain-link')).not.toContainText(
-          testDomain1.data.displayName
-        );
+        await expect(
+          page.getByTestId(
+            `domain-tag-${testDomain1.responseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible();
 
-        // Verify no domain count button (only single domain, not multiple)
-        await expect(page.getByTestId('domain-count-button')).not.toBeVisible();
+        // Single domain assigned, so no overflow button.
+        await expect(page.getByTestId('show-all-domains')).not.toBeVisible();
       } finally {
         await testGlossaryTerm.delete(apiContext);
         await testGlossary.delete(apiContext);
@@ -383,7 +399,7 @@ test.describe(
       await authenticateAdminPage(page);
       await crossTable.visitEntityPage(page);
 
-      await assignDomainWidget(page, assetDomain.responseData);
+      await setDomain(page, assetDomain.responseData);
 
       await page
         .getByTestId('KnowledgePanel.DataProducts')
@@ -391,37 +407,24 @@ test.describe(
         .getByTestId('add-data-product')
         .click();
 
-      const selectorInput = page.locator(
-        '[data-testid="data-product-selector"] input'
-      );
       const sameDomainFqn =
         sameDomainDataProduct.responseData.fullyQualifiedName;
       const otherDomainFqn =
         otherDomainDataProduct.responseData.fullyQualifiedName;
 
-      // Positive control: a Data Product in the asset's domain is listed.
-      await expect(async () => {
-        const searchResponse = page.waitForResponse((response) =>
-          response.url().includes('/api/v1/search/query')
-        );
-        await selectorInput.clear();
-        await selectorInput.fill(sameDomainDataProduct.data.displayName);
-        await searchResponse;
-        await expect(page.getByTestId(`tag-${sameDomainFqn}`)).toBeVisible({
-          timeout: 2_000,
-        });
-      }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+      const sameDomainOption = await searchDataProductOptions(page, {
+        displayName: sameDomainDataProduct.data.displayName,
+        fullyQualifiedName: sameDomainFqn,
+      });
+      await expect(sameDomainOption).toBeVisible();
 
       // Scoped to the asset's domain, so a Data Product from another domain is
       // not offered.
-      const otherSearchResponse = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/search/query')
-      );
-      await selectorInput.clear();
-      await selectorInput.fill(otherDomainDataProduct.data.displayName);
-      await otherSearchResponse;
-
-      await expect(page.getByTestId(`tag-${otherDomainFqn}`)).not.toBeVisible();
+      const otherDomainOption = await searchDataProductOptions(page, {
+        displayName: otherDomainDataProduct.data.displayName,
+        fullyQualifiedName: otherDomainFqn,
+      });
+      await expect(otherDomainOption).toBeHidden();
     });
 
     // With the rule enabled, the "Add Assets" picker on a Data Product stays

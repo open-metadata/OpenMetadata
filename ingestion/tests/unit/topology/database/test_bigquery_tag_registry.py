@@ -221,10 +221,11 @@ def test_policy_resource_ids_and_quoted_asset_names_do_not_collide(source):
     ]
 
 
-def test_invalid_definition_does_not_discard_other_labels(source):
+def test_invalid_definition_does_not_discard_other_labels(source, caplog):
     source.client.get_table.return_value.labels = {"bad": 'invalid"name', "env": "prod"}
     records = schema_stage(source) + table_stage(source)
-    assert len([record for record in records if record.left]) == 1
+    assert [record for record in records if record.left] == []
+    assert "Skipped tag 'invalid\"name' in classification 'bad'" in caplog.text
     assert definitions([record for record in records if record.right]) == {("env", "prod")}
     assert fqns(source.get_tag_labels("my_table")) == ["env.prod"]
 
