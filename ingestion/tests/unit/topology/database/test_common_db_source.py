@@ -38,6 +38,7 @@ from metadata.ingestion.models.patch_request import (
     RESTRICT_UPDATE_LIST,
     build_patch,
 )
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.common_db_source import (
     ColumnAndReferredColumn,
     CommonDbSourceService,
@@ -221,6 +222,38 @@ class TestPrepareForeignConstraintsReferredSchema:
             fqn="test_service.other_db.public.orders",
         )
         assert result is not None
+
+    @pytest.mark.parametrize("referred_database", [None, ""])
+    def test_supports_database_without_referred_database_uses_context_database(self, source, referred_database):
+        """Connectors whose FK reflection has no referred_database (BigQuery, Trino, Databricks, ...)
+        must resolve the referred table in the current database, not in `None`."""
+        mock_referred_table = MagicMock(spec=Table)
+        mock_referred_table.columns = MOCK_COLUMNS
+        source.metadata.get_by_name.return_value = mock_referred_table
+
+        with patch(
+            "metadata.ingestion.source.database.common_db_source.get_relationship_type",
+            return_value=None,
+        ):
+            result = source._prepare_foreign_constraints(
+                supports_database=True,
+                column={
+                    "referred_schema": "public",
+                    "referred_database": referred_database,
+                    "referred_table": "orders",
+                    "referred_columns": ["order_id"],
+                    "constrained_columns": ["order_id"],
+                },
+                table_name="line_items",
+                schema_name="public",
+                db_name="test_db",
+                columns=MOCK_COLUMNS,
+            )
+
+        source.metadata.get_by_name.assert_called_once_with(entity=Table, fqn="test_service.test_db.public.orders")
+        assert [model_str(column) for column in result.referredColumns] == [
+            "test_service.test_db.public.orders.order_id"
+        ]
 
     def test_referred_table_not_found_appends_to_global_foreign_tables(self, source):
         """When the referred table is not found in metadata, the FK should
