@@ -23,8 +23,8 @@ import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseSe
 import { performAdminLogin } from '../../../utils/admin';
 import { okJson } from '../../../utils/apiResponse';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { enableAiAppMode } from '../../Utils/appMode';
 import { test } from '../../fixtures/pages';
+import { enableAiAppMode } from '../../Utils/appMode';
 
 const HEADER_EDIT_BUTTONS = [
   'edit-domain-button',
