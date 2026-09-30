@@ -30,11 +30,14 @@ import {
  * `SchemaEditor` — CodeMirror is a full editor whose gutter and theme look
  * nothing like this, and loading it into a 320px rail costs a lazy chunk to
  * render three static lines.
+ *
+ * Capped in height: a custom SQL test can run past a hundred lines, which
+ * would otherwise stretch the rail thousands of pixels down the page.
  */
 function ConfigurationSql({ value }: Readonly<{ value: string }>) {
   return (
     <div
-      className="tw:overflow-x-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5"
+      className="tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5"
       data-testid="sql-expression-container">
       {toSqlLines(value).map((line) => (
         <div

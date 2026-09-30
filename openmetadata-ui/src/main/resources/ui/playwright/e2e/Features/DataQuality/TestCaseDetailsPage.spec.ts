@@ -452,6 +452,75 @@ test.describe(
 );
 
 test.describe(
+  'Test Case Details Page - Configuration card',
+  { tag: ['@Observability'] },
+  () => {
+    let sqlTable: TableClass;
+    let sqlTestCaseFqn: string;
+
+    // Custom SQL tests run far past the mock's three lines; the block has to
+    // hold a query of any length without stretching the rail.
+    const longSql = [
+      'SELECT o.id',
+      'FROM orders AS o',
+      'WHERE 1 = 1',
+      ...Array.from(
+        { length: 117 },
+        (_, index) => `  AND o.id <> ${index + 1}`
+      ),
+    ].join('\n');
+
+    test.beforeAll(
+      'Create a custom SQL test with a 120-line query',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        sqlTable = new TableClass();
+        await sqlTable.create(apiContext);
+        const testCase = await sqlTable.createTestCase(apiContext, {
+          testDefinition: 'tableCustomSQLQuery',
+          parameterValues: [
+            { name: 'sqlExpression', value: longSql },
+            { name: 'strategy', value: 'ROWS' },
+          ],
+        });
+        sqlTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await sqlTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('keeps a long SQL query inside a scrolling block', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, sqlTestCaseFqn);
+
+      const sql = page
+        .getByTestId('test-case-configuration-card')
+        .getByTestId('sql-expression-container');
+
+      await expect(sql).toContainText('SELECT o.id');
+
+      const { clientHeight, scrollHeight } = await sql.evaluate((node) => ({
+        clientHeight: node.clientHeight,
+        scrollHeight: node.scrollHeight,
+      }));
+
+      // The block stops at 320px (max-h-80) and scrolls the rest of the query.
+      expect(clientHeight).toBeLessThanOrEqual(320);
+      expect(scrollHeight).toBeGreaterThan(clientHeight);
+    });
+  }
+);
+
+test.describe(
   'Test Case Details Page - Result history chart',
   { tag: ['@Observability'] },
   () => {
