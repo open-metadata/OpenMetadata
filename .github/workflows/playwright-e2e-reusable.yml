@@ -529,6 +529,12 @@ jobs:
             "$BUNDLE_MODE" \
             "$BUILD_TOOLCHAIN"
 
+      # pull_request is excluded from this and the golden-fixture / ingestion-
+      # image saves below: a PR-ref copy is visible only to that PR's own
+      # re-runs, yet each costs the shared 10 GB budget the same as main's
+      # copy. Measured 2026-09-29: 11.6 GB across 33 PR-ref entries, and the
+      # warmer's main-scoped fixtures evicted within ~2.5 h of being saved.
+      # Only populate-playwright-caches.yml (push / schedule) writes these.
       - name: Save OpenMetadata distribution cache
         # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
         # merge_group skips it too — see the dist-cache step for why an
@@ -537,6 +543,7 @@ jobs:
         if: >-
           steps.distribution-cache.outputs.usable != 'true' &&
           github.event_name != 'merge_group' &&
+          github.event_name != 'pull_request' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
@@ -1320,6 +1327,7 @@ jobs:
         if: >-
           needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' &&
           github.event_name != 'merge_group' &&
+          github.event_name != 'pull_request' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
@@ -1333,6 +1341,7 @@ jobs:
           needs.plan-playwright.outputs.requires_airflow == 'true' &&
           needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' &&
           github.event_name != 'merge_group' &&
+          github.event_name != 'pull_request' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
