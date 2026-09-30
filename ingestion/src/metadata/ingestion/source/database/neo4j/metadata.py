@@ -23,6 +23,7 @@ import traceback
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.neo4jConnection import (
     Neo4jConnection,
@@ -51,6 +52,7 @@ from metadata.ingestion.source.database.neo4j.utils import (
     aggregate_element_types,
     property_to_column,
 )
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_column
 from metadata.utils.logger import ingestion_logger
 
@@ -75,8 +77,11 @@ class Neo4jSource(CommonNoSQLSource):
         super().__init__(config, metadata)
         self.driver = self.connection_obj
         self._database: str | None = None
-        # The schema of the database being processed only; replaced per database.
-        self._elements: dict[str, dict[str, GraphElementSpec]] = {}
+        # The graph schema of the database being processed, read once: the
+        # post-process deletion hooks list the schemas again, and a re-read could
+        # disagree with what the walk ingested. Replaced per database.
+        self._elements: dict[str, dict[str, GraphElementSpec]] | None = None
+        self._failed_schemas: set[str] = set()
 
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -88,20 +93,29 @@ class Neo4jSource(CommonNoSQLSource):
 
     def get_database_names(self) -> Iterable[str]:
         self._database = resolve_database(self.driver, self.service_connection)
+        self._elements = None
+        self._failed_schemas = set()
         yield self._database
 
     def get_schema_name_list(self) -> list[str]:
+        if self._elements is None:
+            self._elements = self._read_graph_schema()
+        return list(self._elements)
+
+    def _read_graph_schema(self) -> "dict[str, dict[str, GraphElementSpec]]":
         database = self._database
         sources: dict[str, tuple[LiteralString, str]] = {NODES_SCHEMA: (NEO4J_NODE_TYPE_PROPERTIES, "nodeType")}
         if self.service_connection.includeRelationships:
             sources[RELATIONSHIPS_SCHEMA] = (NEO4J_REL_TYPE_PROPERTIES, "relType")
-        self._elements = {}
+        elements = {}
         for schema_name, (query, type_key) in sources.items():
             try:
                 rows = [record.data() for record in run_read(self.driver, query, database)]
             except Exception as exc:
-                # Skipping the schema, rather than yielding it empty, keeps its
-                # tables from being marked as deleted on a transient failure.
+                # Skip the schema rather than yield it empty, and remember it so
+                # mark_schemas_as_deleted keeps it: a failed read proves nothing
+                # about whether its labels or relationship types still exist.
+                self._failed_schemas.add(schema_name)
                 self.status.failed(
                     StackTraceError(
                         name=f"{database}.{schema_name}",
@@ -110,14 +124,27 @@ class Neo4jSource(CommonNoSQLSource):
                     )
                 )
                 continue
-            self._elements[schema_name] = {element.name: element for element in aggregate_element_types(rows, type_key)}
-        return list(self._elements)
+            elements[schema_name] = {element.name: element for element in aggregate_element_types(rows, type_key)}
+        return elements
+
+    def mark_schemas_as_deleted(self):
+        for schema_name in self._failed_schemas:
+            self.schema_entity_source_state.add(
+                fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.config.serviceName,
+                    database_name=self._database,
+                    schema_name=schema_name,
+                )
+            )
+        yield from super().mark_schemas_as_deleted()
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
-        return [TableNameAndType(name=name) for name in self._elements.get(schema_name, {})]
+        return [TableNameAndType(name=name) for name in (self._elements or {}).get(schema_name, {})]
 
     def get_table_columns(self, schema_name: str, table_name: str) -> list[Column]:
-        element = self._elements.get(schema_name, {}).get(table_name)
+        element = (self._elements or {}).get(schema_name, {}).get(table_name)
         if element is None:
             return []
         columns = []
