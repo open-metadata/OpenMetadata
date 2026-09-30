@@ -16,6 +16,7 @@ from unittest.mock import Mock
 
 import pytest
 from dirty_equals import HasAttributes, IsFloat, IsInstance, IsNumeric
+from presidio_analyzer import RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngine
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
@@ -39,6 +40,7 @@ from metadata.generated.schema.type.classificationLanguages import (
 from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
+from metadata.pii.algorithms import presidio_constants
 from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.algorithms.tag_scoring import TagScorer
 from metadata.pii.models import ScoredTag
@@ -618,3 +620,154 @@ class TestTagAnalyzer:
 
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
         assert analyzer.should_skip_recognizer(email_tag.recognizers[0].exceptionList) is True
+
+
+class TestBuildRecognizerMetadata:
+    """Tests for TagScorer._build_recognizer_metadata recognizer attribution logic."""
+
+    def _make_result(self, name: str, score: float) -> RecognizerResult:
+        return RecognizerResult(
+            entity_type="TEST",
+            start=0,
+            end=1,
+            score=score,
+            recognition_metadata={
+                presidio_constants.RECOGNIZER_METADATA_NAME: name,
+                presidio_constants.RECOGNIZER_METADATA_IDENTIFIER: name,
+            },
+        )
+
+    def _scorer(self) -> TagScorer:
+        return TagScorer(tag_analyzers=[], score_cutoff=0.0)
+
+    # ── helpers ─────────────────────────────────────────────────────────────
+
+    def _pattern_tag(self, recognizer_names: list[str]) -> "Tag":
+        """Build a Tag whose recognizers use PatternRecognizer configs."""
+        recognizers = []
+        for rname in recognizer_names:
+            pat = PatternFactory.create(name="p", regex=".*", score=0.9)
+            pat_rec = PatternRecognizerFactory.create(
+                patterns=[pat], context=[], supportedLanguage=ClassificationLanguage.en
+            )
+            recognizers.append(
+                RecognizerFactory.create(
+                    name=rname,
+                    recognizerConfig=pat_rec,
+                    target=Target.content,
+                )
+            )
+        return TagFactory.create(
+            tag_name="TestTag",
+            autoClassificationEnabled=True,
+            recognizers=recognizers,
+        )
+
+    def _predefined_tag(self, predefined_name: Name) -> "Tag":
+        """Build a Tag with a single PredefinedRecognizer config."""
+        pred_rec = RecognizerFactory.create(
+            name=predefined_name.value,
+            recognizerConfig=PredefinedRecognizerFactory.create(name=predefined_name),
+            target=Target.content,
+        )
+        return TagFactory.create(
+            tag_name="PredefinedTag",
+            autoClassificationEnabled=True,
+            recognizers=[pred_rec],
+        )
+
+    # ── tests ────────────────────────────────────────────────────────────────
+
+    def test_single_recognizer_control(self):
+        """Baseline: a single result maps to the configured recognizer."""
+        tag = self._pattern_tag(["AlphaRecognizer"])
+        analysis = TagAnalysis(
+            tag=tag,
+            score=0.9,
+            explanation=None,
+            recognizer_results=[self._make_result("AlphaRecognizer", 0.9)],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        assert meta.recognizerName == "AlphaRecognizer"
+        assert meta.score == 0.9
+
+    def test_competing_scores_uses_max_result(self):
+        """Bug 1: when multiple results compete, metadata must reflect the winner
+        (highest score), not the first result in the list."""
+        tag = self._pattern_tag(["SpacyRecognizer", "PhoneRecognizer"])
+        # SpacyRecognizer comes first but scores lower
+        analysis = TagAnalysis(
+            tag=tag,
+            score=1.0,
+            explanation=None,
+            recognizer_results=[
+                self._make_result("SpacyRecognizer", 0.85),
+                self._make_result("PhoneRecognizer", 1.0),
+            ],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        assert meta.recognizerName == "PhoneRecognizer"
+        assert meta.score == 1.0
+
+    def test_score_tie_resolves_to_a_configured_recognizer(self):
+        """When two results tie, any one of the tied recognizers is acceptable;
+        the important invariant is that the returned name is a configured one."""
+        tag = self._pattern_tag(["ARecognizer", "BRecognizer"])
+        analysis = TagAnalysis(
+            tag=tag,
+            score=0.9,
+            explanation=None,
+            recognizer_results=[
+                self._make_result("ARecognizer", 0.9),
+                self._make_result("BRecognizer", 0.9),
+            ],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        assert meta.recognizerName in {"ARecognizer", "BRecognizer"}
+        assert meta.score == 0.9
+
+    def test_predefined_runtime_wrapper_resolves_to_configured_name(self):
+        """Bug 2: a predefined recognizer is instantiated as a subclass at runtime
+        (e.g. DateRecognizer → ValidatedDateRecognizer). The configured name must
+        be resolved so recognizer_id and recognizer_name are not absent."""
+        tag = self._predefined_tag(Name.DateRecognizer)
+        configured_id = tag.recognizers[0].id
+        # Simulate the runtime wrapper name stored in recognition_metadata
+        analysis = TagAnalysis(
+            tag=tag,
+            score=1.0,
+            explanation=None,
+            recognizer_results=[self._make_result("ValidatedDateRecognizer", 1.0)],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None, (
+            "_build_recognizer_metadata returned None — runtime wrapper name was not "
+            "resolved to the configured DateRecognizer"
+        )
+        assert meta.recognizerId == configured_id
+        assert meta.recognizerName == Name.DateRecognizer.value
+        assert meta.score == 1.0
+
+    def test_credit_card_runtime_wrapper_resolves_to_configured_name(self):
+        """Verify the suffix-match also covers SanitizedCreditCardRecognizer →
+        CreditCardRecognizer, another factory-wrapped predefined recognizer."""
+        tag = self._predefined_tag(Name.CreditCardRecognizer)
+        configured_id = tag.recognizers[0].id
+        analysis = TagAnalysis(
+            tag=tag,
+            score=0.95,
+            explanation=None,
+            recognizer_results=[self._make_result("SanitizedCreditCardRecognizer", 0.95)],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        assert meta.recognizerId == configured_id
+        assert meta.recognizerName == Name.CreditCardRecognizer.value

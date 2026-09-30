@@ -95,8 +95,10 @@ class TagScorer:
         if not analysis.recognizer_results:
             return None
 
-        first_result = analysis.recognizer_results[0]
-        recognition_metadata = cast(dict[str, str], first_result.recognition_metadata)  # noqa: TC006
+        # Use the result with the highest score — that is the result responsible for
+        # analysis.score (which is the max), not necessarily the first in the list.
+        best_result = max(analysis.recognizer_results, key=lambda r: r.score)
+        recognition_metadata = cast(dict[str, str], best_result.recognition_metadata)  # noqa: TC006
 
         recognizer_name = recognition_metadata.get(
             presidio_constants.RECOGNIZER_METADATA_NAME,
@@ -125,13 +127,18 @@ class TagScorer:
         recognizer_id = None
         for recognizer_config in analysis.tag.recognizers or []:
             if isinstance(recognizer_config.recognizerConfig.root, PredefinedRecognizer):
-                name = recognizer_config.recognizerConfig.root.name.value
+                config_name = recognizer_config.recognizerConfig.root.name.value
+                # Predefined recognizers may be wrapped by subclasses at runtime (e.g.
+                # DateRecognizer → ValidatedDateRecognizer). Accept both an exact match
+                # and a suffix match so the configured name is always resolved correctly.
+                if recognizer_name == config_name or recognizer_name.endswith(config_name):
+                    recognizer_id = recognizer_config.id
+                    recognizer_name = config_name
+                    break
             else:
-                name = recognizer_config.name.root
-
-            if name == recognizer_name:
-                recognizer_id = recognizer_config.id
-                break
+                if recognizer_config.name.root == recognizer_name:
+                    recognizer_id = recognizer_config.id
+                    break
 
         if not recognizer_id:
             return None
