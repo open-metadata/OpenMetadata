@@ -65810,14 +65810,6 @@
                 }
             },
             {
-                "code": "reportOperatorIssue",
-                "range": {
-                    "startColumn": 23,
-                    "endColumn": 51,
-                    "lineCount": 1
-                }
-            },
-            {
                 "code": "reportPossiblyUnboundVariable",
                 "range": {
                     "startColumn": 12,
