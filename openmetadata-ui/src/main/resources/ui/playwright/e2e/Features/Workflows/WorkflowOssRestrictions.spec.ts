@@ -664,8 +664,12 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await waitForAllLoadersToDisappear(page);
         await historyResponse;
 
+        // The workflow is never triggered here, so the tab legitimately renders
+        // either the instance table or the no-data placeholder.
         await expect(
-          page.getByTestId('workflow-execution-history-table')
+          page
+            .getByTestId('workflow-execution-history-table')
+            .or(page.getByTestId('workflow-execution-history-empty'))
         ).toBeVisible();
       });
     });

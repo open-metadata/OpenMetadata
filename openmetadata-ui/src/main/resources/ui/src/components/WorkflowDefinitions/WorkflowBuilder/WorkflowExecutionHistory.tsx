@@ -223,7 +223,9 @@ export const WorkflowExecutionHistory: React.FC = () => {
 
   if (!workflowFqn || isEmpty) {
     return (
-      <div className="tw:relative tw:flex-1 tw:min-h-0">
+      <div
+        className="tw:relative tw:flex-1 tw:min-h-0"
+        data-testid="workflow-execution-history-empty">
         <NoDataPlaceholder />
       </div>
     );
