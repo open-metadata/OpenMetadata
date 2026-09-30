@@ -150,8 +150,8 @@ def test_merge_groups_upload_no_reports():
     for step in steps:
         if step["name"] == "Gate verified merge-group shards":
             continue
-        if "failure() && github.event_name == 'merge_group'" in step["if"]:
-            continue  # the #ci-cleanup alert: runs only when the queue fails
+        if "github.event_name == 'merge_group'" in step["if"]:
+            continue  # queue-only Slack alerts: inline, no reports or checkout
         assert "github.event_name != 'merge_group'" in step["if"], step["name"]
     # A green queue run costs no artifact storage, but a broken one must still
     # leave evidence: re-running it locally is a different SHA on a moving base.
@@ -240,3 +240,24 @@ def test_queue_retry_report_lists_only_retry_passes(tmp_path):
     assert "retry pass" in summary.read_text()
     assert "real failure" not in summary.read_text()
     assert result.stdout.count("::warning") == 1
+
+
+def test_merge_queue_flaky_tests_alert_pw_health_from_annotations():
+    steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
+        "steps"
+    ]
+    build = next(s for s in steps if s.get("id") == "queue-flaky")
+    assert "github.event_name == 'merge_group'" in build["if"]
+    assert "failure()" not in build["if"], "flakes are reported on green queue runs too"
+    assert "C0C008ZAK0V" in build["run"]  # #pw-health
+    # Reads what the shards already emit instead of uploading reports.
+    assert '"Retry pass in merge queue"' in build["run"]
+    assert ".github/scripts" not in build["run"]
+    shard_warning = next(
+        s for s in shard_steps() if s.get("id") == "verify-shard-coverage"
+    )["run"]
+    assert "::warning title=Retry pass in merge queue::" in shard_warning
+    permissions = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
+        "permissions"
+    ]
+    assert permissions.get("checks") == "read"

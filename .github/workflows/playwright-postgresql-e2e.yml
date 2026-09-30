@@ -139,6 +139,8 @@ jobs:
     timeout-minutes: 20
     permissions:
       actions: read
+      # Reads shard annotations for the merge-queue flaky alert.
+      checks: read
       contents: read
       # For the budget-breach tracked issue (Signal Playwright budget
       # breaches step below).
@@ -223,6 +225,53 @@ jobs:
           token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
           errors: true
           payload-file-path: ${{ runner.temp }}/queue-slack.json
+
+      # Queue flakes go to #pw-health with the daily main-run flakes. Shards
+      # already annotate each retry pass ("Retry pass in merge queue"), so this
+      # reads those annotations instead of uploading reports; inline for the
+      # same reason as the failure alert above.
+      - name: Build the merge-queue flaky message
+        id: queue-flaky
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -uo pipefail
+          prs=$(grep -oE 'pr-[0-9]+' <<< "$HEAD_REF" | sed 's/pr-//' | sort -u | tr '\n' ' ')
+          flaky=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+              --jq '.jobs[] | select(.name | contains("playwright-ci")) | .id' 2>/dev/null |
+            while read -r job; do
+              gh api --paginate "repos/$GITHUB_REPOSITORY/check-runs/$job/annotations" \
+                --jq '.[] | select(.title == "Retry pass in merge queue") | .message' 2>/dev/null
+            done | sort -u)
+          if [[ -z "$flaky" ]]; then
+            echo "No retry passes in this queue run."
+            exit 0
+          fi
+          # shellcheck disable=SC2016 # \(...) is jq interpolation, not shell
+          jq -n --arg channel C0C008ZAK0V --arg prs "$prs" --arg flaky "$flaky" \
+            --arg run "$RUN_URL" --arg repo "$REPO_URL" '
+            def lines($s): $s | split("\n") | map(select(length > 0));
+            {channel: $channel, text: ([
+              ":large_yellow_circle: *Merge queue: passed only on retry*" +
+                (if ($prs | length) > 0 then " for " + ([$prs | split(" ")[] | select(length > 0) | "<\($repo)/pull/\(.)|#\(.)>"] | join(", ")) else "" end)
+            ] + [lines($flaky)[:15][] | "• FLAKY `\(.)`"]
+              + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/queue-flaky.json"
+          echo "posted=true" >> "$GITHUB_OUTPUT"
+
+      - name: Post merge-queue flaky tests to Slack (pw-health)
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' && steps.queue-flaky.outputs.posted == 'true' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/queue-flaky.json
 
       # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
       # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we
@@ -346,7 +395,7 @@ jobs:
       # yarn-pkg-cache-* key is written under main by
       # populate-playwright-caches.yml, so this hits on every event.
       - name: Restore yarn package cache
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/cache/restore@v6
         with:
