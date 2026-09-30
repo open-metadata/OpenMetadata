@@ -24,8 +24,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { NoSearch, Search, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
   useCallback,
@@ -430,7 +429,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
           <ButtonUtility
             color="tertiary"
             data-testid={`bot-delete-${bot.name}`}
-            icon={Delete}
+            icon={Trash01}
             isDisabled={isDisabled}
             size="xs"
             tooltip={tooltipContent}
