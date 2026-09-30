@@ -68,7 +68,10 @@ import { OntologySubsetResult } from '../generated/api/data/ontologySubsetResult
 import { RDFEntityDiff } from '../generated/api/data/rdfEntityDiff';
 import { UpdateOntologyChangeSet } from '../generated/api/data/updateOntologyChangeSet';
 import { OntologyAxiom } from '../generated/entity/data/ontologyAxiom';
-import { OntologyChangeSet } from '../generated/entity/data/ontologyChangeSet';
+import {
+  OntologyChangeSet,
+  OntologyChangeSetState,
+} from '../generated/entity/data/ontologyChangeSet';
 import { RelationshipType } from '../generated/entity/data/relationshipType';
 import { BackgroundJob } from '../generated/jobs/backgroundJob';
 import { OntologyEditLock } from '../generated/type/ontologyEditLock';
@@ -186,7 +189,9 @@ export const createOntologyAxiom = async (request: CreateOntologyAxiom) => {
   return response.data;
 };
 
-export const listOntologyChangeSets = async (params?: ListParams) => {
+export const listOntologyChangeSets = async (
+  params?: ListParams & { state?: OntologyChangeSetState }
+) => {
   const response = await APIClient.get<PagingResponse<OntologyChangeSet[]>>(
     CHANGE_SETS_PATH,
     { params }
