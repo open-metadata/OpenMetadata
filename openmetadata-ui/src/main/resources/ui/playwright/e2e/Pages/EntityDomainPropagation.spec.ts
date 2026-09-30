@@ -40,11 +40,8 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { test } from '../../support/fixtures/base';
 import { createAdminApiContext } from '../../utils/admin';
-import {
-  assignSingleSelectDomain,
-  removeSingleSelectDomain,
-  verifyDomainPropagation,
-} from '../../utils/common';
+import { verifyDomainPropagation } from '../../utils/common';
+import { setDomain } from '../../utils/domainPicker';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 // Concrete subclasses provide create/delete/visit + entityResponseData;
@@ -128,10 +125,7 @@ Object.entries(isolatedEntityFactories).forEach(([key, factory]) => {
           false
         );
 
-        await assignSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
+        await setDomain(page, EntityDataClass.domain1.responseData);
         const childFqnSearchTerm =
           entity.entityResponseData?.fullyQualifiedName ??
           entity.entityResponseData?.name ??
@@ -151,10 +145,9 @@ Object.entries(isolatedEntityFactories).forEach(([key, factory]) => {
           },
           false
         );
-        await removeSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
+        await setDomain(page, EntityDataClass.domain1.responseData, {
+          verify: 'cleared',
+        });
       }
     });
   });

@@ -260,78 +260,6 @@ export const removeCertificationFromWidget = async (
   await expect(page.getByTestId('add-certification')).toBeVisible();
 };
 
-export const assignDomainWidget = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  multiSelect = false,
-  isUpdate = false
-) => {
-  await openWidgetEditor(page, 'add-domain', 'edit-domain', isUpdate);
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-  await searchDomain;
-
-  const domainTag = page.getByTestId(`tree-node-${domain.fullyQualifiedName}`);
-  await domainTag.waitFor({ state: 'visible' });
-
-  if (multiSelect) {
-    await domainTag.click();
-    const patchReq = page.waitForResponse(
-      (req) => req.request().method() === 'PATCH'
-    );
-    await page.getByTestId('update-btn').click();
-    await patchReq;
-  } else {
-    const patchReq = page.waitForResponse(
-      (req) => req.request().method() === 'PATCH'
-    );
-    await domainTag.click();
-    await patchReq;
-  }
-
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).toBeVisible();
-};
-
-export const removeDomainWidget = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
-) => {
-  // Removing implies a domain is already assigned, so the widget shows edit.
-  await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
-  await waitForAllLoadersToDisappear(page);
-
-  await page.getByTestId('domain-selectable-tree-search').clear();
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-  await searchDomain;
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).not.toBeVisible();
-};
-
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
   await waitForAllLoadersToDisappear(page);
@@ -959,7 +887,7 @@ export const addAssetsToDomain = async (
 export const addServicesToDomain = async (
   page: Page,
   domain: Domain['data'],
-  assets: EntityClass[]
+  services: Array<{ name?: string; fullyQualifiedName?: string }>
 ) => {
   await goToAssetsTab(page, domain);
 
@@ -969,10 +897,7 @@ export const addServicesToDomain = async (
   await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
   await assetRes;
 
-  for (const asset of assets) {
-    const name = get(asset, 'name') ?? '';
-    const fqn = get(asset, 'fullyQualifiedName');
-
+  for (const { name = '', fullyQualifiedName: fqn } of services) {
     const searchRes = page.waitForResponse(
       `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
     );
@@ -1125,8 +1050,10 @@ export const removeAssetsFromDataProduct = async (
   await page.getByTestId('searchbar').clear();
   await waitForAllLoadersToDisappear(page);
 
-  const assetsRemoveRes = page.waitForResponse((response) =>
-    response.url().includes('/assets/remove')
+  const assetsRemoveRes = page.waitForResponse(
+    `/api/v1/dataProducts/${encodeURIComponent(
+      dataProduct.fullyQualifiedName ?? ''
+    )}/assets/remove`
   );
 
   await page.getByTestId('delete-all-button').click();

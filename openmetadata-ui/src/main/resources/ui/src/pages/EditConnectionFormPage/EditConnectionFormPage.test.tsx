@@ -191,6 +191,8 @@ jest.mock('../../utils/ServiceUtilClassBase', () => ({
 const mockGetServiceType = jest.fn().mockReturnValue('database');
 
 jest.mock('../../utils/ServicePureUtils', () => ({
+  getServiceCategoryLabel: jest.requireActual('../../utils/ServicePureUtils')
+    .getServiceCategoryLabel,
   getServiceRouteFromServiceType: jest.fn(),
   getServiceType: jest.fn((category) => mockGetServiceType(category)),
 }));
@@ -244,7 +246,7 @@ describe('EditConnectionFormPage component', () => {
     });
 
     expect(mockGetServiceByFQN).toHaveBeenCalled();
-    expect(screen.getByText('Database Services')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural')).toBeInTheDocument();
     expect(
       screen.getByText('message.edit-service-entity-connection')
     ).toBeInTheDocument();

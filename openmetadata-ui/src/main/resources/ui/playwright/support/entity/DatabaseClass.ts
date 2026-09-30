@@ -19,12 +19,11 @@ import {
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import {
-  assignSingleSelectDomain,
-  removeSingleSelectDomain,
   uuid,
   verifyDomainLinkInCard,
   waitForSearchResult,
 } from '../../utils/common';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   addOwner,
@@ -420,10 +419,10 @@ export class DatabaseClass extends EntityClass implements ParentNode {
     domain1: Domain['responseData'],
     domain2: Domain['responseData']
   ) {
-    await assignSingleSelectDomain(page, domain1);
+    await setDomain(page, domain1);
     await this.verifyDomainPropagation(page, domain1);
-    await removeSingleSelectDomain(page, domain1);
-    await assignSingleSelectDomain(page, domain2);
-    await removeSingleSelectDomain(page, domain2);
+    await setDomain(page, domain1, { verify: 'cleared' });
+    await setDomain(page, domain2);
+    await setDomain(page, domain2, { verify: 'cleared' });
   }
 }

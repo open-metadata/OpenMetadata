@@ -203,7 +203,7 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await visitEntityPageByFqn({
         page,
         endpoint: testTable.endpoint,
-        fqn: tableFqn,
+        fqn: tableFqn ?? '',
       });
 
       await expect(
@@ -520,7 +520,7 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await visitEntityPageByFqn({
         page,
         endpoint: testTable.endpoint,
-        fqn: tableFqn,
+        fqn: tableFqn ?? '',
       });
 
       await expect(

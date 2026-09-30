@@ -158,7 +158,7 @@ test.describe('Data Product Rename', () => {
     await visitEntityPageByFqn({
       page,
       endpoint: table.endpoint,
-      fqn: tableFqn,
+      fqn: tableFqn ?? '',
     });
 
     // Navigate back to data product and verify assets tab still shows the asset
@@ -339,7 +339,7 @@ test.describe('Data Product Rename', () => {
       await visitEntityPageByFqn({
         page,
         endpoint: testTable.endpoint,
-        fqn: tableFqn,
+        fqn: tableFqn ?? '',
       });
 
       // Navigate back and verify assets still there
