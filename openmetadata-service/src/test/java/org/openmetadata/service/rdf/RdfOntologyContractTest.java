@@ -5,8 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import org.apache.jena.rdf.model.Model;
@@ -18,6 +22,7 @@ import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.rdf.sql2sparql.SqlMappingContext;
 
 class RdfOntologyContractTest {
   private static final String OM = "https://open-metadata.org/ontology/";
@@ -66,6 +71,56 @@ class RdfOntologyContractTest {
               .toList(),
           uri);
     }
+  }
+
+  @Test
+  void jsonLdContextOnlyAdvertisesStoredProjectedPredicates() throws IOException {
+    try (InputStream stream =
+        Objects.requireNonNull(getClass().getResourceAsStream("/rdf/contexts/base.jsonld"))) {
+      JsonNode context = new ObjectMapper().readTree(stream).path("@context");
+      context
+          .fields()
+          .forEachRemaining(
+              entry -> {
+                JsonNode predicate = entry.getValue().path("@id");
+                if (predicate.isTextual() && predicate.asText().startsWith("om:")) {
+                  assertStoredProjection(predicate.asText(), "JSON-LD term " + entry.getKey());
+                }
+              });
+    }
+  }
+
+  @Test
+  void nestedSqlMappingsOnlyAdvertiseStoredProjectedPredicates() {
+    SqlMappingContext.createDefault()
+        .getTableMappings()
+        .forEach(
+            (table, mapping) ->
+                mapping
+                    .getNestedMappings()
+                    .forEach(
+                        (field, nested) -> {
+                          assertStoredProjection(nested.getParentProperty(), table + "." + field);
+                          nested
+                              .getFields()
+                              .forEach(
+                                  (subfield, column) ->
+                                      assertStoredProjection(
+                                          column.getRdfProperty(),
+                                          table + "." + field + "." + subfield));
+                        }));
+  }
+
+  private static void assertStoredProjection(String qualifiedPredicate, String source) {
+    String uri = qualifiedPredicate.replaceFirst("^om:", OM);
+    Resource property = ontology.createResource(uri);
+    assertTrue(predicates(projection).contains(uri), source + " is not projected: " + uri);
+    assertTrue(
+        ontology.contains(
+            property,
+            ontology.createProperty(OM + "projectionStatus"),
+            ontology.createResource(OM + "Stored")),
+        source + " is not marked om:Stored: " + uri);
   }
 
   @Test
