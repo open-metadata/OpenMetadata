@@ -10118,8 +10118,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updated.setExtension(origExtension);
         return;
       }
-      updatedExtension = fillReferenceIds(updatedExtension);
-      updated.setExtension(updatedExtension);
+      // A consolidating pass reverts to the pre-session snapshot, which may still name a target
+      // hard-deleted since; proving it would fail the request. The final pass reconciles.
+      if (!consolidatingChanges) {
+        updatedExtension = fillReferenceIds(updatedExtension);
+        updated.setExtension(updatedExtension);
+      }
 
       List<JsonNode> addedFields = new ArrayList<>();
       List<JsonNode> deletedFields = new ArrayList<>();
@@ -10186,7 +10190,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       removeExtension(original);
       storeExtension(updated);
-      replaceExtensionReferences(original, updated);
+      if (!consolidatingChanges) {
+        replaceExtensionReferences(original, updated);
+      }
     }
 
     protected void updateDomains() {

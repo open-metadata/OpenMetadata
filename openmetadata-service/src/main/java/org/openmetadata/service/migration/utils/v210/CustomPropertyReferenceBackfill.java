@@ -102,7 +102,7 @@ public final class CustomPropertyReferenceBackfill {
     byType.forEach(
         (type, ids) -> {
           dao.entityExtensionReferenceDAO()
-              .insertMany(
+              .insertManyKeepingMarks(
                   row.id(), row.extensionName(), ids, Collections.nCopies(ids.size(), type));
           deadTargets.addAll(missingTargets(type, ids));
         });

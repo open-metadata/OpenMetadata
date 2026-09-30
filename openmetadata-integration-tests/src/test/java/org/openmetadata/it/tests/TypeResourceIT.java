@@ -48,6 +48,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -1369,20 +1371,9 @@ public class TypeResourceIT {
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
 
-      String response =
-          client
-              .getHttpClient()
-              .executeForString(HttpMethod.GET, "/v1/domains?fields=extension&limit=1000", null);
-      JsonNode listed = null;
-      for (JsonNode candidate : OBJECT_MAPPER.readTree(response).path("data")) {
-        if (domain.getId().toString().equals(candidate.path("id").asText())) {
-          listed = candidate;
-        }
-      }
+      Domain listed = findInDomainList(client, domain.getId());
       assertNotNull(listed, "domain is listed");
-      JsonNode value = listed.path("extension").path(property);
-      assertEquals(1, value.size());
-      assertEquals(second.getId().toString(), value.get(0).path("id").asText());
+      assertEquals(List.of(second.getId().toString()), referenceIds(listed, property));
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1431,11 +1422,10 @@ public class TypeResourceIT {
       ExecutorService writers = Executors.newFixedThreadPool(3);
       List<Object> toggled = List.of(referenceOf(doomed), referenceOf(survivor));
       List<Object> plain = List.of(referenceOf(survivor));
-      CountDownLatch started = new CountDownLatch(3);
+      CountDownLatch firstWrites = new CountDownLatch(3);
       for (int writer = 0; writer < 3; writer++) {
         writers.submit(
             () -> {
-              started.countDown();
               for (int attempt = 0; attempt < 20; attempt++) {
                 try {
                   Domain current = client.domains().get(domain.getId().toString(), "extension");
@@ -1445,10 +1435,13 @@ public class TypeResourceIT {
                   LOG.debug(
                       "Write rejected while the target was being deleted: {}", e.getMessage());
                 }
+                if (attempt == 0) {
+                  firstWrites.countDown();
+                }
               }
             });
       }
-      started.await(10, TimeUnit.SECONDS);
+      assertTrue(firstWrites.await(1, TimeUnit.MINUTES), "every writer wrote before the delete");
       client.teams().delete(doomed.getId().toString(), HARD_DELETE);
       writers.shutdown();
       assertTrue(writers.awaitTermination(2, TimeUnit.MINUTES));
@@ -1503,6 +1496,55 @@ public class TypeResourceIT {
       assertTrue(ledgerRowsFor(child.getId()).isEmpty());
     } finally {
       deleteDomainProperty(client, property);
+    }
+  }
+
+  /**
+   * A second edit by the same user inside the session window reverts to the pre-session snapshot,
+   * which still names a target hard-deleted in between; the edit must not fail on it.
+   */
+  @Test
+  void test_referenceList_sessionConsolidationAfterHardDeleteSucceeds(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team first = createTeam(client, ns.prefix("first"), CreateTeam.TeamType.GROUP, null);
+      Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
+      Team third = createTeam(client, ns.prefix("third"), CreateTeam.TeamType.GROUP, null);
+      Domain domain =
+          createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
+      Domain described = client.domains().get(domain.getId().toString(), "extension");
+      described.setDescription("Edited once in this session");
+      client.domains().update(domain.getId().toString(), described);
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+
+      Domain current = client.domains().get(domain.getId().toString(), "extension");
+      current.setExtension(Map.of(property, List.of(referenceOf(second), referenceOf(third))));
+      Domain updated = client.domains().update(domain.getId().toString(), current);
+
+      assertEquals(
+          List.of(second.getId().toString(), third.getId().toString()),
+          referenceIds(updated, property));
+      awaitLedgerEmpty(domain, first.getId());
+      assertEquals(1, ledgerRowsFor(third.getId()).size());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  private static Domain findInDomainList(OpenMetadataClient client, UUID domainId) {
+    ListParams params = new ListParams().setFields("extension").withLimit(100);
+    while (true) {
+      ListResponse<Domain> page = client.domains().list(params);
+      Domain match =
+          page.getData().stream().filter(d -> d.getId().equals(domainId)).findFirst().orElse(null);
+      String after = page.getPaging() != null ? page.getPaging().getAfter() : null;
+      if (match != null || after == null) {
+        return match;
+      }
+      params = new ListParams().setFields("extension").withLimit(100).setAfter(after);
     }
   }
 

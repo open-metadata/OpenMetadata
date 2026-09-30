@@ -404,6 +404,30 @@ public interface CoreRelationshipDAOs {
         @Bind("toId") List<String> toIds,
         @Bind("toEntity") List<String> toEntities);
 
+    /**
+     * Backfill insert: an existing row keeps its mark. Unlike a writer, the backfill holds no
+     * proof that a target is live, so it must never clear a mark a concurrent delete just set.
+     */
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension_reference(id, extension, toId, toEntity) "
+                + "VALUES (:id, :extension, :toId, :toEntity) "
+                + "ON DUPLICATE KEY UPDATE toEntity = VALUES(toEntity)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension_reference(id, extension, toId, toEntity) "
+                + "VALUES (:id, :extension, :toId, :toEntity) "
+                + "ON CONFLICT (id, extension, toId) DO NOTHING",
+        connectionType = POSTGRES)
+    @BatchChunkSize(1000)
+    void insertManyKeepingMarks(
+        @BindUUID("id") UUID id,
+        @Bind("extension") String extension,
+        @Bind("toId") List<String> toIds,
+        @Bind("toEntity") List<String> toEntities);
+
     @SqlUpdate(
         "DELETE FROM entity_extension_reference "
             + "WHERE id = :id AND extension = :extension AND toId IN (<toIds>)")
@@ -497,12 +521,23 @@ public interface CoreRelationshipDAOs {
     @RegisterRowMapper(ReferenceKeyMapper.class)
     List<ReferenceKey> listPendingKeys(@Bind("limit") int limit);
 
-    /** Keyset over the primary key, OR-expanded so it reads identically on both engines. */
-    @SqlQuery(
-        "SELECT id, extension, toId, toEntity FROM entity_extension_reference "
-            + "WHERE pendingCompaction = FALSE AND (id > :id OR (id = :id AND extension > :extension) "
-            + "OR (id = :id AND extension = :extension AND toId > :toId)) "
-            + "ORDER BY id, extension, toId LIMIT :limit")
+    /**
+     * Keyset over the primary key. MySQL's range optimizer handles the OR-expanded form; Postgres
+     * only turns a row-value comparison into an ordered index range, so each engine gets its own.
+     */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, extension, toId, toEntity FROM entity_extension_reference "
+                + "WHERE pendingCompaction = FALSE AND (id > :id OR (id = :id AND extension > :extension) "
+                + "OR (id = :id AND extension = :extension AND toId > :toId)) "
+                + "ORDER BY id, extension, toId LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, extension, toId, toEntity FROM entity_extension_reference "
+                + "WHERE pendingCompaction = FALSE AND (id, extension, toId) > (:id, :extension, :toId) "
+                + "ORDER BY id, extension, toId LIMIT :limit",
+        connectionType = POSTGRES)
     @RegisterRowMapper(ReferenceTargetMapper.class)
     List<ReferenceTarget> listLiveAfter(
         @Bind("id") String id,
