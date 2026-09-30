@@ -31,7 +31,7 @@ import {
   ALL_SERVICES_CATEGORY,
   BETA_SERVICES,
   excludedService,
-  SERVICE_CATEGORY_OPTIONS,
+  SERVICE_CATEGORY_TITLE_KEYS,
   SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
 import { ServiceCategoryParam } from '../../../../../constants/ServiceType.constant';
@@ -43,6 +43,7 @@ import { MlModelServiceType } from '../../../../../generated/entity/services/mlm
 import { PipelineServiceType } from '../../../../../generated/entity/services/pipelineService';
 import { errorMsg } from '../../../../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
+import { getServiceCategoryLabel } from '../../../../../utils/ServicePureUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SelectServiceTypeProps } from './Steps.interface';
@@ -63,10 +64,12 @@ const SelectServiceType = ({
   const categorySelectItems: SelectItemType[] = useMemo(
     () => [
       { id: ALL_SERVICES_CATEGORY, label: t('label.all-services') },
-      ...SERVICE_CATEGORY_OPTIONS.map(({ label, value }) => ({
-        id: value,
-        label,
-      })),
+      ...(Object.keys(SERVICE_CATEGORY_TITLE_KEYS) as ServiceCategory[]).map(
+        (key) => ({
+          id: key,
+          label: getServiceCategoryLabel(key),
+        })
+      ),
     ],
     [t]
   );

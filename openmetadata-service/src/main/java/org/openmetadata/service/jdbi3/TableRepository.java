@@ -2227,6 +2227,11 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    protected boolean supportsColumnExtension() {
+      return true;
+    }
+
+    @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       Table origTable = original;
       Table updatedTable = updated;

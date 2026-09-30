@@ -89,6 +89,12 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
+jest.mock('../../common/CertificationTag/CertificationTag', () =>
+  jest.fn(({ certification }) => (
+    <div data-testid={`certification-${certification.tagLabel.tagFQN}`} />
+  ))
+);
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
@@ -481,6 +487,29 @@ describe('ExploreSearchCard - Entity type tags', () => {
 
     expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
     expect(screen.queryByText(Constraint.PrimaryKey)).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreSearchCard - Certification badge', () => {
+  const certification = { tagLabel: { tagFQN: 'Certification.Gold' } };
+
+  it('renders the certification badge for a certified table', () => {
+    renderCard({ certification } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.getByTestId('certification-Certification.Gold')
+    ).toBeInTheDocument();
+  });
+
+  it('does not render the table certification inherited by a column', () => {
+    renderCard({
+      entityType: 'tableColumn',
+      certification,
+    } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.queryByTestId('certification-Certification.Gold')
+    ).not.toBeInTheDocument();
   });
 });
 
