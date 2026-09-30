@@ -188,3 +188,35 @@ export type CartesianBuildInput<T extends object> = Pick<
   | 'showValueLabels'
   | 'radius'
 >;
+
+export interface PieDatum {
+  /** Slice label. Translated by the caller. */
+  name: string;
+  value: number;
+  /** Defaults to `getSeriesColor(index)`. */
+  color?: string;
+}
+
+export interface PieChartProps extends ChartCommonProps {
+  data: PieDatum[];
+  /** Set for a donut, e.g. `'55%'`. Defaults to a full pie. */
+  innerRadius?: number | string;
+  /** Rendered in the middle of the chart, typically for a donut total. */
+  centerLabel?: ReactNode;
+  /** Whole-percent labels beside each slice. */
+  showLabels?: boolean;
+  legend?: ChartLegendProps;
+  tooltip?: ChartTooltipProps;
+  onSliceClick?: (datum: PieDatum, event: ECElementEvent) => void;
+}
+
+export type PieBuildInput = Pick<
+  PieChartProps,
+  | 'data'
+  | 'ariaLabel'
+  | 'innerRadius'
+  | 'showLabels'
+  | 'legend'
+  | 'tooltip'
+  | 'option'
+>;
