@@ -18,13 +18,14 @@
  * mode) and list pages open in the chosen view.
  */
 
-import { Page } from '@playwright/test';
+import { Browser, BrowserContext, Page } from '@playwright/test';
 import { Document } from '../../../src/generated/entity/docStore/document';
 import {
   AppMode,
   PageViewMode,
 } from '../../../src/generated/type/personaPreferences';
 import { expect } from '../../support/fixtures/base';
+import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -38,6 +39,7 @@ import {
   createPersonaAppLayoutDoc,
   setDefaultPersona,
 } from '../../utils/persona';
+import { performUserLogin } from '../../utils/user';
 import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test as base } from '../fixtures/pages';
 
@@ -49,18 +51,41 @@ const aiUser = new UserClass();
 const classicPersona = new PersonaClass();
 const aiPersona = new PersonaClass();
 
-// Each persona user's page, signed in fresh so the app opens as it does after
-// a real sign-in.
+type SessionState = Awaited<ReturnType<BrowserContext['storageState']>>;
+
+// Filled by beforeAll once each persona user has signed in.
+let classicUserSession: SessionState;
+let aiUserSession: SessionState;
+
+const signInAndSaveSession = async (browser: Browser, user: UserClass) => {
+  const { page, afterAction } = await performUserLogin(browser, user);
+  // The auth token lives in IndexedDB, so it has to be saved too.
+  const session = await page.context().storageState({ indexedDB: true });
+  await afterAction();
+
+  return session;
+};
+
+// Opens the app at `/` in a fresh context restored from a saved session, the
+// way a signed-in user opens it in a new window.
+const openAppAsUser = async (browser: Browser, session: SessionState) => {
+  const context = await browser.newContext({ storageState: session });
+  await installServerLoadReducers(context);
+  const page = await context.newPage();
+  // `/` redirects, so wait only for the first commit.
+  await page.goto('/', { waitUntil: 'commit' });
+
+  return page;
+};
+
 const test = base.extend<{ classicUserPage: Page; aiUserPage: Page }>({
   classicUserPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await classicUser.login(page);
+    const page = await openAppAsUser(browser, classicUserSession);
     await use(page);
     await page.context().close();
   },
   aiUserPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await aiUser.login(page);
+    const page = await openAppAsUser(browser, aiUserSession);
     await use(page);
     await page.context().close();
   },
@@ -102,6 +127,10 @@ test.describe('Persona App Layout for the persona users', () => {
         setDefaultPersona(apiContext, classicUser, classicPersona),
         setDefaultPersona(apiContext, aiUser, aiPersona),
       ]);
+      [classicUserSession, aiUserSession] = await Promise.all([
+        signInAndSaveSession(browser, classicUser),
+        signInAndSaveSession(browser, aiUser),
+      ]);
 
       await afterAction();
     }
@@ -131,10 +160,10 @@ test.describe('Persona App Layout for the persona users', () => {
     }
   );
 
-  test('lands on the default landing page after sign-in and on reopening /', async ({
+  test('opening / lands on the default landing page, again after leaving it', async ({
     classicUserPage,
   }) => {
-    await test.step('Sign-in lands on the default landing page', async () => {
+    await test.step('Opening the app at / lands on the default landing page', async () => {
       await expect(classicUserPage).toHaveURL(GLOSSARY_URL);
     });
 
