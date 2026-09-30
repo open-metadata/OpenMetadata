@@ -131,6 +131,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         DATA_CONTRACT_UPDATE_FIELDS);
     this.ingestionPipelineMapper = new IngestionPipelineMapper(config);
     this.openMetadataApplicationConfig = config;
+    supportsSearch = true;
   }
 
   @Override
