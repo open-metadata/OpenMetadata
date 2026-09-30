@@ -320,7 +320,7 @@ export const runContentPersistenceTest = async (
 
     await page.keyboard.type('Bold persistent text');
     await expect(page.getByText('Bold persistent text')).toBeVisible();
-    await selectLastWord(page, 3, editor);
+    await selectLastWord(page, 2, editor);
     await applyTextFormatting(page, 'bold');
 
     await verifyContentPersistence(page, [

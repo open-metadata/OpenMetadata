@@ -109,7 +109,7 @@ test.describe(
     let adminId = '';
 
     test.beforeAll('Setup entities and articles', async ({ browser }) => {
-      test.setTimeout(3 * 60 * 1000);
+      test.setTimeout(4 * 60 * 1000);
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 

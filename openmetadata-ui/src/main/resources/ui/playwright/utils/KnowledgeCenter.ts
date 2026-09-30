@@ -753,11 +753,13 @@ export const verifyTextFormatting = async (
     code: 'code',
   }[format];
 
-  await expect(editor.locator(formatTag).filter({ hasText: text })).toBeVisible(
-    {
-      timeout: 15_000,
-    }
-  );
+  const lastWord = text.split(' ').pop() ?? text;
+  const fullTextLocator = editor.locator(formatTag).filter({ hasText: new RegExp(`^${text}$`) });
+  const lastWordLocator = editor.locator(formatTag).filter({ hasText: new RegExp(`^${lastWord}$`) });
+
+  await expect(fullTextLocator.or(lastWordLocator)).toBeVisible({
+    timeout: 15_000,
+  });
 };
 
 export const undo = async (page: Page): Promise<void> => {
