@@ -254,6 +254,29 @@ describe('Custom property renderers', () => {
         'Tier 1',
       ]);
     });
+
+    it('replaces the value when a single-select picks another option', async () => {
+      const { onValueSave } = renderCard(
+        createProperty('enum', {
+          values: ['Gold', 'Silver', 'Tier 1'],
+          multiSelect: false,
+        }),
+        ['Gold']
+      );
+
+      await user.click(screen.getByTestId('edit-icon'));
+      const input = within(screen.getByTestId('enum-select')).getByRole(
+        'combobox'
+      );
+
+      expect(input).toBeVisible();
+
+      await user.click(input);
+      await user.click(await screen.findByRole('option', { name: 'Silver' }));
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      expect(onValueSave).toHaveBeenCalledWith(expect.anything(), ['Silver']);
+    });
   });
 
   describe('hyperlink', () => {
