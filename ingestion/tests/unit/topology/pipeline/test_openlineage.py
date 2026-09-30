@@ -3122,26 +3122,28 @@ class TestTableResolutionAcrossSameTypeServices:
     def _source(self, db_service_names: list[str], clock=time.monotonic) -> OpenlineageSource:
         """
         A prepared source whose server has two Postgres services, only postgres1
-        holding the table. Every table the server is asked for is recorded in
-        ``requested_tables``, and ``clock`` drives the expiry of cached misses.
+        holding the table. The server holds the FQNs in ``ingested_tables``, which
+        a test can change between events, and records every table it is asked for
+        in ``requested_tables``. ``clock`` drives the expiry of cached misses.
         """
         table = Mock()
         table.id.root = self.TABLE_ID
         table.fullyQualifiedName.root = self.TABLE_FQN
         pipeline = Mock()
         pipeline.id.root = self.PIPELINE_ID
+        self.ingested_tables: set[str] = {self.TABLE_FQN}
         self.requested_tables: list[str] = []
 
         def get_by_name(entity, fqn, **kwargs):
             if entity == Table:
                 self.requested_tables.append(fqn)
-                return table if fqn == self.TABLE_FQN else None
+                return table if fqn in self.ingested_tables else None
             return pipeline if entity == Pipeline else None
 
         metadata = MagicMock()
         metadata.client.get.return_value = {"serviceType": "Postgres"}
         metadata.es_search_from_fqn.side_effect = lambda entity_type, fqn_search_string, **kwargs: (
-            [table] if fqn_search_string == self.TABLE_FQN else None
+            [table] if fqn_search_string in self.ingested_tables else None
         )
         metadata.get_by_name.side_effect = get_by_name
         metadata.get_lineage_by_id.return_value = None
@@ -3184,15 +3186,18 @@ class TestTableResolutionAcrossSameTypeServices:
 
         assert self.requested_tables.count("postgres2.postgres.public.source") == 1
 
-    def test_missing_table_is_requested_again_once_the_miss_expires(self):
+    def test_table_ingested_during_the_run_is_linked_once_the_cached_miss_expires(self):
         now = [0.0]
         source = self._source(["postgres1", "postgres2"], clock=lambda: now[0])
+        self.ingested_tables.clear()
 
-        self._lineage_edges(source, "postgres://pg1:5432")
+        assert self._lineage_edges(source, "postgres://pg1:5432") == []
+
+        self.ingested_tables.add(self.TABLE_FQN)
+        assert self._lineage_edges(source, "postgres://pg1:5432") == []
+
         now[0] += MISSING_ENTITY_CACHE_TTL_SECONDS + 1
-        self._lineage_edges(source, "postgres://pg1:5432")
-
-        assert self.requested_tables.count("postgres2.postgres.public.source") == 2
+        assert self._lineage_edges(source, "postgres://pg1:5432") == [(self.PIPELINE_ID, self.TABLE_ID)]
 
 
 if __name__ == "__main__":
