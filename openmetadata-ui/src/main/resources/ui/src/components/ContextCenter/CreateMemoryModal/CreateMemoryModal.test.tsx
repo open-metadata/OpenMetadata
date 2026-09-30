@@ -20,6 +20,8 @@ import {
   useForm,
   useFormContext,
 } from 'react-hook-form';
+import { MemoryRouter } from 'react-router-dom';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import CreateMemoryModal from './CreateMemoryModal.component';
 
 jest.mock('react-markdown', () => ({
@@ -313,5 +315,37 @@ describe('CreateMemoryModal', () => {
 
     expect(screen.getByTestId('memory-title-input')).toBeInTheDocument();
     expect(screen.getByTestId('memory-type-select')).toBeInTheDocument();
+  });
+
+  it('links applied glossary terms from the memory modal', () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'monthlyRecurringRevenue',
+      title: 'Monthly recurring revenue',
+      memory: 'Recurring subscription revenue each month.',
+      derivedEntities: [
+        {
+          id: 'term-id',
+          type: 'glossaryTerm',
+          name: 'monthly_recurring_revenue',
+          displayName: 'Monthly recurring revenue',
+          fullyQualifiedName: 'subscription_metrics.monthly_recurring_revenue',
+        },
+      ],
+    } as ContextMemory;
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('memory-derived-ontology')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Monthly recurring revenue' })
+    ).toHaveAttribute(
+      'href',
+      '/glossary/subscription_metrics.monthly_recurring_revenue'
+    );
   });
 });

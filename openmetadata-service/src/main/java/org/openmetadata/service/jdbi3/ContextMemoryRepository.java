@@ -56,6 +56,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
   static final String FIELD_RELATED_ENTITIES = "relatedEntities";
+  static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
   static final String FIELD_SOURCE_FILE = "sourceFile";
   static final String FIELD_SOURCE_ENTITY = "sourceEntity";
   private static final String PATCH_FIELDS =
@@ -98,6 +99,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(getRelatedEntities(entity));
     }
+    if (fields.contains(FIELD_DERIVED_ENTITIES)) {
+      entity.setDerivedEntities(getDerivedEntities(entity));
+    }
     if (fields.contains(FIELD_SOURCE_ENTITY) || fields.contains(FIELD_SOURCE_FILE)) {
       EntityReference source = getSourceEntity(entity);
       if (fields.contains(FIELD_SOURCE_ENTITY)) {
@@ -117,6 +121,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (!fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(null);
     }
+    if (!fields.contains(FIELD_DERIVED_ENTITIES)) {
+      entity.setDerivedEntities(null);
+    }
     if (!fields.contains(FIELD_SOURCE_ENTITY)) {
       entity.setSourceEntity(null);
     }
@@ -132,6 +139,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     fetchAndSetPrimaryEntities(entities, fields);
     fetchAndSetRelatedEntities(entities, fields);
+    fetchAndSetDerivedEntities(entities, fields);
     fetchAndSetSources(entities, fields);
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
@@ -256,6 +264,42 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   private List<EntityReference> getRelatedEntities(ContextMemory entity) {
     return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null);
+  }
+
+  private List<EntityReference> getDerivedEntities(ContextMemory entity) {
+    return findFrom(
+        entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM);
+  }
+
+  private void fetchAndSetDerivedEntities(List<ContextMemory> entities, Fields fields) {
+    if (!fields.contains(FIELD_DERIVED_ENTITIES)) {
+      return;
+    }
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.DERIVED_FROM.ordinal(),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    Map<UUID, List<EntityReference>> derivedById = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      if (!Entity.GLOSSARY_TERM.equals(record.getFromEntity())) {
+        continue;
+      }
+      EntityReference ref = refById.get(record.getFromId());
+      if (ref != null) {
+        derivedById
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(ref);
+      }
+    }
+    derivedById.values().forEach(refs -> refs.sort(EntityUtil.compareEntityReference));
+    entities.forEach(
+        memory ->
+            memory.setDerivedEntities(
+                derivedById.getOrDefault(memory.getId(), Collections.emptyList())));
   }
 
   /** The single Context Center source (file or page) a memory was extracted from, via MENTIONED_IN. */

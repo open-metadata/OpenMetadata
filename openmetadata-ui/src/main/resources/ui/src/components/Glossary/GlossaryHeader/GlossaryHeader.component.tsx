@@ -89,7 +89,6 @@ import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import ImportOntologyModal from '../ImportOntologyModal/ImportOntologyModal.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
-import GlossaryTermSourceMemories from './GlossaryTermSourceMemories';
 import './glossery-header.less';
 
 type TranslateFunction = ReturnType<typeof useTranslation>['t'];
@@ -841,11 +840,6 @@ const GlossaryHeader = ({
           />
         }
       />
-      {!isGlossary && Boolean(selectedData.sourceMemoryIds?.length) && (
-        <GlossaryTermSourceMemories
-          memoryIds={selectedData.sourceMemoryIds ?? []}
-        />
-      )}
       <GlossaryHeaderModals
         handleDelete={handleDelete}
         isDelete={isDelete}

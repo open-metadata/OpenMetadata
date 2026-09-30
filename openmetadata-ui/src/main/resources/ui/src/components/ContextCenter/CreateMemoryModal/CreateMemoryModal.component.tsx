@@ -88,6 +88,7 @@ import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
@@ -718,6 +719,43 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
   </div>
 );
 
+const MemoryDerivedOntology: FC<{ memory?: ContextMemory }> = ({ memory }) => {
+  const { t } = useTranslation();
+
+  if (!memory) {
+    return null;
+  }
+
+  const derivedTerms =
+    memory.derivedEntities?.filter(
+      (entity) => entity.type === EntityType.GLOSSARY_TERM
+    ) ?? [];
+
+  return (
+    <div
+      className="tw:flex tw:flex-col tw:gap-2"
+      data-testid="memory-derived-ontology">
+      <Typography size="text-sm" weight="medium">
+        {t('label.derived-ontology')}
+      </Typography>
+      {derivedTerms.length > 0 ? (
+        derivedTerms.map((term) => (
+          <Link
+            className="tw:text-link tw:hover:underline"
+            key={term.id}
+            to={getGlossaryPath(term.fullyQualifiedName)}>
+            {getEntityName(term)}
+          </Link>
+        ))
+      ) : (
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {t('message.no-derived-ontology')}
+        </Typography>
+      )}
+    </div>
+  );
+};
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
@@ -1118,6 +1156,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       setLinkedAssets={setLinkedAssets}
                       t={t}
                     />
+
+                    <MemoryDerivedOntology memory={memoryToEdit} />
 
                     {/* Section 5: Metadata */}
                     <MemoryMetadataSection

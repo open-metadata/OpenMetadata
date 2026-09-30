@@ -34,11 +34,13 @@ import org.openmetadata.it.util.OntologyChangeSetTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.AcquireOntologyEditLock;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
@@ -54,6 +56,7 @@ import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.type.OntologyEditLock;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.services.context.ContextMemoryService;
 
 /** Integration coverage for durable drafts, undo/redo, edit leases, and atomic application. */
 @Execution(ExecutionMode.CONCURRENT)
@@ -107,6 +110,57 @@ public class OntologyChangeSetIT {
     AcquireOntologyEditLock competing = lockRequest(changeSet, ns.prefix("secondEditor"));
 
     assertThrows(OpenMetadataException.class, () -> client.ontologyEditLocks().acquire(competing));
+  }
+
+  @Test
+  void appliedTermAppearsOnItsSourceMemory(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
+    ContextMemory memory =
+        ns.trackRoot(
+            "contextMemory",
+            memories.create(
+                new CreateContextMemory()
+                    .withName(ns.prefix("revenueMemory"))
+                    .withDescription("Subscription revenue definition")
+                    .withQuestion("What is monthly recurring revenue?")
+                    .withAnswer("Recurring subscription revenue in a month.")));
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    UUID termId = UUID.randomUUID();
+    GlossaryTerm proposedTerm =
+        new GlossaryTerm()
+            .withId(termId)
+            .withName(ns.prefix("monthlyRecurringRevenue"))
+            .withDescription("Recurring subscription revenue in a month")
+            .withGlossary(glossary.getEntityReference())
+            .withVersion(0.1);
+    OntologyChangeOperation operation =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.CREATE_TERM)
+            .withTerm(proposedTerm)
+            .withSourceMemoryIds(Set.of(memory.getId()))
+            .withState(OntologyChangeOperationState.ACTIVE);
+    OntologyChangeSet changeSet = createChangeSet(client, glossary, operation, ns);
+
+    assertTrue(
+        listOrEmpty(memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities())
+            .isEmpty());
+
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("memoryEditor"));
+    OntologyChangeSet applied =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+
+    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+    assertEquals(
+        Set.of(memory.getId()), client.glossaryTerms().get(termId.toString()).getSourceMemoryIds());
+    assertEquals(
+        List.of(termId),
+        memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities().stream()
+            .map(ref -> ref.getId())
+            .toList());
   }
 
   @Test

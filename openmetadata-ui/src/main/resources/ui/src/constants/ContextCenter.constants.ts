@@ -127,7 +127,7 @@ export const VISIBILITY_OPTIONS = [
 
 export const MEMORIES_PER_PAGE = 10;
 export const MEMORY_FIELDS =
-  'owners,tags,domains,primaryEntity,relatedEntities,sourceEntity';
+  'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
 
 export const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
