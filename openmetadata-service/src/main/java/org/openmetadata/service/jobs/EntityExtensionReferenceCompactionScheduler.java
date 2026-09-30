@@ -39,6 +39,7 @@ public class EntityExtensionReferenceCompactionScheduler implements Managed {
 
   private final EntityExtensionReferences references;
   private final AtomicBoolean running = new AtomicBoolean();
+  private final AtomicBoolean rerunRequested = new AtomicBoolean();
   private ScheduledExecutorService scheduler;
 
   public EntityExtensionReferenceCompactionScheduler(EntityExtensionReferences references) {
@@ -78,12 +79,17 @@ public class EntityExtensionReferenceCompactionScheduler implements Managed {
     }
   }
 
+  /** A request that lands mid-run is honoured by one more pass, not dropped until the next tick. */
   void runSafely() {
     if (!running.compareAndSet(false, true)) {
+      rerunRequested.set(true);
       return;
     }
     try {
-      runOnce();
+      do {
+        rerunRequested.set(false);
+        runOnce();
+      } while (rerunRequested.get());
     } catch (RuntimeException exception) {
       LOG.warn("Failed to compact custom-property references", exception);
     } finally {

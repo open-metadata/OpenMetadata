@@ -42,6 +42,7 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
+import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
@@ -435,38 +436,57 @@ public interface CoreRelationshipDAOs {
     @SqlUpdate("DELETE FROM entity_extension_reference WHERE extension = :extension")
     void deleteExtension(@Bind("extension") String extension);
 
+    /** Plain consistent read: no locks, so a delete never holds a gap on the target index. */
     @SqlQuery(
-        "SELECT DISTINCT id, extension FROM entity_extension_reference WHERE toId IN (<toIds>)")
-    @RegisterRowMapper(ReferenceKeyMapper.class)
-    List<ReferenceKey> findByToIdsInternal(@BindList("toIds") List<String> toIds);
+        "SELECT id, extension, toId FROM entity_extension_reference "
+            + "WHERE toId IN (<toIds>) AND pendingCompaction = FALSE")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findLiveByToIdsInternal(@BindList("toIds") List<String> toIds);
 
-    default List<ReferenceKey> findByToIds(List<String> toIds) {
+    default List<ReferenceRow> findLiveByToIds(List<String> toIds) {
       return nullOrEmpty(toIds)
           ? List.of()
-          : EntityDAO.queryInChunks(toIds, this::findByToIdsInternal);
+          : EntityDAO.queryInChunks(toIds, this::findLiveByToIdsInternal);
     }
 
-    @SqlUpdate(
+    default List<ReferenceKey> findByToIds(List<String> toIds) {
+      return findLiveByToIds(toIds).stream().map(ReferenceRow::key).distinct().toList();
+    }
+
+    /**
+     * Marks by primary key so the delete takes record locks on rows it has read, never next-key
+     * or gap locks on the target index, which under MySQL REPEATABLE READ would block every
+     * concurrent ledger insert for the life of the delete transaction.
+     */
+    @Transaction
+    @SqlBatch(
         "UPDATE entity_extension_reference SET pendingCompaction = TRUE "
-            + "WHERE toId IN (<toIds>) AND pendingCompaction = FALSE")
-    int markPendingInternal(@BindList("toIds") List<String> toIds);
+            + "WHERE id = :id AND extension = :extension AND toId = :toId")
+    @BatchChunkSize(1000)
+    void markPendingByKey(
+        @BindUUID("id") List<UUID> ids,
+        @Bind("extension") List<String> extensions,
+        @Bind("toId") List<String> toIds);
 
     default int markPending(List<String> toIds) {
-      if (nullOrEmpty(toIds)) {
+      List<ReferenceRow> rows = findLiveByToIds(toIds);
+      if (rows.isEmpty()) {
         return 0;
       }
-      int[] marked = {0};
-      EntityDAO.updateInChunks(toIds, chunk -> marked[0] += markPendingInternal(chunk));
-      return marked[0];
+      markPendingByKey(
+          rows.stream().map(ReferenceRow::id).toList(),
+          rows.stream().map(ReferenceRow::extension).toList(),
+          rows.stream().map(ReferenceRow::toId).toList());
+      return rows.size();
     }
 
     @SqlQuery(
         "SELECT id, extension, toId FROM entity_extension_reference "
             + "WHERE id IN (<ids>) AND pendingCompaction = TRUE")
-    @RegisterRowMapper(PendingReferenceMapper.class)
-    List<PendingReference> findPendingInternal(@BindList("ids") List<String> ids);
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findPendingInternal(@BindList("ids") List<String> ids);
 
-    default List<PendingReference> findPending(List<String> ids) {
+    default List<ReferenceRow> findPending(List<String> ids) {
       return nullOrEmpty(ids) ? List.of() : EntityDAO.queryInChunks(ids, this::findPendingInternal);
     }
 
@@ -477,6 +497,19 @@ public interface CoreRelationshipDAOs {
     @RegisterRowMapper(ReferenceKeyMapper.class)
     List<ReferenceKey> listPendingKeys(@Bind("limit") int limit);
 
+    /** Keyset over the primary key, OR-expanded so it reads identically on both engines. */
+    @SqlQuery(
+        "SELECT id, extension, toId, toEntity FROM entity_extension_reference "
+            + "WHERE pendingCompaction = FALSE AND (id > :id OR (id = :id AND extension > :extension) "
+            + "OR (id = :id AND extension = :extension AND toId > :toId)) "
+            + "ORDER BY id, extension, toId LIMIT :limit")
+    @RegisterRowMapper(ReferenceTargetMapper.class)
+    List<ReferenceTarget> listLiveAfter(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("toId") String toId,
+        @Bind("limit") int limit);
+
     /** Taken after the holder's entity_extension row lock, never before; see the sweep. */
     @SqlQuery(
         "SELECT toId FROM entity_extension_reference "
@@ -486,7 +519,11 @@ public interface CoreRelationshipDAOs {
 
   record ReferenceKey(UUID id, String extension) {}
 
-  record PendingReference(UUID id, String extension, String toId) {}
+  record ReferenceRow(UUID id, String extension, String toId) {
+    ReferenceKey key() {
+      return new ReferenceKey(id, extension);
+    }
+  }
 
   class ReferenceKeyMapper implements RowMapper<ReferenceKey> {
     @Override
@@ -495,10 +532,23 @@ public interface CoreRelationshipDAOs {
     }
   }
 
-  class PendingReferenceMapper implements RowMapper<PendingReference> {
+  record ReferenceTarget(UUID id, String extension, String toId, String toEntity) {}
+
+  class ReferenceTargetMapper implements RowMapper<ReferenceTarget> {
     @Override
-    public PendingReference map(ResultSet rs, StatementContext ctx) throws SQLException {
-      return new PendingReference(
+    public ReferenceTarget map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ReferenceTarget(
+          UUID.fromString(rs.getString("id")),
+          rs.getString("extension"),
+          rs.getString("toId"),
+          rs.getString("toEntity"));
+    }
+  }
+
+  class ReferenceRowMapper implements RowMapper<ReferenceRow> {
+    @Override
+    public ReferenceRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ReferenceRow(
           UUID.fromString(rs.getString("id")), rs.getString("extension"), rs.getString("toId"));
     }
   }

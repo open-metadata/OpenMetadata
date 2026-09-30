@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.migration.utils.v210;
 
+import static org.openmetadata.service.jdbi3.EntityExtensionReferences.CUSTOM_FIELD_SCHEMA;
 import static org.openmetadata.service.jdbi3.EntityExtensionReferences.ENTITY_REFERENCE;
 import static org.openmetadata.service.jdbi3.EntityExtensionReferences.ENTITY_REFERENCE_LIST;
 
@@ -43,7 +44,6 @@ import org.openmetadata.service.util.EntityUtil;
 @Slf4j
 public final class CustomPropertyReferenceBackfill {
   private static final int PAGE_SIZE = 1_000;
-  private static final String CUSTOM_FIELD_SCHEMA = "customFieldSchema";
 
   private CustomPropertyReferenceBackfill() {}
 
@@ -108,9 +108,15 @@ public final class CustomPropertyReferenceBackfill {
         });
   }
 
+  /**
+   * Only a known table with no row is dead. A type this server does not know may be registered
+   * elsewhere in the distribution; marking its references would make the sweep delete them.
+   */
   private static List<String> missingTargets(String type, List<String> ids) {
     if (!Entity.hasEntityRepository(type)) {
-      return ids;
+      LOG.warn(
+          "Skipping {} custom-property references of unknown entity type '{}'", ids.size(), type);
+      return List.of();
     }
     EntityDAO<?> entityDao = Entity.getEntityRepository(type).getDao();
     Set<String> existing =

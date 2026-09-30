@@ -5082,9 +5082,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Delete all the relationships to other entities
     daoCollection.relationshipDAO().deleteAll(id, entityType);
 
-    // Holders that reference this entity from a custom property keep serving the reference until
-    // the sweep rewrites their values; marking here is what the read filter keys on.
-    markCustomPropertyReferencesPending(List.of(id));
     // Delete all the extensions of entity
     daoCollection.entityExtensionDAO().deleteAll(id);
     daoCollection.entityExtensionReferenceDAO().deleteAll(id);
@@ -5118,6 +5115,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Finally, delete the entity
     dao.delete(id);
+    // After the row lock, so a writer that proved this target under a shared lock either already
+    // committed its ledger row (marked here or by the post-commit re-probe) or now waits and fails.
+    markCustomPropertyReferencesPending(List.of(id));
   }
 
   private void markEntityNotFound(T entity) {
@@ -6245,7 +6245,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       objectNode.set(fieldName, fieldValue);
     }
-    extensionReferences().removePending(Map.of(entity.getId(), objectNode));
+    extensionReferences().removePending(entityType, Map.of(entity.getId(), objectNode));
     return objectNode.isEmpty() ? null : objectNode;
   }
 
@@ -7301,10 +7301,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void bulkDeleteReferencesAndRows(List<T> entities) {
+    final List<UUID> ids = entityIds(entities);
     if (Entity.getJdbi() == null) {
       bulkCleanupReferences(entities);
       bulkDeleteEntityRows(entities);
-      cancelWorkflowInstances(entityIds(entities));
+      markCustomPropertyReferencesPending(ids);
+      reprobeCustomPropertyReferences(ids);
+      cancelWorkflowInstances(ids);
       return;
     }
     // Same boundary as cleanup(): deadlock retry plus a deferral scope, since the cascade rewrites
@@ -7313,10 +7316,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         () -> {
           bulkCleanupReferences(entities);
           bulkDeleteEntityRows(entities);
+          // After the row locks, for the same reason as the single-entity cleanup.
+          markCustomPropertyReferencesPending(ids);
         });
     // Keep Flowable's separate transaction after the owning entity commit. See cleanup().
-    final List<UUID> ids = entityIds(entities);
     PostCommitActionQueue.runOrDefer(() -> cancelWorkflowInstances(ids));
+    PostCommitActionQueue.runOrDefer(() -> reprobeCustomPropertyReferences(ids));
   }
 
   private List<UUID> entityIds(List<T> entities) {
@@ -7364,11 +7369,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       daoCollection.relationshipDAO().batchDeleteRelationships(entityIds, entityType);
     }
     try (var ignored = phase("bulkHardDeleteExtensions")) {
-      markCustomPropertyReferencesPending(entityIds);
       daoCollection.entityExtensionDAO().deleteAllBatch(entityIdStrings);
       daoCollection.entityExtensionReferenceDAO().deleteAllBatch(entityIdStrings);
     }
-    PostCommitActionQueue.runOrDefer(() -> reprobeCustomPropertyReferences(entityIds));
     // field_relationship and tag_usage are keyed by FQN hash, so a single prefix delete on an
     // ancestor's FQN clears the whole subtree. For FQN-nested types the recursive delete root's
     // cleanup() already issues that prefix delete (deleteAllByPrefix /
@@ -12582,7 +12585,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       nodes.put(entityId, objectNode);
     }
-    extensionReferences().removePending(nodes);
+    extensionReferences().removePending(entityType, nodes);
 
     Map<UUID, Object> result = new HashMap<>();
     nodes.forEach(

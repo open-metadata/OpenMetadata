@@ -514,5 +514,5 @@ CREATE TABLE IF NOT EXISTS entity_extension_reference (
     PRIMARY KEY (id, extension, toId),
     INDEX entity_extension_reference_to_index (toId),
     INDEX entity_extension_reference_extension_index (extension),
-    INDEX entity_extension_reference_pending_index (pendingCompaction)
+    INDEX entity_extension_reference_pending_index (pendingCompaction, id, extension)
 );

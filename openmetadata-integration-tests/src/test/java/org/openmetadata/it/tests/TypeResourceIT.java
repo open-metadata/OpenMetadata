@@ -18,6 +18,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -53,6 +55,9 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceKey;
 import org.openmetadata.service.jdbi3.EntityExtensionReferences;
 import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceBackfill;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests for Type entity operations.
@@ -70,6 +75,7 @@ import org.openmetadata.service.jdbi3.TypeRepository;
 @ExtendWith(TestNamespaceExtension.class)
 public class TypeResourceIT {
 
+  private static final Logger LOG = LoggerFactory.getLogger(TypeResourceIT.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static Type INT_TYPE;
   private static Type STRING_TYPE;
@@ -1304,7 +1310,7 @@ public class TypeResourceIT {
           List.of(second.getId().toString(), third.getId().toString()),
           referenceIds(updated, property));
       awaitStoredValue(domain, property, stored -> stored != null && stored.size() == 2);
-      assertTrue(ledgerRowsFor(first.getId()).isEmpty());
+      awaitLedgerEmpty(domain, first.getId());
       assertEquals(1, ledgerRowsFor(third.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
@@ -1315,13 +1321,149 @@ public class TypeResourceIT {
   void test_referenceList_definitionDeleteDropsLedgerRows(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
-    Team team = createTeam(client, ns.prefix("defined"), CreateTeam.TeamType.GROUP, null);
-    createDomain(client, ns, property, List.of(referenceOf(team)));
-    assertEquals(1, ledgerRowsFor(team.getId()).size());
+    try {
+      Team team = createTeam(client, ns.prefix("defined"), CreateTeam.TeamType.GROUP, null);
+      createDomain(client, ns, property, List.of(referenceOf(team)));
+      assertEquals(1, ledgerRowsFor(team.getId()).size());
 
-    deleteDomainProperty(client, property);
+      deleteDomainProperty(client, property);
 
-    assertTrue(ledgerRowsFor(team.getId()).isEmpty());
+      assertTrue(ledgerRowsFor(team.getId()).isEmpty());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_softDeletedTarget_referenceIsKept(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team team = createTeam(client, ns.prefix("soft"), CreateTeam.TeamType.GROUP, null);
+      Domain domain = createDomain(client, ns, property, List.of(referenceOf(team)));
+
+      client.teams().delete(team.getId().toString());
+      assertEquals(
+          List.of(team.getId().toString()),
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
+
+      client.teams().restore(team.getId().toString());
+      assertEquals(
+          List.of(team.getId().toString()),
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
+      assertEquals(1, ledgerRowsFor(team.getId()).size());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_referenceList_listEndpointFiltersDeletedTarget(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team first = createTeam(client, ns.prefix("first"), CreateTeam.TeamType.GROUP, null);
+      Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
+      Domain domain =
+          createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+
+      String response =
+          client
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, "/v1/domains?fields=extension&limit=1000", null);
+      JsonNode listed = null;
+      for (JsonNode candidate : OBJECT_MAPPER.readTree(response).path("data")) {
+        if (domain.getId().toString().equals(candidate.path("id").asText())) {
+          listed = candidate;
+        }
+      }
+      assertNotNull(listed, "domain is listed");
+      JsonNode value = listed.path("extension").path(property);
+      assertEquals(1, value.size());
+      assertEquals(second.getId().toString(), value.get(0).path("id").asText());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_backfill_marksReferencesWhoseTargetIsGone(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team first = createTeam(client, ns.prefix("first"), CreateTeam.TeamType.GROUP, null);
+      Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
+      Domain domain =
+          createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
+      // Simulate a value written before the ledger existed: drop its rows, then lose the target.
+      Entity.getCollectionDAO().entityExtensionReferenceDAO().deleteAll(domain.getId());
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+      assertEquals(
+          2,
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
+              .size());
+
+      CustomPropertyReferenceBackfill.backfillCustomPropertyReferences(Entity.getCollectionDAO());
+
+      assertEquals(
+          List.of(second.getId().toString()),
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
+      awaitStoredValue(domain, property, stored -> stored != null && stored.size() == 1);
+      awaitLedgerEmpty(domain, first.getId());
+      assertEquals(1, ledgerRowsFor(second.getId()).size());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_referenceList_writesRacingHardDeleteLeaveNoDanglingReference(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team doomed = createTeam(client, ns.prefix("doomed"), CreateTeam.TeamType.GROUP, null);
+      Team survivor = createTeam(client, ns.prefix("survivor"), CreateTeam.TeamType.GROUP, null);
+      Domain domain = createDomain(client, ns, property, List.of(referenceOf(survivor)));
+
+      ExecutorService writers = Executors.newFixedThreadPool(3);
+      List<Object> toggled = List.of(referenceOf(doomed), referenceOf(survivor));
+      List<Object> plain = List.of(referenceOf(survivor));
+      CountDownLatch started = new CountDownLatch(3);
+      for (int writer = 0; writer < 3; writer++) {
+        writers.submit(
+            () -> {
+              started.countDown();
+              for (int attempt = 0; attempt < 20; attempt++) {
+                try {
+                  Domain current = client.domains().get(domain.getId().toString(), "extension");
+                  current.setExtension(Map.of(property, attempt % 2 == 0 ? toggled : plain));
+                  client.domains().update(domain.getId().toString(), current);
+                } catch (OpenMetadataException e) {
+                  LOG.debug(
+                      "Write rejected while the target was being deleted: {}", e.getMessage());
+                }
+              }
+            });
+      }
+      started.await(10, TimeUnit.SECONDS);
+      client.teams().delete(doomed.getId().toString(), HARD_DELETE);
+      writers.shutdown();
+      assertTrue(writers.awaitTermination(2, TimeUnit.MINUTES));
+
+      assertFalse(
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
+              .contains(doomed.getId().toString()));
+      awaitLedgerEmpty(domain, doomed.getId());
+      JsonNode stored = storedValue(domain, property);
+      for (JsonNode ref : stored) {
+        assertFalse(doomed.getId().toString().equals(ref.path("id").asText()));
+      }
+    } finally {
+      deleteDomainProperty(client, property);
+    }
   }
 
   @Test
@@ -1400,8 +1542,8 @@ public class TypeResourceIT {
             .getHttpClient()
             .execute(HttpMethod.PATCH, "/v1/metadata/types/" + typeId, patch, Type.class);
         return;
-      } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
-        // the test op failed: the index moved under us; re-read and retry
+      } catch (OpenMetadataException e) {
+        LOG.debug("Custom property index moved under the patch, retrying: {}", e.getMessage());
       }
     }
   }
@@ -1482,14 +1624,25 @@ public class TypeResourceIT {
 
   /** The sweep on this server may already hold the row, so run one pass and then wait. */
   private static void awaitStoredValue(
-      Domain domain, String property, java.util.function.Predicate<JsonNode> expected) {
-    new EntityExtensionReferences(Entity.getCollectionDAO()).compactPending(100);
+      Domain domain, String property, Predicate<JsonNode> expected) {
     Awaitility.await("custom-property value compacted")
         .atMost(Duration.ofSeconds(30))
         .untilAsserted(
             () -> {
-              new EntityExtensionReferences(Entity.getCollectionDAO()).compactPending(100);
+              new EntityExtensionReferences(Entity.getCollectionDAO())
+                  .compactPendingFor(domain.getId());
               assertTrue(expected.test(storedValue(domain, property)));
+            });
+  }
+
+  private static void awaitLedgerEmpty(Domain domain, UUID target) {
+    Awaitility.await("ledger rows for a deleted target removed")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              new EntityExtensionReferences(Entity.getCollectionDAO())
+                  .compactPendingFor(domain.getId());
+              assertTrue(ledgerRowsFor(target).isEmpty());
             });
   }
 

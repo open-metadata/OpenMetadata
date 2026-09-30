@@ -105,6 +105,7 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityExtensionReferences;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
@@ -1437,6 +1438,42 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to Entity Cleanup due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "customPropertyReferenceCleanup",
+      description =
+          "Finds custom-property entityReference values whose referenced entity no longer exists "
+              + "and marks them for compaction. Dry run unless --delete is given.")
+  public Integer cleanupCustomPropertyReferences(
+      @Option(
+              names = {"--delete"},
+              description = "Mark the dangling references so the compaction sweep removes them.",
+              defaultValue = "false")
+          boolean delete,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "1000",
+              description = "Number of ledger rows to check in each batch.")
+          int batchSize) {
+    try {
+      parseConfig();
+      EntityExtensionReferences.LiveProbe probe =
+          new EntityExtensionReferences(collectionDAO).probeLiveReferences(batchSize, delete);
+      LOG.info(
+          "Custom-property references scanned: {}, dangling: {}, marked: {}",
+          probe.scanned(),
+          probe.dead(),
+          probe.marked());
+      if (!delete && probe.dead() > 0) {
+        LOG.info("To mark these references for compaction, run with --delete");
+        return 1;
+      }
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Custom-property reference cleanup failed", e);
       return 1;
     }
   }

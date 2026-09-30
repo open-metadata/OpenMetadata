@@ -20,6 +20,8 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -37,8 +39,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.PendingReference;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceKey;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceRow;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceTarget;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -53,7 +56,11 @@ public final class EntityExtensionReferences {
   public static final String ENTITY_REFERENCE_LIST = "entityReferenceList";
   private static final String FIELD_ID = "id";
   private static final String FIELD_TYPE = "type";
-  private static final String CUSTOM_FIELD_SCHEMA = "customFieldSchema";
+  public static final String CUSTOM_FIELD_SCHEMA = "customFieldSchema";
+
+  /** One warning per (property, type) per server, not one per edit. */
+  private static final Cache<String, Boolean> WARNED_TYPES =
+      Caffeine.newBuilder().maximumSize(1_000).build();
 
   private final CollectionDAO daoCollection;
 
@@ -105,6 +112,7 @@ public final class EntityExtensionReferences {
     }
     referencedIdsByType(value).keySet().stream()
         .filter(type -> !allowed.contains(type))
+        .filter(type -> WARNED_TYPES.asMap().putIfAbsent(fieldName + "/" + type, true) == null)
         .forEach(
             type ->
                 LOG.warn(
@@ -185,29 +193,33 @@ public final class EntityExtensionReferences {
                 distinct,
                 chunk ->
                     dao.lockExistingIds(dao.getTableName(), chunk, dao.getCondition(NON_DELETED))));
-    distinct.stream()
-        .filter(id -> !present.contains(id))
-        .findFirst()
-        .ifPresent(
-            id -> {
-              throw new IllegalArgumentException(
-                  String.format("Referenced %s '%s' does not exist", type, id));
-            });
+    List<String> missing = distinct.stream().filter(id -> !present.contains(id)).toList();
+    if (!missing.isEmpty()) {
+      throw new IllegalArgumentException(
+          String.format("Referenced %s '%s' does not exist", type, missing.getFirst()));
+    }
   }
 
-  /** Drops references whose target was hard-deleted from values that are not compacted yet. */
-  public void removePending(Map<UUID, ObjectNode> extensionsByHolder) {
-    if (extensionsByHolder.isEmpty()) {
+  /**
+   * Drops references whose target was hard-deleted from values that are not compacted yet. Only
+   * holders that carry a reference-typed property pay the ledger lookup.
+   */
+  public void removePending(String entityType, Map<UUID, ObjectNode> extensionsByHolder) {
+    List<String> ids =
+        extensionsByHolder.entrySet().stream()
+            .filter(entry -> hasReferenceProperty(entityType, entry.getValue()))
+            .map(entry -> entry.getKey().toString())
+            .toList();
+    if (ids.isEmpty()) {
       return;
     }
-    List<String> ids = extensionsByHolder.keySet().stream().map(UUID::toString).toList();
-    List<PendingReference> pending = daoCollection.entityExtensionReferenceDAO().findPending(ids);
+    List<ReferenceRow> pending = daoCollection.entityExtensionReferenceDAO().findPending(ids);
     Map<ReferenceKey, Set<String>> deadByKey =
         pending.stream()
             .collect(
                 Collectors.groupingBy(
                     reference -> new ReferenceKey(reference.id(), reference.extension()),
-                    Collectors.mapping(PendingReference::toId, Collectors.toSet())));
+                    Collectors.mapping(ReferenceRow::toId, Collectors.toSet())));
     deadByKey.forEach(
         (key, dead) ->
             removeFrom(
@@ -216,14 +228,30 @@ public final class EntityExtensionReferences {
                 dead));
   }
 
+  private static boolean hasReferenceProperty(String entityType, ObjectNode extension) {
+    Iterator<String> names = extension.fieldNames();
+    while (names.hasNext()) {
+      if (isReferenceProperty(entityType, names.next())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** A value with no live reference left is absent, the same shape the sweep leaves behind. */
   private static void removeFrom(ObjectNode extension, String propertyName, Set<String> dead) {
     JsonNode value = extension == null ? null : extension.get(propertyName);
     if (value == null) {
       return;
     }
+    boolean emptied;
     if (value.isArray()) {
       removeDeadElements((ArrayNode) value, dead);
-    } else if (dead.contains(idOf(value))) {
+      emptied = value.isEmpty();
+    } else {
+      emptied = dead.contains(idOf(value));
+    }
+    if (emptied) {
       extension.remove(propertyName);
     }
   }
@@ -238,6 +266,88 @@ public final class EntityExtensionReferences {
       }
     }
     return removed;
+  }
+
+  /** What a pass over the live ledger rows found: rows scanned, targets gone, rows marked. */
+  public record LiveProbe(int scanned, int dead, int marked) {}
+
+  /**
+   * Safety net for a lost post-commit re-probe: walks the live ledger rows, checks each target
+   * still exists in its own table and marks the ones that do not. Types this server does not know
+   * are skipped, never marked.
+   */
+  public LiveProbe probeLiveReferences(int batchSize, boolean apply) {
+    int scanned = 0;
+    int dead = 0;
+    int marked = 0;
+    List<ReferenceTarget> page =
+        daoCollection.entityExtensionReferenceDAO().listLiveAfter("", "", "", batchSize);
+    while (!page.isEmpty()) {
+      List<ReferenceRow> gone = deadRowsIn(page);
+      scanned += page.size();
+      dead += gone.size();
+      marked += apply ? markRows(gone) : 0;
+      ReferenceTarget last = page.getLast();
+      page =
+          page.size() < batchSize
+              ? List.of()
+              : daoCollection
+                  .entityExtensionReferenceDAO()
+                  .listLiveAfter(last.id().toString(), last.extension(), last.toId(), batchSize);
+    }
+    return new LiveProbe(scanned, dead, marked);
+  }
+
+  private static List<ReferenceRow> deadRowsIn(List<ReferenceTarget> page) {
+    Map<String, List<ReferenceTarget>> byType =
+        page.stream().collect(Collectors.groupingBy(ReferenceTarget::toEntity));
+    List<ReferenceRow> gone = new ArrayList<>();
+    byType.forEach(
+        (type, rows) -> {
+          if (Entity.hasEntityRepository(type)) {
+            Set<String> present =
+                existingIds(type, rows.stream().map(ReferenceTarget::toId).distinct().toList());
+            rows.stream()
+                .filter(row -> !present.contains(row.toId()))
+                .forEach(row -> gone.add(new ReferenceRow(row.id(), row.extension(), row.toId())));
+          }
+        });
+    return gone;
+  }
+
+  private static Set<String> existingIds(String type, List<String> ids) {
+    EntityDAO<?> dao = Entity.getEntityRepository(type).getDao();
+    return new HashSet<>(
+        EntityDAO.queryInChunks(ids, chunk -> dao.findExistingIds(dao.getTableName(), chunk)));
+  }
+
+  private int markRows(List<ReferenceRow> rows) {
+    if (rows.isEmpty()) {
+      return 0;
+    }
+    daoCollection
+        .entityExtensionReferenceDAO()
+        .markPendingByKey(
+            rows.stream().map(ReferenceRow::id).toList(),
+            rows.stream().map(ReferenceRow::extension).toList(),
+            rows.stream().map(ReferenceRow::toId).toList());
+    return rows.size();
+  }
+
+  /** Compacts every pending value of one holder; used by tests and the ops command. */
+  public int compactPendingFor(UUID holderId) {
+    Set<ReferenceKey> keys =
+        daoCollection
+            .entityExtensionReferenceDAO()
+            .findPending(List.of(holderId.toString()))
+            .stream()
+            .map(ReferenceRow::key)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    int rewritten = 0;
+    for (ReferenceKey key : keys) {
+      rewritten += compact(key) == Outcome.REWRITTEN ? 1 : 0;
+    }
+    return rewritten;
   }
 
   public int markPending(List<UUID> deletedIds) {
