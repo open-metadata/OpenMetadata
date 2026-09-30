@@ -348,27 +348,33 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
-                # Only a refused connection can mean a datashare database. A failure
-                # after the connection is open - a missing grant on an external-table
-                # view, say - must not downgrade a usable connection to the catalog
-                # views, so the two steps get their own handlers.
+                # A database the cluster does not hold locally keeps its metadata in
+                # the cross-database catalog views only - `pg_catalog` inside it is
+                # empty even where it accepts a connection, which a datashare
+                # database does - so what it is decides how to read it, not whether
+                # it can be connected to.
+                if new_database in shared_databases:
+                    datashare_strategy = self._datashare_strategy(new_database)
+                    if datashare_strategy:
+                        self.strategy = datashare_strategy
+                        yield new_database
+                    continue
+
                 try:
                     self.set_inspector(database_name=new_database)
-                    # `set_inspector` only builds a lazy engine, so without this the
+                    # `set_inspector` only builds a lazy engine, so without this a
                     # refusal would surface inside whichever query ran first and be
                     # indistinguishable from a permission error on that query. The
                     # connection is cached, so the queries below reuse it.
                     self.connection  # noqa: B018  # pylint: disable=pointless-statement
                 except Exception as exc:
-                    datashare_strategy = (
-                        self._datashare_strategy(new_database, exc) if new_database in shared_databases else None
-                    )
-                    if datashare_strategy:
-                        self.strategy = datashare_strategy
-                        yield new_database
-                    else:
-                        logger.debug(traceback.format_exc())
-                        logger.error(f"Error trying to connect to database {new_database}: {exc}")
+                    # Anything reaching here the cluster reports as local, so the
+                    # catalog views are not an alternative source for it: a local
+                    # database that cannot be connected to is a plain failure. A
+                    # cluster that classifies nothing therefore behaves as it did
+                    # before any of this.
+                    logger.debug(traceback.format_exc())
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
                     continue
 
                 try:
@@ -381,28 +387,25 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
 
                 yield new_database
 
-    def _datashare_strategy(self, database_name: str, connection_error: Exception) -> DatashareStrategy | None:
-        """Strategy for reading a datashare database from the catalog views, or
-        None when this database is not one we can read that way.
+    def _datashare_strategy(self, database_name: str) -> DatashareStrategy | None:
+        """Strategy for reading a non-local database from the cross-database
+        catalog views, or None when it cannot be read that way.
 
-        The failed `set_inspector` left the source without an engine, so the
-        connection to the configured database has to be restored before any
-        catalog query can run. Returns None if that does not succeed, leaving the
-        caller to report the original connection error.
+        The views are cross-database but the connection still has to point at a
+        database that can be connected to, so it is moved to the configured one
+        first - the walk has otherwise left it on whichever database it looked at
+        last.
         """
         try:
             self.set_inspector(database_name=self.service_connection.database)
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning("Could not restore the connection to [%s]: %s", self.service_connection.database, exc)
             return None
-        # The error is logged rather than matched on: the refusal is worded
-        # differently for a datashare and for a Data Catalog ARN database, and it
-        # keeps a genuine failure - a network blip, a missing grant - diagnosable.
         # Claim the database only when the catalog views can actually see inside
         # it, so a database we cannot read is skipped with an explanation instead
         # of being registered with no schemas.
-        # This runs inside the walk's `except` branch, so an exception here
-        # escapes the producer and every database after this one is skipped.
+        # An exception here would escape the producer and lose every later
+        # database, so it is reported and this one is skipped.
         try:
             schema_names = self.datashare.get_schema_names(database_name)
         except Exception as exc:  # pylint: disable=broad-except
@@ -410,18 +413,16 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             return None
         if not schema_names:
             logger.warning(
-                "Database [%s] did not accept a connection (%s) and the catalog views report no "
-                "schemas for it. A catalog database mounted from Glue needs an IAM-authenticated "
-                "session to be readable.",
+                "Database [%s] is not local and the catalog views report no schemas for it, so it "
+                "is skipped. A catalog database mounted from Glue needs an IAM-authenticated "
+                "session to be readable, and a datashare whose consumer is publicly accessible "
+                "needs PUBLICACCESSIBLE set on it.",
                 database_name,
-                connection_error,
             )
             return None
         logger.info(
-            "Database [%s] is shared and did not accept a connection (%s). "
-            "Reading its metadata from the cross-database catalog views.",
+            "Database [%s] is not local; reading its metadata from the cross-database catalog views.",
             database_name,
-            connection_error,
         )
         # Populated from the database we just left; nothing repopulates it while
         # reading from the catalog views.

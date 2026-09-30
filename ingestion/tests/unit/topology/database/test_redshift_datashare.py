@@ -30,9 +30,6 @@ from metadata.ingestion.source.database.redshift.datashare import _table_type
 from metadata.ingestion.source.database.redshift.metadata import (
     RedshiftSource,
 )
-from metadata.ingestion.source.database.redshift.metadata import (
-    logger as metadata_logger,
-)
 from metadata.ingestion.source.database.redshift.models import RedshiftDatashareTable
 from metadata.ingestion.source.database.redshift.strategy import (
     BaseStrategy,
@@ -148,6 +145,7 @@ class RedshiftSourceFixture:
         self.svv_databases_error = None
         self.schema_rows = SCHEMA_ROWS
         self._svv_all_columns_queries = []
+        self.connected_databases = []
 
     def _execute(self, statement, params=None):
         """Answer each catalog view with the rows a consumer cluster would return"""
@@ -183,6 +181,7 @@ class RedshiftSourceFixture:
         databases = databases or [LOCAL_DATABASE, SHARED_DATABASE]
 
         def set_inspector(database_name: str):
+            self.connected_databases.append(database_name)
             if database_name in unreachable_databases:
                 raise ConnectionError(f'Cannot connect to shared database "{database_name}"')
 
@@ -212,37 +211,40 @@ class RedshiftSourceFixture:
 class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
     """Datashare databases are read from SVV_ALL_* instead of a connection"""
 
-    def test_unreachable_shared_database_is_still_ingested(self):
-        """The database that refused the connection is yielded in datashare mode"""
-        with self.assertLogs(metadata_logger, level="INFO") as logs:
-            self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
+    def test_a_non_local_database_is_ingested_without_being_connected_to(self):
+        """A database the cluster reports as non-local is read from the catalog
+        views whether or not it would accept a connection - so one that refuses is
+        still ingested, and no failed connection is attempted to find that out."""
+        self.assertEqual(self._database_names({SHARED_DATABASE}), [LOCAL_DATABASE, SHARED_DATABASE])
         self.assertDatashareStrategy(SHARED_DATABASE)
-        # The connection error stays visible, so a genuine failure is diagnosable
-        self.assertTrue(
-            any(f'Cannot connect to shared database "{SHARED_DATABASE}"' in line for line in logs.output),
-            logs.output,
-        )
+        self.assertNotIn(SHARED_DATABASE, self.connected_databases)
 
-    def test_connectable_databases_are_untouched(self):
-        """Nothing changes for a cluster whose databases all accept connections"""
-        self.assertEqual(self._database_names(set()), [LOCAL_DATABASE, SHARED_DATABASE])
-        self.assertBaseStrategy()
-        # Only the probe that classifies the databases reached the connection
-        self.assertEqual(self.connection.execute.call_count, 1)
+    def test_a_non_local_database_that_connects_is_still_read_from_the_catalog(self):
+        """The case a refused-connection trigger misses entirely.
 
-    def test_shared_database_that_connects_is_never_downgraded(self):
-        """A failure *after* the connection opens is not a datashare refusal.
-
-        `set_inspector` only builds a lazy engine, so a missing grant on a
-        per-database query used to look exactly like a refused connection and
-        silently sent a perfectly usable connection down the catalog path.
+        A datashare database accepts the connection, and its `pg_catalog` is empty
+        once inside - measured on a real consumer. Waiting for a refusal would
+        reflect nothing and register the database with no tables at all.
         """
+        self.assertEqual(self._database_names(set()), [LOCAL_DATABASE, SHARED_DATABASE])
+        self.assertDatashareStrategy(SHARED_DATABASE)
+
+    def test_a_local_database_is_never_read_from_the_catalog(self):
+        """Reflection stays the path for everything the cluster holds locally"""
+        self.assertEqual(self._database_names(set(), databases=[LOCAL_DATABASE]), [LOCAL_DATABASE])
+        self.assertBaseStrategy()
+        self.assertIn(LOCAL_DATABASE, self.connected_databases)
+
+    def test_a_local_database_failing_after_connecting_is_not_downgraded(self):
+        """A failure *after* the connection opens - a missing grant on a
+        per-database query, say - stays a reported failure rather than sending a
+        perfectly usable connection down the catalog path."""
 
         def failing_location_map(database_name: str):
             raise RuntimeError(f"permission denied for relation svv_external_tables ({database_name})")
 
         with (
-            patch.object(RedshiftSource, "get_database_names_raw", return_value=[LOCAL_DATABASE, SHARED_DATABASE]),
+            patch.object(RedshiftSource, "get_database_names_raw", return_value=[LOCAL_DATABASE]),
             patch.object(RedshiftSource, "set_inspector"),
             patch.object(RedshiftSource, "_set_incremental_table_processor"),
             patch.object(RedshiftSource, "set_external_location_map", side_effect=failing_location_map),
@@ -252,10 +254,16 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
         # Only the classification probe ran; no catalog view was consulted
         self.assertEqual(self.connection.execute.call_count, 1)
 
-    def test_unreachable_local_database_is_reported(self):
-        """A database that is not shared keeps failing as it does today"""
-        self.assertEqual(self._database_names({LOCAL_DATABASE}), [SHARED_DATABASE])
+    def test_an_unreachable_local_database_is_reported(self):
+        """A local database that cannot be connected to keeps failing as it does
+        today - the catalog views are not an alternative source for one."""
+        self.assertEqual(self._database_names({LOCAL_DATABASE}, databases=[LOCAL_DATABASE]), [])
         self.assertBaseStrategy()
+
+    def test_nothing_is_read_when_the_configured_database_is_unreachable(self):
+        """The cross-database views run over the connection to the configured
+        database, so if that one is down there is nowhere left to read from."""
+        self.assertEqual(self._database_names({LOCAL_DATABASE}), [])
 
     def test_database_without_a_reported_type_is_treated_as_local(self):
         """An empty `database_type` must not read as non-local"""
@@ -518,8 +526,8 @@ class RedshiftBaseStrategyTest(RedshiftSourceFixture, unittest.TestCase):
     a catalog view.
     """
 
-    def test_a_connectable_database_keeps_the_base_strategy(self):
-        self._database_names(set())
+    def test_a_connectable_local_database_keeps_the_base_strategy(self):
+        self._database_names(set(), databases=[LOCAL_DATABASE])
         self.assertBaseStrategy()
 
     def test_schema_names_come_from_the_inspector(self):
