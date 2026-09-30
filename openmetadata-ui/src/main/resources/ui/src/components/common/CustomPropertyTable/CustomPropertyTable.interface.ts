@@ -37,6 +37,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
 import { CustomProperty } from '../../../generated/type/customProperty';
+import type { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget/CustomPropertiesWidget.interface';
 
 export type ExtentionEntities = {
   [EntityType.TABLE]: Table;
@@ -73,6 +74,10 @@ export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   hasPermission: boolean;
   maxDataCap?: number;
   isRenderedInRightPanel?: boolean;
+  /** Persona widget settings; only read with isRenderedInRightPanel. */
+  widgetSettings?: CustomPropertiesWidgetSettings;
+  /** Layout id of the persona widget instance, used to hide it when empty. */
+  widgetKey?: string;
 }
 
 export interface PropertyValueProps {
