@@ -40,6 +40,15 @@ export function decodeHtmlEntities(text: string): string {
   return doc.documentElement.textContent ?? text;
 }
 
+// Block editor descriptions are stored as HTML, and remove-markdown drops tags
+// with nothing in their place - without this, `<p>a</p><p>b</p>` reads as "ab".
+const HTML_BLOCK_BOUNDARY =
+  /<\/?(?:p|div|li|ul|ol|h[1-6]|br|tr|td|th|blockquote|pre)\b[^>]*>/gi;
+
 export function stripMarkdown(text: string): string {
-  return decodeHtmlEntities(removeMarkdown(text)).trim();
+  return decodeHtmlEntities(
+    removeMarkdown(text.replace(HTML_BLOCK_BOUNDARY, ' '))
+  )
+    .replace(/\s+/g, ' ')
+    .trim();
 }
