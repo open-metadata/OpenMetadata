@@ -301,6 +301,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [servicePermission]
   );
 
+  // The header's domain / owner / tier edits, by contrast, are gated on `deleted` and read their
+  // own field permissions — as classic's DataAssetsHeader does.
+  const headerEditFlags = useMemo(
+    () => getDerivedPermissionFlags(servicePermission, isServiceDeleted),
+    [servicePermission, isServiceDeleted]
+  );
+
   const categoryBreadcrumb = useMemo(
     () => getServiceCategoryBreadcrumb(t, serviceCategory),
     [t, serviceCategory]
@@ -640,11 +647,16 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           : t('label.data-asset-plural'),
         order: DATA_ASSETS_TAB_ORDER,
       },
-      {
-        key: 'connection',
-        label: t('label.connection'),
-        order: CONNECTION_TAB_ORDER,
-      },
+      // The connection config is for those who may edit it; classic hides the tab otherwise.
+      ...(canEditAll
+        ? [
+            {
+              key: 'connection' as const,
+              label: t('label.connection'),
+              order: CONNECTION_TAB_ORDER,
+            },
+          ]
+        : []),
     ];
     const contributed: DetailsTab[] = pluginTabs.map((pluginTab) => ({
       key: pluginTab.key,
@@ -657,7 +669,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     }));
 
     return [...builtIns, ...contributed].sort((a, b) => a.order - b.order);
-  }, [t, serviceCategory, pluginTabs]);
+  }, [t, serviceCategory, pluginTabs, canEditAll]);
 
   const allTabKeys = useMemo(
     () => tabs.map((detailsTab) => detailsTab.key),
@@ -683,12 +695,19 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     // its contribution's condition can evaluate against the loaded
     // `serviceDetails`. Hold the URL tab optimistically while the page is still
     // loading, and only fall back to the default once everything has settled —
-    // otherwise the tab flashes to the default before the plugin tab appears.
-    if (!isLoading) {
+    // otherwise the tab flashes to the default before the plugin tab appears. The
+    // same holds for the connection tab, which appears once permissions resolve.
+    if (!isLoading && !isServicePermissionLoading) {
       setActiveTab(defaultTabKey);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, tabKeysSignature, isLoading, defaultTabKey]);
+  }, [
+    tab,
+    tabKeysSignature,
+    isLoading,
+    isServicePermissionLoading,
+    defaultTabKey,
+  ]);
 
   if (isLoading) {
     return (
@@ -837,11 +856,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         }
         meta={
           <DataAssetHeaderDetailsRow
+            canEditDomains={headerEditFlags.canEditAll}
+            canEditOwners={headerEditFlags.canEditOwners}
+            canEditTier={headerEditFlags.canEditTier}
             domains={
               (serviceDetails as unknown as { domains?: EntityReference[] })
                 .domains
             }
-            hasEditPermission={canEditAll}
             owners={serviceDetails.owners}
             tags={serviceDetails.tags}
             onUpdateDomain={onUpdateDomain}
@@ -905,7 +926,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
             />
           )}
 
-          {activeTab === 'connection' && (
+          {activeTab === 'connection' && canEditAll && (
             <div className="connection-tab-content">
               <div className="tw:flex tw:items-center tw:justify-end tw:mb-4 tw:gap-2 tw:min-h-9">
                 {isServicePermissionLoading || isLoading ? (
