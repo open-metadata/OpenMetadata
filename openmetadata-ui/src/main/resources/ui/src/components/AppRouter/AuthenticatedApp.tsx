@@ -30,13 +30,20 @@ import ApplicationsProvider from '../Settings/Applications/ApplicationsProvider/
 import WebAnalyticsProvider from '../WebAnalytics/WebAnalyticsProvider';
 import { ThemeProvider as UntitledUIThemeProvider } from './../../context/UntitledUIThemeProvider/theme-provider';
 
+// react-aria resolves every link href through this hook, including external
+// URLs. Only app paths get the router basename; absolute URLs, mailto: and
+// anchors pass through untouched (useHref would treat them as relative paths).
+const useRouterHref = (href: string) => {
+  const resolvedHref = useHref(href);
+
+  return href.startsWith('/') && !href.startsWith('//') ? resolvedHref : href;
+};
+
 const ReactAriaRouterBridge = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
-  // useHref adds the router basename to rendered hrefs, so new-tab and
-  // copied links work when the app is served under a sub-path.
   return (
-    <RouterProvider navigate={navigate} useHref={useHref}>
+    <RouterProvider navigate={navigate} useHref={useRouterHref}>
       {children}
     </RouterProvider>
   );
