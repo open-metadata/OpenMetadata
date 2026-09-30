@@ -54,6 +54,23 @@ afterEach(() => {
 });
 
 describe('EChart', () => {
+  it('resolves CSS variable colours before ECharts sees them', () => {
+    // ECharts cannot parse `var(...)`: hover and animation drop the fill.
+    document.documentElement.style.setProperty('--slice', '#17b26a');
+    render(
+      <EChart
+        ariaLabel="Chart"
+        option={{ series: [{ type: 'pie', color: 'var(--slice)' }] }}
+      />
+    );
+
+    expect(
+      (lastHost().option as { series: Array<{ color: string }> }).series[0]
+        .color
+    ).toBe('#17b26a');
+    document.documentElement.style.removeProperty('--slice');
+  });
+
   it('builds the option with the light theme by default', () => {
     const { seen, option } = themeSpy();
     render(<EChart ariaLabel="Chart" option={option} />);
