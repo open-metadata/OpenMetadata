@@ -13,7 +13,9 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { useListingData } from './useListingData';
 
 // Mock dependencies
@@ -30,6 +32,7 @@ import { usePaginationState } from '../pagination/usePaginationState';
 import { useActionHandlers } from './useActionHandlers';
 
 const mockSetPageSize = jest.fn();
+const mockSearchEntities = jest.fn();
 const mockSetSearchQuery = jest.fn();
 const mockSetFilters = jest.fn();
 const mockSetCurrentPage = jest.fn();
@@ -51,6 +54,17 @@ const mockUseActionHandlers = useActionHandlers as jest.MockedFunction<
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <MemoryRouter>{children}</MemoryRouter>
 );
+
+const visibilityWrapper =
+  (isVisible: boolean) =>
+  ({ children }: { children: React.ReactNode }) =>
+    (
+      <MemoryRouter>
+        <RouteVisibilityProvider isVisible={isVisible}>
+          {children}
+        </RouteVisibilityProvider>
+      </MemoryRouter>
+    );
 
 describe('useListingData', () => {
   beforeEach(() => {
@@ -78,7 +92,7 @@ describe('useListingData', () => {
       error: null,
       totalEntities: 0,
       refetch: jest.fn(),
-      searchEntities: jest.fn(),
+      searchEntities: mockSearchEntities,
       aggregations: {},
     });
 
@@ -307,5 +321,72 @@ describe('useListingData', () => {
         })
       );
     });
+  });
+
+  describe('keep-alive routes', () => {
+    const config = {
+      searchIndex: SearchIndex.DOMAIN,
+      filterKeys: [],
+      columns: [],
+    };
+
+    it('does not query while the route is off screen', () => {
+      renderHook(() => useListingData(config), {
+        wrapper: visibilityWrapper(false),
+      });
+
+      // A hidden keep-alive listing still sees the shared `q` param change;
+      // querying there would burn a request on a result nobody can see.
+      expect(mockSearchEntities).not.toHaveBeenCalled();
+    });
+
+    it('queries once the route is on screen', () => {
+      renderHook(() => useListingData(config), {
+        wrapper: visibilityWrapper(true),
+      });
+
+      expect(mockSearchEntities).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not re-query on re-render when nothing changed', () => {
+      const { rerender } = renderHook(() => useListingData(config), {
+        wrapper: visibilityWrapper(true),
+      });
+
+      rerender();
+
+      expect(mockSearchEntities).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('does not re-query when the NLQ toggle flips, leaving NLQ to the next submit', () => {
+    mockUseUrlState.mockReturnValue({
+      ...mockUseUrlState(),
+      urlState: {
+        searchQuery: 'finance',
+        filters: {},
+        currentPage: 1,
+        pageSize: 10,
+      },
+    });
+    act(() => {
+      useSearchStore.setState({ isNLPEnabled: true, isNLPActive: false });
+    });
+    renderHook(
+      () =>
+        useListingData({
+          searchIndex: SearchIndex.DOMAIN,
+          filterKeys: [],
+          columns: [],
+          enableNlq: true,
+        }),
+      { wrapper }
+    );
+
+    act(() => {
+      useSearchStore.setState({ isNLPActive: true });
+    });
+
+    expect(mockSearchEntities).toHaveBeenCalledTimes(1);
   });
 });
