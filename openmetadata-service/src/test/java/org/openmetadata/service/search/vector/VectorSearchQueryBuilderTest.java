@@ -3,7 +3,6 @@ package org.openmetadata.service.search.vector;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -108,6 +107,44 @@ class VectorSearchQueryBuilderTest {
 
     assertTrue(termClauseExists(openSearchMust, "status", ContextMemoryStatus.ACTIVE.value()));
     assertTrue(termClauseExists(elasticMust, "status", ContextMemoryStatus.ACTIVE.value()));
+    JsonNode openSearchScope =
+        memoryVisibilityClause(
+            MAPPER
+                .readTree(VectorSearchQueryBuilder.build(vector, 10, 0, 100, Map.of(), 0.0))
+                .path("query"));
+    JsonNode elasticScope =
+        memoryVisibilityClause(
+            MAPPER.readTree(
+                VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, Map.of())));
+    assertTrue(openSearchScope.toString().contains("\"status\":\"Active\""));
+    assertTrue(elasticScope.toString().contains("\"status\":\"Active\""));
+  }
+
+  @Test
+  void testCallerStatusFilterCannotBypassActiveMemoryConstraint() throws Exception {
+    JsonNode query =
+        MAPPER.readTree(
+            VectorSearchQueryBuilder.build(
+                new float[] {0.1f},
+                10,
+                0,
+                100,
+                Map.of("status", List.of(ContextMemoryStatus.SUPERSEDED.value())),
+                0.0));
+
+    assertTrue(
+        termClauseExists(
+            query
+                .path("query")
+                .path("knn")
+                .path("embedding")
+                .path("filter")
+                .path("bool")
+                .path("must"),
+            "status",
+            ContextMemoryStatus.SUPERSEDED.value()));
+    assertTrue(
+        memoryVisibilityClause(query.path("query")).toString().contains("\"status\":\"Active\""));
   }
 
   private static boolean termClauseExists(JsonNode mustClauses, String field, String value) {
@@ -1268,11 +1305,14 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
-  void testOmitsMemoryClauseForAdminSubject() throws Exception {
+  void testAdminSubjectStillGetsActiveMemoryClause() throws Exception {
     String query =
         VectorSearchQueryBuilder.buildQuery(new float[] {0.1f}, 10, Map.of(), 0.0, adminSubject());
 
-    assertNull(memoryVisibilityClause(MAPPER.readTree(query)), "admins bypass memory visibility");
+    JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
+    assertNotNull(clause, "admin search must also exclude retired memories");
+    assertTrue(clause.toString().contains("\"status\":\"Active\""));
+    assertFalse(clause.toString().contains("visibility"), "admins bypass visibility");
   }
 
   /** Elasticsearch is a separate public method; a miss here leaks on every ES deployment. */

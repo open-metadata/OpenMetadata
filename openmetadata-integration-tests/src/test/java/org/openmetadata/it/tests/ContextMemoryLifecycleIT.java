@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -289,25 +290,55 @@ public class ContextMemoryLifecycleIT {
   }
 
   @Test
-  void aSupersededMemory_isSearchableByItsSuccessor(TestNamespace ns) {
+  void aSupersededMemory_disappearsFromSearchButRemainsReadableById(TestNamespace ns) {
     ContextMemory keeper = admin().create(memory(ns, "search-keeper"));
     ContextMemory duplicate = admin().create(memory(ns, "search-duplicate"));
-    admin().patch(idOf(duplicate), supersede(keeper, "Indexed with its successor"));
-    String query = String.format("supersededBy.id:\"%s\"", keeper.getId());
 
-    Awaitility.await("the superseded memory is indexed with its successor")
+    Awaitility.await("the Active memory is searchable")
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(120))
         .ignoreExceptions()
         .untilAsserted(
-            () ->
-                assertTrue(
-                    SdkClients.adminClient()
-                        .search()
-                        .query(query)
-                        .index("context_memory_search_index")
-                        .execute()
-                        .contains(idOf(duplicate))));
+            () -> assertTrue(searchMemoryById(duplicate.getId()).contains(idOf(duplicate))));
+
+    admin().patch(idOf(duplicate), supersede(keeper, "Indexed with its successor"));
+
+    Awaitility.await("the superseded memory is removed from search results")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertFalse(searchMemoryById(duplicate.getId()).contains(idOf(duplicate))));
+    assertEquals(ContextMemoryStatus.SUPERSEDED, admin().get(idOf(duplicate)).getStatus());
+  }
+
+  @Test
+  void anInvalidatedMemory_disappearsFromSearchButRemainsReadableById(TestNamespace ns) {
+    ContextMemory memory = admin().create(memory(ns, "search-invalidated"));
+
+    Awaitility.await("the Active memory is searchable")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertTrue(searchMemoryById(memory.getId()).contains(idOf(memory))));
+
+    admin().patch(idOf(memory), status(ContextMemoryStatus.INVALIDATED));
+
+    Awaitility.await("the invalidated memory is removed from search results")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertFalse(searchMemoryById(memory.getId()).contains(idOf(memory))));
+    assertEquals(ContextMemoryStatus.INVALIDATED, admin().get(idOf(memory)).getStatus());
+  }
+
+  private static String searchMemoryById(UUID id) {
+    return SdkClients.adminClient()
+        .search()
+        .query("*")
+        .index("context_memory_search_index")
+        .queryFilter("{\"query\":{\"term\":{\"id.keyword\":\"" + id + "\"}}}")
+        .execute();
   }
 
   private static CreateContextMemory memory(TestNamespace ns, String name) {

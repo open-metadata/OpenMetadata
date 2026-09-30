@@ -31,6 +31,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -110,6 +111,10 @@ class ContextMemorySearchVisibilityTest {
             + Entity.CONTEXT_MEMORY
             + "')]",
         "the memory branch is scoped to contextMemory documents");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[?(@.term['status'].value=='Active')]",
+        "normal search only admits Active memories");
     assertFieldExists(
         json,
         "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.term['anchorId'].value=='unanchored')])]",
@@ -228,13 +233,15 @@ class ContextMemorySearchVisibilityTest {
   }
 
   @Test
-  void adminSubjectGetsNoVisibilityFilter() {
+  void adminSubjectStillGetsActiveFilter() {
     User admin = new User().withId(USER_ID).withName("root").withIsAdmin(true);
-    OMQueryBuilder filter =
-        new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
-            .buildVisibilityFilter(new SubjectContext(admin, null));
+    DocumentContext json = JsonPath.parse(buildElasticJson(new SubjectContext(admin, null)));
 
-    assertNull(filter, "Admins bypass memory visibility, mirroring ContextMemoryVisibility");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[?(@.term['status'].value=='Active')]",
+        "admin search still excludes retired memories");
+    assertFieldDoesNotExist(json, "$..term['visibility']", "admins bypass visibility");
   }
 
   @Test
@@ -280,6 +287,10 @@ class ContextMemorySearchVisibilityTest {
         json,
         "$.bool.should[1].bool.must[1].bool.must[?(@.term['anchorId'].value=='unanchored')]",
         "anonymous search admits only explicitly unanchored memories");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[?(@.term['status'].value=='Active')]",
+        "anonymous search excludes retired memories");
     assertFieldDoesNotExist(
         json, "$..term['owners.id']", "a subject-less path must not match by ownership");
     assertFieldDoesNotExist(
@@ -338,6 +349,18 @@ class ContextMemorySearchVisibilityTest {
                 "anchorId",
                 UUID.randomUUID().toString())),
         "an anchored Entity memory is not readable without a subject");
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType",
+                Entity.CONTEXT_MEMORY,
+                "visibility",
+                MemoryVisibility.ENTITY.value(),
+                "anchorId",
+                ContextMemoryIndex.UNANCHORED,
+                "status",
+                ContextMemoryStatus.SUPERSEDED.value())),
+        "retired memories do not appear in anonymous search reads");
   }
 
   @Test
@@ -368,7 +391,9 @@ class ContextMemorySearchVisibilityTest {
         "visibility",
         visibility.value(),
         "anchorId",
-        ContextMemoryIndex.UNANCHORED);
+        ContextMemoryIndex.UNANCHORED,
+        "status",
+        ContextMemoryStatus.ACTIVE.value());
   }
 
   private String orgWideOnlyJson() {
@@ -390,6 +415,8 @@ class ContextMemorySearchVisibilityTest {
     assertTrue(json.contains("\"visibility\""), "OpenSearch filter matches the visibility field");
     assertTrue(json.contains("owners.id"), "OpenSearch filter matches owners.id");
     assertTrue(json.contains("sharedWithIds"), "OpenSearch filter matches sharedWithIds");
+    assertTrue(json.contains("\"status\""), "OpenSearch filter constrains memory status");
+    assertTrue(json.contains("Active"), "OpenSearch filter admits Active memories");
     assertTrue(json.contains(USER_ID.toString()), "OpenSearch filter binds the user id");
   }
 }

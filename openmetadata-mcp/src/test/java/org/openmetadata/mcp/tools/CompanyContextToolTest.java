@@ -33,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -217,6 +218,7 @@ class CompanyContextToolTest {
       assertEquals(subjectContext, subject.getValue());
       assertEquals(List.of("FileExtraction"), filters.getValue().get("sourceType"));
       assertEquals(List.of("Shared"), filters.getValue().get("visibility"));
+      assertEquals(List.of("Active"), filters.getValue().get("status"));
     }
   }
 
@@ -282,6 +284,23 @@ class CompanyContextToolTest {
 
     assertEquals("Q", result.get("question"));
     assertEquals("A", result.get("answer"));
+  }
+
+  @Test
+  void supersededFilePillIsNotReturnedByName() throws Exception {
+    stubMemory(
+        "pill-fqn",
+        sharedWith(
+            memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
+                .withStatus(ContextMemoryStatus.SUPERSEDED),
+            "bob"));
+    Map<String, Object> result =
+        tool.execute(
+            mock(Authorizer.class), mock(CatalogSecurityContext.class), Map.of("fqn", "pill-fqn"));
+
+    assertEquals(
+        "Requested entity is not a shared Company Context knowledge pill", result.get("error"));
+    assertFalse(result.containsKey("answer"));
   }
 
   /**
@@ -423,6 +442,7 @@ class CompanyContextToolTest {
         .withFullyQualifiedName(fqn)
         .withQuestion("Q")
         .withAnswer("A")
+        .withStatus(ContextMemoryStatus.ACTIVE)
         .withSourceType(sourceType)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }

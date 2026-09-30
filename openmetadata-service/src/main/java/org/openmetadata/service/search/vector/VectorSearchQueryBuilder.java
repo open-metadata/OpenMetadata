@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import lombok.experimental.UtilityClass;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -222,14 +223,12 @@ public class VectorSearchQueryBuilder {
    * ContextMemorySearchVisibility#buildVisibilityFilter}, where a null or unresolvable subject means
    * "no filter" and each call site opts into {@code buildOrgWideOnlyFilter}: this builder serves
    * callers that pass no identity at all, so the safe default lives here rather than in call-site
-   * discipline. Unknown subject means org-wide memories only; admins get no clause.
+   * discipline. Unknown subject means org-wide memories only; admins still see only Active
+   * memories in normal search.
    */
   private static void appendMemoryVisibilityFilter(
       StringBuilder sb, SubjectContext subjectContext) {
-    boolean widen = MEMORY_VISIBILITY.isVisibilityEnforced(subjectContext);
-    if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) && !widen) {
-      return; // an identified admin sees every memory, so no clause at all
-    }
+    boolean enforceVisibility = MEMORY_VISIBILITY.isVisibilityEnforced(subjectContext);
     // A sibling `filter` array rather than another `must` entry: a security constraint must not
     // contribute to the relevance score, and keeping it out of `must` also keeps the
     // caller-supplied
@@ -247,17 +246,23 @@ public class VectorSearchQueryBuilder {
     sb.append(",{\"bool\":{\"must\":[")
         .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
         .append(',');
-    appendVisibleToUserClause(sb, widen ? subjectContext : null, true);
+    if (!MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) || enforceVisibility) {
+      appendVisibleToUserClause(sb, enforceVisibility ? subjectContext : null, true);
+      sb.append(',');
+    }
+    sb.append(termClause(ContextMemoryIndex.FIELD_STATUS, ContextMemoryStatus.ACTIVE.value()));
     sb.append("]}}");
     // Branch 3: a context file this subject may see. A file with no visibility stamped is not
     // restricted — unlike a memory, which is written with one — so it gets its own branch.
     sb.append(",{\"bool\":{\"must\":[")
-        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_FILE))
-        .append(",{\"bool\":{\"should\":[{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"")
-        .append(ContextMemorySearchVisibility.FIELD_VISIBILITY)
-        .append("\"}}]}},");
-    appendVisibleToUserClause(sb, widen ? subjectContext : null, false);
-    sb.append("]}}");
+        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_FILE));
+    if (!MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) || enforceVisibility) {
+      sb.append(",{\"bool\":{\"should\":[{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"")
+          .append(ContextMemorySearchVisibility.FIELD_VISIBILITY)
+          .append("\"}}]}},");
+      appendVisibleToUserClause(sb, enforceVisibility ? subjectContext : null, false);
+      sb.append("]}}");
+    }
     sb.append("]}}");
     sb.append("]}}]");
   }

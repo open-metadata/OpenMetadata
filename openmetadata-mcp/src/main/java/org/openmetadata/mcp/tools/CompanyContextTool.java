@@ -16,6 +16,7 @@ import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -140,6 +141,7 @@ public class CompanyContextTool implements McpTool {
   private static boolean isExposablePill(
       ContextMemory memory, CatalogSecurityContext securityContext) {
     return memory.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
+        && memory.getStatus() == ContextMemoryStatus.ACTIVE
         && !ContextMemoryVisibility.filterByVisibility(List.of(memory), securityContext).isEmpty();
   }
 
@@ -218,6 +220,7 @@ public class CompanyContextTool implements McpTool {
     filters.put("entityType", List.of(Entity.CONTEXT_MEMORY));
     filters.put("sourceType", List.of(ContextMemorySourceType.FILE_EXTRACTION.value()));
     filters.put("visibility", List.of(MemoryVisibility.SHARED.value()));
+    filters.put("status", List.of(ContextMemoryStatus.ACTIVE.value()));
     return filters;
   }
 
