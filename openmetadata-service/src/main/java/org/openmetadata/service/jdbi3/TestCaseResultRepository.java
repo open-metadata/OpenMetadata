@@ -36,7 +36,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.resources.dqtests.TestCaseResultResource;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.util.EntityUtil;
@@ -46,7 +45,16 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
-  private static final String TEST_CASE_STATUS_FIELD = "testCaseStatus";
+  private static final String CLEAR_INDEXED_STATUS_SCRIPT =
+      """
+      def indexed = ctx._source.testCaseResult;
+      if (indexed == null || indexed.timestamp == null || indexed.timestamp <= params.deletedTimestamp) {
+        ctx._source.remove('testCaseResult');
+        ctx._source.remove('testCaseStatus');
+      } else {
+        ctx.op = 'noop';
+      }
+      """;
   public static final String TEST_CASE_INDEX_FIELDS =
       "testDefinition,testSuite,testSuites,owners,tags,followers";
   private static final int STATUS_UPDATE_ATTEMPTS = 3;
@@ -353,8 +361,9 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     } else {
       entityUpdater.update();
     }
-    if (latest == null) {
-      clearIndexedStatus(original);
+    // Re-read: a result posted right after this delete has synced its own status, which must stay.
+    if (latest == null && getLatestRecord(changed.getTestCaseFQN()) == null) {
+      clearIndexedStatus(original, changed);
     }
   }
 
@@ -366,18 +375,17 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   /**
    * A reindex only sends the fields a test case has, so the status of a test case whose last result
    * was deleted would otherwise stay in search. Removed here, where the missing result is known,
-   * rather than whenever a test case is indexed without its result loaded.
+   * rather than whenever a test case is indexed without its result loaded. The script keeps a
+   * result newer than the deleted one, in case a new result was indexed first.
    */
-  private void clearIndexedStatus(TestCase testCase) {
+  private void clearIndexedStatus(TestCase testCase, TestCaseResult deleted) {
     searchRepository
         .getSearchClient()
         .updateEntity(
             searchRepository.getWriteIndexName(searchRepository.getIndexMapping(TEST_CASE)),
             testCase.getId().toString(),
-            Map.of(
-                SearchClient.FIELDS_TO_REMOVE,
-                List.of(TEST_CASE_RESULT_FIELD, TEST_CASE_STATUS_FIELD)),
-            SearchClient.DEFAULT_UPDATE_SCRIPT);
+            Map.of("deletedTimestamp", deleted.getTimestamp()),
+            CLEAR_INDEXED_STATUS_SCRIPT);
   }
 
   @Override
