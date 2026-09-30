@@ -323,6 +323,41 @@ class TestSource:
         assert len(source.status.failures) == 1
         assert "relationships" in model_str(source.status.failures[0].error)
 
+    def test_the_graph_schema_is_read_once_per_database(self, driver):
+        source = build_source(driver)
+        source.get_schema_name_list()
+        # The deletion hooks list the schemas again through the same path.
+        list(source._get_filtered_schema_names(return_fqn=True, add_to_status=False))
+        assert [query for query, _ in driver.calls].count(NEO4J_NODE_TYPE_PROPERTIES) == 1
+        assert [query for query, _ in driver.calls].count(NEO4J_REL_TYPE_PROPERTIES) == 1
+
+    def test_a_later_successful_read_does_not_resurrect_a_failed_schema(self, driver):
+        driver.responses[NEO4J_REL_TYPE_PROPERTIES] = neo4j_error("Neo.TransientError.General.DatabaseUnavailable")
+        source = build_source(driver)
+        source.get_schema_name_list()
+        driver.responses[NEO4J_REL_TYPE_PROPERTIES] = REL_ROWS
+        assert list(source._get_filtered_schema_names(add_to_status=False)) == [NODES_SCHEMA]
+        assert len(source.status.failures) == 1
+
+    def test_deletion_hooks_leave_a_failed_schema_alone(self, driver):
+        driver.responses[NEO4J_REL_TYPE_PROPERTIES] = neo4j_error("Neo.TransientError.General.DatabaseUnavailable")
+        source = build_source(driver)
+        source.get_schema_name_list()
+        source.source_config.markDeletedTables = True
+        source.source_config.markDeletedSchemas = True
+        with patch(
+            "metadata.ingestion.source.database.database_service.delete_entity_from_source",
+            return_value=iter([]),
+        ) as delete:
+            list(source.mark_tables_as_deleted())
+            swept_schemas = [call.kwargs["params"]["databaseSchema"] for call in delete.call_args_list]
+            delete.reset_mock()
+            list(source.mark_schemas_as_deleted())
+            (schema_sweep,) = delete.call_args_list
+
+        assert swept_schemas == ["local_neo4j.neo4j.nodes"]
+        assert "local_neo4j.neo4j.relationships" in schema_sweep.kwargs["entity_source_state"]
+
 
 class TestConnectionChecks:
     def checks(self, driver: FakeDriver, **connection) -> Neo4jChecks:
