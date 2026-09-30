@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Agent } from '../components/ServiceAgents/AgentsPage.interface';
 import { IngestionProps } from '../components/Settings/Services/Ingestion/ingestion.interface';
 import { AirflowStatusContextType } from '../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { AuthProvider } from '../generated/entity/services/connections/serviceConnection';
@@ -221,6 +222,24 @@ const mockPagingCursor = {
 const mockCurrentHandleIngestionListUpdate = jest.fn();
 const mockCurrentHandleSearchChange = jest.fn();
 const mockCurrentOnPageChange = jest.fn();
+
+export const mockAgent: Agent = {
+  id: 'c804ec51-8fcf-4040-b830-5d967c4cbf49',
+  fqn: 'test3_metadata',
+  pipelineType: PipelineType.Metadata,
+  name: 'test3_metadata',
+  type: 'Metadata',
+  unit: 'assets',
+  verb: 'ingested',
+  status: 'running',
+  pct: 40,
+  eta: 60,
+  assets: 40,
+  target: 100,
+  errors: 0,
+  warnings: 0,
+  recentRuns: [],
+};
 
 export const ingestionProps: IngestionProps = {
   agents: [],

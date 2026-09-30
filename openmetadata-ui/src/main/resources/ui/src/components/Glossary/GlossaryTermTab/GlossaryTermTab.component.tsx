@@ -1514,7 +1514,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return (
       <>
         <Input
-          className="tw:mr-auto tw:w-80"
+          // min-w-0: w-80 is a hard floor otherwise, pushing Customize out of the row.
+          className="tw:mr-auto tw:w-80 tw:min-w-0"
           inputDataTestId="search-glossary-terms-input"
           placeholder={t('label.search-entity', {
             entity: t('label.term-plural'),
