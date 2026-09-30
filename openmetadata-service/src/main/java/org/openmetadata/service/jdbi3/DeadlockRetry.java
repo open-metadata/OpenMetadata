@@ -43,6 +43,11 @@ public final class DeadlockRetry {
           .build();
 
   private static final Retry RETRY = Retry.of("db-deadlock", CONFIG);
+  private static final int MYSQL_LOCK_WAIT_TIMEOUT = 1205;
+  private static final int MYSQL_DEADLOCK = 1213;
+  private static final String SERIALIZATION_FAILURE = "40001";
+  private static final String POSTGRES_DEADLOCK = "40P01";
+  private static final String DEADLOCK_MESSAGE = "Deadlock found when trying to get lock";
 
   static {
     RETRY
@@ -78,7 +83,7 @@ public final class DeadlockRetry {
         return true;
       }
       String message = current.getMessage();
-      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+      if (message != null && message.contains(DEADLOCK_MESSAGE)) {
         return true;
       }
       if (current.getCause() == current) {
@@ -93,9 +98,29 @@ public final class DeadlockRetry {
     String sqlState = sqlException.getSQLState();
     int errorCode = sqlException.getErrorCode();
     // MySQL: 1213 deadlock, 1205 lock-wait timeout. Postgres: 40P01 deadlock. Generic: 40001.
-    return "40001".equals(sqlState)
-        || "40P01".equals(sqlState)
-        || errorCode == 1213
-        || errorCode == 1205;
+    return SERIALIZATION_FAILURE.equals(sqlState)
+        || POSTGRES_DEADLOCK.equals(sqlState)
+        || errorCode == MYSQL_DEADLOCK
+        || errorCode == MYSQL_LOCK_WAIT_TIMEOUT;
+  }
+
+  /**
+   * {@code true} if this statement's own error rolled back the whole transaction: a MySQL deadlock,
+   * or a Postgres deadlock or serialization failure. Causes are not followed, because the Postgres
+   * driver attaches that rollback as the cause of every later statement it rejects. A MySQL lock
+   * wait timeout does not count: it rolls back only its statement, although Connector/J reports it
+   * with the same SQLState {@code 40001}.
+   */
+  public static boolean rollsBackTransaction(SQLException statementError) {
+    String sqlState = statementError.getSQLState();
+    int errorCode = statementError.getErrorCode();
+    boolean rollbackState =
+        SERIALIZATION_FAILURE.equals(sqlState) || POSTGRES_DEADLOCK.equals(sqlState);
+    return errorCode == MYSQL_DEADLOCK || (rollbackState && errorCode != MYSQL_LOCK_WAIT_TIMEOUT);
+  }
+
+  /** {@code true} if this statement's own error is a MySQL lock wait timeout. */
+  public static boolean isLockWaitTimeout(SQLException statementError) {
+    return statementError.getErrorCode() == MYSQL_LOCK_WAIT_TIMEOUT;
   }
 }
