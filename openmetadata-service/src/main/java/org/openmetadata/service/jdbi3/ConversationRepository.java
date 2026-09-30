@@ -442,26 +442,26 @@ public class ConversationRepository {
     Conversation container = activityContainer(context.event(), context.target());
     authorizeConversationCreate(securityContext, authorizer, container);
     ConversationReply reply = newReply(securityContext, activityId, request.getMessage());
+    ensureActivityContainer(container);
+    persistReply(container, reply);
+    return reply;
+  }
+
+  /**
+   * Commits the activity's container on its own, before the reply locks it. On MySQL, {@code INSERT
+   * IGNORE} of an existing row takes a shared lock on it; taking the reply's exclusive lock in the
+   * same transaction would be an upgrade, and two concurrent replies upgrading the same row
+   * deadlock.
+   */
+  private void ensureActivityContainer(Conversation container) {
     inWriteTransaction(
         handle -> {
           CollectionDAO.ConversationDAO dao = handle.attach(CollectionDAO.ConversationDAO.class);
-          int inserted = insertRoot(dao, container, true);
-          if (inserted > 0) {
+          if (insertRoot(dao, container, true) > 0) {
             storeDomains(dao, container);
           }
-          findRootForUpdate(dao, activityId);
-          insertReply(dao, reply);
-          replaceMentions(
-              dao,
-              activityId,
-              REPLY_TARGET,
-              reply.getId(),
-              reply.getMessage(),
-              reply.getCreatedAt());
-          dao.updateReplyCount(activityId.toString(), 1, reply.getCreatedAt());
           return null;
         });
-    return reply;
   }
 
   public int deleteByEntity(String entityType, List<UUID> entityIds) {

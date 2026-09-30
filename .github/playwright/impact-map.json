@@ -393,7 +393,7 @@
       "projects": ["chromium", "Basic", "Ingestion", "SearchRBAC", "ImportExport"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
-        "playwright/e2e/Pages/Login*.spec.ts",
+        "playwright/e2e/Auth/Login*.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts"
       ]
     },
