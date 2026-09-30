@@ -137,6 +137,8 @@
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
     "diff": "^8.0.3",
     "dompurify": "^3.4.13",
+    "echarts": "^6.1.0",
+    "echarts-for-react": "^3.0.6",
     "elkjs": "^0.9.3",
     "eventemitter3": "^5.0.1",
     "fast-json-patch": "^3.1.1",

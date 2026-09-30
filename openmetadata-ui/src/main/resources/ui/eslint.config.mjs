@@ -451,6 +451,65 @@ export default [
   },
 
   {
+    // Charts go through @openmetadata/ui-core-components/charts. The ignores
+    // list the files still on recharts; each migration PR removes its files
+    // from it, and the recharts removal PR deletes the list. Placed before the
+    // Metric block, which replaces this rule for Metric files (no charts there).
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/components/DataContract/ContractExecutionChart/ContractExecutionChart.component.tsx',
+      'src/components/DataContract/ContractExecutionChart/ContractExecutionChartTooltip.component.tsx',
+      'src/components/DataContract/ContractExecutionChart/ContractExecutionChartTooltip.test.tsx',
+      'src/components/DataInsight/DailyActiveUsersChart.tsx',
+      'src/components/DataInsight/DataInsightChartCard.tsx',
+      'src/components/DataInsight/KPIChart.tsx',
+      'src/components/DataInsight/PageViewsByEntitiesChart.tsx',
+      'src/components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface.ts',
+      'src/components/Database/Profiler/ProfilerDetailsCard/ProfilerDetailsCard.tsx',
+      'src/components/Database/Profiler/TableProfiler/CustomMetricGraphs/CustomMetricGraphs.component.tsx',
+      'src/components/Database/Profiler/TableProfiler/SingleColumnProfile.tsx',
+      'src/components/Database/Profiler/TestSummary/TestSummaryGraph.test.tsx',
+      'src/components/Database/Profiler/TestSummary/TestSummaryGraph.tsx',
+      'src/components/MyData/Widgets/KPIWidget/KPIWidget.component.tsx',
+      'src/components/Visualisations/Chart/CardinalityDistributionChart.component.tsx',
+      'src/components/Visualisations/Chart/CustomAreaChart.component.tsx',
+      'src/components/Visualisations/Chart/CustomBarChart.tsx',
+      'src/components/Visualisations/Chart/DataDistributionHistogram.component.tsx',
+      'src/components/Visualisations/Chart/OperationDateBarChart.tsx',
+      'src/constants/DataContract.constants.ts',
+      'src/constants/DataInsight.constants.ts',
+      'src/interface/data-insight.interface.ts',
+      'src/utils/ChartUtils.tsx',
+      'src/utils/DataInsightChartUtils.tsx',
+      'src/utils/DataQuality/CustomDQTooltip.component.tsx',
+      'src/utils/DataQuality/TestSummaryGraphUtils.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['recharts', 'recharts/*'],
+              message:
+                'Use @openmetadata/ui-core-components/charts; recharts is being removed.',
+            },
+            {
+              group: [
+                'echarts',
+                'echarts/*',
+                'echarts-for-react',
+                'echarts-for-react/*',
+              ],
+              message:
+                'Import charts and chart types from @openmetadata/ui-core-components/charts.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: [
       'src/components/Metric/**/*.{js,jsx,ts,tsx}',
       'src/components/DataAssets/DataAssetsHeader/DataAssetsHeader.component.tsx',
