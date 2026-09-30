@@ -261,3 +261,31 @@ def test_merge_queue_flaky_tests_alert_pw_health_from_annotations():
         "permissions"
     ]
     assert permissions.get("checks") == "read"
+
+
+def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
+    # GitHub keeps only 10 warning annotations per step; one per test would
+    # silently drop the rest before the queue's #pw-health alert reads them.
+    coverage = next(step for step in shard_steps() if step.get("id") == "verify-shard-coverage")
+    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE'):]
+    output = tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/output"
+    output.mkdir(parents=True)
+    titles = [f"flaky {index:02d}" for index in range(12)] + ["50% done"]
+    specs = [
+        {"title": title, "file": "Pages/X.spec.ts", "line": 1,
+         "tests": [{"status": "flaky", "results": [{}, {}]}]}
+        for title in titles
+    ]
+    (output / "results.json").write_text(json.dumps({"suites": [{"specs": specs}]}))
+    summary = tmp_path / "summary.md"
+    summary.touch()
+    result = subprocess.run(
+        ["bash", "-e", "-c", report_part],
+        env={**os.environ, "GITHUB_WORKSPACE": str(tmp_path),
+             "GITHUB_STEP_SUMMARY": str(summary), "SHARD_ID": "chromium-01"},
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    [warning] = [line for line in result.stdout.splitlines() if line.startswith("::warning")]
+    message = warning.split("::", 2)[2].replace("%0A", "\n").replace("%25", "%")
+    assert sorted(line.split(" › ")[1] for line in message.splitlines()) == sorted(titles)

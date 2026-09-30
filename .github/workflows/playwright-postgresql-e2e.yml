@@ -226,10 +226,10 @@ jobs:
           errors: true
           payload-file-path: ${{ runner.temp }}/queue-slack.json
 
-      # Queue flakes go to #pw-health with the daily main-run flakes. Shards
-      # already annotate each retry pass ("Retry pass in merge queue"), so this
-      # reads those annotations instead of uploading reports; inline for the
-      # same reason as the failure alert above.
+      # Queue flakes go to #pw-health with the daily main-run flakes. Each shard
+      # leaves one "Retry pass in merge queue" annotation listing its retry
+      # passes (one per line), so this reads those instead of uploading reports;
+      # inline for the same reason as the failure alert above.
       - name: Build the merge-queue flaky message
         id: queue-flaky
         if: ${{ always() && !cancelled() && github.event_name == 'merge_group' }}
@@ -247,7 +247,7 @@ jobs:
             while read -r job; do
               gh api --paginate "repos/$GITHUB_REPOSITORY/check-runs/$job/annotations" \
                 --jq '.[] | select(.title == "Retry pass in merge queue") | .message' 2>/dev/null
-            done | sort -u)
+            done | sed '/^$/d' | sort -u)
           if [[ -z "$flaky" ]]; then
             echo "No retry passes in this queue run."
             exit 0
@@ -256,10 +256,12 @@ jobs:
           jq -n --arg channel C0C008ZAK0V --arg prs "$prs" --arg flaky "$flaky" \
             --arg run "$RUN_URL" --arg repo "$REPO_URL" '
             def lines($s): $s | split("\n") | map(select(length > 0));
+            (lines($flaky)) as $tests |
             {channel: $channel, text: ([
-              ":large_yellow_circle: *Merge queue: passed only on retry*" +
+              ":large_yellow_circle: *Merge queue: \($tests | length) test(s) passed only on retry*" +
                 (if ($prs | length) > 0 then " for " + ([$prs | split(" ")[] | select(length > 0) | "<\($repo)/pull/\(.)|#\(.)>"] | join(", ")) else "" end)
-            ] + [lines($flaky)[:15][] | "• FLAKY `\(.)`"]
+            ] + [$tests[:15][] | "• FLAKY `\(.)`"]
+              + (if ($tests | length) > 15 then ["…and \(($tests | length) - 15) more (see the run)"] else [] end)
               + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/queue-flaky.json"
           echo "posted=true" >> "$GITHUB_OUTPUT"
 
