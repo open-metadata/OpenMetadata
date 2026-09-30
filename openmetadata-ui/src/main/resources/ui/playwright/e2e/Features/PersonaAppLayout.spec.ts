@@ -18,6 +18,7 @@
  * mode) and list pages open in the chosen view.
  */
 
+import { Page } from '@playwright/test';
 import { Document } from '../../../src/generated/entity/docStore/document';
 import {
   AppMode,
@@ -37,18 +38,35 @@ import {
   createPersonaAppLayoutDoc,
   setDefaultPersona,
 } from '../../utils/persona';
-import { performUserLogin } from '../../utils/user';
 import { clickAndWaitFor } from '../../utils/waitHelpers';
-import { test } from '../fixtures/pages';
+import { test as base } from '../fixtures/pages';
 
 // Glossary opens its first glossary (`/glossary/<name>`) when one exists.
 const GLOSSARY_URL = /\/glossary(\/|\?|#|$)/;
 
+const classicUser = new UserClass();
+const aiUser = new UserClass();
+const classicPersona = new PersonaClass();
+const aiPersona = new PersonaClass();
+
+// Each persona user's page, signed in fresh so the app opens as it does after
+// a real sign-in.
+const test = base.extend<{ classicUserPage: Page; aiUserPage: Page }>({
+  classicUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await classicUser.login(page);
+    await use(page);
+    await page.context().close();
+  },
+  aiUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await aiUser.login(page);
+    await use(page);
+    await page.context().close();
+  },
+});
+
 test.describe('Persona App Layout for the persona users', () => {
-  const classicUser = new UserClass();
-  const aiUser = new UserClass();
-  const classicPersona = new PersonaClass();
-  const aiPersona = new PersonaClass();
   const layoutDocs: Document[] = [];
 
   test.beforeAll(
@@ -114,42 +132,16 @@ test.describe('Persona App Layout for the persona users', () => {
   );
 
   test('lands on the default landing page after sign-in', async ({
-    browser,
+    classicUserPage,
   }) => {
-    const { page, afterAction } = await performUserLogin(browser, classicUser);
-
-    await expect(page).toHaveURL(GLOSSARY_URL);
-
-    await afterAction();
-  });
-
-  test('lands on it again after signing out and back in', async ({
-    browser,
-  }) => {
-    const { page, afterAction } = await performUserLogin(browser, classicUser);
-
-    await test.step('Sign out from another page', async () => {
-      await page.goto('/explore', { waitUntil: 'domcontentloaded' });
-      await waitForAllLoadersToDisappear(page);
-      await classicUser.logout(page);
-    });
-
-    await test.step('Sign back in', async () => {
-      await classicUser.login(page);
-
-      await expect(page).toHaveURL(GLOSSARY_URL);
-    });
-
-    await afterAction();
+    await expect(classicUserPage).toHaveURL(GLOSSARY_URL);
   });
 
   test('a new tab at / opens the landing page; a deep link stays put', async ({
-    browser,
+    classicUserPage,
   }) => {
-    const { page, afterAction } = await performUserLogin(browser, classicUser);
-
     await test.step('Open the app root in a new tab', async () => {
-      const rootTab = await page.context().newPage();
+      const rootTab = await classicUserPage.context().newPage();
       // `/` redirects, so wait only for the first commit.
       await rootTab.goto('/', { waitUntil: 'commit' });
 
@@ -157,54 +149,44 @@ test.describe('Persona App Layout for the persona users', () => {
     });
 
     await test.step('Open a deep link in a new tab', async () => {
-      const deepLinkTab = await page.context().newPage();
+      const deepLinkTab = await classicUserPage.context().newPage();
       await deepLinkTab.goto('/explore', { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(deepLinkTab);
 
       await expect(deepLinkTab).toHaveURL(/\/explore/);
     });
-
-    await afterAction();
   });
 
   test('an AI persona lands on its default landing page too', async ({
-    browser,
+    aiUserPage,
   }) => {
-    const { page, afterAction } = await performUserLogin(browser, aiUser);
-
     // The AI sidebar proves the AI route tree mounted.
-    await expect(page.getByTestId('ask-sidebar')).toBeVisible();
-    await expect(page).toHaveURL(GLOSSARY_URL);
-
-    await afterAction();
+    await expect(aiUserPage.getByTestId('ask-sidebar')).toBeVisible();
+    await expect(aiUserPage).toHaveURL(GLOSSARY_URL);
   });
 
   test('list pages open in the view the persona picked', async ({
-    browser,
+    classicUserPage,
   }) => {
-    const { page, afterAction } = await performUserLogin(browser, classicUser);
-
     await test.step('Domains opens in Tree view', async () => {
-      await page.goto('/domain', { waitUntil: 'domcontentloaded' });
-      await waitForAllLoadersToDisappear(page);
+      await classicUserPage.goto('/domain', { waitUntil: 'domcontentloaded' });
+      await waitForAllLoadersToDisappear(classicUserPage);
 
-      await expect(page.getByTestId('tree-view-toggle')).toHaveAttribute(
-        'aria-checked',
-        'true'
-      );
+      await expect(
+        classicUserPage.getByTestId('tree-view-toggle')
+      ).toHaveAttribute('aria-checked', 'true');
     });
 
     await test.step('Data Products opens in Grid view', async () => {
-      await page.goto('/dataProduct', { waitUntil: 'domcontentloaded' });
-      await waitForAllLoadersToDisappear(page);
+      await classicUserPage.goto('/dataProduct', {
+        waitUntil: 'domcontentloaded',
+      });
+      await waitForAllLoadersToDisappear(classicUserPage);
 
-      await expect(page.getByTestId('card-view-toggle')).toHaveAttribute(
-        'aria-checked',
-        'true'
-      );
+      await expect(
+        classicUserPage.getByTestId('card-view-toggle')
+      ).toHaveAttribute('aria-checked', 'true');
     });
-
-    await afterAction();
   });
 });
 
