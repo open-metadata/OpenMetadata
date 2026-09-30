@@ -61,6 +61,7 @@ import {
   restoreService,
 } from '../../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
+import { commonTableFields } from '../../../utils/DatasetDetailsUtils';
 import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
@@ -71,7 +72,6 @@ import {
   SlotContribution,
   TabContribution,
 } from '../../../utils/ExtensionPointTypes';
-import { commonTableFields } from '../../../utils/DatasetDetailsUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
