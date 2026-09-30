@@ -124,7 +124,7 @@ const IncidentManagerPage = () => {
         <Box className="tw:gap-4" direction="col">
           <IncidentGroupsView />
           <Box
-            className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
+            className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
             direction="col">
             <Box className="tw:border-b tw:border-secondary tw:p-4">
               <FilterBar

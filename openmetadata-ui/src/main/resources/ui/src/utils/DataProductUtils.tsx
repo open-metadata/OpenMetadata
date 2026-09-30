@@ -35,8 +35,8 @@ import { DataProductDomainWidget } from '../components/DataProducts/DataProductD
 import DataQualityDashboard from '../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import type { AssetsTabRef } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import type { EntityReference } from '../generated/entity/data/table';

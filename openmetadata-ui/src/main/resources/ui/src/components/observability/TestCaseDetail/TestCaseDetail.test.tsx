@@ -343,10 +343,12 @@ describe('TestCaseDetail', () => {
     expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
   });
 
-  it('should align the detail header card with the inset tab content', () => {
+  it('should keep the detail header card on the shell header band', () => {
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('test-case-header-container')).toHaveClass(
+    // AI padding standard: the header band sits at the shell's 8px padding,
+    // 8px outside the 16px-inset tab content, like the other shell pages.
+    expect(screen.getByTestId('test-case-header-container')).not.toHaveClass(
       'tw:mx-4'
     );
   });

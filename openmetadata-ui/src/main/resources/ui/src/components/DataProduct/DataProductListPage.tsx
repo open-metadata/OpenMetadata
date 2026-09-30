@@ -64,6 +64,7 @@ import EntityListingTable from '../common/EntityListingTable/EntityListingTable.
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
@@ -141,10 +142,10 @@ const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
 const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
-  const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const dataProductListing = useDataProductListingData({ enableNlq: isAiMode });
   const { permissions } = usePermissionProvider();
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
@@ -196,7 +197,14 @@ const DataProductListPage = ({
   });
 
   const headerSearch = showHeaderSearch ? (
-    <Input className="tw:w-72" {...searchInputProps} />
+    <MarketplaceSearchInput
+      placeholder={t('label.search-for-type', {
+        type: t('label.data-product-plural'),
+      })}
+      searchQuery={dataProductListing.urlState.searchQuery}
+      onRefresh={dataProductListing.refetch}
+      onSearchChange={dataProductListing.handleSearchChange}
+    />
   ) : undefined;
 
   const { pageHeader } = usePageHeader({
@@ -417,6 +425,8 @@ const DataProductListPage = ({
       <Card
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
           'tw:mb-5': !isAiMode,
+          // Compact layout pads 8px; AI content sits on the 16px gutter.
+          'tw:mx-2': isAiMode,
         })}
         variant={isAiMode ? 'default' : 'elevated'}>
         <Box

@@ -142,6 +142,25 @@ export const getQueryWithSlash = (query: string): string => {
   return result;
 };
 
+const SAFE_URL_PROTOCOLS = ['http:', 'https:'];
+
+/**
+ * Returns the URL only when it is an absolute http(s) URL, otherwise undefined.
+ * Use before rendering any user- or ingestion-supplied URL as an `href`, so
+ * `javascript:`/`data:` URLs never become clickable.
+ */
+export const getSafeHttpUrl = (url?: string): string | undefined => {
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    return SAFE_URL_PROTOCOLS.includes(new URL(url).protocol) ? url : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 /**
  * Convert a template string into HTML DOM nodes.
  * Input is sanitized with DOMPurify before being parsed to prevent stored
@@ -478,8 +497,17 @@ export function decodeHtmlEntities(text: string): string {
   return doc.documentElement.textContent ?? text;
 }
 
+// Block editor descriptions are stored as HTML, and remove-markdown drops tags
+// with nothing in their place - without this, `<p>a</p><p>b</p>` reads as "ab".
+const HTML_BLOCK_BOUNDARY =
+  /<\/?(?:p|div|li|ul|ol|h[1-6]|br|tr|td|th|blockquote|pre)\b[^>]*>/gi;
+
 export function stripMarkdown(text: string): string {
-  return decodeHtmlEntities(removeMarkdown(text)).trim();
+  return decodeHtmlEntities(
+    removeMarkdown(text.replace(HTML_BLOCK_BOUNDARY, ' '))
+  )
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function removeAttachmentsWithoutUrl(htmlString: string): string {

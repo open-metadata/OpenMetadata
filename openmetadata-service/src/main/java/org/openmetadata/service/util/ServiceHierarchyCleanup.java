@@ -207,8 +207,10 @@ public class ServiceHierarchyCleanup {
                     .childEntityType(Entity.DASHBOARD)
                     .tableName("dashboard_entity")
                     .build(),
+                // A chart belongs to its service. A dashboard only references a chart (HAS), and a
+                // chart on no dashboard is valid, so checking charts against dashboards deletes it.
                 ServiceHierarchy.builder()
-                    .parentEntityType(Entity.DASHBOARD)
+                    .parentEntityType(Entity.DASHBOARD_SERVICE)
                     .childEntityType(Entity.CHART)
                     .tableName("chart_entity")
                     .build(),

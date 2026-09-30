@@ -239,6 +239,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   databrickspipeline: databrick,
   gluepipeline: glue,
   custompipeline: pipelinedefault,
+  tableaupipeline: tableau,
 
   // ML Model services
   mlflow: mlflow,

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
+import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
+import { Col, Row, Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -25,6 +26,10 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
   TABLE_SCROLL_VALUE,
@@ -494,12 +499,26 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
     return (
       <Col span={24}>
-        <Segmented
-          className="segment-toggle"
-          options={viewTypeOptions}
-          value={viewType}
-          onChange={(value) => setViewType(value as SchemaViewType)}
-        />
+        <ButtonGroup
+          disallowEmptySelection
+          className={SEGMENT_TOGGLE_GROUP_CLASS}
+          selectedKeys={[viewType]}
+          size="sm"
+          onSelectionChange={(keys) => {
+            const selected = [...keys][0];
+            if (selected) {
+              setViewType(selected as SchemaViewType);
+            }
+          }}>
+          {viewTypeOptions.map(({ label, value }) => (
+            <ButtonGroupItem
+              className={SEGMENT_TOGGLE_ITEM_CLASS}
+              id={value}
+              key={value}>
+              {label}
+            </ButtonGroupItem>
+          ))}
+        </ButtonGroup>
       </Col>
     );
   };

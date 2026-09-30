@@ -735,6 +735,8 @@ export enum AuthProvider {
  *
  * Regex to only include/exclude Process Chains that match the pattern.
  *
+ * Regex exclude or include pipelines that match the pattern.
+ *
  * Regex to only include/exclude directories that match the pattern.
  *
  * Regex to only include/exclude files that match the pattern.
@@ -1378,6 +1380,16 @@ export interface Pipeline {
      */
     includeDraftDashboard?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of semantic-layer measures (e.g. LookML
+     * measures) as first-class Metric entities. Metric names are unique across the whole
+     * OpenMetadata instance, so this is disabled by default. Measures are discovered from the
+     * data models that expose them, so this requires 'Include Data Models' to be enabled as
+     * well.
+     *
+     * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
+     */
+    includeMetrics?: boolean;
+    /**
      * Optional configuration to toggle the ingestion of usage metadata for dashboards. When
      * enabled, usage statistics will be collected and ingested.
      */
@@ -1725,10 +1737,6 @@ export interface Pipeline {
      */
     dbtUpdateOwners?: boolean;
     /**
-     * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
-     */
-    includeMetrics?: boolean;
-    /**
      * Optional configuration to search across databases for tables or not
      */
     searchAcrossDatabases?: boolean;
@@ -1883,8 +1891,6 @@ export interface CollateAIAppConfig {
     bulkIndexSettings?: BulkIndexOverrides;
     /**
      * Number of threads to use for reindexing
-     *
-     * Number of consumer threads to use for non-distributed RDF reindexing
      */
     consumerThreads?: number;
     /**
@@ -1927,9 +1933,6 @@ export interface CollateAIAppConfig {
     /**
      * Number of entities per partition for distributed indexing. Smaller values create more
      * partitions for better distribution across servers. Range: 1000-50000.
-     *
-     * Number of entities per partition for distributed RDF indexing. Smaller values create more
-     * partitions for better distribution across servers.
      */
     partitionSize?: number;
     /**
@@ -1939,13 +1942,12 @@ export interface CollateAIAppConfig {
     /**
      * Number of threads to use for reindexing
      *
-     * Number of producer threads to use for non-distributed RDF reindexing
+     * Number of threads loading entities to index. Writes always go through one writer, because
+     * Fuseki accepts one write transaction at a time.
      */
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
-     *
-     * Queue size to use internally for non-distributed RDF reindexing.
      */
     queueSize?: number;
     /**
@@ -2009,11 +2011,6 @@ export interface CollateAIAppConfig {
      * request retries.
      */
     relationshipIsolationMaxFailures?: number;
-    /**
-     * Enable distributed RDF indexing across multiple servers with partition coordination and
-     * recovery.
-     */
-    useDistributedIndexing?: boolean;
     /**
      * Optional rule name for an on-demand single-rule run.
      */
@@ -3482,6 +3479,10 @@ export interface LineageInformation {
      */
     dbServicePrefixes?: string[];
     /**
+     * List of API Service Names for creation of lineage
+     */
+    apiServiceNames?: string[];
+    /**
      * List of Database Service Names for creation of lineage
      */
     dbServiceNames?: string[];
@@ -3489,6 +3490,10 @@ export interface LineageInformation {
      * List of Messaging Service Names for creation of lineage
      */
     messagingServiceNames?: string[];
+    /**
+     * List of Search Service Names for creation of lineage
+     */
+    searchServiceNames?: string[];
     /**
      * List of Storage Service Names for creation of lineage
      */
@@ -4187,6 +4192,8 @@ export interface ServiceConnection {
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
+ * Tableau Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -4537,6 +4544,8 @@ export interface Connection {
      *
      * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
+     *
+     * Tableau Server URL.
      *
      * Host and port of the ElasticSearch service.
      *
@@ -5652,6 +5661,11 @@ export interface Connection {
      */
     hostport?: string;
     /**
+     * Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage
+     * from the relations it reads.
+     */
+    includeMetricViews?: boolean;
+    /**
      * Enable dataflow for ingestion
      */
     dataflows?: boolean;
@@ -6059,6 +6073,8 @@ export interface Connection {
      * Pipeline Service Number Of Status
      *
      * Number of past flow run statuses to ingest per flow.
+     *
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -6069,6 +6085,8 @@ export interface Connection {
      * Regex to only include/exclude pipelines that matches the pattern.
      *
      * Regex to only include/exclude Process Chains that match the pattern.
+     *
+     * Regex exclude or include pipelines that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -6225,6 +6243,12 @@ export interface Connection {
      * {"S3_Connector": "my-s3-service"}
      */
     serviceMapping?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -8862,6 +8886,7 @@ export enum AirflowConnectionType {
     Superset = "Superset",
     Synapse = "Synapse",
     Tableau = "Tableau",
+    TableauPipeline = "TableauPipeline",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
     Timescale = "Timescale",
