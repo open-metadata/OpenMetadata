@@ -140,12 +140,10 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   }, [showDeleted]);
 
   const ensureBotMapLoaded = useCallback(() => {
-    if (!botMapLoadPromiseRef.current) {
-      botMapLoadPromiseRef.current = loadBotsByUserNameMap().catch((error) => {
-        botMapLoadPromiseRef.current = null;
-        showErrorToast((error as AxiosError).message);
-      });
-    }
+    botMapLoadPromiseRef.current ??= loadBotsByUserNameMap().catch((error) => {
+      botMapLoadPromiseRef.current = null;
+      showErrorToast((error as AxiosError).message);
+    });
 
     return botMapLoadPromiseRef.current;
   }, [loadBotsByUserNameMap]);

@@ -91,7 +91,7 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
 
   const handleCopy = useCallback(() => {
     if (jwtToken) {
-      navigator.clipboard.writeText(jwtToken);
+      void navigator.clipboard.writeText(jwtToken);
       showSuccessToast(t('message.copied-to-clipboard'));
     }
   }, [jwtToken, t]);

@@ -265,7 +265,6 @@ interface BotRolesSectionProps {
   botUserData: User;
   isAdminUser: boolean;
   roles: Role[];
-  selectedRoles: string[];
   selectedRoleItems: SelectItemType[];
   roleItems: SelectItemType[];
   isRolesLoading: boolean;
@@ -712,7 +711,6 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
         roleItems={roleItems}
         roles={roles}
         selectedRoleItems={selectedRoleItems}
-        selectedRoles={selectedRoles}
         setIsRolesEdit={setIsRolesEdit}
         setSelectedRoles={setSelectedRoles}
       />
