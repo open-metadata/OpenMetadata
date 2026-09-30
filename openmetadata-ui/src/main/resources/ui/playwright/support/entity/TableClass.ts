@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import {
+  AssetCertification,
   Column,
   DataType,
   Table,
@@ -63,6 +64,7 @@ export class TableClass extends EntityClass {
     columns: Column[];
     tableType: string;
     databaseSchema: string;
+    certification?: AssetCertification;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
