@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.tasks;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
@@ -59,6 +58,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
@@ -775,8 +775,16 @@ public class TaskWorkflowHandler {
       String user,
       List<TagLabel> tagsToAdd,
       List<TagLabel> tagsToRemove) {
+    patchEntityTags(entity, repository, user, mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
+  }
+
+  private void patchEntityTags(
+      EntityInterface entity,
+      EntityRepository<?> repository,
+      String user,
+      List<TagLabel> updatedTags) {
     String originalJson = JsonUtils.pojoToJson(entity);
-    entity.setTags(mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
+    entity.setTags(updatedTags);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
     if (patch != null && !patch.toJsonArray().isEmpty()) {
       PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
@@ -1018,17 +1026,9 @@ public class TaskWorkflowHandler {
         return;
       }
 
-      // Patch rather than write tag_usage directly, so the change is versioned, emits its event
-      // and passes approval admission like any other tag edit. The tier is exclusive, so the
-      // current tag of the same classification is replaced.
-      String tierClassification = FullyQualifiedName.getParentFQN(newTier.getTagFQN());
-      List<TagLabel> currentTier =
-          listOrEmpty(entity.getTags()).stream()
-              .filter(
-                  tag ->
-                      tierClassification.equals(FullyQualifiedName.getParentFQN(tag.getTagFQN())))
-              .toList();
-      patchEntityTags(entity, repository, user, List.of(newTier), currentTier);
+      List<TagLabel> updatedTags =
+          TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), List.of(newTier));
+      patchEntityTags(entity, repository, user, updatedTags);
       LOG.info(
           "[TaskWorkflowHandler] Applied TierUpdate for entity '{}': tier={}",
           entity.getName(),

@@ -101,11 +101,13 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TierUpdatePayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -3022,11 +3024,17 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   // ==================== TierUpdate Task Tests ====================
 
   @Test
-  void testResolveTierUpdateTaskAppliesTier(TestNamespace ns) {
+  void testResolveTierUpdateTaskReplacesTierAndRecordsChange(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
 
+    TagLabel currentTier =
+        new TagLabel()
+            .withTagFQN("Tier.Tier3")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED)
+            .withName("Tier3");
     TagLabel newTier =
         new TagLabel()
             .withTagFQN("Tier.Tier1")
@@ -3035,9 +3043,18 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withState(TagLabel.State.CONFIRMED)
             .withName("Tier1");
 
-    org.openmetadata.schema.type.TierUpdatePayload payload =
-        new org.openmetadata.schema.type.TierUpdatePayload()
-            .withCurrentTier(null)
+    Table table =
+        Tables.create()
+            .name(ns.prefix("tier_update_table"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
+            .withTags(List.of(currentTier))
+            .execute();
+    Double initialVersion = table.getVersion();
+
+    TierUpdatePayload payload =
+        new TierUpdatePayload()
+            .withCurrentTier(currentTier)
             .withNewTier(newTier)
             .withReason("Promoting table to Tier1 for critical business data");
 
@@ -3065,12 +3082,35 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
 
     Table updatedTable =
-        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "tags");
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "tags,changeDescription");
 
-    assertNotNull(updatedTable.getTags(), "Table should have tags (including tier) after update");
+    List<String> tierFqns =
+        updatedTable.getTags().stream()
+            .map(TagLabel::getTagFQN)
+            .filter(tagFqn -> tagFqn.startsWith("Tier."))
+            .toList();
+    assertEquals(List.of("Tier.Tier1"), tierFqns, "Approval must replace the existing tier");
     assertTrue(
-        updatedTable.getTags().stream().anyMatch(t -> t.getTagFQN().startsWith("Tier.")),
-        "Table should have tier tag after tier update");
+        updatedTable.getVersion() > initialVersion,
+        "TierUpdate approval must bump the entity version");
+    assertNotNull(
+        updatedTable.getChangeDescription(), "TierUpdate approval must populate changeDescription");
+    assertTrue(
+        updatedTable.getChangeDescription().getFieldsAdded().stream()
+            .anyMatch(field -> "tags".equals(field.getName())),
+        "changeDescription must record the new tier");
+    assertTrue(
+        updatedTable.getChangeDescription().getFieldsDeleted().stream()
+            .anyMatch(field -> "tags".equals(field.getName())),
+        "changeDescription must record the removed tier");
+
+    String updatedDescription = "Description update after approved tier change";
+    updatedTable.setDescription(updatedDescription);
+    Table descriptionUpdated =
+        SdkClients.adminClient().tables().update(updatedTable.getId().toString(), updatedTable);
+    assertEquals(updatedDescription, descriptionUpdated.getDescription());
   }
 
   // ==================== DomainUpdate Task Tests ====================
