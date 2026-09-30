@@ -498,13 +498,17 @@ const NavBar = () => {
             },
           ]);
           updateCurrentUser(updated);
-        } catch {
-          // keep the optimistic navbar state; the next successful switch will persist
+        } catch (error) {
+          // The reload restores the persisted value, which would silently undo the switch.
+          showErrorToast(error as AxiosError);
+          updateActiveDomain(currentUser.defaultDomain);
+
+          return;
         }
       }
       navigate(0);
     },
-    [currentUser?.id]
+    [currentUser?.id, currentUser?.defaultDomain]
   );
 
   const domainDisplayName = useMemo(
