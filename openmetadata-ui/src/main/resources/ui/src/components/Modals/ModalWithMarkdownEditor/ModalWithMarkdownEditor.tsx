@@ -87,7 +87,11 @@ export const ModalWithMarkdownEditor: FunctionComponent<
       maskClosable={false}
       modalRender={modalRender}
       open={visible}
-      title={<Typography data-testid="header">{header}</Typography>}
+      title={
+        <Typography className="tw:text-primary" data-testid="header">
+          {header}
+        </Typography>
+      }
       width="90%"
       onCancel={onCancel}>
       <KeyDownStopPropagationWrapper>

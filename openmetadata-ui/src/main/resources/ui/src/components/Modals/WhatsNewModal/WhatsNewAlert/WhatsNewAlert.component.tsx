@@ -102,7 +102,9 @@ const WhatsNewAlert = () => {
                 <Typography className="text-md font-semibold">
                   {t('label.new-update-announcement')}
                 </Typography>
-                <Typography as="p" className="whats-new-alert-subtext">
+                <Typography
+                  as="p"
+                  className="whats-new-alert-subtext tw:mb-3.5!">
                   {t('label.to-learn-more-please-check-out')}
                 </Typography>
                 <div className="whats-new-alert-links">

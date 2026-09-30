@@ -193,7 +193,10 @@ const AddKPIPage = () => {
               className="m-t-0 my-4"
               titleLinks={translatedKPIBreadcrumb}
             />
-            <Typography as="p" className="text-base" data-testid="form-title">
+            <Typography
+              as="p"
+              className="text-base tw:mb-4!"
+              data-testid="form-title">
               {t('label.add-new-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
@@ -395,7 +398,7 @@ const AddKPIPage = () => {
       secondPanel={{
         children: (
           <div data-testid="right-panel">
-            <Typography as="p" className="text-base font-medium">
+            <Typography as="p" className="text-base font-medium tw:mb-4!">
               {t('label.add-entity', {
                 entity: t('label.kpi-uppercase'),
               })}

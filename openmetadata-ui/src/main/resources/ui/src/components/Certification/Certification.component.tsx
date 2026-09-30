@@ -287,7 +287,7 @@ const Certification = ({
                 <Space className="w-full justify-between">
                   <div className="flex gap-2 items-center w-full">
                     <CertificationIcon height={18} width={18} />
-                    <Typography className="m-b-0 font-semibold text-sm">
+                    <Typography className="m-b-0 font-semibold text-sm tw:text-primary">
                       {t('label.edit-entity', {
                         entity: t('label.certification'),
                       })}

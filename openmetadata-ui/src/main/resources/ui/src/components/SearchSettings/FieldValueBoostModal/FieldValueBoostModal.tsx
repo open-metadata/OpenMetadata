@@ -106,7 +106,7 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
       okText={t('label.save')}
       open={open}
       title={
-        <Typography weight="semibold">
+        <Typography className="tw:text-primary" weight="semibold">
           {selectedBoost
             ? t('label.edit-entity', { entity: t('label.field-value-boost') })
             : t('label.add-entity', { entity: t('label.field-value-boost') })}

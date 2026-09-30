@@ -138,7 +138,10 @@ const AddRolePage = () => {
           <div data-testid="add-role-container">
             <TitleBreadcrumb titleLinks={translatedRoleBreadcrumb} />
             <div className="m-t-md">
-              <Typography as="p" className="text-base" data-testid="form-title">
+              <Typography
+                as="p"
+                className="text-base tw:mb-4!"
+                data-testid="form-title">
                 {t('label.add-new-entity', {
                   entity: t('label.role'),
                 })}
@@ -214,7 +217,7 @@ const AddRolePage = () => {
       secondPanel={{
         children: (
           <>
-            <Typography as="p" className="text-base font-medium">
+            <Typography as="p" className="text-base font-medium tw:mb-4!">
               {t('label.add-entity', {
                 entity: t('label.role'),
               })}
