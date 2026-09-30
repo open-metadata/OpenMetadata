@@ -45,6 +45,7 @@ import {
   customFormatDateTime,
   getCurrentMillis,
 } from '../../../utils/dateTime';
+import { clearPersistedDomain } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   glossaryFieldTrigger,
@@ -1432,6 +1433,8 @@ test.describe(
           page.locator(`[data-testid="${testCases[2]}"]`)
         ).not.toBeVisible();
       } finally {
+        // The navbar pick is persisted on the (shared) admin user; clear it for later specs.
+        await clearPersistedDomain(apiContext);
         await filterTable1.delete(apiContext);
         await domain.delete(apiContext);
         await afterAction();

@@ -20,6 +20,7 @@ import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { okJson } from '../../utils/apiResponse';
 import {
@@ -30,6 +31,7 @@ import {
 import {
   assignDomainToEntity,
   checkAssetsCount,
+  clearPersistedDomain,
   navigateToSubDomain,
   searchAndExpectEntityNotVisible,
   searchAndExpectEntityVisible,
@@ -40,15 +42,37 @@ import {
 import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
+import { performUserLogin } from '../../utils/user';
+
+// The navbar pick is persisted per user. Run as a dedicated admin so picks never leak into other
+// specs' list views, run this file sequentially so its own picks do not clobber each other, and
+// clear the pick after every test.
+const domainAdmin = new UserClass(undefined, true);
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
-    const { page, afterAction } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    const { page, apiContext, afterAction } = await performUserLogin(
+      browser,
+      domainAdmin
+    );
     await use(page);
+    await clearPersistedDomain(apiContext);
     await afterAction();
   },
+});
+
+test.describe.configure({ mode: 'default' });
+
+test.beforeAll(async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await domainAdmin.create(apiContext);
+  await afterAction();
+});
+
+test.afterAll(async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await domainAdmin.delete(apiContext);
+  await afterAction();
 });
 
 const getDomainMustClauses = (queryFilter: string): unknown[] => {

@@ -19,6 +19,7 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
 import {
+  clearDomainFromNavbar,
   selectDomainFromNavbar,
   verifyActiveDomainIsDefault,
 } from '../../../utils/domain';
@@ -55,16 +56,16 @@ const isGlossaryList = (r: Response) =>
 const glossaryNamesFrom = async (response: Response) =>
   ((await response.json()).data as { name: string }[]).map((g) => g.name);
 
+/** The navbar persists a pick/clear with a PATCH before it reloads; navigating earlier would abort it. */
+const persisted = (page: Page) =>
+  page.waitForResponse(
+    (r) =>
+      r.request().method() === 'PATCH' && r.url().includes('/api/v1/users/')
+  );
+
 const openGlossaryPage = async (page: Page) => {
   const list = page.waitForResponse(isGlossaryList);
   await sidebarClick(page, SidebarItem.GLOSSARY);
-
-  return glossaryNamesFrom(await list);
-};
-
-const pickDomain = async (page: Page, domain: Domain['responseData']) => {
-  const list = page.waitForResponse(isGlossaryList);
-  await selectDomainFromNavbar(page, domain);
 
   return glossaryNamesFrom(await list);
 };
@@ -116,7 +117,12 @@ test('picking a domain narrows the glossary list and includes its sub-domain', a
     await redirectToHomePage(page);
     // The navbar domain dropdown is not shown on the home page; pick it from the glossary page.
     await openGlossaryPage(page);
-    const names = await pickDomain(page, domainA.responseData);
+    const pickA = persisted(page);
+    await selectDomainFromNavbar(page, domainA.responseData);
+    await pickA;
+    // The pick is persisted before the page reloads; a fresh visit lists with it applied.
+    await redirectToHomePage(page);
+    const names = await openGlossaryPage(page);
 
     expect(names).toContain(glossaryInA.responseData.name);
     expect(names).toContain(glossaryInSubA.responseData.name);
@@ -133,7 +139,9 @@ test('the pick is persisted and restored on a fresh login', async ({
   try {
     await redirectToHomePage(first.page);
     await openGlossaryPage(first.page);
-    await pickDomain(first.page, domainB.responseData);
+    const pickB = persisted(first.page);
+    await selectDomainFromNavbar(first.page, domainB.responseData);
+    await pickB;
   } finally {
     await first.afterAction();
   }
@@ -162,10 +170,11 @@ test('clearing the selection restores the unfiltered list', async ({
     viewer
   );
   try {
-    await apiContext.patch(`/api/v1/users/${viewer.responseData.id}`, {
-      data: [{ op: 'add', path: '/defaultDomain', value: null }],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
+    await redirectToHomePage(page);
+    await openGlossaryPage(page);
+    const cleared = persisted(page);
+    await clearDomainFromNavbar(page);
+    await cleared;
 
     await redirectToHomePage(page);
     await openGlossaryPage(page);
