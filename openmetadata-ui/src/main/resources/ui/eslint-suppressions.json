@@ -945,7 +945,7 @@
   },
   "playwright/utils/entityPermissionUtils.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 9
+      "count": 5
     }
   },
   "playwright/utils/explore.ts": {
