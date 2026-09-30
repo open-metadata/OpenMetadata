@@ -6,17 +6,23 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.net.ProtocolException;
+import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.List;
@@ -994,6 +1000,35 @@ class SamlValidatorTest {
   }
 
   @Test
+  void readResponseSnippetClosesReadableStreams() throws Exception {
+    TrackingInputStream inputStream = new TrackingInputStream("from-error".getBytes());
+    HttpURLConnection connection = mock(HttpURLConnection.class);
+    when(connection.getErrorStream()).thenReturn(inputStream);
+
+    String snippet = invokePrivate("readResponseSnippet", HttpURLConnection.class, connection);
+
+    assertEquals("from-error", snippet);
+    assertTrue(inputStream.isClosed());
+  }
+
+  @Test
+  void validateIdpConnectivityDisconnectsConnections() throws Exception {
+    TrackingHttpURLConnection connection = new TrackingHttpURLConnection(400, "plain client error");
+    validator = spy(validator);
+    doReturn(connection).when(validator).openConnection(any(URL.class));
+
+    FieldError error =
+        invokePrivate(
+            "validateIdpConnectivity",
+            SamlSSOClientConfig.class,
+            baseConfig("https://sso.example.com"));
+
+    assertNotNull(error);
+    assertTrue(connection.isDisconnected());
+    assertTrue(connection.getBodyStream().isClosed());
+  }
+
+  @Test
   void createTestSamlRequestFallsBackWhenConfigIsIncomplete() throws Exception {
     String request =
         invokePrivate(
@@ -1224,6 +1259,97 @@ class SamlValidatorTest {
     @Override
     public void close() {
       server.stop(0);
+    }
+  }
+
+  private static final class TrackingInputStream extends InputStream {
+    private final byte[] data;
+    private int index;
+    private boolean closed;
+
+    private TrackingInputStream(byte[] data) {
+      this.data = data;
+    }
+
+    @Override
+    public int read() {
+      if (index >= data.length) {
+        return -1;
+      }
+      return data[index++];
+    }
+
+    @Override
+    public int read(byte[] buffer, int offset, int length) {
+      if (index >= data.length) {
+        return -1;
+      }
+      int bytesToRead = Math.min(length, data.length - index);
+      System.arraycopy(data, index, buffer, offset, bytesToRead);
+      index += bytesToRead;
+      return bytesToRead;
+    }
+
+    @Override
+    public void close() {
+      closed = true;
+    }
+
+    private boolean isClosed() {
+      return closed;
+    }
+  }
+
+  private static final class TrackingHttpURLConnection extends HttpURLConnection {
+    private final int responseCode;
+    private final TrackingInputStream bodyStream;
+    private boolean disconnected;
+
+    private TrackingHttpURLConnection(int responseCode, String body) throws Exception {
+      super(new URL("http://localhost"));
+      this.responseCode = responseCode;
+      bodyStream = new TrackingInputStream(body.getBytes());
+    }
+
+    @Override
+    public void disconnect() {
+      disconnected = true;
+    }
+
+    @Override
+    public boolean usingProxy() {
+      return false;
+    }
+
+    @Override
+    public void connect() {}
+
+    @Override
+    public int getResponseCode() {
+      return responseCode;
+    }
+
+    @Override
+    public InputStream getErrorStream() {
+      return bodyStream;
+    }
+
+    @Override
+    public InputStream getInputStream() throws IOException {
+      throw new IOException("not used");
+    }
+
+    @Override
+    public void setRequestMethod(String method) throws ProtocolException {
+      this.method = method;
+    }
+
+    private boolean isDisconnected() {
+      return disconnected;
+    }
+
+    private TrackingInputStream getBodyStream() {
+      return bodyStream;
     }
   }
 }
