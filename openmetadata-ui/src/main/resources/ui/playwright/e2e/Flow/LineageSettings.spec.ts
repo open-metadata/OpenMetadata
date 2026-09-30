@@ -30,8 +30,6 @@ import {
   activateColumnLayer,
   applyPipelineFromModal,
   connectEdgeBetweenNodesViaAPI,
-  editLineage,
-  editLineageClick,
   fillLineageConfigForm,
   performZoomOut,
   verifyNodePresent,
@@ -282,11 +280,9 @@ test.describe.serial(
 
       await table.visitEntityPage(dataStewardPage);
       await visitLineageTab(dataStewardPage);
-      await editLineage(dataStewardPage);
 
       // Select pipeline from Modal
       await applyPipelineFromModal(dataStewardPage, table, topic, pipeline);
-      await editLineageClick(dataStewardPage);
       await waitForAllLoadersToDisappear(dataStewardPage);
       await verifyPipelineDataInDrawer(
         dataStewardPage,

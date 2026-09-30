@@ -27,7 +27,6 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   connectEdgeBetweenNodesViaAPI,
   dismissLineageMapOnboarding,
-  editLineageClick,
   performZoomOut,
   visitLineageTab,
 } from '../../../utils/lineage';
@@ -136,13 +135,10 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
     const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
-    await editLineageClick(page);
     await page.getByTestId(`lineage-node-${tableFqn}`).dispatchEvent('click');
 
     await page.getByTestId('fit-screen').click();
     await page.getByRole('menuitem', { name: 'Refocused to selected' }).click();
-
-    await editLineageClick(page);
 
     await page.getByTestId('fit-screen').click();
     await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();

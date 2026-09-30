@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
-import { get, isEmpty } from 'lodash';
+import { escapeRegExp, get, isEmpty } from 'lodash';
 import type { LineageScene } from '../../src/generated/api/lineage/lineageScene';
 import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
@@ -133,20 +133,6 @@ export const activateColumnLayer = async (page: Page) => {
   await clickOutside(page);
 };
 
-export const editLineageClick = async (page: Page) => {
-  await expect(page.getByTestId('edit-lineage')).toBeVisible();
-
-  await page.getByTestId('edit-lineage').click();
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for edit mode to activate
-  await page.waitForTimeout(1);
-};
-
-export const editLineage = async (page: Page) => {
-  await editLineageClick(page);
-
-  await expect(page.getByTestId('table-draggable-icon')).toBeVisible();
-};
-
 export const performZoomOut = async (page: Page, xTimes = 10) => {
   const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
@@ -172,7 +158,7 @@ const panCanvas = async (page: Page, dx: number, dy: number) => {
 
   const grip = await page.evaluate((bounds) => {
     for (let row = 0.2; row <= 0.85; row += 0.1) {
-      for (let column = 0.4; column <= 0.9; column += 0.1) {
+      for (let column = 0.05; column <= 0.95; column += 0.05) {
         const x = bounds.x + bounds.width * column;
         const y = bounds.y + bounds.height * row;
         if (
@@ -201,12 +187,11 @@ const panCanvas = async (page: Page, dx: number, dy: number) => {
 /**
  * Pans until the marker's midpoint is the point the canvas actually receives.
  *
- * Edit mode paints a 110px node palette over the pane's left edge
- * (`.entity-lineage.sidebar.open` is absolute at `left: 0` with a z-index above
- * the canvas), while fitView measures the whole pane. A midpoint that lands in
- * that strip still satisfies `toBeInViewport` — that compares against the
+ * Panels painted over the pane (the layer control, the zoom-band rail) sit
+ * above the canvas while fitView measures the whole pane. A midpoint that lands
+ * under one still satisfies `toBeInViewport` — that compares against the
  * viewport rectangle, not against what is painted on top — so the coordinate
- * click below goes to the palette instead: the edge is never selected, the
+ * click below goes to the panel instead: the edge is never selected, the
  * toolbar never opens, and the caller's retry loop repeats the same dead click
  * until the test times out.
  */
@@ -377,36 +362,51 @@ export const clickEdgeBetweenColumns = async (
   await clickCanvasEdge(page, edgeDiv);
 };
 
+// Edge actions live in the edge drawer's header menu. Picking one closes the
+// drawer so the pipeline or delete dialog it opens is not hidden behind it.
+export const chooseEdgeDrawerAction = async (
+  page: Page,
+  action: 'Edit Pipeline' | 'Delete'
+) => {
+  const drawer = page.getByTestId('lineage-entity-panel');
+  await expect(drawer.getByTestId('edge-header-title')).toBeVisible();
+  await drawer.getByTestId('edge-drawer-menu').click();
+  await page.getByRole('menuitem', { name: action }).click();
+  await expect(drawer).not.toBeVisible();
+};
+
 export const deleteEdge = async (
   page: Page,
   fromNode: EntityClass,
   toNode: EntityClass
 ) => {
-  const addPipeline = page.getByTestId('add-pipeline');
+  const drawer = page.getByTestId('lineage-entity-panel');
+  const toName =
+    get(toNode, 'entityResponseData.displayName') ??
+    get(toNode, 'entityResponseData.name') ??
+    '';
 
-  // `clickEdgeBetweenNodes` dispatches a synthetic click on a react-flow edge
-  // label. `dispatchEvent` takes no actionability wait, so if the graph re-lays
-  // out between resolving the label and firing the event — which it does while
-  // nodes are still settling — the click lands on a node that is no longer wired
-  // up, the toolbar never opens, and the wait for `add-pipeline` below burns the
-  // whole test timeout on an action that silently did nothing. Retry the pair
-  // until the toolbar is actually there.
+  // The edge drawer is modal and resizes the canvas as it opens and closes,
+  // so edge markers are still moving when the next click lands and it can hit
+  // a neighbouring edge. Only delete once the drawer shows the edge aimed at.
   await expect(async () => {
+    if (await drawer.isVisible()) {
+      await drawer.getByTestId('drawer-close-icon').click();
+      await expect(drawer).not.toBeVisible();
+    }
+    await fitToScreen(page);
     await clickEdgeBetweenNodes(page, fromNode, toNode, true);
-    await expect(addPipeline).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
+    await expect(drawer.getByTestId('edge-drawer-menu')).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(drawer).toContainText(toName, { timeout: 2_000 });
+  }).toPass({ timeout: 45_000, intervals: [1_000, 2_000, 3_000] });
 
-  await addPipeline.dispatchEvent('click');
+  await chooseEdgeDrawerAction(page, 'Delete');
 
-  await expect(page.getByRole('dialog').first()).toBeVisible();
-
-  await page
-    .locator(
-      '[data-testid="add-edge-modal"] [data-testid="remove-edge-button"]'
-    )
-    .dispatchEvent('click');
-
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(
+    page.getByTestId('delete-edge-confirmation-modal')
+  ).toBeVisible();
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   const sceneRes = page.waitForResponse('**/api/v1/lineage/scene?*');
@@ -437,51 +437,195 @@ export const deleteEdgeBetweenNodesViaAPI = (
   );
 };
 
-export const dragAndDropNode = async (
-  page: Page,
-  originSelector: string,
-  destinationSelector: string
-) => {
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- asynchronous ELK redraw has no browser-visible completion signal
-  await page.waitForTimeout(1000);
-  const originElement = page.locator(originSelector);
-  const destinationElement = page.locator(destinationSelector);
-  await Promise.all([originElement.waitFor(), destinationElement.waitFor()]);
-  await destinationElement.scrollIntoViewIfNeeded();
-  await originElement.hover();
-  await page.mouse.down();
-  const box = await destinationElement.boundingBox();
-  if (!box) {
-    throw new Error(
-      `Unable to locate lineage destination ${destinationSelector}`
-    );
+/**
+ * Pans the canvas so the target sits at the pane centre when something else is
+ * painted over its midpoint. The zoom-band rail and its label float over the
+ * pane's right edge, and a lone node fitted to the screen is zoomed wide enough
+ * for its ⋮ to end up underneath them.
+ */
+const panTargetIntoOpenCanvas = async (page: Page, target: Locator) => {
+  const isHitTarget = () =>
+    target.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const top = document.elementFromPoint(
+        bounds.x + bounds.width / 2,
+        bounds.y + bounds.height / 2
+      );
+
+      return Boolean(top && element.contains(top));
+    });
+
+  if (await isHitTarget()) {
+    return;
   }
-  const x = box.x + 250;
-  const y = box.y + box.height / 2 + 100;
-  await page.mouse.move(x, y, { steps: 20 });
-  await page.mouse.up();
+
+  const [targetBounds, paneBounds] = await Promise.all([
+    target.boundingBox(),
+    page.locator('.react-flow__pane').boundingBox(),
+  ]);
+  if (!targetBounds || !paneBounds) {
+    throw new Error('The lineage menu trigger or the canvas has no bounds');
+  }
+
+  await panCanvas(
+    page,
+    paneBounds.x +
+      paneBounds.width / 2 -
+      (targetBounds.x + targetBounds.width / 2),
+    paneBounds.y +
+      paneBounds.height / 2 -
+      (targetBounds.y + targetBounds.height / 2)
+  );
+  await expect.poll(isHitTarget).toBe(true);
 };
 
-export const dragConnection = async (
+export const openLineageMenu = async (
   page: Page,
-  sourceId: string,
-  targetId: string,
-  isColumnLineage = false
+  trigger: Locator,
+  menuTestId: 'lineage-node-menu' | 'lineage-column-menu'
 ) => {
-  const selector = isColumnLineage
-    ? '.lineage-column-node-handle'
-    : '.lineage-node-handle';
-  const sourceNode = page.getByTestId(sourceId);
-  const targetNode = page.getByTestId(targetId);
-  const sourceHandle = sourceNode.locator(
-    `${selector}.react-flow__handle-right`
-  );
-  const targetHandle = targetNode.locator(
-    `${selector}.react-flow__handle-left`
-  );
+  const menuButton = trigger.getByTestId(menuTestId);
 
-  await sourceHandle.dispatchEvent('click');
-  await targetHandle.dispatchEvent('click');
+  await panTargetIntoOpenCanvas(page, menuButton);
+  // The column ⋮ is only revealed by CSS hover/focus on its row.
+  await trigger.hover();
+  await menuButton.click();
+};
+
+// At the Field band a node lists only the columns that already carry lineage,
+// and the list itself can be collapsed behind its "N Columns" chip, so a
+// column about to get its first edge is usually not on the canvas yet.
+export const revealColumn = async (
+  page: Page,
+  columnFqn: string,
+  // A dashboard's columns are its charts, whose FQNs do not start with the
+  // dashboard's, so callers that know the owning entity pass it in.
+  ownerFqn?: string
+) => {
+  const column = page.getByTestId(`column-${columnFqn}`);
+  if (await column.isVisible()) {
+    return column;
+  }
+
+  const nodeTestIds = await page
+    .locator('.react-flow__node > [data-testid^="lineage-node-"]')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('data-testid') ?? '')
+    );
+  // Otherwise the owning node is the one whose FQN is the longest prefix of
+  // the column's.
+  const ownerTestId = ownerFqn
+    ? `lineage-node-${ownerFqn}`
+    : nodeTestIds
+        .filter((testId) => {
+          const nodeFqn = testId.slice('lineage-node-'.length);
+
+          return columnFqn === nodeFqn || columnFqn.startsWith(`${nodeFqn}.`);
+        })
+        .sort((a, b) => b.length - a.length)[0];
+  if (!ownerTestId) {
+    throw new Error(`No lineage node on the canvas owns column ${columnFqn}`);
+  }
+  // A metric is its own column endpoint and has no column row to reveal.
+  if (ownerTestId === `lineage-node-${columnFqn}`) {
+    return page.getByTestId(ownerTestId);
+  }
+
+  const owner = page.getByTestId(ownerTestId);
+  const lineageOnlyFilter = owner.locator(
+    '.only-show-columns-with-lineage-filter-button.active'
+  );
+  if (await lineageOnlyFilter.isVisible()) {
+    await lineageOnlyFilter.click();
+    await clickOutside(page);
+  }
+  const collapsedColumns = owner.locator(
+    '.children-info-dropdown-label.collapsed'
+  );
+  if (await collapsedColumns.isVisible()) {
+    await collapsedColumns.click();
+  }
+
+  await expect(column).toBeVisible();
+
+  return column;
+};
+
+export const addLineageViaMenu = async (
+  page: Page,
+  {
+    trigger,
+    direction,
+    toEntity,
+    columnFqn,
+  }: {
+    trigger: Locator;
+    direction: 'upstream' | 'downstream';
+    toEntity: EntityClass;
+    columnFqn?: string;
+  }
+) => {
+  await openLineageMenu(
+    page,
+    trigger,
+    columnFqn ? 'lineage-column-menu' : 'lineage-node-menu'
+  );
+  await page
+    .getByRole('menuitem', {
+      name: direction === 'upstream' ? 'Edit Upstream' : 'Edit Downstream',
+    })
+    .click();
+  const popover = page.getByTestId('add-lineage-popover');
+  await expect(popover).toBeVisible();
+
+  // Options are keyed by search index, which is locale-independent where the
+  // option labels are not.
+  await popover
+    .getByTestId('add-lineage-type-select')
+    .getByRole('button')
+    .click();
+  await page
+    .locator(
+      `[role="listbox"]:visible [data-key="${getEntityTypeSearchIndexMapping(
+        toEntity.type
+      )}"]`
+    )
+    .click();
+
+  const toName = get(toEntity, 'entityResponseData.name') ?? '';
+  const toFqn = get(toEntity, 'entityResponseData.fullyQualifiedName') ?? '';
+  const searchResponse = page.waitForResponse('/api/v1/search/query?*');
+  await popover
+    .getByTestId('add-lineage-entity-input')
+    .getByRole('combobox')
+    .fill(toName);
+  await searchResponse;
+
+  const lineageMutation = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      new URL(response.url()).pathname.endsWith('/api/v1/lineage')
+  );
+  // Options end with the FQN as supporting text, which tells apart entities
+  // that share a name across services. Anchor it: a child container's FQN
+  // starts with its parent's.
+  await page
+    .locator('[role="listbox"]:visible')
+    .getByRole('option')
+    .filter({ hasText: new RegExp(`${escapeRegExp(toFqn)}$`) })
+    .click();
+  if (columnFqn) {
+    await popover
+      .getByTestId('add-lineage-column-select')
+      .getByRole('button')
+      .click();
+    await page
+      .locator(`[role="listbox"]:visible [data-key="${columnFqn}"]`)
+      .click();
+  }
+  const lineageResponse = await lineageMutation;
+  expect(lineageResponse.ok()).toBeTruthy();
+  await expect(popover).not.toBeVisible();
 };
 
 export const rearrangeNodes = async (page: Page) => {
@@ -506,37 +650,9 @@ export const connectEdgeBetweenNodes = async (
   fromNode: EntityClass,
   toNode: EntityClass
 ) => {
-  const type = getEntityTypeSearchIndexMapping(toNode.type);
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
-  const toNodeName = get(toNode, 'entityResponseData.name') ?? '';
-  const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
-
-  const source = `[data-testid="${type}-draggable-icon"]`;
-  const target = '[data-testid="lineage-details"]';
-
-  await dragAndDropNode(page, source, target);
-
-  await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
-
-  const waitForSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*&from=0&size=10&*`
-  );
-
-  await page.locator('[data-testid="suggestion-node"] input').fill(toNodeName);
-
-  await waitForSearchResponse;
-
-  await page
-    .locator(`[data-testid="node-suggestion-${toNodeFqn}"]`)
-    .dispatchEvent('click');
-
   const fromNodeId = get(fromNode, 'entityResponseData.id');
   const toNodeId = get(toNode, 'entityResponseData.id');
-  const lineageMutation = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'PUT' &&
-      new URL(response.url()).pathname.endsWith('/api/v1/lineage')
-  );
   const sceneRefresh = page.waitForResponse(async (response) => {
     if (
       response.request().method() !== 'GET' ||
@@ -566,17 +682,12 @@ export const connectEdgeBetweenNodes = async (
     );
   });
 
-  await dragConnection(
-    page,
-    `lineage-node-${fromNodeFqn}`,
-    `lineage-node-${toNodeFqn}`
-  );
-  const [lineageResponse, sceneResponse] = await Promise.all([
-    lineageMutation,
-    sceneRefresh,
-  ]);
-  expect(lineageResponse.ok()).toBeTruthy();
-  expect(sceneResponse.ok()).toBeTruthy();
+  await addLineageViaMenu(page, {
+    trigger: page.getByTestId(`lineage-node-${fromNodeFqn}`),
+    direction: 'downstream',
+    toEntity: toNode,
+  });
+  expect((await sceneRefresh).ok()).toBeTruthy();
 };
 
 export const connectEntityEdgeBetweenNodesViaAPI = (
@@ -853,10 +964,9 @@ export const applyPipelineFromModal = async (
     'entityResponseData.fullyQualifiedName'
   );
 
+  await fitToScreen(page);
   await clickEdgeBetweenNodes(page, fromNode, toNode);
-  const addPipelineBtn = page.getByTestId('add-pipeline');
-  await addPipelineBtn.waitFor({ state: 'visible' });
-  await addPipelineBtn.dispatchEvent('click');
+  await chooseEdgeDrawerAction(page, 'Edit Pipeline');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*`
@@ -912,51 +1022,107 @@ export const applyPipelineBetweenNodesViaAPI = (
 
 export const deleteNode = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
-  await page
-    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
-    .dispatchEvent('click');
+
+  await openLineageMenu(
+    page,
+    page.getByTestId(`lineage-node-${nodeFqn}`),
+    'lineage-node-menu'
+  );
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
+
+  const modal = page.getByTestId('delete-node-confirmation-modal');
+  await expect(modal).toBeVisible();
 
   const lineageRes = page.waitForResponse('/api/v1/lineage/**');
-
-  await page
-    .locator('[data-testid="lineage-node-remove-btn"]')
-    .dispatchEvent('click');
-
+  await modal.getByTestId('confirm-button').click();
   await lineageRes;
 };
 
+// The column menu only offers Table and Data Model targets, so column lineage
+// to any other type has to be set up through the API.
 export const addColumnLineage = async (
   page: Page,
-  fromColumnNode: string,
-  toColumnNode: string,
-  exitEditMode = true
+  fromColumnFqn: string,
+  toColumnFqn: string,
+  toEntity: TableClass | DashboardDataModelClass,
+  fromOwnerFqn?: string
 ) => {
-  await dragConnection(
-    page,
-    `column-${fromColumnNode}`,
-    `column-${toColumnNode}`,
-    true
+  const fromColumn = await revealColumn(page, fromColumnFqn, fromOwnerFqn);
+
+  await addLineageViaMenu(page, {
+    trigger: fromColumn,
+    direction: 'downstream',
+    toEntity,
+    columnFqn: toColumnFqn,
+  });
+
+  // The canvas only draws edges whose nodes are in view, and a target the
+  // popover just added lands wherever the layout puts it.
+  await fitToScreen(page);
+  await expect(
+    page.getByTestId(`column-edge-${fromColumnFqn}-${toColumnFqn}`)
+  ).toBeVisible();
+};
+
+export const isColumnMenuTarget = (
+  entity: EntityClass
+): entity is TableClass | DashboardDataModelClass =>
+  entity instanceof TableClass || entity instanceof DashboardDataModelClass;
+
+export const addColumnLineageViaAPI = async (
+  page: Page,
+  apiContext: APIRequestContext,
+  fromEntity: EntityClass,
+  toEntity: EntityClass,
+  fromColumnFqn: string,
+  toColumnFqn: string
+) => {
+  const response = await connectEdgeBetweenNodesViaAPI(
+    apiContext,
+    {
+      id: get(fromEntity, 'entityResponseData.id', ''),
+      type: getEntityTypeSearchIndexMapping(fromEntity.type) ?? '',
+    },
+    {
+      id: get(toEntity, 'entityResponseData.id', ''),
+      type: getEntityTypeSearchIndexMapping(toEntity.type) ?? '',
+    },
+    [{ fromColumns: [fromColumnFqn], toColumn: toColumnFqn }]
   );
+  expect(response.ok()).toBeTruthy();
 
-  await page.getByTestId(`column-${toColumnNode}`).click();
-
-  if (exitEditMode) {
-    await editLineageClick(page);
-  }
+  const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
+  await page.reload();
+  await lineageRes;
+  await waitForAllLoadersToDisappear(page);
+  await activateColumnLayer(page);
+  await revealColumn(
+    page,
+    fromColumnFqn,
+    get(fromEntity, 'entityResponseData.fullyQualifiedName')
+  );
+  await revealColumn(
+    page,
+    toColumnFqn,
+    get(toEntity, 'entityResponseData.fullyQualifiedName')
+  );
+  await fitToScreen(page);
 
   await expect(
-    page.getByTestId(`column-edge-${fromColumnNode}-${toColumnNode}`)
+    page.getByTestId(`column-edge-${fromColumnFqn}-${toColumnFqn}`)
   ).toBeVisible();
 };
 
 export const removeColumnLineage = async (
   page: Page,
   fromColumnNode: string,
-  toColumnNode: string
+  toColumnNode: string,
+  owners: { fromFqn?: string; toFqn?: string } = {}
 ) => {
+  await revealColumn(page, fromColumnNode, owners.fromFqn);
+  await revealColumn(page, toColumnNode, owners.toFqn);
   await clickEdgeBetweenColumns(page, fromColumnNode, toColumnNode);
-
-  await page.locator('[data-testid="delete-button"]').dispatchEvent('click');
+  await chooseEdgeDrawerAction(page, 'Delete');
 
   const deleteRes = page.waitForResponse('/api/v1/lineage');
   await page
@@ -977,6 +1143,8 @@ export const removeColumnLineage = async (
 
   await waitForAllLoadersToDisappear(page);
   await activateColumnLayer(page);
+  await revealColumn(page, fromColumnNode, owners.fromFqn);
+  await revealColumn(page, toColumnNode, owners.toFqn);
 
   await expect(
     page.getByTestId(`column-edge-${fromColumnNode}-${toColumnNode}`)
@@ -1076,9 +1244,7 @@ export const addPipelineBetweenNodes = async (
 ) => {
   await sourceEntity.visitEntityPage(page);
   await visitLineageTab(page);
-  await editLineage(page);
-
-  await performZoomOut(page);
+  await fitToScreen(page);
 
   await connectEdgeBetweenNodes(page, sourceEntity, targetEntity);
   if (pipelineItem) {
@@ -1088,7 +1254,6 @@ export const addPipelineBetweenNodes = async (
       targetEntity,
       pipelineItem
     );
-    await editLineageClick(page);
     await verifyPipelineDataInDrawer(
       page,
       sourceEntity,

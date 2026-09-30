@@ -222,7 +222,8 @@ export const validateViewPermissions = async (
   await waitForAllLoadersToDisappear(page);
   await dismissLineageMapOnboarding(page);
 
-  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+  await expect(page.getByTestId('lineage-map-canvas')).toBeVisible();
+  await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
 
   await page.click('[data-testid="custom_properties"]');
   await waitForAllLoadersToDisappear(page);
