@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -30,8 +31,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * Builds a search-time filter that hides {@link
  * org.openmetadata.schema.entity.context.ContextMemory} documents a subject is not allowed to see,
  * while leaving every other entity type untouched. The filter is ANDed into global search and
- * search-backed listings so they enforce the same per-memory {@code shareConfig} privacy as the
- * REST read endpoints (see {@link
+ * search-backed listings so they enforce {@code shareConfig} privacy and the conservative anchor
+ * rule described below (see {@link
  * org.openmetadata.service.resources.context.ContextMemoryVisibility#isVisibleToUser}).
  *
  * <p>Memory visibility is driven by the per-memory shareConfig, not by the OSS RBAC/policy model,
@@ -54,9 +55,9 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * org.openmetadata.service.resources.context.ContextMemoryVisibility#isVisibleToUser} decides it
  * in-memory for the REST read paths. Nothing compares them automatically.
  *
- * <p>REST reads an anchored {@code Entity} memory only for readers of its {@code primaryEntity}.
- * Search cannot evaluate policies per document, so it relies on the anchor's domain, copied onto
- * the memory at create, and search RBAC. The two paths can differ for an asset without a domain.
+ * <p>Search cannot evaluate an anchor's policy per document. An anchored {@code Entity} memory is
+ * therefore searchable only by its owners and admins. An explicit unanchored marker is required:
+ * old documents without the marker stay hidden from non-owners until reindexed.
  */
 public class ContextMemorySearchVisibility {
 
@@ -86,25 +87,26 @@ public class ContextMemorySearchVisibility {
   }
 
   /**
-   * Returns a filter admitting only org-wide ({@link MemoryVisibility#ENTITY}) memories. This is the
-   * fail-closed default for search paths that carry no {@link SubjectContext} and therefore cannot
-   * decide who a restricted memory belongs to — they get the memories everyone may read and nothing
-   * else. Like {@link #buildVisibilityFilter}, non-memory documents always pass.
+   * Returns a filter admitting only unanchored org-wide ({@link MemoryVisibility#ENTITY}) memories.
+   * This is the fail-closed default for search paths without a {@link SubjectContext}. Like {@link
+   * #buildVisibilityFilter}, non-memory documents always pass.
    */
   public OMQueryBuilder buildOrgWideOnlyFilter() {
-    return scopeMemoriesTo(
-        queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    return scopeMemoriesTo(unanchoredEntityClause());
   }
 
   /**
    * The document-level equivalent of {@link #buildOrgWideOnlyFilter}, for fetch-by-id paths that
-   * run no query to filter. Returns false only for a restricted (non-org-wide) context memory;
-   * every other document passes.
+   * run no query to filter. Returns false for restricted or anchored context memories; every other
+   * document passes.
    */
   public static boolean isOrgWideReadable(Map<String, Object> document) {
     boolean readable = true;
     if (document != null && Entity.CONTEXT_MEMORY.equals(document.get(FIELD_ENTITY_TYPE))) {
-      readable = MemoryVisibility.ENTITY.value().equals(document.get(FIELD_VISIBILITY));
+      readable =
+          MemoryVisibility.ENTITY.value().equals(document.get(FIELD_VISIBILITY))
+              && ContextMemoryIndex.UNANCHORED.equals(
+                  document.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
     }
     return readable;
   }
@@ -153,12 +155,22 @@ public class ContextMemorySearchVisibility {
 
   private OMQueryBuilder buildVisibleToUserClause(User user) {
     List<OMQueryBuilder> clauses = new ArrayList<>();
-    clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    clauses.add(unanchoredEntityClause());
     clauses.add(
         queryBuilderFactory.nestedQuery(
             FIELD_OWNERS, queryBuilderFactory.termQuery(FIELD_OWNERS_ID, user.getId().toString())));
     clauses.add(sharedWithSubjectClause(user));
     return queryBuilderFactory.boolQuery().should(clauses);
+  }
+
+  private OMQueryBuilder unanchoredEntityClause() {
+    return queryBuilderFactory
+        .boolQuery()
+        .must(
+            List.of(
+                queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()),
+                queryBuilderFactory.termQuery(
+                    ContextMemoryIndex.FIELD_ANCHOR_ID, ContextMemoryIndex.UNANCHORED)));
   }
 
   /**

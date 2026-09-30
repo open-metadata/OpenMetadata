@@ -180,6 +180,7 @@ class ContextMemoryIndexTest {
         new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(new HashMap<>());
 
     assertNull(doc.get("visibility"));
+    assertEquals(ContextMemoryIndex.UNANCHORED, doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
     @SuppressWarnings("unchecked")
     List<String> sharedWithIds = (List<String>) doc.get("sharedWithIds");
     assertTrue(sharedWithIds.isEmpty());
@@ -220,6 +221,7 @@ class ContextMemoryIndexTest {
     EntityReference docPrimary = (EntityReference) doc.get("primaryEntity");
     assertNotNull(docPrimary);
     assertEquals("orders", docPrimary.getDisplayName());
+    assertEquals(primaryEntity.getId().toString(), doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
 
     @SuppressWarnings("unchecked")
     List<EntityReference> docRelated = (List<EntityReference>) doc.get("relatedEntities");

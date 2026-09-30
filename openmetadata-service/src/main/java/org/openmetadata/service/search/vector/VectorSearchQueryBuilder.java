@@ -253,9 +253,13 @@ public class VectorSearchQueryBuilder {
     // A document lacking `visibility` satisfies no branch, so a memory chunk written before it was
     // stamped is excluded until a Search Reindex restamps it — it may be a Private one.
     sb.append("{\"bool\":{\"should\":[")
+        .append("{\"bool\":{\"must\":[")
         .append(
             termClause(
-                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()))
+        .append(',')
+        .append(termClause(ContextMemoryIndex.FIELD_ANCHOR_ID, ContextMemoryIndex.UNANCHORED))
+        .append("]}}");
     if (subjectContext != null) {
       User user = subjectContext.user();
       // ignore_unmapped mirrors QueryBuilderFactory#nestedQuery, and is not optional: a KNN query

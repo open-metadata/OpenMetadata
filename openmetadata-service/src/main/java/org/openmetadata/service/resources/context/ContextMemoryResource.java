@@ -258,7 +258,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
     EntityUtil.Fields fields = getFields(fieldsParam);
-    // shareConfig visibility is enforced at query time by ContextMemorySearchVisibility (see
+    // shareConfig visibility and the conservative anchor rule are enforced at query time by
+    // ContextMemorySearchVisibility (see
     // OpenSearch/ElasticSearchSearchManager#applyContextMemoryVisibility, #29384), so the search
     // already excludes memories the caller may not see. Post-filtering here would be redundant and
     // would break offset pagination — it truncates a page below the requested limit and drops the

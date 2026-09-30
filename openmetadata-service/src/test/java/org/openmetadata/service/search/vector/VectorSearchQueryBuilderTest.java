@@ -1166,8 +1166,24 @@ class VectorSearchQueryBuilderTest {
 
     JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
     assertNotNull(clause, "every vector query must carry a memory visibility clause");
+    JsonNode unanchoredOnly =
+        clause
+            .path("bool")
+            .path("should")
+            .get(1)
+            .path("bool")
+            .path("must")
+            .get(1)
+            .path("bool")
+            .path("should")
+            .get(0)
+            .path("bool")
+            .path("must");
+    assertTrue(termClauseExists(unanchoredOnly, "visibility", MemoryVisibility.ENTITY.value()));
+    assertTrue(termClauseExists(unanchoredOnly, "anchorId", "unanchored"));
     String rendered = clause.toString();
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()), "org-wide memories still match");
+    assertTrue(rendered.contains("\"anchorId\":\"unanchored\""));
     assertFalse(rendered.contains("owners.id"), "no subject means no owner branch");
     assertFalse(rendered.contains("sharedWithIds"), "no subject means no shared branch");
     assertFalse(
@@ -1186,6 +1202,7 @@ class VectorSearchQueryBuilderTest {
     assertTrue(rendered.contains(TEAM_ID.toString()), "the shared branch must include their team");
     assertTrue(rendered.contains(MemoryVisibility.SHARED.value()));
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()));
+    assertTrue(rendered.contains("\"anchorId\":\"unanchored\""));
   }
 
   /**

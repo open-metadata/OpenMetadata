@@ -1014,6 +1014,7 @@ public class OpenSearchVectorService implements VectorIndexService {
             "customUnitOfMeasurement",
             "visibility",
             "sharedWithIds",
+            ContextMemoryIndex.FIELD_ANCHOR_ID,
             ContextMemoryIndex.FIELD_STATUS)) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
