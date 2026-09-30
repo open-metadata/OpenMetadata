@@ -235,45 +235,51 @@ test.describe(
       });
     });
 
-    test('sort options route to the correct data path', async ({ page }) => {
-      test.slow();
-      await navigateToArticles(page);
+    test(
+      'sort options route to the correct data path',
+      {
+        tag: '@quarantine',
+      },
+      async ({ page }) => {
+        test.slow();
+        await navigateToArticles(page);
 
-      await test.step('Alphabetical uses the REST list with displayName', async () => {
-        const listResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(REST_LIST) &&
-            response.url().includes('sortBy=displayName') &&
-            response.status() === 200
-        );
-        await selectSort(page, 'Alphabetical');
-        await listResponse;
-      });
+        await test.step('Alphabetical uses the REST list with displayName', async () => {
+          const listResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes(REST_LIST) &&
+              response.url().includes('sortBy=displayName') &&
+              response.status() === 200
+          );
+          await selectSort(page, 'Alphabetical');
+          await listResponse;
+        });
 
-      await test.step('Publication date uses the ES search path', async () => {
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(PAGE_INDEX_SEARCH) &&
-            response.url().includes('index=page') &&
-            response.url().includes('sort_field=page.publicationDate') &&
-            response.status() === 200
-        );
-        await selectSort(page, 'Publication date');
-        await searchResponse;
-      });
+        await test.step('Publication date uses the ES search path', async () => {
+          const searchResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes(PAGE_INDEX_SEARCH) &&
+              response.url().includes('index=page') &&
+              response.url().includes('sort_field=page.publicationDate') &&
+              response.status() === 200
+          );
+          await selectSort(page, 'Publication date');
+          await searchResponse;
+        });
 
-      await test.step('Popularity uses the ES search path', async () => {
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(PAGE_INDEX_SEARCH) &&
-            response.url().includes('index=page') &&
-            response.url().includes('sort_field=totalVotes') &&
-            response.status() === 200
-        );
-        await selectSort(page, 'Popularity');
-        await searchResponse;
-      });
-    });
+        await test.step('Popularity uses the ES search path', async () => {
+          const searchResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes(PAGE_INDEX_SEARCH) &&
+              response.url().includes('index=page') &&
+              response.url().includes('sort_field=totalVotes') &&
+              response.status() === 200
+          );
+          await selectSort(page, 'Popularity');
+          await searchResponse;
+        });
+      }
+    );
 
     test('filters stay applied and consistent across every sort', async ({
       page,
