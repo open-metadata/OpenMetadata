@@ -465,6 +465,19 @@ export const removeOwner = async ({
     .waitFor({ state: 'hidden' });
 };
 
+export const openOwnerPicker = async (page: Page, trigger: Locator) => {
+  // The trigger can be clicked while the page is still mounting its widgets
+  // (lazy chunks, grid re-layout), which remounts the picker and throws the
+  // open state away, so the popover never renders. Re-click until it does.
+  await expect(async () => {
+    await trigger.click();
+
+    await expect(page.getByTestId('select-owner-tabs')).toBeVisible({
+      timeout: 5000,
+    });
+  }).toPass({ timeout: 30000, intervals: [500, 1000, 2000] });
+};
+
 export const addMultiOwner = async (data: {
   page: Page;
   ownerNames: string | string[];
@@ -488,9 +501,10 @@ export const addMultiOwner = async (data: {
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
 
-  await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
-
-  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
+  await openOwnerPicker(
+    page,
+    page.locator(`[data-testid="${activatorBtnDataTestId}"]`)
+  );
 
   await page
     .getByTestId('select-owner-tabs')
@@ -645,8 +659,15 @@ export const assignTier = async (
   // Close the tier popover
   await clickOutside(page);
 
-  // Verify the tier was updated
-  await expect(page.getByTestId('Tier')).toContainText(tier);
+  // Verify the tier was updated. The PATCH returns 200 but React Query's
+  // entity-detail cache invalidation can lag under merge-queue load — the
+  // `Tier` chip re-renders from the refetched entity, not from the PATCH
+  // response. A retry-pass on Entity.spec (run 34324900183 chromium-23)
+  // saw 18 resolutions to the previous value across the 15 s default,
+  // then passed on retry #1. 30 s covers the observed p99.
+  await expect(page.getByTestId('Tier')).toContainText(tier, {
+    timeout: 30_000,
+  });
 };
 
 export const removeTier = async (page: Page, endpoint: string) => {
