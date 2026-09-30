@@ -652,6 +652,21 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         page,
       }) => {
         await redirectToHomePage(page);
+
+        // The workflow's trigger is eventBasedEntity on table Created, so a
+        // table created by any other spec would give it real instances. Pin the
+        // payload so the rendered state is a single known value.
+        await page.route(
+          '**/api/v1/governance/workflowInstances**',
+          async (route) => {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ data: [], paging: { total: 0 } }),
+            });
+          }
+        );
+
         await navigateToWorkflowDetailPage(page, workflowName);
 
         const historyResponse = page.waitForResponse(
@@ -664,12 +679,10 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await waitForAllLoadersToDisappear(page);
         await historyResponse;
 
-        // The workflow is never triggered here, so the tab legitimately renders
-        // either the instance table or the no-data placeholder.
+        // OSS cannot trigger a workflow (run-workflow-button is absent), so an
+        // empty history is the state this tab is expected to render.
         await expect(
-          page
-            .getByTestId('workflow-execution-history-table')
-            .or(page.getByTestId('workflow-execution-history-empty'))
+          page.getByTestId('workflow-execution-history-empty')
         ).toBeVisible();
       });
     });
