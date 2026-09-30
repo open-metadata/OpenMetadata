@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PieChart } from '@openmetadata/ui-core-components/charts';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -25,13 +26,6 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-} from 'recharts';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/widget/total-assets.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
@@ -39,7 +33,6 @@ import { ROUTES } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useChartColors } from '../../../../hooks/useChartColors';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
@@ -63,6 +56,8 @@ import {
 } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
+const LEGEND_HIDDEN = { show: false };
+
 const TotalDataAssetsWidget = ({
   isEditView = false,
   handleRemoveWidget,
@@ -71,7 +66,6 @@ const TotalDataAssetsWidget = ({
   handleLayoutUpdate,
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
-  const { axis } = useChartColors();
   const navigate = useNavigate();
   const { applicationConfig } = useApplicationStore();
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -170,6 +164,17 @@ const TotalDataAssetsWidget = ({
     };
   }, [selectedDate, dataByDate]);
 
+  // Same order and colours as the legend beside the chart.
+  const pieData = useMemo(
+    () =>
+      sortedEntityList.map((entity, index) => ({
+        name: startCase(entity),
+        value: selectedDateData[entity] ?? 0,
+        color: pieChartColors[index % pieChartColors.length],
+      })),
+    [sortedEntityList, selectedDateData, pieChartColors]
+  );
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -222,48 +227,20 @@ const TotalDataAssetsWidget = ({
         <div className={isFullSizeWidget ? 'd-flex gap-6' : ''}>
           {/* Donut Chart */}
           <div className="flex-1 donut-chart-wrapper">
-            <ResponsiveContainer height={250} width="100%">
-              <PieChart>
-                <Pie
-                  cx="50%"
-                  cy="50%"
-                  data={Object.entries(selectedDateData).map(
-                    ([name, value]) => ({
-                      name,
-                      value,
-                    })
-                  )}
-                  dataKey="value"
-                  innerRadius={80}
-                  nameKey="name"
-                  outerRadius={117}
-                  paddingAngle={1}>
-                  {sortedEntityList.map((label, index) => (
-                    <Cell
-                      fill={pieChartColors[index % pieChartColors.length]}
-                      key={label}
-                    />
-                  ))}
-                </Pie>
-                <RechartsTooltip
-                  formatter={(value: number, name: string) => [
-                    `(${value})`,
-                    startCase(name),
-                  ]}
-                  separator={' '}
-                />
-                <text
-                  dy={8}
-                  fill={axis}
-                  fontSize={28}
-                  fontWeight={600}
-                  textAnchor="middle"
-                  x="50%"
-                  y="50%">
+            <PieChart
+              ariaLabel={t('label.data-insight-total-entity-summary')}
+              centerLabel={
+                <span className="tw:text-display-xs tw:font-semibold tw:text-secondary">
                   {totalDatAssets.toLocaleString()}
-                </text>
-              </PieChart>
-            </ResponsiveContainer>
+                </span>
+              }
+              data={pieData}
+              height={250}
+              innerRadius="64%"
+              legend={LEGEND_HIDDEN}
+              outerRadius="94%"
+              padAngle={1}
+            />
           </div>
 
           {/* Right-side Legend */}
@@ -324,8 +301,9 @@ const TotalDataAssetsWidget = ({
       </div>
     );
   }, [
-    axis,
+    t,
     availableDates,
+    pieData,
     selectedDate,
     selectedDateData,
     totalDatAssets,
