@@ -315,8 +315,14 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [permissions.database]
   );
 
+  // Only the latest list request may write the table: a slower earlier one — the previous page,
+  // the other side of the Deleted switch, a list a search has since replaced — would overwrite it.
+  const latestListRequestRef = useRef(0);
+
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal) => {
+      const requestId = ++latestListRequestRef.current;
+      const isLatest = () => requestId === latestListRequestRef.current;
       try {
         setIsServiceLoading(true);
         const res = await fetchServiceChildren(
@@ -331,13 +337,19 @@ const ConnectionServiceDetailsPage: React.FC = () => {
             include: showDeleted ? Include.Deleted : Include.NonDeleted,
           }
         );
-        setData(res?.data ?? []);
-        handlePagingChange(res?.paging ?? pagingObject);
+        if (isLatest()) {
+          setData(res?.data ?? []);
+          handlePagingChange(res?.paging ?? pagingObject);
+        }
       } catch {
-        setData([]);
-        handlePagingChange(pagingObject);
+        if (isLatest()) {
+          setData([]);
+          handlePagingChange(pagingObject);
+        }
       } finally {
-        setIsServiceLoading(false);
+        if (isLatest()) {
+          setIsServiceLoading(false);
+        }
       }
     },
     [
@@ -536,11 +548,12 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   // Refetches on every input of the list — page cursor, page size, the deleted switch, a restore —
   // and yields to ServiceMainTabContent while a search is active, as classic service details does.
   useEffect(() => {
-    if (
-      activeTab === 'dataAssets' &&
-      serviceDetails.fullyQualifiedName &&
-      !searchValue
-    ) {
+    const isListShown =
+      activeTab === 'dataAssets' && Boolean(serviceDetails.fullyQualifiedName);
+    if (searchValue) {
+      // The search owns the table now; a list request still in flight must not land on it.
+      latestListRequestRef.current += 1;
+    } else if (isListShown) {
       getOtherDetails(cursorType ? { [cursorType]: cursorValue } : undefined);
     }
   }, [

@@ -351,12 +351,17 @@ jest.mock(
 jest.mock('./DataAssetsTab', () => ({
   __esModule: true,
   default: ({
+    data,
     onShowDeletedChange,
   }: {
+    data: { name: string }[];
     onShowDeletedChange: (value: boolean) => void;
   }) => (
     <div data-testid="data-assets-tab">
       <button onClick={() => onShowDeletedChange(true)}>show-deleted</button>
+      {data.map(({ name }) => (
+        <span key={name}>{name}</span>
+      ))}
     </div>
   ),
 }));
@@ -380,6 +385,28 @@ jest.mock('../../../constants/constants', () => ({
 }));
 
 jest.mock('fast-json-patch', () => ({ compare: jest.fn(() => []) }));
+
+// Holds each list request open until the test resolves it — by index, in request order — so a
+// request can be made to resolve after the one that followed it.
+type ResolveList = (names: string[]) => void;
+
+const toListResponse = (names: string[]) => ({
+  data: names.map((name) => ({ name })),
+  paging: {},
+});
+
+const deferListResponses = (count: number): ResolveList[] => {
+  const resolvers: ResolveList[] = [];
+  const deferred = () =>
+    new Promise((resolve) => {
+      resolvers.push((names) => resolve(toListResponse(names)));
+    });
+  for (let i = 0; i < count; i++) {
+    (getDatabases as jest.Mock).mockImplementationOnce(deferred);
+  }
+
+  return resolvers;
+};
 
 // ── Tests ─────────────────────────────────────────────────────────────────
 
@@ -620,6 +647,36 @@ describe('ConnectionServiceDetailsPage', () => {
       });
 
       expect(getDatabases).not.toHaveBeenCalled();
+    });
+
+    it('keeps the latest page when an earlier request resolves after it', async () => {
+      const pendingPages = deferListResponses(2);
+      const { rerender } = render(<ConnectionServiceDetailsPage />);
+      await waitFor(() => expect(getDatabases).toHaveBeenCalledTimes(1));
+
+      mockPagingCursor.cursorType = 'after';
+      mockPagingCursor.cursorValue = 'cursor-2';
+      rerender(<ConnectionServiceDetailsPage />);
+      await waitFor(() => expect(getDatabases).toHaveBeenCalledTimes(2));
+
+      await act(async () => pendingPages[1](['page-two']));
+      await act(async () => pendingPages[0](['page-one']));
+
+      expect(screen.getByText('page-two')).toBeInTheDocument();
+      expect(screen.queryByText('page-one')).not.toBeInTheDocument();
+    });
+
+    it('drops a list request still in flight once a search takes over', async () => {
+      const pendingLists = deferListResponses(1);
+      const { rerender } = render(<ConnectionServiceDetailsPage />);
+      await waitFor(() => expect(getDatabases).toHaveBeenCalledTimes(1));
+
+      mockTableFilters.schema = 'sales';
+      rerender(<ConnectionServiceDetailsPage />);
+      await act(async () => pendingLists[0](['unfiltered']));
+
+      expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
+      expect(screen.queryByText('unfiltered')).not.toBeInTheDocument();
     });
   });
 

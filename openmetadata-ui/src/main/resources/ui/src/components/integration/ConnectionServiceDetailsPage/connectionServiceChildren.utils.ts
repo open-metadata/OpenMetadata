@@ -38,40 +38,59 @@ type ServiceChildrenFetcher = (
 ) => Promise<PagingResponse<ServicePageData[]>>;
 
 // Containers, search indexes and directories nest; `root` keeps the list to the top level, as
-// classic service details does.
-const SERVICE_CHILDREN_FETCHERS: Partial<
-  Record<ServiceCategory, ServiceChildrenFetcher>
-> = {
-  [ServiceCategory.DATABASE_SERVICES]: ({ service, fields, paging, include }) =>
-    getDatabases(service, fields, paging, include),
-  [ServiceCategory.MESSAGING_SERVICES]: ({
-    service,
-    fields,
-    paging,
-    include,
-  }) => getTopics(service, fields, paging, include),
-  [ServiceCategory.DASHBOARD_SERVICES]: ({
-    service,
-    fields,
-    paging,
-    include,
-  }) => getDashboards(service, fields, paging, include),
-  [ServiceCategory.PIPELINE_SERVICES]: ({ service, fields, paging, include }) =>
-    getPipelines(service, fields, paging, include),
-  [ServiceCategory.ML_MODEL_SERVICES]: ({ service, fields, paging, include }) =>
-    getMlModels(service, fields, paging, include),
-  [ServiceCategory.STORAGE_SERVICES]: (params) =>
-    getContainers({ ...params, root: true }),
-  [ServiceCategory.SEARCH_SERVICES]: (params) =>
-    getSearchIndexes({ ...params, root: true }),
-  [ServiceCategory.API_SERVICES]: getApiCollections,
-  [ServiceCategory.DRIVE_SERVICES]: (params) =>
-    getDriveAssets<Directory>(EntityType.DIRECTORY, { ...params, root: true }),
-};
+// classic service details does. A Map, not an object literal: the category comes from the URL, and
+// an object would also answer inherited keys such as `constructor`.
+const SERVICE_CHILDREN_FETCHERS = new Map<
+  ServiceCategory,
+  ServiceChildrenFetcher
+>([
+  [
+    ServiceCategory.DATABASE_SERVICES,
+    ({ service, fields, paging, include }) =>
+      getDatabases(service, fields, paging, include),
+  ],
+  [
+    ServiceCategory.MESSAGING_SERVICES,
+    ({ service, fields, paging, include }) =>
+      getTopics(service, fields, paging, include),
+  ],
+  [
+    ServiceCategory.DASHBOARD_SERVICES,
+    ({ service, fields, paging, include }) =>
+      getDashboards(service, fields, paging, include),
+  ],
+  [
+    ServiceCategory.PIPELINE_SERVICES,
+    ({ service, fields, paging, include }) =>
+      getPipelines(service, fields, paging, include),
+  ],
+  [
+    ServiceCategory.ML_MODEL_SERVICES,
+    ({ service, fields, paging, include }) =>
+      getMlModels(service, fields, paging, include),
+  ],
+  [
+    ServiceCategory.STORAGE_SERVICES,
+    (params) => getContainers({ ...params, root: true }),
+  ],
+  [
+    ServiceCategory.SEARCH_SERVICES,
+    (params) => getSearchIndexes({ ...params, root: true }),
+  ],
+  [ServiceCategory.API_SERVICES, getApiCollections],
+  [
+    ServiceCategory.DRIVE_SERVICES,
+    (params) =>
+      getDriveAssets<Directory>(EntityType.DIRECTORY, {
+        ...params,
+        root: true,
+      }),
+  ],
+]);
 
 /** Top-level child assets of a service; `undefined` for a category that lists none. */
 export const fetchServiceChildren = (
   serviceCategory: ServiceCategory,
   params: ServiceChildrenParams
 ): Promise<PagingResponse<ServicePageData[]>> | undefined =>
-  SERVICE_CHILDREN_FETCHERS[serviceCategory]?.(params);
+  SERVICE_CHILDREN_FETCHERS.get(serviceCategory)?.(params);

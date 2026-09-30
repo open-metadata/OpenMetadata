@@ -80,6 +80,12 @@ describe('fetchServiceChildren', () => {
     });
   });
 
+  it('lists nothing for a category it does not know, inherited object keys included', () => {
+    expect(
+      fetchServiceChildren('constructor' as ServiceCategory, PARAMS)
+    ).toBeUndefined();
+  });
+
   it('lists nothing for a service category without child assets', () => {
     expect(
       fetchServiceChildren(ServiceCategory.METADATA_SERVICES, PARAMS)
