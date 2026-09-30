@@ -8247,4 +8247,42 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
               assertTrue(response.contains("\"type\":\"table\""), "entity.type indexed");
             });
   }
+
+  @Test
+  void addResult_keepsOwnersInSearchDoc(TestNamespace ns) throws Exception {
+    DataContract contract = createEntity(createMinimalRequest(ns));
+    String ownerName = ("dc_result_owner_" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    User owner =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(ownerName)
+                    .withEmail(ownerName + "@test.openmetadata.org"));
+    String ownerId = owner.getId().toString();
+    contract.setOwners(List.of(owner.getEntityReference()));
+    SdkClients.adminClient().dataContracts().update(contract.getId().toString(), contract);
+
+    String marker = "keep-owners-" + ns.uniqueShortId();
+    SdkClients.adminClient()
+        .dataContracts()
+        .addResult(
+            contract.getId(),
+            new DataContractResult()
+                .withDataContractFQN(contract.getFullyQualifiedName())
+                .withTimestamp(System.currentTimeMillis())
+                .withContractExecutionStatus(ContractExecutionStatus.Failed)
+                .withResult(marker)
+                .withExecutionTime(1L));
+
+    Awaitility.await("contract doc reflects the new result")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertTrue(searchForEntity(contract.getId().toString()).contains(marker)));
+    assertTrue(
+        searchForEntity(contract.getId().toString()).contains(ownerId),
+        "recording a result must not drop owners from the search doc");
+  }
 }

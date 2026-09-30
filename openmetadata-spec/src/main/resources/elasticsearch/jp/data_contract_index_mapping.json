@@ -497,7 +497,8 @@
             "type": "text",
             "fields": {
               "keyword": {
-                "type": "keyword"
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
               }
             }
           },
@@ -549,7 +550,8 @@
             "type": "text",
             "fields": {
               "keyword": {
-                "type": "keyword"
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
               }
             }
           },

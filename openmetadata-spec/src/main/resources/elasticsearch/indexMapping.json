@@ -624,9 +624,7 @@
     "indexName": "data_contract_search_index",
     "indexMappingFile": "/elasticsearch/%s/data_contract_index_mapping.json",
     "alias": "dataContract",
-    "parentAliases": [
-      "all"
-    ],
+    "parentAliases": [],
     "childAliases": []
   },
   "mcpServer": {
