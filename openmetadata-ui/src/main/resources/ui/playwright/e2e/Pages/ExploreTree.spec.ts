@@ -206,8 +206,9 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page
         .getByTestId('explore-tree')
-        .getByRole('row', {
-          has: page.getByTestId('explore-tree-title-Governance'),
+        .getByRole('row')
+          .filter({
+            has: page.getByTestId('explore-tree-title-Governance'),
         })
         .getByTestId('tree-expand-btn')
         .click();
@@ -418,14 +419,14 @@ test.describe('Explore page', () => {
 
   test('Check the listing of tags', async ({ page }) => {
     await page
-      .locator('div')
-      .filter({ hasText: /^Governance$/ })
-      .locator('svg')
-      .first()
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({ has: page.getByTestId('explore-tree-title-Governance') })
+      .getByTestId('tree-expand-btn')
       .click();
 
-    await expect(page.getByRole('tree')).toContainText('Glossaries');
-    await expect(page.getByRole('tree')).toContainText('Tags');
+    await expect(page.getByRole('treegrid')).toContainText('Glossaries');
+    await expect(page.getByRole('treegrid')).toContainText('Tags');
 
     // The tree fires size=0 count queries on the dataAsset index alongside the
     // main results query; match the results query (non-zero size) so the hits
@@ -475,8 +476,9 @@ test.describe('Explore page', () => {
 
     await page
       .getByTestId('explore-tree')
-      .getByRole('row', {
-        has: page.getByTestId('explore-tree-title-Dashboards'),
+      .getByRole('row')
+        .filter({
+          has: page.getByTestId('explore-tree-title-Dashboards'),
       })
       .getByTestId('tree-expand-btn')
       .click();
@@ -486,8 +488,9 @@ test.describe('Explore page', () => {
 
     await page
       .getByTestId('explore-tree')
-      .getByRole('row', {
-        has: page.getByTestId('explore-tree-title-superset'),
+      .getByRole('row')
+        .filter({
+          has: page.getByTestId('explore-tree-title-superset'),
       })
       .getByTestId('tree-expand-btn')
       .click();
@@ -499,8 +502,9 @@ test.describe('Explore page', () => {
 
     await page
       .getByTestId('explore-tree')
-      .getByRole('row', {
-        has: page.getByTestId(`explore-tree-title-${serviceName}`),
+      .getByRole('row')
+        .filter({
+          has: page.getByTestId(`explore-tree-title-${serviceName}`),
       })
       .getByTestId('tree-expand-btn')
       .click();

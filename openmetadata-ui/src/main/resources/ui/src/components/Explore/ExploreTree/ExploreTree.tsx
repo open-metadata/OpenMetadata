@@ -600,9 +600,6 @@ const ExploreTree = ({
       if (!hasLoadedOnceRef.current || !preserveExpandedTree) {
         setIsLoading(true);
       }
-      if (!preserveExpandedTree) {
-        requestedKeysRef.current.clear();
-      }
       const filterMust = [
         ...getQuickFilterMust(parsedSearch.quickFilter),
         ...getQueryFilterMust(additionalQueryFilter),
@@ -648,6 +645,13 @@ const ExploreTree = ({
         key: presenceCacheKey,
         buckets: presenceBuckets,
       };
+      // Cleared only now, alongside the rebuild: clearing when the fetch starts
+      // lets the lazy-load effect of that same commit (isLoading not yet true)
+      // re-mark the still-loaded roots as requested, so the rebuilt, childless
+      // roots would never re-fetch on their existing expansion.
+      if (!preserveExpandedTree) {
+        requestedKeysRef.current.clear();
+      }
 
       // Rebuild the root set from the present static roots so a category an
       // earlier text query dropped can reappear and its counts re-scope to the

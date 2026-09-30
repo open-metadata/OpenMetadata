@@ -721,6 +721,10 @@ describe('ExploreTree', () => {
     await waitFor(() => {
       expect(queryByText('bigquery_prod')).not.toBeInTheDocument();
     });
+
+    // The still-expanded Databases root must re-fetch its children after the
+    // rebuild, otherwise it stays expanded but empty.
+    expect(await findByText('BigQuery')).toBeInTheDocument();
   });
 
   it('does not leak the browse flag from a no-op re-select into a filter change', async () => {

@@ -484,8 +484,9 @@ test.describe(
       ).toBeVisible();
       await page
         .getByTestId('explore-tree')
-        .getByRole('row', {
-          has: page.getByTestId('explore-tree-title-Governance'),
+        .getByRole('row')
+          .filter({
+            has: page.getByTestId('explore-tree-title-Governance'),
         })
         .getByTestId('tree-expand-btn')
         .click();

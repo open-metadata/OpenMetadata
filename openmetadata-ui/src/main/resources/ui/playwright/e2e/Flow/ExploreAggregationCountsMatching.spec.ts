@@ -86,7 +86,7 @@ const isTabResultsResponse = (response: Response, index?: string) => {
 };
 
 const getSelectedTab = (page: Page, tabTestId: string): Locator =>
-  page.locator('.ant-menu-item-selected').getByTestId(tabTestId);
+  page.getByRole('tab', { selected: true }).and(page.getByTestId(tabTestId));
 
 type TabSearchBody = {
   hits: {

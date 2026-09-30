@@ -1207,7 +1207,10 @@ export const verifyDomainPropagation = async (
   await waitForAllLoadersToDisappear(page);
 
   if (exploreTabName) {
-    await page.getByRole('menuitem', { name: exploreTabName }).click();
+    await page
+      .getByTestId('explore-left-panel')
+      .getByRole('tab', { name: exploreTabName })
+      .click();
     await waitForAllLoadersToDisappear(page);
   }
 
