@@ -586,7 +586,7 @@ test.describe('Bulk Edit Entity', () => {
     await afterAction();
   });
 
-  test('Table', async ({ page }) => {
+  test('Table', { tag: '@quarantine' }, async ({ page }) => {
     test.slow(true);
 
     const tableEntity = new TableClass();

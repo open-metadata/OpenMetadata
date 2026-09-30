@@ -22,6 +22,7 @@ import {
 } from '@untitledui/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
+import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
@@ -30,6 +31,7 @@ import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
+import BotsPanel from './tabs/bots/BotsPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
@@ -39,6 +41,7 @@ export type ProfileNavId =
   | 'access-token'
   | 'my-connections'
   | 'access-control'
+  | 'bots'
   | 'custom-properties'
   | 'notification';
 
@@ -173,6 +176,18 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <AccessControlPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'bots',
+    group: 'administration',
+    label: 'label.bot-plural',
+    description: 'message.page-sub-header-for-bots',
+    icon: BotIcon as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <BotsPanel onHeaderChange={onHeaderChange} />
     ),
   },
   // The "My Connections" tab is contributed by the Query Runner plugin through

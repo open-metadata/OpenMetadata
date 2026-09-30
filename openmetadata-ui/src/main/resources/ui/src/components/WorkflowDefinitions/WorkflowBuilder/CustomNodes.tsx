@@ -32,7 +32,7 @@ export const StartNode: React.FC<NodeProps<CustomNodeData>> = () => {
 
   return (
     <Card
-      className="tw:flex tw:items-center tw:rounded-full tw:relative tw:overflow-visible"
+      className="tw:flex tw:items-center tw:rounded-full tw:relative tw:overflow-visible tw:bg-canvas"
       data-testid="workflow-start-node">
       <div className="tw:flex tw:items-center tw:justify-center tw:p-1.5">
         {getCanvasNodeIcon(NodeSubType.StartEvent, {
@@ -42,7 +42,7 @@ export const StartNode: React.FC<NodeProps<CustomNodeData>> = () => {
       <div className="tw:pl-1.5 tw:pr-5.5">
         <Typography
           className="tw:m-0 tw:text-primary"
-          size="text-lg"
+          size="text-sm"
           weight="medium">
           {t('label.start')}
         </Typography>
@@ -67,7 +67,7 @@ export const EndNode: React.FC<NodeProps<CustomNodeData>> = () => {
 
   return (
     <Card
-      className="tw:flex tw:items-center tw:rounded-full tw:relative tw:overflow-visible"
+      className="tw:flex tw:items-center tw:rounded-full tw:relative tw:overflow-visible tw:bg-canvas"
       data-testid="workflow-end-node">
       <Handle
         className={HANDLE_CLASS_NAME}
@@ -88,7 +88,7 @@ export const EndNode: React.FC<NodeProps<CustomNodeData>> = () => {
       <div className="tw:pl-1.5 tw:pr-5.5">
         <Typography
           className="tw:m-0 tw:text-primary"
-          size="text-lg"
+          size="text-sm"
           weight="medium">
           {t('label.end')}
         </Typography>
@@ -105,7 +105,7 @@ export const AutomatedTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
   // `ring-inset`, so it drew outward from the border box — outline-offset 0 (the default)
   // reproduces that exactly.
   const nodeClassName = classNames(
-    'tw:min-w-66 tw:relative tw:overflow-visible tw:transition-all tw:duration-200 tw:hover:outline-2 tw:hover:outline-brand-solid',
+    'tw:min-w-66 tw:relative tw:overflow-visible tw:bg-canvas tw:transition-all tw:duration-200 tw:hover:outline-2 tw:hover:outline-brand-solid',
     { 'tw:outline-2 tw:outline-brand-solid': selected }
   );
 
@@ -128,7 +128,7 @@ export const AutomatedTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
       />
 
       <div className="tw:p-3 tw:rounded-lg tw:flex tw:items-center tw:gap-2">
-        <div className="tw:w-4 tw:h-4 tw:bg-surface tw:rounded-sm tw:flex tw:items-center tw:justify-center">
+        <div className="tw:w-4 tw:h-4 tw:bg-canvas tw:rounded-sm tw:flex tw:items-center tw:justify-center">
           {getCanvasNodeIcon(data.subType, {
             size: 'sm',
           })}
@@ -171,7 +171,7 @@ export const UserTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
   // `ring-inset`, so it drew outward from the border box — outline-offset 0 (the default)
   // reproduces that exactly.
   const nodeClassName = classNames(
-    'tw:min-w-66 tw:relative tw:overflow-visible tw:transition-all tw:duration-200 tw:hover:outline-2 tw:hover:outline-brand-solid',
+    'tw:min-w-66 tw:relative tw:overflow-visible tw:bg-canvas tw:transition-all tw:duration-200 tw:hover:outline-2 tw:hover:outline-brand-solid',
     { 'tw:outline-2 tw:outline-brand-solid': selected }
   );
 
@@ -193,7 +193,7 @@ export const UserTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         type="target"
       />
       <div className="tw:px-4 tw:py-3 tw:rounded-lg tw:flex tw:items-center tw:gap-2">
-        <div className="tw:w-4 tw:h-4 tw:bg-surface tw:rounded-sm tw:flex tw:items-center tw:justify-center">
+        <div className="tw:w-4 tw:h-4 tw:bg-canvas tw:rounded-sm tw:flex tw:items-center tw:justify-center">
           {getCanvasNodeIcon(data.subType, {
             size: 'sm',
           })}

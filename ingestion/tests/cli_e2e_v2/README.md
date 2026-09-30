@@ -1,7 +1,13 @@
 # CLI E2E v2
 
 Real source → `metadata` subprocess → real OpenMetadata sink/server → persisted SDK observations.
-MySQL is the reference connector. Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
+MySQL is the reference connector; BigQuery is the first cloud-warehouse migration (see [BigQuery](#bigquery)) and Oracle the first with a container of its own (see [Oracle](#oracle)). Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
+
+| Connector | Source ownership | v1 path it replaces |
+|---|---|---|
+| `mysql` | disposable testcontainers MySQL + restricted account, fresh schema per test | `cli_e2e/test_cli_mysql.py` |
+| `bigquery` | fresh labelled dataset per test in two real GCP projects | `cli_e2e/test_cli_bigquery.py`, `cli_e2e/test_cli_bigquery_multiple_project.py` |
+| `oracle` | disposable testcontainers Oracle + restricted account, fresh schema (an Oracle user) per test | `cli_e2e/test_cli_oracle.py` |
 
 ## Run
 
@@ -44,47 +50,12 @@ cli_e2e_v2/
   features/database/   generated pipeline options, catalog/profile/sample/lineage checks
   contracts/           coverage inventory, collection validation, required-result enforcement
   mysql/               owned source, context, expectations, checks, named feature tests
-  oracle/              same layout; schema-per-user source, DBA_ dictionary scoping
+  bigquery/            owned datasets in two GCP projects, same layout as mysql/ plus test_data_quality.py
+  oracle/              owned container and one Oracle user per test, same layout as mysql/
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
   conftest.py          shared fixtures and thin pytest hooks
 ```
-
-Oracle differs from MySQL in two ways worth knowing before reading its suite. A schema *is* a
-user, so `fresh_oracle_source` creates and `DROP USER ... CASCADE`s one account per test rather
-than a database. And the connector reads the `DBA_` dictionary views by default, so an unscoped
-run would discover every schema in the instance — `oracle_invocation` therefore applies an
-anchored `schemaFilterPattern` over the owned schemas unless a case supplies its own. MySQL
-scopes through `databaseSchema` on the connection instead; Oracle cannot, because
-`oracleConnectionType` accepts a service name or a schema, never both.
-
-Running the Oracle suite against a **Collate** virtualenv needs care: its `metadata` entry point is
-`metadata.collate_cmd`, which exists only in the installed package. Putting an OSS checkout's
-`ingestion/src` first on `PYTHONPATH` shadows the package, and every CLI invocation then dies at
-import before writing a status file — which surfaces as `CLI status is missing or malformed`, not as
-an import error. Install the checkout (`pip install -e 'ingestion[test]'`) instead of shadowing it,
-so the CLI subprocess and the test process agree on which connector source is under test. CI does
-this already; only mixed local environments hit it.
-
-Oracle identifiers are declared lowercase in `baseline.py` and emitted unquoted, so Oracle folds
-them to uppercase in the data dictionary. What OM stores is not uniform, and `expected.py` encodes
-the real behaviour rather than an idealised one:
-
-| Entity | Case in OM |
-|---|---|
-| database | `default` — not the Oracle service name |
-| schema | lowercase |
-| tables | **UPPERCASE** — the dictionary name, verbatim |
-| views | lowercase — keyed through `str.lower` in the view-definition cache |
-| columns | lowercase — normalised in `get_columns` |
-| stored procedures | **UPPERCASE** — read from the dictionary directly |
-
-The table/view split is pre-existing and costs users nothing, so it is deliberately left alone:
-normalising table names would rename every existing Oracle table's FQN. Filter patterns are
-compiled with `re.IGNORECASE`, so a lowercase pattern still matches an uppercase table.
-
-Hand-written DDL in `baseline.py` must leave the schema unquoted — quoting it looks for a lowercase
-user that `CREATE USER` never created.
 
 MySQL tests explicitly call `cli.run(mysql.invocation(options))`, then `expect.poll(query).satisfies(check)`. The `mysql` context binds source identity, configuration, and fresh queries; it does not run ingestion, own cleanup, or cache observations. Fixtures provision the source and service, while named pytest tests show the actions and assertions in execution order.
 
@@ -132,3 +103,125 @@ Temporary `config.yaml` and `status.json` files are test input and status-valida
 Use the CI provider's native secret masks for actual configured and generated credentials before any command can print them. Masking is not a detector for unknown secrets. Test product redaction with synthetic values in focused tests; this E2E harness does not scrub output to conceal a product redaction defect.
 
 CI log masking does not sanitize JUnit files. Avoid `--showlocals` with real credentials, and review any report-upload policy separately.
+
+## BigQuery
+
+BigQuery cannot run in a container, so `bigquery/` owns one fresh dataset per test (`e2e_bq_<uuid>`,
+label `owner=cli-e2e-v2`, 24h default table expiration as a leak safety net) and deletes it with its
+contents on success and failure. Every workflow carries an anchored `schemaFilterPattern` for the
+owned datasets, because the projects also hold unowned data; the invocation helper rejects a schema
+filter without explicit includes. Missing credentials are errors, not skips.
+
+```bash
+export E2E_BQ_PROJECT_ID=...        # primary project: owned datasets, ingested as the OM database
+export E2E_BQ_PROJECT_ID2=...       # second project: multi-project scenarios and billingProjectId
+export E2E_BQ_PRIVATE_KEY_ID=... E2E_BQ_PRIVATE_KEY=... E2E_BQ_CLIENT_EMAIL=...
+export E2E_BQ_LOCATION=US           # optional; dataset location and usageLocation
+python -m pytest ingestion/tests/cli_e2e_v2/bigquery --e2e-contract-check -v
+```
+
+Locally, `E2E_BQ_AUTH=adc` uses Application Default Credentials (`gcloud auth application-default login`)
+for both the fixtures and the CLI (`gcpConfig.type: gcp_adc`); the `E2E_BQ_PRIVATE_KEY*` / `E2E_BQ_CLIENT_EMAIL`
+variables are then unused. The default, `service_account`, is what CI uses.
+
+The service account needs BigQuery User (dataset create, jobs) and Data Editor on **both** projects.
+There is no restricted ingestion account: the same identity seeds and ingests.
+`E2E_BQ_PRIVATE_KEY` may use real or `\n`-escaped newlines; the session exports a single-line copy as
+`E2E_BQ_CLI_PRIVATE_KEY` because the CLI expands `${VARS}` before parsing YAML.
+Single-project runs set `billingProjectId` to the second project (as v1 did); the system-metrics
+scenario therefore issues its DML through the billing project, whose `INFORMATION_SCHEMA.JOBS`
+the connector reads, and waits until those jobs are visible before profiling.
+
+v1 → v2 mapping:
+
+| v1 behaviour | v2 contract |
+|---|---|
+| vanilla ingestion, no failures, ≥ N records | `catalog.metadata` (complete inventory, native types, keys, descriptions, view, procedure) |
+| multi-project credentials (`projectId` list) | `catalog.multi-project`, `filter.database.include-one` |
+| schema include/exclude filters | `filter.schema.include-one`, `filter.schema.exclude-wins` |
+| table include/exclude/mix filters (filtered-count floors) | `filter.table.*` (always combined with the owned-schema filter) |
+| create table + profiler | `profile.metrics` |
+| system profile INSERT/UPDATE rows | `profile.system` (also rejects sibling-table DML) |
+| profiler defaults to the latest partition | `profile.partition.default` |
+| auto-classification, 50 sample rows | `sample.limit`, `classification.tags` |
+| deleted table marked deleted | `deletion.tables` |
+| view lineage, 2 column edges | `lineage.view` |
+| `tableDiff` data-quality test | `dq.table-diff` |
+
+Added beyond v1: `procedure.code`, `fk.relationships`, `ingest.repeat`, `sample.values.native`,
+`sample.values.replacement`. v1's lineage run enabled query-log lineage but asserted only view
+lineage; query-log lineage and policy-tag taxonomies stay out of scope, as for MySQL.
+
+Fixed while migrating, each found by a strict assertion here: `NUMERIC`/`BIGNUMERIC` → `NUMERIC` and `JSON` → `JSON`
+types, per-table system metrics, foreign keys to the current database, `ARRAY`/`STRUCT` nullability constraints,
+STRUCT-subfield sampling and unique counts, and a shared-session race between profiler metric threads.
+
+Do not relax these expectations to report a green run. Running with ADC as a user without project-level
+`bigquery.tables.list` on the second project also fails `catalog.multi-project` on the region-scoped
+life-cycle query (403). That is a permission difference in the environment, not a product defect.
+
+Remove the v1 BigQuery tests and their `py-cli-e2e-tests.yml` matrix entries only after this suite has
+passed for the agreed stability window.
+
+## Oracle
+
+`oracle/` boots a disposable Oracle via testcontainers (`gvenzl/oracle-free`, digest-pinned) and
+owns one schema per test. In Oracle a schema **is** a user, so each test runs `CREATE USER` and
+tears down with `DROP USER ... CASCADE`; a separate least-privilege account does the ingesting with
+`CREATE SESSION`, `SELECT_CATALOG_ROLE` and per-object `SELECT`. No credentials or ports to manage,
+so the `E2E_ORACLE_*` secrets v1 needed are gone.
+
+```bash
+docker compose -f docker/development/docker-compose.yml up -d
+python -m pytest ingestion/tests/cli_e2e_v2/oracle --e2e-contract-check -v
+```
+
+Every workflow carries an anchored `schemaFilterPattern` for the owned schemas. The connector reads
+the `DBA_` dictionary views, so an unscoped run would discover every schema in the instance, and
+unlike MySQL there is no connection-level scope to fall back on: `oracleConnectionType` takes a
+service name *or* a `databaseSchema`, never both.
+
+**Identifier case.** `expected.py` encodes what OM actually stores, which is not uniform:
+
+| Entity | Case |
+|---|---|
+| database | `default` — not the Oracle service name |
+| schema | lowercase |
+| tables, stored procedures | **UPPERCASE** — dictionary name, verbatim |
+| views, columns | lowercase — normalised on their own paths |
+
+That split is pre-existing and costs users nothing, so this suite encodes it rather than changing
+it; normalising table names would rename every existing Oracle table's FQN. Two consequences when
+writing tests here: hand-written DDL in `baseline.py` must leave the schema **unquoted** (quoting it
+looks for a lowercase user `CREATE USER` never created), and auto-classification filter patterns
+must match the stored case — the metadata pipeline matches `tableFilterPattern` case-insensitively
+but the classification path does not, so a lowercase pattern silently selects nothing.
+
+v1 → v2 mapping:
+
+| v1 behaviour | v2 contract |
+|---|---|
+| vanilla ingestion, no failures, ≥ N records | `catalog.metadata` (complete inventory, native types, keys, descriptions, view, procedures) |
+| schema include filter | `filter.schema.include-one` |
+| table include / exclude / mix filters (filtered-count floors) | `filter.table.include-one`, `filter.table.exclude-one`, `filter.table.mix` |
+| create table + profiler | `profile.metrics` |
+| auto-classification sample data | `sample.values.original`, `sample.values.replacement`, `classification.tags` |
+| deleted table marked deleted | `deletion.tables` |
+| view lineage | `lineage.view` |
+
+Added beyond v1: `procedure.code`, `fk.relationships`, `ingest.repeat`. v1 exercised none of them.
+
+v1 tests with no v2 counterpart exercise nothing: `test_usage` has an empty body,
+`test_schema_filter_excludes` is a bare `pass`, and `test_profiler_with_time_partition` and
+`test_data_quality` guard themselves off because Oracle defines no hook for them.
+
+`error.containment` is declared `unsupported` in the inventory with its reason: Oracle keeps
+dictionary metadata for invalid views, so the reference induction produces no ingestion error.
+Neither dropping a selected column nor dropping the base table makes a view fail reflection.
+
+Fixed while migrating, found by a strict assertion here: foreign keys were silently dropped because
+`get_foreign_keys` reported `referred_table` normalised while `get_table_names` returns the
+dictionary name verbatim, so the exact-FQN lookup never matched.
+
+Remove the v1 Oracle test and its `py-cli-e2e-tests.yml` matrix entry only after this suite has
+passed for the agreed stability window.
