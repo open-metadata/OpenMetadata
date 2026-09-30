@@ -4240,6 +4240,7 @@
     "import-odps-description": "Open Data Product Standard (ODPS) v4.1 YAML मधून डेटा उत्पादन आयात करा.",
     "import-ontology-accepts": "OWL (RDF/XML), Turtle, आणि N-Triples स्वीकारते. importRdf पुन्हा वापरते — तुम्ही पुष्टी करेपर्यंत काहीही लिहिले जात नाही.",
     "import-ontology-help": "शब्दकोश संज्ञा आणि संबंध तयार करण्यासाठी OWL/RDF ऑन्टोलॉजी फाइल (Turtle, RDF/XML, N-Triples) अपलोड करा.",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "शब्दकोशाला पुनरावलोकक आहेत → आयात केलेल्या संज्ञा मसुद्यात जातात.",
     "import-terms-into-glossary": "{{glossary}} मध्ये संज्ञा आयात करा.",
     "importing-entity": "Importing {{entity}}...",

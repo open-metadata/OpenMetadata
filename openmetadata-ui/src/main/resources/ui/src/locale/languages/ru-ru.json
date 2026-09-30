@@ -4240,6 +4240,7 @@
     "import-odps-description": "Импортировать продукт данных из YAML Open Data Product Standard (ODPS) v4.1.",
     "import-ontology-accepts": "Принимает OWL (RDF/XML), Turtle и N-Triples. Повторно использует importRdf — ничего не записывается, пока вы не подтвердите.",
     "import-ontology-help": "Загрузите файл онтологии OWL/RDF (Turtle, RDF/XML, N-Triples), чтобы создать термины глоссария и связи.",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "В глоссарии есть согласующие → импортированные термины переходят в Черновик.",
     "import-terms-into-glossary": "Импортировать термины в {{glossary}}.",
     "importing-entity": "Импорт {{entity}}...",

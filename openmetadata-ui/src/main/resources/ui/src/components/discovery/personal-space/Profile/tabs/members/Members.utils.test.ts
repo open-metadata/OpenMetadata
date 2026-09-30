@@ -11,10 +11,52 @@
  *  limitations under the License.
  */
 
-import { formatOnlineStatus } from './Members.utils';
+import {
+    formatOnlineStatus,
+    hashSubPathToView,
+    viewToSubPath
+} from './Members.utils';
 
 const t = (key: string, params?: Record<string, string | number>) =>
   params ? `${key}${JSON.stringify(params)}` : key;
+
+describe('hash <-> view round-trip', () => {
+  it('encodes and decodes a team fqn containing special characters', () => {
+    const fqn = 'PW%data_consumer_team-131661dd';
+    const subPath = viewToSubPath({ type: 'team-detail', fqn, name: fqn });
+
+    expect(subPath).toBe(`teams/${encodeURIComponent(fqn)}`);
+    expect(hashSubPathToView(subPath as string)).toEqual({
+      type: 'team-detail',
+      fqn,
+      name: fqn,
+    });
+  });
+
+  it('round-trips a dotted team fqn', () => {
+    const fqn = 'Engineering.Data.Platform';
+    const view = hashSubPathToView(
+      viewToSubPath({ type: 'team-detail', fqn, name: fqn }) as string
+    );
+
+    expect(view).toEqual({ type: 'team-detail', fqn, name: fqn });
+  });
+
+  it('maps teams/add to the add view (not a team named "add")', () => {
+    expect(hashSubPathToView('teams/add')).toEqual({ type: 'teams-add' });
+  });
+
+  it('round-trips the team import view', () => {
+    const fqn = 'PW%data_consumer_team-131661dd';
+    const subPath = viewToSubPath({ type: 'team-import', fqn });
+
+    expect(subPath).toBe(`teams/${encodeURIComponent(fqn)}/import`);
+    expect(hashSubPathToView(subPath as string)).toEqual({
+      type: 'team-import',
+      fqn,
+    });
+  });
+});
 
 describe('formatOnlineStatus', () => {
 

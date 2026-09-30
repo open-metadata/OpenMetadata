@@ -4240,6 +4240,7 @@
     "import-odps-description": "یک محصول داده را از YAML استاندارد Open Data Product Standard (ODPS) v4.1 وارد کنید.",
     "import-ontology-accepts": "OWL (RDF/XML)، Turtle و N-Triples را می‌پذیرد. از importRdf دوباره استفاده می‌کند — تا زمانی که تأیید نکنید چیزی نوشته نمی‌شود.",
     "import-ontology-help": "یک فایل آنتولوژی OWL/RDF (Turtle، RDF/XML، N-Triples) بارگذاری کنید تا اصطلاحات واژه‌نامه و روابط ایجاد شوند.",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "فرهنگ‌نامه بررسی‌کننده دارد → واژه‌های واردشده به پیش‌نویس می‌روند.",
     "import-terms-into-glossary": "وارد کردن اصطلاحات به {{glossary}}.",
     "importing-entity": "در حال وارد کردن {{entity}}...",

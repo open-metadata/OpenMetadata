@@ -12,7 +12,6 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
 const mockGetUsers = jest.fn().mockResolvedValue({

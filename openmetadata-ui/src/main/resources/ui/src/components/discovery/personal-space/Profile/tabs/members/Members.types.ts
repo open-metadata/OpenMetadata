@@ -17,6 +17,7 @@ export type MembersView =
   | { type: 'landing' }
   | { type: 'teams' }
   | { type: 'team-detail'; fqn: string; name: string }
+  | { type: 'team-import'; fqn: string }
   | { type: 'teams-add'; parentFqn?: string }
   | { type: 'users' }
   | { type: 'admins' }

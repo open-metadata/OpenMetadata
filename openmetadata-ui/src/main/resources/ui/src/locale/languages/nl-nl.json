@@ -4240,6 +4240,7 @@
     "import-odps-description": "Importeer een dataproduct uit Open Data Product Standard (ODPS) v4.1 YAML.",
     "import-ontology-accepts": "Accepteert OWL (RDF/XML), Turtle en N-Triples. Hergebruikt importRdf — er wordt niets geschreven totdat u bevestigt.",
     "import-ontology-help": "Upload een OWL/RDF-ontologiebestand (Turtle, RDF/XML, N-Triples) om woordenlijsttermen en relaties te maken.",
+    "import-result-summary": "{{passed}} passed, {{failed}} failed out of {{processed}} rows.",
     "import-terms-enter-draft": "Woordenboek heeft reviewers → geïmporteerde termen komen in Concept.",
     "import-terms-into-glossary": "Termen importeren in {{glossary}}.",
     "importing-entity": "Importing {{entity}}...",

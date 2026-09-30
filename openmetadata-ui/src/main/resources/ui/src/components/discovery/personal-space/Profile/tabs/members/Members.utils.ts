@@ -13,6 +13,45 @@
 
 import type { MembersView, OnlineStatusInfo } from './Members.types';
 
+const TEAMS = 'teams';
+const USERS = 'users';
+const ADMINS = 'admins';
+const ADD = 'add';
+const CREATE = 'create';
+const IMPORT = 'import';
+const ONLINE_USERS = 'online-users';
+
+// fqns are URL-encoded in the hash to survive the round-trip (they can contain
+// `%`, `.`, `/`); decode the fqn segments back here.
+function parseTeamsSubPath(parts: string[]): MembersView {
+  if (parts.length === 1) {
+    return { type: 'teams' };
+  }
+
+  const last = parts[parts.length - 1];
+
+  if (last === ADD) {
+    // `teams/add` = top-level; `teams/<parentFqn>/add` = child under a parent.
+    const parentFqn =
+      parts.length === 2
+        ? undefined
+        : decodeURIComponent(parts.slice(1, -1).join('/'));
+
+    return { type: 'teams-add', parentFqn };
+  }
+
+  if (last === IMPORT) {
+    return {
+      type: 'team-import',
+      fqn: decodeURIComponent(parts.slice(1, -1).join('/')),
+    };
+  }
+
+  const fqn = decodeURIComponent(parts.slice(1).join('/'));
+
+  return { type: 'team-detail', fqn, name: fqn };
+}
+
 export function hashSubPathToView(subPath: string): MembersView {
   if (!subPath) {
     return { type: 'landing' };
@@ -20,64 +59,58 @@ export function hashSubPathToView(subPath: string): MembersView {
 
   const parts = subPath.split('/');
 
-  if (parts[0] === 'teams') {
-    if (parts.length === 1) {
-      return { type: 'teams' };
-    }
-
-    if (parts[1] === 'add') {
-      return { type: 'teams-add' };
-    }
-
-    const fqn = parts.slice(1).join('/');
-
-    return { type: 'team-detail', fqn, name: parts[1] };
+  switch (parts[0]) {
+    case TEAMS:
+      return parseTeamsSubPath(parts);
+    case USERS:
+      return parts[1] === CREATE
+        ? { type: 'user-create', isAdmin: false }
+        : { type: 'users' };
+    case ADMINS:
+      return parts[1] === CREATE
+        ? { type: 'user-create', isAdmin: true }
+        : { type: 'admins' };
+    case ONLINE_USERS:
+      return { type: 'online-users' };
+    default:
+      return { type: 'landing' };
   }
+}
 
-  if (parts[0] === 'users') {
-    if (parts[1] === 'create') {
-      return { type: 'user-create', isAdmin: false };
-    }
-
-    return { type: 'users' };
+function teamsViewToSubPath(view: MembersView): string {
+  switch (view.type) {
+    case 'team-detail':
+      return `${TEAMS}/${encodeURIComponent(view.fqn)}`;
+    case 'team-import':
+      return `${TEAMS}/${encodeURIComponent(view.fqn)}/${IMPORT}`;
+    case 'teams-add':
+      return view.parentFqn
+        ? `${TEAMS}/${encodeURIComponent(view.parentFqn)}/${ADD}`
+        : `${TEAMS}/${ADD}`;
+    default:
+      return TEAMS;
   }
-
-  if (parts[0] === 'admins') {
-    if (parts[1] === 'create') {
-      return { type: 'user-create', isAdmin: true };
-    }
-
-    return { type: 'admins' };
-  }
-
-  if (parts[0] === 'online-users') {
-    return { type: 'online-users' };
-  }
-
-  return { type: 'landing' };
 }
 
 export function viewToSubPath(view: MembersView): string | undefined {
-  switch (view.type) {
-    case 'landing':
-      return undefined;
-    case 'teams':
-      return 'teams';
-    case 'team-detail':
-      return `teams/${view.fqn}`;
-    case 'teams-add':
-      return 'teams/add';
-    case 'users':
-      return 'users';
-    case 'admins':
-      return 'admins';
-    case 'user-create':
-      return view.isAdmin ? 'admins/create' : 'users/create';
-    case 'online-users':
-      return 'online-users';
-    default:
-      return undefined;
+  if (view.type === 'landing') {
+    return undefined;
   }
+  if (view.type === 'users') {
+    return USERS;
+  }
+  if (view.type === 'admins') {
+    return ADMINS;
+  }
+  if (view.type === 'online-users') {
+    return ONLINE_USERS;
+  }
+  if (view.type === 'user-create') {
+    return view.isAdmin ? `${ADMINS}/${CREATE}` : `${USERS}/${CREATE}`;
+  }
+
+  // teams, team-detail, team-import, teams-add
+  return teamsViewToSubPath(view);
 }
 
 const MINUTES_IN_HOUR = 60;
