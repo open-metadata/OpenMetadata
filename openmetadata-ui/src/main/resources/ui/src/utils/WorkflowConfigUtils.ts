@@ -224,3 +224,26 @@ export const buildFieldOptions = (
 
   return options;
 };
+
+/**
+ * Maps each entity-specific trigger field to the one selected entity type it belongs to, so the
+ * field picker can group it under that type. A field shared by several selected types is left
+ * ungrouped: the trigger matches it on every type that has it, so naming one type would mislead.
+ */
+export const buildEntityFieldGroups = (
+  entitySpecific: Record<string, string[]>,
+  selectedEntityTypes: string[]
+): Record<string, string> => {
+  const owners: Record<string, string[]> = {};
+  selectedEntityTypes.forEach((entityType) => {
+    (entitySpecific[entityType] ?? []).forEach((field) => {
+      owners[field] = [...(owners[field] ?? []), entityType];
+    });
+  });
+
+  return Object.fromEntries(
+    Object.entries(owners)
+      .filter(([, entityTypes]) => entityTypes.length === 1)
+      .map(([field, [entityType]]) => [field, entityType])
+  );
+};
