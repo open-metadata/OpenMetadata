@@ -33,11 +33,10 @@ export const TrendUp02: FC<Props> = ({
     width={size}
     {...props}>
     <path
-      d="m16.667 5-6.392 6.392c-.279.279-.418.418-.579.472a.68.68 0 0 1-.435 0c-.161-.054-.3-.193-.579-.472L6.775 9.485c-.279-.279-.418-.418-.579-.472a.68.68 0 0 0-.435 0c-.161.054-.3.193-.579.472L1.667 13"
+      d="m5.832 14.165 8.333-8.333m0 8.333V5.832H5.832"
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <path d="M16.667 9.167V5H12.5" stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 TrendUp02.displayName = 'TrendUp02';
