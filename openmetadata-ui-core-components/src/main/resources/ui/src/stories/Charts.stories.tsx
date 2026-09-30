@@ -23,6 +23,7 @@ import {
   PieChart,
 } from '../charts';
 import type { GeoJson } from '../charts';
+import usStatesGeoJson from './fixtures/us-states.geo.json';
 
 const meta = {
   title: 'Charts/Overview',
@@ -119,6 +120,69 @@ const regionSales = [
   { region: 'S', value: 300 },
   { region: 'Atlantis', value: 10 },
 ];
+
+// US state geometry (Census-derived, public domain), simplified, with Alaska
+// and Hawaii moved into insets under the south-west.
+const usStates = usStatesGeoJson as GeoJson;
+
+const US_STATE_CODES: Record<string, string> = {
+  AL: 'Alabama',
+  AK: 'Alaska',
+  AZ: 'Arizona',
+  AR: 'Arkansas',
+  CA: 'California',
+  CO: 'Colorado',
+  CT: 'Connecticut',
+  DE: 'Delaware',
+  DC: 'District of Columbia',
+  FL: 'Florida',
+  GA: 'Georgia',
+  HI: 'Hawaii',
+  ID: 'Idaho',
+  IL: 'Illinois',
+  IN: 'Indiana',
+  IA: 'Iowa',
+  KS: 'Kansas',
+  KY: 'Kentucky',
+  LA: 'Louisiana',
+  ME: 'Maine',
+  MD: 'Maryland',
+  MA: 'Massachusetts',
+  MI: 'Michigan',
+  MN: 'Minnesota',
+  MS: 'Mississippi',
+  MO: 'Missouri',
+  MT: 'Montana',
+  NE: 'Nebraska',
+  NV: 'Nevada',
+  NH: 'New Hampshire',
+  NJ: 'New Jersey',
+  NM: 'New Mexico',
+  NY: 'New York',
+  NC: 'North Carolina',
+  ND: 'North Dakota',
+  OH: 'Ohio',
+  OK: 'Oklahoma',
+  OR: 'Oregon',
+  PA: 'Pennsylvania',
+  RI: 'Rhode Island',
+  SC: 'South Carolina',
+  SD: 'South Dakota',
+  TN: 'Tennessee',
+  TX: 'Texas',
+  UT: 'Utah',
+  VT: 'Vermont',
+  VA: 'Virginia',
+  WA: 'Washington',
+  WV: 'West Virginia',
+  WI: 'Wisconsin',
+  WY: 'Wyoming',
+};
+
+const assetsByState = Object.keys(US_STATE_CODES).map((region, i) => ({
+  region,
+  value: 20 + ((i * 37) % 480),
+}));
 
 const Frame = ({ children }: { children: ReactNode }) => (
   <div style={{ maxWidth: 720 }}>{children}</div>
@@ -274,6 +338,21 @@ export const GeoMap: Story = {
         geoJson={gridMap}
         mapName="story-grid"
         resolveRegion={(raw) => REGION_CODES[raw]}
+      />
+    </Frame>
+  ),
+};
+
+export const UsStatesMap: Story = {
+  render: () => (
+    <Frame>
+      <GeoMapChart
+        ariaLabel="Data assets by US state"
+        data={assetsByState}
+        geoJson={usStates}
+        height={420}
+        mapName="story-us-states"
+        resolveRegion={(code) => US_STATE_CODES[code]}
       />
     </Frame>
   ),
