@@ -339,7 +339,7 @@
     "js-yaml": "^5.4.1",
     "postcss": "8.5.23",
     "socket.io-parser": "4.2.7",
-    "undici": "^6.28.0",
+    "undici": "^6.29.0",
     "@codemirror/state": "^6",
     "@codemirror/view": "^6"
   }
