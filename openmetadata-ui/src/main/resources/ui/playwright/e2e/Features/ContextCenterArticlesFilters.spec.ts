@@ -151,6 +151,12 @@ test.describe(
         createdArticleFqns.push(fqn);
       }
 
+      // The sort tests query the Elasticsearch `page` index directly (sort by publicationDate /
+      // totalVotes cannot be served from the REST DB API), so every seeded article must be indexed
+      // before the specs run. Each create is asserted 201 above; this waits for async indexing.
+      // Residual infra risk: if the search-index consumer for `page` entities is not running or is
+      // badly backed up in the lane, indexing never completes and this times out regardless of test
+      // code — the throw names the first FQN that never appeared so the cause is unambiguous.
       await Promise.all(
         createdArticleFqns.map((fqn) =>
           waitForSearchIndexed(apiContext, fqn, 'page', { timeout: 90_000 })

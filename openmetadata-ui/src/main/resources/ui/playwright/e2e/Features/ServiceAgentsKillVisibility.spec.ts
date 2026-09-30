@@ -150,6 +150,12 @@ test.describe('Service Agents visibility after a run is killed', () => {
     await afterAction();
   });
 
+  // The list route is held open for REFETCH_HOLD_MS; without draining the handlers a still
+  // in-flight route.fetch() runs against the closing page and throws "Target page… closed".
+  test.afterEach(async ({ page }) => {
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+  });
+
   test('agents stay listed while the list refetches after a run is killed', async ({
     page,
   }) => {
