@@ -1582,6 +1582,17 @@ class TestHiveMetastoreDeltaDetection:
             result = source.query_table_names_and_types("hive_schema")
         assert result == [TableNameAndType(name="parquet_events", type_=TableType.Regular)]
 
+    def test_iceberg_provider_is_not_typed_delta(self):
+        """PINNING, not endorsing: Hive maps no Iceberg type, so an Iceberg table stays Regular.
+
+        trino, presto, glue and athena all set TableType.Iceberg; the Hive connector does not, and
+        this pin only guarantees the Delta override does not claim an Iceberg table. If Hive ever
+        grows Iceberg typing, change this expectation deliberately rather than by accident.
+        """
+        with self._source(["iceberg_events"], [("iceberg_events", "iceberg")]) as (source, _):
+            result = source.query_table_names_and_types("lake_schema")
+        assert result == [TableNameAndType(name="iceberg_events", type_=TableType.Regular)]
+
     def test_views_are_untouched_by_the_delta_override(self):
         """Views go through query_view_names_and_types, which the override must not reach."""
         with self._source([], [("delta_view", "DELTA")], view_names=["delta_view"]) as (source, connection):
