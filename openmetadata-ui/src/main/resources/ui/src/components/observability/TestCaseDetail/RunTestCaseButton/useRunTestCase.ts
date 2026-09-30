@@ -101,7 +101,7 @@ export const useRunTestCase = (testCase: TestCase) => {
   const wasRunInProgress = useRef(runInProgress);
   useEffect(() => {
     if (wasRunInProgress.current && !runInProgress) {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: ['testCase', testCase.fullyQualifiedName],
       });
     }

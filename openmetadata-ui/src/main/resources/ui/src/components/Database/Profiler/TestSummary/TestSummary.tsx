@@ -129,7 +129,8 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     const quietly = lastFetch.current === fetchKey;
     lastFetch.current = fetchKey;
 
-    fetchTestResults(dateRangeObject, { quietly });
+    // fetchTestResults reports its own errors, so the effect need not wait on it.
+    void fetchTestResults(dateRangeObject, { quietly });
   }, [
     fetchTestResults,
     testCaseFqn,
