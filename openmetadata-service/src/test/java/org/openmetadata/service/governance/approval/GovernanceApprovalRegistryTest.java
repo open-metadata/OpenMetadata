@@ -15,6 +15,7 @@
 package org.openmetadata.service.governance.approval;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,6 +23,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,6 +37,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -44,6 +52,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
+import org.slf4j.LoggerFactory;
 
 /**
  * Unit tests for how {@link GovernanceApprovalRegistry} turns a workflow's trigger config into a
@@ -212,6 +221,19 @@ class GovernanceApprovalRegistryTest {
   }
 
   @Test
+  void approvalModeDefaultsToEnforce() {
+    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "", "{}"), HOOK);
+    assertFalse(onlyRule("table", wd).shadow());
+  }
+
+  @Test
+  void shadowApprovalModeYieldsAShadowRule() {
+    String t =
+        "{\"type\":\"eventBasedEntity\",\"config\":{\"entityTypes\":[\"table\"],\"approvalMode\":\"Shadow\",\"include\":[\"description\"],\"filter\":{}}}";
+    assertTrue(onlyRule("table", workflow(t, HOOK)).shadow());
+  }
+
+  @Test
   void hookAlongsideStatusNodeStillGates() {
     WorkflowDefinition wd =
         workflow(trigger("\"table\"", "\"description\"", "", "{}"), STATUS_NODE, HOOK);
@@ -252,6 +274,24 @@ class GovernanceApprovalRegistryTest {
         String user,
         String impersonatedBy,
         boolean userIsBot) {
+      return withRules(
+          rules,
+          user,
+          userIsBot,
+          () -> ApprovalGate.admit(original, updated, user, impersonatedBy));
+    }
+
+    private Optional<StagedChange> preview(
+        List<GatingRule> rules, Glossary original, Glossary updated) {
+      return withRules(
+          rules, "alice", false, () -> ApprovalGate.preview(original, updated, "alice"));
+    }
+
+    private Optional<StagedChange> withRules(
+        List<GatingRule> rules,
+        String user,
+        boolean userIsBot,
+        Supplier<Optional<StagedChange>> gate) {
       try (MockedStatic<GovernanceApprovalRegistry> registry =
               mockStatic(GovernanceApprovalRegistry.class);
           MockedStatic<Entity> entity = mockStatic(Entity.class)) {
@@ -262,8 +302,12 @@ class GovernanceApprovalRegistryTest {
         entity
             .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq(user), any()))
             .thenReturn(new User().withName(user).withIsBot(userIsBot));
-        return ApprovalGate.admit(original, updated, user, impersonatedBy);
+        return gate.get();
       }
+    }
+
+    private GatingRule shadowRule(UUID workflowId, List<String> include) {
+      return new GatingRule(workflowId, "wf-" + workflowId, include, List.of(), null, true);
     }
 
     private Optional<StagedChange> admitAsHuman(
@@ -466,6 +510,173 @@ class GovernanceApprovalRegistryTest {
               .orElseThrow();
       assertEquals("alice", change.requestedBy());
       assertEquals("mcp-bot", change.impersonatedBy());
+    }
+
+    @Test
+    void shadowWorkflowDoesNotHoldTheEdit() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("proposed");
+      assertTrue(
+          admitAsHuman(List.of(shadowRule(WORKFLOW_A, List.of("description"))), original, updated)
+              .isEmpty());
+    }
+
+    @Test
+    void shadowWorkflowNeitherHoldsNorConflictsWithAnEnforcingOne() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("proposed").withDisplayName("new name");
+      List<GatingRule> rules =
+          List.of(
+              rule(WORKFLOW_A, List.of("description"), List.of()),
+              shadowRule(WORKFLOW_B, List.of("displayName")));
+      StagedChange change = admitAsHuman(rules, original, updated).orElseThrow();
+      assertEquals(WORKFLOW_A, change.workflowDefinitionId());
+      assertEquals(Set.of("description"), gatedFields(change));
+    }
+
+    @Test
+    void gateCountsShadowHoldsAndTimesAdmissionButLeavesHeldEditsToSubmission() {
+      SimpleMeterRegistry meters = new SimpleMeterRegistry();
+      Metrics.addRegistry(meters);
+      try {
+        Glossary original = published();
+        Glossary updated = edited(original).withDescription("proposed");
+        List<GatingRule> enforcing = List.of(rule(WORKFLOW_A, List.of("description"), List.of()));
+        List<GatingRule> shadow = List.of(shadowRule(WORKFLOW_A, List.of("description")));
+
+        admitAsHuman(enforcing, original, updated);
+        admitAsHuman(shadow, original, updated);
+        preview(enforcing, original, updated);
+        preview(shadow, original, updated);
+
+        // A held edit is counted when its change request commits (ChangeRequestService.submit).
+        assertEquals(0, admissions(meters, "held"));
+        assertEquals(1, admissions(meters, "shadow"));
+        assertEquals(
+            2,
+            meters
+                .get("change_request_admission_latency")
+                .tags("entityType", Entity.GLOSSARY)
+                .timer()
+                .count());
+      } finally {
+        Metrics.removeRegistry(meters);
+      }
+    }
+
+    @Test
+    void shadowHoldIsLoggedWithWorkflowFieldsEntityAndUser() {
+      Logger gateLog = (Logger) LoggerFactory.getLogger(ApprovalGate.class);
+      ListAppender<ILoggingEvent> appender = new ListAppender<>();
+      appender.start();
+      Level previous = gateLog.getLevel();
+      gateLog.setLevel(Level.INFO);
+      gateLog.addAppender(appender);
+      try {
+        Glossary original = published();
+        admitAsHuman(
+            List.of(shadowRule(WORKFLOW_A, List.of("description"))),
+            original,
+            edited(original).withDescription("proposed"));
+        preview(
+            List.of(shadowRule(WORKFLOW_A, List.of("description"))),
+            original,
+            edited(original).withDescription("previewed"));
+
+        List<String> shadowLines =
+            appender.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(m -> m.contains("Shadow mode"))
+                .toList();
+        assertEquals(1, shadowLines.size(), "one line for the edit, none for the preview");
+        assertEquals(
+            "[ApprovalGate] Shadow mode: workflow wf-%s would hold [description] on glossary g by alice"
+                .formatted(WORKFLOW_A),
+            shadowLines.get(0));
+      } finally {
+        gateLog.detachAppender(appender);
+        gateLog.setLevel(previous);
+      }
+    }
+
+    @Test
+    void ungatedEditIsTimedButNotCountedAsAnAdmission() {
+      SimpleMeterRegistry meters = new SimpleMeterRegistry();
+      Metrics.addRegistry(meters);
+      try {
+        Glossary original = published();
+        admitAsHuman(
+            List.of(rule(WORKFLOW_A, List.of("description"), List.of())),
+            original,
+            edited(original).withDisplayName("new name"));
+        assertEquals(0, admissions(meters, "held"));
+        assertEquals(0, admissions(meters, "shadow"));
+      } finally {
+        Metrics.removeRegistry(meters);
+      }
+    }
+
+    @Test
+    void shadowWorkflowGatingEveryFieldStillPublishes() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("proposed").withDisplayName("new name");
+      assertTrue(
+          admitAsHuman(List.of(shadowRule(WORKFLOW_A, List.of())), original, updated).isEmpty());
+    }
+
+    @Test
+    void twoShadowWorkflowsOnDifferentFieldsDoNotConflict() {
+      Glossary original = published();
+      Glossary updated = edited(original).withDescription("proposed").withDisplayName("new name");
+      List<GatingRule> rules =
+          List.of(
+              shadowRule(WORKFLOW_A, List.of("description")),
+              shadowRule(WORKFLOW_B, List.of("displayName")));
+      assertTrue(admitAsHuman(rules, original, updated).isEmpty());
+    }
+
+    @Test
+    void botEditIsNeitherHeldNorCountedUnderShadow() {
+      SimpleMeterRegistry meters = new SimpleMeterRegistry();
+      Metrics.addRegistry(meters);
+      try {
+        Glossary original = published();
+        assertTrue(
+            admit(
+                    List.of(shadowRule(WORKFLOW_A, List.of("description"))),
+                    original,
+                    edited(original).withDescription("by bot"),
+                    "ingestion-bot",
+                    null,
+                    true)
+                .isEmpty());
+        assertEquals(0, admissions(meters, "shadow"));
+      } finally {
+        Metrics.removeRegistry(meters);
+      }
+    }
+
+    private double admissions(SimpleMeterRegistry meters, String outcome) {
+      var counter =
+          meters
+              .find("change_request_admission")
+              .tags("entityType", Entity.GLOSSARY, "outcome", outcome)
+              .counter();
+      return counter == null ? 0 : counter.count();
+    }
+
+    @Test
+    void previewDecidesExactlyLikeAdmission() {
+      Glossary original = published();
+      List<GatingRule> rules = List.of(rule(WORKFLOW_A, List.of("description"), List.of()));
+      Glossary gated = edited(original).withDescription("proposed");
+      StagedChange previewed = preview(rules, original, gated).orElseThrow();
+      StagedChange admitted = admitAsHuman(rules, original, gated).orElseThrow();
+      assertEquals(admitted.workflowDefinitionId(), previewed.workflowDefinitionId());
+      assertEquals(fields(admitted), fields(previewed));
+      assertEquals(gatedFields(admitted), gatedFields(previewed));
+      Glossary ungated = edited(original).withDisplayName("new name");
+      assertTrue(preview(rules, original, ungated).isEmpty());
     }
 
     @Test

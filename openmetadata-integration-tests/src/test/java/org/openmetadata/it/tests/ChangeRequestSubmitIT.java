@@ -19,12 +19,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.ClientErrorException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.util.SdkClients;
@@ -69,7 +71,8 @@ class ChangeRequestSubmitIT {
   private List<ChangeRequest> pendingFor(UUID entityId) {
     return Entity.getCollectionDAO()
         .changeRequestDAO()
-        .listByEntityAndStatus(entityId, ChangeRequestStatus.PENDING.value());
+        .listByEntitiesAndStatuses(
+            List.of(entityId.toString()), List.of(ChangeRequestStatus.PENDING.value()));
   }
 
   @Test
@@ -83,9 +86,15 @@ class ChangeRequestSubmitIT {
     assertEquals("published", after.getDescription());
     assertEquals(glossary.getVersion(), after.getVersion());
     // The staged workflow id is synthetic, so the post-commit delivery fails and is rescheduled.
-    ChangeRequest reread = ChangeRequestService.get(request.getId());
-    assertEquals(1, reread.getDeliveryAttempts());
-    assertEquals(DeliveryStatus.PENDING, reread.getDeliveryStatus());
+    Awaitility.await("first delivery attempt of " + request.getId())
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(200))
+        .untilAsserted(
+            () -> {
+              ChangeRequest reread = ChangeRequestService.get(request.getId());
+              assertEquals(1, reread.getDeliveryAttempts());
+              assertEquals(DeliveryStatus.PENDING, reread.getDeliveryStatus());
+            });
   }
 
   @Test

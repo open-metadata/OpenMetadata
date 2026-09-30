@@ -28,6 +28,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -313,15 +314,14 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
-  void testSelfApprovalPrevention_changeRequestSoleRequester_neverReassigned() {
-    // A change request is never assigned back to its requester, even when no one else is eligible.
+  void testChangeRequestSoleRequester_routedToAdminsNeverToRequester() {
+    // A change request cannot be auto-approved, so with no one but the requester eligible it goes
+    // to the platform admins, and never back to the requester.
     EntityReference creatorRef =
         new EntityReference().withType("user").withFullyQualifiedName("alice");
-
     when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
-    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
-    when(execution.getVariable("global_changeRequestId")).thenReturn(UUID.randomUUID().toString());
-    when(execution.getVariable("global_changeRequestRevision")).thenReturn(1);
+    givenChangeRequestBy("alice");
+    givenAdmins("alice", "platform_admin");
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
 
@@ -329,7 +329,77 @@ class SetApprovalAssigneesImplTest {
 
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
-    assertEquals("[]", assigneesJson, "a change request is never assigned to its requester");
+    assertTrue(assigneesJson.contains("platform_admin"), "admins review the change request");
+    assertFalse(assigneesJson.contains("<#E::user::alice>"), "never assigned to its requester");
+  }
+
+  @Test
+  void testChangeRequestWithNoReviewersOrOwners_routedToAdminsWithoutStrategy() {
+    when(mockEntity.getReviewers()).thenReturn(List.of());
+    givenChangeRequestBy("alice");
+    givenAdmins("platform_admin");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    assertTrue(
+        ((String) capturedVars.get("ApprovalTask_assignees")).contains("platform_admin"),
+        "a change request takes the admin fallback even when the node sets no strategy");
+  }
+
+  @Test
+  void testChangeRequestWhoseOnlyAdminIsTheRequester_staysUnassigned() {
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    givenChangeRequestBy("alice");
+    givenAdmins("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    assertEquals(
+        "[]",
+        capturedVars.get("ApprovalTask_assignees"),
+        "self-approval is never possible, even through the admin fallback");
+  }
+
+  @Test
+  void testChangeRequestWithReviewers_doesNotAddAdmins() {
+    when(mockEntity.getReviewers())
+        .thenReturn(List.of(new EntityReference().withType("user").withFullyQualifiedName("bob")));
+    givenChangeRequestBy("alice");
+    givenAdmins("platform_admin");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertTrue(assigneesJson.contains("bob"));
+    assertFalse(assigneesJson.contains("platform_admin"), "admins are only a fallback");
+  }
+
+  private void givenChangeRequestBy(String requester) {
+    when(execution.getVariable("global_updatedBy")).thenReturn(requester);
+    when(execution.getVariable("global_changeRequestId")).thenReturn(UUID.randomUUID().toString());
+    when(execution.getVariable("global_changeRequestRevision")).thenReturn(1);
+  }
+
+  private void givenAdmins(String... names) {
+    UserRepository mockUserRepository = mock(UserRepository.class);
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
+    List<User> admins = new ArrayList<>();
+    for (String name : names) {
+      admins.add(new User().withName(name).withFullyQualifiedName(name));
+    }
+    @SuppressWarnings("unchecked")
+    ResultList<User> page = mock(ResultList.class);
+    when(page.getData()).thenReturn(admins);
+    when(page.getPaging()).thenReturn(new Paging());
+    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
   }
 
   @Test

@@ -16,6 +16,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -4428,7 +4429,8 @@ public class WorkflowDefinitionResourceIT {
     String first = submitDescription(glossary, "from user2");
     String second =
         pendingRequestId(
-            patchAs(SdkClients.user3Client(), glossary, descriptionPatch("from user3")));
+            patchAs(SdkClients.user3Client(), glossary, descriptionPatch("from user3")),
+            SharedEntities.get().USER3.getName());
     assertNotEquals(first, second);
 
     approve(awaitRequestTask(first, glossary));
@@ -4482,6 +4484,223 @@ public class WorkflowDefinitionResourceIT {
     assertEquals("published directly", descriptionOf(glossary));
   }
 
+  @Test
+  void test_changeRequestHistoryListsRevisionsDecisionsAndEvents(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "history");
+    String requestId = submitDescription(glossary, "first draft");
+    awaitRequestTask(requestId, glossary);
+    assertEquals(requestId, submitDescription(glossary, "second draft"));
+    await("revision 2 of " + requestId)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals(2, changeRequest(requestId).get("activeRevisionNumber").asInt()));
+    approve(awaitRequestTask(requestId, glossary));
+    awaitRequestStatus(requestId, "Applied");
+
+    JsonNode revisions = requestHistory(requestId, "revisions");
+    assertEquals(2, revisions.size());
+    assertEquals("Superseded", revisions.get(0).get("status").asText());
+    assertEquals(2, revisions.get(1).get("revisionNumber").asInt());
+
+    JsonNode decisions = requestHistory(requestId, "decisions");
+    assertEquals(1, decisions.size());
+    assertEquals("Approve", decisions.get(0).get("decision").asText());
+    assertEquals(SharedEntities.get().USER1.getName(), decisions.get(0).get("decidedBy").asText());
+
+    JsonNode events = requestHistory(requestId, "events");
+    assertEquals(List.of("Submitted", "Revised", "Approved", "Applied"), eventTypes(events));
+    for (int i = 0; i < events.size(); i++) {
+      assertEquals(i + 1, events.get(i).get("sequence").asInt());
+    }
+    assertEquals("Applied", events.get(events.size() - 1).get("toStatus").asText());
+  }
+
+  @Test
+  void test_previewReportsWhetherAnEditWouldBeHeld(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = createReviewedGlossary(ns, "preview");
+    String workflowId =
+        deployHookWorkflow(
+            client, "glossary", glossary.getFullyQualifiedName(), List.of("description"));
+
+    JsonNode held = preview(SdkClients.user2Client(), glossary, descriptionPatch("previewed"));
+    assertTrue(held.get("requiresApproval").asBoolean());
+    assertEquals(workflowId, held.get("workflowDefinitionId").asText());
+    assertEquals("description", held.get("ops").get(0).get("field").asText());
+
+    JsonNode published =
+        preview(
+            SdkClients.user2Client(),
+            glossary,
+            "[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"previewed\"}]");
+    assertFalse(published.get("requiresApproval").asBoolean());
+    assertFalse(
+        preview(SdkClients.ingestionBotClient(), glossary, descriptionPatch("by bot"))
+            .get("requiresApproval")
+            .asBoolean());
+
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    assertEquals(0, changeRequestsOn(glossary).size(), "A preview must not submit anything");
+  }
+
+  @Test
+  void test_adminOverridePublishesWithoutReview(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "override");
+    String requestId = submitDescription(glossary, "published by override");
+    Task task = awaitRequestTask(requestId, glossary);
+
+    OpenMetadataException notAdmin =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> override(SdkClients.user1Client(), requestId, 1, "reviewer is not an admin"));
+    assertEquals(403, notAdmin.getStatusCode());
+    OpenMetadataException staleRevision =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> override(SdkClients.adminClient(), requestId, 2, "wrong revision"));
+    assertEquals(409, staleRevision.getStatusCode());
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+
+    override(SdkClients.adminClient(), requestId, 1, "urgent fix");
+
+    assertEquals("Applied", changeRequest(requestId).get("status").asText());
+    assertEquals("published by override", descriptionOf(glossary));
+    awaitTaskClosed(glossary, task);
+    JsonNode decisions = requestHistory(requestId, "decisions");
+    assertEquals("Override", decisions.get(0).get("decision").asText());
+    assertEquals("admin", decisions.get(0).get("decidedBy").asText());
+    assertEquals("urgent fix", decisions.get(0).get("comment").asText());
+    assertEquals(
+        List.of("Submitted", "Overridden", "Approved", "Applied"),
+        eventTypes(requestHistory(requestId, "events")));
+  }
+
+  @Test
+  void test_shadowModeWorkflowPublishesTheEdit(TestNamespace ns) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "shadow");
+    deployHookWorkflow(
+        SdkClients.adminClient(),
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description"),
+        "Shadow");
+
+    patchAs(SdkClients.user2Client(), glossary, descriptionPatch("published in shadow mode"));
+
+    assertEquals("published in shadow mode", descriptionOf(glossary));
+    assertEquals(0, changeRequestsOn(glossary).size(), "Shadow mode must not hold the edit");
+  }
+
+  @Test
+  void test_requestEndedBeforeItsTaskExistsLeavesNoOpenTask(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "earlyEnd");
+    // Ended straight after submission, while delivery may still be creating the review task.
+    String overridden = submitDescription(glossary, "overridden at once");
+    override(SdkClients.adminClient(), overridden, 1, "published before review");
+    String withdrawn =
+        pendingRequestId(
+            patchAs(SdkClients.user3Client(), glossary, descriptionPatch("gone")),
+            SharedEntities.get().USER3.getName());
+    SdkClients.user3Client()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/changeRequests/%s/withdraw".formatted(withdrawn),
+            Map.of("expectedRevision", 1),
+            RequestOptions.builder().build());
+
+    assertEquals("Applied", changeRequest(overridden).get("status").asText());
+    assertEquals("Withdrawn", changeRequest(withdrawn).get("status").asText());
+    await("no review task left open for ended requests")
+        .during(Duration.ofSeconds(5))
+        .atMost(Duration.ofSeconds(90))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    listOpenApprovalTasks(
+                            SdkClients.adminClient(), glossary.getFullyQualifiedName())
+                        .getData()
+                        .isEmpty()));
+    assertEquals("overridden at once", descriptionOf(glossary));
+  }
+
+  @Test
+  void test_changeRequestWithNoOtherReviewerGoesToAdmins(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    // Owned only by the requester and without reviewers: the requester can never review it.
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("adminFallback"))
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withOwners(List.of(SharedEntities.get().USER2_REF)));
+    deployHookWorkflow(admin, "glossary", glossary.getFullyQualifiedName(), List.of("description"));
+    String requestId = submitDescription(glossary, "reviewed by an admin");
+
+    Task task = awaitRequestTask(requestId, glossary);
+    Set<String> assignees =
+        task.getAssignees().stream().map(EntityReference::getName).collect(Collectors.toSet());
+    assertTrue(assignees.contains("admin"), "admins review it: " + assignees);
+    assertFalse(
+        assignees.contains(SharedEntities.get().USER2.getName()),
+        "never its requester: " + assignees);
+
+    admin
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new org.openmetadata.schema.api.tasks.ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved));
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals("reviewed by an admin", descriptionOf(glossary));
+  }
+
+  @Test
+  void test_previewIsRefusedExactlyWhenThePatchWouldBe(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    // Owned by USER2 only, so USER3 is an ordinary non-owner here.
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("previewAuth"))
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withOwners(List.of(shared.USER2_REF))
+                    .withReviewers(List.of(shared.USER1_REF)));
+    deployHookWorkflow(
+        SdkClients.adminClient(),
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description"));
+    String ownersPatch =
+        "[{\"op\":\"add\",\"path\":\"/owners/0\",\"value\":{\"id\":\"%s\",\"type\":\"user\"}}]"
+            .formatted(shared.USER1.getId());
+
+    OpenMetadataException previewRefused =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> preview(SdkClients.user3Client(), glossary, ownersPatch));
+    OpenMetadataException patchRefused =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> patchAs(SdkClients.user3Client(), glossary, ownersPatch));
+    assertEquals(403, previewRefused.getStatusCode(), previewRefused.getMessage());
+    assertEquals(403, patchRefused.getStatusCode(), patchRefused.getMessage());
+
+    JsonNode allowed = preview(SdkClients.user2Client(), glossary, ownersPatch);
+    assertFalse(allowed.get("requiresApproval").asBoolean(), "owners are not gated here");
+    JsonNode gated = preview(SdkClients.user2Client(), glossary, descriptionPatch("gated"));
+    assertTrue(gated.get("requiresApproval").asBoolean(), "description is gated here");
+    assertEquals(0, changeRequestsOn(glossary).size(), "a preview never submits");
+  }
+
   private static final String PUBLISHED_DESCRIPTION = "published description";
 
   // Owned by USER2 (requester) and USER3 (another editor), reviewed by USER1.
@@ -4518,7 +4737,8 @@ public class WorkflowDefinitionResourceIT {
 
   // USER2 edits; the edit is held and the pending change request id comes back in the response.
   private String submit(Glossary glossary, String opsJson) throws Exception {
-    return pendingRequestId(patchAs(SdkClients.user2Client(), glossary, opsJson));
+    return pendingRequestId(
+        patchAs(SdkClients.user2Client(), glossary, opsJson), SharedEntities.get().USER2.getName());
   }
 
   private Glossary patchAs(OpenMetadataClient client, Glossary glossary, String opsJson)
@@ -4527,8 +4747,8 @@ public class WorkflowDefinitionResourceIT {
   }
 
   // The held edit leaves the published entity unchanged; its change request is the requester's
-  // single Pending one.
-  private String pendingRequestId(Glossary published) throws Exception {
+  // single Pending one (one active request per requester and entity).
+  private String pendingRequestId(Glossary published, String requestedBy) throws Exception {
     JsonNode requests =
         MAPPER.readTree(
             SdkClients.adminClient()
@@ -4538,17 +4758,15 @@ public class WorkflowDefinitionResourceIT {
                     "/v1/changeRequests?entityId=" + published.getId(),
                     null,
                     RequestOptions.builder().build()));
-    String latest = null;
-    long latestUpdate = -1;
+    String pending = null;
     for (JsonNode request : requests.get("data")) {
       if ("Pending".equals(request.get("status").asText())
-          && request.get("updatedAt").asLong() > latestUpdate) {
-        latest = request.get("id").asText();
-        latestUpdate = request.get("updatedAt").asLong();
+          && requestedBy.equals(request.get("requestedBy").asText())) {
+        pending = request.get("id").asText();
       }
     }
-    assertNotNull(latest, "Expected a pending change request for " + published.getName());
-    return latest;
+    assertNotNull(pending, "Expected a pending change request by %s".formatted(requestedBy));
+    return pending;
   }
 
   private JsonNode changeRequest(String requestId) throws Exception {
@@ -4560,6 +4778,63 @@ public class WorkflowDefinitionResourceIT {
                 "/v1/changeRequests/" + requestId,
                 null,
                 RequestOptions.builder().build()));
+  }
+
+  private JsonNode requestHistory(String requestId, String kind) throws Exception {
+    return MAPPER
+        .readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests/%s/%s".formatted(requestId, kind),
+                    null,
+                    RequestOptions.builder().build()))
+        .get("data");
+  }
+
+  private static List<String> eventTypes(JsonNode events) {
+    List<String> types = new ArrayList<>();
+    events.forEach(event -> types.add(event.get("eventType").asText()));
+    return types;
+  }
+
+  private JsonNode changeRequestsOn(Glossary glossary) throws Exception {
+    return MAPPER
+        .readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests?entityId=" + glossary.getId(),
+                    null,
+                    RequestOptions.builder().build()))
+        .get("data");
+  }
+
+  private JsonNode preview(OpenMetadataClient client, Glossary glossary, String opsJson)
+      throws Exception {
+    return MAPPER.readTree(
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/changeRequests/preview/glossary/" + glossary.getId(),
+                opsJson,
+                RequestOptions.builder()
+                    .header("Content-Type", "application/json-patch+json")
+                    .build()));
+  }
+
+  private void override(
+      OpenMetadataClient client, String requestId, int expectedRevision, String reason) {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/changeRequests/%s/override".formatted(requestId),
+            Map.of("expectedRevision", expectedRevision, "reason", reason),
+            RequestOptions.builder().build());
   }
 
   private void awaitRequestStatus(String requestId, String status) {
@@ -4662,16 +4937,28 @@ public class WorkflowDefinitionResourceIT {
   private String deployHookWorkflow(
       OpenMetadataClient client, String entityType, String entityFqn, List<String> include)
       throws Exception {
+    return deployHookWorkflow(client, entityType, entityFqn, include, "Enforce");
+  }
+
+  private String deployHookWorkflow(
+      OpenMetadataClient client,
+      String entityType,
+      String entityFqn,
+      List<String> include,
+      String approvalMode)
+      throws Exception {
     String workflowName = "hookGate" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(hookWorkflowJson(workflowName, entityType, entityFqn, include));
+    ((ObjectNode) workflow.at("/trigger/config")).put("approvalMode", approvalMode);
     String createResponse =
         client
             .getHttpClient()
             .executeForString(
                 HttpMethod.POST,
                 BASE_PATH,
-                MAPPER.readValue(
-                    hookWorkflowJson(workflowName, entityType, entityFqn, include),
-                    CreateWorkflowDefinition.class),
+                MAPPER.treeToValue(workflow, CreateWorkflowDefinition.class),
                 RequestOptions.builder().build());
     JsonNode created = MAPPER.readTree(createResponse);
     trackWorkflowFromJson(created);

@@ -19,6 +19,7 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
 import org.openmetadata.schema.governance.changeRequest.ChangeApplication;
+import org.openmetadata.schema.governance.changeRequest.ChangeLifecycleEvent;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.governance.changeRequest.DeliveryStatus;
@@ -48,6 +49,13 @@ public final class ChangeRequestMappers {
     @Override
     public ApprovalDecision map(ResultSet rs, StatementContext ctx) throws SQLException {
       return JsonUtils.readValue(rs.getString("json"), ApprovalDecision.class);
+    }
+  }
+
+  public static final class ChangeLifecycleEventMapper implements RowMapper<ChangeLifecycleEvent> {
+    @Override
+    public ChangeLifecycleEvent map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return JsonUtils.readValue(rs.getString("json"), ChangeLifecycleEvent.class);
     }
   }
 

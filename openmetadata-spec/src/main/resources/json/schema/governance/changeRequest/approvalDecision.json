@@ -9,7 +9,7 @@
     "decisionType": {
       "javaType": "org.openmetadata.schema.governance.changeRequest.DecisionType",
       "type": "string",
-      "enum": ["Approve", "Reject"]
+      "enum": ["Approve", "Reject", "Override"]
     }
   },
   "properties": {

@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 
 /**
  * Drives change requests whose post-commit hand-off did not complete: redelivers review signals that
@@ -61,6 +62,10 @@ public final class ChangeRequestRecoveryScheduler implements Managed {
         .changeRequestDAO()
         .listApprovedBefore(now - APPROVED_IDLE_MILLIS, BATCH)
         .forEach(id -> ChangeApplyService.apply(UUID.fromString(id)));
+    ChangeRequestMetrics.pending(
+        ChangeRequestService.dao()
+            .changeRequestDAO()
+            .countByStatus(ChangeRequestStatus.PENDING.value()));
   }
 
   private static void runSafely() {

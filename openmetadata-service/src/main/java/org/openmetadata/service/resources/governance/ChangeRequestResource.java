@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -33,14 +34,21 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.UUID;
+import org.openmetadata.schema.api.governance.OverrideChangeRequest;
 import org.openmetadata.schema.api.governance.WithdrawChangeRequest;
+import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
+import org.openmetadata.schema.governance.changeRequest.ChangeLifecycleEvent;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequestPreview;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
+import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.ChangeRequestVisibility;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/changeRequests")
 @Tag(
@@ -107,6 +115,98 @@ public class ChangeRequestResource {
         id, withdraw, securityContext.getUserPrincipal().getName());
   }
 
+  @GET
+  @Path("/{id}/revisions")
+  @Operation(
+      operationId = "listChangeRequestRevisions",
+      summary = "List every revision of a change request, oldest first",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "The revisions"),
+        @ApiResponse(responseCode = "404", description = "Change request not found")
+      })
+  public ResultList<ChangeRevision> revisions(
+      @Context SecurityContext securityContext, @PathParam("id") UUID id) {
+    get(securityContext, id);
+    return new ResultList<>(ChangeRequestService.revisions(id));
+  }
+
+  @GET
+  @Path("/{id}/decisions")
+  @Operation(
+      operationId = "listChangeRequestDecisions",
+      summary = "List the review decisions recorded on a change request, oldest first",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "The decisions"),
+        @ApiResponse(responseCode = "404", description = "Change request not found")
+      })
+  public ResultList<ApprovalDecision> decisions(
+      @Context SecurityContext securityContext, @PathParam("id") UUID id) {
+    get(securityContext, id);
+    return new ResultList<>(ChangeRequestService.decisions(id));
+  }
+
+  @GET
+  @Path("/{id}/events")
+  @Operation(
+      operationId = "listChangeRequestEvents",
+      summary = "List the lifecycle history of a change request, in order",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "The lifecycle events"),
+        @ApiResponse(responseCode = "404", description = "Change request not found")
+      })
+  public ResultList<ChangeLifecycleEvent> events(
+      @Context SecurityContext securityContext, @PathParam("id") UUID id) {
+    get(securityContext, id);
+    return new ResultList<>(ChangeRequestService.events(id));
+  }
+
+  @POST
+  @Path("/preview/{entityType}/{id}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "previewChangeRequest",
+      summary = "Preview whether a PATCH would be held for approval, without saving it",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "What saving the patch would do"),
+        @ApiResponse(responseCode = "403", description = "Caller cannot make this edit"),
+        @ApiResponse(responseCode = "404", description = "Entity not found")
+      })
+  public ChangeRequestPreview preview(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity type, for example table") @PathParam("entityType")
+          String entityType,
+      @Parameter(description = "Entity id", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      JsonPatch patch) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, patch),
+        new ResourceContext<>(entityType, id, null));
+    return ChangeRequestService.preview(
+        entityType, id, patch, securityContext.getUserPrincipal().getName());
+  }
+
+  @POST
+  @Path("/{id}/override")
+  @Operation(
+      operationId = "overrideChangeRequest",
+      summary = "Publish a pending change request without review (admin only)",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "The published or conflicted request"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Caller is not an admin, or is the requester"),
+        @ApiResponse(responseCode = "409", description = "Revision moved or request not open")
+      })
+  public ChangeRequest override(
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @Valid OverrideChangeRequest override) {
+    authorizer.authorizeAdmin(securityContext);
+    return ChangeRequestService.override(
+        id, override, securityContext.getUserPrincipal().getName());
+  }
+
   @POST
   @Path("/{id}/cancel")
   @Operation(
@@ -119,6 +219,6 @@ public class ChangeRequestResource {
     authorizer.authorizeAdmin(securityContext);
     String admin = securityContext.getUserPrincipal().getName();
     return ChangeRequestService.finish(
-        id, null, ChangeRequestStatus.CANCELLED, "Cancelled by %s".formatted(admin));
+        id, null, ChangeRequestStatus.CANCELLED, "Cancelled by %s".formatted(admin), admin);
   }
 }

@@ -180,11 +180,17 @@ public class CreateTask implements TaskListener {
       // Register with WorkflowHandler for resolution
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
       UUID reviewTaskId = task.getId();
+      // A request can end (withdrawn, overridden, cancelled) or be revised while delivery is
+      // still creating its task; that task is closed once this Flowable command commits.
       ChangeRequestRun.from(varHandler)
+          .filter(
+              run ->
+                  !ChangeRequestService.attachTask(
+                      run.changeRequestId(), run.revisionNumber(), reviewTaskId))
           .ifPresent(
               run ->
-                  ChangeRequestService.attachTask(
-                      run.changeRequestId(), run.revisionNumber(), reviewTaskId));
+                  registerPostCommitPersist(
+                      () -> ChangeRequestService.closeStaleTask(reviewTaskId)));
 
       // Set the thresholds as task variables for use in WorkflowHandler
       delegateTask.setVariable("approvalThreshold", approvalThreshold);

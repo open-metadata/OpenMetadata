@@ -151,6 +151,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected boolean processRecord; // When set to false record processing is discontinued
   protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
   protected final String importedBy;
+  // Whether a hook workflow gates each entity type, resolved once per import rather than per row.
+  private final Map<String, Boolean> gatedEntityTypes = new HashMap<>();
   protected int recordIndex = 0;
   protected String rowEntityType = null;
   private final Set<Long> countedFailureRecords = new HashSet<>();
@@ -1412,10 +1414,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return staged.isPresent();
   }
 
+  private boolean isGated(String type) {
+    return gatedEntityTypes.computeIfAbsent(
+        type, t -> !GovernanceApprovalRegistry.gatingRules(t).isEmpty());
+  }
+
   private Optional<StagedChange> admission(
       String type, EntityInterface original, EntityInterface entity) {
     Optional<StagedChange> staged = Optional.empty();
-    if (original != null && !GovernanceApprovalRegistry.gatingRules(type).isEmpty()) {
+    if (original != null && isGated(type)) {
       EntityRepository<?> repository = Entity.getEntityRepository(type);
       EntityInterface hydrated =
           repository.get(null, original.getId(), repository.getFields("*"), Include.ALL, false);

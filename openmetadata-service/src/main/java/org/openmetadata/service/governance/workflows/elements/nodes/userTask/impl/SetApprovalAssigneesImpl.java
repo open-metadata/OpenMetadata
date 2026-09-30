@@ -180,10 +180,13 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
       // assignee was the requester and was stripped above), apply the node's configured
       // fallback. ASSIGN_ADMINS routes to all platform admins, excluding the requester so
-      // self-approval can never happen. NONE keeps the default behavior.
+      // self-approval can never happen. NONE keeps the default behavior. A change request always
+      // takes the admin fallback: it cannot be auto-approved, so an empty list would leave it
+      // unreviewable.
       String emptyAssigneeStrategy =
           String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
-      if (assigneeList.isEmpty() && "assignAdmins".equals(emptyAssigneeStrategy)) {
+      boolean assignAdmins = "assignAdmins".equals(emptyAssigneeStrategy) || reviewsChangeRequest;
+      if (assigneeList.isEmpty() && assignAdmins) {
         List<String> admins = resolveAdminAssignees();
         admins.removeAll(requesterEntityLinks);
         assigneeList.addAll(admins);

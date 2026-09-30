@@ -22,6 +22,7 @@ import java.util.UUID;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -29,6 +30,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
 import org.openmetadata.schema.governance.changeRequest.ChangeApplication;
+import org.openmetadata.schema.governance.changeRequest.ChangeLifecycleEvent;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.governance.changeRequest.DeliveryStatus;
@@ -63,6 +65,9 @@ public interface GovernanceDAOs {
 
   @CreateSqlObject
   ChangeApplicationDAO changeApplicationDAO();
+
+  @CreateSqlObject
+  ChangeLifecycleEventDAO changeLifecycleEventDAO();
 
   interface DomainDAO extends EntityDAO<Domain> {
     @Override
@@ -354,15 +359,19 @@ public interface GovernanceDAOs {
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
     ChangeRequest findByTaskId(@BindUUID("taskId") UUID taskId);
 
+    @SqlQuery("SELECT COUNT(*) FROM change_request WHERE status = :status")
+    int countByStatus(@Bind("status") String status);
+
     @SqlQuery(
         "SELECT * FROM change_request WHERE entityId = :entityId ORDER BY updatedAt DESC LIMIT :limit")
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
     List<ChangeRequest> listByEntity(@BindUUID("entityId") UUID entityId, @Bind("limit") int limit);
 
-    @SqlQuery("SELECT * FROM change_request WHERE entityId = :entityId AND status = :status")
+    @SqlQuery(
+        "SELECT * FROM change_request WHERE entityId IN (<entityIds>) AND status IN (<statuses>)")
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
-    List<ChangeRequest> listByEntityAndStatus(
-        @BindUUID("entityId") UUID entityId, @Bind("status") String status);
+    List<ChangeRequest> listByEntitiesAndStatuses(
+        @BindList("entityIds") List<String> entityIds, @BindList("statuses") List<String> statuses);
 
     @SqlQuery(
         "SELECT * FROM change_request WHERE requestedBy = :requestedBy ORDER BY updatedAt DESC LIMIT :limit")
@@ -371,10 +380,12 @@ public interface GovernanceDAOs {
         @Bind("requestedBy") String requestedBy, @Bind("limit") int limit);
 
     @SqlQuery(
-        "SELECT * FROM change_request WHERE workflowDefinitionId = :workflowId AND status = :status")
+        "SELECT * FROM change_request WHERE workflowDefinitionId = :workflowId"
+            + " AND status IN (<statuses>)")
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
-    List<ChangeRequest> listByWorkflowAndStatus(
-        @BindUUID("workflowId") UUID workflowDefinitionId, @Bind("status") String status);
+    List<ChangeRequest> listByWorkflowAndStatuses(
+        @BindUUID("workflowId") UUID workflowDefinitionId,
+        @BindList("statuses") List<String> statuses);
 
     @SqlUpdate(
         "UPDATE change_request SET deliveryStatus = 'Pending', nextDeliveryAt = :next,"
@@ -478,6 +489,16 @@ public interface GovernanceDAOs {
     @SqlQuery("SELECT json FROM change_revision WHERE id = :id")
     @RegisterRowMapper(ChangeRequestMappers.ChangeRevisionMapper.class)
     ChangeRevision findById(@BindUUID("id") UUID id);
+
+    @SqlQuery("SELECT json FROM change_revision WHERE id IN (<ids>)")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRevisionMapper.class)
+    List<ChangeRevision> findByIds(@BindList("ids") List<String> ids);
+
+    @SqlQuery(
+        "SELECT json FROM change_revision WHERE changeRequestId = :changeRequestId"
+            + " ORDER BY revisionNumber")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRevisionMapper.class)
+    List<ChangeRevision> listByRequest(@BindUUID("changeRequestId") UUID changeRequestId);
   }
 
   interface ApprovalDecisionDAO {
@@ -517,6 +538,54 @@ public interface GovernanceDAOs {
         "SELECT json FROM approval_decision WHERE revisionId = :revisionId ORDER BY decidedAt")
     @RegisterRowMapper(ChangeRequestMappers.ApprovalDecisionMapper.class)
     List<ApprovalDecision> listByRevision(@BindUUID("revisionId") UUID revisionId);
+
+    @SqlQuery(
+        "SELECT json FROM approval_decision WHERE changeRequestId = :changeRequestId"
+            + " ORDER BY decidedAt")
+    @RegisterRowMapper(ChangeRequestMappers.ApprovalDecisionMapper.class)
+    List<ApprovalDecision> listByRequest(@BindUUID("changeRequestId") UUID changeRequestId);
+  }
+
+  interface ChangeLifecycleEventDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_lifecycle_event (id, changeRequestId, eventSequence, eventType,"
+                + " eventAt, json) VALUES (:id, :changeRequestId, :sequence, :eventType, :eventAt, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_lifecycle_event (id, changeRequestId, eventSequence, eventType,"
+                + " eventAt, json) VALUES (:id, :changeRequestId, :sequence, :eventType, :eventAt,"
+                + " :json::jsonb)",
+        connectionType = POSTGRES)
+    void insertRow(
+        @Bind("id") String id,
+        @Bind("changeRequestId") String changeRequestId,
+        @Bind("sequence") int sequence,
+        @Bind("eventType") String eventType,
+        @Bind("eventAt") long eventAt,
+        @Bind("json") String json);
+
+    default void insert(ChangeLifecycleEvent event) {
+      insertRow(
+          event.getId().toString(),
+          event.getChangeRequestId().toString(),
+          event.getSequence(),
+          event.getEventType().value(),
+          event.getTimestamp(),
+          JsonUtils.pojoToJson(event));
+    }
+
+    @SqlQuery(
+        "SELECT COALESCE(MAX(eventSequence), 0) FROM change_lifecycle_event"
+            + " WHERE changeRequestId = :changeRequestId")
+    int lastSequence(@BindUUID("changeRequestId") UUID changeRequestId);
+
+    @SqlQuery(
+        "SELECT json FROM change_lifecycle_event WHERE changeRequestId = :changeRequestId"
+            + " ORDER BY eventSequence")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeLifecycleEventMapper.class)
+    List<ChangeLifecycleEvent> listByRequest(@BindUUID("changeRequestId") UUID changeRequestId);
   }
 
   interface ChangeApplicationDAO {

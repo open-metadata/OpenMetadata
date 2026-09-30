@@ -17,8 +17,10 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
+import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -48,8 +50,9 @@ public final class ChangeRequestVisibility {
     } else {
       throw new BadRequestException("Filter change requests by entityId or requestedBy");
     }
+    Map<UUID, ChangeRevision> revisions = ChangeRequestService.activeRevisions(visible);
     return visible.stream()
-        .map(request -> request.withActiveRevision(ChangeRequestService.activeRevision(request)))
+        .map(request -> request.withActiveRevision(revisions.get(request.getActiveRevisionId())))
         .toList();
   }
 

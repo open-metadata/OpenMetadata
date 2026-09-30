@@ -30,6 +30,7 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.governance.changeRequest.DecisionType;
+import org.openmetadata.schema.governance.changeRequest.LifecycleEventType;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -97,6 +98,8 @@ public final class ChangeApplyService {
       ChangeRequestService.dao()
           .changeRequestDAO()
           .update(request.withStatus(ChangeRequestStatus.APPROVED));
+      ChangeRequestLifecycle.record(
+          request, LifecycleEventType.APPROVED, ChangeRequestStatus.PENDING, null, null);
     }
     return new Approval(request, current, eligible);
   }
@@ -111,7 +114,9 @@ public final class ChangeApplyService {
                 d ->
                     d.getDecision() == DecisionType.APPROVE
                         && !d.getDecidedBy().equals(request.getRequestedBy()));
-    return approved && !rejected;
+    // An administrator override publishes without review; it is recorded as its own decision.
+    boolean overridden = decisions.stream().anyMatch(d -> d.getDecision() == DecisionType.OVERRIDE);
+    return overridden || (approved && !rejected);
   }
 
   private static void refuse(ChangeRequest request, int revisionNumber) {
@@ -174,9 +179,11 @@ public final class ChangeApplyService {
     ChangeRequestService.dao()
         .changeApplicationDAO()
         .insert(application(request, revision, published, split.dropped()));
+    ChangeRequestStatus from = request.getStatus();
     ChangeRequestService.dao()
         .changeRequestDAO()
         .update(request.withStatus(ChangeRequestStatus.APPLIED).withStatusReason(null));
+    ChangeRequestLifecycle.record(request, LifecycleEventType.APPLIED, from, null, null);
     return request;
   }
 
@@ -198,6 +205,7 @@ public final class ChangeApplyService {
 
   private static ChangeRequest markConflicted(
       ChangeRequest request, JsonNode current, List<MutationOp> conflicts) {
+    ChangeRequestStatus from = request.getStatus();
     List<ChangeConflict> details =
         conflicts.stream()
             .map(
@@ -215,6 +223,8 @@ public final class ChangeApplyService {
                 .withStatus(ChangeRequestStatus.CONFLICTED)
                 .withConflicts(details)
                 .withStatusReason("Newer published values conflict with the approved change"));
+    ChangeRequestLifecycle.record(
+        request, LifecycleEventType.CONFLICTED, from, null, request.getStatusReason());
     return request;
   }
 }

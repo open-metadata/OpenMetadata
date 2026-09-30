@@ -234,7 +234,7 @@ class ChangeRequestApplyIT {
   }
 
   @Test
-  void changeWithNoEligibleReviewerIsNeverAutoApplied(TestNamespace ns) {
+  void changeWithOnlyTheRequesterAsReviewerGoesToAdminsAndIsNeverAutoApplied(TestNamespace ns) {
     var user2 = SharedEntities.get().USER2.getEntityReference();
     Glossary glossary =
         ns.trackRoot(
@@ -250,18 +250,12 @@ class ChangeRequestApplyIT {
     deployHookWorkflow(ns, "\"description\"", "", filterScopedTo(glossary.getFullyQualifiedName()));
     patchAs(SdkClients.user2Client(), glossary.getId(), replace("description", "self-reviewed"));
     ChangeRequest request = onlyPendingRequest(glossary.getId());
-    Awaitility.await("request flagged for attention")
-        .atMost(Duration.ofSeconds(120))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () ->
-                ChangeRequestService.get(request.getId()).getDeliveryStatus()
-                    == org.openmetadata
-                        .schema
-                        .governance
-                        .changeRequest
-                        .DeliveryStatus
-                        .ATTENTION_REQUIRED);
+
+    Task task = awaitOpenApprovalTask(glossary.getFullyQualifiedName());
+    java.util.Set<String> assignees =
+        taskAssigneeNames(glossary.getFullyQualifiedName(), task.getId());
+    assertTrue(assignees.contains("admin"), "the requester's only reviewer is replaced by admins");
+    assertTrue(!assignees.contains(user2.getName()), "never assigned to its requester");
     assertEquals(
         ChangeRequestStatus.PENDING, ChangeRequestService.get(request.getId()).getStatus());
     assertEquals(PUBLISHED, descriptionOf(glossary.getId()));

@@ -332,6 +332,16 @@ final class ChangeRequestITSupport {
     return tasks;
   }
 
+  static java.util.Set<String> taskAssigneeNames(String glossaryFqn, UUID taskId) {
+    Map<String, String> filters = new java.util.HashMap<>(openTaskFilters(glossaryFqn));
+    filters.put("fields", "assignees");
+    return listTasks(filters).stream()
+        .filter(task -> task.getId().equals(taskId))
+        .flatMap(task -> task.getAssignees().stream())
+        .map(org.openmetadata.schema.type.EntityReference::getName)
+        .collect(java.util.stream.Collectors.toSet());
+  }
+
   static String taskPayloadJson(UUID taskId) {
     Task task = SdkClients.adminClient().tasks().get(taskId.toString());
     return task.getPayload() == null ? "" : JsonUtils.pojoToJson(task.getPayload());
@@ -421,7 +431,8 @@ final class ChangeRequestITSupport {
     List<ChangeRequest> pending =
         Entity.getCollectionDAO()
             .changeRequestDAO()
-            .listByEntityAndStatus(entityId, ChangeRequestStatus.PENDING.value());
+            .listByEntitiesAndStatuses(
+                List.of(entityId.toString()), List.of(ChangeRequestStatus.PENDING.value()));
     assertEquals(1, pending.size(), "exactly one pending change request");
     return ChangeRequestService.get(pending.get(0).getId());
   }

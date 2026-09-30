@@ -558,6 +558,18 @@ CREATE TABLE IF NOT EXISTS change_application (
   UNIQUE KEY change_application_request_key (changeRequestId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Ordered history of every change request step (submitted, revised, approved, applied, ended).
+CREATE TABLE IF NOT EXISTS change_lifecycle_event (
+  id varchar(36) NOT NULL,
+  changeRequestId varchar(36) NOT NULL,
+  eventSequence int NOT NULL,
+  eventType varchar(32) NOT NULL,
+  eventAt bigint unsigned NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY change_lifecycle_event_request_sequence_key (changeRequestId, eventSequence)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

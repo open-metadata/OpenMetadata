@@ -48,6 +48,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public final class GovernanceApprovalRegistry {
   private static final String EVENT_BASED_ENTITY = "eventBasedEntity";
   private static final String RESOLVE_PENDING_CHANGE_SUBTYPE = "resolvePendingChangeTask";
+  private static final String SHADOW_MODE = "Shadow";
 
   private record Snapshot(String epoch, Map<String, List<GatingRule>> rulesByEntityType) {}
 
@@ -65,7 +66,18 @@ public final class GovernanceApprovalRegistry {
       String workflowName,
       List<String> includedFields,
       List<String> excludedFields,
-      String filterLogic) {}
+      String filterLogic,
+      boolean shadow) {
+    /** An enforcing rule: gated edits are held for review. */
+    public GatingRule(
+        UUID workflowDefinitionId,
+        String workflowName,
+        List<String> includedFields,
+        List<String> excludedFields,
+        String filterLogic) {
+      this(workflowDefinitionId, workflowName, includedFields, excludedFields, filterLogic, false);
+    }
+  }
 
   /** Hook workflows gating this entity type, ordered by workflow name. */
   public static List<GatingRule> gatingRules(String entityType) {
@@ -181,7 +193,8 @@ public final class GovernanceApprovalRegistry {
                     definition.getName(),
                     stringList(config.path("include")),
                     stringList(config.path("exclude")),
-                    resolveFilter(config, entityType)));
+                    resolveFilter(config, entityType),
+                    SHADOW_MODE.equals(config.path("approvalMode").asText(null))));
       }
     }
   }

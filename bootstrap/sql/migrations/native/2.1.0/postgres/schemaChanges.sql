@@ -438,3 +438,15 @@ CREATE TABLE IF NOT EXISTS change_application (
   PRIMARY KEY (id)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS change_application_request_key ON change_application (changeRequestId);
+
+-- Ordered history of every change request step (submitted, revised, approved, applied, ended).
+CREATE TABLE IF NOT EXISTS change_lifecycle_event (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  eventSequence INTEGER NOT NULL,
+  eventType VARCHAR(32) NOT NULL,
+  eventAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_lifecycle_event_request_sequence_key ON change_lifecycle_event (changeRequestId, eventSequence);

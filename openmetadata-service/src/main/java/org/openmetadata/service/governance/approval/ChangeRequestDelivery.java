@@ -61,15 +61,17 @@ public final class ChangeRequestDelivery {
           .triggerWithSignal(
               ChangeRequestKeys.submittedSignalId(request.getEntityType()), variables(request));
       dao().completeDelivery(request.getId(), token);
+      ChangeRequestMetrics.delivery("delivered");
     } catch (Exception e) {
       LOG.warn(
           "[ChangeRequest] Delivery of {} failed on attempt {}",
           request.getId(),
           request.getDeliveryAttempts(),
           e);
-      dao()
-          .releaseDelivery(
-              request.getId(), token, nextStatus(request).value(), nextAttemptAt(request));
+      DeliveryStatus next = nextStatus(request);
+      dao().releaseDelivery(request.getId(), token, next.value(), nextAttemptAt(request));
+      ChangeRequestMetrics.delivery(
+          next == DeliveryStatus.ATTENTION_REQUIRED ? "attentionRequired" : "retrying");
     }
   }
 

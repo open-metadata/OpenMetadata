@@ -4486,6 +4486,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean useOptimisticLocking,
       String impersonatedBy,
       ApprovedApplication approval) {
+    T updated = preparePatched(original, patch, user);
+    // Always set impersonatedBy to the passed value (which can be null)
+    // This ensures that when regular users make changes (impersonatedBy=null),
+    // any existing impersonatedBy value is cleared, preventing it from persisting
+    updated.setImpersonatedBy(impersonatedBy);
+    Optional<StagedChange> staged =
+        admitOrVerify(original, updated, user, impersonatedBy, approval);
+    return staged
+        .map(change -> stagedPatchResponse(uriInfo, original, change))
+        .orElseGet(
+            () ->
+                patchAndStore(
+                    original,
+                    updated,
+                    patchedFieldNames,
+                    uriInfo,
+                    changeSource,
+                    useOptimisticLocking));
+  }
+
+  /**
+   * What approval gating would decide for a PATCH by {@code user}, computed on the same prepared
+   * entity a real PATCH admits, without storing anything.
+   */
+  public final Optional<StagedChange> previewPatch(UUID id, String user, JsonPatch patch) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    return ApprovalGate.preview(original, preparePatched(original, patch, user), user);
+  }
+
+  private T preparePatched(T original, JsonPatch patch, String user) {
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
@@ -4520,25 +4550,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("patchRestoreAttributes")) {
       restorePatchAttributes(original, updated);
     }
-
-    // Always set impersonatedBy to the passed value (which can be null)
-    // This ensures that when regular users make changes (impersonatedBy=null),
-    // any existing impersonatedBy value is cleared, preventing it from persisting
-    updated.setImpersonatedBy(impersonatedBy);
-    T proposed = updated;
-    Optional<StagedChange> staged =
-        admitOrVerify(original, proposed, user, impersonatedBy, approval);
-    return staged
-        .map(change -> stagedPatchResponse(uriInfo, original, change))
-        .orElseGet(
-            () ->
-                patchAndStore(
-                    original,
-                    proposed,
-                    patchedFieldNames,
-                    uriInfo,
-                    changeSource,
-                    useOptimisticLocking));
+    return updated;
   }
 
   private Optional<StagedChange> admitOrVerify(
@@ -4786,8 +4798,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void postDelete(T entity, boolean hardDelete) {
-    ChangeRequestService.cancelAllForEntity(
-        entity.getId(), "%s was deleted".formatted(entity.getFullyQualifiedName()));
+    // A bulk hard-delete cascade cancels the change requests of each chunk in one query; an entity
+    // without an id was never stored, so it has none.
+    if (!isInHardDeleteCascade() && entity.getId() != null) {
+      ChangeRequestService.cancelForDeletedEntities(List.of(entity.getId()));
+    }
     // Delete from RDF only on hard delete
     if (hardDelete) {
       RdfUpdater.deleteEntity(entity.getEntityReference());
@@ -7254,6 +7269,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // skip the per-entity dispatch; the root entity's own deleteFromSearch (fired by the
         // top-level delete()) still runs and triggers the covering cascade.
         boolean skipPerEntitySearch = descendantsCoveredByAncestorCascade;
+        ChangeRequestService.cancelForDeletedEntities(
+            entities.stream().map(EntityInterface::getId).toList());
         for (T entity : entities) {
           postDelete(entity, true);
           if (!skipPerEntitySearch) {
@@ -13670,10 +13687,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return staged;
   }
 
-  // The pre-fetched original carries no relationship fields; re-read it whole so the change request
-  // records the true published values it is based on.
+  // The pre-fetched original carries no relationship fields; re-read it with the fields a PUT
+  // compares so the change request records the published values it is based on.
   private Optional<StagedChange> admitBulkUpdate(T original, T updated, String userName) {
-    T hydrated = get(null, original.getId(), getFields("*"), ALL, false);
+    T hydrated = get(null, original.getId(), getPutFields(), ALL, false);
     updated.setId(original.getId());
     return ApprovalGate.admit(hydrated, updated, userName, null);
   }

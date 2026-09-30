@@ -13,21 +13,31 @@
 
 package org.openmetadata.service.governance.approval;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Response.Status;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
+import org.openmetadata.schema.api.governance.OverrideChangeRequest;
 import org.openmetadata.schema.api.governance.WithdrawChangeRequest;
+import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
+import org.openmetadata.schema.governance.changeRequest.ChangeLifecycleEvent;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestOrigin;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequestPreview;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevisionStatus;
+import org.openmetadata.schema.governance.changeRequest.DecisionType;
+import org.openmetadata.schema.governance.changeRequest.LifecycleEventType;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Include;
@@ -36,6 +46,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GovernanceDAOs.ChangeRequestDAO;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
@@ -47,6 +58,8 @@ public final class ChangeRequestService {
   private static final String UNIQUE_VIOLATION_POSTGRES = "23505";
   private static final List<ChangeRequestStatus> OPEN_STATUSES =
       List.of(ChangeRequestStatus.PENDING, ChangeRequestStatus.APPROVED);
+  private static final List<String> OPEN_STATUS_VALUES =
+      OPEN_STATUSES.stream().map(ChangeRequestStatus::value).toList();
 
   private ChangeRequestService() {}
 
@@ -76,11 +89,74 @@ public final class ChangeRequestService {
     return dao().changeRevisionDAO().findById(request.getActiveRevisionId());
   }
 
-  public static void attachTask(UUID changeRequestId, int revisionNumber, UUID taskId) {
+  /** The active revision of each request, read in one query and keyed by revision id. */
+  public static Map<UUID, ChangeRevision> activeRevisions(List<ChangeRequest> requests) {
+    List<String> ids =
+        requests.stream()
+            .map(ChangeRequest::getActiveRevisionId)
+            .filter(Objects::nonNull)
+            .map(UUID::toString)
+            .distinct()
+            .toList();
+    Map<UUID, ChangeRevision> revisions = new HashMap<>();
+    if (!ids.isEmpty()) {
+      dao().changeRevisionDAO().findByIds(ids).forEach(r -> revisions.put(r.getId(), r));
+    }
+    return revisions;
+  }
+
+  /** Every revision of the request, oldest first. */
+  public static List<ChangeRevision> revisions(UUID id) {
+    return dao().changeRevisionDAO().listByRequest(id);
+  }
+
+  /** Every recorded decision on any revision of the request, oldest first. */
+  public static List<ApprovalDecision> decisions(UUID id) {
+    return dao().approvalDecisionDAO().listByRequest(id);
+  }
+
+  /** The request's lifecycle history, in the order it happened. */
+  public static List<ChangeLifecycleEvent> events(UUID id) {
+    return dao().changeLifecycleEventDAO().listByRequest(id);
+  }
+
+  /** What saving {@code patch} on the entity would do under approval gating, without saving it. */
+  public static ChangeRequestPreview preview(
+      String entityType, UUID entityId, JsonPatch patch, String user) {
+    Optional<StagedChange> staged =
+        Entity.getEntityRepository(entityType).previewPatch(entityId, user, patch);
+    return new ChangeRequestPreview()
+        .withEntityType(entityType)
+        .withEntityId(entityId)
+        .withRequiresApproval(staged.isPresent())
+        .withWorkflowDefinitionId(staged.map(StagedChange::workflowDefinitionId).orElse(null))
+        .withOps(staged.map(StagedChange::ops).orElse(List.of()));
+  }
+
+  /**
+   * Links a review task to the revision it reviews. Returns false when the request has ended or
+   * moved to a newer revision while the task was being created; that task then has nothing to
+   * review and the caller closes it with {@link #closeStaleTask(UUID)}.
+   */
+  public static boolean attachTask(UUID changeRequestId, int revisionNumber, UUID taskId) {
     ChangeRequest request = dao().changeRequestDAO().findById(changeRequestId);
-    if (request != null && Objects.equals(request.getActiveRevisionNumber(), revisionNumber)) {
+    boolean reviewable =
+        request != null
+            && isOpen(request)
+            && Objects.equals(request.getActiveRevisionNumber(), revisionNumber);
+    if (reviewable) {
       dao().changeRequestDAO().update(request.withTaskId(taskId));
     }
+    return reviewable;
+  }
+
+  /** Closes a review task whose revision can no longer be decided, off the calling thread. */
+  public static void closeStaleTask(UUID taskId) {
+    AsyncService.getInstance()
+        .execute(
+            () ->
+                ChangeRequestTasks.closeTask(
+                    taskId, "The change request is no longer waiting for this review"));
   }
 
   /**
@@ -91,10 +167,85 @@ public final class ChangeRequestService {
    */
   public static ChangeRequest finish(
       UUID id, Integer expectedRevision, ChangeRequestStatus status, String reason) {
+    return finish(id, expectedRevision, status, reason, null);
+  }
+
+  /** As {@link #finish(UUID, Integer, ChangeRequestStatus, String)}, recording who ended it. */
+  public static ChangeRequest finish(
+      UUID id, Integer expectedRevision, ChangeRequestStatus status, String reason, String actor) {
     ChangeRequest request = get(id);
     EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
     return repository.executeInTransaction(
-        () -> finishLocked(repository, request, expectedRevision, status, reason));
+        () -> finishLocked(repository, request, expectedRevision, status, reason, actor));
+  }
+
+  /**
+   * Publishes a pending request without review on an administrator's authority. The override is
+   * recorded as a decision on the revision and as a lifecycle event; the change then applies through
+   * the normal path, so conflicts with newer values still stop it. The review task is closed.
+   */
+  public static ChangeRequest override(UUID id, OverrideChangeRequest override, String admin) {
+    ChangeRequest request = get(id);
+    if (admin.equals(request.getRequestedBy())) {
+      throw new ForbiddenException("An administrator cannot override their own change request");
+    }
+    EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
+    ChangeRevision revision;
+    try {
+      revision =
+          repository.executeInTransaction(
+              () -> recordOverride(repository, request, override, admin));
+    } catch (UnableToExecuteStatementException e) {
+      throw uniqueViolation(e) ? notOverridden(request) : e;
+    }
+    ChangeRequest result = ChangeApplyService.approveAndApply(id, revision.getRevisionNumber());
+    UUID taskId = request.getTaskId();
+    PostCommitActionQueue.runOrDefer(
+        () ->
+            ChangeRequestTasks.closeTask(
+                taskId,
+                "Published by %s without review: %s".formatted(admin, override.getReason())));
+    return result;
+  }
+
+  // The open and revision checks run under the request lock, so a concurrent revision or ending
+  // cannot slip between the check and the recorded override.
+  private static ChangeRevision recordOverride(
+      EntityRepository<?> repository,
+      ChangeRequest request,
+      OverrideChangeRequest override,
+      String admin) {
+    repository.getDao().findJsonByIdForUpdate(request.getEntityId(), Include.ALL);
+    ChangeRequest locked = dao().changeRequestDAO().findByIdForUpdate(request.getId());
+    if (!isOpen(locked)
+        || !override.getExpectedRevision().equals(locked.getActiveRevisionNumber())) {
+      throw notOverridden(locked);
+    }
+    ChangeRevision revision = activeRevision(locked);
+    dao()
+        .approvalDecisionDAO()
+        .insert(
+            new ApprovalDecision()
+                .withId(UUID.randomUUID())
+                .withChangeRequestId(locked.getId())
+                .withRevisionId(revision.getId())
+                .withRevisionNumber(revision.getRevisionNumber())
+                .withDigest(revision.getDigest())
+                .withDecision(DecisionType.OVERRIDE)
+                .withDecidedBy(admin)
+                .withComment(override.getReason())
+                .withDecidedAt(System.currentTimeMillis()));
+    ChangeRequestLifecycle.record(
+        locked, LifecycleEventType.OVERRIDDEN, locked.getStatus(), admin, override.getReason());
+    return revision;
+  }
+
+  private static ClientErrorException notOverridden(ChangeRequest request) {
+    return new ClientErrorException(
+        "Change request %s is %s at revision %d and was not overridden"
+            .formatted(
+                request.getId(), request.getStatus().value(), request.getActiveRevisionNumber()),
+        Status.CONFLICT);
   }
 
   /** Withdraws the requester's own pending request, provided it is still at the revision they saw. */
@@ -105,7 +256,7 @@ public final class ChangeRequestService {
     String reason =
         withdraw.getReason() == null ? "Withdrawn by the requester" : withdraw.getReason();
     ChangeRequest result =
-        finish(id, withdraw.getExpectedRevision(), ChangeRequestStatus.WITHDRAWN, reason);
+        finish(id, withdraw.getExpectedRevision(), ChangeRequestStatus.WITHDRAWN, reason, user);
     if (result.getStatus() != ChangeRequestStatus.WITHDRAWN) {
       throw new ClientErrorException(
           "Change request %s is %s at revision %d and was not withdrawn"
@@ -115,27 +266,29 @@ public final class ChangeRequestService {
     return result;
   }
 
-  public static void cancelAllForEntity(UUID entityId, String reason) {
+  /** Cancels the open change requests of deleted entities, reading them in one query. */
+  public static void cancelForDeletedEntities(List<UUID> entityIds) {
     ChangeRequestDAO requests = changeRequests();
-    if (requests != null) {
-      for (ChangeRequestStatus open : OPEN_STATUSES) {
-        requests
-            .listByEntityAndStatus(entityId, open.value())
-            .forEach(
-                request -> finish(request.getId(), null, ChangeRequestStatus.CANCELLED, reason));
-      }
+    List<String> ids = entityIds.stream().filter(Objects::nonNull).map(UUID::toString).toList();
+    if (requests != null && !ids.isEmpty()) {
+      requests
+          .listByEntitiesAndStatuses(ids, OPEN_STATUS_VALUES)
+          .forEach(
+              request ->
+                  finish(
+                      request.getId(),
+                      null,
+                      ChangeRequestStatus.CANCELLED,
+                      "%s was deleted".formatted(request.getEntityFullyQualifiedName())));
     }
   }
 
   public static void cancelAllForWorkflow(UUID workflowDefinitionId, String reason) {
     ChangeRequestDAO requests = changeRequests();
     if (requests != null) {
-      for (ChangeRequestStatus open : OPEN_STATUSES) {
-        requests
-            .listByWorkflowAndStatus(workflowDefinitionId, open.value())
-            .forEach(
-                request -> finish(request.getId(), null, ChangeRequestStatus.CANCELLED, reason));
-      }
+      requests
+          .listByWorkflowAndStatuses(workflowDefinitionId, OPEN_STATUS_VALUES)
+          .forEach(request -> finish(request.getId(), null, ChangeRequestStatus.CANCELLED, reason));
     }
   }
 
@@ -151,13 +304,17 @@ public final class ChangeRequestService {
       ChangeRequest request,
       Integer expectedRevision,
       ChangeRequestStatus status,
-      String reason) {
+      String reason,
+      String actor) {
     repository.getDao().findJsonByIdForUpdate(request.getEntityId(), Include.ALL);
     ChangeRequest locked = dao().changeRequestDAO().findByIdForUpdate(request.getId());
     boolean revisionMatches =
         expectedRevision == null || expectedRevision.equals(locked.getActiveRevisionNumber());
     if (isOpen(locked) && revisionMatches) {
+      ChangeRequestStatus from = locked.getStatus();
       dao().changeRequestDAO().update(locked.withStatus(status).withStatusReason(reason));
+      ChangeRequestLifecycle.record(
+          locked, ChangeRequestLifecycle.endedAs(status), from, actor, reason);
       closeTaskAfterCommit(locked, status, reason);
     }
     return locked;
@@ -182,7 +339,12 @@ public final class ChangeRequestService {
     ChangeRequest active = dao().changeRequestDAO().findByActiveInterceptKeyForUpdate(key);
     ChangeRequest request = active == null ? create(staged) : supersede(active, staged);
     UUID id = request.getId();
-    PostCommitActionQueue.runOrDefer(() -> ChangeRequestDelivery.deliver(id));
+    PostCommitActionQueue.runOrDefer(
+        () -> ChangeRequestMetrics.admission(staged.entityType(), false));
+    // Delivery starts the review workflow up to its task; it runs off the request thread, and the
+    // recovery scheduler retries any attempt that does not complete.
+    PostCommitActionQueue.runOrDefer(
+        () -> AsyncService.getInstance().execute(() -> ChangeRequestDelivery.deliver(id)));
     return request;
   }
 
@@ -207,6 +369,8 @@ public final class ChangeRequestService {
     ChangeRequest request = newRequest(requestId, staged, revision);
     dao().changeRequestDAO().insert(request);
     dao().changeRevisionDAO().insert(revision);
+    ChangeRequestLifecycle.record(
+        request, LifecycleEventType.SUBMITTED, null, staged.requestedBy(), null);
     return request;
   }
 
@@ -243,6 +407,12 @@ public final class ChangeRequestService {
         .withImpersonatedBy(staged.impersonatedBy())
         .withTaskId(null);
     dao().changeRequestDAO().update(active);
+    ChangeRequestLifecycle.record(
+        active,
+        LifecycleEventType.REVISED,
+        active.getStatus(),
+        staged.requestedBy(),
+        "Revision %d supersedes revision %d".formatted(number, number - 1));
     dao().changeRequestDAO().markDeliveryDue(active.getId(), System.currentTimeMillis());
     PostCommitActionQueue.runOrDefer(
         () ->
