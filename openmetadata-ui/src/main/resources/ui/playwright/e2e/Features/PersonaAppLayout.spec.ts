@@ -350,5 +350,35 @@ test.describe(
         await expect(page.getByTestId('save-button')).toBeEnabled();
       });
     });
+
+    test('clicking elsewhere on the page closes the landing page list', async ({
+      page,
+    }) => {
+      await page.goto(
+        `/customize-page/${getEncodedFqn(
+          configured.persona.responseData.fullyQualifiedName ??
+            configured.persona.responseData.name
+        )}/app-layout`
+      );
+      await waitForAllLoadersToDisappear(page);
+
+      await test.step('Open the list', async () => {
+        await page
+          .getByTestId('default-landing-page-select')
+          .getByRole('button')
+          .click();
+
+        await expect(page.getByRole('listbox')).toBeVisible();
+      });
+
+      await test.step('Click plain text on the page', async () => {
+        await page.getByText(/Starting view for pages/).click();
+
+        await expect(page.getByRole('listbox')).toBeHidden();
+        await expect(
+          page.getByTestId('default-landing-page-select')
+        ).toContainText('Glossary');
+      });
+    });
   }
 );
