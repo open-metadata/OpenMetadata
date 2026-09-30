@@ -13,11 +13,18 @@
 
 import { Browser, expect, Page } from '@playwright/test';
 import { EntityClass } from '../../../support/entity/EntityClass';
+import { ApiServiceClass } from '../../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../../support/entity/service/StorageServiceClass';
 import { test as baseTest } from '../../../support/fixtures/userPages';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 
-import { SERVICE_ENTITIES } from '../../../constant/service';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   ALL_OPERATIONS,
@@ -55,6 +62,20 @@ test.afterAll('Cleanup user', async ({ browser }) => {
   await testUser.delete(apiContext);
   await afterAction();
 });
+
+// Kept here rather than in constant/service: the service classes import that
+// module, so building this map there captured whichever class was still
+// loading as undefined when a spec imported a service class first.
+const SERVICE_ENTITIES = {
+  'Api Service': ApiServiceClass,
+  'Dashboard Service': DashboardServiceClass,
+  'Database Service': DatabaseServiceClass,
+  'Messaging Service': MessagingServiceClass,
+  'Mlmodel Service': MlmodelServiceClass,
+  'Pipeline Service': PipelineServiceClass,
+  'SearchIndex Service': SearchIndexServiceClass,
+  'Storage Service': StorageServiceClass,
+} as const;
 
 Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
   test.describe(`${entityType} Permissions`, () => {
