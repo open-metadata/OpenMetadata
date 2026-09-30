@@ -497,10 +497,6 @@ PREPARE announcement_type_index_stmt FROM @announcement_type_index_ddl;
 EXECUTE announcement_type_index_stmt;
 DEALLOCATE PREPARE announcement_type_index_stmt;
 
--- Flowable schema upgrades run after this migration and inherit the database default. Existing
--- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
-ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
 -- Custom-property entityReference / entityReferenceList values copy the referenced entity into
 -- the holder's extension JSON with nothing linking the copy back. One row per reference lets a
 -- hard delete find every holder through an index; pendingCompaction marks references whose
@@ -515,4 +511,8 @@ CREATE TABLE IF NOT EXISTS entity_extension_reference (
     INDEX entity_extension_reference_to_index (toId),
     INDEX entity_extension_reference_extension_index (extension),
     INDEX entity_extension_reference_pending_index (pendingCompaction, id, extension)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Flowable schema upgrades run after this migration and inherit the database default. Existing
+-- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

@@ -33,6 +33,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceBackfill;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
@@ -64,12 +65,16 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<IngestionPipelineMigrationUtil> ingestionPipelineMigration =
             mockStatic(IngestionPipelineMigrationUtil.class);
         MockedStatic<SearchTermBoostRepair> searchTermBoostRepair =
-            mockStatic(SearchTermBoostRepair.class)) {
+            mockStatic(SearchTermBoostRepair.class);
+        MockedStatic<CustomPropertyReferenceBackfill> customPropertyReferenceBackfill =
+            mockStatic(CustomPropertyReferenceBackfill.class)) {
       migration.runDataMigration();
 
       ingestionPipelineMigration.verify(
           () -> IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO));
       searchTermBoostRepair.verify(SearchTermBoostRepair::repairTermBoostSettings);
+      customPropertyReferenceBackfill.verify(
+          () -> CustomPropertyReferenceBackfill.backfillCustomPropertyReferences(collectionDAO));
     }
   }
 
