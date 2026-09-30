@@ -23,6 +23,10 @@ export const PieChart = ({
   data,
   ariaLabel,
   innerRadius,
+  outerRadius,
+  minAngle,
+  padAngle,
+  track,
   centerLabel,
   showLabels,
   legend,
@@ -39,10 +43,34 @@ export const PieChart = ({
   const getOption = useCallback(
     (theme: ChartTheme) =>
       buildPieOption(
-        { data, ariaLabel, innerRadius, showLabels, legend, tooltip, option },
+        {
+          data,
+          ariaLabel,
+          innerRadius,
+          outerRadius,
+          minAngle,
+          padAngle,
+          track,
+          showLabels,
+          legend,
+          tooltip,
+          option,
+        },
         theme
       ),
-    [data, ariaLabel, innerRadius, showLabels, legend, tooltip, option]
+    [
+      data,
+      ariaLabel,
+      innerRadius,
+      outerRadius,
+      minAngle,
+      padAngle,
+      track,
+      showLabels,
+      legend,
+      tooltip,
+      option,
+    ]
   );
 
   const onEvents = useMemo(
@@ -68,7 +96,7 @@ export const PieChart = ({
       emptyState={emptyState}
       height={height}
       isDark={isDark}
-      isEmpty={isPieEmpty(data)}
+      isEmpty={!track && isPieEmpty(data)}
       loading={loading}
       option={getOption}
       onEvents={onEvents}>

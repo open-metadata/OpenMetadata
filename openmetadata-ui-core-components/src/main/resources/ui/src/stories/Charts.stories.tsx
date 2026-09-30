@@ -329,6 +329,28 @@ export const DonutWithCentreLabel: Story = {
   ),
 };
 
+// The DQ dashboard donut: a grey track ring, and a zero slice drawing no arc.
+export const DonutWithTrack: Story = {
+  render: () => (
+    <Frame>
+      <PieChart
+        track
+        ariaLabel="Test status"
+        centerLabel={
+          <span className="tw:text-lg tw:font-semibold tw:text-primary">
+            49 tests
+          </span>
+        }
+        data={[...status.slice(0, 2), { ...status[2], value: 0 }]}
+        innerRadius="60%"
+        legend={{ show: false }}
+        minAngle={3}
+        outerRadius="80%"
+      />
+    </Frame>
+  ),
+};
+
 export const GeoMap: Story = {
   render: () => (
     <Frame>

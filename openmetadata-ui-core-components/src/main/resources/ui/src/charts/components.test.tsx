@@ -270,4 +270,42 @@ describe('PieChart', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.queryByTestId('echarts-host')).not.toBeInTheDocument();
   });
+
+  it('shows the track ring, not the empty state, when all slices are zero', () => {
+    render(
+      <PieChart
+        track
+        ariaLabel="Status"
+        centerLabel={<span>0 tests</span>}
+        data={[
+          { name: 'Success', value: 0 },
+          { name: 'Failed', value: 0 },
+        ]}
+        innerRadius="75%"
+      />
+    );
+
+    expect(screen.getByTestId('echarts-host')).toBeInTheDocument();
+    expect(screen.getByText('0 tests')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('forwards outerRadius, minAngle and padAngle to the option', () => {
+    render(
+      <PieChart
+        ariaLabel="Status"
+        data={slices}
+        innerRadius="60%"
+        minAngle={3}
+        outerRadius="80%"
+        padAngle={1}
+      />
+    );
+
+    expect(pie()).toMatchObject({
+      radius: ['60%', '80%'],
+      minAngle: 3,
+      padAngle: 1,
+    });
+  });
 });

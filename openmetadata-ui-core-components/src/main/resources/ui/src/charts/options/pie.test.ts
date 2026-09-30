@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { CHART_PALETTE } from '../palette';
 import { DARK_CHART_THEME, LIGHT_CHART_THEME } from '../theme';
 import type { ChartOption, PieDatum } from '../types';
-import { buildPieOption, isPieEmpty } from './pie';
+import { buildPieOption, isPieEmpty, PIE_TRACK_SERIES_ID } from './pie';
 
 const data: PieDatum[] = [
   { name: 'Success', value: 6, color: '#00aa00' },
@@ -118,6 +118,81 @@ describe('buildPieOption', () => {
     );
 
     expect(option.legend).toMatchObject({ top: 4, bottom: 0 });
+  });
+
+  it('uses a custom outer radius', () => {
+    const pie = pieOf(
+      buildPieOption(
+        { ...base, innerRadius: '60%', outerRadius: '80%' },
+        LIGHT_CHART_THEME
+      )
+    );
+
+    expect(pie.radius).toEqual(['60%', '80%']);
+  });
+
+  it('passes minAngle and padAngle to the slices, defaulting to 0', () => {
+    const plain = pieOf(buildPieOption(base, LIGHT_CHART_THEME));
+    const spaced = pieOf(
+      buildPieOption({ ...base, minAngle: 3, padAngle: 1 }, LIGHT_CHART_THEME)
+    );
+
+    expect(plain).toMatchObject({ minAngle: 0, padAngle: 0 });
+    expect(spaced).toMatchObject({ minAngle: 3, padAngle: 1 });
+  });
+
+  it('draws a zero slice as missing so minAngle cannot give it an arc', () => {
+    const pie = pieOf(
+      buildPieOption(
+        {
+          ...base,
+          minAngle: 3,
+          data: [
+            { name: 'Success', value: 5 },
+            { name: 'Aborted', value: 0 },
+          ],
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+
+    expect((pie.data as Array<{ value: unknown }>).map((d) => d.value)).toEqual(
+      [5, '-']
+    );
+    expect(pie.stillShowZeroSum).toBe(false);
+  });
+
+  it('adds no track series by default', () => {
+    expect(buildPieOption(base, LIGHT_CHART_THEME).series).toHaveLength(1);
+  });
+
+  it('adds a silent grey track ring behind the slices', () => {
+    const series = buildPieOption(
+      { ...base, innerRadius: '75%', outerRadius: '100%', track: true },
+      DARK_CHART_THEME
+    ).series as PieSeriesOption[];
+    const track = series[1];
+
+    expect(series[0].id).not.toBe(PIE_TRACK_SERIES_ID);
+    expect(track).toMatchObject({
+      id: PIE_TRACK_SERIES_ID,
+      type: 'pie',
+      silent: true,
+      z: 1,
+      radius: ['75%', '100%'],
+      tooltip: { show: false },
+      label: { show: false },
+    });
+    expect(track.data).toEqual([
+      { name: '', value: 1, itemStyle: { color: DARK_CHART_THEME.emptyFill } },
+    ]);
+  });
+
+  it('keeps the track out of the legend', () => {
+    const legend = buildPieOption({ ...base, track: true }, LIGHT_CHART_THEME)
+      .legend as LegendComponentOption;
+
+    expect(legend.data).toEqual(['Success', 'Failed', 'Aborted']);
   });
 });
 

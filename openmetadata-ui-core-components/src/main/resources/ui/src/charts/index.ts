@@ -55,7 +55,11 @@ export {
 } from './options/geo';
 export type { ResolvedGeoData } from './options/geo';
 export { mergeOption, REPLACE_MERGE_KEYS } from './options/merge';
-export { buildPieOption, isPieEmpty } from './options/pie';
+export {
+  buildPieOption,
+  isPieEmpty,
+  PIE_TRACK_SERIES_ID,
+} from './options/pie';
 
 // Palette, theme, formatting
 export { formatTooltipValue, formatYAxisTick } from './format';

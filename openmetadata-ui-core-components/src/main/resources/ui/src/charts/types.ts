@@ -174,6 +174,17 @@ export interface PieBuildInput {
   ariaLabel: string;
   /** Set for a donut, e.g. `'55%'`. Defaults to a full pie. */
   innerRadius?: number | string;
+  /** Outer radius, e.g. `'100%'`. Defaults to `'72%'`. */
+  outerRadius?: number | string;
+  /** Smallest angle in degrees a non-zero slice is drawn with. Defaults to 0. */
+  minAngle?: number;
+  /** Gap in degrees between slices. Defaults to 0. */
+  padAngle?: number;
+  /**
+   * Draws a grey ring behind the slices. With a track, all-zero data shows
+   * the ring (and any centre label) instead of the empty state.
+   */
+  track?: boolean;
   /** Whole-percent labels beside each slice. */
   showLabels?: boolean;
   legend?: ChartLegendProps;
