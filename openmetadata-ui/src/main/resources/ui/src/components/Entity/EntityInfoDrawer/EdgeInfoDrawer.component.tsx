@@ -198,7 +198,10 @@ const EdgeActionsMenu = ({
 
   return (
     <Dropdown.Root>
-      <Dropdown.DotsButton data-testid="edge-drawer-menu" />
+      <Dropdown.DotsButton
+        aria-label={t('label.action-plural')}
+        data-testid="edge-drawer-menu"
+      />
       <Dropdown.Popover>
         <Dropdown.Menu
           aria-label={t('label.action-plural')}

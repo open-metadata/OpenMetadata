@@ -491,7 +491,7 @@ export function useCanvasEdgeRenderer({
       isCanvasReadyRef.current = true;
       setIsCanvasReady(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- pre-existing gap, unrelated to edit-mode removal (Task 2)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nodes triggers redraw; getNode reads them imperatively
   }, [
     canvasRef,
     edges,

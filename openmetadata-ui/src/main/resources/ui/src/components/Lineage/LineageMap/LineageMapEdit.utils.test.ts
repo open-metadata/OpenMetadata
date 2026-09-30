@@ -27,6 +27,7 @@ import {
   buildConnectPayload,
   buildLineagePayload,
   FIELD_SEPARATOR,
+  findDeletableSelectedNode,
   getEndpointHandle,
   getEndpointNodeId,
   getRealEntityRef,
@@ -116,6 +117,50 @@ describe('LineageMap edit utils', () => {
       expect(
         hasSceneEntityConnection(scene, 'target-entity-id', 'source-entity-id')
       ).toBe(false);
+    });
+  });
+
+  describe('findDeletableSelectedNode', () => {
+    const flowNode = (
+      sceneNode: LineageSceneNode,
+      flags: { isRootNode?: boolean; isNodeRemovable?: boolean } = {}
+    ) => ({
+      id: sceneNode.id,
+      data: {
+        sceneNode,
+        isNodeEditable: true,
+        isNodeRemovable: flags.isNodeRemovable ?? true,
+        isRootNode: flags.isRootNode ?? false,
+      },
+    });
+
+    it('matches the selected node by entity id', () => {
+      const target = flowNode(targetNode);
+
+      expect(
+        findDeletableSelectedNode(
+          [flowNode(sourceNode), target],
+          'target-entity-id'
+        )
+      ).toBe(target);
+    });
+
+    it('skips root, non-removable and unselected nodes', () => {
+      expect(
+        findDeletableSelectedNode(
+          [flowNode(targetNode, { isRootNode: true })],
+          'target-entity-id'
+        )
+      ).toBeUndefined();
+      expect(
+        findDeletableSelectedNode(
+          [flowNode(targetNode, { isNodeRemovable: false })],
+          'target-entity-id'
+        )
+      ).toBeUndefined();
+      expect(
+        findDeletableSelectedNode([flowNode(targetNode)], undefined)
+      ).toBeUndefined();
     });
   });
 

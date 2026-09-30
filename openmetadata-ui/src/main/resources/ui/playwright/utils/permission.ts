@@ -222,7 +222,7 @@ export const validateViewPermissions = async (
   await waitForAllLoadersToDisappear(page);
   await dismissLineageMapOnboarding(page);
 
-  await expect(page.getByTestId('lineage-map-canvas')).toBeVisible();
+  await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
   await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
 
   await page.click('[data-testid="custom_properties"]');

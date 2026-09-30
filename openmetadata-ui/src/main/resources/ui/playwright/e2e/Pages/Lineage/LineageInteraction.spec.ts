@@ -37,6 +37,7 @@ import {
   expectLineageNodeVisible,
   fitToScreen,
   openLineageMenu,
+  openLineageNodeDrawer,
   removeColumnLineage,
   verifyNodePresent,
   visitLineageTab,
@@ -834,6 +835,14 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const drawer = page.getByTestId('lineage-entity-panel');
       await expect(drawer.getByTestId('edge-header-title')).toBeVisible();
       await expect(drawer.getByTestId('edge-drawer-menu')).toHaveCount(0);
+
+      await drawer.getByTestId('drawer-close-icon').click();
+      await expect(drawer).not.toBeVisible();
+      await page.keyboard.press('Delete');
+
+      await expect(
+        page.getByTestId('delete-edge-confirmation-modal')
+      ).toHaveCount(0);
     });
   });
 
@@ -1148,6 +1157,54 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await expect(
           page.getByTestId('delete-edge-confirmation-modal')
+        ).toBeVisible();
+      } finally {
+        await Promise.all([
+          root.delete(apiContext),
+          downstream.delete(apiContext),
+        ]);
+        await afterAction();
+      }
+    });
+
+    test('pressing Delete on a selected node asks for confirmation', async ({
+      page,
+    }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const root = new TableClass();
+      const downstream = new TableClass();
+
+      try {
+        await Promise.all([
+          root.create(apiContext),
+          downstream.create(apiContext),
+        ]);
+        await connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: root.entityResponseData.id, type: 'table' },
+          { id: downstream.entityResponseData.id, type: 'table' }
+        );
+        await root.visitEntityPage(page);
+        await visitLineageTab(page);
+        await fitToScreen(page);
+
+        await openLineageNodeDrawer(
+          page,
+          downstream.entityResponseData.fullyQualifiedName
+        );
+        const drawer = page.getByTestId('lineage-entity-panel');
+        await drawer.getByTestId('drawer-close-icon').click();
+        await expect(drawer).not.toBeVisible();
+        await page.keyboard.press('Delete');
+
+        const modal = page.getByTestId('delete-node-confirmation-modal');
+        await expect(modal).toBeVisible();
+        await modal.getByTestId('cancel-button').click();
+        await expect(modal).not.toBeVisible();
+        await expect(
+          page.getByTestId(
+            `lineage-node-${downstream.entityResponseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
       } finally {
         await Promise.all([

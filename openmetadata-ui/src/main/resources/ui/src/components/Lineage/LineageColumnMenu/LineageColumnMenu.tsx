@@ -32,7 +32,10 @@ const LineageColumnMenu = ({ onEdit }: LineageColumnMenuProps) => {
       onClick={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}>
       <Dropdown.Root>
-        <Dropdown.DotsButton data-testid="lineage-column-menu" />
+        <Dropdown.DotsButton
+          aria-label={t('label.lineage-options')}
+          data-testid="lineage-column-menu"
+        />
         <Dropdown.Popover>
           <Dropdown.Menu
             aria-label={t('label.lineage-options')}

@@ -160,6 +160,31 @@ export const hasSceneLineageEdge = (
       columnPair.toColumn
     ));
 
+// The selected node is a drawer copy of the flow node, so match it by entity id.
+// Only nodes the ⋮ menu would offer to delete qualify.
+export const findDeletableSelectedNode = <
+  T extends {
+    data: {
+      sceneNode?: LineageSceneNode;
+      isNodeEditable?: boolean;
+      isNodeRemovable?: boolean;
+      isRootNode?: boolean;
+    };
+  }
+>(
+  nodes: T[],
+  selectedEntityId?: string
+) =>
+  selectedEntityId
+    ? nodes.find(
+        ({ data }) =>
+          getRealEntityRef(data.sceneNode)?.id === selectedEntityId &&
+          data.isNodeEditable &&
+          data.isNodeRemovable &&
+          !data.isRootNode
+      )
+    : undefined;
+
 export const isEditableSceneNode = (
   node?: LineageSceneNode
 ): node is LineageSceneNode => {

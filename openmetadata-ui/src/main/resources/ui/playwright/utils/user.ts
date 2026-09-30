@@ -588,7 +588,7 @@ export const checkDataConsumerPermissions = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('lineage-map-canvas')).toBeVisible();
+  await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
   await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
 };
 

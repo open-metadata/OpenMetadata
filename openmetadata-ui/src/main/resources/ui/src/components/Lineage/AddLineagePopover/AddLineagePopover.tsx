@@ -14,10 +14,10 @@ import {
   Popover,
   Select,
   SelectItemType,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Heading } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { entityData } from '../../../constants/Lineage.constants';
@@ -167,9 +167,11 @@ const AddLineagePopover = ({
       <div
         className="tw:flex tw:w-80 tw:flex-col tw:gap-3 tw:p-4"
         data-testid="add-lineage-popover">
-        <Typography as="p" className="tw:m-0 tw:font-semibold">
+        <Heading
+          className="tw:m-0! tw:text-sm tw:font-semibold tw:text-primary!"
+          slot="title">
           {t(isUpstream ? 'label.add-upstream' : 'label.add-downstream')}
-        </Typography>
+        </Heading>
         <Select
           data-testid="add-lineage-type-select"
           items={typeItems}

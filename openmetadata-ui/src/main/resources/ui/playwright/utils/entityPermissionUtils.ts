@@ -456,7 +456,7 @@ export const testPipelineSpecificOperations = async (
       0
     );
   } else {
-    await expect(testUserPage.getByTestId('lineage-map-canvas')).toBeVisible();
+    await expect(testUserPage.locator('.react-flow__node')).not.toHaveCount(0);
     await expect(testUserPage.getByTestId('lineage-node-menu')).toHaveCount(0);
   }
 };
@@ -533,7 +533,7 @@ export const testDashboardDataModelSpecificOperations = async (
       0
     );
   } else {
-    await expect(testUserPage.getByTestId('lineage-map-canvas')).toBeVisible();
+    await expect(testUserPage.locator('.react-flow__node')).not.toHaveCount(0);
     await expect(testUserPage.getByTestId('lineage-node-menu')).toHaveCount(0);
   }
 };

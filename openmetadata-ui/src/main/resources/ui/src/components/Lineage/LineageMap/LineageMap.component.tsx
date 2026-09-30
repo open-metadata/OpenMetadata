@@ -139,6 +139,7 @@ import {
 } from './LineageMap.utils';
 import {
   buildLineagePayload,
+  findDeletableSelectedNode,
   getEndpointHandle,
   getEndpointNodeId,
   getRealEntityRef,
@@ -2039,22 +2040,21 @@ const LineageMapCanvas = ({
 
   useEffect(() => {
     const handleDeleteKey = (event: KeyboardEvent) => {
+      const deletableNode = findDeletableSelectedNode(
+        nodesRef.current,
+        selectedNode?.id
+      );
       const action = getDeleteKeyAction(event, {
         canEdit: canEditScene,
-        hasSelectedNode: Boolean(selectedNode),
-        hasSelectedEdge: Boolean(selectedEdge),
+        hasSelectedNode: Boolean(deletableNode),
+        hasSelectedEdge: Boolean(selectedEdge?.data?.isEditable),
       });
       if (!action) {
         return;
       }
       event.preventDefault();
-      if (action === 'node') {
-        const selectedFlowNode = nodesRef.current.find(
-          (node) => node.data.node === selectedNode
-        );
-        if (selectedFlowNode) {
-          requestNodeDelete(selectedFlowNode);
-        }
+      if (action === 'node' && deletableNode) {
+        requestNodeDelete(deletableNode);
 
         return;
       }
