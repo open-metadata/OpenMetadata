@@ -73,6 +73,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDataAssets.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
@@ -666,6 +667,7 @@
         "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDataAssets.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
@@ -698,6 +700,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/fixtures/pages.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
@@ -1875,6 +1878,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDataAssets.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
@@ -2784,6 +2788,7 @@
         "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDataAssets.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
@@ -2996,6 +3001,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDataAssets.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
@@ -3647,6 +3653,7 @@
         "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDataAssets.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
@@ -9684,6 +9691,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/ConnectionServiceDetailsPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
@@ -10260,6 +10268,7 @@
         "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDataAssets.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
@@ -11470,6 +11479,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/ServiceDetailsPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
@@ -11892,6 +11902,7 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/TestConnectionModalUtils.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/ConnectionServicePermissions.spec.ts",
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
