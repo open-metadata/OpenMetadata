@@ -252,6 +252,24 @@ describe('buildLineOption', () => {
     expect(seriesOf(option)[1].yAxisIndex).toBe(1);
   });
 
+  it('draws grid lines from the left axis only when there are two', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        series: [
+          { key: 'passed', name: 'Passed' },
+          { key: 'failed', name: 'Failed', yAxisIndex: 1 },
+        ],
+        yAxis: [{}, {}],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [left, right] = yAxesOf(option);
+
+    expect(left.splitLine).toMatchObject({ show: true });
+    expect(right.splitLine).toMatchObject({ show: false });
+  });
+
   it('draws reference lines as a dashed markLine on the first series', () => {
     const option = buildLineOption(
       {

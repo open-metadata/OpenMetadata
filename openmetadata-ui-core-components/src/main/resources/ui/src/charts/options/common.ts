@@ -147,7 +147,8 @@ export const valueAxis = (
       color: theme.axisTick,
       formatter: props.formatter ?? ((value: number) => formatYAxisTick(value)),
     },
-    splitLine: { show: true, lineStyle: { color: theme.grid } },
+    // A right-hand axis would draw a second, misaligned set of grid lines.
+    splitLine: { show: position !== 'right', lineStyle: { color: theme.grid } },
   } as YAXisComponentOption;
 
   return mergeOption(base, axisRest(props));
