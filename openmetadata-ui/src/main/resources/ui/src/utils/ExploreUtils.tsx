@@ -170,7 +170,7 @@ export const fetchEntityData = async ({
   page,
   size,
   isNLPRequestEnabled,
-  tab,
+  tab = '',
   TABS_SEARCH_INDEXES,
   EntityTypeSearchIndexMapping,
   setSearchHitCounts,
@@ -179,6 +179,7 @@ export const fetchEntityData = async ({
   setUpdatedAggregations,
   setShowIndexNotFoundAlert,
   onNlqAppliedFilters,
+  onResultsSettled,
   showRankingDetails,
 }: {
   searchQueryParam: string;
@@ -203,6 +204,7 @@ export const fetchEntityData = async ({
   setUpdatedAggregations: (aggs: Aggregations) => void;
   setShowIndexNotFoundAlert: (show: boolean) => void;
   onNlqAppliedFilters?: (filters?: QueryFilterInterface) => void;
+  onResultsSettled?: () => void;
   showRankingDetails?: boolean;
 }) => {
   const combinedQueryFilter = getCombinedQueryFilterObject(
@@ -281,12 +283,12 @@ export const fetchEntityData = async ({
       let currentCounts: SearchHitCounts | undefined;
       let resultCount: { index: ExploreSearchIndex; total: number } | undefined;
       const publishCounts = () => {
-        if (currentCounts) {
-          setSearchHitCounts(
-            resultCount
-              ? { ...currentCounts, [resultCount.index]: resultCount.total }
-              : currentCounts
-          );
+        if (currentCounts || resultCount) {
+          const counts = { ...currentCounts } as SearchHitCounts;
+          if (resultCount) {
+            counts[resultCount.index] = resultCount.total;
+          }
+          setSearchHitCounts(counts);
         }
       };
 
@@ -374,6 +376,8 @@ export const fetchEntityData = async ({
           }
         } catch (error) {
           handleSearchError(error);
+        } finally {
+          onResultsSettled?.();
         }
       };
 

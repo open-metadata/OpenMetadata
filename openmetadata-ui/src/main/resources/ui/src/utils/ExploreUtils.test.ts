@@ -770,6 +770,7 @@ describe('fetchEntityData', () => {
       setUpdatedAggregations: jest.fn(),
       setShowIndexNotFoundAlert: jest.fn(),
       onNlqAppliedFilters: jest.fn(),
+      onResultsSettled: jest.fn(),
       ...overrides,
     } as unknown as Parameters<typeof fetchEntityData>[0]);
 
@@ -982,6 +983,12 @@ describe('fetchEntityData', () => {
 
     await Promise.resolve();
 
+    expect(params.onResultsSettled).toHaveBeenCalledTimes(1);
+    expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
+    expect(params.setSearchHitCounts).toHaveBeenCalledWith({
+      [SearchIndex.TABLE]: 42,
+    });
+
     resolveCount(COUNT_RESPONSE);
     await pending;
 
@@ -989,6 +996,22 @@ describe('fetchEntityData', () => {
     expect(params.setSearchHitCounts).toHaveBeenCalledWith({
       [SearchIndex.TABLE]: 42,
     });
+  });
+
+  it('loads counts and results when the route has no tab segment', async () => {
+    mockEntityTypeCounts.mockResolvedValueOnce(COUNT_RESPONSE);
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams({
+      searchQueryParam: 'customer',
+      tab: undefined,
+    });
+
+    await fetchEntityData(params);
+
+    expect(mockEntityTypeCounts).toHaveBeenCalledWith(
+      expect.objectContaining({ includeTopHit: true })
+    );
+    expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
   });
 
   it('reuses counts across pagination but separates filters and deleted state', async () => {

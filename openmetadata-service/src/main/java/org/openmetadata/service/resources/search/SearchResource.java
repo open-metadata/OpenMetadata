@@ -69,6 +69,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CachedSearchLayer;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
@@ -78,7 +79,6 @@ import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.SearchEntityTypeCounts;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
@@ -273,6 +273,12 @@ public class SearchResource {
 
   private Response cachedSearch(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
+    return cachedSearch(request, subjectContext, CachedSearchLayer.Operation.QUERY);
+  }
+
+  private Response cachedSearch(
+      SearchRequest request, SubjectContext subjectContext, CachedSearchLayer.Operation operation)
+      throws IOException {
     // Auth-aware response cache (Item 1). Bots bypass — they do bulk indexing reads with
     // cardinalities that would pollute the user-keyed cache. Uses the layer's loadOrCompute
     // to get single-flight semantics: 100 concurrent users hitting the same uncached query
@@ -282,7 +288,7 @@ public class SearchResource {
     String principal = subjectContext.user() != null ? subjectContext.user().getName() : null;
     boolean cacheable = searchCache != null && searchCache.enabled() && !subjectContext.isBot();
     if (!cacheable) {
-      return searchRepository.search(request, subjectContext);
+      return executeSearch(request, subjectContext, operation);
     }
 
     // Buffer the upstream response body once so the cache stores exactly what we return. The
@@ -299,9 +305,10 @@ public class SearchResource {
         searchCache.loadOrCompute(
             request,
             principal,
+            operation,
             () -> {
               try {
-                Response upstream = searchRepository.search(request, subjectContext);
+                Response upstream = executeSearch(request, subjectContext, operation);
                 capturedResponse[0] = upstream;
                 if (upstream.getStatus() != 200) {
                   return null; // don't cache non-200; loadOrCompute treats null as "no cache write"
@@ -329,7 +336,15 @@ public class SearchResource {
     // response was non-cacheable, so the cache stayed empty and we received body=null. Fall
     // through to a live call (this is rare and only affects the second+ caller of a query
     // that's currently returning errors).
-    return searchRepository.search(request, subjectContext);
+    return executeSearch(request, subjectContext, operation);
+  }
+
+  private Response executeSearch(
+      SearchRequest request, SubjectContext subjectContext, CachedSearchLayer.Operation operation)
+      throws IOException {
+    return operation == CachedSearchLayer.Operation.ENTITY_TYPE_COUNTS
+        ? searchRepository.getEntityTypeCounts(request, request.getIndex(), subjectContext)
+        : searchRepository.search(request, subjectContext);
   }
 
   @GET
@@ -944,8 +959,8 @@ public class SearchResource {
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .withIncludeAggregations(false);
 
-    return new SearchEntityTypeCounts(searchRepository, this::cachedSearch)
-        .search(request, index, subjectContext);
+    request.setIndex(index);
+    return cachedSearch(request, subjectContext, CachedSearchLayer.Operation.ENTITY_TYPE_COUNTS);
   }
 
   @POST

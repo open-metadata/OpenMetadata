@@ -17,20 +17,130 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 @ExtendWith(TestNamespaceExtension.class)
 class SearchCountConsistencyIT {
   private static final List<String> NAMES = List.of("customer", "customer_archive", "custoner");
+
+  @Test
+  void compositeAliasCountsIncludeGovernanceWithTheSameMatchingRules(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String glossary = GlossaryTestFactory.createSimple(ns).getFullyQualifiedName();
+    String classification =
+        ns.trackRoot(
+                Entity.CLASSIFICATION,
+                client
+                    .classifications()
+                    .create(
+                        new CreateClassification()
+                            .withName(ns.prefix("classification"))
+                            .withDescription("Count regression")))
+            .getFullyQualifiedName();
+    List<String> ids = new ArrayList<>();
+    for (String suffix : NAMES) {
+      String name = ns.prefix(suffix);
+      ids.add(
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName(name)
+                      .withGlossary(glossary)
+                      .withDescription("Count regression"))
+              .getId()
+              .toString());
+      ids.add(
+          client
+              .tags()
+              .create(
+                  new CreateTag()
+                      .withName(name)
+                      .withClassification(classification)
+                      .withDescription("Count regression"))
+              .getId()
+              .toString());
+      var domain =
+          ns.trackRoot(
+              Entity.DOMAIN,
+              client
+                  .domains()
+                  .create(
+                      new CreateDomain()
+                          .withName(name)
+                          .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                          .withDescription("Count regression")));
+      ids.add(domain.getId().toString());
+      ids.add(
+          ns.trackRoot(
+                  Entity.DATA_PRODUCT,
+                  client
+                      .dataProducts()
+                      .create(
+                          new CreateDataProduct()
+                              .withName(name)
+                              .withDomains(List.of(domain.getFullyQualifiedName()))
+                              .withDescription("Count regression")))
+              .getId()
+              .toString());
+    }
+    String filter =
+        JsonUtils.pojoToJson(Map.of("query", Map.of("terms", Map.of("id.keyword", ids))));
+    assertTrue(
+        RankingSupport.awaitTrue(
+            () -> total(governanceSearch(client, "query", "all", "*", filter)) == ids.size()));
+    for (String query : List.of(ns.prefix("customer"), ns.prefix("custoner"), "*")) {
+      JsonNode counts =
+          governanceSearch(client, "entityTypeCounts", "dataAsset,domain", query, filter);
+      long expectedTotal = 0;
+      for (String type : List.of("glossaryTerm", "tag", "domain", "dataProduct")) {
+        long expected = total(governanceSearch(client, "query", type, query, filter));
+        assertTrue(expected > 0, type + " must have matching fixtures");
+        long actual = 0;
+        for (JsonNode bucket : counts.at("/aggregations/entityType/buckets")) {
+          if (type.equals(bucket.path("key").asText())) actual = bucket.path("doc_count").asLong();
+        }
+        assertEquals(expected, actual, type + " count for " + query);
+        expectedTotal += expected;
+      }
+      assertEquals(expectedTotal, total(counts));
+    }
+  }
+
+  private static JsonNode governanceSearch(
+      OpenMetadataClient client, String endpoint, String index, String query, String filter) {
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/search/" + endpoint,
+            null,
+            JsonNode.class,
+            RequestOptions.builder()
+                .queryParam("q", query)
+                .queryParam("index", index)
+                .queryParam("size", "0")
+                .queryParam("track_total_hits", "true")
+                .queryParam("query_filter", filter)
+                .build());
+  }
 
   @Test
   void exactMatchInAnotherTypeDoesNotSuppressFuzzyResults(TestNamespace ns) {

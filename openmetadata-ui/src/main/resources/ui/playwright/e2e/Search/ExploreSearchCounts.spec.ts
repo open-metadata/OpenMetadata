@@ -116,6 +116,27 @@ for (const { index, tab, path } of [
       await cleanup();
     });
 
+    if (index === 'databaseSchema') {
+      test('selects the matching tab when entering Explore without a tab', async ({
+        page,
+      }) => {
+        const params = new URLSearchParams({
+          search: 'customer',
+          sort: '_score',
+          sortOrder: 'desc',
+          quickFilter: JSON.stringify(filter),
+        });
+        await page.goto(`/explore?${params}`);
+        await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+          ['customer', 'customer_archive']
+        );
+        await expect(page.getByTestId('database schemas-tab')).toHaveText(
+          /Database Schemas\s*2/
+        );
+        await expect(page.getByTestId('tables-tab')).toHaveText(/Tables\s*1/);
+      });
+    }
+
     test('badge equals the accessible results and excludes fuzzy-only siblings', async ({
       page,
     }) => {
@@ -125,10 +146,22 @@ for (const { index, tab, path } of [
         sortOrder: 'desc',
         quickFilter: JSON.stringify(filter),
       });
+      let releaseCounts = () => {};
+      const countsReleased = new Promise<void>((resolve) => {
+        releaseCounts = resolve;
+      });
+      await page.route('**/api/v1/search/entityTypeCounts?*', async (route) => {
+        await countsReleased;
+        await route.continue();
+      });
       await page.goto(`/explore/${path}?${params}`);
-      await expect(page.getByTestId('entity-header-display-name')).toHaveCount(
-        2
-      );
+      try {
+        await expect(
+          page.getByTestId('entity-header-display-name')
+        ).toHaveCount(2);
+      } finally {
+        releaseCounts();
+      }
       await expect(page.getByTestId(`${tab}-tab`)).toHaveText(
         new RegExp(`${tab}\\s*2`, 'i')
       );
