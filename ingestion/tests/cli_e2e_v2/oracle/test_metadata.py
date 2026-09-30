@@ -53,8 +53,8 @@ def test_stored_procedure_bodies(cli, oracle):
 @pytest.mark.e2e_contract("fk.relationships")
 def test_foreign_key(cli, oracle):
     cli.run(oracle.invocation(MetadataPipeline()))
-    expect.poll(oracle.table_query("transactions")).satisfies(
-        table_has_foreign_key(("customer_id",), (oracle.column_fqn("customers", "id"),))
+    expect.poll(oracle.table_query("TRANSACTIONS")).satisfies(
+        table_has_foreign_key(("customer_id",), (oracle.column_fqn("CUSTOMERS", "id"),))
     )
 
 
@@ -62,8 +62,8 @@ def test_foreign_key(cli, oracle):
 def test_mark_deleted_tables_on_reingest(cli, oracle):
     invocation = oracle.invocation(MetadataPipeline(markDeletedTables=True, includeStoredProcedures=False))
     cli.run(invocation)
-    removed = oracle.table_query("all_types")
-    retained = oracle.table_query("customers")
+    removed = oracle.table_query("ALL_TYPES")
+    retained = oracle.table_query("CUSTOMERS")
     before = expect.poll(removed).satisfies(table_is_deleted(deleted=False))
     sibling = expect.poll(retained).satisfies(table_is_deleted(deleted=False))
     oracle.source.drop_table("all_types")
@@ -96,7 +96,7 @@ def test_repeat_ingest_preserves_ids_and_updates_metadata(cli, oracle):
         catalog_matches(expected)(snapshot)
         assert len(snapshot.tables) == len(original_ids)
         assert {model_str(table.fullyQualifiedName): table.id for table in snapshot.tables} == original_ids
-        table = snapshot.find(Table, oracle.table_fqn("all_types"))
+        table = snapshot.find(Table, oracle.table_fqn("ALL_TYPES"))
         assert model_str(table.description) == "Updated native values fixture"
 
     expect.poll(oracle.catalog_query()).satisfies(updated)
@@ -106,7 +106,7 @@ def test_repeat_ingest_preserves_ids_and_updates_metadata(cli, oracle):
 def test_lineage_view_references_tables(cli, oracle):
     """The view's DDL is stored, and parsing it yields table- and column-level edges."""
     cli.run(oracle.invocation(MetadataPipeline(includeDDL=True, includeStoredProcedures=False)))
-    for name in ("customers", "transactions"):
+    for name in ("CUSTOMERS", "TRANSACTIONS"):
         expect.poll(oracle.table_query(name)).satisfies(entity_exists)
     view = oracle.table_fqn("customer_txn_summary")
     # Prove the DDL landed before asserting on edges parsed from it, so a missing-DDL
@@ -118,10 +118,10 @@ def test_lineage_view_references_tables(cli, oracle):
     cli.run(oracle.invocation(LineagePipeline(processQueryLineage=False)))
 
     def check(graph):
-        lineage_has_edge(oracle.table_fqn("customers"), view)(graph)
-        lineage_has_edge(oracle.table_fqn("transactions"), view)(graph)
+        lineage_has_edge(oracle.table_fqn("CUSTOMERS"), view)(graph)
+        lineage_has_edge(oracle.table_fqn("TRANSACTIONS"), view)(graph)
         lineage_has_columns(
-            (oracle.column_fqn("customers", "id"), oracle.column_fqn("transactions", "amount")),
+            (oracle.column_fqn("CUSTOMERS", "id"), oracle.column_fqn("TRANSACTIONS", "amount")),
             (
                 oracle.column_fqn("customer_txn_summary", "customer_id"),
                 oracle.column_fqn("customer_txn_summary", "total_amount"),
@@ -135,7 +135,7 @@ def test_lineage_view_references_tables(cli, oracle):
 def test_auto_classification_tags_pii_columns(cli, oracle):
     """PII columns are tagged and non-PII columns are left alone."""
     cli.run(oracle.invocation(MetadataPipeline(includeStoredProcedures=False)))
-    expect.poll(oracle.table_query("customers")).satisfies(entity_exists)
+    expect.poll(oracle.table_query("CUSTOMERS")).satisfies(entity_exists)
     cli.run(
         oracle.invocation(
             AutoClassificationPipeline(storeSampleData=True, enableAutoClassification=True, confidence=60)
@@ -150,7 +150,7 @@ def test_auto_classification_tags_pii_columns(cli, oracle):
             for tag in ("PII.Sensitive", "PII.NonSensitive"):
                 column_has_no_tag(name, tag)(table)
 
-    expect.poll(oracle.table_query("customers")).satisfies(check)
+    expect.poll(oracle.table_query("CUSTOMERS")).satisfies(check)
 
 
 @pytest.mark.parametrize(
@@ -158,19 +158,19 @@ def test_auto_classification_tags_pii_columns(cli, oracle):
     [
         pytest.param(
             {"tableFilterPattern": {"includes": ["customers"]}},
-            {"customers"},
+            {"CUSTOMERS"},
             id="include-one",
             marks=pytest.mark.e2e_contract("filter.table.include-one"),
         ),
         pytest.param(
             {"tableFilterPattern": {"excludes": ["transactions"]}},
-            {"customers", "all_types", "customer_txn_summary"},
+            {"CUSTOMERS", "ALL_TYPES", "customer_txn_summary"},
             id="exclude-one",
             marks=pytest.mark.e2e_contract("filter.table.exclude-one"),
         ),
         pytest.param(
             {"tableFilterPattern": {"includes": ["customers", "transactions"], "excludes": ["transactions"]}},
-            {"customers"},
+            {"CUSTOMERS"},
             id="mix",
             marks=pytest.mark.e2e_contract("filter.table.mix"),
         ),

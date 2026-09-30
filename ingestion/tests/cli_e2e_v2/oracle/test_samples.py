@@ -18,7 +18,10 @@ from ..features.database.samples import sample_query
 from ..runtime import expect
 from .checks import native_sample_rows
 
-_FILTERS = {"tableFilterPattern": {"includes": ["all_types"]}}
+# Uppercase to match the entity name OM stores. The metadata pipeline matches filter
+# patterns case-insensitively, but the auto-classification path does not, so a
+# lowercase pattern here selects nothing and no sample data is ever written.
+_FILTERS = {"tableFilterPattern": {"includes": ["ALL_TYPES"]}}
 
 
 def _sample_options() -> AutoClassificationPipeline:
@@ -29,7 +32,7 @@ def _sample_options() -> AutoClassificationPipeline:
 def test_persisted_native_sample_values(cli, oracle):
     """Sample data for the seeded Oracle-native row is persisted with the declared value."""
     cli.run(oracle.invocation(MetadataPipeline(includeStoredProcedures=False), filters=_FILTERS))
-    table = expect.poll(oracle.table_query("all_types")).satisfies(entity_exists)
+    table = expect.poll(oracle.table_query("ALL_TYPES")).satisfies(entity_exists)
 
     cli.run(oracle.invocation(_sample_options(), filters=_FILTERS))
 
@@ -45,7 +48,7 @@ def test_persisted_native_sample_values(cli, oracle):
 def test_reingest_replaces_persisted_samples(cli, oracle):
     """Re-sampling after a source update replaces the stored rows on the same entity."""
     cli.run(oracle.invocation(MetadataPipeline(includeStoredProcedures=False), filters=_FILTERS))
-    table = expect.poll(oracle.table_query("all_types")).satisfies(entity_exists)
+    table = expect.poll(oracle.table_query("ALL_TYPES")).satisfies(entity_exists)
     invocation = oracle.invocation(_sample_options(), filters=_FILTERS)
     query = sample_query(oracle.om, table)
 

@@ -66,16 +66,25 @@ an import error. Install the checkout (`pip install -e 'ingestion[test]'`) inste
 so the CLI subprocess and the test process agree on which connector source is under test. CI does
 this already; only mixed local environments hit it.
 
-Oracle identifiers are declared lowercase throughout. SQLAlchemy emits them unquoted, Oracle folds
-them to uppercase in the dictionary, and the connector normalises them back to lowercase because
-`preserveIdentifierCase` is left at its default. Declared names therefore match expectations
-literally, and no case-insensitive filter patterns are needed. Hand-written DDL in `baseline.py`
-must leave the schema unquoted for the same reason — quoting it looks for a lowercase user that
-`CREATE USER` never created.
+Oracle identifiers are declared lowercase in `baseline.py` and emitted unquoted, so Oracle folds
+them to uppercase in the data dictionary. What OM stores is not uniform, and `expected.py` encodes
+the real behaviour rather than an idealised one:
 
-Stored procedure names are the one exception: they still arrive UPPERCASE, because the
-stored-procedure path reads the data dictionary directly instead of normalising like every other
-object.
+| Entity | Case in OM |
+|---|---|
+| database | `default` — not the Oracle service name |
+| schema | lowercase |
+| tables | **UPPERCASE** — the dictionary name, verbatim |
+| views | lowercase — keyed through `str.lower` in the view-definition cache |
+| columns | lowercase — normalised in `get_columns` |
+| stored procedures | **UPPERCASE** — read from the dictionary directly |
+
+The table/view split is pre-existing and costs users nothing, so it is deliberately left alone:
+normalising table names would rename every existing Oracle table's FQN. Filter patterns are
+compiled with `re.IGNORECASE`, so a lowercase pattern still matches an uppercase table.
+
+Hand-written DDL in `baseline.py` must leave the schema unquoted — quoting it looks for a lowercase
+user that `CREATE USER` never created.
 
 MySQL tests explicitly call `cli.run(mysql.invocation(options))`, then `expect.poll(query).satisfies(check)`. The `mysql` context binds source identity, configuration, and fresh queries; it does not run ingestion, own cleanup, or cache observations. Fixtures provision the source and service, while named pytest tests show the actions and assertions in execution order.
 

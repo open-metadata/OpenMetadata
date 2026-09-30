@@ -371,12 +371,7 @@ def get_table_names(self, connection, schema=None, **kw):
         tablespace = f"nvl(tablespace_name, 'no tablespace') NOT IN ({exclude_tablespace}) AND "
     sql_str = ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, prefix=_get_table_prefix(self))
     cursor = connection.execute(sql.text(sql_str), {"owner": schema})
-    # Normalised like get_view_names_dialect and get_mview_names_dialect. Returning the
-    # dictionary's uppercase name here made tables the only objects not folded back:
-    # columns, views and, critically, get_foreign_keys' referred_table are all normalised,
-    # so an uppercase table name never matched the lowercase referred_table and every
-    # Oracle foreign key was silently dropped.
-    return [self.normalize_name(row[0]) for row in cursor]
+    return [row[0] for row in cursor]
 
 
 def get_view_names(self, schema=None):
@@ -534,7 +529,13 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 
         constraint_name = self.normalize_name(row[0])
         local_column = self.normalize_name(row[2])
-        remote_table = self.normalize_name(row[3])
+        # Match the case get_table_names reports, which returns dictionary names
+        # verbatim. Normalising here produced a referred_table that never matched the
+        # Table entity's FQN, so common_db_source's exact get_by_name lookup missed and
+        # every Oracle foreign key was silently discarded. denormalize_name is the
+        # inverse of normalize_name and is rebound to identity under
+        # preserveIdentifierCase, so both modes stay consistent.
+        remote_table = self.denormalize_name(self.normalize_name(row[3]))
         remote_column = self.normalize_name(row[4])
         remote_owner = self.normalize_name(row[5])
 

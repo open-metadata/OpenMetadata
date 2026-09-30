@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Boolean, DateTime, Numeric, Text
@@ -76,35 +77,46 @@ def oracle_expected(
 ) -> ExpectedService:
     """Return the expected Oracle catalog for ``service_name``.
 
-    Observed naming:
+    Observed naming, which the connector is not internally consistent about:
 
     - database   ``default`` — the Oracle service name is *not* used here
     - schema     lowercase
-    - tables     lowercase
-    - views      lowercase
-    - columns    lowercase
-    - procedures UPPERCASE — the stored-procedure path reads the dictionary directly
-      and does not normalise, unlike every other object
+    - tables     UPPERCASE — the dictionary name, returned verbatim
+    - views      lowercase — keyed through ``str.lower`` in the view-definition cache
+    - columns    lowercase — normalised in ``get_columns``
+    - procedures UPPERCASE — read from the dictionary directly
+
+    The suite encodes what the product does. The table/view split is pre-existing and
+    costs users nothing, so it is deliberately not "fixed" here: changing it would
+    rename every existing Oracle table's FQN.
 
     ``tables=None`` returns the full catalog; ``tables=[...]`` filters to
     named tables only for complete-inventory filter checks.
     """
+    views = [_expected_customer_txn_summary_view()]
     expected = derive_expected_service(
         service_name=service_name,
         service_type=DatabaseServiceType.Oracle,
         metadata=build_oracle_baseline(schema).metadata,
         type_map=ORACLE_TYPE_MAP,
         database="default",
-        views=[_expected_customer_txn_summary_view()],
+        views=views,
         stored_procedures=[
             ExpectedStoredProcedure(name="SP_ACTIVE_CUSTOMER_COUNT"),
             ExpectedStoredProcedure(name="SP_UPDATE_CUSTOMER_STATUS"),
         ],
     )
 
+    # Derived tables land uppercase; hand-authored views keep the lowercase name OM
+    # reports. Selected by name, not position, so a second view cannot be uppercased.
+    view_names = {view.name for view in views}
+    schema_entity = expected.databases[0].schemas[0]
+    schema_entity.tables[:] = [
+        table if table.name in view_names else replace(table, name=table.name.upper()) for table in schema_entity.tables
+    ]
+
     if tables is not None:
         kept = set(tables)
-        schema_entity = expected.databases[0].schemas[0]
         schema_entity.tables[:] = [t for t in schema_entity.tables if t.name in kept]
 
     return expected

@@ -70,15 +70,15 @@ def profiler_options() -> ProfilerPipeline:
 def test_profiler_metrics(cli, oracle):
     """Profiling emits table row counts and per-column numeric and string metrics."""
     cli.run(oracle.invocation(MetadataPipeline(includeStoredProcedures=False)))
-    for name in ("customers", "transactions", "all_types"):
+    for name in ("CUSTOMERS", "TRANSACTIONS", "ALL_TYPES"):
         expect.poll(oracle.table_query(name)).satisfies(entity_exists)
 
     cli.run(oracle.invocation(profiler_options()))
 
-    for name, count in (("customers", 5), ("transactions", 5), ("all_types", 3)):
+    for name, count in (("CUSTOMERS", 5), ("TRANSACTIONS", 5), ("ALL_TYPES", 3)):
         expect.poll(oracle.profile_query(name)).satisfies(table_has_row_count(count))
 
-    expect.poll(oracle.profile_query("customers")).satisfies(
+    expect.poll(oracle.profile_query("CUSTOMERS")).satisfies(
         column_has_metrics(
             "credit_score",
             valuesCount=5,
@@ -91,6 +91,6 @@ def test_profiler_metrics(cli, oracle):
             sum=3400,
         )
     )
-    expect.poll(oracle.profile_query("customers")).satisfies(
+    expect.poll(oracle.profile_query("CUSTOMERS")).satisfies(
         column_has_metrics("first_name", valuesCount=5, nullCount=0, minLength=3, maxLength=7)
     )

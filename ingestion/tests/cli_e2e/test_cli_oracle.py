@@ -108,14 +108,11 @@ SELECT * from names
 
     @staticmethod
     def fqn_created_table() -> str:
-        # Lowercase since get_table_names started normalising like every other Oracle
-        # object path. The ADMIN_EMP include filter below still matches: filter patterns
-        # are compiled with re.IGNORECASE.
-        return "e2e_oracle.default.admin.admin_emp"
+        return "e2e_oracle.default.admin.ADMIN_EMP"
 
     @staticmethod
     def _fqn_deleted_table() -> str:
-        return "e2e_oracle.default.admin.admin_emp"
+        return "e2e_oracle.default.admin.ADMIN_EMP"
 
     @staticmethod
     def get_includes_schemas() -> list[str]:
