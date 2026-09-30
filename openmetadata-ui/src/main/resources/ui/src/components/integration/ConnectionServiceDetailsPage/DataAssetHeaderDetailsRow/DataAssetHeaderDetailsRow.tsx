@@ -41,7 +41,9 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
   domains,
   tags,
   visibilitySlot,
-  hasEditPermission,
+  canEditDomains,
+  canEditOwners,
+  canEditTier,
   onUpdateDomain,
   onUpdateOwners,
   onUpdateTier,
@@ -115,7 +117,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             </Popover>
           </PopoverTrigger>
         )}
-        {hasEditPermission && onUpdateDomain && (
+        {canEditDomains && onUpdateDomain && (
           <DomainSelectableList
             hasPermission
             isClearable
@@ -157,7 +159,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             {t('label.add-entity', { entity: t('label.owner') })}
           </Typography>
         )}
-        {hasEditPermission && onUpdateOwners && (
+        {canEditOwners && onUpdateOwners && (
           <UserTeamSelectableList
             hasPermission
             multiple={{ user: true, team: true }}
@@ -197,7 +199,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
               ? tier.displayName ?? tier.name ?? tier.tagFQN
               : t('label.add-entity', { entity: t('label.tier') })}
           </Typography>
-          {hasEditPermission && onUpdateTier && (
+          {canEditTier && onUpdateTier && (
             <ButtonUtility
               aria-expanded={tierPopoverOpen}
               aria-haspopup="dialog"

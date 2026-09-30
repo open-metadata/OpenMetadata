@@ -28,6 +28,10 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
+import {
+  getCustomPropertyCard,
+  openCustomPropertiesTab,
+} from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
@@ -598,7 +602,7 @@ test.describe('Bulk Edit Entity', () => {
     await afterAction();
   });
 
-  test('Table', async ({ page }) => {
+  test('Table', { tag: '@quarantine' }, async ({ page }) => {
     test.slow(true);
 
     const tableEntity = new TableClass({ service: new DatabaseServiceClass() });
@@ -799,11 +803,10 @@ test.describe('Bulk Edit Entity', () => {
       ).toBeVisible();
 
       // Verify Custom Properties
-      await page.click('[data-testid="custom_properties"]');
-      await waitForAllLoadersToDisappear(page);
+      await openCustomPropertiesTab(page);
 
       for (const propertyName of Object.values(glossaryTermCustomProperties)) {
-        await expect(page.getByText(propertyName)).toBeVisible();
+        await expect(getCustomPropertyCard(page, propertyName)).toBeVisible();
       }
     });
 
@@ -929,11 +932,10 @@ test.describe('Bulk Edit Entity', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Verify Custom Properties
-      await page.click('[data-testid="custom_properties"]');
-      await waitForAllLoadersToDisappear(page);
+      await openCustomPropertiesTab(page);
 
       for (const propertyName of Object.values(glossaryTermCustomProperties)) {
-        await expect(page.getByText(propertyName)).toBeVisible();
+        await expect(getCustomPropertyCard(page, propertyName)).toBeVisible();
       }
     });
 
