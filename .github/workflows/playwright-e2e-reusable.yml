@@ -529,6 +529,12 @@ jobs:
             "$BUNDLE_MODE" \
             "$BUILD_TOOLCHAIN"
 
+      # pull_request is excluded from this and the golden-fixture / ingestion-
+      # image saves below: a PR-ref copy is visible only to that PR's own
+      # re-runs, yet each costs the shared 10 GB budget the same as main's
+      # copy. Measured 2026-09-29: 11.6 GB across 33 PR-ref entries, and the
+      # warmer's main-scoped fixtures evicted within ~2.5 h of being saved.
+      # Only populate-playwright-caches.yml (push / schedule) writes these.
       - name: Save OpenMetadata distribution cache
         # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
         # merge_group skips it too — see the dist-cache step for why an
@@ -537,6 +543,7 @@ jobs:
         if: >-
           steps.distribution-cache.outputs.usable != 'true' &&
           github.event_name != 'merge_group' &&
+          github.event_name != 'pull_request' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
@@ -746,6 +753,94 @@ jobs:
                 --dir "$run_dir" || true
             done
 
+      - name: Verify Playwright HTTP helpers
+        # PR code must not inherit the runner's cache credentials or write to
+        # its workspace. These tests only need loopback HTTP inside the container.
+        run: |
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --workdir /workspace/openmetadata-ui/src/main/resources/ui \
+            --env CI=true \
+            node:22.22.2-bookworm-slim \
+            ./node_modules/.bin/playwright test \
+            --config=playwright/helper-tests.config.ts --output=/tmp/helper-test-results
+
+      - name: Prepare component library for browser helper tests
+        if: ${{ !inputs.ref }}
+        run: |
+          core_dir="openmetadata-ui-core-components/src/main/resources/ui"
+          core_output="$RUNNER_TEMP/playwright-core"
+          # Docker cannot create nested mount targets inside the read-only checkout.
+          mkdir -p "$core_dir/node_modules" "$core_dir/dist"
+          mkdir -p "$core_output/node_modules" "$core_output/dist" "$core_output/vite-temp"
+          # Dependency installation can execute repository-controlled package-manager
+          # configuration even with lifecycle scripts disabled. Keep it off the runner.
+          docker run --rm --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=4g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
+            --workdir "/workspace/$core_dir" \
+            node:22.22.2-bookworm-slim \
+            yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache
+
+          # Only temporary build output is writable; dependencies and source stay read-only.
+          mkdir -p "$core_output/node_modules/.vite-temp"
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules,readonly" \
+            --mount "type=bind,source=$core_output/dist,target=/workspace/$core_dir/dist" \
+            --mount "type=bind,source=$core_output/vite-temp,target=/workspace/$core_dir/node_modules/.vite-temp" \
+            --workdir "/workspace/$core_dir" \
+            node:22.22.2-bookworm-slim \
+            ./node_modules/.bin/vite build
+
+      - name: Verify browser helper behavior
+        id: verify-browser-helpers
+        if: ${{ !inputs.ref }}
+        # Shared helper behavior is independent of shard data. Gate planning
+        # once, before fan-out, with the real compiled components and browser.
+        run: |
+          core_dir="openmetadata-ui-core-components/src/main/resources/ui"
+          # The workspace is mounted read-only and /tmp is a tmpfs in a --rm
+          # container, so anything written to either dies with the container.
+          # Give the run one writable mount and point Playwright's output at it,
+          # otherwise a failure here is a single line of `list` output.
+          mkdir -p "$RUNNER_TEMP/browser-helper-results"
+          docker run --rm --network none --read-only --shm-size=1g \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/playwright-core/node_modules,target=/workspace/$core_dir/node_modules,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/playwright-core/dist,target=/workspace/$core_dir/dist,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/browser-helper-results,target=/artifacts" \
+            --workdir /workspace/openmetadata-ui/src/main/resources/ui \
+            --env CI=true \
+            --env PW_BROWSER_HELPER_OUTPUT=/artifacts \
+            mcr.microsoft.com/playwright:v1.57.0-jammy \
+            ./node_modules/.bin/playwright test \
+            --config=playwright/browser-helper-tests.config.ts
+
+      - name: Upload browser helper failure diagnostics
+        uses: actions/upload-artifact@v6
+        # Failure-only, so a green run uploads nothing. Without this the traces
+        # and results.json the container just wrote are discarded with it.
+        if: ${{ !inputs.ref && (failure() || cancelled()) }}
+        continue-on-error: true
+        with:
+          name: playwright-browser-helper-results
+          path: ${{ runner.temp }}/browser-helper-results
+          retention-days: 5
+          if-no-files-found: ignore
+
       - name: Discover tests
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
@@ -773,6 +868,23 @@ jobs:
             --project=search-nightly \
             > "$RUNNER_TEMP/playwright-test-list.json"
 
+      - name: Fetch auto-refreshed timing baseline
+        # ci/playwright-timing is refreshed after every successful full run on main.
+        # It is pooled with any downloaded full-suite histories; main's checked-in
+        # baseline still covers tests neither has seen (and PR-seeded new specs).
+        continue-on-error: true
+        run: |
+          dest="$RUNNER_TEMP/playwright-history/ci-playwright-timing"
+          mkdir -p "$dest"
+          if git fetch --depth=1 --no-tags origin ci/playwright-timing &&
+            git show FETCH_HEAD:timing-baseline.json > "$dest/playwright-timing-history.json" &&
+            jq -e '.mode == "full" and (.tests | length > 0)' "$dest/playwright-timing-history.json" >/dev/null; then
+            echo "Using ci/playwright-timing @ $(git rev-parse --short FETCH_HEAD)"
+          else
+            rm -f "$dest/playwright-timing-history.json"
+            echo "::warning::ci/playwright-timing unavailable; planning uses the checked-in baseline."
+          fi
+
       - name: Build duration-aware shard plans
         id: plan
         run: |
@@ -794,6 +906,28 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
           jq '{shards: (.include | length), lanes: (.include | group_by(.lane) | map({lane: .[0].lane, count: length}))}' \
             "$RUNNER_TEMP/playwright-plans/matrix.json"
+
+      - name: Inventory existing quarantined coverage
+        if: ${{ github.event_name != 'merge_group' }}
+        run: |
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --user "$(id -u):$(id -g)" \
+            --tmpfs /tmp:rw,nosuid,size=1g \
+            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+            --workdir /workspace/openmetadata-ui/src/main/resources/ui \
+            --env CI=true --env PLAYWRIGHT_IS_OSS=true \
+            --env PLAYWRIGHT_RUN_QUARANTINED=true \
+            --env PW_DEDICATED_INGESTION=true --env PW_DEDICATED_IMPORT_EXPORT=true \
+            node:22.22.2-bookworm-slim \
+            ./node_modules/.bin/playwright test --list --reporter=json --pass-with-no-tests \
+            --project=chromium --project=Basic --project="Data Insight" \
+            --project=Ingestion --project=ImportExport \
+            --project=DataAssetRulesEnabled --project=DataAssetRulesDisabled \
+            --project=SearchRBAC --project=DomainIsolation --project=Reindex \
+            --project=GlobalSettings --project=SystemCertificationTags \
+            --project=IntakeForm --project=AdvancedSearch --project=search-nightly \
+            > "$RUNNER_TEMP/playwright-plans/quarantine-inventory.json"
 
       - name: Upload shard plans
         uses: actions/upload-artifact@v6
@@ -1193,6 +1327,7 @@ jobs:
         if: >-
           needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' &&
           github.event_name != 'merge_group' &&
+          github.event_name != 'pull_request' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
@@ -1206,6 +1341,7 @@ jobs:
           needs.plan-playwright.outputs.requires_airflow == 'true' &&
           needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' &&
           github.event_name != 'merge_group' &&
+          github.event_name != 'pull_request' &&
           !(github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name != github.repository)
         continue-on-error: true
@@ -1644,6 +1780,42 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify shard coverage
+        id: verify-shard-coverage
+        # Every planned test must run against the merge-group commit. Retry passes
+        # are recorded, not rejected: the queue keeps one retry until first-attempt
+        # data shows it can go to zero (then add --require-single-attempt).
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' && steps.run-tests.outcome != 'skipped' }}
+        env:
+          SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
+          SHARD_ID: ${{ matrix.shardId }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == 'merge_group' && "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]]; then
+            echo 'The shard did not test the merge-group commit' >&2
+            exit 1
+          fi
+          jq -e --arg shard "$SHARD_ID" '.shardId == $shard and (.testIds | length > 0)' "$SHARD_PLAN" >/dev/null
+          python3 .github/scripts/verify_playwright_coverage.py \
+            --require-native-evidence \
+            --plan-glob "$SHARD_PLAN" \
+            --timing-glob "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/playwright-timings.json" \
+            --result-glob "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/results.json" \
+            --output "$RUNNER_TEMP/shard-coverage.json"
+          jq '{plannedTests, executedTests, zeroAttemptSkippedTestIds}' "$RUNNER_TEMP/shard-coverage.json"
+          # The queue uploads no reports, so surface retry passes here: they are the
+          # evidence for when the queue can drop its retry. Playwright marks a test
+          # that failed and then passed on retry as `flaky`; one that failed every
+          # attempt is `unexpected` and is a real failure, not a retry pass.
+          results="$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/results.json"
+          retried=$(jq -r '[.. | objects | select(has("tests") and has("title")) | . as $s | .tests[] | select(.status == "flaky") | "\($s.file):\($s.line) › \($s.title)"] | unique | .[]' "$results")
+          if [[ -n "$retried" ]]; then
+            echo "### Passed only on retry ($SHARD_ID)" >> "$GITHUB_STEP_SUMMARY"
+            while read -r test; do
+              echo "- $test" >> "$GITHUB_STEP_SUMMARY"
+              echo "::warning title=Retry pass in merge queue::$test"
+            done <<< "$retried"
+          fi
+
       - name: Record shard phase metrics
         if: always()
         env:
@@ -1706,6 +1878,9 @@ jobs:
           STATUS_DIR="openmetadata-ui/src/main/resources/ui/playwright/output"
           mkdir -p "$STATUS_DIR"
           jq -n \
+            --arg headSha "$(git rev-parse HEAD)" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg runAttempt "$GITHUB_RUN_ATTEMPT" \
             --arg shard "${{ matrix.shardId }}" \
             --arg checkout "$CHECKOUT_OUTCOME" \
             --arg downloadDistribution "$DOWNLOAD_DISTRIBUTION_OUTCOME" \
@@ -1721,6 +1896,9 @@ jobs:
             --arg bundleSmoke "$BUNDLE_SMOKE_OUTCOME" \
             --arg tests "$TEST_OUTCOME" \
             '{
+              headSha: $headSha,
+              runId: $runId,
+              runAttempt: $runAttempt,
               shard: $shard,
               steps: {
                 checkout: $checkout,
@@ -1741,7 +1919,7 @@ jobs:
 
       - name: Upload Playwright blob report
         uses: actions/upload-artifact@v6
-        if: always()
+        if: ${{ always() && github.event_name != 'merge_group' }}
         continue-on-error: true
         with:
           name: playwright-blob-${{ matrix.shardId }}
@@ -1764,7 +1942,7 @@ jobs:
 
       - name: Upload timing and request metrics
         uses: actions/upload-artifact@v6
-        if: always()
+        if: ${{ always() && github.event_name != 'merge_group' }}
         continue-on-error: true
         with:
           name: playwright-timings-${{ matrix.shardId }}
@@ -1798,7 +1976,7 @@ jobs:
       - name: Upload results JSON for summary
         id: upload-results-json
         uses: actions/upload-artifact@v6
-        if: always()
+        if: ${{ always() && (github.event_name != 'merge_group' || failure() || cancelled()) }}
         continue-on-error: true
         with:
           name: playwright-results-json-${{ matrix.shardId }}-a${{ github.run_attempt }}
@@ -1821,7 +1999,7 @@ jobs:
       # collapses `<shardId>-a<attempt>-retry` back to `<shardId>` and prefers
       # the retry when both are present within the same attempt.
       - name: Retry upload results JSON for summary
-        if: always() && steps.upload-results-json.outcome == 'failure'
+        if: ${{ always() && (github.event_name != 'merge_group' || failure() || cancelled()) && steps.upload-results-json.outcome == 'failure' }}
         uses: actions/upload-artifact@v6
         continue-on-error: true
         with:

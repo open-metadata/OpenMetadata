@@ -26,6 +26,8 @@ import {
   addAssetsToGlossaryTerm,
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
+import { getMetricByFqn } from '../../../rest/metricsAPI';
+import { addMetricTabAssets } from '../../../rest/metricTabsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
@@ -57,6 +59,14 @@ jest.mock('../../../rest/glossaryAPI', () => ({
 jest.mock('../../../rest/tagAPI', () => ({
   getTagByFqn: jest.fn(),
   addAssetsToTags: jest.fn(),
+}));
+
+jest.mock('../../../rest/metricsAPI', () => ({
+  getMetricByFqn: jest.fn(),
+}));
+
+jest.mock('../../../rest/metricTabsAPI', () => ({
+  addMetricTabAssets: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -117,6 +127,10 @@ describe('useAssetSelectionState', () => {
       id: 'tag-id',
       fullyQualifiedName: 'tag.name',
     });
+    (getMetricByFqn as jest.Mock).mockResolvedValue({
+      id: 'metric-id',
+      fullyQualifiedName: 'revenue',
+    });
   });
 
   const renderAssetSelectionState = (
@@ -174,6 +188,16 @@ describe('useAssetSelectionState', () => {
     });
   });
 
+  it('should use DATA_ASSET search index for metric type', async () => {
+    renderAssetSelectionState({ type: AssetsOfEntity.METRIC });
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ searchIndex: SearchIndex.DATA_ASSET })
+      );
+    });
+  });
+
   it('should use ALL search index for domain type', async () => {
     renderAssetSelectionState({ type: AssetsOfEntity.DOMAIN });
 
@@ -219,6 +243,14 @@ describe('useAssetSelectionState', () => {
 
     await waitFor(() => {
       expect(getTagByFqn).toHaveBeenCalledWith('glossary.term');
+    });
+  });
+
+  it('should fetch the current metric for METRIC type', async () => {
+    renderAssetSelectionState({ type: AssetsOfEntity.METRIC });
+
+    await waitFor(() => {
+      expect(getMetricByFqn).toHaveBeenCalledWith('glossary.term');
     });
   });
 
@@ -540,6 +572,29 @@ describe('useAssetSelectionState', () => {
       });
 
       expect(addAssetsToTags).toHaveBeenCalledWith('tag-id', expect.any(Array));
+    });
+
+    it('should link metric assets via addMetricTabAssets', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('1')], 1)
+      );
+      (addMetricTabAssets as jest.Mock).mockResolvedValue({
+        status: Status.Success,
+      });
+
+      const { result } = renderAssetSelectionState({
+        type: AssetsOfEntity.METRIC,
+      });
+
+      await selectOneItem(result);
+
+      await act(async () => {
+        result.current.onSaveAction();
+      });
+
+      expect(addMetricTabAssets).toHaveBeenCalledWith('revenue', [
+        expect.objectContaining({ id: '1', type: 'table' }),
+      ]);
     });
 
     it('should set failedStatus when the save response is not successful', async () => {

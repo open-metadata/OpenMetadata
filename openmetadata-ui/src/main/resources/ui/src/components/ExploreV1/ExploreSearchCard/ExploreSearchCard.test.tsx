@@ -89,6 +89,20 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
+jest.mock('../../common/CertificationTag/CertificationTag', () =>
+  jest.fn(({ certification }) => (
+    <div data-testid={`certification-${certification.tagLabel.tagFQN}`} />
+  ))
+);
+
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest
+    .fn()
+    .mockImplementation(({ markdown }) => (
+      <span data-testid="previewer">{markdown}</span>
+    ))
+);
+
 jest.mock('../../common/DomainTags/DomainTags', () => ({
   __esModule: true,
   default: jest
@@ -476,6 +490,29 @@ describe('ExploreSearchCard - Entity type tags', () => {
   });
 });
 
+describe('ExploreSearchCard - Certification badge', () => {
+  const certification = { tagLabel: { tagFQN: 'Certification.Gold' } };
+
+  it('renders the certification badge for a certified table', () => {
+    renderCard({ certification } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.getByTestId('certification-Certification.Gold')
+    ).toBeInTheDocument();
+  });
+
+  it('does not render the table certification inherited by a column', () => {
+    renderCard({
+      entityType: 'tableColumn',
+      certification,
+    } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.queryByTestId('certification-Certification.Gold')
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('ExploreSearchCard - Entity icon', () => {
   it('renders glossary term custom icon URL when provided', () => {
     renderCard(
@@ -555,7 +592,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'test-table',
         displayName: 'Test Table',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -581,7 +619,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       expect.objectContaining({
         name: 'test-table',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -609,7 +648,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
       expect.objectContaining({
         description: 'This is a test description',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -638,7 +678,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'name',
         displayName: 'Display Name',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -672,7 +713,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         displayName: 'Highlighted Display',
         description: 'Highlighted description text',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -698,7 +740,8 @@ describe('ExploreSearchCard - Highlight functionality', () => {
         name: 'test-table',
         description: 'Test description',
       }),
-      highlightData
+      highlightData,
+      true
     );
   });
 
@@ -736,6 +779,53 @@ describe('ExploreSearchCard - Highlight functionality', () => {
     );
 
     expect(highlightEntityNameAndDescription).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ExploreSearchCard - Description markdown stripping', () => {
+  it('strips markdown syntax from description before rendering', () => {
+    renderCard({
+      description: '**bold text** and `code` and [link](http://example.com)',
+    });
+
+    const body = screen.getByTestId('table-body');
+
+    expect(body).toHaveTextContent('bold text and code and link');
+    expect(body).not.toHaveTextContent('**bold text**');
+    expect(body).not.toHaveTextContent('`code`');
+  });
+
+  it('renders plain text description as-is', () => {
+    renderCard({ description: 'Simple plain text description' });
+
+    expect(screen.getByTestId('table-body')).toHaveTextContent(
+      'Simple plain text description'
+    );
+  });
+
+  it('preserves search highlight spans after stripping markdown', () => {
+    renderWithQueryClient(
+      <MemoryRouter>
+        <ExploreSearchCard
+          {...defaultProps}
+          highlight={{
+            description: [
+              'bold text and <span class="text-highlighter">code</span> and link',
+            ],
+          }}
+          source={{
+            ...baseSource,
+            description:
+              '**bold text** and `code` and [link](http://example.com)',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    const body = screen.getByTestId('table-body');
+
+    expect(body).toHaveTextContent('code');
+    expect(body).not.toHaveTextContent('**bold text**');
   });
 });
 

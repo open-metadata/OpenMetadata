@@ -65,6 +65,12 @@ export interface TestCaseIncidentGroup {
      */
     status?: TestCaseResolutionStatusTypes;
     /**
+     * Number of the group's open incidents in each current status, most actionable first. A
+     * status no incident sits in is left out, and `Resolved` never appears — a resolved
+     * incident leaves the group.
+     */
+    statusCounts?: IncidentStatusCount[];
+    /**
      * Number of incidents opened in each of 8 equal time buckets spanning `firstSeen` to
      * `lastSeen`.
      */
@@ -105,12 +111,28 @@ export enum Severities {
  * Ack > New.
  *
  * Test case resolution status type.
+ *
+ * Current status the incidents are in.
  */
 export enum TestCaseResolutionStatusTypes {
     ACK = "Ack",
     Assigned = "Assigned",
     New = "New",
     Resolved = "Resolved",
+}
+
+/**
+ * Number of the group's open incidents currently sitting in one status.
+ */
+export interface IncidentStatusCount {
+    /**
+     * Number of the group's open incidents in that status.
+     */
+    count: number;
+    /**
+     * Current status the incidents are in.
+     */
+    status: TestCaseResolutionStatusTypes;
 }
 
 /**

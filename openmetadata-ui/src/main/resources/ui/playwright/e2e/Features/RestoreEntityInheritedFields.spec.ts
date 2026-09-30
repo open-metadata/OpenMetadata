@@ -28,15 +28,17 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
-  assignSingleSelectDomain,
   getApiContext,
   redirectToHomePage,
+  searchDataProductOptions,
 } from '../../utils/common';
+import { setDomain } from '../../utils/domainPicker';
 import {
   softDeleteEntity,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 // Service management pages render KnowledgePanel.DataProducts only inside the
@@ -90,7 +92,9 @@ const waitForInheritedDomainOnEntityApi = async (
           );
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -115,7 +119,7 @@ const waitForInheritedDomainOnEntityApi = async (
 
 const selectDataProductsFromKnowledgePanel = async (
   page: Page,
-  domain: {
+  _domain: {
     name: string;
     displayName: string;
   },
@@ -132,23 +136,7 @@ const selectDataProductsFromKnowledgePanel = async (
     .click();
 
   for (const dataProduct of dataProducts) {
-    const tagLocator = page.getByTestId(
-      `tag-${dataProduct.fullyQualifiedName}`
-    );
-
-    await expect(async () => {
-      const searchDataProduct = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain.name))
-      );
-      await page.locator('[data-testid="data-product-selector"] input').clear();
-      await page
-        .locator('[data-testid="data-product-selector"] input')
-        .fill(dataProduct.displayName);
-      await searchDataProduct;
-      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+    const tagLocator = await searchDataProductOptions(page, dataProduct);
 
     await tagLocator.click();
   }
@@ -199,7 +187,9 @@ const waitForDataProductsOnEntityApi = async (
           );
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -376,7 +366,7 @@ entities.forEach((EntityClass) => {
         await page.getByTestId('breadcrumb').getByRole('link').first().click();
       }
 
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await waitForAllLoadersToDisappear(page);
 
       // Entities that navigate to a parent entity page (Table/StoredProcedure →
@@ -408,12 +398,14 @@ entities.forEach((EntityClass) => {
       await expect
         .poll(
           async () => {
-            const entityResponse = page.waitForResponse(
+            const entityResponse = waitForResponseWithStatus(
+              page,
               (r) =>
-                r.url().includes(`/api/v1/${entity.endpoint}/`) &&
-                r.status() === 200
+                r.request().method() === 'GET' &&
+                r.url().includes(`/api/v1/${entity.endpoint}/`),
+              200
             );
-            await page.reload();
+            await page.reload({ waitUntil: 'domcontentloaded' });
             await entityResponse;
             await waitForAllLoadersToDisappear(page);
 
