@@ -34,6 +34,7 @@ import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.OntologyAiProviderException;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.search.SearchRepository;
@@ -61,25 +62,42 @@ class OntologyMemoryGlossarySelectorTest {
 
   @Test
   void searchesMemoryContentBeforeSemanticMatching() throws IOException {
+    final Glossary narrow =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("subscription_metrics")
+            .withFullyQualifiedName("subscription_metrics")
+            .withDescription("Subscription revenue and customer retention");
     when(searchRepository.getIndexOrAliasName("glossary_search_index"))
         .thenReturn("glossary_search_index");
     when(searchRepository.search(any(SearchRequest.class), isNull()))
         .thenReturn(
-            Response.ok(
-                    "{\"hits\":{\"hits\":[{\"_source\":{\"id\":\"" + existing.getId() + "\"}}]}}")
+            Response.ok("{\"hits\":{\"hits\":[{\"_source\":{\"id\":\"" + narrow.getId() + "\"}}]}}")
                 .build());
-    when(repository.get(isNull(), eq(existing.getId()), isNull())).thenReturn(existing);
+    when(repository.get(isNull(), eq(narrow.getId()), isNull())).thenReturn(narrow);
+    when(repository.listAfter(isNull(), isNull(), any(), eq(50), isNull()))
+        .thenReturn(new ResultList<>(List.of(existing)));
     when(gateway.matchGlossary(any())).thenReturn(completion(existing.getId(), 0.85D));
 
+    final var term =
+        new OntologyAiCompletionGateway.TermContext(
+            UUID.randomUUID(), "Business.Customer", "A person who buys products", null);
     final var selection =
         selector.select(
             List.of(
                 new OntologyAiCompletionGateway.MemoryContext(
-                    UUID.randomUUID(), "What is a customer?", "A customer buys products", null)));
+                    UUID.randomUUID(), "What is a customer?", "A customer buys products", null)),
+            List.of(term));
 
     final ArgumentCaptor<SearchRequest> request = ArgumentCaptor.forClass(SearchRequest.class);
     verify(searchRepository).search(request.capture(), isNull());
     assertTrue(request.getValue().getQuery().contains("customer"));
+    final ArgumentCaptor<OntologyAiCompletionGateway.GlossaryMatchPrompt> prompt =
+        ArgumentCaptor.forClass(OntologyAiCompletionGateway.GlossaryMatchPrompt.class);
+    verify(gateway).matchGlossary(prompt.capture());
+    assertEquals(2, prompt.getValue().glossaries().size());
+    assertEquals(narrow.getId(), prompt.getValue().glossaries().getFirst().id());
+    assertEquals(List.of(term), prompt.getValue().glossaries().getLast().relevantTerms());
     assertFalse(selection.create());
     assertEquals(existing.getId(), selection.glossary().getId());
   }

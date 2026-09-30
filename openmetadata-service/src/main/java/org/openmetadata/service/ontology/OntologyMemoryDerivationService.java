@@ -70,18 +70,20 @@ public final class OntologyMemoryDerivationService {
     final List<ContextMemory> memories = loadMemories(memoryIds, user);
     final List<OntologyAiCompletionGateway.MemoryContext> contexts =
         memories.stream().map(this::context).toList();
+    final List<OntologyAiCompletionGateway.TermContext> existingTerms =
+        new OntologyMemoryExistingTermFinder(Entity.getSearchRepository()).find(contexts);
     final OntologyMemoryGlossarySelector.Selection selection =
         glossaryFqn == null || glossaryFqn.isBlank()
             ? new OntologyMemoryGlossarySelector(
                     glossaryRepository, Entity.getSearchRepository(), gateway)
-                .select(contexts)
+                .select(contexts, existingTerms)
             : new OntologyMemoryGlossarySelector.Selection(
                 loadGlossary(glossaryFqn), false, 1D, null, null);
     final OntologyAiCompletionGateway.MemoryTermPrompt prompt =
         new OntologyAiCompletionGateway.MemoryTermPrompt(
             selection.glossary().getFullyQualifiedName(),
             contexts,
-            new OntologyMemoryExistingTermFinder(Entity.getSearchRepository()).find(contexts),
+            existingTerms,
             memories.size() * MAX_TERMS_PER_MEMORY);
     final var completion = gateway.deriveTermsFromMemories(prompt);
     final Optional<CreateOntologyChangeSet> draft =

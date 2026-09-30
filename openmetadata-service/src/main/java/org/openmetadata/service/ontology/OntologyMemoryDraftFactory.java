@@ -18,6 +18,7 @@ import static org.openmetadata.service.ontology.OntologyAiOutputValidator.requir
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -125,18 +126,20 @@ final class OntologyMemoryDraftFactory {
       final Predicate<String> termExists,
       final Set<String> names,
       final List<OntologyChangeOperation> operations) {
-    if (!isValid(candidate, memoryIds)) {
-      LOG.warn("Skipping invalid glossary suggestion from memory derivation");
+    final String invalidReason = invalidReason(candidate, memoryIds);
+    if (invalidReason != null) {
+      LOG.warn("Skipping glossary suggestion from memory derivation: {}", invalidReason);
       return;
     }
-    final String fqn = FullyQualifiedName.add(glossary.getFullyQualifiedName(), candidate.name());
+    final String name = localName(candidate.name(), glossary.getName());
+    final String fqn = FullyQualifiedName.add(glossary.getFullyQualifiedName(), name);
     if (!names.add(fqn) || termExists.test(fqn)) {
       return;
     }
     final GlossaryTerm term =
         new GlossaryTerm()
             .withId(UUID.randomUUID())
-            .withName(candidate.name())
+            .withName(name)
             .withDisplayName(candidate.displayName())
             .withDescription(candidate.description())
             .withFullyQualifiedName(fqn)
@@ -156,24 +159,59 @@ final class OntologyMemoryDraftFactory {
             .withModelId(modelId));
   }
 
-  private static boolean isValid(
+  private static String invalidReason(
       final OntologyAiCompletionGateway.MemoryTermCandidate candidate, final Set<UUID> memoryIds) {
-    return candidate != null
-        && memoryIds.contains(candidate.sourceMemoryId())
-        && isValidName(candidate.name())
-        && hasText(candidate.displayName())
-        && candidate.displayName().length() <= 256
-        && hasText(candidate.description())
-        && candidate.description().length() <= MAX_DESCRIPTION_CHARS
-        && hasText(candidate.rationale())
-        && candidate.rationale().length() <= MAX_RATIONALE_CHARS
-        && Double.isFinite(candidate.confidence())
-        && candidate.confidence() >= MIN_CONFIDENCE
-        && candidate.confidence() <= 1D;
+    if (candidate == null) {
+      return "missing candidate";
+    }
+    if (!memoryIds.contains(candidate.sourceMemoryId())) {
+      return "source memory does not match the request";
+    }
+    if (!isValidName(normalizedName(candidate.name()))) {
+      return "invalid term name";
+    }
+    if (!hasText(candidate.displayName()) || candidate.displayName().length() > 256) {
+      return "invalid display name";
+    }
+    if (!hasText(candidate.description())
+        || candidate.description().length() > MAX_DESCRIPTION_CHARS) {
+      return "invalid description";
+    }
+    if (!hasText(candidate.rationale()) || candidate.rationale().length() > MAX_RATIONALE_CHARS) {
+      return "invalid rationale";
+    }
+    if (!Double.isFinite(candidate.confidence())
+        || candidate.confidence() < MIN_CONFIDENCE
+        || candidate.confidence() > 1D) {
+      return "confidence outside accepted range";
+    }
+    return null;
   }
 
   private static boolean isValidName(final String name) {
     return name != null && TERM_NAME.matcher(name).matches();
+  }
+
+  private static String normalizedName(final String name) {
+    if (name == null || isValidName(name)) {
+      return name;
+    }
+    return name.trim()
+        .replaceAll("[^A-Za-z0-9]+", "_")
+        .replaceAll("^_+|_+$", "")
+        .toLowerCase(Locale.ROOT);
+  }
+
+  private static String localName(final String suggestedName, final String glossaryName) {
+    final String name = normalizedName(suggestedName);
+    final String prefix = normalizedName(glossaryName) + "_";
+    if (name.toLowerCase(Locale.ROOT).startsWith(prefix.toLowerCase(Locale.ROOT))) {
+      final String unprefixed = name.substring(prefix.length());
+      if (isValidName(unprefixed)) {
+        return unprefixed;
+      }
+    }
+    return name;
   }
 
   private static boolean hasText(final String text) {

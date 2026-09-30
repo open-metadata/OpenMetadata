@@ -67,7 +67,8 @@ public interface OntologyAiCompletionGateway {
 
   record MemoryContext(UUID id, String question, String answer, String summary) {}
 
-  record GlossaryContext(UUID id, String name, String description) {}
+  record GlossaryContext(
+      UUID id, String name, String description, List<TermContext> relevantTerms) {}
 
   record GlossaryMatchPrompt(List<MemoryContext> memories, List<GlossaryContext> glossaries) {}
 

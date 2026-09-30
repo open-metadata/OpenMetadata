@@ -85,17 +85,54 @@ class OntologyMemoryDraftFactoryTest {
   void skipsInvalidNamesAndExistingTermsWithoutCreatingAnEmptyDraft() {
     assertTrue(
         factory
-            .create(
-                42,
-                glossary,
-                Set.of(memoryId),
-                completion(candidate("invalid::name")),
-                fqn -> false)
+            .create(42, glossary, Set.of(memoryId), completion(candidate(":::")), fqn -> false)
             .isEmpty());
     assertTrue(
         factory
             .create(42, glossary, Set.of(memoryId), completion(candidate("customer")), fqn -> true)
             .isEmpty());
+  }
+
+  @Test
+  void normalizesReadableAiNamesBeforeCheckingForDuplicates() {
+    final CreateOntologyChangeSet draft =
+        factory
+            .create(
+                42,
+                glossary,
+                Set.of(memoryId),
+                completion(candidate("Inactive Customer")),
+                fqn -> false)
+            .orElseThrow();
+    assertEquals(
+        "business.inactive_customer",
+        draft.getOperations().getFirst().getTerm().getFullyQualifiedName());
+    assertTrue(
+        factory
+            .create(
+                43,
+                glossary,
+                Set.of(memoryId),
+                completion(candidate("Inactive Customer")),
+                fqn -> fqn.equals("business.inactive_customer"))
+            .isEmpty());
+  }
+
+  @Test
+  void removesRedundantGlossaryPrefixFromLocalTermName() {
+    final CreateOntologyChangeSet draft =
+        factory
+            .create(
+                42,
+                glossary,
+                Set.of(memoryId),
+                completion(candidate("business_inactive_customer")),
+                fqn -> false)
+            .orElseThrow();
+
+    assertEquals(
+        "business.inactive_customer",
+        draft.getOperations().getFirst().getTerm().getFullyQualifiedName());
   }
 
   @Test

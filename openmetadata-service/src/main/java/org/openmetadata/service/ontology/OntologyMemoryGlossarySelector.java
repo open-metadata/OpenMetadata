@@ -18,6 +18,7 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -38,6 +39,8 @@ import org.openmetadata.service.search.SearchRepository;
 @Slf4j
 final class OntologyMemoryGlossarySelector {
   private static final int MAX_CANDIDATES = 50;
+  private static final int MAX_SEARCH_CANDIDATES = 40;
+  private static final int MAX_RELEVANT_TERMS = 5;
   private static final int MAX_QUERY_WORDS = 12;
   private static final double MIN_MATCH_CONFIDENCE = 0.7D;
   private static final Pattern NAME = Pattern.compile("[A-Za-z][A-Za-z0-9_-]{0,127}");
@@ -59,7 +62,9 @@ final class OntologyMemoryGlossarySelector {
     this.gateway = gateway;
   }
 
-  Selection select(final List<OntologyAiCompletionGateway.MemoryContext> memories) {
+  Selection select(
+      final List<OntologyAiCompletionGateway.MemoryContext> memories,
+      final List<OntologyAiCompletionGateway.TermContext> existingTerms) {
     final List<Glossary> candidates = candidates(memories);
     final var prompt =
         new OntologyAiCompletionGateway.GlossaryMatchPrompt(
@@ -68,10 +73,22 @@ final class OntologyMemoryGlossarySelector {
                 .map(
                     glossary ->
                         new OntologyAiCompletionGateway.GlossaryContext(
-                            glossary.getId(), glossary.getName(), glossary.getDescription()))
+                            glossary.getId(),
+                            glossary.getName(),
+                            glossary.getDescription(),
+                            relevantTerms(glossary, existingTerms)))
                 .toList());
     final var completion = gateway.matchGlossary(prompt);
     return choose(completion, candidates);
+  }
+
+  private static List<OntologyAiCompletionGateway.TermContext> relevantTerms(
+      final Glossary glossary, final List<OntologyAiCompletionGateway.TermContext> existingTerms) {
+    final String prefix = glossary.getFullyQualifiedName() + ".";
+    return existingTerms.stream()
+        .filter(term -> term.name().startsWith(prefix))
+        .limit(MAX_RELEVANT_TERMS)
+        .toList();
   }
 
   Selection choose(
@@ -118,11 +135,9 @@ final class OntologyMemoryGlossarySelector {
 
   private List<Glossary> candidates(
       final List<OntologyAiCompletionGateway.MemoryContext> memories) {
-    final List<Glossary> matches = search(memories);
-    if (!matches.isEmpty()) {
-      return matches;
-    }
-    return repository
+    final LinkedHashMap<UUID, Glossary> candidates = new LinkedHashMap<>();
+    search(memories).forEach(glossary -> candidates.putIfAbsent(glossary.getId(), glossary));
+    repository
         .listAfter(
             null,
             repository.getFields("ontologyConfiguration"),
@@ -132,7 +147,8 @@ final class OntologyMemoryGlossarySelector {
         .getData()
         .stream()
         .filter(OntologyMemoryGlossarySelector::isEditable)
-        .toList();
+        .forEach(glossary -> candidates.putIfAbsent(glossary.getId(), glossary));
+    return candidates.values().stream().limit(MAX_CANDIDATES).toList();
   }
 
   private List<Glossary> search(final List<OntologyAiCompletionGateway.MemoryContext> memories) {
@@ -153,7 +169,7 @@ final class OntologyMemoryGlossarySelector {
         new SearchRequest()
             .withIndex(searchRepository.getIndexOrAliasName("glossary_search_index"))
             .withQuery(query)
-            .withSize(MAX_CANDIDATES)
+            .withSize(MAX_SEARCH_CANDIDATES)
             .withFrom(0)
             .withDeleted(false)
             .withFetchSource(true)
