@@ -651,6 +651,31 @@ class TestLineageObservabilityContext:
         assert ctx.current_table_fqns == []
         assert ctx.latest_dag_run is None
 
+    def test_resets_observability_context_before_resolving_the_fqn(self):
+        """
+        fqn.build reads the shared context and can raise, and the topology runner
+        swallows that into a failure. The reset therefore has to happen before it, or
+        the previous DAG's tables survive into this DAG's observability.
+        """
+        source, ctx = self._source([], None, None)
+        ctx.current_pipeline_entity = "stale entity from the previous dag"
+        ctx.current_table_fqns = ["svc.db.sch.previous_table"]
+        ctx.latest_dag_run = "stale run"
+
+        with patch(
+            "metadata.ingestion.source.pipeline.airflow.metadata.fqn.build",
+            side_effect=RuntimeError("boom"),
+        ), pytest.raises(RuntimeError):
+            list(
+                source.yield_pipeline_lineage_details(
+                    SimpleNamespace(dag_id="dag_a", schedule_interval="@daily")
+                )
+            )
+
+        assert ctx.current_pipeline_entity is None
+        assert ctx.current_table_fqns == []
+        assert ctx.latest_dag_run is None
+
     def test_hands_resolved_table_entities_to_the_observability_stage(self):
         """
         Lineage already fetched every table entity. Passing them on is what keeps the

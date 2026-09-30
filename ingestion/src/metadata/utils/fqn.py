@@ -969,7 +969,7 @@ def get_query_checksum(query: str) -> str:
     Prepare the query checksum from its string representation.
     The checksum is used as the query's name.
     """
-    return hashlib.md5(query.encode()).hexdigest()
+    return hashlib.md5(query.encode(), usedforsecurity=False).hexdigest()
 
 
 # Not adding container since children can have recursive slots: service.container1.container2...

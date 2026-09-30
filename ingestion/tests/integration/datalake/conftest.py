@@ -29,7 +29,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 
 from ..conftest import _safe_delete
-from ..containers import MinioContainerConfigs, get_minio_container
+from ..containers import S3ContainerConfigs, get_s3_container
 from ..integration_base import generate_name
 
 BUCKET_NAME = "my-bucket"
@@ -160,7 +160,7 @@ def ingestion_fqn(datalake_service_name):
 
 @pytest.fixture(scope="package")
 def minio_container():
-    with get_minio_container(MinioContainerConfigs()) as container:
+    with get_s3_container(S3ContainerConfigs()) as container:
         yield container
 
 
