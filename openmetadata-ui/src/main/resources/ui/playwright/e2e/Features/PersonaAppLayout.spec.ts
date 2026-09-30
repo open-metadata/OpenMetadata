@@ -269,8 +269,11 @@ test.describe(
       await test.step('Choose Classic, Glossary and Tree for Domains', async () => {
         await page.getByTestId('app-mode-option-classic').click();
 
-        await page.getByTestId('default-landing-page-select').click();
-        const glossary = page.getByRole('menuitemradio', { name: /Glossary/ });
+        await page
+          .getByTestId('default-landing-page-select')
+          .getByRole('button')
+          .click();
+        const glossary = page.getByRole('option', { name: /Glossary/ });
         await expect(glossary).toBeVisible();
         await glossary.click();
 

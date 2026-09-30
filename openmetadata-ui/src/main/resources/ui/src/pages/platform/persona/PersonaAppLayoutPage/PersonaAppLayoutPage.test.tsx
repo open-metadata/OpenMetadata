@@ -89,7 +89,7 @@ const getRadio = (value: string) =>
   ) as HTMLInputElement;
 
 const getLandingPageTrigger = () =>
-  screen.getByTestId('default-landing-page-select');
+  within(screen.getByTestId('default-landing-page-select')).getByRole('button');
 
 const getViewOption = (page: string, view: string) =>
   within(screen.getByTestId(`view-mode-row-${page}`)).getByRole('tab', {
@@ -150,11 +150,11 @@ describe('PersonaAppLayoutPage', () => {
       fireEvent.click(getLandingPageTrigger());
 
       expect(
-        await screen.findByRole('menuitemradio', { name: /label\.glossary/ })
-      ).toHaveAttribute('aria-checked', 'true');
+        await screen.findByRole('option', { name: /label\.glossary/ })
+      ).toHaveAttribute('aria-selected', 'true');
       expect(
-        screen.getByRole('menuitemradio', { name: /label\.explore/ })
-      ).toHaveAttribute('aria-checked', 'false');
+        screen.getByRole('option', { name: /label\.explore/ })
+      ).toHaveAttribute('aria-selected', 'false');
     });
 
     it('lists the options under their section headers', async () => {
@@ -164,10 +164,10 @@ describe('PersonaAppLayoutPage', () => {
       const govern = await screen.findByRole('group', { name: 'label.govern' });
 
       expect(
-        within(govern).getByRole('menuitemradio', { name: /label\.glossary/ })
+        within(govern).getByRole('option', { name: /label\.glossary/ })
       ).toBeInTheDocument();
       expect(
-        within(govern).queryByRole('menuitemradio', { name: /label\.explore/ })
+        within(govern).queryByRole('option', { name: /label\.explore/ })
       ).not.toBeInTheDocument();
     });
   });
@@ -293,7 +293,7 @@ describe('PersonaAppLayoutPage', () => {
 
       fireEvent.click(getLandingPageTrigger());
       fireEvent.click(
-        await screen.findByRole('menuitemradio', {
+        await screen.findByRole('option', {
           name: /label\.data-product-plural/,
         })
       );

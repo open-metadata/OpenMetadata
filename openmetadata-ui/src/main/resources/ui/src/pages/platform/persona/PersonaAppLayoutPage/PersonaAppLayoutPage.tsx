@@ -18,10 +18,10 @@ import {
   Card,
   Divider,
   Dropdown,
-  FilterSelect,
   Grid,
   RadioButton,
   RadioGroup,
+  Select,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -29,6 +29,7 @@ import { Delete, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop, omit } from 'lodash';
 import { useState } from 'react';
+import { Header, ListBoxSection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { NavigationBlocker } from '../../../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizablePageHeader } from '../../../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
@@ -133,20 +134,6 @@ export const PersonaAppLayoutPage = ({
   const [viewModes, setViewModes] = useState(persistedViewModes);
 
   const personaName = getEntityName(personaDetails);
-  const landingPageOptions = LANDING_PAGE_SECTIONS.flatMap(
-    ({ titleKey, options }) =>
-      options.map(({ path, labelKey }) => ({
-        value: path,
-        label: (
-          <Typography className="not-prose" weight="semibold">
-            {t(labelKey)}
-          </Typography>
-        ),
-        textValue: t(labelKey),
-        supportingText: path,
-        group: t(titleKey),
-      }))
-  );
   const configuredPages = VIEW_MODE_PAGES.filter(({ page }) => viewModes[page]);
   const addablePages = VIEW_MODE_PAGES.filter(({ page }) => !viewModes[page]);
 
@@ -191,7 +178,11 @@ export const PersonaAppLayoutPage = ({
         pageTitle={t('label.customize-entity', {
           entity: t('label.app-layout'),
         })}>
-        <Box direction="col" gap={5}>
+        {/* The Select list closes when focus moves to another element, and a
+            click on plain page content moves it nowhere. Being focusable lets
+            this box take that focus, as a modal's dialog does, so an outside
+            click closes the list. */}
+        <Box direction="col" gap={5} tabIndex={-1}>
           <CustomizablePageHeader
             disableSave={disableSave}
             personaName={personaName}
@@ -250,17 +241,29 @@ export const PersonaAppLayoutPage = ({
             <PreferenceRow
               description={t('message.default-landing-page-description')}
               title={t('label.default-landing-page')}>
-              <FilterSelect
-                hideCounts
+              <Select
+                aria-label={t('label.default-landing-page')}
                 data-testid="default-landing-page-select"
-                label={t('label.default-landing-page')}
-                options={landingPageOptions}
-                popoverClassName="tw:w-(--trigger-width)"
-                selectedValues={[landingPage]}
-                selectionMode="single"
-                triggerVariant="input"
-                onChange={([path]) => path && setLandingPage(path)}
-              />
+                fontSize="sm"
+                selectedKey={landingPage}
+                size="md"
+                onSelectionChange={(key) => key && setLandingPage(String(key))}>
+                {LANDING_PAGE_SECTIONS.map((section) => (
+                  <ListBoxSection id={section.titleKey} key={section.titleKey}>
+                    <Header className="tw:px-3.5 tw:pt-3 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
+                      {t(section.titleKey)}
+                    </Header>
+                    {section.options.map((option) => (
+                      <Select.Item
+                        id={option.path}
+                        key={option.path}
+                        label={t(option.labelKey)}
+                        supportingText={option.path}
+                      />
+                    ))}
+                  </ListBoxSection>
+                ))}
+              </Select>
             </PreferenceRow>
 
             <Divider />

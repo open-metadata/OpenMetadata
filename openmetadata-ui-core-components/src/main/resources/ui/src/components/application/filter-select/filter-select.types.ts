@@ -22,16 +22,6 @@ export interface FilterSelectOption {
   /** Result count shown as a trailing badge on the row. */
   count?: number;
   /**
-   * Muted text after the label (e.g. a route), in the row and in the
-   * input-variant trigger.
-   */
-  supportingText?: string;
-  /**
-   * Heading the row is listed under. Consecutive options with the same group
-   * render as one section.
-   */
-  group?: string;
-  /**
    * Leading icon (service logo, domain color chip, entity icon, …) — an icon
    * component, or an already-rendered node.
    */
