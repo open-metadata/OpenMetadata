@@ -39,19 +39,18 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
-  removeSingleSelectDomain,
   resolveDescriptionBox,
   toastNotification,
   uuid,
   verifyDomainPropagation,
 } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   assignTagToChildren,
@@ -196,10 +195,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           false
         );
 
-        await assignSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
+        await setDomain(page, EntityDataClass.domain1.responseData);
         await verifyDomainPropagation(
           page,
           EntityDataClass.domain1.responseData,
@@ -216,10 +212,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           },
           false
         );
-        await removeSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
+        await setDomain(page, EntityDataClass.domain1.responseData, {
+          verify: 'cleared',
+        });
       }
     });
 
