@@ -59,7 +59,9 @@ describe('SearchClassBase', () => {
 
   it('should map data contracts to their own search index both ways', () => {
     expect(
-      searchClassBase.getEntityTypeSearchIndexMapping()[EntityType.DATA_CONTRACT]
+      searchClassBase.getEntityTypeSearchIndexMapping()[
+        EntityType.DATA_CONTRACT
+      ]
     ).toBe(SearchIndex.DATA_CONTRACT);
     expect(
       searchClassBase.getSearchIndexEntityTypeMapping()[

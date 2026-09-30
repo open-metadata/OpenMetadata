@@ -26,12 +26,12 @@ import { Container } from '../generated/entity/data/container';
 import { ContextFile } from '../generated/entity/data/contextFile';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
-import { DataContract } from '../generated/entity/data/dataContract';
 import {
   Database,
   DatabaseServiceType,
 } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { DataContract } from '../generated/entity/data/dataContract';
 import { Directory } from '../generated/entity/data/directory';
 import { File } from '../generated/entity/data/file';
 import { Glossary } from '../generated/entity/data/glossary';
