@@ -72,10 +72,14 @@ public class MlFeatureTagBackfill {
       }
       LOG.info("Backfilled {} ML feature tag(s) into tag_usage across {} model(s)", tags, models);
     } catch (Exception e) {
-      // A failed backfill must not abort the upgrade: the tags remain in the model JSON, which is
-      // where they have always been, and the endpoint keeps reporting them as untagged until this
-      // is re-run. Losing the server to a migration error is the worse outcome.
-      LOG.error("Could not backfill ML feature tags into tag_usage", e);
+      // Deliberately fatal. tag_usage is now the only home for a feature's tags, so a model this
+      // did not reach reads as untagged, and the next write of it strips the JSON copy through
+      // storageJsonNode - losing the tags for good. A recorded-complete migration never re-runs on
+      // its own, so swallowing the failure here converts it into silent permanent loss. Failing the
+      // upgrade keeps the tags where they are until the backfill can be retried.
+      throw new IllegalStateException(
+          "Could not backfill ML feature tags into tag_usage; feature tags would be lost on the next model write",
+          e);
     }
   }
 

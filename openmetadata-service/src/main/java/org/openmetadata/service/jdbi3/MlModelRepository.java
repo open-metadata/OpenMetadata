@@ -32,6 +32,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -362,6 +363,27 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     for (MlFeature feature : listOrEmpty(features)) {
       applyTags(feature.getTags(), feature.getFullyQualifiedName());
     }
+  }
+
+  /**
+   * The batched create path, which does not go through {@link #applyTags(MlModel)}. Without this a
+   * model created in bulk has its feature tags stripped from the stored JSON and indexed nowhere,
+   * so they are lost outright. Mirrors TableRepository, whose column tags are collected the same
+   * way.
+   */
+  @Override
+  protected void applyTagsToEntities(List<MlModel> entities) {
+    super.applyTagsToEntities(entities);
+    Map<String, List<TagLabel>> featureTagsByTarget = new LinkedHashMap<>();
+    for (MlModel mlModel : listOrEmpty(entities)) {
+      for (MlFeature feature : listOrEmpty(mlModel.getMlFeatures())) {
+        if (!nullOrEmpty(feature.getTags())) {
+          featureTagsByTarget.put(
+              feature.getFullyQualifiedName(), new ArrayList<>(feature.getTags()));
+        }
+      }
+    }
+    applyTagsBatch(featureTagsByTarget);
   }
 
   @Override
