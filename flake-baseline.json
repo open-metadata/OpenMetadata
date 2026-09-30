@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-30T08:28:57Z",
+  "window": 10,
+  "threshold": 2,
+  "runs": [
+    {
+      "runId": "36683573023",
+      "sourceSha": "857ded977baaf4e0662f28fb32215027964c5a6d",
+      "recordedAt": "2026-09-30T08:28:57Z"
+    }
+  ],
+  "entries": {
+    "chromium :: Features/AIMode/ProfileNotificationTab.spec.ts :: Destination should work properly": {
+      "observations": [
+        "36683573023"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/ProfileNotificationTab.spec.ts",
+      "title": "Destination should work properly",
+      "lastSeenSha": "857ded977baaf4e0662f28fb32215027964c5a6d",
+      "hardFailure": false
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Delete Api Service": {
+      "observations": [
+        "36683573023"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Delete Api Service",
+      "lastSeenSha": "857ded977baaf4e0662f28fb32215027964c5a6d",
+      "hardFailure": false
+    }
+  },
+  "stableIds": [],
+  "hardFailureStableIds": []
+}
