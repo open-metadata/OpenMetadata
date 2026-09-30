@@ -41,6 +41,8 @@ const shardPlan = process.env.PW_SHARD_PLAN
   : undefined;
 const hasDedicatedIngestionLane =
   Boolean(shardPlan) || process.env.PW_DEDICATED_INGESTION === 'true';
+const hasDedicatedImportExportLane =
+  Boolean(shardPlan) || process.env.PW_DEDICATED_IMPORT_EXPORT === 'true';
 const isPlannedShard = Boolean(shardPlan);
 const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
 const authDependencies = hasPreseededState ? [] : ['setup'];
@@ -186,10 +188,12 @@ export default defineConfig({
         ...(hasDedicatedIngestionLane ? [/@ingestion/] : []),
         /@knowledge-graph/,
         /@ontology-rdf/,
+        ...(hasDedicatedImportExportLane ? [/@import-export/] : []),
       ],
       teardown: entityTeardown,
       testIgnore: [
         '**/nightly/**',
+        '**/AdvancedSearch.spec.ts',
         '**/Search/**',
         '**/Auth/**',
         '**/Http2/**',
@@ -317,6 +321,20 @@ export default defineConfig({
           },
         ]
       : []),
+    ...(hasDedicatedImportExportLane
+      ? [
+          {
+            name: 'ImportExport',
+            grep: combineGrep(/@import-export/),
+            testIgnore: '**/nightly/**',
+            use: { ...devices['Desktop Chrome'] },
+            dependencies: entityDependencies,
+            fullyParallel: true,
+            workers: 2,
+            teardown: entityTeardown,
+          },
+        ]
+      : []),
     {
       name: 'SearchRBAC',
       testMatch: '**/SearchRBAC.spec.ts',
@@ -381,6 +399,15 @@ export default defineConfig({
       dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
+    },
+    {
+      name: 'AdvancedSearch',
+      testMatch: '**/AdvancedSearch.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: entityDependencies,
+      grep: shardGrep,
+      fullyParallel: true,
+      teardown: entityTeardown,
     },
   ],
 
