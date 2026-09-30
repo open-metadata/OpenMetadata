@@ -131,10 +131,21 @@ test.describe('Persona App Layout for the persona users', () => {
     }
   );
 
-  test('lands on the default landing page after sign-in', async ({
+  test('lands on the default landing page after sign-in and on reopening /', async ({
     classicUserPage,
   }) => {
-    await expect(classicUserPage).toHaveURL(GLOSSARY_URL);
+    await test.step('Sign-in lands on the default landing page', async () => {
+      await expect(classicUserPage).toHaveURL(GLOSSARY_URL);
+    });
+
+    await test.step('Entering / in the address bar lands there again', async () => {
+      await classicUserPage.goto('/explore', { waitUntil: 'domcontentloaded' });
+      await waitForAllLoadersToDisappear(classicUserPage);
+      // `/` redirects, so wait only for the first commit.
+      await classicUserPage.goto('/', { waitUntil: 'commit' });
+
+      await expect(classicUserPage).toHaveURL(GLOSSARY_URL);
+    });
   });
 
   test('a new tab at / opens the landing page; a deep link stays put', async ({
