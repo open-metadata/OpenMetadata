@@ -12,6 +12,8 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { MemoryStatus } from '../../../generated/entity/context/contextMemory';
 import {
   Control,
   FieldValues,
@@ -687,5 +689,35 @@ describe('CreateMemoryModal', () => {
     expect(
       screen.queryByRole('button', { name: 'label.propose-term' })
     ).not.toBeInTheDocument();
+  });
+  it('shows why a memory was superseded and links to its successor', () => {
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          memoryToEdit={{
+            id: 'old-memory',
+            name: 'old-memory',
+            status: MemoryStatus.Superseded,
+            statusReason: 'The replacement has the corrected definition.',
+            supersededBy: {
+              id: 'new-memory',
+              type: 'contextMemory',
+              name: 'new-memory',
+            },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('label.superseded')).toBeInTheDocument();
+    expect(
+      screen.getByText('The replacement has the corrected definition.')
+    ).toBeInTheDocument();
+    expect(screen.getByText('new-memory')).toHaveAttribute(
+      'href',
+      '/context-center/memories?memory=new-memory'
+    );
   });
 });
