@@ -20,9 +20,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Edit01 as Edit,
+  Edit01,
   RefreshCw01,
-  Trash01 as Delete,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -117,7 +117,7 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
           <ButtonUtility
             color="tertiary"
             data-testid="edit-description-btn"
-            icon={Edit}
+            icon={Edit01}
             size="xs"
             tooltip={String(
               t('label.edit-entity', { entity: t('label.description') })
@@ -248,7 +248,7 @@ function buildHeaderActions({
         <ButtonUtility
           color="tertiary"
           data-testid="edit-alert-btn"
-          icon={Edit}
+          icon={Edit01}
           size="xs"
           tooltip={String(t('label.edit'))}
           onPress={() => onNavigate({ type: 'edit', fqn })}
@@ -258,7 +258,7 @@ function buildHeaderActions({
         <ButtonUtility
           color="tertiary"
           data-testid="delete-alert-btn"
-          icon={Delete}
+          icon={Trash01}
           isDisabled={isDeleting}
           size="xs"
           tooltip={String(t('label.delete'))}
