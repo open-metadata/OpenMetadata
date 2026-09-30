@@ -24,7 +24,11 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { NoSearch, Search, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  NoSearch,
+  Search,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
   useCallback,
