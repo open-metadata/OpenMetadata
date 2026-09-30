@@ -1,0 +1,130 @@
+#  Copyright 2026 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""Real Oracle source → CLI → persisted OpenMetadata metadata scenarios."""
+
+import pytest
+from sqlalchemy import text
+
+from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.ometa.utils import model_str
+
+from ..features.database.catalog.differ import catalog_matches
+from ..features.database.entities import table_has_foreign_key, table_is_deleted
+from ..features.database.pipelines import MetadataPipeline
+from ..runtime import expect
+from .checks import procedures_have_bodies
+from .expected import oracle_expected
+from .source import fresh_oracle_source
+
+
+@pytest.mark.e2e_contract("catalog.metadata")
+def test_catalog(cli, oracle):
+    cli.run(oracle.invocation(MetadataPipeline(includeDDL=True, includeStoredProcedures=True)))
+    expected = oracle_expected(oracle.service_name, schema=oracle.source.schema)
+    expect.poll(oracle.catalog_query()).satisfies(catalog_matches(expected))
+
+
+@pytest.mark.e2e_contract("procedure.code")
+def test_stored_procedure_bodies(cli, oracle):
+    cli.run(oracle.invocation(MetadataPipeline(includeDDL=True, includeStoredProcedures=True)))
+    expect.poll(oracle.catalog_query()).satisfies(procedures_have_bodies)
+
+
+@pytest.mark.e2e_contract("fk.relationships")
+def test_foreign_key(cli, oracle):
+    cli.run(oracle.invocation(MetadataPipeline()))
+    expect.poll(oracle.table_query("transactions")).satisfies(
+        table_has_foreign_key(("customer_id",), (oracle.column_fqn("customers", "id"),))
+    )
+
+
+@pytest.mark.e2e_contract("deletion.tables")
+def test_mark_deleted_tables_on_reingest(cli, oracle):
+    invocation = oracle.invocation(MetadataPipeline(markDeletedTables=True, includeStoredProcedures=False))
+    cli.run(invocation)
+    removed = oracle.table_query("all_types")
+    retained = oracle.table_query("customers")
+    before = expect.poll(removed).satisfies(table_is_deleted(deleted=False))
+    sibling = expect.poll(retained).satisfies(table_is_deleted(deleted=False))
+    oracle.source.drop_table("all_types")
+    cli.run(invocation)
+    after = expect.poll(removed).satisfies(table_is_deleted(deleted=True))
+    survivor = expect.poll(retained).satisfies(table_is_deleted(deleted=False))
+    assert after.id == before.id
+    assert survivor.id == sibling.id
+
+
+@pytest.mark.e2e_contract("ingest.repeat")
+def test_repeat_ingest_preserves_ids_and_updates_metadata(cli, oracle):
+    expected = oracle_expected(oracle.service_name, schema=oracle.source.schema)
+    options = MetadataPipeline(includeDDL=True, includeStoredProcedures=True)
+    cli.run(oracle.invocation(options))
+    before = expect.poll(oracle.catalog_query()).satisfies(catalog_matches(expected))
+    original_ids = {model_str(table.fullyQualifiedName): table.id for table in before.tables}
+    with oracle.source.admin_engine.begin() as connection:
+        connection.execute(
+            text(f"COMMENT ON TABLE {oracle.source.schema}.all_types IS 'Updated native values fixture'")
+        )
+    oracle.source.set_value("all_types", 1, "number_int_col", 654321)
+    cli.run(
+        oracle.invocation(
+            MetadataPipeline(includeDDL=True, includeStoredProcedures=True, overrideMetadata=True),
+        )
+    )
+
+    def updated(snapshot):
+        catalog_matches(expected)(snapshot)
+        assert len(snapshot.tables) == len(original_ids)
+        assert {model_str(table.fullyQualifiedName): table.id for table in snapshot.tables} == original_ids
+        table = snapshot.find(Table, oracle.table_fqn("all_types"))
+        assert model_str(table.description) == "Updated native values fixture"
+
+    expect.poll(oracle.catalog_query()).satisfies(updated)
+
+
+@pytest.mark.parametrize(
+    "filters, expected_tables",
+    [
+        pytest.param(
+            {"tableFilterPattern": {"includes": ["customers"]}},
+            {"customers"},
+            id="include-one",
+            marks=pytest.mark.e2e_contract("filter.table.include-one"),
+        ),
+        pytest.param(
+            {"tableFilterPattern": {"excludes": ["transactions"]}},
+            {"customers", "all_types", "customer_txn_summary"},
+            id="exclude-one",
+            marks=pytest.mark.e2e_contract("filter.table.exclude-one"),
+        ),
+    ],
+)
+def test_table_filter(filters, expected_tables, cli, oracle):
+    cli.run(oracle.invocation(MetadataPipeline(includeDDL=True, includeStoredProcedures=True), filters=filters))
+    expected = oracle_expected(oracle.service_name, schema=oracle.source.schema, tables=expected_tables)
+    expect.poll(oracle.catalog_query()).satisfies(catalog_matches(expected))
+
+
+@pytest.mark.e2e_contract("filter.schema.include-one")
+def test_schema_filter_include_one(cli, oracle, oracle_admin_engine, oracle_ingestion_engine):
+    with fresh_oracle_source(oracle_admin_engine) as excluded:
+        # Prove both schemas are populated and readable before trusting the exclusion.
+        for source in (oracle.source, excluded):
+            with oracle_ingestion_engine.connect() as connection:
+                assert connection.execute(text(f"SELECT COUNT(*) FROM {source.schema}.customers")).scalar_one() == 5
+        invocation = oracle.invocation(
+            MetadataPipeline(includeDDL=True, includeStoredProcedures=True),
+            sources=(oracle.source, excluded),
+            filters={"schemaFilterPattern": {"includes": [f"^{oracle.source.schema}$"]}},
+        )
+        cli.run(invocation)
+        expected = oracle_expected(oracle.service_name, schema=oracle.source.schema)
+        expect.poll(oracle.catalog_query()).satisfies(catalog_matches(expected))

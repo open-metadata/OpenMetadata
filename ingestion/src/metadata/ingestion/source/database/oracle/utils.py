@@ -371,7 +371,12 @@ def get_table_names(self, connection, schema=None, **kw):
         tablespace = f"nvl(tablespace_name, 'no tablespace') NOT IN ({exclude_tablespace}) AND "
     sql_str = ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, prefix=_get_table_prefix(self))
     cursor = connection.execute(sql.text(sql_str), {"owner": schema})
-    return [row[0] for row in cursor]
+    # Normalised like get_view_names_dialect and get_mview_names_dialect. Returning the
+    # dictionary's uppercase name here made tables the only objects not folded back:
+    # columns, views and, critically, get_foreign_keys' referred_table are all normalised,
+    # so an uppercase table name never matched the lowercase referred_table and every
+    # Oracle foreign key was silently dropped.
+    return [self.normalize_name(row[0]) for row in cursor]
 
 
 def get_view_names(self, schema=None):

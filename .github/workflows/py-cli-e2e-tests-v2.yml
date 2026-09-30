@@ -27,7 +27,7 @@ on:
       connectors:
         description: "Connectors to run (JSON array)"
         required: true
-        default: '["mysql"]'
+        default: '["mysql", "oracle"]'
 
 permissions:
   id-token: write
@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        connector: ${{ fromJSON(inputs.connectors || '["mysql"]') }}
+        connector: ${{ fromJSON(inputs.connectors || '["mysql", "oracle"]') }}
     environment: test
     env:
       E2E_CONNECTOR: ${{ matrix.connector }}
@@ -50,7 +50,7 @@ jobs:
         shell: bash
         run: |
           case "$E2E_CONNECTOR" in
-            mysql) ;;
+            mysql | oracle) ;;
             *) echo "Unsupported E2E connector" >&2; exit 1 ;;
           esac
 

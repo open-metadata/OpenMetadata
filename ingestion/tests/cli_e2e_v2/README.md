@@ -44,10 +44,36 @@ cli_e2e_v2/
   features/database/   generated pipeline options, catalog/profile/sample/lineage checks
   contracts/           coverage inventory, collection validation, required-result enforcement
   mysql/               owned source, context, expectations, checks, named feature tests
+  oracle/              same layout; schema-per-user source, DBA_ dictionary scoping
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
   conftest.py          shared fixtures and thin pytest hooks
 ```
+
+Oracle differs from MySQL in two ways worth knowing before reading its suite. A schema *is* a
+user, so `fresh_oracle_source` creates and `DROP USER ... CASCADE`s one account per test rather
+than a database. And the connector reads the `DBA_` dictionary views by default, so an unscoped
+run would discover every schema in the instance — `oracle_invocation` therefore applies an
+anchored `schemaFilterPattern` over the owned schemas unless a case supplies its own. MySQL
+scopes through `databaseSchema` on the connection instead; Oracle cannot, because
+`oracleConnectionType` accepts a service name or a schema, never both.
+
+Running the Oracle suite against a **Collate** virtualenv needs care: its `metadata` entry point is
+`metadata.collate_cmd`, which exists only in the installed package. Putting an OSS checkout's
+`ingestion/src` first on `PYTHONPATH` shadows the package, and every CLI invocation then dies at
+import before writing a status file — which surfaces as `CLI status is missing or malformed`, not as
+an import error. Install the checkout instead of shadowing it.
+
+Oracle identifiers are declared lowercase throughout. SQLAlchemy emits them unquoted, Oracle folds
+them to uppercase in the dictionary, and the connector normalises them back to lowercase because
+`preserveIdentifierCase` is left at its default. Declared names therefore match expectations
+literally, and no case-insensitive filter patterns are needed. Hand-written DDL in `baseline.py`
+must leave the schema unquoted for the same reason — quoting it looks for a lowercase user that
+`CREATE USER` never created.
+
+Stored procedure names are the one exception: they still arrive UPPERCASE, because the
+stored-procedure path reads the data dictionary directly instead of normalising like every other
+object.
 
 MySQL tests explicitly call `cli.run(mysql.invocation(options))`, then `expect.poll(query).satisfies(check)`. The `mysql` context binds source identity, configuration, and fresh queries; it does not run ingestion, own cleanup, or cache observations. Fixtures provision the source and service, while named pytest tests show the actions and assertions in execution order.
 
