@@ -497,10 +497,6 @@ PREPARE announcement_type_index_stmt FROM @announcement_type_index_ddl;
 EXECUTE announcement_type_index_stmt;
 DEALLOCATE PREPARE announcement_type_index_stmt;
 
--- Flowable schema upgrades run after this migration and inherit the database default. Existing
--- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
-ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
 -- Data Consumer can run agent SPARQL queries by default (#34231). Seed data never updates a policy
 -- that already exists, so existing installs get the rule here. As a schema-changes statement it is
 -- recorded in SERVER_MIGRATION_SQL_LOGS and runs once, so an admin who later removes the rule does
@@ -540,3 +536,7 @@ WHERE name = 'DataConsumerPolicy'
       AND (LOWER(CAST(existing_rule.operations AS CHAR)) LIKE '%"viewall"%'
            OR LOWER(CAST(existing_rule.operations AS CHAR)) LIKE '%"all"%')
   );
+
+-- Flowable schema upgrades run after this migration and inherit the database default. Existing
+-- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
