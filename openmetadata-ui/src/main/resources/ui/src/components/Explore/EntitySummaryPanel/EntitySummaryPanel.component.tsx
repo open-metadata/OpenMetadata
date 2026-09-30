@@ -1088,8 +1088,6 @@ export default function EntitySummaryPanel({
             entityType
           )}
           entityData={entityData ?? undefined}
-          entityDetails={entityDetails}
-          entityType={entityType}
           entityTypeDetail={entityTypeDetail}
           hasEditPermissions={canEditCustomFields}
           isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}

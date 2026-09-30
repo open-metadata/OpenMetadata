@@ -760,7 +760,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             entityText: t('label.column-plural'),
           })}
           entityData={toEntityData(activeColumn)}
-          entityType={entityType}
           entityTypeDetail={entityTypeDetail}
           hasEditPermissions={hasEditPermission.customProperties}
           isEntityDataLoading={false}

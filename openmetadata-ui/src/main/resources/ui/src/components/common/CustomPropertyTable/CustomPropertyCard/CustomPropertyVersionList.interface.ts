@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CustomProperty } from '../../../../generated/type/customProperty';
 
-@import '../../../../styles/variables.less';
-@import '../../../../styles/components/om-rdg.less';
-
-.edit-table-type-property {
-  border: 1px solid @border-color;
-  border-radius: var(--om-radius-md);
+export interface CustomPropertyVersionListProps {
+  properties: CustomProperty[];
+  /** Extension of the version; a changed value holds its word-diff markup. */
+  extension?: Record<string, unknown>;
+  /** Properties that first got a value in this version. */
+  addedKeys?: string[];
 }
