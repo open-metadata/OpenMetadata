@@ -98,10 +98,11 @@ def test_policy_names_resolve_to_existing_system_tags(source):
     assert labels(source, "first") == ["PII.Sensitive"]
 
 
-def test_invalid_policy_does_not_discard_later_valid_policy(source):
+def test_invalid_policy_does_not_discard_later_valid_policy(source, caplog):
     set_rows(source, [(1, 'bad"name', "db", "schema", "first"), (1, "Valid", "db", "schema", "first")])
     records = list(source._process_stage(source.topology.databaseSchema.stages[0], "schema"))
-    assert len([record for record in records if record.left]) == 1
+    assert [record for record in records if record.left] == []
+    assert "Skipped tag 'bad\"name' in classification 'PostgresPolicyTags'" in caplog.text
     assert [record.right.tag_request.name.root for record in records if record.right] == ["Valid"]
     assert labels(source, "first") == ["PostgresPolicyTags.Valid"]
 

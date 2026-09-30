@@ -5278,11 +5278,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
           () ->
               Entity.getJdbi()
                   .inTransaction(
-                      handle -> {
-                        RepositoryTransactionContext.runWith(
-                            handle.attach(CollectionDAO.class), flushBody);
-                        return null;
-                      }));
+                      handle ->
+                          TransactionRollbackTracker.runAttempt(
+                              () -> {
+                                RepositoryTransactionContext.runWith(
+                                    handle.attach(CollectionDAO.class), flushBody);
+                                return null;
+                              })));
     } finally {
       exitRetryableBoundary(ownsRetry);
     }
@@ -5394,10 +5396,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return DeadlockRetry.execute(
         () ->
             daoCollection.inTransaction(
-                ignored -> {
-                  scope.reopenForAttempt();
-                  return work.get();
-                }));
+                ignored ->
+                    TransactionRollbackTracker.runAttempt(
+                        () -> {
+                          scope.reopenForAttempt();
+                          return work.get();
+                        })));
   }
 
   /** Nested boundary: the outermost one owns the retry, so this only joins its transaction. */

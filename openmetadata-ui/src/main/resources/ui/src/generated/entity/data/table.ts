@@ -1295,6 +1295,7 @@ export enum PipelineServiceType {
     Spline = "Spline",
     Ssis = "SSIS",
     Stitch = "Stitch",
+    TableauPipeline = "TableauPipeline",
     Wherescape = "Wherescape",
 }
 
