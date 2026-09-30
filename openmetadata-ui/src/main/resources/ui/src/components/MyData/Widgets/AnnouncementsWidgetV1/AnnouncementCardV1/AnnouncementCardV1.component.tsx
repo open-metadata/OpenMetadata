@@ -85,7 +85,7 @@ const AnnouncementCardV1 = ({
         userName={userName}
       />
       {!description && (
-        <Typography className="text-grey-muted text-xs">
+        <Typography className="text-xs" color="secondary">
           {t('message.no-announcement-message')}
         </Typography>
       )}

@@ -90,7 +90,7 @@ const AppInstallVerifyCard = ({
                 }}
               />
             </Typography>
-            <Typography className="text-grey-muted text-xs">
+            <Typography className="text-xs" color="secondary">
               {t('label.wants-to-access-your-account', {
                 username: currentUser?.displayName ?? currentUser?.name,
               })}
@@ -126,7 +126,7 @@ const AppInstallVerifyCard = ({
         <div className="d-flex items-center justify-between">
           <Space size={8}>
             <UserOutlined />
-            <Typography className="text-xs text-grey-muted">
+            <Typography className="text-xs" color="secondary">
               {t('label.developed-by-developer', {
                 developer: appData?.developer,
               })}
@@ -134,7 +134,7 @@ const AppInstallVerifyCard = ({
           </Space>
           <Space size={8}>
             <ClockCircleOutlined />
-            <Typography className="text-xs text-grey-muted">
+            <Typography className="text-xs" color="secondary">
               {`${t('label.updated')} ${getRelativeTime(appData?.updatedAt)}`}
             </Typography>
           </Space>

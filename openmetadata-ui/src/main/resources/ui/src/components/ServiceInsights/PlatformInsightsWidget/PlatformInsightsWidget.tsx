@@ -147,7 +147,9 @@ function PlatformInsightsWidget({
                                 )}%`}
                               </Typography>
                             </div>
-                            <Typography className="font-small text-grey-muted text-xs text-no-wrap">
+                            <Typography
+                              className="font-small text-xs text-no-wrap"
+                              color="secondary">
                               {chart.numberOfDays === 1
                                 ? t('label.in-the-last-day')
                                 : t('label.in-last-number-of-days', {

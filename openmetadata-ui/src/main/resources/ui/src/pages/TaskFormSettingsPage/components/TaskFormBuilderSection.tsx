@@ -124,7 +124,7 @@ const TaskFormBuilderSection = ({
             {title}
           </Typography>
           {description ? (
-            <Typography as="p" className="m-b-0 text-grey-muted">
+            <Typography as="p" className="m-b-0" color="secondary">
               {description}
             </Typography>
           ) : null}
@@ -339,7 +339,7 @@ const TaskFormBuilderSection = ({
               />
             </div>
           ) : (
-            <Typography className="text-grey-muted">
+            <Typography color="secondary">
               {t('message.add-fields-to-preview-form')}
             </Typography>
           )}

@@ -64,7 +64,7 @@ function SummaryListItem({
           {entityDetails.algorithm && (
             <Col span={24}>
               <Space className="h-6" size={4}>
-                <Typography className="text-grey-muted">{`${t(
+                <Typography color="secondary">{`${t(
                   'label.algorithm'
                 )}:`}</Typography>
                 <Typography

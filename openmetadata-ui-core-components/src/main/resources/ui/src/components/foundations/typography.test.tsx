@@ -315,4 +315,33 @@ describe('Typography ellipsis tooltip', () => {
 
     expect(handleAncestorClick).toHaveBeenCalledTimes(1);
   });
+  it('keeps the parent text alignment inside the tooltip trigger button', () => {
+    render(<Typography ellipsis={{ tooltip: true }}>Left text</Typography>);
+
+    expect(screen.getByText('Left text').closest('button')).toHaveClass(
+      'tw:[text-align:inherit]'
+    );
+  });
+
+  it('lays out an inline ellipsis trigger as inline-flex', () => {
+    render(<Typography ellipsis={{ tooltip: true }}>Inline text</Typography>);
+
+    const trigger = screen.getByText('Inline text').closest('button');
+
+    expect(trigger).toHaveClass('tw:inline-flex');
+    expect(trigger).not.toHaveClass('tw:inline-block');
+  });
+
+  it('marks the root so nested links skip prose link styling', () => {
+    render(
+      <Typography>
+        <a href="/x">Link</a>
+      </Typography>
+    );
+
+    expect(screen.getByText('Link').parentElement).toHaveClass(
+      'prose',
+      'prose-typography'
+    );
+  });
 });

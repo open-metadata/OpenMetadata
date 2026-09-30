@@ -107,7 +107,7 @@ const LoginConfigurationPage = () => {
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography className="m-0 text-grey-muted">
+              <Typography className="m-0" color="secondary">
                 {t('label.max-login-fail-attempt-plural')}
                 <Tooltip
                   placement="top"
@@ -131,7 +131,7 @@ const LoginConfigurationPage = () => {
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography className="m-0 text-grey-muted">
+              <Typography className="m-0" color="secondary">
                 {t('label.access-block-time')}
                 <Tooltip
                   placement="top"
@@ -155,7 +155,7 @@ const LoginConfigurationPage = () => {
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography className="m-0 text-grey-muted">
+              <Typography className="m-0" color="secondary">
                 {t('label.jwt-token-expiry-time')}
                 <Tooltip
                   placement="top"

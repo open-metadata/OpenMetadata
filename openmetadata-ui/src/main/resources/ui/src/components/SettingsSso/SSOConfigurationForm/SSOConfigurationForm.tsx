@@ -1229,7 +1229,7 @@ const SSOConfigurationFormRJSF = ({
                   {t('label.or-drag-and-drop-an-xml-file-here')}
                 </Typography>
               </div>
-              <Typography className="text-grey-muted text-xs">
+              <Typography className="text-xs" color="secondary">
                 {t('message.upload-saml-metadata-xml-description')}
               </Typography>
             </div>

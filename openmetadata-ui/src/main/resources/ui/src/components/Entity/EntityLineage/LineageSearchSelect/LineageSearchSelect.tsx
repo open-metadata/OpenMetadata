@@ -104,7 +104,7 @@ const LineageSearchSelect = () => {
                   src={serviceUtilClassBase.getServiceTypeLogo(node)}
                   width="16px"
                 />
-                <Typography className="text-grey-muted text-xs">
+                <Typography className="text-xs" color="secondary">
                   {getEntityName(node)}
                 </Typography>
                 <RightOutlined className="text-grey-muted text-xss" />

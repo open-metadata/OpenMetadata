@@ -152,7 +152,9 @@ const SampleDataTable: FC<SampleDataProps> = ({
           <div className="d-flex flex-column">
             <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
-              <Typography className="text-grey-muted text-xs font-normal">{`(${lowerCase(
+              <Typography
+                className="text-xs font-normal"
+                color="secondary">{`(${lowerCase(
                 matchedColumn?.dataType ?? ''
               )})`}</Typography>
             )}
@@ -323,9 +325,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       id="sampleDataDetails">
       <Space className="m-y-xss justify-between w-full">
         <Space>
-          <Typography className="text-grey-muted">
-            {t('label.row-limit')}:
-          </Typography>
+          <Typography color="secondary">{t('label.row-limit')}:</Typography>
           <Select
             className="w-28"
             data-testid="row-limit-select"

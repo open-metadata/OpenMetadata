@@ -60,21 +60,17 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             wrap={false}>
             <Col span={1}>{String(i + 1).padStart(2, '0')}</Col>
             <Col span={6}>
-              <Typography className="text-grey-muted">
-                {`${t('label.name')}:`}
-              </Typography>
+              <Typography color="secondary">{`${t('label.name')}:`}</Typography>
               <Typography className="m-l-xs">{source.name}</Typography>
             </Col>
             <Col span={6}>
-              <Typography className="text-grey-muted">
-                {`${t('label.type')}:`}
-              </Typography>
+              <Typography color="secondary">{`${t('label.type')}:`}</Typography>
               <Typography className="m-l-xs">{source.dataType}</Typography>
             </Col>
             <Col span={11}>
               <Row>
                 <Col flex="100px">
-                  <Typography className="text-grey-muted">
+                  <Typography color="secondary">
                     {`${t('label.data-entity', {
                       entity: t('label.source'),
                     })}:`}

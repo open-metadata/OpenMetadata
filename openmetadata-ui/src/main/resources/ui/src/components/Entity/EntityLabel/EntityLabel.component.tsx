@@ -26,7 +26,7 @@ const EntityLabel = (entity: EntityLabelProps): JSX.Element => (
     <Typography as="p" className="m-b-0">
       {getEntityName(entity)}
     </Typography>
-    <Typography as="p" className="tw:wrap-break-word text-grey-muted text-xs">
+    <Typography as="p" className="tw:wrap-break-word text-xs" color="secondary">
       {entity?.fullyQualifiedName}
     </Typography>
   </Space>

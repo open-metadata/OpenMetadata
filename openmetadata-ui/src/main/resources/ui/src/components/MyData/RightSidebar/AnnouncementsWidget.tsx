@@ -83,7 +83,9 @@ function AnnouncementsWidget({
                       <Typography className="d-block text-sm font-medium">
                         {item.displayName ?? item.name}
                       </Typography>
-                      <Typography className="d-block text-grey-muted text-xs m-t-xs">
+                      <Typography
+                        className="d-block text-xs m-t-xs"
+                        color="secondary">
                         {formatDateTime(item.updatedAt ?? item.createdAt)}
                       </Typography>
                       <RichTextEditorPreviewerV1

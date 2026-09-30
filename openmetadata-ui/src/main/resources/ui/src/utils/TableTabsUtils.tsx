@@ -450,7 +450,7 @@ export const getTableDetailPageBaseTabs = ({
           title={
             <Space className="p-y-xss" size="small">
               <div>
-                <Typography className="text-grey-muted">
+                <Typography color="secondary">
                   {`${t('label.dbt-source-project')}: `}
                 </Typography>
                 <Typography data-testid="dbt-source-project-id">
@@ -465,7 +465,7 @@ export const getTableDetailPageBaseTabs = ({
               />
 
               <div>
-                <Typography className="text-grey-muted">
+                <Typography color="secondary">
                   {`${t('label.path')}: `}
                 </Typography>
                 <Typography className="tw:wrap-break-word">

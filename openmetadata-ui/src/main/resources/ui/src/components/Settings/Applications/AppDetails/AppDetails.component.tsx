@@ -717,7 +717,7 @@ const AppDetails = () => {
               <div className="d-flex items-center flex-wrap gap-6">
                 <Space size={8}>
                   <ClockCircleOutlined />
-                  <Typography className="text-xs text-grey-muted">
+                  <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
@@ -726,7 +726,7 @@ const AppDetails = () => {
 
                 <Space size={8}>
                   <UserOutlined />
-                  <Typography className="text-xs text-grey-muted">
+                  <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}

@@ -224,7 +224,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                       </Col>
                       <Col>
                         {/* Display the event timestamp */}
-                        <Typography className="text-grey-muted">
+                        <Typography color="secondary">
                           {formatDateTime(typedEvent.timestamp)}
                         </Typography>
                       </Col>
@@ -245,7 +245,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                   gutter={[4, 4]}>
                                   <Col span={24}>
                                     <Typography
-                                      className="text-grey-muted"
+                                      color="secondary"
                                       data-testid="event-data-key">
                                       {`${getLabelsForEventDetails(
                                         key as keyof AlertEventDetailsToDisplay
@@ -334,7 +334,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                 </Typography>
               </Col>
               <Col span={24}>
-                <Typography className="text-grey-muted">
+                <Typography color="secondary">
                   {t('message.alert-recent-events-description', { alertName })}
                 </Typography>
               </Col>

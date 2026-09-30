@@ -135,7 +135,7 @@ const DataProductsSelectList = ({
         label: item.label,
         displayName: (
           <Space className="w-full" direction="vertical" size={0}>
-            <Typography ellipsis as="p" className="text-grey-muted m-0 p-0">
+            <Typography ellipsis as="p" className="m-0 p-0" color="secondary">
               {item.value.domains
                 ?.map((domain) => getEntityName(domain))
                 .join(', ')}

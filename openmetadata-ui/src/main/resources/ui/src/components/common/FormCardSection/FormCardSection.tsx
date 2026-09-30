@@ -33,7 +33,7 @@ function FormCardSection({
           <Typography className="font-medium">{heading}</Typography>
         </Col>
         <Col span={24}>
-          <Typography className="text-xs text-grey-muted">
+          <Typography className="text-xs" color="secondary">
             {subHeading}
           </Typography>
         </Col>

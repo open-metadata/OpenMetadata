@@ -199,7 +199,7 @@ const SchemaSidebarCard: FC<{
             );
           })
         ) : (
-          <Typography className="text-grey-muted">
+          <Typography color="secondary">
             {t('message.no-task-forms-found')}
           </Typography>
         )}
@@ -228,7 +228,7 @@ const TransitionFormsPane: FC<{
         <Typography as="h5" className="m-b-xs" size="text-md" weight="semibold">
           {t('label.transition-form-plural')}
         </Typography>
-        <Typography as="p" className="m-b-0 text-grey-muted">
+        <Typography as="p" className="m-b-0" color="secondary">
           {t('message.transition-forms-help')}
         </Typography>
       </div>
@@ -316,7 +316,7 @@ const TransitionFormsPane: FC<{
         ))}
       </div>
     ) : (
-      <Typography className="text-grey-muted">
+      <Typography color="secondary">
         {t('message.no-transition-forms-configured')}
       </Typography>
     )}
@@ -334,7 +334,7 @@ const WorkflowStagesPane: FC<{
         <Typography as="h5" className="m-b-xs" size="text-md" weight="semibold">
           {t('label.stage-to-status-mapping')}
         </Typography>
-        <Typography as="p" className="m-b-0 text-grey-muted">
+        <Typography as="p" className="m-b-0" color="secondary">
           {t('message.stage-status-mapping-help')}
         </Typography>
       </div>
@@ -413,7 +413,7 @@ const WorkflowStagesPane: FC<{
         ))}
       </div>
     ) : (
-      <Typography className="text-grey-muted">
+      <Typography color="secondary">
         {t('message.no-stage-mappings-configured')}
       </Typography>
     )}

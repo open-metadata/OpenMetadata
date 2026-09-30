@@ -112,7 +112,9 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
     if (!currentValue && !suggestedValue) {
       return (
         <div>
-          <Typography className="text-grey-muted border border-main p-sm rounded-4 m-y-xss m-b-xs">
+          <Typography
+            className="border border-main p-sm rounded-4 m-y-xss m-b-xs"
+            color="secondary">
             {t('label.no-entity', { entity: t('label.tag-plural') })}
           </Typography>
         </div>
@@ -133,7 +135,8 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
     if (!suggestedValue && !currentValue) {
       return (
         <Typography
-          className="text-grey-muted p-xs"
+          className="p-xs"
+          color="secondary"
           data-testid="no-suggestion">
           {t('label.no-entity', { entity: t('label.suggestion') })}
         </Typography>

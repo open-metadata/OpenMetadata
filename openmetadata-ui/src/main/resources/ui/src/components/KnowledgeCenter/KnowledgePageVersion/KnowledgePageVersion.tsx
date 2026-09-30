@@ -169,7 +169,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
         <Row gutter={[0, 16]}>
           <Col span={24}>
             <Space align="center" className="w-full knowledge-page-tags">
-              <Typography className="text-grey-muted">
+              <Typography color="secondary">
                 {`${t('label.tag-plural')}:`}
               </Typography>
               <TagsContainerV2
@@ -183,7 +183,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
           </Col>
           <Col span={24}>
             <Space align="center" className="w-full knowledge-page-tags">
-              <Typography className="text-grey-muted">
+              <Typography color="secondary">
                 {`${t('label.glossary-term-plural')}:`}
               </Typography>
               <TagsContainerV2

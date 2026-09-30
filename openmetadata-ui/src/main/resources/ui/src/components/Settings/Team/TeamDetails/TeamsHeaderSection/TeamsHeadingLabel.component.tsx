@@ -104,7 +104,8 @@ const TeamsHeadingLabel = ({
       </Typography>
     ) : (
       <Typography
-        className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
+        className="m-b-0 flex-1 w-min-0 text-sm"
+        color="secondary"
         data-testid="team-heading">
         {t('label.no-entity', {
           entity: t('label.display-name'),

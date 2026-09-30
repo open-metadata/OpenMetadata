@@ -101,7 +101,8 @@ const ScheduleFieldCell = ({
           </Col>
           <Col span={24}>
             <Typography
-              className="text-xs text-grey-muted"
+              className="text-xs"
+              color="secondary"
               data-testid="schedule-secondary-details"
               ellipsis={{ tooltip: descriptionSecondPart }}>
               {descriptionSecondPart}

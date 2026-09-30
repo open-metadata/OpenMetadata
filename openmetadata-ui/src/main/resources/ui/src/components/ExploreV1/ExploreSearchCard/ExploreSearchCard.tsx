@@ -409,7 +409,8 @@ const SignalBoostsSection = ({
           {t('label.signal-boost-plural')}
         </Typography>
         <Typography
-          className="text-xs text-grey-muted"
+          className="text-xs"
+          color="secondary"
           data-testid="ranking-signal-total">
           {signalBoosts.isCapped && signalBoosts.maxBoost !== undefined
             ? t('message.search-ranking-signal-capped', {
@@ -427,12 +428,15 @@ const SignalBoostsSection = ({
           <Typography className="text-xs font-medium">
             {`+${formatScoreValue(value)}`}
           </Typography>
-          <Typography className="text-xs text-grey-muted">{label}</Typography>
+          <Typography className="text-xs" color="secondary">
+            {label}
+          </Typography>
         </div>
       ))}
       {signalBoosts.lexicalScore !== undefined ? (
         <Typography
-          className="text-xs text-grey-muted"
+          className="text-xs"
+          color="secondary"
           data-testid="ranking-score-breakdown">
           {t('message.search-ranking-score-breakdown', {
             lexical: formatScoreValue(signalBoosts.lexicalScore),
@@ -483,7 +487,7 @@ const RankingDetailsSection = ({
               data-testid={`ranking-stage-${name}`}
               key={name}>
               <Typography className="text-xs font-medium">{label}</Typography>
-              <Typography className="text-xs text-grey-muted">
+              <Typography className="text-xs" color="secondary">
                 {description}
               </Typography>
             </div>
@@ -505,7 +509,7 @@ const RankingDetailsSection = ({
               <Typography className="text-xs font-medium">
                 {formatScoreValue(value)}
               </Typography>
-              <Typography className="text-xs text-grey-muted">
+              <Typography className="text-xs" color="secondary">
                 {description}
               </Typography>
             </div>
@@ -513,7 +517,7 @@ const RankingDetailsSection = ({
         </div>
       ) : null}
       <SignalBoostsSection signalBoosts={signalBoosts} t={t} />
-      <Typography className="text-xs text-grey-muted">
+      <Typography className="text-xs" color="secondary">
         {t('message.search-ranking-signals-explanation')}
       </Typography>
     </div>

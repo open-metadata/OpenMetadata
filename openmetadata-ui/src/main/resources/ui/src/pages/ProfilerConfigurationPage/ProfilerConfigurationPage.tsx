@@ -341,7 +341,7 @@ const ProfilerConfigurationPage = () => {
                         <Typography weight="semibold">
                           {t('label.enable-storing-of-sample-data')}
                         </Typography>
-                        <Typography as="p" className="text-grey-muted m-b-0">
+                        <Typography as="p" className="m-b-0" color="secondary">
                           {t('message.enable-storing-sample-data-description')}
                         </Typography>
                       </Col>
@@ -370,7 +370,7 @@ const ProfilerConfigurationPage = () => {
                         <Typography weight="semibold">
                           {t('label.enable-reading-of-sample-data')}
                         </Typography>
-                        <Typography as="p" className="text-grey-muted m-b-0">
+                        <Typography as="p" className="m-b-0" color="secondary">
                           {t('message.enable-reading-sample-data-description')}
                         </Typography>
                       </Col>

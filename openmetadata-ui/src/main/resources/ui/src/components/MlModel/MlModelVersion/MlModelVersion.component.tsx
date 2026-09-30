@@ -187,7 +187,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                               <div className="m-b-xs">
                                 <Space align="start">
                                   <Space>
-                                    <Typography className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.type')}:`}
                                     </Typography>{' '}
                                     <Typography>
@@ -199,7 +199,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                     type="vertical"
                                   />
                                   <Space>
-                                    <Typography className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.algorithm')}:`}
                                     </Typography>{' '}
                                     <Typography>
@@ -211,7 +211,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                               <div className="m-b-xs">
                                 <Box gap={2}>
                                   <div className="tw:flex-[0_0_130px]">
-                                    <Typography className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.glossary-term-plural')} :`}
                                     </Typography>
                                   </div>
@@ -231,7 +231,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                               <div className="m-b-xs">
                                 <Box gap={2}>
                                   <div className="tw:flex-[0_0_130px]">
-                                    <Typography className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.tag-plural')} :`}
                                     </Typography>
                                   </div>
@@ -250,7 +250,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                               <div className="m-b-xs">
                                 <Box gap={2}>
                                   <div className="tw:flex-[0_0_120px]">
-                                    <Typography className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.description')} :`}
                                     </Typography>
                                   </div>
@@ -262,7 +262,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                           markdown={feature.description}
                                         />
                                       ) : (
-                                        <Typography className="text-grey-muted">
+                                        <Typography color="secondary">
                                           {t('label.no-entity', {
                                             entity: t('label.description'),
                                           })}

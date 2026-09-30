@@ -369,7 +369,7 @@ const PoliciesDetailPage = () => {
                     {rule.description && (
                       <Row data-testid="description">
                         <Col span={2}>
-                          <Typography className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.description')}:`}
                           </Typography>
                         </Col>
@@ -383,7 +383,7 @@ const PoliciesDetailPage = () => {
 
                     <Row data-testid="resources">
                       <Col span={2}>
-                        <Typography className="text-grey-muted m-b-0">
+                        <Typography className="m-b-0" color="secondary">
                           {`${t('label.resource-plural')}:`}
                         </Typography>
                       </Col>
@@ -398,7 +398,7 @@ const PoliciesDetailPage = () => {
 
                     <Row data-testid="operations">
                       <Col span={2}>
-                        <Typography className="text-grey-muted">
+                        <Typography color="secondary">
                           {`${t('label.operation-plural')}:`}
                         </Typography>
                       </Col>
@@ -410,7 +410,7 @@ const PoliciesDetailPage = () => {
                     </Row>
                     <Row data-testid="effect">
                       <Col span={2}>
-                        <Typography className="text-grey-muted">
+                        <Typography color="secondary">
                           {`${t('label.effect')}:`}
                         </Typography>
                       </Col>
@@ -423,7 +423,7 @@ const PoliciesDetailPage = () => {
                     {rule.condition && (
                       <Row data-testid="condition">
                         <Col span={2}>
-                          <Typography className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.condition')}:`}
                           </Typography>
                         </Col>

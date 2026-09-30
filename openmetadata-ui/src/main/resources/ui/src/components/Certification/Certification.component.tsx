@@ -220,7 +220,8 @@ const Certification = ({
                     </Typography>
                     <Typography
                       as="div"
-                      className="m-b-0 font-regular text-xs text-grey-muted">
+                      className="m-b-0 font-regular text-xs"
+                      color="secondary">
                       {stringToHTML(description)}
                     </Typography>
                   </div>

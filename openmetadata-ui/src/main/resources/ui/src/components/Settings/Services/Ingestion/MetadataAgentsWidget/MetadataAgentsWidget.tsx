@@ -210,7 +210,7 @@ function MetadataAgentsWidget({
             <Typography className="font-medium text-md">
               {t('label.metadata-agent-plural')}
             </Typography>
-            <Typography className="text-grey-muted text-sm">
+            <Typography className="text-sm" color="secondary">
               {t('message.metadata-agents-table-description')}
             </Typography>
           </div>

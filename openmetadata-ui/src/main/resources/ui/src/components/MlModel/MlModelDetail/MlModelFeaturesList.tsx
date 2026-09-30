@@ -199,14 +199,14 @@ const MlModelFeaturesList = () => {
                     <Col span={24}>
                       <Space align="start">
                         <Space>
-                          <Typography className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.type')} :`}
                           </Typography>{' '}
                           <Typography>{feature.dataType || '--'}</Typography>
                         </Space>
                         <Divider className="border-gray" type="vertical" />
                         <Space>
-                          <Typography className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.algorithm')} :`}
                           </Typography>{' '}
                           <Typography>
@@ -219,7 +219,7 @@ const MlModelFeaturesList = () => {
                     <Col span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.glossary-term-plural')} :`}
                           </Typography>
                         </Col>
@@ -243,7 +243,7 @@ const MlModelFeaturesList = () => {
                     <Col span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.tag-plural')} :`}
                           </Typography>
                         </Col>
@@ -266,7 +266,7 @@ const MlModelFeaturesList = () => {
                     <Col className="m-t-xs" span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.description')} :`}
                           </Typography>
                         </Col>

@@ -56,7 +56,7 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
                 markdown={persona.description ?? ''}
               />
             ) : (
-              <Typography className="text-grey-muted">
+              <Typography color="secondary">
                 {t('label.no-description')}
               </Typography>
             )

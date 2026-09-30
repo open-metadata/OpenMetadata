@@ -179,7 +179,7 @@ const LeftSidebar = () => {
           <Typography as="h5" size="text-md" weight="semibold">
             {t('label.logout')}
           </Typography>
-          <Typography className="text-grey-muted">
+          <Typography color="secondary">
             {t('message.logout-confirmation')}
           </Typography>
 

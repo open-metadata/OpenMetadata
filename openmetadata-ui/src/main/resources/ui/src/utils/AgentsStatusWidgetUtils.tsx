@@ -295,7 +295,8 @@ export const getAgentRunningStatusMessage = (
       <Icon className={status} height={14} width={14} />
 
       <Typography
-        className="text-grey-muted text-sm"
+        className="text-sm"
+        color="secondary"
         data-testid="agents-status-message">
         {message}
       </Typography>

@@ -181,7 +181,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                           {displayName}
                         </Typography>
                       ) : (
-                        <Typography className="text-grey-muted">
+                        <Typography color="secondary">
                           {t('label.add-entity', {
                             entity: t('label.display-name'),
                           })}

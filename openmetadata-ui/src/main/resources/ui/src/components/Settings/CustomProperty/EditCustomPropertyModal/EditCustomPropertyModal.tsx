@@ -195,7 +195,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
 
   const note = (
     <Typography
-      className="text-grey-muted"
+      color="secondary"
       style={{ display: 'block', marginTop: '-18px' }}>
       {`Note: ${t(
         'message.updating-existing-not-possible-can-add-new-values'

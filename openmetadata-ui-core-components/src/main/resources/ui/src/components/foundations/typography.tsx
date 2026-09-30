@@ -137,6 +137,16 @@ const isTruncated = (wrapper: HTMLElement | null, rows: number) =>
   overflows(wrapper, rows) ||
   overflows(wrapper?.firstElementChild ?? null, rows);
 
+// Marks a Typography root so `styles/typography.css` can keep article-prose
+// link styling (always underlined, weight 400) off links nested in UI text.
+const TYPOGRAPHY_ROOT = 'prose-typography';
+
+// The tooltip trigger is a <button>, whose UA `text-align: center` would
+// otherwise centre short text; cursor-[inherit] likewise overrides the UA
+// `cursor: default`, which would beat a clickable ancestor's pointer.
+const TOOLTIP_TRIGGER =
+  'tw:min-w-0 tw:cursor-[inherit] tw:[text-align:inherit]';
+
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
   default: '',
   'centered-quote': 'prose-centered-quote',
@@ -240,7 +250,11 @@ export const Typography = (props: TypographyProps) => {
   const element = (
     <Component
       {...otherProps}
-      className={canUnwrap ? cx('prose', innerClassName) : innerClassName}
+      className={
+        canUnwrap
+          ? cx('prose', TYPOGRAPHY_ROOT, innerClassName)
+          : innerClassName
+      }
       style={style}>
       {children}
     </Component>
@@ -255,9 +269,11 @@ export const Typography = (props: TypographyProps) => {
     <Wrapper
       className={cx(
         'prose',
+        TYPOGRAPHY_ROOT,
         quoteStyles[quoteVariant],
         ellipsisClassName,
-        isInlineEllipsis && 'tw:inline-block tw:max-w-full tw:align-bottom'
+        isInlineEllipsis &&
+          'tw:inline-block tw:min-w-0 tw:max-w-full tw:align-bottom'
       )}
       ref={wrapperRef}>
       {element}
@@ -269,12 +285,13 @@ export const Typography = (props: TypographyProps) => {
       <Tooltip
         isOpen={isEllipsisTooltipOpen}
         title={ellipsisTooltip}
-        // cursor-[inherit] overrides the UA `cursor: default` the wrapper gets
-        // for being a button, which would beat a clickable ancestor's pointer.
         triggerClassName={cx(
-          'tw:min-w-0 tw:cursor-[inherit]',
+          TOOLTIP_TRIGGER,
           isInlineEllipsis
-            ? 'tw:inline-block tw:max-w-full tw:align-bottom'
+            ? // inline-flex, not inline-block: an inline-block child would sit
+              // in the button's own line box, whose inherited line-height adds
+              // ~2px under the text and shifts everything below it.
+              'tw:inline-flex tw:max-w-full tw:align-bottom'
             : 'tw:block tw:w-full'
         )}
         onOpenChange={(isOpen) =>
@@ -293,6 +310,7 @@ export const Typography = (props: TypographyProps) => {
     return (
       <Tooltip
         title={tooltip}
+        triggerClassName={TOOLTIP_TRIGGER}
         onTriggerPress={allowEllipsisTooltipPressToPropagate}>
         {content}
       </Tooltip>

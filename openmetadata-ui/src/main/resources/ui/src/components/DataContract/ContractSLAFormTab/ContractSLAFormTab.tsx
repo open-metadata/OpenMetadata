@@ -281,7 +281,7 @@ export const ContractSLAFormTab: React.FC<{
                 <Typography className="sla-form-card-description">
                   {t('message.availability-time-contract-description')}
                 </Typography>
-                <Typography className="text-grey-muted text-xs m-b-xs" />
+                <Typography className="text-xs m-b-xs" color="secondary" />
 
                 <Row gutter={24}>
                   <Col span={12}>

@@ -76,7 +76,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               <Typography as="h4" className="font-medium">
                 {t('message.unlock-all-version-history')}
               </Typography>
-              <Typography className="text-grey-muted font-normal">
+              <Typography className="font-normal" color="secondary">
                 {t('message.upgrade-to-paid-plan-for-version-history')}
               </Typography>
 

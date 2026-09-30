@@ -176,7 +176,7 @@ const TableQueryRightPanel = ({
                   ))}
                 </Space>
               ) : (
-                <Typography as="p" className="m-b-0 text-grey-muted">
+                <Typography as="p" className="m-b-0" color="secondary">
                   {t('label.no-entity', {
                     entity: t('label.user-plural'),
                   })}
@@ -205,7 +205,7 @@ const TableQueryRightPanel = ({
                   ))}
                 </Space>
               ) : (
-                <Typography as="p" className="m-b-0 text-grey-muted">
+                <Typography as="p" className="m-b-0" color="secondary">
                   {t('label.no-entity', {
                     entity: t('label.used-by'),
                   })}

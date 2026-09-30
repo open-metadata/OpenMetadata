@@ -46,7 +46,7 @@ const AnnouncementEntityLinkLabel = ({
   }
 
   return (
-    <Typography className="text-grey-muted text-xs">
+    <Typography className="text-xs" color="secondary">
       {entityLink ? (
         <Link to={entityLink}>{entityFQN.split('.').pop()}</Link>
       ) : (
@@ -155,11 +155,11 @@ const AnnouncementFeedCardBody = ({
           </Typography>
           <Space wrap size={8}>
             {announcement.createdBy && (
-              <Typography className="text-grey-muted text-xs">
+              <Typography className="text-xs" color="secondary">
                 {t('label.by-entity', { entity: announcement.createdBy })}
               </Typography>
             )}
-            <Typography className="text-grey-muted text-xs">
+            <Typography className="text-xs" color="secondary">
               {formatDateTime(announcement.updatedAt ?? announcement.createdAt)}
             </Typography>
             <AnnouncementEntityLinkLabel
@@ -189,10 +189,10 @@ const AnnouncementFeedCardBody = ({
       )}
 
       <Space wrap className="m-t-sm" size={16}>
-        <Typography className="text-grey-muted text-xs">
+        <Typography className="text-xs" color="secondary">
           {`${t('label.start-date')}: ${formatDateTime(details.startTime)}`}
         </Typography>
-        <Typography className="text-grey-muted text-xs">
+        <Typography className="text-xs" color="secondary">
           {`${t('label.end-date')}: ${formatDateTime(details.endTime)}`}
         </Typography>
       </Space>

@@ -49,7 +49,7 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
             {t(taskTypeLabel)}
           </Typography>
           {task.about && (
-            <Typography className="text-grey-muted text-sm">
+            <Typography className="text-sm" color="secondary">
               {getEntityName(task.about)}
             </Typography>
           )}

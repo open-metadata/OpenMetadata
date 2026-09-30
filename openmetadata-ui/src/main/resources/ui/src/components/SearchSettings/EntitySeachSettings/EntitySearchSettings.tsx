@@ -710,7 +710,7 @@ const EntitySearchSettings = () => {
             </Typography>
           </Col>
           <Col className="ranking-number-control">
-            <Typography className="text-grey-muted text-xs font-normal">
+            <Typography className="text-xs font-normal" color="secondary">
               {t('label.weight')}
             </Typography>
             <InputNumber
@@ -732,7 +732,7 @@ const EntitySearchSettings = () => {
         )}
         <Row className="ranking-stage-meta" gutter={[12, 12]}>
           <Col span={12}>
-            <Typography className="text-grey-muted text-xs font-normal">
+            <Typography className="text-xs font-normal" color="secondary">
               {t('label.match-type')}
             </Typography>
             <Typography as="p" className="ranking-stage-value">
@@ -740,7 +740,7 @@ const EntitySearchSettings = () => {
             </Typography>
           </Col>
           <Col span={12}>
-            <Typography className="text-grey-muted text-xs font-normal">
+            <Typography className="text-xs font-normal" color="secondary">
               {t('label.field-plural')}
             </Typography>
             {renderRankingFields(stage.fields)}
@@ -755,7 +755,7 @@ const EntitySearchSettings = () => {
 
     if (!ranking) {
       return (
-        <Typography className="text-grey-muted">
+        <Typography color="secondary">
           {t('message.no-data-available')}
         </Typography>
       );
@@ -768,7 +768,7 @@ const EntitySearchSettings = () => {
         <div className="ranking-settings-card">
           <Row align="middle" gutter={[12, 12]}>
             <Col span={16}>
-              <Typography className="text-grey-muted text-xs font-normal">
+              <Typography className="text-xs font-normal" color="secondary">
                 {t('label.algorithm')}
               </Typography>
               <Typography as="p" className="m-0">
@@ -778,7 +778,7 @@ const EntitySearchSettings = () => {
               </Typography>
             </Col>
             <Col className="ranking-enabled-control" span={8}>
-              <Typography className="text-grey-muted text-xs font-normal">
+              <Typography className="text-xs font-normal" color="secondary">
                 {t('label.enabled')}
               </Typography>
               <Switch
@@ -795,16 +795,16 @@ const EntitySearchSettings = () => {
         {signals && (
           <div className="ranking-settings-card" data-testid="ranking-signals">
             {signals.purpose && (
-              <Typography as="p" className="text-grey-muted m-b-xs">
+              <Typography as="p" className="m-b-xs" color="secondary">
                 {signals.purpose}
               </Typography>
             )}
-            <Typography as="p" className="text-grey-muted m-b-sm">
+            <Typography as="p" className="m-b-sm" color="secondary">
               {t('message.search-ranking-signals-explanation')}
             </Typography>
             <Row gutter={[12, 12]}>
               <Col span={12}>
-                <Typography className="text-grey-muted text-xs font-normal">
+                <Typography className="text-xs font-normal" color="secondary">
                   {t('label.boost-mode')}
                 </Typography>
                 <Select
@@ -816,7 +816,7 @@ const EntitySearchSettings = () => {
                 />
               </Col>
               <Col span={12}>
-                <Typography className="text-grey-muted text-xs font-normal">
+                <Typography className="text-xs font-normal" color="secondary">
                   {t('label.score-mode')}
                 </Typography>
                 <Select
@@ -828,7 +828,7 @@ const EntitySearchSettings = () => {
                 />
               </Col>
               <Col className="ranking-number-control" span={12}>
-                <Typography className="text-grey-muted text-xs font-normal">
+                <Typography className="text-xs font-normal" color="secondary">
                   {t('label.max')}
                 </Typography>
                 <InputNumber
@@ -843,7 +843,7 @@ const EntitySearchSettings = () => {
                 />
               </Col>
               <Col span={12}>
-                <Typography className="text-grey-muted text-xs font-normal">
+                <Typography className="text-xs font-normal" color="secondary">
                   {t('label.field-plural')}
                 </Typography>
                 {renderRankingFields(signals.fields)}
@@ -949,7 +949,9 @@ const EntitySearchSettings = () => {
                   {/* Score Mode and Boost Mode Section */}
                   <Col className="flex flex-col w-full">
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-                      <Typography className="text-grey-muted text-xs font-normal">
+                      <Typography
+                        className="text-xs font-normal"
+                        color="secondary">
                         {t('label.score-mode')}
                       </Typography>
                       <Select
@@ -964,7 +966,9 @@ const EntitySearchSettings = () => {
                       />
                     </div>
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-                      <Typography className="text-grey-muted text-xs font-normal">
+                      <Typography
+                        className="text-xs font-normal"
+                        color="secondary">
                         {t('label.boost-mode')}
                       </Typography>
                       <Select

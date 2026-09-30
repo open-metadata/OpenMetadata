@@ -380,7 +380,8 @@ const CuratedAssetsWidgetContent = ({
               </div>
               {description && (
                 <Typography
-                  className="max-two-lines entity-list-item-description text-grey-muted"
+                  className="max-two-lines entity-list-item-description"
+                  color="secondary"
                   ellipsis={{ tooltip: true }}>
                   {getTextFromHtmlString(description)}
                 </Typography>

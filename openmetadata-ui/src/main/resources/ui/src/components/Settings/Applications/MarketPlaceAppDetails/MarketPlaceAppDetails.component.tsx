@@ -215,7 +215,7 @@ const MarketPlaceAppDetails = () => {
         )}
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
-          <Typography className="text-xs font-medium text-grey-muted">
+          <Typography className="text-xs font-medium" color="secondary">
             {t('message.marketplace-verify-msg')}
           </Typography>
         </div>

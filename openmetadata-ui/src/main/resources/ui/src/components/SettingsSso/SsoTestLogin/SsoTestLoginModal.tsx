@@ -137,7 +137,7 @@ const SsoTestLoginModal = ({
       open={open}
       title={t('label.test-login')}
       onCancel={onClose}>
-      <Typography as="p" className="text-grey-muted">
+      <Typography as="p" color="secondary">
         {t('message.sso-test-login-description')}
       </Typography>
       {body}
