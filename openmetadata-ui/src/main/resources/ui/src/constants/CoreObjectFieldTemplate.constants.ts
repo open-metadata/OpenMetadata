@@ -78,6 +78,7 @@ export const DEFAULT_ADVANCED_PROPERTY_NAMES = new Set([
   'clientX509CertUrl',
   'lifetime',
   'tokenUri',
+  'universeDomain',
 ]);
 export const FULL_WIDTH_FIELD_PATTERN =
   /(url|uri|arn|path|pattern|connectionstring|jdbc|dsn|bundle|certificate|cert|pem|token|password)/i;

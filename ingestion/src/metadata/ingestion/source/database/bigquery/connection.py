@@ -18,11 +18,11 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from typing import TYPE_CHECKING
-from urllib.parse import parse_qs, quote, urlparse
 
 from google.api_core.exceptions import Forbidden, NotFound
 from google.auth.exceptions import DefaultCredentialsError, RefreshError
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine.url import URL
 
 from metadata.core.connections.test_connection import (
     ErrorPack,
@@ -57,6 +57,7 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.bigquery.helper import (
+    get_api_endpoint,
     get_impersonate_client_kwargs,
     get_policy_tag_client,
 )
@@ -145,28 +146,38 @@ BIGQUERY_ERRORS = ErrorPack(
 ).including(NETWORK_ERRORS)
 
 
-def _add_location(url: str, connection: BigQueryConnectionConfig) -> str:
+def _add_location(url: URL, connection: BigQueryConnectionConfig) -> URL:
     """
     Attach the `usageLocation` value to the URL when available.
     """
     location = getattr(connection, "usageLocation", None)
-    if not location:
+    if not location or "location" in url.query:
         return url
 
-    # Parse the URL to check if location parameter already exists
-    parsed = urlparse(url)
-    params = parse_qs(parsed.query)
-
-    if "location" in params:
-        return url
-
-    # Add location parameter with proper URL encoding
-    separator = "&" if parsed.query else "?"
-    encoded_location = quote(str(location), safe="")
-    return f"{url}{separator}location={encoded_location}"
+    return url.update_query_dict({"location": str(location)})
 
 
-def get_connection_url(connection: BigQueryConnectionConfig) -> str:  # noqa: C901
+def _build_url(connection: BigQueryConnectionConfig, project_id: str | None = None) -> URL:
+    """
+    Build the SQLAlchemy URL for a given project id.
+
+    Uses ``URL.create`` instead of an f-string so a project id containing a
+    literal ``:`` (domain-scoped project ids such as ``s3ns:my_project``, used
+    by sovereign clouds like S3NS PREMI3NS) is kept intact. A plain URL string
+    would be re-parsed by ``sqlalchemy.engine.url.make_url``, whose regex
+    splits the host on the first literal ``:`` and casts the remainder to a
+    port number, crashing on a non-numeric project id. ``URL.create`` builds
+    the object directly, so it is never subjected to that regex.
+    """
+    query = {"user_supplied_client": "true"} if _requires_user_supplied_client(connection) else None
+    return URL.create(connection.scheme.value, host=project_id or None, query=query)
+
+
+def _requires_user_supplied_client(connection: BigQueryConnectionConfig) -> bool:
+    return bool(get_api_endpoint(connection) or get_impersonate_client_kwargs(connection))
+
+
+def get_connection_url(connection: BigQueryConnectionConfig) -> URL:  # noqa: C901
     """
     Build the connection URL and set the project
     environment variable when needed
@@ -177,22 +188,18 @@ def get_connection_url(connection: BigQueryConnectionConfig) -> str:  # noqa: C9
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
-            if not connection.credentials.gcpConfig.projectId.root:
-                url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root or ''}"
-            elif not connection.credentials.gcpConfig.privateKey and connection.credentials.gcpConfig.projectId.root:
-                project_id = connection.credentials.gcpConfig.projectId.root
+            project_id = connection.credentials.gcpConfig.projectId.root
+            if project_id and not connection.credentials.gcpConfig.privateKey:
                 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-                url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
-            else:
-                url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+            url = _build_url(connection, project_id)
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
                 if not connection.credentials.gcpConfig.privateKey and project_id:
                     os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-                url = f"{connection.scheme.value}://{project_id}"
+                url = _build_url(connection, project_id)
                 break
             if url is None:
-                url = f"{connection.scheme.value}://"
+                url = _build_url(connection)
 
     # If gcpConfig is the JSON key path and projectId is defined, we use it by default
     elif (
@@ -201,10 +208,10 @@ def get_connection_url(connection: BigQueryConnectionConfig) -> str:  # noqa: C9
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
-            url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+            url = _build_url(connection, connection.credentials.gcpConfig.projectId.root)
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
-                url = f"{connection.scheme.value}://{project_id}"
+                url = _build_url(connection, project_id)
                 break
 
     # If gcpConfig is the GCP ADC and projectId is defined, we use it by default
@@ -212,14 +219,14 @@ def get_connection_url(connection: BigQueryConnectionConfig) -> str:  # noqa: C9
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
-            url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+            url = _build_url(connection, connection.credentials.gcpConfig.projectId.root)
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
-                url = f"{connection.scheme.value}://{project_id}"
+                url = _build_url(connection, project_id)
                 break
 
     if url is None:
-        url = f"{connection.scheme.value}://"
+        url = _build_url(connection)
 
     return _add_location(url, connection)
 
@@ -236,7 +243,8 @@ def get_connection_args(connection: BigQueryConnectionConfig) -> dict:
     """
     connect_args = get_connection_args_common(connection)
     impersonate_kwargs = get_impersonate_client_kwargs(connection)
-    if impersonate_kwargs:
+    api_endpoint = get_api_endpoint(connection)
+    if impersonate_kwargs or api_endpoint:
         billing_or_project_id = connection.billingProjectId or _get_first_project_id(connection)
         if billing_or_project_id is None:
             logger.warning(
@@ -245,9 +253,14 @@ def get_connection_args(connection: BigQueryConnectionConfig) -> dict:
                 "environment (e.g. GOOGLE_CLOUD_PROJECT) at query time; set billingProjectId or a "
                 "projectId to make this explicit."
             )
+        client_kwargs = {"project_id": billing_or_project_id, **impersonate_kwargs}
+        if connection.usageLocation:
+            client_kwargs["location"] = connection.usageLocation
+        if api_endpoint:
+            client_kwargs["api_endpoint"] = api_endpoint
         connect_args = {
             **connect_args,
-            "client": get_bigquery_client(project_id=billing_or_project_id, **impersonate_kwargs),
+            "client": get_bigquery_client(**client_kwargs),
         }
     return connect_args
 
