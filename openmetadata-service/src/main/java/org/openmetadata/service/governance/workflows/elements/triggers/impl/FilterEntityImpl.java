@@ -88,7 +88,8 @@ public class FilterEntityImpl implements JavaDelegate {
       passesFilter = mainWorkflowName(execution).equals(changeRequest.workflowName());
     } else {
       passesFilter =
-          passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
+          passesExcludedFilter(
+              entityLinkStr, entityType, excludedFilter, includeFields, filterLogic);
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -147,6 +148,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
   private boolean passesExcludedFilter(
       String entityLinkStr,
+      String entityType,
       List<String> excludedFilter,
       List<String> includeFields,
       String filterLogic) {
@@ -163,7 +165,7 @@ public class FilterEntityImpl implements JavaDelegate {
       List<FieldChange> changedFields = getAllChangedFields(change);
       fieldBasedFilter =
           changedFields.isEmpty()
-              || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
+              || passesFieldBasedFilter(entityType, changedFields, includeFields, excludedFilter);
     }
 
     return fieldBasedFilter && !WorkflowTriggerFilters.matchesExclusionFilter(filterLogic, entity);
@@ -177,11 +179,16 @@ public class FilterEntityImpl implements JavaDelegate {
   }
 
   private boolean passesFieldBasedFilter(
-      List<FieldChange> changedFields, List<String> includeFields, List<String> excludedFilter) {
+      String entityType,
+      List<FieldChange> changedFields,
+      List<String> includeFields,
+      List<String> excludedFilter) {
+    // A change fires the workflow when it touches one of this entity type's trigger fields,
+    // subject to include/exclude (see WorkflowTriggerFilters).
     return changedFields.stream()
         .anyMatch(
             field ->
                 WorkflowTriggerFilters.fieldTriggers(
-                    field.getName(), includeFields, excludedFilter));
+                    entityType, field.getName(), includeFields, excludedFilter));
   }
 }

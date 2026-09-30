@@ -20,7 +20,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -29,14 +28,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -51,17 +48,13 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
  * a bot on its own behalf, proceeds as a normal write. Impersonated requests are gated as the human.
  */
 public final class ApprovalGate {
+  // Identity and lifecycle fields are carried with a held request but never gate one.
   private static final Set<String> STRUCTURAL_FIELDS =
       Set.of(
-          WorkflowTriggerFields.NAME.value(),
-          WorkflowTriggerFields.FULLY_QUALIFIED_NAME.value(),
-          WorkflowTriggerFields.DELETED.value(),
-          WorkflowTriggerFields.ENTITY_STATUS.value());
-  private static final Set<String> STAGEABLE_FIELDS =
-      Arrays.stream(WorkflowTriggerFields.values())
-          .map(WorkflowTriggerFields::value)
-          .filter(field -> !STRUCTURAL_FIELDS.contains(field))
-          .collect(Collectors.toUnmodifiableSet());
+          Entity.FIELD_NAME,
+          Entity.FIELD_FULLY_QUALIFIED_NAME,
+          Entity.FIELD_DELETED,
+          Entity.FIELD_ENTITY_STATUS);
   private static final Set<String> BOOKKEEPING_FIELDS =
       Set.of(
           "version",
@@ -72,8 +65,8 @@ public final class ApprovalGate {
           "changeDescription",
           "incrementalChangeDescription",
           "changeSummary");
-  private static final String TAGS = WorkflowTriggerFields.TAGS.value();
-  private static final String EXTENSION = WorkflowTriggerFields.EXTENSION.value();
+  private static final String TAGS = Entity.FIELD_TAGS;
+  private static final String EXTENSION = Entity.FIELD_EXTENSION;
   private static final String EXTENSION_PREFIX = EXTENSION + Entity.SEPARATOR;
 
   private ApprovalGate() {}
@@ -146,7 +139,7 @@ public final class ApprovalGate {
             .filter(
                 rule ->
                     WorkflowTriggerFilters.fieldTriggers(
-                        field, rule.includedFields(), rule.excludedFields()))
+                        asset.getType(), field, rule.includedFields(), rule.excludedFields()))
             .toList();
     boolean gated = false;
     if (!rules.isEmpty()) {
@@ -193,8 +186,9 @@ public final class ApprovalGate {
       String impersonatedBy) {
     JsonNode base = JsonUtils.valueToTree(original);
     JsonNode proposed = JsonUtils.valueToTree(updated);
-    Set<String> changed = changedFields(base, proposed);
-    List<GatedBy> gating = gatingWorkflows(rules, updated, triggerNames(base, proposed, changed));
+    Set<String> changed = changedFields(entityType, base, proposed);
+    List<GatedBy> gating =
+        gatingWorkflows(rules, entityType, updated, triggerNames(base, proposed, changed));
     Optional<StagedChange> staged = Optional.empty();
     if (!gating.isEmpty()) {
       rejectAmbiguousReview(gating);
@@ -216,13 +210,16 @@ public final class ApprovalGate {
   }
 
   private static List<GatedBy> gatingWorkflows(
-      List<GatingRule> rules, EntityInterface updated, Map<String, List<String>> changed) {
+      List<GatingRule> rules,
+      String entityType,
+      EntityInterface updated,
+      Map<String, List<String>> changed) {
     List<GatedBy> gating = new ArrayList<>();
     for (GatingRule rule : rules) {
       Set<String> fields =
           WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
               ? Set.of()
-              : gatedFields(rule, changed);
+              : gatedFields(rule, entityType, changed);
       if (!fields.isEmpty()) {
         gating.add(new GatedBy(rule, fields));
       }
@@ -242,25 +239,26 @@ public final class ApprovalGate {
     }
   }
 
-  private static Set<String> changedFields(JsonNode base, JsonNode proposed) {
+  private static Set<String> changedFields(String entityType, JsonNode base, JsonNode proposed) {
     Set<String> names = new TreeSet<>();
     base.fieldNames().forEachRemaining(names::add);
     proposed.fieldNames().forEachRemaining(names::add);
     names.removeAll(BOOKKEEPING_FIELDS);
-    names.removeIf(name -> !isChange(name, base.get(name), proposed.get(name)));
+    names.removeIf(name -> !isChange(entityType, name, base.get(name), proposed.get(name)));
     return names;
   }
 
   // An absent/null proposed value is a change only when it clears a scalar of a stageable field;
   // an omitted collection is merged, not removed, by PUT.
-  private static boolean isChange(String field, JsonNode oldValue, JsonNode newValue) {
+  private static boolean isChange(
+      String entityType, String field, JsonNode oldValue, JsonNode newValue) {
     boolean cleared = newValue == null || newValue.isNull();
     boolean clearsScalar =
         cleared
             && oldValue != null
             && oldValue.isValueNode()
             && !oldValue.isNull()
-            && STAGEABLE_FIELDS.contains(field);
+            && isStageable(entityType, field);
     return clearsScalar || (!cleared && MutationPlanner.differs(oldValue, newValue));
   }
 
@@ -292,7 +290,15 @@ public final class ApprovalGate {
     return names;
   }
 
-  private static Set<String> gatedFields(GatingRule rule, Map<String, List<String>> changed) {
+  // A field can gate when it is one of the entity type's trigger fields other than identity and
+  // lifecycle fields.
+  private static boolean isStageable(String entityType, String field) {
+    return !STRUCTURAL_FIELDS.contains(field)
+        && WorkflowTriggerFilters.isTriggerField(entityType, field);
+  }
+
+  private static Set<String> gatedFields(
+      GatingRule rule, String entityType, Map<String, List<String>> changed) {
     Set<String> gated = new HashSet<>();
     changed.forEach(
         (field, names) -> {
@@ -301,8 +307,8 @@ public final class ApprovalGate {
                   .anyMatch(
                       name ->
                           WorkflowTriggerFilters.fieldTriggers(
-                              name, rule.includedFields(), rule.excludedFields()));
-          if (STAGEABLE_FIELDS.contains(field) && triggers) {
+                              entityType, name, rule.includedFields(), rule.excludedFields()));
+          if (isStageable(entityType, field) && triggers) {
             gated.add(field);
           }
         });

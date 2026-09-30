@@ -15,14 +15,13 @@
 package org.openmetadata.service.governance.workflows.elements.triggers;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
 import org.openmetadata.service.rules.RuleEngine;
 
 /**
@@ -40,11 +39,18 @@ public final class WorkflowTriggerFilters {
 
   private WorkflowTriggerFilters() {}
 
-  /** A change to {@code fieldName} triggers when it is a trigger field and passes include/exclude. */
+  /**
+   * A change to {@code fieldName} on an {@code entityType} triggers when it is one of that type's
+   * trigger fields and passes include/exclude: include set, only those fields; otherwise everything
+   * but the excluded fields.
+   */
   public static boolean fieldTriggers(
-      String fieldName, List<String> includeFields, List<String> excludedFields) {
+      String entityType,
+      String fieldName,
+      List<String> includeFields,
+      List<String> excludedFields) {
     boolean triggers = false;
-    if (isTriggerField(fieldName)) {
+    if (isTriggerField(entityType, fieldName)) {
       if (includeFields != null && !includeFields.isEmpty()) {
         triggers = includeFields.stream().anyMatch(field -> matchesField(fieldName, field));
       } else {
@@ -56,9 +62,9 @@ public final class WorkflowTriggerFilters {
     return triggers;
   }
 
-  public static boolean isTriggerField(String fieldName) {
-    return Arrays.stream(WorkflowTriggerFields.values())
-        .map(WorkflowTriggerFields::value)
+  /** The common trigger fields plus the entity type's own (for example `columns` on a table). */
+  public static boolean isTriggerField(String entityType, String fieldName) {
+    return WorkflowTriggerFieldsRegistry.getEffectiveFields(entityType).stream()
         .anyMatch(triggerField -> matchesField(fieldName, triggerField));
   }
 

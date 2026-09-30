@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
  * approval gate. These are the rules that must stay identical on both sides.
  */
 class WorkflowTriggerFiltersTest {
+  private static final String GLOSSARY = "glossary";
 
   // ---- matchesField ---------------------------------------------------------------------------
 
@@ -55,26 +56,29 @@ class WorkflowTriggerFiltersTest {
 
   @Test
   void triggerFieldRecognized() {
-    assertTrue(WorkflowTriggerFilters.isTriggerField("description"));
-    assertTrue(WorkflowTriggerFilters.isTriggerField("tags"));
+    assertTrue(WorkflowTriggerFilters.isTriggerField(GLOSSARY, "description"));
+    assertTrue(WorkflowTriggerFilters.isTriggerField(GLOSSARY, "tags"));
   }
 
   @Test
   void nonTriggerFieldNotRecognized() {
-    assertFalse(WorkflowTriggerFilters.isTriggerField("sourceUrl"));
-    assertFalse(WorkflowTriggerFilters.isTriggerField("retentionPeriod"));
+    assertFalse(WorkflowTriggerFilters.isTriggerField(GLOSSARY, "sourceUrl"));
+    assertFalse(WorkflowTriggerFilters.isTriggerField(GLOSSARY, "retentionPeriod"));
   }
 
   // ---- fieldTriggers: include priority --------------------------------------------------------
 
   @Test
   void includedTriggerFieldTriggers() {
-    assertTrue(WorkflowTriggerFilters.fieldTriggers("description", List.of("description"), null));
+    assertTrue(
+        WorkflowTriggerFilters.fieldTriggers(
+            GLOSSARY, "description", List.of("description"), null));
   }
 
   @Test
   void triggerFieldNotInIncludeDoesNotTrigger() {
-    assertFalse(WorkflowTriggerFilters.fieldTriggers("tags", List.of("description"), null));
+    assertFalse(
+        WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "tags", List.of("description"), null));
   }
 
   @Test
@@ -82,41 +86,55 @@ class WorkflowTriggerFiltersTest {
     // include non-empty -> exclude is ignored entirely (schema: "Takes priority over exclude").
     assertTrue(
         WorkflowTriggerFilters.fieldTriggers(
-            "description", List.of("description"), List.of("description")));
+            GLOSSARY, "description", List.of("description"), List.of("description")));
   }
 
   // ---- fieldTriggers: empty include falls back to exclude -------------------------------------
 
   @Test
   void emptyIncludeGatesAnyTriggerField() {
-    assertTrue(WorkflowTriggerFilters.fieldTriggers("description", List.of(), List.of()));
+    assertTrue(WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "description", List.of(), List.of()));
   }
 
   @Test
   void emptyIncludeExcludedFieldDoesNotTrigger() {
-    assertFalse(WorkflowTriggerFilters.fieldTriggers("owners", List.of(), List.of("owners")));
+    assertFalse(
+        WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "owners", List.of(), List.of("owners")));
   }
 
   @Test
   void emptyIncludeNonExcludedTriggerFieldTriggers() {
-    assertTrue(WorkflowTriggerFilters.fieldTriggers("tags", List.of(), List.of("owners")));
+    assertTrue(
+        WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "tags", List.of(), List.of("owners")));
   }
 
   @Test
   void nullIncludeAndExcludeGatesAnyTriggerField() {
-    assertTrue(WorkflowTriggerFilters.fieldTriggers("description", null, null));
+    assertTrue(WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "description", null, null));
   }
 
   // ---- fieldTriggers: trigger-field gate precedes include/exclude -----------------------------
 
   @Test
   void nonTriggerFieldNeverTriggersEvenIfIncluded() {
-    assertFalse(WorkflowTriggerFilters.fieldTriggers("sourceUrl", List.of("sourceUrl"), null));
+    assertFalse(
+        WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "sourceUrl", List.of("sourceUrl"), null));
   }
 
   @Test
   void nonTriggerFieldNeverTriggersUnderEmptyInclude() {
-    assertFalse(WorkflowTriggerFilters.fieldTriggers("sourceUrl", List.of(), List.of()));
+    assertFalse(WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "sourceUrl", List.of(), List.of()));
+  }
+
+  // ---- per-entity trigger fields -------------------------------------------------------------
+
+  @Test
+  void entityTypeOwnFieldTriggersOnlyForThatType() {
+    assertTrue(WorkflowTriggerFilters.isTriggerField("table", "sourceUrl"));
+    assertFalse(WorkflowTriggerFilters.isTriggerField(GLOSSARY, "sourceUrl"));
+    assertTrue(WorkflowTriggerFilters.fieldTriggers("table", "columns", List.of("columns"), null));
+    assertFalse(
+        WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "columns", List.of("columns"), null));
   }
 
   // ---- extractEntitySpecificFilter ------------------------------------------------------------
