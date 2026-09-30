@@ -43,12 +43,15 @@ INVENTORY = ContractInventory(
             "induction, tracked separately."
         ),
     },
+    # Only capabilities this slice actually declares contracts for. OracleConnection
+    # also defaults supportsProfiler and supportsLineageExtraction to true, but listing
+    # them here while `required` carries no profile.*/lineage.* contract would be inert
+    # (capabilities only gate `unsupported`) and would read as a coverage claim. They
+    # belong here alongside their contracts, in the next slice.
     capabilities={
         contract: OracleConnection.model_fields[flag].get_default(call_default_factory=True)
         for contract, flag in {
             "catalog": "supportsMetadataExtraction",
-            "profile": "supportsProfiler",
-            "lineage": "supportsLineageExtraction",
         }.items()
     },
 )
