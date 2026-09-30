@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { ECElementEvent } from 'echarts';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { EChart } from './echart';
 import { buildGeoMapOption, resolveGeoData } from './options/geo';
 import type { GeoMapChartProps } from './props';
@@ -52,12 +52,16 @@ export const GeoMapChart = ({
     [data, resolveRegion]
   );
   const unmatchedKey = resolved.unmatched.join('\u0000');
+  // Latest callback in a ref, so a caller passing an inline callback (or fresh
+  // data) is not re-notified — or looped — on every render. Reports on mount,
+  // then only when the set of unmatched values changes.
+  const onUnmatchedRef = useRef(onUnmatchedRegions);
+  onUnmatchedRef.current = onUnmatchedRegions;
 
   useEffect(() => {
-    onUnmatchedRegions?.(resolved.unmatched);
-    // Only re-report when the set of unmatched values changes.
+    onUnmatchedRef.current?.(resolved.unmatched);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unmatchedKey, onUnmatchedRegions]);
+  }, [unmatchedKey]);
 
   const getOption = useCallback(
     (theme: ChartTheme) =>

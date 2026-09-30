@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { useEffect, useState } from 'react';
 import type { ECElementEvent, MapSeriesOption } from 'echarts';
 import * as echarts from 'echarts/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -179,5 +180,38 @@ describe('GeoMapChart', () => {
 
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.queryByTestId('echarts-host')).not.toBeInTheDocument();
+  });
+
+  it('reports unmatched values once per change, not on every parent render', () => {
+    const reports: string[][] = [];
+    const mapName = nextMapName();
+    // A parent that passes fresh data, resolver and callback on every render
+    // and stores what it is told — the wiring most callers will write.
+    const Parent = ({ tick }: { tick: number }) => {
+      const [, setUnmatched] = useState<string[]>([]);
+      useEffect(() => undefined, [tick]);
+
+      return (
+        <GeoMapChart
+          ariaLabel="Map"
+          data={[
+            { region: 'Alpha', value: 1 },
+            { region: 'ZZ', value: tick },
+          ]}
+          geoJson={geoJson}
+          mapName={mapName}
+          resolveRegion={(raw) => (raw === 'Alpha' ? raw : undefined)}
+          onUnmatchedRegions={(raw) => {
+            reports.push(raw);
+            setUnmatched(raw);
+          }}
+        />
+      );
+    };
+    const { rerender } = render(<Parent tick={1} />);
+    rerender(<Parent tick={2} />);
+    rerender(<Parent tick={3} />);
+
+    expect(reports).toEqual([['ZZ']]);
   });
 });

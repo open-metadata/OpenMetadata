@@ -112,6 +112,8 @@ export const buildGeoMapOption = (
     id: 'geo-map',
     map: input.mapName,
     roam: false,
+    // Clicks go to onRegionClick; a sticky selection would hide the shade.
+    selectedMode: false,
     // Fit the map across the whole box, reserving a band for the scale.
     left: 0,
     right: 0,

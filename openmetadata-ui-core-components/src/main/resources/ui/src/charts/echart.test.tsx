@@ -127,6 +127,7 @@ describe('EChart', () => {
       'yAxis',
       'grid',
       'dataZoom',
+      'visualMap',
     ]);
     expect(lastHost().opts).toEqual({ renderer: 'svg' });
   });

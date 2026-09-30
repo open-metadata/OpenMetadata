@@ -179,6 +179,10 @@ describe('buildGeoMapOption', () => {
     });
   });
 
+  it('does not leave a clicked region stuck in the selected colour', () => {
+    expect(mapOf(base).selectedMode).toBe(false);
+  });
+
   it('uses an item tooltip', () => {
     const tooltip = buildGeoMapOption(base, LIGHT_CHART_THEME).option
       .tooltip as TooltipComponentOption;

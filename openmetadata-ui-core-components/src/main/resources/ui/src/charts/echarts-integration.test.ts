@@ -25,7 +25,11 @@ import {
 import * as echarts from 'echarts/core';
 import { SVGRenderer } from 'echarts/renderers';
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildComposedOption, buildLineOption } from './options/cartesian';
+import {
+  buildBarOption,
+  buildComposedOption,
+  buildLineOption,
+} from './options/cartesian';
 import { applyZoomWindow } from './options/common';
 import { buildGeoMapOption } from './options/geo';
 import { REPLACE_MERGE_KEYS } from './options/merge';
@@ -229,5 +233,59 @@ describe('geo map on a real chart', () => {
     // Lowest value → first colour of the range, highest → the last.
     expect(svg).toContain('fill="rgb(227,237,253)"');
     expect(svg).toContain('fill="rgb(21,112,239)"');
+  });
+
+  const geoInput = (option?: ChartOption) => ({
+    ariaLabel: 'Squares',
+    mapName: 'integration-squares-2',
+    data: [
+      { region: 'Alpha', value: 1 },
+      { region: 'Beta', value: 9 },
+    ],
+    option,
+  });
+
+  it('drops a visualMap override the caller removed', () => {
+    echarts.registerMap('integration-squares-2', {
+      type: 'FeatureCollection',
+      features: [square('Alpha', 0), square('Beta', 2)],
+    } as Parameters<typeof echarts.registerMap>[1]);
+    const chart = mount(
+      buildGeoMapOption(
+        geoInput({ visualMap: { text: ['High', 'Low'] } }),
+        LIGHT_CHART_THEME
+      ).option
+    );
+    chart.setOption(
+      buildGeoMapOption(geoInput(), LIGHT_CHART_THEME).option,
+      MERGE
+    );
+    const model = chart.getOption() as {
+      visualMap: Array<{ text?: string[] }>;
+    };
+
+    expect(model.visualMap[0].text).toBeFalsy();
+  });
+
+  it('removes the colour scale when the same chart switches to bars', () => {
+    const chart = mount(
+      buildGeoMapOption(geoInput(), LIGHT_CHART_THEME).option
+    );
+    chart.setOption(
+      buildBarOption(
+        {
+          data: [{ day: 'Mon', a: 3 }],
+          xKey: 'day',
+          ariaLabel: 'Bars',
+          series: [{ key: 'a', name: 'A' }],
+        },
+        LIGHT_CHART_THEME
+      ),
+      MERGE
+    );
+
+    expect(
+      (chart.getOption() as { visualMap?: unknown[] }).visualMap ?? []
+    ).toHaveLength(0);
   });
 });
