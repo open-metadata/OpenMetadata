@@ -21,9 +21,7 @@ jest.mock('react-i18next', () => ({
 describe('DataProductDescriptionField', () => {
   it('renders markdown as plain text', () => {
     render(
-      <DataProductDescriptionField
-        description={'# 1. Overview of the **C360**'}
-      />
+      <DataProductDescriptionField description="# 1. Overview of the **C360**" />
     );
 
     expect(screen.getByText('1. Overview of the C360')).toBeInTheDocument();
