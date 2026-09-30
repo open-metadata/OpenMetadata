@@ -26,6 +26,8 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
@@ -243,6 +245,34 @@ class TestCaseIndexTest {
 
     // Entity-specific
     assertNotNull(result.get("originEntityFQN"));
+  }
+
+  @Test
+  void testTestCaseWithoutResultSendsExplicitNullStatus() {
+    // A partial search update only removes a field when it is sent as null; a test case whose last
+    // result was deleted must not keep that result's status in search.
+    TestCase tc = createTestCaseWithDefinition();
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDoc();
+
+    assertTrue(result.containsKey("testCaseResult"));
+    assertNull(result.get("testCaseResult"));
+    assertTrue(result.containsKey("testCaseStatus"));
+    assertNull(result.get("testCaseStatus"));
+  }
+
+  @Test
+  void testTestCaseWithResultKeepsItsStatus() {
+    TestCase tc =
+        createTestCaseWithDefinition()
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTestCaseResult(
+                new TestCaseResult().withTimestamp(1L).withTestCaseStatus(TestCaseStatus.Failed));
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDoc();
+
+    assertNotNull(result.get("testCaseResult"));
+    assertEquals(TestCaseStatus.Failed.value(), String.valueOf(result.get("testCaseStatus")));
   }
 
   @Test

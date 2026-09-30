@@ -32,6 +32,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.resources.dqtests.TestCaseResultResource;
 import org.openmetadata.service.search.SearchListFilter;
@@ -45,6 +46,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
   public static final String TEST_CASE_INDEX_FIELDS =
       "testDefinition,testSuite,testSuites,owners,tags,followers";
+  private static final int STATUS_UPDATE_ATTEMPTS = 3;
   private final TestCaseRepository testCaseRepository;
   private final TestCaseDimensionResultRepository dimensionResultRepository;
   public static String INCLUDE_SEARCH_FIELDS =
@@ -91,11 +93,17 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   public Response addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "incidentId", Include.ALL);
-    if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
-      testCaseRepository.deleteTestCaseFailedRowsSample(testCase.getId());
-      autoResolveIncidentOnSuccess(testCase);
+    // A result older than the stored newest one is history: it must not resolve or open incidents,
+    // nor drop the failed rows sample, which all describe the test case's current state.
+    if (isCurrentResult(testCaseResult, getLatestRecord(testCase.getFullyQualifiedName()))) {
+      if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
+        testCaseRepository.deleteTestCaseFailedRowsSample(testCase.getId());
+        autoResolveIncidentOnSuccess(testCase);
+      }
+      setTestCaseResultIncidentId(testCaseResult, testCase, updatedBy);
+    } else {
+      testCaseResult.setIncidentId(null);
     }
-    setTestCaseResultIncidentId(testCaseResult, testCase, updatedBy);
 
     // Store dimensional results if present
     if (testCaseResult.getDimensionResults() != null
@@ -287,40 +295,70 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     return testCase.getTestDefinition();
   }
 
-  private void updateTestCaseStatus(TestCaseResult testCaseResult, OperationType operationType) {
-    // Load the index-relevant relationship fields, but avoid the hydrated "*" view. The "*"
-    // path now reads the latest result/incident back from the time-series table, which masks the
-    // denormalized change we need to persist into the entity row and search document.
-    TestCase original =
-        Entity.getEntityByName(
-            TEST_CASE, testCaseResult.getTestCaseFQN(), TEST_CASE_INDEX_FIELDS, Include.ALL);
-    TestCase updated = JsonUtils.deepCopy(original, TestCase.class);
+  /**
+   * Keeps the test case's denormalized status (entity row and search document) on its newest
+   * result. The test case row never stores {@code testCaseResult}, so the newest result is read
+   * back from the results table, which already reflects the write or delete that triggered this.
+   */
+  private void updateTestCaseStatus(TestCaseResult changed, OperationType operationType) {
+    for (int attempt = 1; attempt <= STATUS_UPDATE_ATTEMPTS; attempt++) {
+      try {
+        syncTestCaseStatus(changed, operationType, true);
+        return;
+      } catch (PreconditionFailedException e) {
+        LOG.debug(
+            "Test case {} changed while refreshing its status (attempt {})",
+            changed.getTestCaseFQN(),
+            attempt);
+      }
+    }
+    // A stale cached copy would make every optimistic attempt conflict; never end up worse than a
+    // plain last-writer-wins update.
+    syncTestCaseStatus(changed, operationType, false);
+  }
 
-    if (original.getTestCaseResult() == null) {
-      if (!operationType.equals(OperationType.DELETE)) {
-        updated.setTestCaseResult(testCaseResult);
-      }
-    } else if (testCaseResult.getTimestamp() >= original.getTestCaseResult().getTimestamp()) {
-      if (operationType.equals(OperationType.DELETE)) {
-        testCaseResult = getLatestRecord(original.getFullyQualifiedName());
-      }
-      updated.setTestCaseResult(testCaseResult);
-    } else {
+  private void syncTestCaseStatus(
+      TestCaseResult changed, OperationType operationType, boolean optimistic) {
+    TestCaseResult latest = getLatestRecord(changed.getTestCaseFQN());
+    if (!isCurrentResult(changed, latest)) {
       LOG.warn(
-          "[RACE-CONDITION-MONITOR] Skipping older test result | testCaseFQN={} | "
-              + "incomingTimestamp={} | storedTimestamp={} | threadId={}",
-          testCaseResult.getTestCaseFQN(),
-          testCaseResult.getTimestamp(),
-          original.getTestCaseResult().getTimestamp(),
-          Thread.currentThread().getId());
+          "[RACE-CONDITION-MONITOR] Skipping older test result | testCaseFQN={} | operation={} | "
+              + "changedTimestamp={} | newestTimestamp={}",
+          changed.getTestCaseFQN(),
+          operationType,
+          changed.getTimestamp(),
+          latest.getTimestamp());
       return;
     }
-    updated.setTestCaseStatus(
-        testCaseResult != null ? testCaseResult.getTestCaseStatus() : original.getTestCaseStatus());
+    TestCaseResult current = currentResultAfter(changed, latest, operationType);
+    // Load the index-relevant relationship fields without testCaseResult: the row never stores it,
+    // so it stays null here and a new current result always registers as a change to reindex.
+    TestCase original =
+        Entity.getEntityByName(
+            TEST_CASE, changed.getTestCaseFQN(), TEST_CASE_INDEX_FIELDS, Include.ALL);
+    TestCase updated = JsonUtils.deepCopy(original, TestCase.class);
+    updated.setTestCaseResult(current);
+    updated.setTestCaseStatus(current == null ? null : current.getTestCaseStatus());
 
     EntityRepository.EntityUpdater entityUpdater =
-        testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
-    entityUpdater.update();
+        testCaseRepository.getUpdater(
+            original, updated, EntityRepository.Operation.PATCH, null, optimistic);
+    if (optimistic) {
+      entityUpdater.updateWithOptimisticLocking();
+    } else {
+      entityUpdater.update();
+    }
+  }
+
+  /** Whether {@code result} is (or was, for a delete) the newest result of its test case. */
+  static boolean isCurrentResult(TestCaseResult result, TestCaseResult newest) {
+    return newest == null || result.getTimestamp() >= newest.getTimestamp();
+  }
+
+  /** The result a test case shows once {@code changed} has been written or deleted. */
+  static TestCaseResult currentResultAfter(
+      TestCaseResult changed, TestCaseResult newest, OperationType operationType) {
+    return operationType == OperationType.DELETE ? newest : changed;
   }
 
   @Override
