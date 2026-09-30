@@ -19,10 +19,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.PageCursor;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TempLineageTable;
@@ -57,6 +59,8 @@ public class GetLineageTool implements McpTool {
   private static final String PARAM_INCLUDE_SQL = "includeSql";
   private static final String PARAM_COLUMN = "column";
   private static final String PARAM_CURSOR = "cursor";
+  private static final String COLUMN_UNMAPPED_EDGES_KEY = "columnUnmappedEdges";
+  private static final String OVERSIZED_EDGES_KEY = "oversizedEdges";
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   record SlimEdge(
@@ -110,7 +114,7 @@ public class GetLineageTool implements McpTool {
         new ResourceContext<>(entityType, null, fqn));
     int upstreamDepth = clampDepth(McpParams.getInt(params, "upstreamDepth", DEFAULT_DEPTH));
     int downstreamDepth = clampDepth(McpParams.getInt(params, "downstreamDepth", DEFAULT_DEPTH));
-    String column = requestedColumn(params, fqn);
+    String column = requestedColumn(params, entityType, fqn, securityContext);
     EdgeOptions options =
         new EdgeOptions(
             column != null || McpParams.getBoolean(params, PARAM_INCLUDE_COLUMN_LINEAGE, false),
@@ -136,9 +140,7 @@ public class GetLineageTool implements McpTool {
     EntityLineage lineage = pruned.lineage();
     // Before the permission filter, so its node ceiling is spent on the column's graph, not on
     // every table around a busy root.
-    if (column != null) {
-      ColumnLineageScope.narrow(lineage, column);
-    }
+    int unmappedEdges = column == null ? 0 : ColumnLineageScope.narrow(lineage, column);
     // Authorizing the root only grants the root. Neighbour nodes carry their own FQNs, names and
     // descriptions, so an entity-scoped policy has to be applied to them as well or the graph
     // discloses exactly the assets the policy hides.
@@ -150,12 +152,37 @@ public class GetLineageTool implements McpTool {
     // edge whose two endpoints are both visible.
     Predicate<EntityReference> pipelineVisible =
         pipelineVisibility(permissionFilter, securityContext, filtered.lineage());
-    return annotateVisibility(
+    Map<String, Object> result =
         enforceSizeBudget(
             toSlim(filtered.lineage(), options, pipelineVisible),
-            pageStart(McpParams.getString(params, PARAM_CURSOR, null))),
-        filtered,
-        pruned.hiddenNodes());
+            pageStart(McpParams.getString(params, PARAM_CURSOR, null)));
+    if (column != null) {
+      annotateUnmappedEdges(result, unmappedEdges);
+    }
+    return annotateVisibility(result, filtered, pruned.hiddenNodes());
+  }
+
+  /**
+   * An edge with no column mappings may or may not carry the column, so it is left out - but saying
+   * nothing made an unmapped consumer read as "nothing depends on this column".
+   */
+  private static void annotateUnmappedEdges(Map<String, Object> result, int unmappedEdges) {
+    result.put(COLUMN_UNMAPPED_EDGES_KEY, unmappedEdges);
+    if (unmappedEdges > 0) {
+      appendMessage(
+          result,
+          String.format(
+              "%d lineage edge(s) out of tables this column reaches have no column-level mappings,"
+                  + " so whether the column flows through them is unknown; they were left out."
+                  + " Call without 'column' to see them.",
+              unmappedEdges));
+    }
+  }
+
+  /** Several independent facts can each need saying; none may overwrite another. */
+  private static void appendMessage(Map<String, Object> result, String note) {
+    Object existing = result.get(McpResponseTrim.MESSAGE_KEY);
+    result.put(McpResponseTrim.MESSAGE_KEY, existing == null ? note : existing + " " + note);
   }
 
   /**
@@ -190,9 +217,7 @@ public class GetLineageTool implements McpTool {
     result.put(McpResponseTrim.HIDDEN_UNCHECKED_KEY, filtered.hiddenUnchecked());
     String note = visibilityNote(filtered, hidden);
     if (note != null) {
-      // annotateCompleteness may already have explained edge clipping; both facts matter.
-      Object existing = result.get(McpResponseTrim.MESSAGE_KEY);
-      result.put(McpResponseTrim.MESSAGE_KEY, existing == null ? note : existing + " " + note);
+      appendMessage(result, note);
     }
     return result;
   }
@@ -233,9 +258,22 @@ public class GetLineageTool implements McpTool {
     }
   }
 
-  private static String requestedColumn(Map<String, Object> params, String fqn) {
+  private static String requestedColumn(
+      Map<String, Object> params,
+      String entityType,
+      String fqn,
+      CatalogSecurityContext securityContext) {
     String column = McpParams.getString(params, PARAM_COLUMN, null);
-    return column == null ? null : ColumnLineageScope.requireColumnOf(fqn, column);
+    return column == null ? null : requireExistingColumn(entityType, fqn, column, securityContext);
+  }
+
+  /** The cheap FQN check first, so a column of another entity never costs an entity read. */
+  private static String requireExistingColumn(
+      String entityType, String fqn, String column, CatalogSecurityContext securityContext) {
+    ColumnLineageScope.requireColumnOf(fqn, column);
+    EntityInterface entity =
+        CommonUtils.readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
+    return ColumnLineageScope.requireColumnExists(entity, column);
   }
 
   @VisibleForTesting
@@ -423,13 +461,28 @@ public class GetLineageTool implements McpTool {
     result.put("returnedEdges", page.returned());
     result.put("edgesTruncated", page.hasMore());
     if (page.hasMore()) {
-      annotateNextPage(result, slim, page, from);
+      annotateNextPage(result, slim, page);
+    }
+    if (!page.oversized().isEmpty()) {
+      annotateOversizedEdges(result, page.oversized());
     }
     return result;
   }
 
+  private static void annotateOversizedEdges(Map<String, Object> result, List<SlimEdge> edges) {
+    List<String> named =
+        edges.stream().map(edge -> edge.fromFQN() + " -> " + edge.toFQN()).toList();
+    result.put(OVERSIZED_EDGES_KEY, named);
+    appendMessage(
+        result,
+        String.format(
+            "%d edge(s) were too large for any response and were skipped, listed in"
+                + " '%s'. This is usually their SQL; call without includeSql to see them.",
+            named.size(), OVERSIZED_EDGES_KEY));
+  }
+
   private static void annotateNextPage(
-      Map<String, Object> result, SlimLineage slim, LineageEdgePager.Page page, int from) {
+      Map<String, Object> result, SlimLineage slim, LineageEdgePager.Page page) {
     result.put("truncated", Boolean.TRUE);
     result.put("upstreamReturned", page.upstream().size());
     result.put("upstreamTotal", listOrEmpty(slim.upstream()).size());
@@ -442,7 +495,7 @@ public class GetLineageTool implements McpTool {
         String.format(
             "Graph clipped to fit the response budget: edges %d-%d of %d returned. Call again with"
                 + " the same arguments and cursor=nextCursor for the next page.",
-            Math.min(from, page.total()) + 1, page.nextFrom(), page.total()));
+            page.start() + 1, page.nextFrom(), page.total()));
   }
 
   /** A missing or unreadable cursor starts at the first edge rather than failing the call. */

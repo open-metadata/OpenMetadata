@@ -5,17 +5,22 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.mcp.tools.GetLineageTool.SlimLineage;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.TempLineageTable;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Unit tests for {@link GetLineageTool} slimming. These exercise the pure transform against
@@ -464,9 +469,9 @@ class GetLineageToolTest {
   private static EntityLineage heavyGraph(int perDirection) {
     List<ColumnLineage> heavyColumns = buildHeavyColumns();
     EntityReference root = ref("orders", "db.public.orders");
-    List<Edge> upstream = new java.util.ArrayList<>();
-    List<Edge> downstream = new java.util.ArrayList<>();
-    List<EntityReference> nodes = new java.util.ArrayList<>();
+    List<Edge> upstream = new ArrayList<>();
+    List<Edge> downstream = new ArrayList<>();
+    List<EntityReference> nodes = new ArrayList<>();
     for (int i = 0; i < perDirection; i++) {
       EntityReference up = ref("up_" + i, "db.raw.up_with_a_long_qualified_name_" + i);
       EntityReference down = ref("down_" + i, "db.mart.down_with_a_long_qualified_name_" + i);
@@ -492,7 +497,7 @@ class GetLineageToolTest {
 
   @SuppressWarnings("unchecked")
   private static List<String> edgeKeys(Map<String, Object> response) {
-    List<String> keys = new java.util.ArrayList<>();
+    List<String> keys = new ArrayList<>();
     for (String direction : List.of("upstream", "downstream")) {
       for (Map<String, Object> edge :
           (List<Map<String, Object>>) response.getOrDefault(direction, List.of())) {
@@ -503,8 +508,7 @@ class GetLineageToolTest {
   }
 
   private static int nextOffset(Map<String, Object> response) {
-    return org.openmetadata.mcp.util.PageCursor.decode(
-            (String) response.get(McpResponseTrim.NEXT_CURSOR_KEY))
+    return PageCursor.decode((String) response.get(McpResponseTrim.NEXT_CURSOR_KEY))
         .orElseThrow()
         .offset();
   }
@@ -513,15 +517,14 @@ class GetLineageToolTest {
   @Test
   void pagingThroughAClippedGraphReturnsEveryEdgeExactlyOnce() {
     GetLineageTool.SlimLineage slim = GetLineageTool.toSlim(heavyGraph(40), true);
-    List<String> seen = new java.util.ArrayList<>();
+    List<String> seen = new ArrayList<>();
     int pages = 0;
     int from = 0;
     boolean hasMore = true;
     while (hasMore) {
       Map<String, Object> page = GetLineageTool.enforceSizeBudget(slim, from);
       assertTrue(
-          org.openmetadata.schema.utils.JsonUtils.pojoToJson(page).length()
-              < McpResponseTrim.MAX_RESPONSE_CHARS,
+          JsonUtils.pojoToJson(page).length() < McpResponseTrim.MAX_RESPONSE_CHARS,
           "every page must be under the dispatch cap");
       seen.addAll(edgeKeys(page));
       hasMore = Boolean.TRUE.equals(page.get(McpResponseTrim.HAS_MORE_KEY));
@@ -530,7 +533,7 @@ class GetLineageToolTest {
     }
     assertTrue(pages > 1, "a graph over the cap must take more than one page");
     assertEquals(80, seen.size(), "no edge may be skipped or repeated across pages");
-    assertEquals(80, new java.util.HashSet<>(seen).size(), "no edge may be repeated");
+    assertEquals(80, new HashSet<>(seen).size(), "no edge may be repeated");
   }
 
   @Test
@@ -588,8 +591,76 @@ class GetLineageToolTest {
   void aMissingOrUnreadableCursorStartsAtTheFirstEdge() {
     assertEquals(0, GetLineageTool.pageStart(null));
     assertEquals(0, GetLineageTool.pageStart("not-a-cursor"));
+    assertEquals(144, GetLineageTool.pageStart(PageCursor.encodeOffset(144)));
+  }
+
+  /**
+   * An edge bigger than the whole response cap cannot be returned, and returning it anyway made the
+   * dispatch floor replace the page with a stub that carries no cursor - stranding every later edge.
+   * It is skipped and named instead, and paging carries on past it.
+   */
+  @Test
+  void anEdgeTooLargeForAnyResponseIsSkippedAndPagingContinues() {
+    EntityReference root = ref("orders", "db.public.orders");
+    EntityReference small = ref("small", "db.mart.a_small");
+    EntityReference huge = ref("huge", "db.mart.b_huge");
+    EntityReference after = ref("after", "db.mart.c_after");
+    String hugeSql = "SELECT " + "x".repeat(McpResponseTrim.MAX_RESPONSE_CHARS + 10_000);
+    EntityLineage lineage =
+        new EntityLineage()
+            .withEntity(root)
+            .withNodes(List.of(small, huge, after))
+            .withUpstreamEdges(List.of())
+            .withDownstreamEdges(
+                List.of(
+                    edgeWithSql(root, small, "SELECT 1"),
+                    edgeWithSql(root, huge, hugeSql),
+                    edgeWithSql(root, after, "SELECT 2")));
+    SlimLineage slim = GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, true));
+
+    List<String> seen = new ArrayList<>();
+    List<Object> oversized = new ArrayList<>();
+    Map<String, Object> page = GetLineageTool.enforceSizeBudget(slim, 0);
+    int pages = 1;
+    seen.addAll(edgeKeys(page));
+    oversized.addAll(listOf(page.get("oversizedEdges")));
+    while (Boolean.TRUE.equals(page.get(McpResponseTrim.HAS_MORE_KEY)) && pages < 10) {
+      assertTrue(JsonUtils.pojoToJson(page).length() < McpResponseTrim.MAX_RESPONSE_CHARS);
+      page = GetLineageTool.enforceSizeBudget(slim, nextOffset(page));
+      seen.addAll(edgeKeys(page));
+      oversized.addAll(listOf(page.get("oversizedEdges")));
+      pages++;
+    }
+
     assertEquals(
-        144, GetLineageTool.pageStart(org.openmetadata.mcp.util.PageCursor.encodeOffset(144)));
+        List.of(
+            "downstream:db.public.orders->db.mart.a_small",
+            "downstream:db.public.orders->db.mart.c_after"),
+        seen,
+        "the edges either side of the oversized one are both reachable");
+    assertEquals(List.of("db.public.orders -> db.mart.b_huge"), oversized);
+    assertTrue(JsonUtils.pojoToJson(page).length() < McpResponseTrim.MAX_RESPONSE_CHARS);
+  }
+
+  private static Edge edgeWithSql(EntityReference from, EntityReference to, String sql) {
+    return new Edge()
+        .withFromEntity(from.getId())
+        .withToEntity(to.getId())
+        .withLineageDetails(new LineageDetails().withSqlQuery(sql));
+  }
+
+  private static List<?> listOf(Object value) {
+    return value instanceof List<?> list ? list : List.of();
+  }
+
+  @Test
+  void theClipMessageCountsFromTheFirstEdgeActuallyReturned() {
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(heavyGraph(40), true), -5);
+
+    assertTrue(
+        ((String) response.get(McpResponseTrim.MESSAGE_KEY)).contains("edges 1-"),
+        "a negative offset starts at edge 1, and the message must say so");
   }
 
   @Test

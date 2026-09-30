@@ -28,8 +28,23 @@ import org.openmetadata.schema.utils.JsonUtils;
  */
 final class LineageEdgePager {
 
-  /** The edges one page holds per direction, where the next page starts, and the graph's total. */
-  record Page(List<SlimEdge> upstream, List<SlimEdge> downstream, int nextFrom, int total) {
+  /**
+   * Room kept for the markers added after a page is cut (counts, cursor, notes), so a page holding
+   * one very large edge still lands under the dispatch cap.
+   */
+  private static final int ANNOTATION_HEADROOM_CHARS = 2_000;
+
+  /**
+   * The edges one page holds per direction, the index of its first edge, where the next page
+   * starts, the graph's total, and any edges skipped because no response could hold them.
+   */
+  record Page(
+      List<SlimEdge> upstream,
+      List<SlimEdge> downstream,
+      int start,
+      int nextFrom,
+      int total,
+      List<SlimEdge> oversized) {
     boolean hasMore() {
       return nextFrom < total;
     }
@@ -49,9 +64,30 @@ final class LineageEdgePager {
             nearestFirst(slim.upstream(), slim.root(), SlimEdge::toFQN, SlimEdge::fromFQN),
             nearestFirst(slim.downstream(), slim.root(), SlimEdge::fromFQN, SlimEdge::toFQN));
     int start = Math.clamp(from, 0, ordered.size());
+    List<SlimEdge> oversized = new ArrayList<>();
+    while (start < ordered.size() && isTooLargeForAnyResponse(slim, ordered.get(start))) {
+      oversized.add(ordered.get(start).edge());
+      start++;
+    }
     List<DirectedEdge> window = ordered.subList(start, ordered.size());
     List<DirectedEdge> kept = window.subList(0, fittingCount(slim, window));
-    return new Page(edgesOf(kept, true), edgesOf(kept, false), start + kept.size(), ordered.size());
+    return new Page(
+        edgesOf(kept, true),
+        edgesOf(kept, false),
+        start,
+        start + kept.size(),
+        ordered.size(),
+        oversized);
+  }
+
+  /**
+   * Forward progress would still return such an edge alone, and the dispatch floor would then swap
+   * the whole page for a stub with no cursor, stranding every edge after it. Skipping it keeps the
+   * rest of the graph reachable.
+   */
+  private static boolean isTooLargeForAnyResponse(SlimLineage slim, DirectedEdge edge) {
+    return McpResponseTrim.serializedLength(JsonUtils.getMap(withEdges(slim, List.of(edge))))
+        > McpResponseTrim.MAX_RESPONSE_CHARS - ANNOTATION_HEADROOM_CHARS;
   }
 
   /**

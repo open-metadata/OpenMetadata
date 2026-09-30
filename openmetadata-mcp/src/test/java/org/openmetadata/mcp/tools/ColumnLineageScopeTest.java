@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -169,6 +171,65 @@ class ColumnLineageScopeTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> ColumnLineageScope.requireColumnOf("db.public.orders", "db.public.orders_v2.id"));
+  }
+
+  /**
+   * An edge with no column mappings may or may not carry the column; dropping it silently made an
+   * unmapped consumer read as "nothing depends on this column". Only edges out of tables the column
+   * actually reaches are counted - an unmapped edge elsewhere says nothing about this column.
+   */
+  @Test
+  void countsUnmappedEdgesOutOfTablesTheColumnReaches() {
+    EntityLineage lineage =
+        lineage(
+            List.of(STAGING, MART, UNRELATED, RAW, SOURCE),
+            List.of(),
+            List.of(
+                edge(ORDERS, STAGING, mapping(STG_REF, ORDERS_ID)),
+                edge(STAGING, MART),
+                edge(ORDERS, UNRELATED),
+                edge(ORDERS, RAW, mapping("db.raw.raw_orders.qty", "db.public.orders.quantity")),
+                edge(RAW, SOURCE)));
+
+    int unmapped = ColumnLineageScope.narrow(lineage, ORDERS_ID);
+
+    assertEquals(2, unmapped, "STAGING->MART and ORDERS->UNRELATED; RAW is never reached");
+  }
+
+  @Test
+  void acceptsAColumnThatExistsOnTheEntityIncludingNestedOnes() {
+    Table table = tableWithColumns();
+
+    assertEquals(ORDERS_ID, ColumnLineageScope.requireColumnExists(table, ORDERS_ID));
+    assertEquals(
+        "db.public.orders.address.zip",
+        ColumnLineageScope.requireColumnExists(table, "db.public.orders.address.zip"));
+  }
+
+  /** A typo used to pass the prefix check, match nothing, and come back as a complete empty graph. */
+  @Test
+  void rejectsAColumnTheEntityDoesNotHave() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            ColumnLineageScope.requireColumnExists(
+                tableWithColumns(), "db.public.orders.custmer_id"));
+  }
+
+  private static Table tableWithColumns() {
+    return new Table()
+        .withFullyQualifiedName("db.public.orders")
+        .withColumns(
+            List.of(
+                new Column().withName("id").withFullyQualifiedName(ORDERS_ID),
+                new Column()
+                    .withName("address")
+                    .withFullyQualifiedName("db.public.orders.address")
+                    .withChildren(
+                        List.of(
+                            new Column()
+                                .withName("zip")
+                                .withFullyQualifiedName("db.public.orders.address.zip")))));
   }
 
   @Test

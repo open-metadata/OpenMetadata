@@ -8,9 +8,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.lineage.LineageGraphPruner;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -25,6 +27,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 final class ColumnLineageScope {
 
+  private static final String FQN_FIELD = "fullyQualifiedName";
+
   private ColumnLineageScope() {}
 
   static String requireColumnOf(String entityFqn, String columnFqn) {
@@ -35,15 +39,40 @@ final class ColumnLineageScope {
     return columnFqn;
   }
 
-  /** Mutates {@code lineage} in place; the repository hands each request its own copy. */
-  static void narrow(EntityLineage lineage, String columnFqn) {
-    lineage.setDownstreamEdges(
-        follow(lineage.getDownstreamEdges(), columnFqn, Direction.DOWNSTREAM));
-    lineage.setUpstreamEdges(follow(lineage.getUpstreamEdges(), columnFqn, Direction.UPSTREAM));
-    LineageGraphPruner.retainReachable(lineage, endpointsOf(lineage));
+  /**
+   * Columns, nested struct children and schema fields all carry their own {@code fullyQualifiedName}
+   * in the entity JSON, so one search covers tables, data models, topics and containers alike.
+   */
+  static String requireColumnExists(EntityInterface entity, String columnFqn) {
+    if (!JsonUtils.valueToTree(entity).findValuesAsText(FQN_FIELD).contains(columnFqn)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Column '%s' is not a column of '%s'", columnFqn, entity.getFullyQualifiedName()));
+    }
+    return columnFqn;
   }
 
-  private static List<Edge> follow(List<Edge> edges, String columnFqn, Direction direction) {
+  /**
+   * Mutates {@code lineage} in place; the repository hands each request its own copy.
+   *
+   * @return how many edges out of tables the column reaches were left out for having no column
+   *     mappings at all - whether the column flows through them is unknown, not "no"
+   */
+  static int narrow(EntityLineage lineage, String columnFqn) {
+    UUID rootId = lineage.getEntity().getId();
+    Followed downstream =
+        follow(lineage.getDownstreamEdges(), columnFqn, rootId, Direction.DOWNSTREAM);
+    Followed upstream = follow(lineage.getUpstreamEdges(), columnFqn, rootId, Direction.UPSTREAM);
+    lineage.setDownstreamEdges(downstream.kept());
+    lineage.setUpstreamEdges(upstream.kept());
+    LineageGraphPruner.retainReachable(lineage, endpointsOf(lineage));
+    return downstream.unmappedEdges() + upstream.unmappedEdges();
+  }
+
+  private record Followed(List<Edge> kept, int unmappedEdges) {}
+
+  private static Followed follow(
+      List<Edge> edges, String columnFqn, UUID rootId, Direction direction) {
     Set<String> reached = reachedColumns(edges, columnFqn, direction);
     List<Edge> kept = new ArrayList<>();
     for (Edge edge : listOrEmpty(edges)) {
@@ -54,7 +83,18 @@ final class ColumnLineageScope {
         kept.add(edge);
       }
     }
-    return kept;
+    return new Followed(kept, countUnmapped(edges, kept, rootId, direction));
+  }
+
+  private static int countUnmapped(
+      List<Edge> edges, List<Edge> kept, UUID rootId, Direction direction) {
+    Set<UUID> reachedTables = new HashSet<>(Set.of(rootId));
+    kept.forEach(edge -> reachedTables.add(direction.far(edge)));
+    return (int)
+        listOrEmpty(edges).stream()
+            .filter(edge -> mappingsOf(edge).isEmpty())
+            .filter(edge -> reachedTables.contains(direction.near(edge)))
+            .count();
   }
 
   /**
@@ -110,6 +150,16 @@ final class ColumnLineageScope {
       List<String> next(ColumnLineage mapping) {
         return mapping.getToColumn() == null ? List.of() : List.of(mapping.getToColumn());
       }
+
+      @Override
+      UUID near(Edge edge) {
+        return edge.getFromEntity();
+      }
+
+      @Override
+      UUID far(Edge edge) {
+        return edge.getToEntity();
+      }
     },
     UPSTREAM {
       @Override
@@ -121,10 +171,25 @@ final class ColumnLineageScope {
       List<String> next(ColumnLineage mapping) {
         return listOrEmpty(mapping.getFromColumns());
       }
+
+      @Override
+      UUID near(Edge edge) {
+        return edge.getToEntity();
+      }
+
+      @Override
+      UUID far(Edge edge) {
+        return edge.getFromEntity();
+      }
     };
 
     abstract boolean carries(ColumnLineage mapping, Set<String> reached);
 
     abstract List<String> next(ColumnLineage mapping);
+
+    /** The edge's endpoint closer to the root. */
+    abstract UUID near(Edge edge);
+
+    abstract UUID far(Edge edge);
   }
 }

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -483,9 +484,11 @@ public class McpIntegrationIT extends McpTestBase {
     Table renamed = createServiceDatabaseSchemaTable("mcp_col_mid_" + suffix);
     Table consumer = createServiceDatabaseSchemaTable("mcp_col_end_" + suffix);
     Table unrelated = createServiceDatabaseSchemaTable("mcp_col_other_" + suffix);
+    Table unmapped = createServiceDatabaseSchemaTable("mcp_col_unmapped_" + suffix);
     addColumnLineageEdge(root, "id", renamed, "name");
     addColumnLineageEdge(renamed, "name", consumer, "id");
     addColumnLineageEdge(root, "name", unrelated, "name");
+    addLineageEdge(root, unmapped);
 
     String lineage =
         executeMcpRequest(
@@ -500,6 +503,29 @@ public class McpIntegrationIT extends McpTestBase {
     assertThat(lineage)
         .as("a table fed only by another column is not part of this column's lineage")
         .doesNotContain(unrelated.getFullyQualifiedName());
+    assertThat(lineage)
+        .as("a table-level edge with no column mappings is reported, not silently dropped")
+        .contains("\"columnUnmappedEdges\":1");
+  }
+
+  /** A mistyped column must be an error, not an empty graph that reads as "nothing depends on it". */
+  @Test
+  void columnLineageRejectsAColumnTheTableDoesNotHave() throws Exception {
+    Table root =
+        createServiceDatabaseSchemaTable(
+            "mcp_col_typo_" + UUID.randomUUID().toString().substring(0, 8));
+
+    String lineage =
+        executeMcpRequest(
+                McpTestUtils.createGetColumnLineageToolCall(
+                    Entity.TABLE,
+                    root.getFullyQualifiedName(),
+                    columnFqn(root, "custmer_id"),
+                    0,
+                    3))
+            .toString();
+
+    assertThat(lineage).contains("is not a column of");
   }
 
   /**
@@ -511,14 +537,14 @@ public class McpIntegrationIT extends McpTestBase {
     String suffix = UUID.randomUUID().toString().substring(0, 8);
     Table root = createServiceDatabaseSchemaTable("mcp_page_root_" + suffix);
     String largeSql = "SELECT " + "customer_id, order_total, ".repeat(800) + "1";
-    List<String> expected = new java.util.ArrayList<>();
+    List<String> expected = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
       Table consumer = createServiceDatabaseSchemaTable("mcp_page_" + i + "_" + suffix);
       addSqlLineageEdge(root, consumer, largeSql);
       expected.add(consumer.getFullyQualifiedName());
     }
 
-    List<String> seen = new java.util.ArrayList<>();
+    List<String> seen = new ArrayList<>();
     int pages = 0;
     String cursor = null;
     do {
