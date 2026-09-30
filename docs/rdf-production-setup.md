@@ -113,11 +113,15 @@ the signed-in user. It requires the `ExecuteSparqlQuery` operation on the `rdf` 
   `DataConsumerPolicy-ExecuteSparqlQuery-Rule`. Every user inherits Data Consumer through the
   Organization team, so users can run agent SPARQL queries on a fresh install and after upgrading
   to 2.1.0. The upgrade adds the rule to an existing `DataConsumerPolicy` once; if you delete it
-  afterwards, later upgrades do not restore it.
+  afterwards, later upgrades do not restore it. The upgrade skips the rule if Data Consumer no
+  longer has an unconditional allow rule for `ViewAll` on all resources, for example because you
+  removed or conditioned it. In that case add the rule yourself if you want the default.
 - **Restricted viewing.** The endpoint evaluates queries over the whole projected graph and does
   not filter by asset (#33224). If you restrict what users can view through custom policies,
   **delete `DataConsumerPolicy-ExecuteSparqlQuery-Rule`**, or those users can query assets they
-  cannot otherwise see.
+  cannot otherwise see. The upgrade only notices restrictions made by editing Data Consumer's own
+  `ViewAll` rule. It cannot see deny rules in other policies, such as domain-only or
+  conditional-deny policies, so check for those yourself before or after upgrading.
 - **Opting out.** Delete that rule to withdraw the grant from everyone. To withdraw it from
   specific users, give them a role with a deny rule for `ExecuteSparqlQuery`; a deny rule wins
   over the inherited grant. Admins always pass.

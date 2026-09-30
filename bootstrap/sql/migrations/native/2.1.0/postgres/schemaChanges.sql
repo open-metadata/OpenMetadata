@@ -382,6 +382,10 @@ CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
 -- that already exists, so existing installs get the rule here. As a schema-changes statement it is
 -- recorded in SERVER_MIGRATION_SQL_LOGS and runs once, so an admin who later removes the rule does
 -- not get it back on a subsequent upgrade. The NOT EXISTS guard keeps a replay from duplicating it.
+-- The rule is only added while Data Consumer still has an unconditional allow rule for ViewAll (or
+-- All) on every resource, because the grant is acceptable only where Data Consumers can already
+-- view everything. Deny rules in other policies are not visible here, so instances that restrict
+-- viewing that way must remove the rule themselves.
 UPDATE policy_entity
 SET json = jsonb_set(
     json,
@@ -401,4 +405,20 @@ WHERE name = 'DataConsumerPolicy'
     SELECT 1
     FROM jsonb_array_elements(COALESCE(json -> 'rules', '[]'::jsonb)) AS existing_rule
     WHERE existing_rule ->> 'name' = 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(COALESCE(json -> 'rules', '[]'::jsonb)) AS view_rule
+    WHERE LOWER(view_rule ->> 'effect') = 'allow'
+      AND NULLIF(TRIM(view_rule ->> 'condition'), '') IS NULL
+      AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements_text(COALESCE(view_rule -> 'resources', '[]'::jsonb)) AS resource
+        WHERE LOWER(resource) = 'all'
+      )
+      AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements_text(COALESCE(view_rule -> 'operations', '[]'::jsonb)) AS operation
+        WHERE LOWER(operation) IN ('viewall', 'all')
+      )
   );

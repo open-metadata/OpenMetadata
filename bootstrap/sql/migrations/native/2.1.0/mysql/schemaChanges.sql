@@ -505,6 +505,10 @@ ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 -- that already exists, so existing installs get the rule here. As a schema-changes statement it is
 -- recorded in SERVER_MIGRATION_SQL_LOGS and runs once, so an admin who later removes the rule does
 -- not get it back on a subsequent upgrade. The NOT EXISTS guard keeps a replay from duplicating it.
+-- The rule is only added while Data Consumer still has an unconditional allow rule for ViewAll (or
+-- All) on every resource, because the grant is acceptable only where Data Consumers can already
+-- view everything. Deny rules in other policies are not visible here, so instances that restrict
+-- viewing that way must remove the rule themselves.
 UPDATE policy_entity
 SET json = JSON_ARRAY_APPEND(
     json,
@@ -518,4 +522,21 @@ SET json = JSON_ARRAY_APPEND(
     )
 )
 WHERE name = 'DataConsumerPolicy'
-  AND JSON_SEARCH(json, 'one', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule', NULL, '$.rules[*].name') IS NULL;
+  AND JSON_SEARCH(json, 'one', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule', NULL, '$.rules[*].name') IS NULL
+  AND EXISTS (
+    SELECT 1
+    FROM JSON_TABLE(
+        policy_entity.json,
+        '$.rules[*]' COLUMNS (
+            effect VARCHAR(16) PATH '$.effect' NULL ON EMPTY,
+            rule_condition VARCHAR(2048) PATH '$.condition' NULL ON EMPTY,
+            resources JSON PATH '$.resources' NULL ON EMPTY,
+            operations JSON PATH '$.operations' NULL ON EMPTY
+        )
+    ) AS existing_rule
+    WHERE LOWER(existing_rule.effect) = 'allow'
+      AND (existing_rule.rule_condition IS NULL OR TRIM(existing_rule.rule_condition) = '')
+      AND LOWER(CAST(existing_rule.resources AS CHAR)) LIKE '%"all"%'
+      AND (LOWER(CAST(existing_rule.operations AS CHAR)) LIKE '%"viewall"%'
+           OR LOWER(CAST(existing_rule.operations AS CHAR)) LIKE '%"all"%')
+  );
