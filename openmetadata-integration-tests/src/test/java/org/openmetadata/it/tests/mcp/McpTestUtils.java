@@ -147,6 +147,19 @@ public class McpTestUtils {
     return createToolCallRequest("get_entity_lineage", arguments);
   }
 
+  public static Map<String, Object> createGetColumnLineageToolCall(
+      String entityType, String fqn, String column, int upstreamDepth, int downstreamDepth) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("entityType", entityType);
+    arguments.put("fqn", fqn);
+    arguments.put("column", column);
+    arguments.put("upstreamDepth", upstreamDepth);
+    arguments.put("downstreamDepth", downstreamDepth);
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("get_entity_lineage", arguments);
+  }
+
   public static Map<String, Object> createLineageToolCall(
       String fromEntityType, String fromEntityId, String toEntityType, String toEntityId) {
     Map<String, Object> fromEntity = new HashMap<>();

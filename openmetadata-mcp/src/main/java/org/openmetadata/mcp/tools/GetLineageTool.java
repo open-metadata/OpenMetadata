@@ -54,6 +54,7 @@ public class GetLineageTool implements McpTool {
   private static final String RELATIONSHIP_SQL = "sql";
   private static final String PARAM_INCLUDE_COLUMN_LINEAGE = "includeColumnLineage";
   private static final String PARAM_INCLUDE_SQL = "includeSql";
+  private static final String PARAM_COLUMN = "column";
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   record SlimEdge(
@@ -107,18 +108,20 @@ public class GetLineageTool implements McpTool {
         new ResourceContext<>(entityType, null, fqn));
     int upstreamDepth = clampDepth(McpParams.getInt(params, "upstreamDepth", DEFAULT_DEPTH));
     int downstreamDepth = clampDepth(McpParams.getInt(params, "downstreamDepth", DEFAULT_DEPTH));
+    String column = requestedColumn(params, fqn);
     EdgeOptions options =
         new EdgeOptions(
-            McpParams.getBoolean(params, PARAM_INCLUDE_COLUMN_LINEAGE, false),
+            column != null || McpParams.getBoolean(params, PARAM_INCLUDE_COLUMN_LINEAGE, false),
             McpParams.getBoolean(params, PARAM_INCLUDE_SQL, false));
     LOG.info(
         "Getting lineage for entity type: {}, FQN: {}, upstreamDepth: {}, downstreamDepth: {}, "
-            + "includeColumnLineage: {}",
+            + "includeColumnLineage: {}, column: {}",
         entityType,
         fqn,
         upstreamDepth,
         downstreamDepth,
-        options.includeColumnLineage());
+        options.includeColumnLineage(),
+        column);
     // The subject context applies the caller's domain restrictions
     // (LineageRepository.pruneLineageByDomain); the overload without it prunes nothing.
     SubjectContext subjectContext = getSubjectContext(securityContext);
@@ -129,6 +132,11 @@ public class GetLineageTool implements McpTool {
             .getByNameReportingPrune(
                 entityType, fqn, upstreamDepth, downstreamDepth, subjectContext);
     EntityLineage lineage = pruned.lineage();
+    // Before the permission filter, so its node ceiling is spent on the column's graph, not on
+    // every table around a busy root.
+    if (column != null) {
+      ColumnLineageScope.narrow(lineage, column);
+    }
     // Authorizing the root only grants the root. Neighbour nodes carry their own FQNs, names and
     // descriptions, so an entity-scoped policy has to be applied to them as well or the graph
     // discloses exactly the assets the policy hides.
@@ -219,6 +227,11 @@ public class GetLineageTool implements McpTool {
     if (nullOrEmpty(entityType) || nullOrEmpty(fqn)) {
       throw new IllegalArgumentException("Parameters 'entityType' and 'fqn' are required");
     }
+  }
+
+  private static String requestedColumn(Map<String, Object> params, String fqn) {
+    String column = McpParams.getString(params, PARAM_COLUMN, null);
+    return column == null ? null : ColumnLineageScope.requireColumnOf(fqn, column);
   }
 
   @VisibleForTesting

@@ -638,6 +638,10 @@
             "description": "Include column-level lineage mappings on each edge. Defaults to false to keep the response table-level and small. Set to true only when the user explicitly needs column-to-column lineage, as it can significantly increase response size on wide tables.",
             "default": false
           },
+          "column": {
+            "type": "string",
+            "description": "FQN of one column of this entity, e.g. the 'fullyQualifiedName' of a tableColumn search result. Returns only that column's lineage: the column is followed hop by hop, including where a consumer renames it, and only the edges and column mappings that carry it are returned. Use this instead of includeColumnLineage when the question is about one column."
+          },
           "includeSql": {
             "type": "boolean",
             "default": false,

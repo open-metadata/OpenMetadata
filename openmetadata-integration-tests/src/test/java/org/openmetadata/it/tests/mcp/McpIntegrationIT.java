@@ -472,6 +472,40 @@ public class McpIntegrationIT extends McpTestBase {
         .contains("\"relationshipType\":\"pipeline\"");
   }
 
+  /**
+   * One column's lineage out of a table with other consumers: the column is followed across a
+   * consumer that renames it, and a table fed only by a different column is left out.
+   */
+  @Test
+  void columnLineageFollowsTheColumnAcrossRenamesAndDropsOtherConsumers() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Table root = createServiceDatabaseSchemaTable("mcp_col_root_" + suffix);
+    Table renamed = createServiceDatabaseSchemaTable("mcp_col_mid_" + suffix);
+    Table consumer = createServiceDatabaseSchemaTable("mcp_col_end_" + suffix);
+    Table unrelated = createServiceDatabaseSchemaTable("mcp_col_other_" + suffix);
+    addColumnLineageEdge(root, "id", renamed, "name");
+    addColumnLineageEdge(renamed, "name", consumer, "id");
+    addColumnLineageEdge(root, "name", unrelated, "name");
+
+    String lineage =
+        executeMcpRequest(
+                McpTestUtils.createGetColumnLineageToolCall(
+                    Entity.TABLE, root.getFullyQualifiedName(), columnFqn(root, "id"), 0, 3))
+            .toString();
+
+    assertThat(lineage)
+        .as("the column is followed through the rename to the final consumer")
+        .contains(columnFqn(renamed, "name"))
+        .contains(columnFqn(consumer, "id"));
+    assertThat(lineage)
+        .as("a table fed only by another column is not part of this column's lineage")
+        .doesNotContain(unrelated.getFullyQualifiedName());
+  }
+
+  private static String columnFqn(Table table, String column) {
+    return table.getFullyQualifiedName() + "." + column;
+  }
+
   private void assertLineageDenied(Table table, String token) throws Exception {
     String lineage =
         executeMcpRequest(
@@ -535,6 +569,25 @@ public class McpIntegrationIT extends McpTestBase {
       edge.put(
           "lineageDetails", Map.of("pipeline", Map.of("id", pipelineId, "type", Entity.PIPELINE)));
     }
+    putLineageEdge(edge);
+  }
+
+  private void addColumnLineageEdge(Table from, String fromColumn, Table to, String toColumn)
+      throws Exception {
+    Map<String, Object> mapping =
+        Map.of(
+            "fromColumns",
+            List.of(columnFqn(from, fromColumn)),
+            "toColumn",
+            columnFqn(to, toColumn));
+    putLineageEdge(
+        Map.of(
+            "fromEntity", Map.of("id", from.getId().toString(), "type", Entity.TABLE),
+            "toEntity", Map.of("id", to.getId().toString(), "type", Entity.TABLE),
+            "lineageDetails", Map.of("columnsLineage", List.of(mapping))));
+  }
+
+  private void putLineageEdge(Map<String, Object> edge) throws Exception {
     String body = OBJECT_MAPPER.writeValueAsString(Map.of("edge", edge));
     HttpRequest request =
         HttpRequest.newBuilder()
