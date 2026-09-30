@@ -29,22 +29,20 @@ import {
   EntityTypeEndpoint,
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
-import { CODE_EDITOR_CONTENT } from './codeEditor';
 import {
-  clickOutside,
   descriptionBox,
-  descriptionBoxReadOnly,
   fetchCompletedCsvAsyncJobResult,
-  fillDescriptionBox,
   getApiContext,
-  getDescriptionBox,
   toastNotification,
   uuid,
 } from './common';
 import {
   addCustomPropertiesForEntity,
-  fillTableColumnInputDetails,
+  fillCustomPropertyEditModal,
+  getCustomPropertyWidgetRow,
+  openCustomPropertyEditModal,
 } from './customProperty';
+import { setDomain } from './domainPicker';
 import {
   escapeESReservedCharacters,
   waitForAllLoadersToDisappear,
@@ -628,27 +626,6 @@ export const fillGlossaryTermDetails = async (
     .waitFor({ state: 'detached' });
 };
 
-export const fillDomainDetails = async (
-  page: Page,
-  domains: { name: string; displayName: string; fullyQualifiedName?: string }
-) => {
-  await page.keyboard.press('Enter');
-
-  await page.click('[data-testid="domain-selectable-tree-search"]');
-
-  const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domains.name)}*`
-  );
-
-  await page.getByTestId('domain-selectable-tree-search').fill(domains.name);
-
-  await searchDomain;
-
-  await page.getByTestId(`tree-node-${domains.fullyQualifiedName}`).click();
-  // Multi-select picker: commit the staged selection via the Apply footer.
-  await page.getByTestId('update-btn').click();
-};
-
 const openActiveCellPopover = async (
   page: Page,
   targetLocator: Locator,
@@ -732,93 +709,56 @@ export const fillStoredProcedureCode = async (page: Page) => {
   await page.getByTestId('schema-modal').waitFor({ state: 'detached' });
 };
 
-const editGlossaryCustomProperty = async (
+// What each bulk-edit custom property type is set to, and the one-line
+// summary the side widget row shows for it afterwards.
+const BULK_CUSTOM_PROPERTY_INPUTS: Record<
+  string,
+  {
+    propertyType: string;
+    value: string;
+    summary: string | RegExp;
+    tableColumns?: string[];
+  }
+> = {
+  [CUSTOM_PROPERTIES_TYPES.STRING]: {
+    propertyType: 'string',
+    value: FIELD_VALUES_CUSTOM_PROPERTIES.STRING,
+    summary: FIELD_VALUES_CUSTOM_PROPERTIES.STRING,
+  },
+  [CUSTOM_PROPERTIES_TYPES.MARKDOWN]: {
+    propertyType: 'markdown',
+    value: FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN,
+    summary: 'Overview',
+  },
+  [CUSTOM_PROPERTIES_TYPES.SQL_QUERY]: {
+    propertyType: 'sqlQuery',
+    value: FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY,
+    summary: /^1 line/,
+  },
+  [CUSTOM_PROPERTIES_TYPES.TABLE]: {
+    propertyType: 'table-cp',
+    value: FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.rows,
+    summary: /^1 row/,
+    tableColumns: FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns,
+  },
+};
+
+/** Sets one custom property from the bulk-edit extension editor. */
+const editBulkCustomProperty = async (
   page: Page,
   propertyName: string,
   type: string
 ) => {
-  await page
-    .locator(
-      `[data-testid=${propertyName}] [data-testid='edit-icon-right-panel']`
-    )
-    .click();
+  const { summary, ...input } = BULK_CUSTOM_PROPERTY_INPUTS[type];
+  const row = getCustomPropertyWidgetRow(
+    page.getByTestId('custom-property-editor'),
+    propertyName
+  );
+  const editModal = await openCustomPropertyEditModal(page, row);
 
-  if (type === CUSTOM_PROPERTIES_TYPES.STRING) {
-    await page
-      .getByTestId('value-input')
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
-    await page.getByTestId('inline-save-btn').click();
+  await fillCustomPropertyEditModal({ page, editModal, ...input });
 
-    await expect(
-      page.getByTestId(propertyName).getByTestId('value')
-    ).toHaveText(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
-    // Scoped to the markdown editor this block already reaches into for its
-    // save button, rather than to the page: the entity behind the custom
-    // property panel has description editors of its own.
-    const markdownEditor = page.getByTestId('markdown-editor');
-    const markdownDescription = getDescriptionBox(markdownEditor);
-
-    await markdownDescription.waitFor({ state: 'visible' });
-
-    await fillDescriptionBox(
-      markdownEditor,
-      FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN
-    );
-
-    await clickOutside(page);
-
-    await markdownEditor.getByTestId('save').click();
-
-    await markdownDescription.waitFor({ state: 'detached' });
-
-    await expect(
-      page.getByTestId(propertyName).locator(descriptionBoxReadOnly)
-    ).toContainText('### Overview');
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.SQL_QUERY) {
-    await page
-      .getByTestId('code-mirror-container')
-      .getByRole('textbox')
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
-
-    await page.getByTestId('inline-save-btn').click();
-
-    await expect(
-      page.getByTestId(propertyName).locator(CODE_EDITOR_CONTENT)
-    ).toContainText(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.TABLE) {
-    const columns = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns;
-    const values = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.rows.split(',');
-
-    await page.locator('[data-testid="add-new-row"]').click();
-
-    await fillTableColumnInputDetails(page, values[0], columns[0]);
-
-    await fillTableColumnInputDetails(page, values[1], columns[1]);
-
-    await page.locator('[data-testid="update-table-type-property"]').click();
-
-    await expect(
-      page
-        .getByTestId(propertyName)
-        .getByRole('columnheader', { name: columns[0] })
-    ).toBeVisible();
-
-    // values[0] is the first column: TableV2 renders the first column as a
-    // rowheader (not a cell), so match either role.
-    const cpTable = page.getByTestId(propertyName);
-    await expect(
-      cpTable
-        .getByRole('rowheader', { name: values[0] })
-        .or(cpTable.getByRole('cell', { name: values[0] }))
-    ).toBeVisible();
-  }
+  await expect(row.getByTestId('property-value')).toContainText(summary);
 };
 
 export const fillCustomPropertyDetails = async (
@@ -837,7 +777,7 @@ export const fillCustomPropertyDetails = async (
   await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
   for (const propertyName of Object.values(CUSTOM_PROPERTIES_TYPES)) {
-    await editGlossaryCustomProperty(
+    await editBulkCustomProperty(
       page,
       propertyListName[propertyName],
       propertyName
@@ -881,7 +821,7 @@ export const fillExtensionDetails = async (
   await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
   for (const propertyName of Object.values(CUSTOM_PROPERTIES_TYPES)) {
-    await editEntityCustomProperty(
+    await editBulkCustomProperty(
       page,
       propertyListName[propertyName],
       propertyName
@@ -1223,64 +1163,6 @@ export const createStoredProcedureRowDetails = () => {
   };
 };
 
-const editEntityCustomProperty = async (
-  page: Page,
-  propertyName: string,
-  type: string
-) => {
-  await page
-    .locator(
-      `[data-testid=${propertyName}] [data-testid='edit-icon-right-panel']`
-    )
-    .click();
-
-  if (type === CUSTOM_PROPERTIES_TYPES.STRING) {
-    await page
-      .getByTestId('value-input')
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
-    await page.getByTestId('inline-save-btn').click();
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
-    // Scoped to the markdown editor, as above.
-    const markdownEditor = page.getByTestId('markdown-editor');
-    const markdownDescription = getDescriptionBox(markdownEditor);
-
-    await markdownDescription.waitFor({ state: 'visible' });
-
-    await fillDescriptionBox(
-      markdownEditor,
-      FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN
-    );
-
-    await markdownEditor.getByTestId('save').click();
-
-    await markdownDescription.waitFor({ state: 'detached' });
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.SQL_QUERY) {
-    await page
-      .getByTestId('code-mirror-container')
-      .getByRole('textbox')
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
-
-    await page.getByTestId('inline-save-btn').click();
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.TABLE) {
-    const columns = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns;
-    const values = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.rows.split(',');
-
-    await page.locator('[data-testid="add-new-row"]').click();
-
-    await fillTableColumnInputDetails(page, values[0], columns[0]);
-
-    await fillTableColumnInputDetails(page, values[1], columns[1]);
-
-    await page.locator('[data-testid="update-table-type-property"]').click();
-  }
-};
-
 export const fillRowDetails = async (
   row: {
     name: string;
@@ -1363,7 +1245,16 @@ export const fillRowDetails = async (
   }
 
   await selectActiveRowCellByColumn(page, 'domains');
-  await fillDomainDetails(page, row.domains);
+  // The grid cell opens its picker on Enter, and bulk edit stages the whole
+  // sheet, so there is no PATCH for this cell to wait on.
+  await setDomain(page, row.domains, {
+    trigger: async () => {
+      await page.keyboard.press('Enter');
+      await page.click('[data-testid="domain-selectable-tree-search"]');
+    },
+    awaitPatch: false,
+    verify: 'none',
+  });
 
   if (customPropertyRecord && Object.keys(customPropertyRecord).length > 0) {
     await selectActiveRowCellByColumn(page, 'extension');

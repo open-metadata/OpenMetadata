@@ -534,8 +534,6 @@ test('Destination should work properly', async ({ page }) => {
     },
   });
 
-  await page.click('[data-testid="add-destination-button"]');
-
   const testButton = page.getByTestId('test-destination-button');
   await expect(testButton).toBeVisible();
   await expect(testButton).toBeEnabled();
