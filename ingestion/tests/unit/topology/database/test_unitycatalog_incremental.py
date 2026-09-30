@@ -161,7 +161,7 @@ class TestUnityCatalogIncrementalSource:
             patch(f"{UC_METADATA_MODULE}.filter_by_table", return_value=False),
         ):
             fqn_mock.build.return_value = "svc.cat.schema1.tbl_a"
-            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1", set()))
 
         assert result == [("tbl_a", TableType.Regular)]
         assert source.context.get().table_data is table
@@ -176,7 +176,7 @@ class TestUnityCatalogIncrementalSource:
             patch(f"{UC_METADATA_MODULE}.filter_by_table", return_value=False),
         ):
             fqn_mock.build.return_value = "svc.cat.schema1.v_a"
-            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1", set()))
 
         assert result == [("v_a", TableType.View)]
 
@@ -190,7 +190,7 @@ class TestUnityCatalogIncrementalSource:
             patch(f"{UC_METADATA_MODULE}.filter_by_table", return_value=True),
         ):
             fqn_mock.build.return_value = "svc.cat.schema1.tbl_a"
-            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1", set()))
 
         assert result == []
         source.status.filter.assert_called_once()
@@ -199,7 +199,7 @@ class TestUnityCatalogIncrementalSource:
         source = self._make_source()
         table = SimpleNamespace(table_type=None)
 
-        result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+        result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1", set()))
 
         assert result == []
         source.status.failed.assert_called_once()
@@ -214,6 +214,7 @@ class TestUnityCatalogIncrementalSource:
         source.context.get_global.return_value = SimpleNamespace(deleted_tables=[])
         changed_table = SimpleNamespace(name="chg", table_type=None)
         source.client.tables.get.return_value = changed_table
+        source._iceberg_table_names.return_value = set()
         source._process_table.return_value = iter([("chg", TableType.Regular)])
 
         with patch(f"{UC_METADATA_MODULE}.fqn") as fqn_mock:
@@ -223,7 +224,8 @@ class TestUnityCatalogIncrementalSource:
         assert result == [("chg", TableType.Regular)]
         assert source.context.get_global().deleted_tables == ["svc.cat.schema1.dropped"]
         source.client.tables.get.assert_called_once_with("cat.schema1.chg")
-        source._process_table.assert_called_once_with(changed_table, "cat", "schema1")
+        source._iceberg_table_names.assert_called_once_with("cat", "schema1")
+        source._process_table.assert_called_once_with(changed_table, "cat", "schema1", set())
 
     def test_yield_database_schema_removes_handoff_cache_entry(self):
         source = self._make_source()
@@ -343,12 +345,16 @@ class TestUnityCatalogIncrementalSource:
             SimpleNamespace(name="t2", catalog_name="cat", schema_name="schema1"),
         ]
         source.client.tables.list.return_value = tables
-        source._process_table.side_effect = lambda table, catalog, schema: iter([(table.name, TableType.Regular)])
+        source._process_table.side_effect = lambda table, catalog, schema, iceberg: iter(
+            [(table.name, TableType.Regular)]
+        )
 
         result = list(UnitycatalogSource.get_tables_name_and_type(source))
 
         assert result == [("t1", TableType.Regular), ("t2", TableType.Regular)]
         source.client.tables.list.assert_called_once_with(catalog_name="cat", schema_name="schema1", max_results=0)
+        # One Iceberg lookup for the whole schema, not one per table.
+        source._iceberg_table_names.assert_called_once_with("cat", "schema1")
         source._get_incremental_tables.assert_not_called()
 
     def test_mark_tables_as_deleted_incremental_uses_explicit_list(self):

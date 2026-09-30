@@ -473,6 +473,56 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             )
         return tables_with_constraints
 
+    def _iceberg_table_names(self, catalog_name: str, schema_name: str) -> set[str] | None:
+        """Names of the schema's native Apache Iceberg tables, or ``None`` when the
+        lookup failed.
+
+        ``securable_kind`` is the only field that separates a managed Iceberg table
+        from a Delta one -- the REST payload reports ``data_source_format`` DELTA for
+        both -- and ``databricks-sdk``'s ``TableInfo`` dataclass drops it, so the raw
+        REST listing is the only source. One call per schema (plus pagination), and
+        the result is a per-schema set handed to the caller, never accumulated.
+
+        ``None`` (as opposed to an empty set) tells the caller it learned nothing, so
+        it must not read DELTA as proof of Delta Lake.
+        """
+        names: set[str] = set()
+        query: dict[str, Any] = {
+            "catalog_name": catalog_name,
+            "schema_name": schema_name,
+            "max_results": 0,
+        }
+        try:
+            while True:
+                response = self.client.api_client.do("GET", "/api/2.1/unity-catalog/tables", query=query)
+                if not isinstance(response, dict):
+                    # do() is typed dict | BinaryIO. A non-dict body carries no
+                    # next_page_token we can trust, and reading one off it would
+                    # spin this loop forever.
+                    raise TypeError(f"expected a JSON object, got {type(response).__name__}")  # noqa: TRY301
+                for table in response.get("tables") or []:
+                    kind = str(table.get("securable_kind") or "")
+                    # UniForm generates Iceberg metadata beside a table that stays
+                    # Delta Lake, so TABLE_DELTA_UNIFORM_ICEBERG_* is not Iceberg;
+                    # TABLE_DELTA_ICEBERG_MANAGED and TABLE_ICEBERG_* are.
+                    if "ICEBERG" in kind and "UNIFORM_ICEBERG" not in kind:
+                        name = table.get("name")
+                        if name:
+                            names.add(str(name))
+                page_token = response.get("next_page_token")
+                if not page_token:
+                    return names
+                query["page_token"] = page_token
+        except Exception as exc:
+            logger.warning(
+                "Could not list Iceberg tables of schema [%s.%s] (%s); storage-format detection is skipped for it.",
+                catalog_name,
+                schema_name,
+                exc,
+            )
+            logger.debug(traceback.format_exc())
+            return None
+
     def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]]:
         """
         Handle table and views.
@@ -490,6 +540,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         if self.incremental.enabled and self.incremental_table_processor:
             yield from self._get_incremental_tables(catalog_name, schema_name)
         else:
+            iceberg_table_names = self._iceberg_table_names(catalog_name, schema_name)
             table_with_constraints = self._get_tables_with_constraints()
             # max_results=0 makes the server paginate with its configured page
             # size; leaving it unset returns every table of the schema in one
@@ -513,7 +564,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                         )
                         logger.warning(msg)
                         self.status.warning(table.name, msg)
-                yield from self._process_table(detailed_table, catalog_name, schema_name)
+                yield from self._process_table(detailed_table, catalog_name, schema_name, iceberg_table_names)
 
     def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[tuple[str, TableType]]:
         """Record deleted tables and yield only the tables changed since the watermark."""
@@ -539,6 +590,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             self.context.get_global().deleted_tables.extend(  # pyright: ignore[reportAttributeAccessIssue]
                 deleted_table_fqns
             )
+        iceberg_table_names = self._iceberg_table_names(catalog_name, schema_name) if changed else None
         for table_name in changed:
             try:
                 table = self.client.tables.get(f"{catalog_name}.{schema_name}.{table_name}")
@@ -551,9 +603,15 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     )
                 )
                 continue
-            yield from self._process_table(table, catalog_name, schema_name)
+            yield from self._process_table(table, catalog_name, schema_name, iceberg_table_names)
 
-    def _process_table(self, table: Any, catalog_name: str, schema_name: str) -> Iterable[tuple[str, TableType]]:
+    def _process_table(
+        self,
+        table: Any,
+        catalog_name: str,
+        schema_name: str,
+        iceberg_table_names: set[str] | None,
+    ) -> Iterable[tuple[str, TableType]]:
         """Apply filtering and table-type detection, then yield the table to the topology."""
         try:
             table_name = table.name
@@ -582,19 +640,22 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     table_type = TableType.MaterializedView
                 elif table.table_type.value.lower() == TableType.External.value.lower():
                     table_type = TableType.External
-            # The SDK only ever surfaces DataSourceFormat.DELTA for Delta-backed
-            # tables (UniForm/Iceberg arrive as None), so DELTA is the sole
-            # reliably-detectable format. It refines a managed/external/regular
-            # table into DeltaLake but must never override a view. Match DELTA
-            # exactly (plus the DELTA_UNIFORM* variants, mirroring the Databricks
-            # connector) rather than any DELTA-prefixed value, so DELTASHARING --
-            # a Delta Sharing table, not Delta Lake -- is not misclassified.
+            # Storage format refines a managed/external/regular table but must never
+            # override a view. Iceberg is checked first because a managed Iceberg
+            # table also reports data_source_format DELTA, so the Delta branch would
+            # otherwise swallow it. Both branches need the Iceberg listing to have
+            # succeeded: without it DELTA is ambiguous and guessing DeltaLake would
+            # relabel every Iceberg table. Match DELTA exactly (plus the
+            # DELTA_UNIFORM* variants, mirroring the Databricks connector) rather
+            # than any DELTA-prefixed value, so DELTASHARING -- a Delta Sharing
+            # table, not Delta Lake -- is not misclassified.
             dsf = getattr(table, "data_source_format", None)
             normalized_dsf = str(getattr(dsf, "value", dsf)).upper() if dsf is not None else ""
-            if table_type not in (TableType.View, TableType.MaterializedView) and (
-                normalized_dsf == "DELTA" or normalized_dsf.startswith("DELTA_UNIFORM")
-            ):
-                table_type = TableType.DeltaLake
+            if table_type not in (TableType.View, TableType.MaterializedView) and iceberg_table_names is not None:
+                if table_name in iceberg_table_names:
+                    table_type = TableType.Iceberg
+                elif normalized_dsf == "DELTA" or normalized_dsf.startswith("DELTA_UNIFORM"):
+                    table_type = TableType.DeltaLake
             self.context.get().table_data = table  # pyright: ignore[reportAttributeAccessIssue]
             yield table_name, table_type
         except Exception as exc:
