@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -29,11 +30,7 @@ public final class SearchEntityTypeCounts {
     Response run(SearchRequest request, SubjectContext subjectContext) throws IOException;
   }
 
-  private record Count(String entityType, JsonNode response) {
-    long total() {
-      return response.at("/hits/total/value").asLong();
-    }
-  }
+  private record Count(String entityType, long total, ObjectNode response) {}
 
   public Response search(SearchRequest request, String index, SubjectContext subjectContext)
       throws IOException {
@@ -47,11 +44,12 @@ public final class SearchEntityTypeCounts {
               .withSize(SearchRankingHelper.identityProbeSize())
               .withFetchSource(true)
               .withIncludeSourceFields(List.of("name", "fullyQualifiedName"));
-      counts.add(new Count(entityType, searchBody(countRequest, subjectContext)));
+      ObjectNode body = searchBody(countRequest, subjectContext);
+      counts.add(new Count(entityType, exactTotal(body, countRequest.getIndex()), body));
     }
     ObjectNode response =
         request.getSize() > 0
-            ? (ObjectNode) searchBody(relevanceHint(request), subjectContext)
+            ? searchBody(relevanceHint(request), subjectContext)
             : emptyResponse();
     mergeCounts(response, counts);
     return Response.ok(JsonUtils.pojoToJson(response)).build();
@@ -131,17 +129,46 @@ public final class SearchEntityTypeCounts {
     }
   }
 
-  private JsonNode searchBody(SearchRequest request, SubjectContext subjectContext)
+  private long exactTotal(ObjectNode response, String index) throws IOException {
+    JsonNode total = response.at("/hits/total");
+    JsonNode value = total.path("value");
+    if (!value.isIntegralNumber()
+        || !value.canConvertToLong()
+        || value.longValue() < 0
+        || !"eq".equals(total.path("relation").textValue())) {
+      throw new IOException("Missing or invalid exact search total for " + index);
+    }
+    return value.longValue();
+  }
+
+  private ObjectNode searchBody(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
     try (Response response = search.run(request, subjectContext)) {
       if (response.getStatus() != Response.Status.OK.getStatusCode()) {
         throw new IOException("Unable to count search results for " + request.getIndex());
       }
-      JsonNode body = JsonUtils.readTree((String) response.getEntity());
+      ObjectNode body = parseResponse(response.getEntity(), request.getIndex());
       if (body.path("timed_out").asBoolean() || body.at("/_shards/failed").asInt() > 0) {
         throw new IOException("Incomplete search counts for " + request.getIndex());
       }
       return body;
+    }
+  }
+
+  private ObjectNode parseResponse(Object entity, String index) throws IOException {
+    if (!(entity instanceof String json)) {
+      throw new IOException("Missing search response for " + index);
+    }
+    try {
+      JsonNode body = JsonUtils.getObjectMapper().readTree(json);
+      if (!(body instanceof ObjectNode object)
+          || !body.path("hits").isObject()
+          || !body.path("_shards").isObject()) {
+        throw new IOException("Invalid search response structure for " + index);
+      }
+      return object;
+    } catch (JsonProcessingException e) {
+      throw new IOException("Invalid search response JSON for " + index, e);
     }
   }
 }
