@@ -219,7 +219,8 @@ export const CustomPropertiesRightPanel = ({
         </ul>
       ) : (
         <Typography
-          className="tw:px-4 tw:pb-4 tw:text-center tw:text-tertiary"
+          as="p"
+          className="tw:px-4 tw:py-6 tw:text-center tw:text-tertiary"
           data-testid="no-matching-custom-properties"
           size="text-sm">
           {t('message.no-entity-found-for-name', {
