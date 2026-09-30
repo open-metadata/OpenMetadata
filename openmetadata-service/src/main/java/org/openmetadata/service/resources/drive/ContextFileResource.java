@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.drive;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -62,6 +63,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -299,15 +301,21 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @Valid jakarta.json.JsonPatch patch) {
     // Sharing is edited through this endpoint, so the guard runs here too: a caller who cannot see
     // a document must not be able to change who else can.
-    ContextFileVisibility.enforceVisibility(
-        getInternal(
-            uriInfo,
-            securityContext,
-            id,
-            ContextFileVisibility.guardFields(""),
-            Include.NON_DELETED),
-        securityContext);
+    ContextFile file = visibleFile(uriInfo, securityContext, id, Include.NON_DELETED);
+    if (ContextFileVisibility.touchesSharing(patch)) {
+      ContextFileVisibility.requireOwnerToRestrict(
+          file, JsonUtils.applyPatch(file, patch, ContextFile.class), securityContext);
+    }
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  /** The file, for a caller who may see it; anybody else is refused. */
+  private ContextFile visibleFile(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, Include include) {
+    ContextFile file =
+        getInternal(uriInfo, securityContext, id, ContextFileVisibility.guardFields(""), include);
+    ContextFileVisibility.enforceVisibility(file, securityContext);
+    return file;
   }
 
   @POST
@@ -372,6 +380,11 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     }
 
     ContextFile file = mapper.createToEntity(createFile, user);
+    // Whoever uploads a file owns it, which is what lets them make it private and still see it.
+    if (nullOrEmpty(file.getOwners())) {
+      file.setOwners(
+          List.of(Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED)));
+    }
     // prepareInternal validates the name (incl. archived namesakes) before we stream to storage,
     // so a duplicate upload fails fast without a wasted object-store write.
     repository.prepareInternal(file, false);
@@ -576,6 +589,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
             securityContext,
             operationContext,
             getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+        visibleFile(uriInfo, securityContext, id, Include.NON_DELETED);
         ContextFile moved =
             repository.moveContextFile(id, newFolder, securityContext.getUserPrincipal().getName());
         addHref(uriInfo, moved);
@@ -613,7 +627,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
 
     List<ResolvedDownloadEntry> resolvedEntries = new ArrayList<>();
     for (UUID id : ids) {
-      ContextFile file = getInternal(uriInfo, securityContext, id, "", include);
+      ContextFile file = visibleFile(uriInfo, securityContext, id, include);
       Asset asset = resolveAsset(file);
       if (asset == null) {
         throw new EntityNotFoundException("No current content found for file " + id);
@@ -759,6 +773,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+    visibleFile(uriInfo, securityContext, id, Include.NON_DELETED);
     EntityReference newFolder = moveRequest == null ? null : moveRequest.getFolder();
     ContextFile moved =
         repository.moveContextFile(id, newFolder, securityContext.getUserPrincipal().getName());

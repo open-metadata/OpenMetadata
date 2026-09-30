@@ -1,8 +1,15 @@
 package org.openmetadata.service.resources.drive;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.json.Json;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.util.List;
@@ -55,6 +62,58 @@ class ContextFileVisibilityTest {
 
     assertEquals(1, visible.getData().size());
     assertEquals(page.getPaging().getAfter(), visible.getPaging().getAfter());
+  }
+
+  @Test
+  void onlyAnOwnerOrAnAdminMayRestrictAFile() {
+    ContextFile open = fileOwnedBy(ALICE, null);
+    ContextFile restricted = fileOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+
+    assertThrows(ForbiddenException.class, () -> restrictAs(BOB, false, open, restricted));
+    assertDoesNotThrow(() -> restrictAs(ALICE, false, open, restricted));
+    assertDoesNotThrow(() -> restrictAs(BOB, true, open, restricted));
+  }
+
+  @Test
+  void aFileNobodyOwnsCanOnlyBeRestrictedByAnAdmin() {
+    ContextFile open = new ContextFile();
+    ContextFile restricted =
+        new ContextFile()
+            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.SHARED));
+
+    assertThrows(ForbiddenException.class, () -> restrictAs(BOB, false, open, restricted));
+    assertDoesNotThrow(() -> restrictAs(BOB, true, open, restricted));
+  }
+
+  @Test
+  void openingAFileUpOrLeavingItsSharingAloneIsNotRestricting() {
+    ContextFile restricted = fileOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    ContextFile opened = fileOwnedBy(ALICE, MemoryVisibility.ENTITY);
+
+    assertDoesNotThrow(() -> restrictAs(BOB, false, restricted, opened));
+    assertDoesNotThrow(() -> restrictAs(BOB, false, restricted, restricted));
+  }
+
+  @Test
+  void aPatchTouchesSharingOnlyWhenItWritesTheShareConfig() {
+    JsonPatch sharing =
+        Json.createPatchBuilder().replace("/shareConfig/visibility", "Private").build();
+    JsonPatch description = Json.createPatchBuilder().replace("/description", "notes").build();
+
+    assertTrue(ContextFileVisibility.touchesSharing(sharing));
+    assertFalse(ContextFileVisibility.touchesSharing(description));
+  }
+
+  private static void restrictAs(
+      String userName, boolean admin, ContextFile original, ContextFile updated) {
+    SecurityContext securityContext = securityContextFor(userName);
+    try (MockedStatic<DefaultAuthorizer> authorizer = Mockito.mockStatic(DefaultAuthorizer.class)) {
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(
+              new SubjectContext(new User().withName(userName).withIsAdmin(admin), null, null));
+      ContextFileVisibility.requireOwnerToRestrict(original, updated, securityContext);
+    }
   }
 
   private static ResultList<ContextFile> visibleTo(

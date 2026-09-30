@@ -15,10 +15,12 @@ package org.openmetadata.service.resources.drive;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -42,6 +44,9 @@ public final class ContextFileVisibility {
 
   /** The field selection that already asks for every allowed field, owners included. */
   private static final String ALL_FIELDS = "*";
+
+  private static final String PATCH_PATH = "path";
+  private static final String SHARE_CONFIG_PATH = "/shareConfig";
 
   private ContextFileVisibility() {}
 
@@ -68,6 +73,39 @@ public final class ContextFileVisibility {
         && !isVisibleToUser(file, callerName(securityContext), isAdmin(securityContext))) {
       throw new ForbiddenException(deniedMessage(file));
     }
+  }
+
+  /**
+   * Refuses a change that restricts a file unless the caller owns it or is an admin. Private and
+   * Shared leave a file visible to its owners and the people named, so anyone else choosing them
+   * would lose the file the moment the change lands — and so would everybody, on a file nobody
+   * owns.
+   */
+  public static void requireOwnerToRestrict(
+      ContextFile original, ContextFile updated, SecurityContext securityContext) {
+    boolean restricts =
+        isRestricted(updated)
+            && !Objects.equals(original.getShareConfig(), updated.getShareConfig());
+    boolean mayRestrict =
+        isAdmin(securityContext) || isOwnedBy(original, callerName(securityContext));
+    if (restricts && !mayRestrict) {
+      throw new ForbiddenException(
+          "Only a document's owner can make it private or choose who it is shared with.");
+    }
+  }
+
+  /** Whether any operation of {@code patch} writes the file's sharing. */
+  public static boolean touchesSharing(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(operation -> operation.asJsonObject().getString(PATCH_PATH, ""))
+        .anyMatch(path -> path.startsWith(SHARE_CONFIG_PATH));
+  }
+
+  private static boolean isRestricted(ContextFile file) {
+    MemoryShareConfig share = file.getShareConfig();
+    return share != null
+        && (share.getVisibility() == MemoryVisibility.PRIVATE
+            || share.getVisibility() == MemoryVisibility.SHARED);
   }
 
   /**
