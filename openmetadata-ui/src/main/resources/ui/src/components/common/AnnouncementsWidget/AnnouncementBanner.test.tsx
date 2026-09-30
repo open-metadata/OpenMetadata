@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   AnnouncementColor,
@@ -175,13 +175,14 @@ describe('AnnouncementBanner', () => {
   it('should not indent the expanded title past the type chip', () => {
     renderBanner({ expanded: true });
 
-    const banner = screen.getByTestId('announcement-banner');
-    const chip = banner.querySelector('span.tw\\:rounded-full');
+    const chip = within(screen.getByTestId('announcement-banner')).getByTestId(
+      'announcement-type-icon'
+    );
     const title = screen.getByText('Pipeline maintenance');
 
     // The chip sits in the header row; the title is its sibling's sibling, not a
     // descendant of the column the chip opens — that nesting is what indented it.
-    expect(chip?.parentElement?.contains(title)).toBe(false);
+    expect(chip.parentElement?.contains(title)).toBe(false);
   });
 
   it('should not nest the title button inside the tooltip trigger button', () => {
