@@ -253,12 +253,21 @@ class SparqlBuilderNestedFieldsTest {
     @Test
     @DisplayName("Excluded nested projections are rejected")
     void testExcludedNestedProjections() {
-      assertThrows(
-          BadRequestException.class,
-          () -> translator.translate("SELECT votes.upVotes FROM tables"));
-      assertThrows(
-          BadRequestException.class,
-          () -> translator.translate("SELECT changeDescription.fieldsUpdated FROM tables"));
+      // Unqualified field names resolve against the FROM table, so these reach the
+      // nested-mapping lookup (dotted table qualifiers such as votes.upVotes resolve
+      // as unknown tables before nested validation and cannot exercise this path).
+      BadRequestException votesParent =
+          assertThrows(
+              BadRequestException.class, () -> translator.translate("SELECT votes FROM tables"));
+      assertTrue(votesParent.getMessage().contains("Unknown column"));
+      assertFalse(votesParent.getMessage().contains("Unknown table"));
+
+      BadRequestException changeParent =
+          assertThrows(
+              BadRequestException.class,
+              () -> translator.translate("SELECT changeDescription FROM tables"));
+      assertTrue(changeParent.getMessage().contains("Unknown column"));
+      assertFalse(changeParent.getMessage().contains("Unknown table"));
     }
   }
 

@@ -82,12 +82,32 @@ class RdfOntologyContractTest {
           .fields()
           .forEachRemaining(
               entry -> {
-                JsonNode predicate = entry.getValue().path("@id");
-                if (predicate.isTextual() && predicate.asText().startsWith("om:")) {
-                  assertStoredProjection(predicate.asText(), "JSON-LD term " + entry.getKey());
+                if (!entry.getKey().isEmpty() && Character.isUpperCase(entry.getKey().charAt(0))) {
+                  return;
+                }
+                String candidate = jsonLdPredicate(entry.getValue());
+                if (candidate != null && !isClass(candidate)) {
+                  assertStoredProjection(candidate, "JSON-LD term " + entry.getKey());
                 }
               });
     }
+  }
+
+  private static String jsonLdPredicate(JsonNode value) {
+    if (value.isTextual() && value.asText().startsWith("om:")) {
+      return value.asText();
+    }
+    JsonNode predicate = value.path("@id");
+    if (predicate.isTextual() && predicate.asText().startsWith("om:")) {
+      return predicate.asText();
+    }
+    return null;
+  }
+
+  private static boolean isClass(String qualifiedPredicate) {
+    Resource resource = ontology.createResource(qualifiedPredicate.replaceFirst("^om:", OM));
+    return ontology.contains(resource, RDF.type, OWL.Class)
+        || ontology.contains(resource, RDF.type, RDFS.Class);
   }
 
   @Test
