@@ -19,7 +19,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
-import { assignDomainWidget, removeDomainWidget } from '../../../utils/domain';
+import { setDomain } from '../../../utils/domainPicker';
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
@@ -368,8 +368,11 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await assignDomainWidget(page, domain.responseData);
-      await removeDomainWidget(page, domain.responseData);
+      await setDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData, {
+        trigger: 'edit-domain',
+        verify: 'chip-gone',
+      });
     } finally {
       await glossary.delete(apiContext);
       await domain.delete(apiContext);
@@ -392,8 +395,8 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await assignDomainWidget(page, domain1.responseData);
-      await assignDomainWidget(page, domain2.responseData, false, true);
+      await setDomain(page, domain1.responseData);
+      await setDomain(page, domain2.responseData, { trigger: 'edit-domain' });
     } finally {
       await glossary.delete(apiContext);
       await domain1.delete(apiContext);
