@@ -31,6 +31,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch.core.MgetResponse;
 import os.org.opensearch.client.opensearch.core.get.GetResult;
 import os.org.opensearch.client.opensearch.core.mget.MultiGetResponseItem;
@@ -89,7 +90,22 @@ public class OpenSearchVectorService implements VectorIndexService {
     // root cause of production "I/O reactor has been shut down" errors.
   }
 
-  public void ensureHybridSearchPipeline(double keywordWeight, double semanticWeight) {
+  /**
+   * The RRF hybrid-ranking pipeline body. Usable two ways, and identical either way: as the body
+   * of {@code PUT /_search/pipeline/hybrid-rrf}, or inlined into a search request's {@code
+   * search_pipeline} field as an ad-hoc pipeline.
+   *
+   * <p>Inlining is what lets hybrid search work on a deployment whose search role is confined to
+   * its own {@code <clusterAlias>*} prefix: creating a named pipeline needs {@code
+   * cluster:admin/search/pipeline/put}, which no index-scoped role has, whereas an ad-hoc pipeline
+   * is carried by the search request itself and needs no cluster privilege at all. It also fixes
+   * the weights: a named pipeline is one cluster-global object, so on a shared cluster every
+   * tenant's reindex overwrote the previous tenant's keyword/semantic weights. Ad-hoc pipelines
+   * accept phase-results processors exactly as stored ones do — OpenSearch builds both through
+   * the same processor factories.
+   */
+  public static String buildHybridRrfPipelineDefinition(
+      double keywordWeight, double semanticWeight) {
     var weights = MAPPER.createArrayNode().add(keywordWeight).add(semanticWeight);
     var combination =
         MAPPER
@@ -106,8 +122,20 @@ public class OpenSearchVectorService implements VectorIndexService {
 
     var pipeline = MAPPER.createObjectNode();
     pipeline.set("phase_results_processors", MAPPER.createArrayNode().add(scoreRanker));
+    return pipeline.toString();
+  }
 
-    executeGenericRequest("PUT", "/_search/pipeline/" + HYBRID_PIPELINE_NAME, pipeline.toString());
+  /**
+   * Best-effort creation of the named pipeline, kept for deployments still reading hybrid results
+   * through {@code ?search_pipeline=hybrid-rrf}. Callers must treat failure as non-fatal: the PUT
+   * is a cluster-scoped write that a prefix-scoped search role cannot make, and the query path no
+   * longer depends on it.
+   */
+  public void ensureHybridSearchPipeline(double keywordWeight, double semanticWeight) {
+    executeGenericRequest(
+        "PUT",
+        "/_search/pipeline/" + HYBRID_PIPELINE_NAME,
+        buildHybridRrfPipelineDefinition(keywordWeight, semanticWeight));
     LOG.info(
         "Hybrid search pipeline '{}' created/updated with weights keyword={}, semantic={}",
         HYBRID_PIPELINE_NAME,
@@ -455,8 +483,14 @@ public class OpenSearchVectorService implements VectorIndexService {
    * no call to it, and live indexing logs and continues on embedding errors, so a deployment with
    * semantic search enabled but no working provider looks healthy right up until a reindex.
    *
-   * <p>Still throws on genuine staging failures (indeterminate live-target probe, index create) —
-   * those mean the cluster is in a state where continuing could destroy live chunks.
+   * <p>Also returns {@code null} when the live-target probe is indeterminate. Skipping the stage
+   * deletes nothing — the sweep below never runs — so an unanswerable probe is a reason to leave
+   * the chunk index alone, not to fail an entity reindex that does not depend on it. Throwing here
+   * took down the whole run before its first record. The promote path stays strict: that swap does
+   * remove the previous target, so it must know what the target is.
+   *
+   * <p>Still throws on index create — a half-made generation is a state the next run must not
+   * inherit silently.
    */
   public String beginStagedChunkRecreate() {
     if (!isEmbeddingAvailable()) {
@@ -468,7 +502,17 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
     synchronized (stagedChunkLock) {
       String base = getChunkIndexName();
-      String liveTarget = requireResolvedLiveChunkTarget(base);
+      String liveTarget;
+      try {
+        liveTarget = requireResolvedLiveChunkTarget(base);
+      } catch (RuntimeException e) {
+        LOG.warn(
+            "Could not determine the live chunk target for {} — skipping the staged chunk "
+                + "recreate. The entity reindex continues and existing chunks stay live.",
+            base,
+            e);
+        return null;
+      }
       deleteOrphanChunkGenerations(base, liveTarget);
       String generation = nextChunkGenerationName(base);
       try {
@@ -691,22 +735,30 @@ public class OpenSearchVectorService implements VectorIndexService {
    * alias (post-promotion layout), the legacy physical index when it exists under the read name,
    * or null on a fresh install. Throws when the cluster cannot answer, so callers can distinguish
    * "nothing is live" from "could not tell".
+   *
+   * <p>Index-scoped by construction: {@code GET /{base}/_alias} names the index in the path, so a
+   * deployment whose search role only grants its own {@code <clusterAlias>*} prefix — every
+   * shared-tenancy cloud cluster — is authorized for it. The alias-scoped forms
+   * ({@code HEAD|GET /_alias/{base}}) name no index, so the cluster resolves them against _all and
+   * denies them with a 403 that opensearch-java raises before any boolean-endpoint status mapping,
+   * i.e. one that can never degrade to "no alias".
+   *
+   * <p>One call covers both layouts because the response is keyed by physical index: the staged
+   * generation when {@code base} is the read alias, {@code base} itself when it is still the
+   * legacy physical index. A 404 means neither exists yet.
    */
   private String resolveLiveChunkTargetStrict(String base) throws IOException {
-    String target = null;
-    // Boolean alias probe first: on the pre-promotion physical-index layout no alias exists, and
-    // a direct GET /_alias/{base} logs that expected 404 as an ERROR with a stack trace.
-    if (client.indices().existsAlias(a -> a.name(base)).value()) {
-      String response = executeGenericRequest("GET", "/_alias/" + base, null);
-      Iterator<String> names = MAPPER.readTree(response).fieldNames();
-      if (names.hasNext()) {
-        target = names.next();
+    try {
+      Iterator<String> names =
+          client.indices().getAlias(a -> a.index(base)).result().keySet().iterator();
+      return names.hasNext() ? names.next() : null;
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
+        LOG.debug("No chunk index or alias named {} — fresh install", base);
+        return null;
       }
-    } else if (client.indices().exists(x -> x.index(base)).value()) {
-      LOG.debug("No alias named {} — serving chunks from the legacy physical index", base);
-      target = base;
+      throw e;
     }
-    return target;
   }
 
   /**
