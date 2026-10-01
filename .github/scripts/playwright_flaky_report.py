@@ -45,6 +45,8 @@ WORKFLOW = "playwright-postgresql-e2e.yml"
 RETRY_PASS = "Retry pass in merge queue"
 RESULTS_ARTIFACT = "playwright-results-json-"
 SUMMARY_JOB = "playwright-summary"
+# Name of the workflow's upload of the HTML report; the Slack fallback links to it.
+REPORT_ARTIFACT = "playwright-flaky-report"
 TEST_RE = re.compile(r"^(?P<file>.+?):(?P<line>\d+) › (?P<title>.+)$")
 ANSI = re.compile(r"[\x1b\ufffd]\[[0-9;]*m")
 TOP = 10
@@ -807,6 +809,40 @@ def slack_text(report: dict, title: str) -> str:
     return "\n".join(lines)
 
 
+FALLBACK_TOP = 5
+
+
+def fallback_text(report: dict, title: str, run_url: str) -> str:
+    """Plain message for when the HTML upload fails (e.g. the bot lacks files:write):
+    the worst offenders inline, and the run that holds the report artifact."""
+    lines = [f":bar_chart: *{title}*"] + headline(report)
+
+    def line(test: dict) -> str:
+        times = plural(test["runs"], "time")
+        return f"`{mq.sanitize_external(test_name(test))}` → {times} ({plural(len(test['prs']), 'PR')})"
+
+    if report["failed"]:
+        lines.append(":red_circle: *Failed:*")
+        lines += [f"• {line(test)}" for test in report["failed"][:3]]
+    if report["flaky"]:
+        lines.append(
+            f":large_yellow_circle: *Top {min(FALLBACK_TOP, len(report['flaky']))} flaky:*"
+        )
+        lines += [
+            f"{i}. {line(test)}"
+            for i, test in enumerate(report["flaky"][:FALLBACK_TOP], 1)
+        ]
+    if not report["failed"] and not report["flaky"]:
+        lines.append(
+            ":large_green_circle: No failed or flaky tests in the merge queue."
+        )
+    lines.append(
+        f":warning: The HTML report could not be attached. Download `{REPORT_ARTIFACT}` "
+        f"from <{run_url}|the workflow run> for every run of every test."
+    )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     token = mq.env_token()
@@ -855,6 +891,20 @@ def main(argv: list[str] | None = None) -> int:
                 "file": str(page.resolve()),
                 "filename": page.name,
                 "title": title,
+            }
+        )
+    )
+    run_url = "{}/{}/actions/runs/{}".format(
+        os.environ.get("GITHUB_SERVER_URL", "https://github.com"),
+        os.environ.get("GITHUB_REPOSITORY", f"{args.owner}/{args.repo}"),
+        os.environ.get("GITHUB_RUN_ID", ""),
+    )
+    (out / "slack-fallback.json").write_text(
+        json.dumps(
+            {
+                "channel": args.channel,
+                "text": fallback_text(report, title, run_url),
+                "unfurl_links": False,
             }
         )
     )

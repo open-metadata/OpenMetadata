@@ -376,3 +376,26 @@ def test_repeated_error_shows_its_count_and_unparsed_names_render_raw(
     assert "TimeoutError: add-header-button-1 ×2</li>" in page
     assert "<span class=title>garbled annotation line</span>" in page
     assert "garbled annotation line:0" not in page
+
+
+def test_fallback_message_lists_top_offenders_and_links_the_run(tmp_path, monkeypatch):
+    monkeypatch.setenv("GITHUB_SERVER_URL", "https://github.com")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.setenv("GITHUB_RUN_ID", "777")
+    many = [("Features/F.spec.ts", f"t{i}") for i in range(7)]
+    runs = RUNS + [run(8, "2026-09-30T13:00:00Z", 500, flaky=many)]
+    build(tmp_path, monkeypatch, runs)
+    fallback = json.loads((tmp_path / "slack-fallback.json").read_text())
+    text = fallback["text"]
+    assert fallback["channel"] == "C1" and fallback["unfurl_links"] is False
+    assert (
+        "1. `Features/CustomizeDetailPage.spec.ts:10 › Glossary Term tabs` → 3 times (2 PRs)"
+        in text
+    )
+    assert (
+        "`Features/ProfileNotificationTab.spec.ts:478 › Destination` → 2 times (1 PR)"
+        in text
+    )
+    assert "*Top 5 flaky:*" in text and "\n6. " not in text
+    assert "<https://github.com/o/r/actions/runs/777|the workflow run>" in text
+    assert "`playwright-flaky-report`" in text

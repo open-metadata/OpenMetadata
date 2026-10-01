@@ -289,6 +289,17 @@ def test_merge_queue_flakes_are_left_to_the_daily_report():
     assert (
         post["if"] == "${{ github.event_name == 'schedule' || inputs.post_to_slack }}"
     )
+    steps = workflow("playwright-flaky-daily-report.yml")["jobs"]["report"]["steps"]
+    # A failed HTML upload must not end the job before the text fallback posts.
+    assert post.get("continue-on-error") is True
+    fallback = next(s for s in steps if s["name"].startswith("Post a text fallback"))
+    assert fallback["if"] == "${{ steps.post.outcome == 'failure' }}"
+    assert fallback["with"]["method"] == "chat.postMessage"
+    assert fallback["with"]["payload-file-path"].endswith("/slack-fallback.json")
+    # The fallback message tells readers which artifact to download.
+    upload = next(s for s in steps if s["name"] == "Upload the report")
+    assert upload["with"]["name"] == "playwright-flaky-report"
+    assert steps.index(upload) < steps.index(post)
 
 
 def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):

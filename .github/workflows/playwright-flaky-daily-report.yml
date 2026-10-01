@@ -90,9 +90,12 @@ jobs:
           retention-days: 14
 
       - name: Post to Slack (pw-health)
+        id: post
         # Scheduled runs have no inputs, and an empty input compares equal to
         # false (both coerce to 0), so the schedule has to be named explicitly.
         if: ${{ github.event_name == 'schedule' || inputs.post_to_slack }}
+        # A failed upload falls back to a text post below instead of failing the job.
+        continue-on-error: true
         uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
           method: files.uploadV2
@@ -100,3 +103,19 @@ jobs:
           # Keep on — the action discards Slack API errors by default.
           errors: true
           payload-file-path: ${{ env.REPORT_DIR }}/slack.json
+
+      # files.uploadV2 needs the bot's files:write scope; chat.postMessage only
+      # chat:write, which the queue alerts already use. This keeps the daily post
+      # going, with the top offenders inline and a link to the report artifact.
+      - name: Post a text fallback to Slack (pw-health)
+        if: ${{ steps.post.outcome == 'failure' }}
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ env.REPORT_DIR }}/slack-fallback.json
+
+      - name: Flag the failed HTML upload
+        if: ${{ steps.post.outcome == 'failure' }}
+        run: echo "::warning::The HTML report could not be uploaded to Slack (check the bot's files:write scope); a text summary was posted instead."
