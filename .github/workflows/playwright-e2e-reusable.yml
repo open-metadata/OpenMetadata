@@ -1805,7 +1805,7 @@ jobs:
             --result-glob "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/results.json" \
             --output "$RUNNER_TEMP/shard-coverage.json"
           jq '{plannedTests, executedTests, zeroAttemptSkippedTestIds}' "$RUNNER_TEMP/shard-coverage.json"
-          # The queue uploads no reports, so surface retry passes here: they are the
+          # The queue uploads no results JSON when green, so surface retry passes here: they are the
           # evidence for when the queue can drop its retry. Playwright marks a test
           # that failed and then passed on retry as `flaky`; one that failed every
           # attempt is `unexpected` and is a real failure, not a retry pass.
