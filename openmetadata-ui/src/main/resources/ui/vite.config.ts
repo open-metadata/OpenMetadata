@@ -15,72 +15,23 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 import type { PreRenderedAsset } from 'rollup';
-import { defineConfig, loadEnv, type Plugin, type PluginOption } from 'vite';
+import { defineConfig, loadEnv, type PluginOption } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
-
-/**
- * Vite plugin: capture hashed asset filenames at bundle time and inject
- * <link rel="preload"> tags into index.html so the browser discovers the
- * Inter variable font and the landing-page hero SVG before the JS bundle
- * executes.  `transformIndexHtml: { order: 'post' }` ensures this hook runs
- * after the existing `html-transform` plugin (which adds `${basePath}`
- * prefixes), so we write `${basePath}` directly into the href and let the
- * Java backend replace it at runtime — exactly the same mechanism used for
- * script/link/image tags elsewhere.
- */
-const injectCriticalPreloads = (): Plugin => {
-  let fontPath = '';
-  let heroPath = '';
-
-  return {
-    name: 'inject-critical-preloads',
-    generateBundle(_opts, bundle) {
-      for (const file of Object.values(bundle)) {
-        if (file.type !== 'asset') {
-          continue;
-        }
-        if (
-          file.fileName?.includes('inter-latin-wght-normal') &&
-          file.fileName.endsWith('.woff2')
-        ) {
-          fontPath = file.fileName;
-        }
-        if (
-          file.fileName?.includes('landing-page-header-bg') &&
-          file.fileName.endsWith('.svg')
-        ) {
-          heroPath = file.fileName;
-        }
-      }
-    },
-    transformIndexHtml: {
-      order: 'post' as const,
-      handler(html: string) {
-        const tags: string[] = [];
-        if (fontPath) {
-          tags.push(
-            `<link rel="preload" as="font" type="font/woff2" crossorigin href="\${basePath}${fontPath}">`
-          );
-        }
-        if (heroPath) {
-          tags.push(
-            `<link rel="preload" as="image" fetchpriority="high" href="\${basePath}${heroPath}">`
-          );
-        }
-
-        return tags.length
-          ? html.replace('</head>', `  ${tags.join('\n    ')}\n  </head>`)
-          : html;
-      },
-    },
-  };
-};
+import { createChunkClassifier } from './vite/chunks';
+import {
+  htmlBasePathTransform,
+  injectCriticalPreloads,
+  noEnumOnlyChunks,
+} from './vite/plugins';
 
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  // `analyze` must emit the same bundle as `production` (minified, React prod
+  // build), otherwise the treemap reports sizes nobody ships.
+  const isProductionBundle = mode === 'production' || mode === 'analyze';
 
   // rollup-plugin-visualizer is ESM-only; CJS-import would crash Vite's config
   // loader. Dynamic-import only when we actually want it (analyze mode), so the
@@ -110,129 +61,7 @@ export default defineConfig(async ({ mode }) => {
     'http://localhost:8585/';
   const isPlaywrightBundle = env.PW_E2E_BUNDLE === 'true';
   const isPlaywrightBuild = env.PW_E2E_BUILD === 'true' || isPlaywrightBundle;
-
-  // Classifier used by both bundlers to assign modules to vendor buckets.
-  // Rollup consumes it via `rollupOptions.output.manualChunks`, Rolldown via
-  // `rollupOptions.output.advancedChunks.groups[].name`. Same logic, one
-  // source of truth. Return a string to force the module into that bucket, or
-  // `undefined` to let the bundler auto-split at the nearest dynamic-import
-  // boundary.
-  const classifyChunk = (id: string): string | undefined => {
-    const normalizedId = id.split('?')[0].replaceAll('\\', '/');
-
-    if (isPlaywrightBundle) {
-      if (
-        normalizedId.includes('/src/components/MyData/') ||
-        normalizedId.includes('/src/pages/MyDataPage/') ||
-        normalizedId.includes('/src/components/KnowledgeCenter/') ||
-        normalizedId.includes('/src/utils/LandingPageWidget/') ||
-        /\/src\/utils\/(?:CustomizeMyDataPage|CustomizableLandingPage|DataAssetService|LandingPageWidgetIconUtils)/.test(
-          normalizedId
-        )
-      ) {
-        return 'app-e2e-runtime';
-      }
-    }
-
-    if (!normalizedId.includes('/node_modules/')) {
-      return undefined;
-    }
-
-    if (isPlaywrightBundle) {
-      if (
-        id.includes('node_modules/elkjs') ||
-        id.includes('node_modules/@reactflow') ||
-        id.includes('node_modules/reactflow')
-      ) {
-        return 'vendor-e2e-lineage';
-      }
-      const e2ePkgPath = id.split(/node_modules[\\/]/).pop() ?? id;
-      const [e2eScopeOrName, e2eScopedName] = e2ePkgPath.split(/[\\/]/);
-      const e2ePackageName = e2eScopeOrName.startsWith('@')
-        ? `${e2eScopeOrName}/${e2eScopedName}`
-        : e2eScopeOrName;
-
-      return ['react', 'react-dom', 'scheduler'].includes(e2ePackageName)
-        ? 'vendor-e2e-framework'
-        : 'app-e2e-runtime';
-    }
-
-    const packagePath =
-      normalizedId.split('/node_modules/').pop() ?? normalizedId;
-    const [scopeOrName, scopedName] = packagePath.split('/');
-    const packageName = scopeOrName.startsWith('@')
-      ? `${scopeOrName}/${scopedName}`
-      : scopeOrName;
-
-    if (
-      ['react', 'react-dom', 'scheduler'].includes(packageName) ||
-      packageName.startsWith('react-router')
-    ) {
-      return 'vendor-react';
-    }
-
-    // `oidc-client` is the only vendor the /silent-callback entry path
-    // needs. Pin it into its own chunk so the min-chunk-size merger
-    // cannot fold it into vendor-antd — that merge makes vendor-antd a
-    // static sibling of the entry chunk and pulls a >1 MB Antd chunk
-    // into the silent-refresh iframe, violating the scenario-7 budget
-    // in SsoScenarios.spec.
-    if (packageName === 'oidc-client') {
-      return 'vendor-oidc-client';
-    }
-
-    if (
-      packageName.startsWith('@react-aria/') ||
-      packageName.startsWith('@react-stately/') ||
-      packageName.startsWith('@react-types/') ||
-      packageName === 'react-aria' ||
-      packageName === 'react-aria-components' ||
-      packageName === 'react-stately'
-    ) {
-      return 'vendor-aria';
-    }
-
-    // The core charts entry and echarts render only on chart routes. Left
-    // unassigned they stay behind those routes' dynamic imports; inside
-    // vendor-untitled (an entry-graph chunk) they would load on every page.
-    if (
-      normalizedId.includes('/ui-core-components/') &&
-      normalizedId.includes('/dist/charts/')
-    ) {
-      return undefined;
-    }
-    if (
-      ['echarts', 'echarts-for-react', 'zrender', 'size-sensor'].includes(
-        packageName
-      )
-    ) {
-      return undefined;
-    }
-
-    // Antd and the core component library are shared by nearly every route,
-    // so stable cache buckets pay off. Route-specific dependencies are left
-    // to the bundler so they stay behind their dynamic import.
-    if (normalizedId.includes('/node_modules/antd/')) {
-      return 'vendor-antd';
-    }
-    if (
-      normalizedId.includes('/node_modules/@openmetadata/ui-core-components/')
-    ) {
-      return 'vendor-untitled';
-    }
-    // NOTE: earlier revisions grouped viz (@antv, three, reactflow, recharts,
-    // elkjs, dagre), editors (@tiptap, prosemirror, codemirror, quill), and
-    // forms (@rjsf, react-hook-form, query-builder) into three named vendor
-    // buckets. That produced a single 4.8 MB vendor-viz chunk (max 1.75 MB)
-    // and pulled 2.55 MB brotli of JS onto index.html because one static
-    // importer forced the whole bucket onto the entry graph. Rollup already
-    // lazy-splits these packages behind their consumers' `import()`
-    // boundaries, so leave the auto-splitter to do its job here. Reintroduce
-    // a bucket only after checking (a) every consumer is behind a dynamic
-    // import and (b) the resulting chunk stays under MAX_SINGLE_JS_BYTES.
-
-    return undefined;
-  };
+  const classifyChunk = createChunkClassifier({ isPlaywrightBundle });
 
   // Use empty base so dynamic imports use relative paths
   // The actual BASE_PATH is injected at runtime by the Java backend via ${basePath} replacement
@@ -242,30 +71,8 @@ export default defineConfig(async ({ mode }) => {
       cspNonce: '${cspNonce}', // Placeholder replaced by Java backend at runtime
     },
     plugins: [
-      {
-        name: 'html-transform',
-        transformIndexHtml(html: string) {
-          // Don't replace ${basePath} placeholder - it will be replaced at runtime by Java backend
-          // Add ${basePath} prefix to asset paths (with or without leading slash)
-          return html
-            .replaceAll(
-              /(<script[^>]*src=["'])(\.\/)?assets\//g,
-              '$1${basePath}assets/'
-            )
-            .replaceAll(
-              /(<link[^>]*href=["'])(\.\/)?assets\//g,
-              '$1${basePath}assets/'
-            )
-            .replaceAll(
-              /(<img[^>]*src=["'])(\.\/)?assets\//g,
-              '$1${basePath}assets/'
-            )
-            .replaceAll(
-              /(<img[^>]*src=["'])(\.\/)?images\//g,
-              '$1${basePath}images/'
-            );
-        },
-      },
+      isProductionBundle && !isPlaywrightBundle && noEnumOnlyChunks(),
+      htmlBasePathTransform(),
       tailwindcss(),
       react(),
       svgr(),
@@ -277,7 +84,7 @@ export default defineConfig(async ({ mode }) => {
           Buffer: true,
         },
       }),
-      mode === 'production' && injectCriticalPreloads(),
+      isProductionBundle && injectCriticalPreloads(),
       mode === 'production' &&
         viteCompression({
           algorithm: 'gzip',
@@ -429,7 +236,7 @@ export default defineConfig(async ({ mode }) => {
       // (see Linear's bundler-arc blog post). Bundle is typically 5-10% smaller
       // and the same browsers we already require keep working.
       target: ['chrome93', 'edge93', 'firefox91', 'safari16'],
-      minify: mode === 'production' ? 'esbuild' : false,
+      minify: isProductionBundle ? 'esbuild' : false,
       cssMinify: 'esbuild',
       cssCodeSplit: !isPlaywrightBundle,
       reportCompressedSize: false,
@@ -563,7 +370,9 @@ export default defineConfig(async ({ mode }) => {
 
     define: {
       'import.meta.env.PW_E2E_BUILD': JSON.stringify(isPlaywrightBuild),
-      'process.env.NODE_ENV': JSON.stringify(mode),
+      'process.env.NODE_ENV': JSON.stringify(
+        isProductionBundle ? 'production' : mode
+      ),
       'process.env.BRAND_NAME': JSON.stringify(
         env.BRAND_NAME || 'OpenMetadata'
       ),

@@ -19,7 +19,21 @@ export type AuthCoordinatorEvent = 'refreshed' | 'refresh-failed';
 
 export type RefreshedPayload = { idToken: string; expiresAt: number };
 
-export type RefreshFailedPayload = { reason: string };
+// Which coordinator path gave up: this tab's own renewer threw (`error` is
+// what it threw), a follower exhausted its retries after the leader failed,
+// or the refresh-loop circuit-breaker tripped.
+export type RefreshFailureSource = 'renewer' | 'follower' | 'circuit-breaker';
+
+export type RefreshFailedPayload = {
+  reason: string;
+  error?: unknown;
+  source: RefreshFailureSource;
+  // The token the failed refresh was meant to replace: the bearer of the 401
+  // that started it, or the stored token found expired. By the time a
+  // (possibly throttled) tab handles the failure, storage can already hold a
+  // sibling tab's replacement, so storage is no stand-in for it.
+  staleToken?: string;
+};
 
 export type EventPayloadMap = {
   refreshed: RefreshedPayload;

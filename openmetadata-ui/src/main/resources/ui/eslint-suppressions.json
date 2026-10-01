@@ -900,7 +900,7 @@
   },
   "playwright/utils/customProperty.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 12
+      "count": 2
     }
   },
   "playwright/utils/customPropertyAdvancedSearchUtils.ts": {

@@ -205,6 +205,7 @@ const EntityTable: FC<EntityTableProps> = ({
         )}
       </Table.Header>
       <Table.Body
+        dependencies={[showRemove, canEditAll, isLoadingOnSave]}
         items={items ?? []}
         renderEmptyState={() => (
           <Box
@@ -218,6 +219,7 @@ const EntityTable: FC<EntityTableProps> = ({
           <Table.Row
             columns={columns}
             data-testid={getEntityName(item)}
+            dependencies={[showRemove, canEditAll, isLoadingOnSave]}
             id={item.fullyQualifiedName ?? item.name ?? item.id}
             key={item.fullyQualifiedName ?? item.name ?? item.id}>
             {(col) => (

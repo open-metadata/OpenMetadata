@@ -1217,13 +1217,14 @@ export const openColumnDetailPanel = async ({
       )
     : null;
 
+  let clickTarget: Locator;
+
   if (entityType === 'MlModel') {
-    const columnName = page
+    clickTarget = page
       .locator(`[${rowSelector}="${columnId}"]`)
       .getByTestId(columnNameTestId)
       .first();
-    await columnName.waitFor({ state: 'visible' });
-    await columnName.click();
+    await clickTarget.waitFor({ state: 'visible' });
   } else {
     const row = page.locator(`[${rowSelector}="${columnId}"]`).first();
     await row.waitFor({ state: 'visible' });
@@ -1234,20 +1235,29 @@ export const openColumnDetailPanel = async ({
 
     const columnNameElement = nameCell.getByTestId(columnNameTestId);
 
-    if ((await columnNameElement.count()) > 0) {
-      await columnNameElement.click({ force: false });
-    } else {
-      await nameCell.click({ force: false });
-    }
+    clickTarget =
+      (await columnNameElement.count()) > 0 ? columnNameElement : nameCell;
   }
-  await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+  const panelContainer = page.locator('.column-detail-panel');
+
+  // Rows keep reflowing for about a second after first paint: nested rows
+  // auto-expand in an effect and description previews clamp once measured.
+  // On a slow runner the row moves between mousedown and mouseup, so the
+  // browser fires `click` on a common ancestor and the cell handler never
+  // runs. Re-click until the panel opens, but only while it is closed: once
+  // the drawer is up its mask covers the row and a click would close it.
+  await expect(async () => {
+    if (!(await panelContainer.isVisible())) {
+      await clickTarget.click({ timeout: 5_000 });
+    }
+    await expect(panelContainer).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
 
   if (apiResponsePromise) {
     const apiResponse = await apiResponsePromise;
     expect(apiResponse.status()).toBe(200);
   }
-
-  const panelContainer = page.locator('.column-detail-panel');
 
   // Wait for the panel content to be loaded
   await expect(panelContainer.getByTestId('entity-link')).toBeVisible();
