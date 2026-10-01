@@ -79,7 +79,7 @@ describe('CustomAreaChart', () => {
     expect(areaProps().series[0].status).toBe('failed');
   });
 
-  it('formats tooltip values with valueFormatter', () => {
+  it('shows the formatted value and the date of the hovered point', () => {
     render(
       <CustomAreaChart
         ariaLabel="Time"
@@ -88,7 +88,26 @@ describe('CustomAreaChart', () => {
         valueFormatter={(value) => `${value} ms`}
       />
     );
+    const content = areaProps().tooltip?.render?.([], {
+      timestamp: 2,
+      count: 7,
+      date: 'date-2',
+    });
+    render(<>{content}</>);
 
-    expect(areaProps().tooltip?.valueFormatter?.(7, 'count')).toBe('7 ms');
+    expect(screen.getByText('7 ms')).toBeInTheDocument();
+    expect(screen.getByText('date-2')).toBeInTheDocument();
+  });
+
+  it('shows the raw value without a valueFormatter', () => {
+    render(<CustomAreaChart ariaLabel="Count" data={data} name="count" />);
+    const content = areaProps().tooltip?.render?.([], {
+      timestamp: 1,
+      count: 4,
+      date: 'date-1',
+    });
+    render(<>{content}</>);
+
+    expect(screen.getByText('4')).toBeInTheDocument();
   });
 });

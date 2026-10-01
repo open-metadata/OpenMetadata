@@ -730,9 +730,21 @@ describe('CardinalityDistributionChart', () => {
       expect(lastBarProps().series[0]).toEqual(
         expect.objectContaining({ key: 'percentage', status: 'info' })
       );
-      expect(lastBarProps().tooltip?.valueFormatter?.(40, 'percentage')).toBe(
-        '40%'
-      );
+    });
+
+    it('shows name, count and percentage in the tooltip', () => {
+      renderCurrentDay();
+      const content = lastBarProps().tooltip?.render?.([], {
+        name: 'high',
+        count: 400,
+        percentage: 40,
+      });
+      render(<>{content}</>);
+
+      expect(screen.getByText('high')).toBeInTheDocument();
+      expect(screen.getByText('label.count')).toBeInTheDocument();
+      expect(screen.getByText('400')).toBeInTheDocument();
+      expect(screen.getByText('40%')).toBeInTheDocument();
     });
 
     it('selects a category from a bar click and clears it on a second click', () => {

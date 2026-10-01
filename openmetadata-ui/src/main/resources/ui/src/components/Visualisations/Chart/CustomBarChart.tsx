@@ -14,15 +14,22 @@
 import {
   BarChart,
   type ChartSeries,
-  type ChartTooltipProps,
+  type ChartTooltipRenderProps,
   type ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
 import { Col, Row } from 'antd';
 import { useMemo } from 'react';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
 import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
+import {
+  chartTooltipRows,
+  DQTooltipContent,
+} from '../../../utils/DataQuality/CustomDQTooltip.component';
+import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
+
+type OperationRow = CustomBarChartProps['chartCollection']['data'][number];
 
 const STACK_ID = 'custom-bar-chart';
 const CHART_HEIGHT = 300;
@@ -56,9 +63,15 @@ const CustomBarChart = ({
     [tickFormatter]
   );
 
-  const tooltip = useMemo<ChartTooltipProps>(
+  const tooltip = useMemo<ChartTooltipRenderProps<OperationRow>>(
     () => ({
-      valueFormatter: (value) => String(tooltipFormatter(value, tickFormatter)),
+      render: (items, row) => (
+        <DQTooltipContent
+          header={formatDateTimeLong(Number(row?.timestamp ?? 0))}
+          rows={chartTooltipRows(items)}
+          valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
+        />
+      ),
     }),
     [tickFormatter]
   );

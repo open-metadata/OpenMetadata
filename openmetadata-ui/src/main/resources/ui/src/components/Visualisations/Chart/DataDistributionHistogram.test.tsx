@@ -186,9 +186,34 @@ describe('DataDistributionHistogram component test', () => {
       name: '5.00 to 100.00',
       frequency: 56,
     });
-    expect(calls[0].tooltip?.valueFormatter?.(1200, 'frequency')).toBe(
-      String(tooltipFormatter(1200))
+  });
+
+  it('shows the boundary and its frequency in the tooltip', () => {
+    mockBarChart.mockClear();
+    render(
+      <DataDistributionHistogram
+        data={{ currentDayData: MOCK_HISTOGRAM_DATA[0] }}
+      />
     );
+    const props = mockBarChart.mock.calls[0][0];
+    const content = props.tooltip?.render?.(
+      [
+        {
+          seriesKey: 'frequency',
+          name: 'label.frequency',
+          value: 1200,
+          color: '#1',
+          dataIndex: 0,
+        },
+      ],
+      { name: '5.00 to 100.00', frequency: 1200 }
+    );
+    render(<>{content}</>);
+
+    expect(screen.getByText('5.00 to 100.00')).toBeInTheDocument();
+    expect(
+      screen.getByText(String(tooltipFormatter(1200)))
+    ).toBeInTheDocument();
   });
 
   it('No data placeholder should render when firstDay & currentDay data is undefined', async () => {

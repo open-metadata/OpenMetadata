@@ -10,15 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   type ChartOption,
   type ChartSeries,
-  type ChartTooltipProps,
+  type ChartTooltipRenderProps,
 } from '@openmetadata/ui-core-components/charts';
 import { useMemo } from 'react';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
-import { CustomAreaChartProps } from './Chart.interface';
+import { CustomAreaChartData, CustomAreaChartProps } from './Chart.interface';
+
+type AreaRow = CustomAreaChartData & { date: string };
 
 const HIDDEN = { show: false };
 // A sparkline: the plot fills the card, as the axis-less recharts chart did.
@@ -53,11 +56,22 @@ const CustomAreaChart = ({
     [ariaLabel, status]
   );
 
-  const tooltip = useMemo<ChartTooltipProps | undefined>(
-    () =>
-      valueFormatter
-        ? { valueFormatter: (value) => valueFormatter(Number(value)) }
-        : undefined,
+  const tooltip = useMemo<ChartTooltipRenderProps<AreaRow>>(
+    () => ({
+      render: (_items, row) =>
+        row ? (
+          <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-2 tw:shadow-md">
+            <Typography size="text-md" weight="medium">
+              {valueFormatter ? valueFormatter(row.count) : row.count}
+            </Typography>
+            <span
+              aria-hidden
+              className="tw:h-6 tw:border-l tw:border-secondary"
+            />
+            <Typography size="text-xs">{row.date}</Typography>
+          </div>
+        ) : null,
+    }),
     [valueFormatter]
   );
 

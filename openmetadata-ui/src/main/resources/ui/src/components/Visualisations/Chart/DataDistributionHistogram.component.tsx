@@ -15,7 +15,7 @@ import { Badge } from '@openmetadata/ui-core-components';
 import {
   BarChart,
   type ChartSeries,
-  type ChartTooltipProps,
+  type ChartTooltipRenderProps,
   type ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
 import classNames from 'classnames';
@@ -25,6 +25,10 @@ import { useTranslation } from 'react-i18next';
 import { DEFAULT_HISTOGRAM_DATA } from '../../../constants/profiler.constant';
 import { HistogramClass } from '../../../generated/entity/data/table';
 import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
+import {
+  chartTooltipRows,
+  DQTooltipContent,
+} from '../../../utils/DataQuality/CustomDQTooltip.component';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataDistributionHistogramProps } from './Chart.interface';
@@ -39,8 +43,14 @@ const LEGEND_SHOWN = { show: true };
 const Y_AXIS: ChartYAxisProps = {
   formatter: (value) => String(axisTickFormatter(Number(value))),
 };
-const TOOLTIP: ChartTooltipProps = {
-  valueFormatter: (value) => String(tooltipFormatter(value)),
+const TOOLTIP: ChartTooltipRenderProps<HistogramRow> = {
+  render: (items, row) => (
+    <DQTooltipContent
+      header={row?.name}
+      rows={chartTooltipRows(items)}
+      valueFormatter={(value) => tooltipFormatter(value)}
+    />
+  ),
 };
 
 const DataDistributionHistogram = ({

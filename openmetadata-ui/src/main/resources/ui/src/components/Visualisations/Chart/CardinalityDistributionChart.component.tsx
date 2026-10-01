@@ -15,7 +15,7 @@ import { Badge } from '@openmetadata/ui-core-components';
 import {
   BarChart,
   type ChartSeries,
-  type ChartTooltipProps,
+  type ChartTooltipRenderProps,
   type ChartXAxisProps,
   type ChartYAxisProps,
   useChartPalette,
@@ -25,7 +25,7 @@ import { isUndefined } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColumnProfile } from '../../../generated/entity/data/table';
-import { axisTickFormatter } from '../../../utils/ChartUtils';
+import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 
@@ -49,7 +49,6 @@ const LABEL_WIDTH = 120;
 const PERCENT_AXIS: ChartYAxisProps = {
   formatter: (value) => String(axisTickFormatter(Number(value), '%')),
 };
-const TOOLTIP: ChartTooltipProps = { valueFormatter: (value) => `${value}%` };
 
 // ECharts rich text is `{style|text}`; these characters would break it.
 const richSafe = (value: string) => value.replace(/[{}|]/g, '');
@@ -121,6 +120,37 @@ const CardinalityGraph = ({
     [selectedCategory]
   );
 
+  const tooltip = useMemo<ChartTooltipRenderProps<CardinalityRow>>(
+    () => ({
+      render: (_items, row) =>
+        row ? (
+          <div className="tw:bg-primary tw:rounded-md tw:shadow-md tw:p-2.5">
+            <p className="tw:text-primary tw:font-medium tw:text-xs">
+              {row.name}
+            </p>
+            <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
+            <div className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm">
+              <span className="tw:text-tertiary tw:text-[11px]">
+                {t('label.count')}
+              </span>
+              <span className="tw:text-primary tw:font-medium tw:text-[11px]">
+                {tooltipFormatter(row.count)}
+              </span>
+            </div>
+            <div className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm">
+              <span className="tw:text-tertiary tw:text-[11px]">
+                {t('label.percentage')}
+              </span>
+              <span className="tw:text-primary tw:font-medium tw:text-[11px]">
+                {`${row.percentage}%`}
+              </span>
+            </div>
+          </div>
+        ) : null,
+    }),
+    [t]
+  );
+
   const handlePointClick = useCallback(
     (row: CardinalityRow) => onToggle(row.name),
     [onToggle]
@@ -138,7 +168,7 @@ const CardinalityGraph = ({
         layout="horizontal"
         radius={8}
         series={series}
-        tooltip={TOOLTIP}
+        tooltip={tooltip}
         xAxis={categoryAxis}
         xKey="name"
         yAxis={PERCENT_AXIS}

@@ -20,6 +20,11 @@ import { tooltipFormatter } from '../../../utils/ChartUtils';
 import { CustomBarChartProps } from './Chart.interface';
 import CustomBarChart from './CustomBarChart';
 
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
+  formatDateTimeLong: jest.fn((timestamp: number) => `long-${timestamp}`),
+}));
+
 type Row = Record<string, string | number | undefined>;
 const mockBarChart = BarChart as unknown as jest.Mock<
   null,
@@ -66,14 +71,42 @@ describe('CustomBarChart', () => {
     ]);
   });
 
-  it('formats y ticks and tooltip values with the tick formatter', () => {
+  it('formats y ticks with the tick formatter', () => {
     render(<CustomBarChart {...props} />);
     const yAxis = barProps().yAxis as { formatter: (value: number) => string };
 
     expect(yAxis.formatter(40)).toBe('40%');
-    expect(barProps().tooltip?.valueFormatter?.(4, 'INSERT')).toBe(
-      String(tooltipFormatter(4, '%'))
+  });
+
+  it('shows the long date and each operation with a value in the tooltip', () => {
+    render(<CustomBarChart {...props} />);
+    const content = barProps().tooltip?.render?.(
+      [
+        {
+          seriesKey: 'INSERT',
+          name: 'Insert',
+          value: 4,
+          color: '#1',
+          dataIndex: 0,
+        },
+        {
+          seriesKey: 'DELETE',
+          name: 'Delete',
+          value: null,
+          color: '#2',
+          dataIndex: 0,
+        },
+      ],
+      props.chartCollection.data[0]
     );
+    render(<>{content}</>);
+
+    expect(screen.getByText('long-1')).toBeInTheDocument();
+    expect(screen.getByText('Insert')).toBeInTheDocument();
+    expect(
+      screen.getByText(String(tooltipFormatter(4, '%')))
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Delete')).not.toBeInTheDocument();
   });
 
   it('shows the placeholder and no chart when there is no data', () => {
