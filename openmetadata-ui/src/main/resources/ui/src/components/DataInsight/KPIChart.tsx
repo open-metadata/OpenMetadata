@@ -179,7 +179,7 @@ const KPIChart: FC<Props> = ({
         key,
         name: key,
         color: chartColor(palette, index),
-        seriesOption: { connectNulls: true },
+        seriesOption: { connectNulls: true, emphasis: { focus: 'series' } },
       })),
     [kpiNames, palette]
   );

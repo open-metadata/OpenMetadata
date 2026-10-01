@@ -134,7 +134,10 @@ describe('Test KPIChart Component', () => {
     expect(props.series.map((s: ChartSeries) => s.key)).toEqual(
       KPI_LIST.map((k) => k.name)
     );
-    expect(props.series[0].seriesOption).toEqual({ connectNulls: true });
+    expect(props.series[0].seriesOption).toEqual({
+      connectNulls: true,
+      emphasis: { focus: 'series' },
+    });
     expect(props.legend).toBeUndefined();
   });
 
