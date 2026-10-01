@@ -91,6 +91,14 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(() => ({ permissions: {} })),
 }));
 
+jest.mock(
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => ({
+    __esModule: true,
+    default: jest.fn(() => <div data-testid="title-breadcrumb" />),
+  })
+);
+
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
   __esModule: true,
   default: ({ children }: PageLayoutMockProps) => (
@@ -190,7 +198,7 @@ describe('OntologyExplorerPage', () => {
       'tw:fixed'
     );
     expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     expect(screen.getByTestId('submode-tab-graph')).toHaveAttribute(

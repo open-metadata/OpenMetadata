@@ -259,6 +259,7 @@ interface BadgeWithDotProps<T extends BadgeTypes> {
   color?: BadgeTypeToColorMap<typeof withBadgeTypes>[T];
   bordered?: boolean;
   className?: string;
+  'data-testid'?: string;
   children: ReactNode;
 }
 
@@ -271,6 +272,7 @@ export const BadgeWithDot = <T extends BadgeTypes>(
     type = 'pill-color',
     bordered = true,
     className,
+    'data-testid': dataTestId,
     children,
   } = props;
 
@@ -304,7 +306,8 @@ export const BadgeWithDot = <T extends BadgeTypes>(
         colors.styles[color].root,
         bordered && 'tw:outline-1 tw:-outline-offset-1',
         className
-      )}>
+      )}
+      data-testid={dataTestId}>
       <Dot className={colors.styles[color].addon} size="sm" />
       {children}
     </span>

@@ -4695,6 +4695,7 @@
     "ontology-relation-subtype": "{{from}} est un {{to}}",
     "ontology-relationships-feature-description": "Reliez les termes avec du sens : « Lié à », « Partie de » ou vos propres types comme « calculé à partir de ».",
     "ontology-studio-edit-coming-soon": "L'édition visuelle des relations arrive bientôt. Pour l'instant, explorez le graphe d'ontologie ou exécutez des requêtes SPARQL.",
+    "ontology-studio-subtitle": "Explorez, créez et interrogez l'ontologie métier qui sous-tend vos termes de glossaire.",
     "ontology-tree-description": "Concepts des glossaires sélectionnés, organisés par hiérarchie. Les termes isolés et polyhiérarchiques sont signalés.",
     "ontology-unlocks-feature-description": "Suivez n'importe quel terme jusqu'à ses parents, ses composants et ses dépendances : un contexte complet, pas une définition isolée.",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

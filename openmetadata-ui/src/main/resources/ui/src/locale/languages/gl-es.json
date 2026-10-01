@@ -4695,6 +4695,7 @@
     "ontology-relation-subtype": "{{from}} é un {{to}}",
     "ontology-relationships-feature-description": "Vincula termos con significado: «Relacionado con», «Parte de» ou os teus propios tipos como «calculado a partir de».",
     "ontology-studio-edit-coming-soon": "A creación visual de relacións estará dispoñible en breve. Polo de agora, explora o grafo da ontoloxía ou executa consultas SPARQL.",
+    "ontology-studio-subtitle": "Explora, crea e consulta a ontoloxía de negocio que hai detrás dos teus termos do glosario.",
     "ontology-tree-description": "Conceptos dos glosarios seleccionados, organizados por xerarquía. Os termos illados e polixerárquicos están sinalados.",
     "ontology-unlocks-feature-description": "Segue calquera termo ata os seus pais, partes e dependencias: contexto completo, non unha definición illada.",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
