@@ -71,7 +71,9 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
 
   @Override
   protected Result executeAuthorized(
-      final CatalogSecurityContext securityContext, final Map<String, Object> params)
+      final Authorizer authorizer,
+      final CatalogSecurityContext securityContext,
+      final Map<String, Object> params)
       throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     String resource = parameters.optionalString("resource");

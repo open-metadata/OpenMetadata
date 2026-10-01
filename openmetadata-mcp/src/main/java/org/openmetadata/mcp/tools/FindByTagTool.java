@@ -24,6 +24,7 @@ import java.util.function.Supplier;
 import org.apache.jena.query.ParameterizedSparqlString;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUtils;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Finds entities associated with a tag or glossary-term fully qualified name. */
@@ -68,7 +69,9 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
 
   @Override
   protected Result executeAuthorized(
-      final CatalogSecurityContext securityContext, final Map<String, Object> params)
+      final Authorizer authorizer,
+      final CatalogSecurityContext securityContext,
+      final Map<String, Object> params)
       throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     String tagFqn = parameters.requiredString("tagFqn");

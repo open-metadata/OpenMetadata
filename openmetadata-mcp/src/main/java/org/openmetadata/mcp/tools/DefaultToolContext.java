@@ -334,7 +334,12 @@ public class DefaultToolContext {
   private static final List<CategoryMatcher> CATEGORY_MATCHERS =
       List.of(
           new CategoryMatcher(
-              meta -> meta.name().contains("RateLimit") || meta.message().contains("rate limit"),
+              meta ->
+                  meta.name().contains("RateLimit")
+                      // A refused or deferred graph read the caller may repeat shortly.
+                      || meta.name().contains("RdfRetryLater")
+                      || meta.name().contains("QueryCapacity")
+                      || meta.message().contains("rate limit"),
               McpToolCallUsage.ErrorCategory.RATE_LIMIT,
               STATUS_TOO_MANY_REQUESTS),
           new CategoryMatcher(

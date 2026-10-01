@@ -20,9 +20,12 @@ import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
 import org.openmetadata.schema.api.rdf.AgentSparqlResponse;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSparqlService;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.SparqlQueryLimits;
+import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
 /**
  * Executes agent-authored SELECT queries against the server-configured RDF dataset.
@@ -48,6 +51,27 @@ public final class AgentSparqlService {
   }
 
   /**
+   * The one way to wire this service to a repository, shared by the REST endpoint and the MCP
+   * tools so both run the same readiness check, admission guard and SPARQL service.
+   */
+  public static AgentSparqlService forRepository(
+      final Supplier<RdfRepository> repositorySupplier,
+      final Supplier<RdfProjectionState> projectionStateSupplier) {
+    return new AgentSparqlService(
+        () -> sparqlServiceFor(repositorySupplier.get()),
+        projectionStateSupplier,
+        SparqlQueryExecutionGuard.shared());
+  }
+
+  public static AgentSparqlService forRepository(final Supplier<RdfRepository> repositorySupplier) {
+    return forRepository(repositorySupplier, RdfProjectionStateResolver::resolveConfigured);
+  }
+
+  private static RdfSparqlService sparqlServiceFor(final RdfRepository repository) {
+    return new RdfSparqlService(repository, new SparqlFederationGuard(repository.getConfig()));
+  }
+
+  /**
    * @param effectiveUser the validated effective caller, resolved before the guard's thread handoff
    *     so per-user concurrency never keys on the impersonating bot
    */
@@ -69,7 +93,9 @@ public final class AgentSparqlService {
     final AgentSparqlResponse response = resultMapper.toResponse(sparqlJson, plan);
     requireReadyProjection();
     return new AgentSparqlResult(
-        serializeBounded(response), response.getResults().getBindings().size());
+        serializeBounded(response),
+        response.getResults().getBindings().size(),
+        response.getMetadata().getCompleteness());
   }
 
   private void requireReadyProjection() {

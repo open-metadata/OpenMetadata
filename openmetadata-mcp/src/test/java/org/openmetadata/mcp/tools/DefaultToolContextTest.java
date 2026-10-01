@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -90,6 +91,28 @@ class DefaultToolContextTest {
   void classifyRateLimitException() {
     assertThat(DefaultToolContext.classifyException(new RuntimeException("rate limit exceeded")))
         .isEqualTo(McpToolCallUsage.ErrorCategory.RATE_LIMIT);
+  }
+
+  @Test
+  void classifyGraphReadsThatShouldBeRetriedAsRateLimited() {
+    assertThat(
+            DefaultToolContext.classifyException(
+                new RdfRetryLaterException("PROJECTION_NOT_READY: rebuilding", null)))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.RATE_LIMIT);
+    assertThat(
+            DefaultToolContext.classifyException(
+                new SparqlQueryExecutionGuard.QueryCapacityException("concurrency limit reached")))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.RATE_LIMIT);
+    assertThat(DefaultToolContext.resolveStatusCode(new RdfRetryLaterException("not ready", null)))
+        .isEqualTo(429);
+  }
+
+  @Test
+  void classifyGraphQueryTimeoutAsTimeout() {
+    assertThat(
+            DefaultToolContext.classifyException(
+                new RdfQueryTimeoutException("EXECUTION_TIMEOUT: too slow", null)))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.TIMEOUT);
   }
 
   @Test
