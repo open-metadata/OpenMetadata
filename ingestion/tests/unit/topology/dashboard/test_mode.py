@@ -492,3 +492,73 @@ class TestModeOwnersAndUsage:
         summary = UsageDetails(date=mode_source.today, dailyStats=UsageStats(count=42))
 
         assert self._usage(mode_source, summary) == []
+
+
+class TestModeNewStagesNeverFailTheRun:
+    """Owners, usage and columns are additions: any failure must degrade to 'not ingested'."""
+
+    def test_report_without_creator_link_has_no_owner(self, mode_source):
+        mode_source.source_config.includeOwners = True
+
+        assert mode_source.get_owner_ref(REPORT) is None
+        mode_source.client.get_user_email.assert_not_called()
+
+    def test_owner_lookup_failure_is_swallowed(self, mode_source):
+        mode_source.source_config.includeOwners = True
+        mode_source.client.get_user_email.side_effect = RuntimeError("boom")
+
+        assert mode_source.get_owner_ref(CREATOR_REPORT) is None
+
+    @pytest.mark.parametrize(
+        ("report", "dashboard", "summary"),
+        [
+            pytest.param({**CREATOR_REPORT, "view_count": None}, True, None, id="no-view-count"),
+            pytest.param(CREATOR_REPORT, False, None, id="dashboard-not-ingested"),
+            pytest.param(
+                CREATOR_REPORT,
+                True,
+                UsageDetails(date="2020-01-01", dailyStats=UsageStats(count=50)),
+                id="views-went-down",
+            ),
+        ],
+    )
+    def test_usage_is_skipped_when_it_cannot_be_computed(self, mode_source, report, dashboard, summary):
+        mode_source.metadata = MagicMock()
+        mode_source.metadata.get_by_name.return_value = (
+            Dashboard.model_construct(usageSummary=summary) if dashboard else None
+        )
+        details = ModeDashboardDetails(report=report, queries=[])
+
+        assert list(mode_source.yield_dashboard_usage(details)) == []
+
+    def test_usage_failure_is_reported_not_raised(self, mode_source):
+        mode_source.metadata = MagicMock()
+        mode_source.metadata.get_by_name.side_effect = RuntimeError("boom")
+
+        (result,) = list(mode_source.yield_dashboard_usage(ModeDashboardDetails(report=CREATOR_REPORT, queries=[])))
+
+        assert result.right is None
+        assert "boom" in result.left.error
+
+    def test_column_failure_still_yields_data_model(self, mode_source):
+        mode_source.metadata = MagicMock()
+        mode_source.metadata.search_in_any_service.side_effect = RuntimeError("search down")
+
+        (result,) = list(mode_source.yield_datamodel(_details(mode_source)))
+
+        assert result.right.columns == []
+
+    def test_unmatched_columns_only_drop_their_column_edge(self, mode_source):
+        mode_source.metadata = MagicMock()
+        mode_source.metadata.search_in_any_service.return_value = [_orders_table()]
+        query = {**QUERY, "raw_query": "SELECT id, missing_col FROM analytics.orders"}
+        details = _details(mode_source, [query])
+        data_model = _data_model_with(next(iter(mode_source.yield_datamodel(details))).right.columns)
+        mode_source.metadata.get_by_name = MagicMock(return_value=data_model)
+        mode_source.context.get().__dict__["dataModels"] = ["report-token.query-token"]
+
+        (lineage,) = list(mode_source.yield_dashboard_lineage_details(details))
+
+        assert [column.toColumn.root for column in lineage.right.edge.lineageDetails.columnsLineage] == [
+            f"{DATA_MODEL_FQN}.id"
+        ]
