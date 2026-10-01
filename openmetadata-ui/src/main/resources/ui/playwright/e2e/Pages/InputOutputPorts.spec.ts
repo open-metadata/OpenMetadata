@@ -1675,6 +1675,10 @@ test.describe('Input Output Ports', () => {
           tables[0],
           'entityResponseData.fullyQualifiedName'
         );
+        // The asset card body streams tags/owners/counts async — wait
+        // for loaders so the manage-button click doesn't retry
+        // "element is not stable" through the reflow.
+        await waitForAllLoadersToDisappear(page);
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
