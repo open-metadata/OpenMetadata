@@ -181,7 +181,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 *[
                     metric(column).fn()
                     for metric in metrics
-                    if not metric.is_window_metric() and metric not in {Sum, StdDev, Mean}
+                    # issubclass, not identity: injected registries (e.g. Collate) subclass these
+                    if not metric.is_window_metric() and not issubclass(metric, (Sum, StdDev, Mean))
                 ]
             )
             return row._asdict()
