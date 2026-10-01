@@ -1,5 +1,5 @@
 import type { FC, HTMLAttributes, MouseEventHandler, ReactNode } from 'react';
-import { ChevronDown, Share04 } from '@untitledui/icons';
+import { ChevronDown, Share04 } from '../../../../icons';
 import { Link as AriaLink } from 'react-aria-components';
 import { Badge } from '@/components/base/badges/badges';
 import { cx, sortCx } from '@/utils/cx';

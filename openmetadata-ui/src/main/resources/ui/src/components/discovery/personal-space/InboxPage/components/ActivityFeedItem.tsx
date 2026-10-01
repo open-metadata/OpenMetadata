@@ -18,7 +18,7 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { MessageDotsCircle } from '@untitledui/icons';
+import { MessageDotsCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';

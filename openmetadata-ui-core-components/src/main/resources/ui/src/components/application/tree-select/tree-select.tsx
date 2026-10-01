@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
+import { ChevronDown, RefreshCw01, Search, XClose } from '../../../icons';
 import {
   DropdownSearchField,
   DropdownStagedFooter,
@@ -997,7 +997,7 @@ export const TreeSelect = <T = unknown,>({
             openTrigger();
             inputRef.current?.focus();
           }}>
-          <SearchLg className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
+          <Search className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
 
           {renderSelectedItem
             ? selectedData.map((node) => (

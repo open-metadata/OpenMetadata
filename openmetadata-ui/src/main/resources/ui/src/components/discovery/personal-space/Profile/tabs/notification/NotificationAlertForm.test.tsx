@@ -65,6 +65,7 @@ jest.mock('../../../../../../utils/AlertsClassBase', () => ({
     }),
     handleAlertSave: jest.fn(),
     getAddAlertFormExtraWidgets: jest.fn().mockReturnValue({}),
+    getAlertAiTemplateSection: jest.fn().mockReturnValue(null),
     getAddAlertFormExtraButtons: jest.fn().mockReturnValue({}),
   },
 }));

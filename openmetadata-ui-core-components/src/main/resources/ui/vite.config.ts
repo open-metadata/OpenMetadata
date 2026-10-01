@@ -93,7 +93,6 @@ export default defineConfig({
         'react',
         'react-dom',
         'react/jsx-runtime',
-        '@untitledui/icons',
         'react-aria',
         'react-aria-components',
         'react-stately',
