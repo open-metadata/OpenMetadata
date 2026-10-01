@@ -94,6 +94,7 @@ def test_password_mode_scopes_to_owned_schema_by_reference(instance, server):
         "username": "${E2E_SNOWFLAKE_USERNAME}",
         "warehouse": "${E2E_SNOWFLAKE_WAREHOUSE}",
         "database": "${E2E_SNOWFLAKE_DATABASE}",
+        "connectionArguments": {"session_parameters": {"GEOGRAPHY_OUTPUT_FORMAT": "GeoJSON"}},
         "password": "${E2E_SNOWFLAKE_PASSWORD}",
     }
     assert config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] == {"includes": ["^E2E_SF_OWNED$"]}

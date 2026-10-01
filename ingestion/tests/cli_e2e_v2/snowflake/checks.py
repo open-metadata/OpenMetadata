@@ -215,7 +215,7 @@ def _comparable(name, value):
     """Compare the value, not the session's rendering of it.
 
     TIMESTAMP_LTZ renders in the session time zone, the account default. GEOGRAPHY renders as
-    GeoJSON text, the default GEOGRAPHY_OUTPUT_FORMAT, with the driver's whitespace.
+    GeoJSON text, which the suite's connection pins, with the driver's whitespace.
     """
     if name == "TS_LTZ_COL" and isinstance(value, str):
         return datetime.fromisoformat(value).astimezone(timezone.utc).isoformat()

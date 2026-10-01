@@ -66,6 +66,8 @@ def _connection(
         "username": Env(USERNAME_ENV).ref(),
         "warehouse": Env(WAREHOUSE_ENV).ref(),
         "database": Env(DATABASE_ENV).ref(),
+        # GEOGRAPHY renders in the account's configured format, so pin the one the samples assert.
+        "connectionArguments": {"session_parameters": {"GEOGRAPHY_OUTPUT_FORMAT": "GeoJSON"}},
     }
     if os.environ.get(ROLE_ENV):
         connection["role"] = Env(ROLE_ENV).ref()
