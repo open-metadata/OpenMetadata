@@ -424,17 +424,25 @@ def link(label: str, url: str) -> str:
     return f'<a href="{e(url)}" target="_blank" rel="noreferrer">{e(label)}</a>'
 
 
+DARK = """--bg:#0c0e12; --card:#13161b; --fg:#f7f7f7; --muted:#94979c; --line:#22262f; --soft:#181b21;
+  --brand:#53b1fd; --bad:#f97066; --bad-soft:#55160c; --warn:#fdb022; --warn-soft:#4e1d09; --ok:#47cd89; --ok-soft:#053321;"""
+# Follows the OS setting until the reader picks one with the theme button.
 STYLE = """
 :root { --bg:#f7f7f7; --card:#fff; --fg:#181d27; --muted:#535862; --line:#e9eaeb; --soft:#fafafa;
   --brand:#1570ef; --bad:#d92d20; --bad-soft:#fef3f2; --warn:#dc6803; --warn-soft:#fffaeb;
   --ok:#079455; --ok-soft:#ecfdf3; }
-@media (prefers-color-scheme: dark) { :root { --bg:#0c0e12; --card:#13161b; --fg:#f7f7f7; --muted:#94979c;
-  --line:#22262f; --soft:#181b21; --brand:#53b1fd; --bad:#f97066; --bad-soft:#55160c;
-  --warn:#fdb022; --warn-soft:#4e1d09; --ok:#47cd89; --ok-soft:#053321; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme=light]) { DARK } }
+:root[data-theme=dark] { DARK }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 Inter, -apple-system, "Segoe UI", Roboto, sans-serif; }
 a { color:var(--brand); text-decoration:none; } a:hover { text-decoration:underline; }
 header { background:var(--card); border-bottom:1px solid var(--line); }
+header .wrap { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+.theme { display:inline-flex; padding:7px; border-radius:8px; }
+.theme svg { width:18px; height:18px; } .theme .sun { display:none; }
+:root[data-theme=dark] .theme .sun { display:block; } :root[data-theme=dark] .theme .moon { display:none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme=light]) .theme .sun { display:block; }
+  :root:not([data-theme=light]) .theme .moon { display:none; } }
 .wrap { max-width:1240px; margin:0 auto; padding:0 24px; }
 header .wrap { padding-top:20px; padding-bottom:20px; }
 .eyebrow { color:var(--brand); font-weight:600; font-size:12px; letter-spacing:.04em; text-transform:uppercase; }
@@ -483,8 +491,19 @@ footer { color:var(--muted); font-size:12px; padding:8px 0 32px; }
 # file preview, static previews) would show dead controls, so the controls stay
 # hidden until this runs. The filter hides every entry whose text lacks the query;
 # closed <details> are still searched, so a match in a run list or error counts.
+# Applies a saved theme before first paint. Storage can throw (private window,
+# file:// in some browsers), so the OS setting is the fallback.
+HEAD_JS = """<script>
+try { const t = localStorage.getItem('mq-report-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>"""
 PAGE_JS = """<script>
-document.documentElement.classList.remove('nojs');
+const root = document.documentElement;
+root.classList.remove('nojs');
+document.getElementById('theme').addEventListener('click', () => {
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('mq-report-theme', root.dataset.theme); } catch (e) {}
+});
 const entries = document.querySelectorAll('details');
 document.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () =>
   entries.forEach(d => { d.open = b.dataset.open === 'true'; })));
@@ -493,6 +512,14 @@ q.addEventListener('input', () => { const v = q.value.toLowerCase();
   entries.forEach(d => { d.hidden = v && !d.textContent.toLowerCase().includes(v); }); });
 </script>"""
 STRIP_MAX = 30
+THEME_BUTTON = (
+    "<button id=theme class='theme js-only' type=button title='Switch light / dark' aria-label='Switch light / dark theme'>"
+    "<svg class=moon viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' "
+    "stroke-linejoin='round' aria-hidden='true'><path d='M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z'/></svg>"
+    "<svg class=sun viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' "
+    "stroke-linejoin='round' aria-hidden='true'><circle cx='12' cy='12' r='4'/><path d='M12 2v2M12 20v2M4.9 4.9l1.4 1.4"
+    "M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4'/></svg></button>"
+)
 
 
 def runs_table(test: dict, failed: bool, repo_url: str) -> str:
@@ -584,9 +611,9 @@ def render_html(report: dict, title: str, window: str, repo_url: str) -> str:
         for spec in report["specs"]
     )
     parts = [
-        "<header><div class=wrap><div class=eyebrow>OpenMetadata · Merge queue</div>"
+        "<header><div class=wrap><div><div class=eyebrow>OpenMetadata · Merge queue</div>"
         f"<h1>Playwright failed &amp; flaky tests</h1><p class=sub>{e(window)} · ranked by distinct PRs, "
-        "so a re-queued PR counts once</p></div></header><div class=wrap>",
+        f"so a re-queued PR counts once</p></div>{THEME_BUTTON}</div></header><div class=wrap>",
         "<div class=tiles>"
         + "".join(
             f"<div class='tile {cls}'><b>{value}</b><span>{e(label)}</span></div>"
@@ -636,7 +663,7 @@ def render_html(report: dict, title: str, window: str, repo_url: str) -> str:
     return (
         "<!doctype html><html lang=en class=nojs><head><meta charset=utf-8>"
         f"<meta name=viewport content='width=device-width, initial-scale=1'><title>{e(title)}</title>"
-        f"<style>{STYLE}</style></head><body>{''.join(parts)}{PAGE_JS}</body></html>"
+        f"<style>{STYLE.replace('DARK', DARK)}</style>{HEAD_JS}</head><body>{''.join(parts)}{PAGE_JS}</body></html>"
     )
 
 

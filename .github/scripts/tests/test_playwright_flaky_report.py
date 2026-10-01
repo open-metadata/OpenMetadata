@@ -162,6 +162,9 @@ def test_html_lists_every_run_of_every_test_newest_first(tmp_path, monkeypatch):
     assert "Failed runs with no failing test (1)" in page
     assert "playwright-ci (chromium-05)</a> — exit code 124 (timed out)." in page
     assert "Expand all" in page and "id=q" in page  # filter box
+    # Theme button, with both an OS-following and a forced dark palette.
+    assert "id=theme" in page and ":root[data-theme=dark] { --bg:" in page
+    assert ":root:not([data-theme=light]) { --bg:" in page
 
 
 def test_job_summary_has_failed_flaky_and_broken_tables(tmp_path, monkeypatch):
