@@ -206,9 +206,15 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    * <p>Carrying Lucene syntax is not enough on its own — the expression also has to be one Lucene
    * can parse, or the search fails outright instead of returning results. A partially typed {@code
    * revenue (draft} is the common case. See {@link LuceneQuerySyntax}.
+   *
+   * <p>Text longer than {@link SearchUtils#MAX_ANALYZED_WORD_PARTS} word parts is prose, such as a
+   * natural language question ending in "?", and is searched as plain text so its clause cost
+   * stays bounded.
    */
   default boolean shouldParseAsLuceneSyntax(String query) {
-    return containsQuerySyntax(query) && LuceneQuerySyntax.isWellFormed(query);
+    return containsQuerySyntax(query)
+        && LuceneQuerySyntax.isWellFormed(query)
+        && !SearchUtils.exceedsAnalyzedWordParts(query);
   }
 
   default boolean containsQuerySyntax(String query) {

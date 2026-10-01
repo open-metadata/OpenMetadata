@@ -1003,6 +1003,17 @@ class SearchUtilsTest {
   }
 
   @Test
+  void exceedsAnalyzedWordPartsCountsWordPartsNotCharacters() {
+    assertFalse(SearchUtils.exceedsAnalyzedWordParts(null));
+    assertFalse(SearchUtils.exceedsAnalyzedWordParts("LhrIncomingFlightsArrivalsScheduleV1"));
+    assertFalse(
+        SearchUtils.exceedsAnalyzedWordParts(String.join(" ", Collections.nCopies(24, "orders"))));
+    assertTrue(
+        SearchUtils.exceedsAnalyzedWordParts(String.join(" ", Collections.nCopies(25, "orders"))));
+    assertTrue(SearchUtils.exceedsAnalyzedWordParts("a1b2c3d4e5f6g7h8i9j0k1l2m3"));
+  }
+
+  @Test
   void capAnalyzedWordPartsLeavesNormalQueriesAlone() {
     String query = "monthly revenue by region for the sales team";
     assertSame(query, SearchUtils.capAnalyzedWordParts(query));

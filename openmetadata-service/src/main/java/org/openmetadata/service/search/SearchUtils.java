@@ -862,6 +862,13 @@ public final class SearchUtils {
   /** Most word parts the analyzed stages of a plain-text search look at. */
   public static final int MAX_ANALYZED_WORD_PARTS = 24;
 
+  /** Whether the query has more word parts than the analyzed stages look at. */
+  public static boolean exceedsAnalyzedWordParts(String query) {
+    return query != null
+        && query.length() > MAX_ANALYZED_WORD_PARTS
+        && wordPartCount(query) > MAX_ANALYZED_WORD_PARTS;
+  }
+
   /**
    * Keeps the first {@link #MAX_ANALYZED_WORD_PARTS} word parts of plain-text search input. An
    * analyzed stage costs about one clause per word part and field, so this bounds the clause count

@@ -223,7 +223,11 @@ public class ElasticSearchSourceBuilderFactory
 
   public Query buildSearchQueryBuilderV2(
       String query, Map<String, Float> fields, boolean freeText) {
-    query = SearchUtils.capLongTokenRuns(query);
+    boolean longText = SearchUtils.exceedsAnalyzedWordParts(query);
+    query =
+        containsQuerySyntax(query) && !longText
+            ? SearchUtils.capLongTokenRuns(query)
+            : SearchUtils.capAnalyzedWordParts(query);
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
             .filter(entry -> isFuzzyField(entry.getKey()))
@@ -238,9 +242,10 @@ public class ElasticSearchSourceBuilderFactory
     // fuzzy branch can throw on user input. Endpoints that document `q` as free text swap
     // it for simple_query_string, whose parser discards malformed syntax instead of
     // raising a query_shard_exception. Text that Lucene cannot parse takes the same route
-    // for the same reason, rather than failing the search outright (#27990).
+    // for the same reason, rather than failing the search outright (#27990), and so does
+    // text cut to the word-part budget, which may end mid-expression.
     Query fuzzyQuery =
-        freeText || !LuceneQuerySyntax.isWellFormed(query)
+        freeText || longText || !LuceneQuerySyntax.isWellFormed(query)
             ? ElasticQueryBuilder.simpleQueryStringQuery(query, fuzzyFields, Operator.And)
             : ElasticQueryBuilder.queryStringQuery(
                 query,

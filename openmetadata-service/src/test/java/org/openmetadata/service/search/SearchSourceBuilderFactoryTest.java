@@ -207,6 +207,33 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testLongQuestionsAreSearchedAsPlainText() {
+    String question =
+        "which tables in the sales warehouse hold the monthly revenue by region for every product "
+            + "line that shipped last quarter and are owned by the finance analytics team?";
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    assertFalse(osFactory.shouldParseAsLuceneSyntax(question));
+    for (String index : List.of("table_search_index", "test_case_search_index")) {
+      String osQuery =
+          osFactory.getSearchSourceBuilderV2(index, question, 0, 10).query().toJsonString();
+      String esQuery =
+          esFactory.getSearchSourceBuilderV2(index, question, 0, 10).query().toString();
+      assertFalse(osQuery.contains("\"query_string\""), index + ": " + osQuery);
+      assertFalse(esQuery.contains("\"query_string\""), index + ": " + esQuery);
+    }
+    String testCaseQuery =
+        osFactory
+            .getSearchSourceBuilderV2("test_case_search_index", question, 0, 10)
+            .query()
+            .toJsonString();
+    assertFalse(testCaseQuery.contains("finance"), "words past the budget: " + testCaseQuery);
+    assertTrue(osFactory.shouldParseAsLuceneSyntax("monthly revenue by region?"));
+  }
+
+  @Test
   public void testContextFileSearchUsesExtractedTextConfiguration() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
