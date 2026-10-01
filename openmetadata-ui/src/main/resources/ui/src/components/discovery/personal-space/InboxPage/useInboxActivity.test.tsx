@@ -38,7 +38,11 @@ jest.mock('hooks/useApplicationStore', () => ({
 }));
 
 import { ActivityFilter } from './inbox.utils';
-import { fetchInboxActivity, useInboxActivity } from './useInboxActivity';
+import {
+  fetchInboxActivity,
+  useInboxActivity,
+  useInboxActivityCounts,
+} from './useInboxActivity';
 
 const threeEvents = { data: [{ id: '1' }, { id: '2' }, { id: '3' }] };
 const twoThreads = { data: [{ id: 't1' }, { id: 't2' }] };
@@ -283,5 +287,33 @@ describe('useInboxActivity', () => {
       'alpha',
       'zebra',
     ]);
+  });
+});
+
+describe('useInboxActivityCounts', () => {
+  // Mentions reads conversations only, so its count skips the three events.
+  it('counts each sub-tab as its list would show it', async () => {
+    const { result } = renderHook(() => useInboxActivityCounts(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        [ActivityFilter.All]: 5,
+        [ActivityFilter.Mentions]: 2,
+        [ActivityFilter.MyAssets]: 5,
+        [ActivityFilter.Following]: 5,
+      })
+    );
+  });
+
+  it('counts nothing until the user id is resolved', () => {
+    mockCurrentUser = undefined;
+
+    const { result } = renderHook(() => useInboxActivityCounts(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current).toEqual({});
   });
 });

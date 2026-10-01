@@ -44,6 +44,7 @@ jest.mock('../useInboxActivity', () => ({
       isLoading: activityState.isLoading,
     };
   },
+  useInboxActivityCounts: () => ({}),
 }));
 
 // Exercised by its own suite; here it only drives the tab's state.

@@ -41,6 +41,7 @@ import {
   getInboxItemTimestamp,
   InboxActivityItem,
   useInboxActivity,
+  useInboxActivityCounts,
 } from '../useInboxActivity';
 import { useIncrementalRender } from '../useIncrementalRender';
 import { useIsScrolled } from '../useIsScrolled';
@@ -106,6 +107,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
   const { items, total, isLoading } = useInboxActivity(filter, dateRange);
+  const counts = useInboxActivityCounts(dateRange);
   // ponytail: types filter the loaded page only; the server has no type filter.
   const filteredItems = useMemo(
     () =>
@@ -231,6 +233,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
         )}>
         <div className="tw:mx-auto tw:w-full tw:max-w-220">
           <ActivityToolbar
+            counts={counts}
             datePreset={dateRange?.key ?? DEFAULT_INBOX_DATE_PRESET}
             filter={filter}
             grouping={grouping}

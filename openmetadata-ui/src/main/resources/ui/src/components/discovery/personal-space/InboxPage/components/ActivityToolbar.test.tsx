@@ -37,9 +37,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </div>
   );
   Tabs.List = ({ children }: { children?: ReactNode }) => <>{children}</>;
-  Tabs.Item = ({ label }: { label: string }) => <span>{label}</span>;
+  Tabs.Item = ({
+    id,
+    children,
+  }: {
+    id: string;
+    children: (state: { isSelected: boolean }) => ReactNode;
+  }) => (
+    <span data-testid={`tab-${id}`}>
+      {children({ isSelected: id === 'all' })}
+    </span>
+  );
 
   return {
+    Badge: ({ children, color }: { children?: ReactNode; color?: string }) => (
+      <span data-color={color} data-testid="tab-count">
+        {children}
+      </span>
+    ),
     Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Tabs,
     FilterSelect: ({
@@ -94,8 +109,9 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const renderToolbar = () => {
+const renderToolbar = (counts?: Partial<Record<ActivityFilter, number>>) => {
   const props = {
+    counts,
     datePreset: 'last30days',
     filter: ActivityFilter.All,
     grouping: ActivityGrouping.Day,
@@ -121,6 +137,26 @@ describe('ActivityToolbar', () => {
     fireEvent.click(screen.getByText('pick-mentions'));
 
     expect(onFilterChange).toHaveBeenCalledWith(ActivityFilter.Mentions);
+  });
+
+  // Zero reads as no badge; the chosen tab's count is brand-tinted.
+  it('badges each sub-tab with its count', () => {
+    renderToolbar({
+      [ActivityFilter.All]: 3,
+      [ActivityFilter.Mentions]: 1,
+      [ActivityFilter.Following]: 0,
+    });
+
+    expect(screen.getByTestId('tab-all')).toHaveTextContent('label.all3');
+    expect(screen.getByTestId('tab-mentions')).toHaveTextContent(
+      'label.mention-plural1'
+    );
+    expect(screen.getByTestId('tab-following')).toHaveTextContent(
+      /^label.following$/
+    );
+    expect(
+      screen.getAllByTestId('tab-count').map((badge) => badge.dataset.color)
+    ).toEqual(['brand', 'gray']);
   });
 
   it('reads Group until a grouping is picked, with day groups as None', () => {

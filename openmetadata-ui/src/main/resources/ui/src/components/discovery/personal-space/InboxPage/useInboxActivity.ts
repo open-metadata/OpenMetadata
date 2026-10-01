@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { Conversation } from '../../../../generated/entity/feed/conversation';
@@ -120,6 +120,25 @@ export const fetchInboxActivity = async (
   };
 };
 
+// One query per sub-tab and window, so the list and every count share a fetch.
+const inboxActivityQuery = (
+  filter: ActivityFilter,
+  userId: string | undefined,
+  dateRange?: InboxDateRange
+) => ({
+  queryKey: [
+    INBOX_ACTIVITY_QUERY_KEY,
+    filter,
+    dateRange?.startTs,
+    dateRange?.endTs,
+    userId,
+  ],
+  queryFn: () =>
+    fetchInboxActivity(filter, userId, dateRange?.startTs, dateRange?.endTs),
+  enabled: Boolean(userId),
+  staleTime: INBOX_ACTIVITY_STALE_TIME,
+});
+
 export interface UseInboxActivity {
   items: InboxActivityItem[];
   total: number;
@@ -137,15 +156,10 @@ export const useInboxActivity = (
 ): UseInboxActivity => {
   const { currentUser } = useApplicationStore();
   const userId = currentUser?.id;
-  const startTs = dateRange?.startTs;
-  const endTs = dateRange?.endTs;
 
-  const { data, isLoading } = useQuery({
-    queryKey: [INBOX_ACTIVITY_QUERY_KEY, filter, startTs, endTs, userId],
-    queryFn: () => fetchInboxActivity(filter, userId, startTs, endTs),
-    enabled: Boolean(userId),
-    staleTime: INBOX_ACTIVITY_STALE_TIME,
-  });
+  const { data, isLoading } = useQuery(
+    inboxActivityQuery(filter, userId, dateRange)
+  );
 
   const items: InboxActivityItem[] = useMemo(() => {
     const merged: InboxActivityItem[] = [
@@ -176,4 +190,36 @@ export const useInboxActivity = (
     total: items.length,
     isLoading,
   };
+};
+
+/**
+ * Each sub-tab's item count in the window, as its list would show it.
+ * ponytail: a fetch per sub-tab, since the server has no per-feed count; swap
+ * for a count endpoint (or unread counts, as the design shows) once one exists.
+ */
+export const useInboxActivityCounts = (
+  dateRange?: InboxDateRange
+): Partial<Record<ActivityFilter, number>> => {
+  const { currentUser } = useApplicationStore();
+  const filters = Object.values(ActivityFilter);
+  const results = useQueries({
+    queries: filters.map((filter) =>
+      inboxActivityQuery(filter, currentUser?.id, dateRange)
+    ),
+  });
+
+  return Object.fromEntries(
+    filters.flatMap((filter, index) => {
+      const data = results[index].data;
+
+      return data
+        ? [
+            [
+              filter,
+              pairFieldChanges(data.activities).length + data.threads.length,
+            ],
+          ]
+        : [];
+    })
+  );
 };

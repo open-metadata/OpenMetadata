@@ -57,7 +57,7 @@ const ActivityToolbarMenu = ({
         data-testid={testId}
         iconLeading={triggerIcon}
         iconTrailing={isOpen ? ChevronUp : ChevronDown}
-        size="md">
+        size="sm">
         {triggerLabel ?? selected?.label}
       </Button>
       <Dropdown.Popover className="tw:w-56" placement="bottom end">

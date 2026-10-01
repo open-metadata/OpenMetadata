@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, FilterSelect, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  FilterSelect,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import {
   Calendar,
   Clock,
@@ -48,6 +53,8 @@ const GROUPING_OPTIONS = [
 ];
 
 export interface ActivityToolbarProps {
+  // Items per sub-tab; a tab without one shows no badge.
+  counts?: Partial<Record<ActivityFilter, number>>;
   datePreset: string;
   filter: ActivityFilter;
   grouping: ActivityGrouping;
@@ -60,6 +67,7 @@ export interface ActivityToolbarProps {
 
 /** The Activity feed's sub-tabs (whose activity) and its Group / Type filters. */
 const ActivityToolbar = ({
+  counts,
   datePreset,
   filter,
   grouping,
@@ -116,11 +124,24 @@ const ActivityToolbar = ({
         onSelectionChange={(key) => onFilterChange(key as ActivityFilter)}>
         <Tabs.List size="sm" type="button-border">
           {Object.values(ActivityFilter).map((value) => (
-            <Tabs.Item
-              id={value}
-              key={value}
-              label={t(FILTER_LABEL_KEY[value])}
-            />
+            <Tabs.Item id={value} key={value}>
+              {/* The tab's own badge stays gray; the design tints the chosen one. */}
+              {({ isSelected }) => (
+                <>
+                  {t(FILTER_LABEL_KEY[value])}
+                  {Boolean(counts?.[value]) && (
+                    <Badge
+                      // Keeps a badged tab as tall as a bare one.
+                      className="tw:-my-px"
+                      color={isSelected ? 'brand' : 'gray'}
+                      size="sm"
+                      type="color">
+                      {counts?.[value]}
+                    </Badge>
+                  )}
+                </>
+              )}
+            </Tabs.Item>
           ))}
         </Tabs.List>
       </Tabs>
@@ -149,6 +170,8 @@ const ActivityToolbar = ({
         <FilterSelect
           bordered
           hideCounts
+          // The bordered trigger is md; the design's toolbar is sm throughout.
+          className="tw:px-3 tw:py-2"
           data-testid="activity-type-filter"
           label={t('label.type')}
           options={typeOptions}
