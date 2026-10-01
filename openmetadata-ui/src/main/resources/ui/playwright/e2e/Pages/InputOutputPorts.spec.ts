@@ -392,7 +392,8 @@ test.describe('Input Output Ports', () => {
         await searchRes1;
 
         await page
-          .locator(`[data-testid="table-data-card_${table1Fqn}"] input`)
+          .locator(`[data-testid="table-data-card_${table1Fqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         const searchRes2 = page.waitForResponse(
@@ -404,7 +405,8 @@ test.describe('Input Output Ports', () => {
         await searchRes2;
 
         await page
-          .locator(`[data-testid="table-data-card_${table2Fqn}"] input`)
+          .locator(`[data-testid="table-data-card_${table2Fqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         const addRes = page.waitForResponse(
@@ -1825,7 +1827,8 @@ test.describe('Input Output Ports', () => {
           'entityResponseData.fullyQualifiedName'
         );
         await page
-          .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
+          .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         await page.getByTestId('delete-all-button').click();
