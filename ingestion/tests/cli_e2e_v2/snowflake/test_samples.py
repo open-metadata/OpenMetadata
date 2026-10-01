@@ -12,6 +12,8 @@
 
 import pytest
 
+from metadata.generated.schema.entity.data.table import TableProfilerConfig
+
 from ..features.database.entities import entity_exists
 from ..features.database.pipelines import AutoClassificationPipeline, MetadataPipeline
 from ..features.database.samples import sample_query
@@ -70,3 +72,17 @@ def test_reingest_replaces_persisted_samples(cli, snowflake):
     cli.run(invocation)
     after = expect.poll(query).satisfies(lambda sampled: values_match(sampled, {1: 654321, 2: None, 3: None}))
     assert after.id == before.id
+
+
+@pytest.mark.e2e_contract("sample.values.query")
+def test_profile_query_samples_keep_native_values(cli, snowflake):
+    """A table's profile query samples raw driver cells, which must persist like a regular sample."""
+    filters = _only("ALL_TYPES")
+    cli.run(snowflake.invocation(_metadata(), filters=filters))
+    table = expect.poll(snowflake.table_query("ALL_TYPES")).satisfies(entity_exists)
+    snowflake.om.create_or_update_table_profiler_config(
+        snowflake.table_fqn("ALL_TYPES"),
+        TableProfilerConfig(profileQuery=f"SELECT * FROM {snowflake.source.qualified}.all_types"),
+    )
+    cli.run(snowflake.invocation(_sampling(10), filters=filters))
+    expect.poll(sample_query(snowflake.om, table)).satisfies(native_samples_match)

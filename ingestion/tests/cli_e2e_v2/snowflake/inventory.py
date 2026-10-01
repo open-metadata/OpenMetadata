@@ -48,6 +48,7 @@ INVENTORY = ContractInventory(
             "sample.limit",
             "sample.values.native",
             "sample.values.replacement",
+            "sample.values.query",
             "dq.table-diff",
         }
     ),

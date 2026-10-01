@@ -248,7 +248,8 @@ v1 → v2 mapping:
 | dynamic table, stream, foreign key, clustering key | `table.dynamic`, `table.stream`, `fk.relationships`, `partition.cluster-key` |
 | stored procedures and tags ingested without failures | `procedure.code`, `tags.source` (shim) |
 
-Added beyond v1: `ingest.repeat`, `sample.values.replacement`. v1's usage config builder was never called,
+Added beyond v1: `ingest.repeat`, `sample.values.replacement`, `sample.values.query` (a table's profile
+query samples the same native values). v1's usage config builder was never called,
 so usage, query-log lineage and stored-procedure lineage stay out of scope.
 
 Snowflake reports every integer and fixed-point column as `NUMBER(p, s)`, a synonym of `DECIMAL`, and
@@ -259,9 +260,9 @@ column metrics only.
 
 Fixed while migrating, each found by a strict assertion here: Snowflake tag classifications are created
 mutually exclusive (a table that sets its own value no longer also shows the schema's inherited value),
-`VARIANT`, `OBJECT` and `ARRAY` samples persist as JSON instead of the driver's JSON text, and `tableDiff`
-builds the table's diff URL from the workflow's resolved connection instead of the server's copy, whose
-secrets a non-bot token reads masked.
+`VARIANT`, `OBJECT` and `ARRAY` samples persist as JSON instead of the driver's JSON text (also through a
+profile query), and `tableDiff` resolves the table's service from the workflow's connection instead of the
+server's copy, whose secrets a non-bot token reads masked.
 
 Remove the v1 Snowflake test and its `py-cli-e2e-tests.yml` matrix entry only after this suite has passed
 for the agreed stability window. Enabling it in `py-cli-e2e-tests-v2.yml` needs the `snowflake` allowlist
