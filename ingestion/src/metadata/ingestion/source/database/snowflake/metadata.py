@@ -246,6 +246,7 @@ class SnowflakeSource(
     """
 
     service_connection: SnowflakeConnection
+    tag_classifications_mutually_exclusive = True
 
     def __init__(
         self,

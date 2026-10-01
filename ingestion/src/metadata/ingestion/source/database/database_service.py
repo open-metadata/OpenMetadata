@@ -227,6 +227,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
     # legacy `connection_obj` test path for non-migrated sources.
     _connection: BaseConnection | None = None
 
+    # True when a source tag holds one value per object, so an asset's own value replaces
+    # the one it would inherit from its schema or database.
+    tag_classifications_mutually_exclusive: bool = False
+
     topology = DatabaseServiceTopology()
     context = TopologyContextManager(topology)
 
@@ -284,6 +288,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             tag_name=tag_name,
             classification_description=classification_description,
             tag_description=tag_description,
+            mutually_exclusive=self.tag_classifications_mutually_exclusive,
         )
         self.tags_registry.define(tag)
         return tag
