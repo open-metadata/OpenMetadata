@@ -34,7 +34,7 @@ class RdfColumnLineageTraversalTest {
   private static final String BASE = "https://open-metadata.org/";
   private static final String PREFIXES = "PREFIX om: <" + BASE + "ontology/>\n";
   private static final String SCHEMA_FQN = "svc.db.s.";
-  private static final int PAGE_SIZE = 400;
+  private static final int PAGE_SIZE = 250;
   private static final String DOWNSTREAM_PATH = "^om:fromColumn/om:toColumn";
   private static final String UPSTREAM_PATH = "^om:toColumn/om:fromColumn";
 

@@ -145,7 +145,7 @@ class RdfToolDescriptionVocabularyTest {
   @Test
   void sparqlQueryDescribesPagingTheProfileAndTheColumnLineageContract() {
     assertThat(tools.get("sparql_query").description())
-        .contains("ORDER BY", "LIMIT 400", "OFFSET", "fewer rows than LIMIT")
+        .contains("ORDER BY", "LIMIT 250", "OFFSET", "fewer rows than LIMIT")
         .contains("'truncated' is true", "completeness.status is TRUNCATED")
         .contains("SELECT only", "no FROM, GRAPH or SERVICE", "no inference")
         .contains("plain string literals, not IRIs", "RdfIndexApp")
