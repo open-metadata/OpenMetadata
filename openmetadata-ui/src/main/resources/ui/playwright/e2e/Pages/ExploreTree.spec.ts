@@ -18,6 +18,10 @@ import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
@@ -61,11 +65,11 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
     // with a digit guarantees these services land within that bucket
     // regardless of how many other `pw-*` services have accumulated.
-    table1 = new TableClass(undefined, undefined, {
-      name: `0-pw-database-service-${uuid()}`,
+    table1 = new TableClass({
+      service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
     });
-    table2 = new TableClass(undefined, undefined, {
-      name: `0-pw-database-service-${uuid()}`,
+    table2 = new TableClass({
+      service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
     });
 
     await table1.create(apiContext);
@@ -390,14 +394,20 @@ test.describe('Explore page', () => {
     // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
     // with a digit guarantees these services land within that bucket
     // regardless of how many other `pw-*` services have accumulated.
-    table = new TableClass(undefined, undefined, {
-      name: `0-pw-database-service-${uuid()}`,
+    table = new TableClass({
+      service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
     });
-    dashboard = new DashboardClass(undefined, undefined, {
-      name: `0-pw-dashboard-service-${uuid()}`,
+    dashboard = new DashboardClass({
+      service: new DashboardServiceClass(`0-pw-dashboard-service-${uuid()}`),
     });
-    apiEndpoint = new ApiEndpointClass(`0-pw-api-endpoint-service-${uuid()}`);
-    searchIndex = new SearchIndexClass(`0-pw-search-index-service-${uuid()}`);
+    apiEndpoint = new ApiEndpointClass({
+      service: new ApiServiceClass(`0-pw-api-endpoint-service-${uuid()}`),
+    });
+    searchIndex = new SearchIndexClass({
+      service: new SearchIndexServiceClass(
+        `0-pw-search-index-service-${uuid()}`
+      ),
+    });
 
     await table.create(apiContext);
     await dashboard.create(apiContext);

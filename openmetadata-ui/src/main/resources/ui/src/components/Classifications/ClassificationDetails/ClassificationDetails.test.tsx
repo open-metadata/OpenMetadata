@@ -125,6 +125,11 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
+const mockIsAiMode = jest.fn().mockReturnValue(false);
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode(),
+}));
+
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'TestClassification' }),
 }));
@@ -438,6 +443,30 @@ describe('ClassificationDetails', () => {
 
     expect(screen.getByTestId('tag-row-Tag2')).toBeInTheDocument();
   });
+
+  it.each([
+    [true, true],
+    [false, false],
+  ])(
+    'should use the gradient header with the breadcrumb inside it only in AI mode (AI mode: %s)',
+    async (isAiMode, isAiLayout) => {
+      mockIsAiMode.mockReturnValue(isAiMode);
+      render(
+        <MemoryRouter>
+          <ClassificationDetails {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      const header = await screen.findByTestId('header');
+      const breadcrumb = screen.getByTestId('breadcrumb');
+
+      expect(header.className.includes('linear-gradient')).toBe(isAiLayout);
+      expect(header.contains(breadcrumb)).toBe(isAiLayout);
+      expect(breadcrumb).toHaveTextContent('label.classification-plural');
+
+      mockIsAiMode.mockReturnValue(false);
+    }
+  );
 
   it('should display classification name, tags, and sidebar info', async () => {
     render(

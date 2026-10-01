@@ -108,25 +108,32 @@ def test_main_health_alerts_and_keeps_the_flake_baseline_off_main():
     assert "C0AC5T013V1" not in slack["run"]
 
 
-def test_merge_queue_failures_alert_ci_cleanup_without_checked_out_code():
-    steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
-        "steps"
-    ]
-    alert = [s for s in steps if "failure() && github.event_name == 'merge_group'" in s.get("if", "")]
-    assert {s["name"] for s in alert} >= {
-        "Build the merge-queue failure message",
-        "Post the merge-queue failure to Slack (ci-cleanup)",
-    }
-    download = next(s for s in alert if s["name"] == "Download failed merge-queue shard results")
+def test_merge_queue_failures_alert_ci_cleanup_only_through_the_dequeue_report():
+    # A failed run does not always dequeue its PR: when an entry ahead leaves,
+    # GitHub rebuilds the group and lets the old run finish. So the summary only
+    # annotates its failed tests, and the dequeue report, which fires on a real
+    # dequeue, folds them into the one #ci-cleanup alert.
+    job = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"]
+    assert "C0AC5T013V1" not in json.dumps(job)
+    steps = job["steps"]
+    download = next(s for s in steps if s["name"] == "Download failed merge-queue shard results")
     # Artifacts belong to the run, so an unscoped pattern would report tests
     # that failed only in an earlier attempt of a re-run.
     assert download["with"]["pattern"] == "playwright-results-json-*-a${{ github.run_attempt }}*"
-    build = next(s for s in alert if s.get("id") == "queue-slack")
-    assert "C0AC5T013V1" in build["run"]
-    # Queue runs never check out code in the summary job, so the alert must not
-    # run repository scripts.
-    assert ".github/scripts" not in build["run"]
-    assert 'select(.status == "unexpected")' in build["run"]
+    annotate = next(s for s in steps if s["name"] == "Annotate the failed merge-queue tests")
+    assert annotate["if"] == "${{ failure() && github.event_name == 'merge_group' }}"
+    # Queue runs never check out code in the summary job, so it must not run
+    # repository scripts.
+    assert ".github/scripts" not in annotate["run"]
+    assert 'select(.status == "unexpected")' in annotate["run"]
+    assert "::error title=Merge queue failed tests::" in annotate["run"]
+
+    dequeue = workflow("merge-queue-dequeue-report.yml")
+    assert dequeue[True]["pull_request_target"]["types"] == ["dequeued"]
+    report = json.dumps(dequeue["jobs"]["report"])
+    assert "C0AC5T013V1" in report
+    assert "check_name=playwright-summary" in report
+    assert 'select(.title == \\"Merge queue failed tests\\")' in report
 
 
 def test_pr_summary_reads_the_flake_baseline_report_only():
