@@ -21,30 +21,27 @@ import { EntityWithExtension } from './useCustomPropertyValueSave.interface';
 export const useCustomPropertyValueSave = <T extends EntityWithExtension>() => {
   const { data: entityDetails, onUpdate } = useGenericContext<T>();
 
-  const onExtensionUpdate = useCallback(
-    async (updatedExtension?: Record<string, unknown>) => {
-      if (!isUndefined(onUpdate) && entityDetails) {
-        await onUpdate(
-          { ...entityDetails, extension: updatedExtension },
-          'extension' as keyof T
-        );
+  const onPropertyValueSave = useCallback(
+    async (property: CustomProperty, value: unknown) => {
+      if (isUndefined(onUpdate) || !entityDetails) {
+        return;
       }
+
+      await onUpdate(
+        {
+          ...entityDetails,
+          extension: buildUpdatedExtension(
+            entityDetails.extension,
+            property.name,
+            property.propertyType.name ?? '',
+            value
+          ),
+        },
+        'extension' as keyof T
+      );
     },
     [entityDetails, onUpdate]
   );
 
-  const onPropertyValueSave = useCallback(
-    (property: CustomProperty, value: unknown) =>
-      onExtensionUpdate(
-        buildUpdatedExtension(
-          entityDetails?.extension,
-          property.name,
-          property.propertyType.name ?? '',
-          value
-        )
-      ),
-    [entityDetails?.extension, onExtensionUpdate]
-  );
-
-  return { onExtensionUpdate, onPropertyValueSave };
+  return { onPropertyValueSave };
 };

@@ -309,12 +309,18 @@ Content-Type: application/json
 ```
 
 Unlike the admin endpoint above, this is a permissioned read surface for agent tools:
-it requires the `ExecuteSparqlQuery` operation on the `rdf` resource (granted by a policy
-that names it — wildcard `All`/`All` policies do not grant it). Only `SELECT` queries run,
+it requires the `ExecuteSparqlQuery` operation on the `rdf` resource. The seeded Data Consumer
+policy grants it through `DataConsumerPolicy-ExecuteSparqlQuery-Rule`, so every user inherits it
+by default; delete that rule to opt out, or add a role with a deny rule to remove it for specific
+users. Outside that rule, only a policy that names the operation grants it — wildcard `All`/`All`
+policies do not. Only `SELECT` queries run,
 with no `FROM`, `GRAPH`, or `SERVICE` clauses; inference is disabled; results carry a
 completeness status relative to the submitted query. Queries evaluate over the
 server-configured dataset without persona filtering and without asset-level
-authorization — callers must already be entitled to see the whole projected graph.
+authorization — callers must already be entitled to see the whole projected graph. If you
+restrict what users can view through custom policies, also remove
+`DataConsumerPolicy-ExecuteSparqlQuery-Rule`, or those users can query assets they cannot
+otherwise see.
 
 ### Get Glossary Term Relationship Graph
 ```bash

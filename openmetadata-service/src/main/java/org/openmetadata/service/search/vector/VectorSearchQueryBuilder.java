@@ -234,15 +234,29 @@ public class VectorSearchQueryBuilder {
     // caller-supplied
     // filter list exactly as the caller expressed it.
     sb.append(",\"filter\":[{\"bool\":{\"should\":[");
-    // Branch 1: anything that is not a context memory.
-    sb.append("{\"bool\":{\"must_not\":[")
-        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
-        .append("]}}");
+    // Branch 1: anything governed by neither rule.
+    sb.append("{\"bool\":{\"must_not\":[{\"terms\":{\"")
+        .append(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE)
+        .append("\":[\"")
+        .append(escape(Entity.CONTEXT_MEMORY))
+        .append("\",\"")
+        .append(escape(Entity.CONTEXT_FILE))
+        .append("\"]}}]}}");
     // Branch 2: a context memory this subject may see.
     sb.append(",{\"bool\":{\"must\":[")
         .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
         .append(',');
     appendVisibleMemoryClause(sb, widen ? subjectContext : null);
+    sb.append("]}}");
+    // Branch 3: a context file this subject may see. A file with no visibility stamped is not
+    // restricted — unlike a memory, which is written with one — so it gets its own branch.
+    sb.append(",{\"bool\":{\"must\":[")
+        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_FILE))
+        .append(",{\"bool\":{\"should\":[{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"")
+        .append(ContextMemorySearchVisibility.FIELD_VISIBILITY)
+        .append("\"}}]}},");
+    appendVisibleMemoryClause(sb, widen ? subjectContext : null);
+    sb.append("]}}");
     sb.append("]}}");
     sb.append("]}}]");
   }

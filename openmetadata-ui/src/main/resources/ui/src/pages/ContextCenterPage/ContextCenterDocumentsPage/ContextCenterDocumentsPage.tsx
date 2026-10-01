@@ -616,6 +616,10 @@ const ContextCenterDocumentsPage: FC = () => {
     }
   }, [fileToDelete, t, fetchFolders]);
 
+  const handleFileUpdated = useCallback((file: ContextFile) => {
+    setAllDocuments((prev) => prev.map((d) => (d.id === file.id ? file : d)));
+  }, []);
+
   const handleFileMoved = useCallback(
     (file: ContextFile, targetFolderId: string | null) => {
       if (targetFolderId === null) {
@@ -961,6 +965,7 @@ const ContextCenterDocumentsPage: FC = () => {
                     onDeleteFile={handleDeleteFile}
                     onDownload={handleAssetDownload}
                     onFileMoved={handleFileMoved}
+                    onFileUpdated={handleFileUpdated}
                     onLoadMoreFolders={fetchMoreFolders}
                     onOpenPreview={setFilePreviewModalFile}
                     onPreview={handlePreview}

@@ -1,27 +1,29 @@
 # CLI E2E v2
 
 Real source → `metadata` subprocess → real OpenMetadata sink/server → persisted SDK observations.
-MySQL is the reference connector; BigQuery is the first cloud-warehouse migration (see [BigQuery](#bigquery)). Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
+MySQL is the reference connector. Postgres has a native v2 suite, and BigQuery is the first cloud-warehouse migration (see [BigQuery](#bigquery)). Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
 
 | Connector | Source ownership | v1 path it replaces |
 |---|---|---|
 | `mysql` | disposable testcontainers MySQL + restricted account, fresh schema per test | `cli_e2e/test_cli_mysql.py` |
+| `postgres` | disposable testcontainers Postgres + restricted account, fresh schema per test | `cli_e2e/test_cli_postgres.py` |
 | `bigquery` | fresh labelled dataset per test in two real GCP projects | `cli_e2e/test_cli_bigquery.py`, `cli_e2e/test_cli_bigquery_multiple_project.py` |
 
 ## Run
 
-From the repository root, activate a development virtual environment with the ingestion package, MySQL connector dependencies, pytest, and testcontainers installed. Docker must be available for the disposable MySQL source. Supply a running, compatible OpenMetadata server separately; the suite does not provision or stop that server.
+From the repository root, activate a development virtual environment with the ingestion package, connector dependencies, and pytest installed. MySQL and Postgres also require testcontainers and Docker for their disposable sources. Supply a running, compatible OpenMetadata server separately; the suite does not provision or stop that server.
 
 ```bash
 source env/bin/activate
 export PYTHONPATH=ingestion/src
 export OM_SERVER_URL=http://localhost:8585/api
 python -m pytest ingestion/tests/cli_e2e_v2/mysql --e2e-contract-check -v
+python -m pytest ingestion/tests/cli_e2e_v2/postgres --e2e-contract-check -v
 ```
 
 Use `OM_JWT_TOKEN` for an existing token. Without it, `server.py` authenticates with `OM_ADMIN_EMAIL` / `OM_ADMIN_PASSWORD` (defaults: `admin@open-metadata.org` / `admin`) and obtains the ingestion-bot token. Missing credentials, unreachable services, and failed provisioning are errors, not skips.
 
-The MySQL fixture owns a disposable container, ingestion account, and unique per-test schemas. Each test also owns a unique OM service. Cleanup runs after setup or call failures; cleanup failures remain teardown errors alongside the original failure. Never point these mutating fixtures at a shared source or reset somebody else's schema.
+The MySQL and Postgres fixtures each own a disposable container, restricted ingestion account, and unique per-test schemas. Every Postgres workflow uses an anchored include filter for its owned schemas. Each test also owns a unique OM service. Cleanup runs after setup or call failures; cleanup failures remain teardown errors alongside the original failure. Never point these mutating fixtures at a shared source or reset somebody else's schema.
 
 Focused runs do not require completeness checking:
 
@@ -49,6 +51,7 @@ cli_e2e_v2/
   features/database/   generated pipeline options, catalog/profile/sample/lineage checks
   contracts/           coverage inventory, collection validation, required-result enforcement
   mysql/               owned source, context, expectations, checks, named feature tests
+  postgres/            owned Postgres source, v1 migration inventory, named feature tests
   bigquery/            owned datasets in two GCP projects, same layout as mysql/ plus test_data_quality.py
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
@@ -69,10 +72,11 @@ Only checker `AssertionError` mismatches retry. SDK, transport, parsing, and che
 
 Read [CONNECTORS.md](CONNECTORS.md) for source ownership, complete SQL case wiring, custom scenarios, and an illustrative dashboard extension. New connectors do not need a runtime subclass, mutable fluent assertion object, or enforcer hierarchy.
 
-The MySQL scenarios are grouped into `test_metadata.py`, `test_profiles.py`, and `test_samples.py`. `test_fixture_safety.py` checks isolation, least privilege, and failure-path cleanup against real MySQL without an OpenMetadata server. These safeguards are distinct from feature assertions: successful ingestion cannot prove that teardown removed a container. Run them independently with:
+The MySQL and Postgres scenarios are grouped into `test_metadata.py`, `test_profiles.py`, and `test_samples.py`. Each `test_fixture_safety.py` checks isolation, read-only ingestion privileges, and failure-path cleanup against the real source without an OpenMetadata server. These safeguards are distinct from feature assertions: successful ingestion cannot prove that teardown removed a container. Run them independently with:
 
 ```bash
 python -m pytest ingestion/tests/cli_e2e_v2/mysql/test_fixture_safety.py -v
+python -m pytest ingestion/tests/cli_e2e_v2/postgres/test_fixture_safety.py -v
 ```
 
 ## Coverage and known failures
@@ -85,6 +89,22 @@ The MySQL native sample checks deliberately retain strict YEAR/BIT/null expectat
 
 The separate `sample.values.replacement` scenario samples the same table before and after a source mutation,
 checking integer and null values independently of the strict native-type scenarios.
+
+### Postgres v1 migration inventory
+
+The v2 Postgres suite replaces the observable assertions in `cli_e2e/test_cli_postgres.py` and its inherited `CliDBBase.TestSuite` methods. Each contract checks persisted OpenMetadata state rather than v1 status-count floors. The v1 path remains in place during the agreed CI stability window.
+
+| v1 behavior | v2 contracts |
+|---|---|
+| Vanilla ingestion and 22 native Postgres types | `catalog.metadata`, `fk.relationships`, `ingest.repeat` |
+| Profiler and auto-classification sample | `profile.metrics`, `sample.values.original`, `sample.values.updated`, `sample.values.replacement` |
+| Delete and re-ingest | `deletion.tables` |
+| Schema include/exclude filters | `filter.schema.include-one`, `filter.schema.exclude-wins` |
+| Table include/exclude/mixed filters | `filter.table.include-one`, `filter.table.exclude-one`, `filter.table.regex-exclude-wins`, `filter.table.exclude-wins` |
+| View and all 22 column lineages | `lineage.view` |
+| Auto-classification | `classification.tags` |
+
+The inherited v1 usage method has no assertions, and Postgres has no declared system-profile cases. Partition profiling skips without a Postgres-specific configuration, and data quality returns without a Postgres test table. These are not claimed as migrated coverage. The v2 workflow's manual dispatch includes Postgres, while the v1 workflow keeps its Postgres entry until the stability window completes.
 
 ## Debugging and reporting
 
@@ -146,6 +166,8 @@ v1 → v2 mapping:
 | view lineage, 2 column edges | `lineage.view` |
 | `tableDiff` data-quality test | `dq.table-diff` |
 
+The v2 partition contract now checks the inferred three-day window with rows clearly inside and outside it.
+
 Added beyond v1: `procedure.code`, `fk.relationships`, `ingest.repeat`, `sample.values.native`,
 `sample.values.replacement`. v1's lineage run enabled query-log lineage but asserted only view
 lineage; query-log lineage and policy-tag taxonomies stay out of scope, as for MySQL.
@@ -160,3 +182,5 @@ life-cycle query (403). That is a permission difference in the environment, not 
 
 Remove the v1 BigQuery tests and their `py-cli-e2e-tests.yml` matrix entries only after this suite has
 passed for the agreed stability window.
+The manually dispatched v2 workflow runs BigQuery with six workers and passes the existing test
+environment credentials only to its BigQuery matrix job.
