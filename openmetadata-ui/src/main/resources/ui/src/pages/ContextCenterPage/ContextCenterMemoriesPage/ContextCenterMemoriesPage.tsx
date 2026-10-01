@@ -28,9 +28,9 @@ import {
   ChevronRight,
   FilePlus02,
   Plus,
-  SearchLg,
+  Search,
   Share05,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -907,7 +907,7 @@ const ContextCenterMemoriesPage: FC = () => {
                           // eslint-disable-next-line jsx-a11y/no-autofocus -- focus search on dropdown open
                           autoFocus
                           className="tw:w-full"
-                          icon={SearchLg}
+                          icon={Search}
                           placeholder={t('label.search-entity', {
                             entity: t('label.author'),
                           })}

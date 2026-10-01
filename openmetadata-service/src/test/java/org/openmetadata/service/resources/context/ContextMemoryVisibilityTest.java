@@ -125,6 +125,26 @@ class ContextMemoryVisibilityTest {
   }
 
   @Test
+  void testPublicMemory_visibleToEveryoneWithoutAsset() {
+    ContextMemory publicMemory = memoryOwnedBy(ALICE, MemoryVisibility.PUBLIC);
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(publicMemory, BOB, false));
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(publicMemory, "charlie", false));
+  }
+
+  @Test
+  void testAnchoredPublicMemory_requiresAnchorAccess() {
+    ContextMemory publicMemory =
+        memoryOwnedBy(ALICE, MemoryVisibility.PUBLIC).withPrimaryEntity(ANCHOR);
+    ContextMemoryVisibility.AnchorAccess onlyBobReadsIt =
+        (userName, anchor) -> BOB.equals(userName) && ANCHOR.getId().equals(anchor.getId());
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(publicMemory, BOB, false, onlyBobReadsIt));
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(publicMemory, "charlie", false, onlyBobReadsIt));
+  }
+
+  @Test
   void testSharedMemory_visibleOnlyToListedPrincipals() {
     ContextMemory shared =
         memoryOwnedBy(ALICE, MemoryVisibility.SHARED)

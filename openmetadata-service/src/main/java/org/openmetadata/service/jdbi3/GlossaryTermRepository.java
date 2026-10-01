@@ -1127,6 +1127,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY_TERM);
     deleteFromMany(ids, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
     deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
+    List<UUID> memorySourceCarryingIds =
+        entities.stream()
+            .filter(term -> term.getSourceMemoryIds() != null)
+            .map(GlossaryTerm::getId)
+            .toList();
+    deleteFromMany(
+        memorySourceCarryingIds,
+        Entity.GLOSSARY_TERM,
+        Relationship.DERIVED_FROM,
+        Entity.CONTEXT_MEMORY);
     // Realized assets are heterogeneous, so clear every target type from the term's outgoing side.
     // A null realizedIn means "unchanged" for callers that never carry the field, and clearing
     // those would drop edges the caller never intended to touch.
@@ -1147,6 +1157,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       storeTermRelation(entity.getId(), termRelation, entity.getUpdatedBy());
     }
     storeRealizations(entity);
+    storeSourceMemoryRelationships(entity);
+  }
+
+  private void storeSourceMemoryRelationships(GlossaryTerm entity) {
+    for (UUID memoryId :
+        entity.getSourceMemoryIds() == null ? Set.<UUID>of() : entity.getSourceMemoryIds()) {
+      Entity.getEntityReferenceById(Entity.CONTEXT_MEMORY, memoryId, Include.NON_DELETED);
+      addRelationship(
+          entity.getId(),
+          memoryId,
+          Entity.GLOSSARY_TERM,
+          Entity.CONTEXT_MEMORY,
+          Relationship.DERIVED_FROM);
+    }
   }
 
   private void storeRealizations(GlossaryTerm entity) {
@@ -2785,6 +2809,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       recordChange("conceptType", original.getConceptType(), updated.getConceptType());
       recordChange(
           "ontologySource", original.getOntologySource(), updated.getOntologySource(), true);
+      if (updated.getSourceMemoryIds() == null) {
+        updated.setSourceMemoryIds(original.getSourceMemoryIds());
+      }
+      if (!Objects.equals(original.getSourceMemoryIds(), updated.getSourceMemoryIds())) {
+        deleteFrom(
+            updated.getId(),
+            Entity.GLOSSARY_TERM,
+            Relationship.DERIVED_FROM,
+            Entity.CONTEXT_MEMORY);
+        storeSourceMemoryRelationships(updated);
+      }
+      recordChange("sourceMemoryIds", original.getSourceMemoryIds(), updated.getSourceMemoryIds());
       compareAndUpdate("relatedTerms", () -> updateRelatedTerms(original, updated));
       compareAndUpdate(FIELD_REALIZED_IN, () -> updateRealizedIn(original, updated));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "glossary");

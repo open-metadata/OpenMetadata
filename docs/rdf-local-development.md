@@ -203,7 +203,7 @@ rdf:
   shaclValidationMode: ${RDF_SHACL_VALIDATION_MODE:-"REPORT"}
   dereferenceableIris: ${RDF_DEREFERENCEABLE_IRIS:-false}
   strictOwlProfile: ${RDF_STRICT_OWL_PROFILE:-true}
-  askCollateEnabled: ${RDF_ASK_COLLATE_ENABLED:-false}
+  aiEnabled: ${RDF_AI_ENABLED:-false}
 ```
 
 ### Environment Variables
@@ -231,7 +231,12 @@ rdf:
 | `RDF_SHACL_VALIDATION_MODE` | Import validation policy | `REPORT` |
 | `RDF_DEREFERENCEABLE_IRIS` | Enable authenticated LOD redirects | `false` |
 | `RDF_STRICT_OWL_PROFILE` | Enforce supported OWL profile rules | `true` |
-| `RDF_ASK_COLLATE_ENABLED` | Enable Ontology Studio AI | `false` |
+| `RDF_AI_ENABLED` | Enable Ontology Studio AI | `false` |
+| `LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED` | Allow memory-derived ontology draft jobs when RDF AI and LLM completion are enabled | `false` |
+
+Memory-derived glossary drafts require `RDF_AI_ENABLED=true`, `LLM_ENABLED=true`, and
+`LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED=true`. Published memories are submitted through
+`POST /api/v1/ontology/ai/memories/jobs`; this setting does not enqueue jobs automatically.
 
 ### Docker Compose Configuration
 

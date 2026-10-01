@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { GitMerge, X } from '@untitledui/icons';
+import { GitMerge, X } from '@openmetadata/ui-core-components/icons';
 import { Button, Tooltip, Typography } from 'antd';
 import { TFunction } from 'i18next';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';

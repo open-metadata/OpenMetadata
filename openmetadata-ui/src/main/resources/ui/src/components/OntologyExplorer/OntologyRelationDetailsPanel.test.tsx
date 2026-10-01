@@ -126,7 +126,7 @@ describe('OntologyRelationDetailsPanel', () => {
   it('loads a scoped typed explanation for an inferred relationship', async () => {
     const relationshipType = createRelationshipTypeMock({ name: 'partOf' });
     mockFetchRdfConfig.mockResolvedValue({
-      askCollateEnabled: false,
+      aiEnabled: false,
       baseUri: 'https://rdf.example.test/',
       enabled: true,
       inference: {

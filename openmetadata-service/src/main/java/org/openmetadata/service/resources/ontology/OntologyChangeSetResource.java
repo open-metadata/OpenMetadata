@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -40,6 +42,7 @@ import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateOntologyChangeSet;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -60,6 +63,7 @@ import org.openmetadata.service.ontology.OntologyEditLockService;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -280,6 +284,20 @@ public class OntologyChangeSetResource
       final OntologyChangeSet changeSet,
       final MetadataOperation operation) {
     for (final EntityReference glossary : changeSet.getGlossaries()) {
+      final Glossary planned =
+          listOrEmpty(changeSet.getOperations()).stream()
+              .filter(change -> change.getGlossary() != null)
+              .map(change -> change.getGlossary())
+              .filter(candidate -> candidate.getId().equals(glossary.getId()))
+              .findFirst()
+              .orElse(null);
+      if (planned != null) {
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(Entity.GLOSSARY, MetadataOperation.CREATE),
+            new CreateResourceContext<>(Entity.GLOSSARY, planned));
+        continue;
+      }
       authorizer.authorize(
           securityContext,
           new OperationContext(Entity.GLOSSARY, operation),

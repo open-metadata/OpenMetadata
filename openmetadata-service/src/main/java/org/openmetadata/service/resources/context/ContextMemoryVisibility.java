@@ -61,7 +61,7 @@ public final class ContextMemoryVisibility {
   private static final List<String> DECISION_FIELDS =
       List.of(Entity.FIELD_OWNERS, ContextMemoryRepository.FIELD_PRIMARY_ENTITY);
 
-  /** Whether a caller may read the asset an Entity memory is anchored to. */
+  /** Whether a caller may read the asset a memory is anchored to. */
   @FunctionalInterface
   interface AnchorAccess {
     boolean canView(String userName, EntityReference anchor);
@@ -85,7 +85,7 @@ public final class ContextMemoryVisibility {
     MemoryVisibility visibility =
         memory.getShareConfig() == null ? null : memory.getShareConfig().getVisibility();
     boolean visible = false;
-    if (visibility == MemoryVisibility.ENTITY) {
+    if (visibility == MemoryVisibility.ENTITY || visibility == MemoryVisibility.PUBLIC) {
       visible = isAnchorReadable(memory, userName, anchorAccess);
     } else if (visibility == MemoryVisibility.SHARED) {
       visible = isInSharedWithList(memory, userName);
@@ -93,7 +93,7 @@ public final class ContextMemoryVisibility {
     return visible;
   }
 
-  /** Entity means "readers of the anchor"; an unanchored Entity memory stays org-wide. */
+  /** An unanchored Entity or Public memory stays org-wide. */
   private static boolean isAnchorReadable(
       ContextMemory memory, String userName, AnchorAccess anchorAccess) {
     EntityReference anchor = memory.getPrimaryEntity();
@@ -177,7 +177,7 @@ public final class ContextMemoryVisibility {
 
   /**
    * An anonymous caller matches no owner, shared principal or anchor reader, so it keeps only the
-   * unanchored ENTITY memories; search's unresolvable-subject fallback keeps every ENTITY memory.
+   * unanchored Entity or Public memories.
    */
   private static String callerName(SecurityContext securityContext) {
     return securityContext == null || securityContext.getUserPrincipal() == null
@@ -252,8 +252,8 @@ public final class ContextMemoryVisibility {
     return switch (visibility == null ? MemoryVisibility.PRIVATE : visibility) {
       case PRIVATE -> "Memory with visibility PRIVATE is only accessible to its owner.";
       case SHARED -> "Memory with visibility SHARED is only accessible to explicitly shared users.";
-      case ENTITY -> "Memory with visibility ENTITY is only accessible to users who can view its"
-          + " primary entity.";
+      case ENTITY,
+          PUBLIC -> "Anchored memories are only accessible to users who can view their primary entity.";
     };
   }
 }

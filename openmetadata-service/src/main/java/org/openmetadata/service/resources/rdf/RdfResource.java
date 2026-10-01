@@ -119,7 +119,7 @@ public class RdfResource {
   private volatile RdfEntityDiffService entityDiffService;
   private volatile SemanticSearchEngine semanticSearchEngine;
   private volatile SparqlFederationGuard federationGuard;
-  private volatile boolean askCollateEnabled;
+  private volatile boolean aiEnabled;
   private volatile String configuredBaseUri = DEFAULT_RDF_BASE_URI;
 
   public static final String RDF_XML = "application/rdf+xml";
@@ -302,9 +302,9 @@ public class RdfResource {
     this.federationGuard = new SparqlFederationGuard(config.getRdfConfiguration());
     this.configuredBaseUri = rdfBaseUri(config);
     this.entityDiffService = new RdfEntityDiffService(configuredBaseUri);
-    this.askCollateEnabled =
+    this.aiEnabled =
         config.getRdfConfiguration() != null
-            && Boolean.TRUE.equals(config.getRdfConfiguration().getAskCollateEnabled())
+            && Boolean.TRUE.equals(config.getRdfConfiguration().getAiEnabled())
             && LLMClientHolder.isEnabled();
   }
 
@@ -358,7 +358,7 @@ public class RdfResource {
         .withStorageType(storageType)
         .withInference(inferenceStatus)
         .withProjectionState(projectionState)
-        .withAskCollateEnabled(askCollateEnabled);
+        .withAiEnabled(aiEnabled);
   }
 
   private RdfProjectionState projectionState(final boolean enabled) {

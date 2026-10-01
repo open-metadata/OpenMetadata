@@ -257,9 +257,15 @@ public class VectorSearchQueryBuilder {
     // stamped is excluded until a Search Reindex restamps it — it may be a Private one.
     sb.append("{\"bool\":{\"should\":[")
         .append("{\"bool\":{\"must\":[")
+        .append("{\"bool\":{\"should\":[")
         .append(
             termClause(
                 ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()))
+        .append(',')
+        .append(
+            termClause(
+                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()))
+        .append("]}}")
         .append(',')
         .append(termClause(ContextMemoryIndex.FIELD_ANCHOR_ID, ContextMemoryIndex.UNANCHORED))
         .append("]}}");

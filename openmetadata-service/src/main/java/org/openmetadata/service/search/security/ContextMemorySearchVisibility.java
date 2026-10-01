@@ -57,7 +57,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * in-memory for the REST read paths. Normal search additionally requires Active status; direct
  * REST reads can still inspect a retired memory and its history.
  *
- * <p>Search cannot evaluate an anchor's policy per document. An anchored {@code Entity} memory is
+ * <p>Search cannot evaluate an anchor's policy per document. An anchored memory is
  * therefore searchable only by its owners and admins. An explicit unanchored marker is required:
  * old documents without the marker stay hidden from non-owners until reindexed.
  */
@@ -91,12 +91,12 @@ public class ContextMemorySearchVisibility {
   }
 
   /**
-   * Returns a filter admitting only Active, unanchored org-wide ({@link MemoryVisibility#ENTITY}) memories.
+   * Returns a filter admitting only Active, unanchored Entity or Public memories.
    * This is the fail-closed default for search paths without a {@link SubjectContext}. Like {@link
    * #buildVisibilityFilter}, non-memory documents always pass.
    */
   public OMQueryBuilder buildOrgWideOnlyFilter() {
-    return scopeMemoriesTo(unanchoredEntityClause());
+    return scopeMemoriesTo(unanchoredOrgWideClause());
   }
 
   /**
@@ -108,7 +108,8 @@ public class ContextMemorySearchVisibility {
     boolean readable = true;
     if (document != null && Entity.CONTEXT_MEMORY.equals(document.get(FIELD_ENTITY_TYPE))) {
       readable =
-          MemoryVisibility.ENTITY.value().equals(document.get(FIELD_VISIBILITY))
+          (MemoryVisibility.ENTITY.value().equals(document.get(FIELD_VISIBILITY))
+                  || MemoryVisibility.PUBLIC.value().equals(document.get(FIELD_VISIBILITY)))
               && ContextMemoryStatus.ACTIVE
                   .value()
                   .equals(document.get(ContextMemoryIndex.FIELD_STATUS))
@@ -164,7 +165,7 @@ public class ContextMemorySearchVisibility {
 
   private OMQueryBuilder buildVisibleToUserClause(User user) {
     List<OMQueryBuilder> clauses = new ArrayList<>();
-    clauses.add(unanchoredEntityClause());
+    clauses.add(unanchoredOrgWideClause());
     clauses.add(
         queryBuilderFactory.nestedQuery(
             FIELD_OWNERS, queryBuilderFactory.termQuery(FIELD_OWNERS_ID, user.getId().toString())));
@@ -172,12 +173,19 @@ public class ContextMemorySearchVisibility {
     return queryBuilderFactory.boolQuery().should(clauses);
   }
 
-  private OMQueryBuilder unanchoredEntityClause() {
+  private OMQueryBuilder unanchoredOrgWideClause() {
     return queryBuilderFactory
         .boolQuery()
         .must(
             List.of(
-                queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()),
+                queryBuilderFactory
+                    .boolQuery()
+                    .should(
+                        List.of(
+                            queryBuilderFactory.termQuery(
+                                FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()),
+                            queryBuilderFactory.termQuery(
+                                FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()))),
                 queryBuilderFactory.termQuery(
                     ContextMemoryIndex.FIELD_ANCHOR_ID, ContextMemoryIndex.UNANCHORED)));
   }

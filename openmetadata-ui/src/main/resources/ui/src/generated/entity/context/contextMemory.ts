@@ -461,6 +461,7 @@ export enum ShareRole {
 export enum ShareVisibility {
     Entity = "Entity",
     Private = "Private",
+    Public = "Public",
     Shared = "Shared",
 }
 

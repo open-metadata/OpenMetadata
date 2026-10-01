@@ -168,6 +168,28 @@ public interface RdfInfraDAOs {
   }
 
   interface OntologyChangeSetDAO extends EntityDAO<OntologyChangeSet> {
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_change_set_entity "
+                + "WHERE state IN ('DRAFT', 'SUBMITTED', 'APPLY_FAILED') "
+                + "AND (deleted IS NULL OR deleted = FALSE) "
+                + "AND JSON_SEARCH(json, 'one', :memoryId, NULL, "
+                + "'$.operations[*].sourceMemoryIds[*]') IS NOT NULL "
+                + "ORDER BY updatedAt DESC LIMIT 100",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json::text FROM ontology_change_set_entity "
+                + "WHERE state IN ('DRAFT', 'SUBMITTED', 'APPLY_FAILED') "
+                + "AND (deleted IS NULL OR deleted = FALSE) "
+                + "AND EXISTS (SELECT 1 FROM jsonb_array_elements(json->'operations') AS operation "
+                + "CROSS JOIN LATERAL jsonb_array_elements_text("
+                + "COALESCE(operation->'sourceMemoryIds', '[]'::jsonb)) AS source(memoryId) "
+                + "WHERE source.memoryId = :memoryId) "
+                + "ORDER BY updatedAt DESC LIMIT 100",
+        connectionType = POSTGRES)
+    List<String> findOpenBySourceMemoryId(@Bind("memoryId") String memoryId);
+
     @Override
     default String getTableName() {
       return "ontology_change_set_entity";

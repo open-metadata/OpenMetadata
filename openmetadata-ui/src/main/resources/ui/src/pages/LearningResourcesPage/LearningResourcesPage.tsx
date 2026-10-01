@@ -21,7 +21,7 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, SearchLg, Trash01 } from '@untitledui/icons';
+import { Plus, Search, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -33,9 +33,7 @@ import { DeleteModal } from '../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import ViewToggle, {
-  ViewMode,
-} from '../../components/common/ViewToggle/ViewToggle';
+import ViewToggle from '../../components/common/ViewToggle/ViewToggle';
 import {
   CATEGORY_BADGE_COLORS,
   LEARNING_CATEGORIES,
@@ -55,6 +53,9 @@ import {
   MAX_VISIBLE_TAGS,
   PAGE_IDS,
 } from '../../constants/Learning.constants';
+import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
+import { PageViewMode } from '../../generated/type/personaPreferences';
+import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { LearningResource } from '../../rest/learningResourceAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { useLearningResourceActions } from './hooks/useLearningResourceActions';
@@ -132,7 +133,9 @@ export const LearningResourcesPage: React.FC = () => {
     handlePlayerClose,
   } = useLearningResourceActions({ onRefetch: refetch });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
 
   const [searchInputValue, setSearchInputValue] = useState(searchText);
 
@@ -356,7 +359,7 @@ export const LearningResourcesPage: React.FC = () => {
             <Box align="center" gap={2}>
               <Input
                 className="tw:max-w-86"
-                icon={SearchLg}
+                icon={Search}
                 placeholder={t('label.search-entity', {
                   entity: t('label.resource'),
                 })}
@@ -373,7 +376,7 @@ export const LearningResourcesPage: React.FC = () => {
             {filterSelectionDisplay}
           </Box>
 
-          {view === ViewMode.Table && (
+          {view === PageViewMode.Table && (
             <>
               <Table
                 stickyHeader
@@ -420,7 +423,7 @@ export const LearningResourcesPage: React.FC = () => {
             </>
           )}
 
-          {view === ViewMode.Card && (
+          {view === PageViewMode.Card && (
             <>
               <Box
                 className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-3"

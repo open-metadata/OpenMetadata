@@ -140,6 +140,14 @@ jest.mock('../../components/OntologyExplorer/OntologyAiAssistant', () => ({
   )),
 }));
 
+jest.mock(
+  '../../components/OntologyExplorer/OntologyMemoryReviewPanel',
+  () => ({
+    __esModule: true,
+    default: jest.fn(() => <div data-testid="ontology-memory-review-panel" />),
+  })
+);
+
 jest.mock('../../components/OntologyExplorer/OntologyImportExportMenu', () => ({
   __esModule: true,
   default: jest.fn(() => <div data-testid="ontology-import-export" />),
@@ -477,8 +485,32 @@ describe('OntologyExplorerPage', () => {
     render(<OntologyExplorerPage />);
 
     expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
     expect(screen.getByTestId('mode-tab-view')).toBeVisible();
     expect(screen.getByTestId('mode-tab-query')).toBeVisible();
+  });
+
+  it('opens saved proposals for review when ontology AI is disabled', () => {
+    render(<OntologyExplorerPage />);
+
+    fireEvent.click(screen.getByTestId('mode-tab-review'));
+
+    expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
+    expect(screen.getByTestId('ontology-explorer')).not.toBeVisible();
+  });
+
+  it('opens a linked draft directly in Studio review', () => {
+    window.history.pushState({}, '', '/governance/ontology?draft=draft-16');
+
+    render(<OntologyExplorerPage />);
+
+    expect(screen.getByTestId('mode-tab-review')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
+
+    window.history.pushState({}, '', '/');
   });
 
   it('does not expose an AI affordance when the effective flag is disabled', () => {

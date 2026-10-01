@@ -1216,11 +1216,14 @@ class VectorSearchQueryBuilderTest {
             .get(0)
             .path("bool")
             .path("must");
-    assertTrue(termClauseExists(unanchoredOnly, "visibility", MemoryVisibility.ENTITY.value()));
+    JsonNode orgWideVisibility = unanchoredOnly.get(0).path("bool").path("should");
+    assertTrue(termClauseExists(orgWideVisibility, "visibility", MemoryVisibility.ENTITY.value()));
+    assertTrue(termClauseExists(orgWideVisibility, "visibility", MemoryVisibility.PUBLIC.value()));
     assertTrue(termClauseExists(unanchoredOnly, "anchorId", "unanchored"));
     String rendered = clause.toString();
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()), "org-wide memories still match");
     assertTrue(rendered.contains("\"anchorId\":\"unanchored\""));
+    assertTrue(rendered.contains(MemoryVisibility.PUBLIC.value()), "public memories still match");
     assertFalse(rendered.contains("owners.id"), "no subject means no owner branch");
     assertFalse(rendered.contains("sharedWithIds"), "no subject means no shared branch");
     assertFalse(
@@ -1240,6 +1243,7 @@ class VectorSearchQueryBuilderTest {
     assertTrue(rendered.contains(MemoryVisibility.SHARED.value()));
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()));
     assertTrue(rendered.contains("\"anchorId\":\"unanchored\""));
+    assertTrue(rendered.contains(MemoryVisibility.PUBLIC.value()));
   }
 
   /**

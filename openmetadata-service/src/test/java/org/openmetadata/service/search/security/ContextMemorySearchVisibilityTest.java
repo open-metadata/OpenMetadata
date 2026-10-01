@@ -115,6 +115,10 @@ class ContextMemorySearchVisibilityTest {
         "non-owner Entity memories must have an explicit unanchored marker");
     assertFieldExists(
         json,
+        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.term['anchorId'].value=='unanchored')])]",
+        "Public and Entity memories require an unanchored marker for non-owners");
+    assertFieldExists(
+        json,
         "$.bool.should[1].bool.must[1].bool.should[?(@.nested.query.term['owners.id'].value=='"
             + USER_ID
             + "')]",
@@ -213,13 +217,17 @@ class ContextMemorySearchVisibilityTest {
   }
 
   @Test
-  void orgWideOnlyFilterAdmitsOnlyEntityVisibilityMemories() {
+  void orgWideOnlyFilterAdmitsPublicAndEntityMemories() {
     DocumentContext json = JsonPath.parse(orgWideOnlyJson());
 
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.must[?(@.term['visibility'].value=='Entity')]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.term['visibility'].value=='Entity')]",
         "the memory branch admits Entity-visibility memories");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.term['visibility'].value=='Public')]",
+        "the memory branch admits Public memories");
     assertFieldExists(
         json,
         "$.bool.should[1].bool.must[1].bool.must[?(@.term['anchorId'].value=='unanchored')]",
@@ -258,6 +266,8 @@ class ContextMemorySearchVisibilityTest {
   void isOrgWideReadableRejectsRestrictedMemories() {
     assertTrue(
         ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.ENTITY)));
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.PUBLIC)));
     assertFalse(
         ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.PRIVATE)));
     assertFalse(
@@ -284,6 +294,18 @@ class ContextMemorySearchVisibilityTest {
                 "anchorId",
                 UUID.randomUUID().toString())),
         "an anchored Entity memory is not readable without a subject");
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType",
+                Entity.CONTEXT_MEMORY,
+                "visibility",
+                MemoryVisibility.PUBLIC.value(),
+                "anchorId",
+                UUID.randomUUID().toString(),
+                "status",
+                ContextMemoryStatus.ACTIVE.value())),
+        "an anchored Public memory is not readable without a subject");
     assertFalse(
         ContextMemorySearchVisibility.isOrgWideReadable(
             Map.of(

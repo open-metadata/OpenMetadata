@@ -467,6 +467,16 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     assertThrows(ForbiddenException.class, () -> other.getVersion(id, memory.getVersion()));
   }
 
+  @Test
+  void get_publicContextMemoryWithoutAssetByAnotherUser_200_OK(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(memoryWithVisibility(ns, "public-direct-read", MemoryVisibility.PUBLIC));
+    ContextMemoryService otherUserService =
+        new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+
+    assertEquals(memory.getId(), otherUserService.get(memory.getId().toString()).getId());
+  }
+
   /**
    * The ContextCenter serves its listing from search whenever it passes a query, filter, sort or
    * offset — which it always does. Restricted memories must therefore reach the search index and be
@@ -491,12 +501,14 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         createEntity(memoryWithVisibility(ns, "admin-private", MemoryVisibility.PRIVATE));
     ContextMemory orgWide =
         createEntity(memoryWithVisibility(ns, "org-wide", MemoryVisibility.ENTITY));
+    ContextMemory publicMemory =
+        createEntity(memoryWithVisibility(ns, "public-no-asset", MemoryVisibility.PUBLIC));
 
     // Admin bypasses the visibility filter, so an admin-visible listing containing all four is the
     // barrier proving every document — restricted ones included — reached the index.
     awaitSearchBackedListContains(
         SdkClients.adminClient(),
-        List.of(ownedByUser1, sharedWithUser1, ownedByAdmin, orgWide),
+        List.of(ownedByUser1, sharedWithUser1, ownedByAdmin, orgWide, publicMemory),
         "every memory must be indexed regardless of visibility");
 
     Set<String> visibleToUser1 = searchBackedListIds(SdkClients.user1Client());
@@ -510,6 +522,9 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     assertTrue(
         visibleToUser1.contains(orgWide.getId().toString()),
         "org-wide memories stay visible to everyone");
+    assertTrue(
+        visibleToUser1.contains(publicMemory.getId().toString()),
+        "a Public memory without an asset is visible to everyone");
     assertFalse(
         visibleToUser1.contains(ownedByAdmin.getId().toString()),
         "another user's PRIVATE memory must never surface");

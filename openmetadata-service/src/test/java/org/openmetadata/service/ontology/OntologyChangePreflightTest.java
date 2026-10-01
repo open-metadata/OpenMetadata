@@ -20,6 +20,7 @@ import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
@@ -75,6 +76,25 @@ class OntologyChangePreflightTest {
         () ->
             preflight.validate(
                 changeSet(glossaryId), List.of(createSource, createTarget, relationship)));
+  }
+
+  @Test
+  void acceptsGlossaryAndTermCreatedInTheSamePlanWithoutLoadingEither() {
+    final UUID glossaryId = UUID.randomUUID();
+    final OntologyChangeOperation createGlossary =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.CREATE_GLOSSARY)
+            .withGlossary(new Glossary().withId(glossaryId));
+    final OntologyChangeOperation createTerm = createOperation(storedTerm(glossaryId, null));
+    final OntologyChangePreflight preflight =
+        new OntologyChangePreflight(
+            (entityType, id) -> {
+              throw new AssertionError("Planned entities must not be loaded from persistence");
+            });
+
+    assertDoesNotThrow(
+        () -> preflight.validate(changeSet(glossaryId), List.of(createGlossary, createTerm)));
   }
 
   @Test
