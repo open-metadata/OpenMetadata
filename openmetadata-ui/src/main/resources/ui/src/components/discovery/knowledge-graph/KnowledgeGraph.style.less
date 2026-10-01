@@ -24,13 +24,23 @@
   .kg-content {
     display: grid;
     grid-template-rows: auto minmax(min-content, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     min-height: 0;
+    // Grid items default to min-width:auto, so the absolutely-sized G6 canvas
+    // inside .knowledge-graph-body becomes this column's intrinsic minimum and
+    // props the stage open past its grid area. The next fit then measures that
+    // inflated width and re-sizes the canvas to it, so the graph only converges
+    // on the real width after several redraws -- drifting the whole scene
+    // sideways each time. Same reason min-height:0 is already here, one axis over.
+    min-width: 0;
   }
 
   .kg-stage {
     display: grid;
     grid-template-rows: minmax(calc(var(--om-space-40) * 8), 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     min-height: 0;
+    min-width: 0;
     position: relative;
   }
 
@@ -58,6 +68,7 @@
   .knowledge-graph-body {
     flex: 1;
     min-height: calc(var(--om-space-40) * 8);
+    min-width: 0;
     position: relative;
     overflow: hidden;
     isolation: isolate;

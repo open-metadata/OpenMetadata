@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -212,8 +212,8 @@ function NotificationAlertConfigView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const extraFormWidgets = useMemo(
-    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+  const TemplateSection = useMemo(
+    () => alertsClassBase.getAlertAiTemplateSection(),
     []
   );
 
@@ -246,11 +246,11 @@ function NotificationAlertConfigView({
   }, []);
 
   useEffect(() => {
-    if (!isEmpty(extraFormWidgets)) {
+    if (TemplateSection) {
       fetchTemplates();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extraFormWidgets]);
+  }, [TemplateSection]);
 
   useEffect(() => {
     fetchFunctions();
@@ -323,21 +323,16 @@ function NotificationAlertConfigView({
         onChange={() => {}}
       />
 
-      {!isEmpty(extraFormWidgets) && (
+      {TemplateSection && (
         <>
-          {Object.entries(extraFormWidgets).map(([name, Widget]) => (
-            <Fragment key={name}>
-              <Box className="tw:border-t tw:border-secondary" />
-              <Widget
-                isViewMode
-                alertDetails={modifiedAlertData}
-                formRef={null as never}
-                loading={isLoading}
-                templateResourcePermission={templateResourcePermission}
-                templates={templates}
-              />
-            </Fragment>
-          ))}
+          <Box className="tw:border-t tw:border-secondary" />
+          <TemplateSection
+            isViewOnly
+            loading={loadingState.templates}
+            templateResourcePermission={templateResourcePermission}
+            templates={templates}
+            value={modifiedAlertData}
+          />
         </>
       )}
     </Box>

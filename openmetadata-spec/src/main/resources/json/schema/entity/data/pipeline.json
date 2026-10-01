@@ -104,6 +104,7 @@
     "task": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.Task",
+      "javaInterfaces": ["org.openmetadata.schema.FieldInterface"],
       "properties": {
         "name": {
           "description": "Name that identifies this task instance uniquely.",
