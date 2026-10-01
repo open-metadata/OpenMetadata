@@ -332,3 +332,18 @@ class TestResolvedConnection:
         service_url = setter.get_parameters(test_case).table1.serviceUrl
         assert ":secret@" in str(service_url)
         assert "*********" not in str(service_url)
+
+    def test_table1_url_falls_back_to_the_stored_connection(
+        self,
+        metadata: OpenMetadata,
+        sampler: SamplerInterface,
+        table1: Table,
+        parameter_values: list[TestCaseParameterValue],
+    ) -> None:
+        setter = TableDiffParamsSetter(
+            ometa_client=metadata, service_connection_config=None, sampler=sampler, table_entity=table1
+        )
+        test_case = TestCase.model_construct(
+            parameterValues=[*parameter_values, TestCaseParameterValue(name="keyColumns", value=json.dumps(["name"]))],
+        )
+        assert "%2A%2A%2A" in str(setter.get_parameters(test_case).table1.serviceUrl)

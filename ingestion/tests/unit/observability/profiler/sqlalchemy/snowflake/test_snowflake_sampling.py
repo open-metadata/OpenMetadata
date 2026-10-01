@@ -213,6 +213,7 @@ class SampleTest(TestCase):
         (VARIANT, '{\n  "count": 2,\n  "kind": "fixture"\n}', {"count": 2, "kind": "fixture"}),
         (VARIANT, '"plain text"', "plain text"),
         (VARIANT, "42", 42),
+        (VARIANT, "not json", "not json"),
         (CustomArray(String), '[\n  "a",\n  "b"\n]', ["a", "b"]),
         (VARIANT, None, None),
         (VARIANT, "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1), "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1)),
