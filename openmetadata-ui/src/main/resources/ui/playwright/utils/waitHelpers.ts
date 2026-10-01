@@ -83,31 +83,29 @@ export const clickAndWaitFor = async (
   return response;
 };
 
-/**
- * React Aria counterpart of `waitForAntOverlayToOpen`: a RAC popover carries
- * `data-entering` while it slides in, and a click landing mid-slide ends off
- * the item, so the press is cancelled and `onAction` never fires.
- */
+/** React Aria counterpart of `waitForAntOverlayToOpen`: a click landing mid-slide cancels the press. */
 export const waitForAriaOverlayToSettle = async (page: Page) => {
   await expect(page.locator('[data-entering]')).toHaveCount(0);
 };
 
 /**
- * Clicks `trigger` until `target` appears, for triggers that only open things.
- * A click swallowed by a re-layout fires no event at all, so retrying is the
- * only fix; the guard and the bounded click keep a retry from blocking on the
- * overlay the first click already opened. `force` escalates after attempt one.
+ * Clicks `trigger` until `target` appears; a click swallowed by a re-layout
+ * fires no event, so retrying is the only fix. `force` is off by default — it
+ * also clicks through a real intercepting overlay and would hide that bug.
  */
 export const clickUntilVisible = async (
   trigger: Locator,
   target: Locator,
-  options?: { timeout?: number; forceOnRetry?: boolean }
+  options?: { timeout?: number; force?: 'onRetry' | 'always' }
 ) => {
   let attempt = 0;
   await expect(async () => {
+    const isRetry = attempt++ > 0;
     if (!(await target.isVisible())) {
       await trigger.click({
-        force: Boolean(options?.forceOnRetry) && attempt++ > 0,
+        force:
+          options?.force === 'always' ||
+          (options?.force === 'onRetry' && isRetry),
         timeout: 5_000,
       });
     }

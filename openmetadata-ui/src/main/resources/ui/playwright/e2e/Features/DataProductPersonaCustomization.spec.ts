@@ -185,8 +185,7 @@ test.describe('Data Product Persona customization', () => {
       await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
       await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
 
-      // Closing the antd modal restores the body scrollbar, which re-measures
-      // the grid and shifts the placeholder out from under the click.
+      // Closing the antd modal re-measures the grid, shifting the placeholder.
       await clickUntilVisible(
         adminPage.getByTestId('add-widget-button'),
         adminPage.getByTestId('widget-info-tabs')

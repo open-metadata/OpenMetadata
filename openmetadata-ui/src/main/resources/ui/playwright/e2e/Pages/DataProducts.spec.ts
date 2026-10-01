@@ -223,8 +223,7 @@ test.describe('Data Products', () => {
   });
 
   test('Search Data Products', async ({ page }) => {
-    // Names must share no token: the index matches on n-grams, so a shared
-    // `catalog` pulled the second product into the first one's results.
+    // Names share no token: n-gram matching pulled a shared `catalog` in.
     const dataProduct1 = new DataProduct([domain], `revenue${uuid()}`);
     const dataProduct2 = new DataProduct([domain], `shipyard${uuid()}`);
 
