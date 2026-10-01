@@ -20,8 +20,12 @@ import {
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Globe01, Package, Plus } from '@untitledui/icons';
+import {
+  Globe01,
+  NoSearch,
+  Package,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {

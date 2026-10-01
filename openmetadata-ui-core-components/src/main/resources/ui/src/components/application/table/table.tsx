@@ -15,7 +15,7 @@ import {
   Edit01,
   HelpCircle,
   Trash01,
-} from '@untitledui/icons';
+} from '../../../icons';
 import type {
   CellProps as AriaCellProps,
   ColumnProps as AriaColumnProps,

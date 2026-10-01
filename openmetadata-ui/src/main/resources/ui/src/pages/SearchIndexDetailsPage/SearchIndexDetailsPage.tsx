@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import { PageLoader } from '../../components/common/Loader/Loader';
@@ -701,4 +702,4 @@ function SearchIndexDetailsPage() {
   );
 }
 
-export default withActivityFeed(SearchIndexDetailsPage);
+export default withSuggestions(withActivityFeed(SearchIndexDetailsPage));

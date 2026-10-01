@@ -39,6 +39,7 @@ import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePagePath } from '../../../utils/KnowledgePagePureUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './KnowledgeCenterWidget.less';
 const KnowledgeCenterWidget = ({
@@ -141,7 +142,7 @@ const KnowledgeCenterWidget = ({
                     target={isQuickLink ? '_blank' : '_self'}
                     to={
                       isQuickLink
-                        ? quickLink.url
+                        ? getSafeHttpUrl(quickLink.url) ?? '#'
                         : {
                             pathname: getKnowledgePagePath(
                               knowledgePage.fullyQualifiedName

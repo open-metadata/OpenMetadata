@@ -21,7 +21,7 @@ import {
 import {
   ChevronDown,
   FilterLines,
-  SearchLg,
+  Search,
 } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -86,7 +86,7 @@ export const CustomPropertyCardList = ({
               entity: t('label.property-plural'),
             })}
             className="tw:w-full tw:max-w-80"
-            icon={SearchLg}
+            icon={Search}
             inputDataTestId="custom-property-search"
             placeholder={t('label.search-entity', {
               entity: t('label.property-plural'),
