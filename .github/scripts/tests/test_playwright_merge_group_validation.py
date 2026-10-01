@@ -162,6 +162,7 @@ def test_merge_groups_upload_only_the_trace_report():
         condition = step.get("if", "")
         if step["name"] in TRACE_REPORT_STEPS:
             assert "merge_group" not in condition, step["name"]
+            assert "always()" in condition, step["name"]
             continue
         if step["name"] == "Gate verified merge-group shards":
             continue

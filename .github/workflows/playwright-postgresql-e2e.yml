@@ -287,6 +287,8 @@ jobs:
       # report so queue failures and retry passes keep their traces.
       - name: Checkout
         id: checkout
+        # always(): a failed merge-group gate must not skip the trace report.
+        if: always()
         continue-on-error: true
         uses: actions/checkout@v7
         with:
