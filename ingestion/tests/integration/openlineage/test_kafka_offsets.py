@@ -15,7 +15,11 @@ offset only after the event has been processed, so each run resumes exactly
 where the previous one stopped.
 """
 
+import time
 from collections.abc import Iterator
+from unittest.mock import patch
+
+from confluent_kafka import Consumer
 
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     Kafka as KafkaBrokerConfig,
@@ -28,10 +32,15 @@ from metadata.ingestion.source.pipeline.openlineage.models import OpenLineageEve
 
 from .conftest import OPENLINEAGE_JOBS  # noqa: TID252
 
+CONNECTION_MODULE = "metadata.ingestion.source.pipeline.openlineage.connection"
 
-def _ingestion_run(broker: KafkaBrokerConfig) -> Iterator[OpenLineageEvent]:
+
+def _ingestion_run(broker: KafkaBrokerConfig, consumer_overrides: dict | None = None) -> Iterator[OpenLineageEvent]:
+    """``consumer_overrides`` adds librdkafka properties the connector does not expose
+    on top of the config it builds."""
     source = object.__new__(OpenlineageSource)
-    source.client, _ = _get_kafka_connection(broker)
+    with patch(f"{CONNECTION_MODULE}.KafkaConsumer", lambda config: Consumer({**config, **(consumer_overrides or {})})):
+        source.client, _ = _get_kafka_connection(broker)
     return source._poll_kafka(broker)
 
 
@@ -53,4 +62,20 @@ def test_event_in_flight_when_a_run_stops_is_read_by_the_next_run(kafka_broker):
 def test_processed_events_are_not_read_by_the_next_run(kafka_broker):
     assert _job_names(_ingestion_run(kafka_broker)) == OPENLINEAGE_JOBS
 
+    assert _job_names(_ingestion_run(kafka_broker)) == []
+
+
+def test_run_evicted_while_processing_an_event_finishes_the_backlog_once(kafka_broker):
+    # The connector leaves max.poll.interval.ms at its five-minute default, so the
+    # test cuts it to ten seconds. It may not undercut session.timeout.ms, whose
+    # broker minimum is six. The wider inactivity window gives the rejoin time.
+    broker = kafka_broker.model_copy(update={"sessionTimeout": 20})
+    run = _ingestion_run(broker, {"session.timeout.ms": 6000, "max.poll.interval.ms": 10000})
+    events = [next(run)]
+    # Processing job_0 outlasts the poll interval, so the consumer is evicted and,
+    # once it rejoins, is handed job_0 again.
+    time.sleep(12)
+    events.extend(run)
+
+    assert _job_names(events) == OPENLINEAGE_JOBS
     assert _job_names(_ingestion_run(kafka_broker)) == []
