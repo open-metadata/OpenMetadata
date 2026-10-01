@@ -15,6 +15,11 @@ import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { Check, ChevronDown, ChevronUp } from '@untitledui/icons';
 import { FC, useState } from 'react';
 
+// The design's toolbar triggers: 16px icons and 10/8px padding, so the
+// sub-tabs and all three filters share one row.
+export const ACTIVITY_TRIGGER_CLASS_NAME =
+  'tw:gap-1.5 tw:py-2 tw:pr-2 tw:pl-2.5 tw:whitespace-nowrap tw:*:data-icon:size-4';
+
 export interface ActivityToolbarMenuOption {
   value: string;
   label: string;
@@ -52,7 +57,7 @@ const ActivityToolbarMenu = ({
   return (
     <Dropdown.Root onOpenChange={setIsOpen}>
       <Button
-        className="tw:whitespace-nowrap"
+        className={ACTIVITY_TRIGGER_CLASS_NAME}
         color="secondary"
         data-testid={testId}
         iconLeading={triggerIcon}

@@ -36,7 +36,9 @@ import {
   ACTIVITY_TYPE_KEYS,
   INBOX_DATE_RANGE_OPTIONS,
 } from '../inbox.utils';
-import ActivityToolbarMenu from './ActivityToolbarMenu';
+import ActivityToolbarMenu, {
+  ACTIVITY_TRIGGER_CLASS_NAME,
+} from './ActivityToolbarMenu';
 
 const FILTER_LABEL_KEY: Record<ActivityFilter, string> = {
   [ActivityFilter.All]: 'label.all',
@@ -124,7 +126,8 @@ const ActivityToolbar = ({
         onSelectionChange={(key) => onFilterChange(key as ActivityFilter)}>
         <Tabs.List size="sm" type="button-border">
           {Object.values(ActivityFilter).map((value) => (
-            <Tabs.Item id={value} key={value}>
+            // The design's tighter tabs, so a count fits without wrapping.
+            <Tabs.Item className="tw:gap-1.5 tw:px-2.25" id={value} key={value}>
               {/* The tab's own badge stays gray; the design tints the chosen one. */}
               {({ isSelected }) => (
                 <>
@@ -170,8 +173,7 @@ const ActivityToolbar = ({
         <FilterSelect
           bordered
           hideCounts
-          // The bordered trigger is md; the design's toolbar is sm throughout.
-          className="tw:px-3 tw:py-2"
+          className={ACTIVITY_TRIGGER_CLASS_NAME}
           data-testid="activity-type-filter"
           label={t('label.type')}
           options={typeOptions}
