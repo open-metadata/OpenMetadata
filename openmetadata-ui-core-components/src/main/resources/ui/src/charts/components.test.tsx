@@ -178,6 +178,93 @@ describe('LineChart', () => {
   });
 });
 
+describe('point hover', () => {
+  const fakeChart = {
+    convertToPixel: vi.fn(() => [50, 60]),
+    dispatchAction: vi.fn(),
+  };
+  const fire = (name: string, event: Partial<ECElementEvent>) =>
+    (lastHost().onEvents as Record<string, (e: ECElementEvent) => void>)[name](
+      event as ECElementEvent
+    );
+
+  it('reports the hovered row, series and pixel centre', () => {
+    const onPointHover = vi.fn();
+    const onPointLeave = vi.fn();
+    render(
+      <LineChart
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        xKey="day"
+        onPointHover={onPointHover}
+        onPointLeave={onPointLeave}
+      />
+    );
+    (lastHost().onChartReady as (c: unknown) => void)(fakeChart);
+    fire('mouseover', {
+      componentType: 'series',
+      seriesId: 'failed',
+      dataIndex: 1,
+    });
+    fire('mouseout', {
+      componentType: 'series',
+      seriesId: 'failed',
+      dataIndex: 1,
+    });
+
+    expect(onPointHover).toHaveBeenCalledWith(rows[1], 'failed', {
+      x: 50,
+      y: 60,
+    });
+    expect(onPointLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores helper series such as reference lines and bands', () => {
+    const onPointHover = vi.fn();
+    const onPointLeave = vi.fn();
+    render(
+      <LineChart
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        xKey="day"
+        onPointHover={onPointHover}
+        onPointLeave={onPointLeave}
+      />
+    );
+    (lastHost().onChartReady as (c: unknown) => void)(fakeChart);
+    fire('mouseover', {
+      componentType: 'series',
+      seriesId: '__reference-lines',
+      dataIndex: 0,
+    });
+    fire('mouseover', {
+      componentType: 'series',
+      seriesId: 'passed__band',
+      dataIndex: 0,
+    });
+    fire('mouseout', {
+      componentType: 'series',
+      seriesId: 'passed__band',
+      dataIndex: 0,
+    });
+
+    expect(onPointHover).not.toHaveBeenCalled();
+    expect(onPointLeave).not.toHaveBeenCalled();
+  });
+
+  it('binds no hover handler when no hover callback is given', () => {
+    render(
+      <LineChart ariaLabel="Runs" data={rows} series={series} xKey="day" />
+    );
+    const events = lastHost().onEvents as Record<string, unknown>;
+
+    expect(events.mouseover).toBeUndefined();
+    expect(events.mouseout).toBeUndefined();
+  });
+});
+
 describe('AreaChart', () => {
   it('renders filled line series', () => {
     render(

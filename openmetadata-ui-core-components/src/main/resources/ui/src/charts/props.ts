@@ -17,6 +17,7 @@ import type { ChartTooltipRenderProps } from './tooltip-render';
 import type {
   CartesianBuildInput,
   ChartOption,
+  ChartPixel,
   GeoJson,
   GeoMapBuildInput,
   GeoMapDatum,
@@ -60,7 +61,11 @@ export interface CartesianChartProps<T extends object>
     ChartCommonProps {
   /** `render` gives React content; see `ChartTooltipRenderProps`. */
   tooltip?: ChartTooltipRenderProps<T>;
-  onPointClick?: (datum: T, seriesKey: string, event: ECElementEvent) => void;
+  /** The pointer is over a point. `position` is the point's centre. */
+  onPointHover?: (datum: T, seriesKey: string, position: ChartPixel) => void;
+  /** The pointer left the point (or keyboard focus left the chart). */
+  onPointLeave?: () => void;
+  onPointClick?: (datum: T, seriesKey: string, event?: ECElementEvent) => void;
   /** A click on a category-axis label. Receives the category value. */
   onCategoryClick?: (category: string, event: ECElementEvent) => void;
 }

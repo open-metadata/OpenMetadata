@@ -95,6 +95,12 @@ export type ChartOption = ComposeOption<
  */
 export type ChartSeriesType = 'line' | 'area' | 'bar' | 'band';
 
+/** A position in pixels, relative to the chart's top-left corner. */
+export interface ChartPixel {
+  x: number;
+  y: number;
+}
+
 /** How one point of a line or area series is drawn. */
 export interface ChartPointStyle {
   /** Status colour of the dot. Without one it takes the series colour. */

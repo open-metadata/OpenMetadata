@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import type { ECElementEvent } from 'echarts';
-import { useCallback, useMemo } from 'react';
+import type { ECElementEvent, EChartsType } from 'echarts';
+import { useCallback, useMemo, useRef } from 'react';
 import { EChart } from './echart';
+import { PixelChart, pointPixel } from './point-pixel';
 import type { BarChartProps } from './props';
 import { withTooltipRender } from './tooltip-render';
 import type { CartesianBuildInput, ChartOption, ChartTheme } from './types';
@@ -51,6 +52,8 @@ export const CartesianChartBase = <T extends object>({
   showValueLabels,
   radius,
   onPointClick,
+  onPointHover,
+  onPointLeave,
   onCategoryClick,
   height,
   isDark,
@@ -59,6 +62,7 @@ export const CartesianChartBase = <T extends object>({
   className,
   'data-testid': dataTestId,
 }: CartesianChartBaseProps<T>) => {
+  const chartRef = useRef<PixelChart>();
   const builtTooltip = useMemo(
     () => withTooltipRender(tooltip, data),
     [tooltip, data]
@@ -111,9 +115,13 @@ export const CartesianChartBase = <T extends object>({
   );
 
   const onEvents = useMemo(() => {
-    if (!onPointClick && !onCategoryClick) {
+    const hasHover = Boolean(onPointHover || onPointLeave);
+    if (!onPointClick && !onCategoryClick && !hasHover) {
       return undefined;
     }
+    const pointKeys = new Set(
+      series.filter((s) => s.type !== 'band').map((s) => s.key)
+    );
 
     return {
       click: (event: ECElementEvent) => {
@@ -132,8 +140,52 @@ export const CartesianChartBase = <T extends object>({
           onPointClick?.(datum, String(event.seriesId), event);
         }
       },
+      ...(hasHover && {
+        // Only the caller's own series are points; reference lines, bands
+        // and pie tracks report events under other ids.
+        mouseover: (event: ECElementEvent) => {
+          const seriesKey = String(event.seriesId);
+          const datum = data[event.dataIndex];
+          const position =
+            chartRef.current && datum && pointKeys.has(seriesKey)
+              ? pointPixel(
+                  chartRef.current,
+                  datum,
+                  xKey,
+                  seriesKey,
+                  xAxis?.type === 'time'
+                )
+              : undefined;
+          if (datum && position) {
+            onPointHover?.(datum, seriesKey, position);
+          }
+        },
+        mouseout: (event: ECElementEvent) => {
+          if (pointKeys.has(String(event.seriesId))) {
+            onPointLeave?.();
+          }
+        },
+      }),
     };
-  }, [data, onPointClick, onCategoryClick]);
+  }, [
+    data,
+    series,
+    xKey,
+    xAxis,
+    onPointClick,
+    onPointHover,
+    onPointLeave,
+    onCategoryClick,
+  ]);
+
+  const handleChartReady = useCallback((chart: EChartsType) => {
+    // ECharts types the value as scale values; pointPixel passes the row's
+    // own x / y, which it takes from a number, string or Date.
+    chartRef.current = {
+      convertToPixel: (finder, value) =>
+        chart.convertToPixel(finder, value as number[]),
+    };
+  }, []);
 
   return (
     <EChart
@@ -146,6 +198,7 @@ export const CartesianChartBase = <T extends object>({
       isEmpty={data.length === 0}
       loading={loading}
       option={getOption}
+      onChartReady={handleChartReady}
       onEvents={onEvents}
     />
   );
