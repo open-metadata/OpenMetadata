@@ -480,10 +480,24 @@ configuration.
   same `OFFSET`. This is a transport limit, separate from the completeness status.
 - The other tools that read the graph (`entity_neighborhood`, `find_by_tag`) execute only inside
   the shared timeout and concurrency guard once non-admins can call them.
-- Agent-profile errors keep their stable code in the MCP error message. Query-shape rejections
-  are client errors; `PROJECTION_NOT_READY` and `EXECUTION_TIMEOUT` tell the client to retry.
-  An MCP request on a deployment without RDF returns the existing "RDF is not enabled" client
-  error.
+- Agent-profile errors keep their stable code in the MCP error message and are mapped onto the
+  statuses the MCP dispatcher already uses (it has no 503 and no "unavailable" telemetry category):
+
+  | Agent code | MCP status |
+  |---|---|
+  | `QUERY_INVALID`, `QUERY_FORM_NOT_ALLOWED`, `GRAPH_SELECTION_NOT_ALLOWED`, `QUERY_LIMIT_EXCEEDED`, `RESULT_OUTPUT_LIMIT_EXCEEDED` | 400 |
+  | `FEDERATION_NOT_ALLOWED` | 403, as on the REST endpoints and the admin path of this tool |
+  | `EXECUTION_CAPACITY_EXHAUSTED`, `PROJECTION_NOT_READY`, `RDF_REPOSITORY_UNAVAILABLE` | 429 with "Retry shortly" |
+  | `EXECUTION_TIMEOUT` | 504, as for every other MCP timeout |
+  | `RDF_BACKEND_FAILURE` | 500 |
+
+  The REST agent endpoint reports `PROJECTION_NOT_READY`, `RDF_REPOSITORY_UNAVAILABLE` and
+  `EXECUTION_TIMEOUT` as 503 and `RESULT_OUTPUT_LIMIT_EXCEEDED` as 413. MCP uses 429 for the
+  retryable states because a 5xx would append "retrying will not help", which is wrong for a
+  rebuilding projection. The cost is that telemetry counts them under `RATE_LIMIT`; a distinct
+  unavailable status and category would change the `McpToolCallUsage` schema and is left to a
+  follow-up if the split is needed. An MCP request on a deployment without RDF returns the
+  existing "RDF is not enabled" client error.
 
 ### A4. Bots
 
