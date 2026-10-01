@@ -210,28 +210,28 @@ describe('AnnouncementBanner', () => {
   it('should let the clickable title truncate rather than size to its text', () => {
     renderBanner({ onClick: jest.fn() });
 
-    // The generated trigger defaults to `w-max`, which sizes it to the
-    // untruncated title and leaves the ellipsis with nothing to clip.
+    // `Tooltip` gives its generated trigger `w-max`, which on its own would size
+    // it to the untruncated title and leave the ellipsis nothing to clip. Core's
+    // ellipsis trigger caps that with `max-w-full`, and the host supplies the
+    // `min-w-0` that lets it shrink below its content.
     const trigger = screen
       .getByTestId('announcement-title-btn')
       .closest('button');
 
-    expect(trigger).toHaveClass('tw:w-full');
-    expect(trigger).not.toHaveClass('tw:w-max');
+    expect(trigger).toHaveClass('tw:max-w-full', 'tw:min-w-0');
   });
 
   it('should keep the ellipsis tooltip trigger left-aligned', () => {
-    render(<AnnouncementBanner announcement={announcement} variant="full" />, {
-      wrapper: MemoryRouter,
-    });
+    renderBanner({ onClick: jest.fn() });
 
-    // The trigger Typography generates is a `<button>`; preflight leaves the UA
-    // `text-align: center` in place, so a stretched trigger centres its label.
-    const host = screen
-      .getByText('service.db.schema.table')
-      .closest('button')?.parentElement;
+    // The trigger is a `<button>`, whose UA `text-align: center` preflight does
+    // not reset — core gives it `[text-align:inherit]` so it follows the host
+    // instead of centring short text. This used to need a fix at this call site.
+    const trigger = screen
+      .getByTestId('announcement-description')
+      .closest('button');
 
-    expect(host).toHaveClass('tw:[&>button]:text-start');
+    expect(trigger).toHaveClass('tw:[text-align:inherit]');
   });
 
   it('should make the whole banner clickable through a separate overlay', () => {

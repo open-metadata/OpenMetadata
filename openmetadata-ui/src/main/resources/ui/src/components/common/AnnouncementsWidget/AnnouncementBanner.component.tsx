@@ -78,12 +78,12 @@ const OVER_OVERLAY_CLASS = 'tw:relative tw:z-20';
 
 /**
  * The trigger `Typography` generates for `ellipsis.tooltip` is a `<button>`, and
- * the UA centres button text — Tailwind's preflight resets a button's font and
- * colour but not its `text-align`. Wherever that trigger ends up wider than its
- * text (any stretched flex item), the label drifts to the middle. Applied to the
- * host, since the trigger itself takes no class from here.
+ * the host is the only handle on it — `className` reaches the innermost span.
+ * It carries `min-w-0` so the trigger can shrink below its content and actually
+ * ellipsize. (Alignment used to need fixing here too; core now gives the trigger
+ * `[text-align:inherit]`, so it follows the host on its own.)
  */
-const ELLIPSIS_HOST_CLASS = 'tw:block tw:min-w-0 tw:[&>button]:text-start';
+const ELLIPSIS_HOST_CLASS = 'tw:block tw:min-w-0';
 
 /**
  * Just a truncated label with the built-in overflow tooltip. The `onClick` is a
