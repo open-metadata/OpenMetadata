@@ -49,6 +49,7 @@ import {
   escapeESReservedCharacters,
   getEntityDisplayName,
   openClassificationTagPicker,
+  openOwnerPicker,
   waitForAllLoadersToDisappear,
 } from './entity';
 import {
@@ -1618,9 +1619,7 @@ export const addMultiOwnerInDialog = async (data: {
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
 
-  await page.click(activatorBtnLocator);
-
-  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
+  await openOwnerPicker(page, page.locator(activatorBtnLocator));
 
   await waitForAllLoadersToDisappear(page);
 

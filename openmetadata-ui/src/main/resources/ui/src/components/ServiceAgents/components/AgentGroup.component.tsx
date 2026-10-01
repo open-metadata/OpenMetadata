@@ -19,7 +19,7 @@ import {
   Skeleton,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus } from '@untitledui/icons';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ReloadIcon } from '../../../assets/svg/reload.svg';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { TreeSelectNode } from '@openmetadata/ui-core-components';
-import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
+import { Globe01 as DomainIcon } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';

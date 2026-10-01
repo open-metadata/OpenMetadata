@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -32,6 +33,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.IncidentStatusCount;
 import org.openmetadata.schema.tests.type.IncidentTrendDirection;
 import org.openmetadata.schema.tests.type.Metric;
 import org.openmetadata.schema.tests.type.Resolved;
@@ -73,12 +75,33 @@ public class TestCaseResolutionStatusRepository
   public static final String INCIDENT_SORT_TYPE_DESC = "desc";
   private static final int TREND_BUCKET_COUNT = 8;
 
+  // Open statuses from the most actionable to the least. Shared with the query rather than
+  // restated here, so the breakdown order, the statusRank expression and the set of statuses a
+  // group is counted over cannot drift apart.
+  private static final List<TestCaseResolutionStatusTypes> STATUS_TRIAGE_ORDER =
+      CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.OPEN_STATUSES;
+
+  // Name the owner dimension gives the group of incidents whose test cases have no owner.
+  public static final String NO_OWNER_GROUP_NAME = "No Owner";
+
+  /** Group-by field of the latest-status-per-test-case incident listings. */
+  public static final String LATEST_PER_TEST_CASE = "testCase.fullyQualifiedName.keyword";
+
+  // An incident's test case, and the asset that test case belongs to, never change.
+  private static final Set<String> TEST_CASE_INVARIANT_PARAMS =
+      Set.of("testCaseFqn", "originEntityFQN");
+
   public TestCaseResolutionStatusRepository() {
     super(
         TestCaseResolutionStatusResource.COLLECTION_PATH,
         Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao(),
         TestCaseResolutionStatus.class,
         Entity.TEST_CASE_RESOLUTION_STATUS);
+  }
+
+  @Override
+  protected Set<String> getGroupInvariantParams(String groupBy) {
+    return LATEST_PER_TEST_CASE.equals(groupBy) ? TEST_CASE_INVARIANT_PARAMS : Set.of();
   }
 
   // {@code testSuites} stays on the exclude list to scrub legacy docs written before the
@@ -877,6 +900,7 @@ public class TestCaseResolutionStatusRepository
             .withGroupBy(groupBy)
             .withIncidentCount(count.incidentCount())
             .withStatus(statusFromRank(count.statusRank()))
+            .withStatusCounts(statusCounts(count))
             .withAssigneeCount(count.assigneeCount())
             .withFirstSeen(count.firstSeen())
             .withLastSeen(count.lastSeen());
@@ -920,12 +944,26 @@ public class TestCaseResolutionStatusRepository
     return result;
   }
 
+  // The group's open incidents split across the statuses they currently sit in, ordered the way
+  // the triage order ranks them. A status no incident is in is left out rather than reported as a
+  // zero, so the breakdown only ever names statuses that are actually occupied.
+  private static List<IncidentStatusCount> statusCounts(
+      CollectionDAO.TestCaseIncidentGroupCount count) {
+    return STATUS_TRIAGE_ORDER.stream()
+        .filter(status -> count.statusCounts().getOrDefault(status.value(), 0) > 0)
+        .map(
+            status ->
+                new IncidentStatusCount()
+                    .withStatus(status)
+                    .withCount(count.statusCounts().get(status.value())))
+        .toList();
+  }
+
+  // The query ranks a group by the 1-based position of its most actionable status in the triage
+  // order; anything past the end falls to the least actionable one, as the old CASE default did.
   private static TestCaseResolutionStatusTypes statusFromRank(int statusRank) {
-    return switch (statusRank) {
-      case 1 -> TestCaseResolutionStatusTypes.Assigned;
-      case 2 -> TestCaseResolutionStatusTypes.Ack;
-      default -> TestCaseResolutionStatusTypes.New;
-    };
+    int index = Math.min(Math.max(statusRank, 1), STATUS_TRIAGE_ORDER.size()) - 1;
+    return STATUS_TRIAGE_ORDER.get(index);
   }
 
   private static void setIncidentTrend(TestCaseIncidentGroup group, List<Long> incidentCreatedAt) {
@@ -969,6 +1007,9 @@ public class TestCaseResolutionStatusRepository
     Map<String, EntityReference> result = new HashMap<>();
     Map<String, List<String>> keysByType =
         counts.stream()
+            // The owner dimension buckets incidents whose test case has no owner under an empty
+            // key; there is no entity to look that group up by.
+            .filter(count -> !nullOrEmpty(count.groupKey()))
             .collect(
                 Collectors.groupingBy(
                     CollectionDAO.TestCaseIncidentGroupCount::groupType,
@@ -994,7 +1035,11 @@ public class TestCaseResolutionStatusRepository
 
   private static void setFallbackIncidentGroupIdentity(
       TestCaseIncidentGroup group, CollectionDAO.TestCaseIncidentGroupCount count) {
-    if (Entity.TABLE.equals(count.groupType())) {
+    if (nullOrEmpty(count.groupKey())) {
+      // The owner dimension's catch-all bucket: real incidents on test cases nobody owns. It
+      // stands for no entity, so it carries only a name.
+      group.withName(NO_OWNER_GROUP_NAME);
+    } else if (Entity.TABLE.equals(count.groupType())) {
       List<String> fqnParts = List.of(FullyQualifiedName.split(count.groupKey()));
       group.withName(fqnParts.getLast()).withFullyQualifiedName(count.groupKey());
     } else {

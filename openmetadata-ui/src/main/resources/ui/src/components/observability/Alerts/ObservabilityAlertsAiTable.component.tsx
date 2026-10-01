@@ -25,7 +25,7 @@ import {
   MarkerPin01,
   Plus,
   ZapFast,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

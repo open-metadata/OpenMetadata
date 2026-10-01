@@ -12,7 +12,7 @@ import { Typography } from '@/components/foundations/typography';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '../../../icons';
 import type {
   FocusEventHandler,
   KeyboardEvent,
@@ -20,6 +20,7 @@ import type {
   ReactNode,
   RefAttributes,
   RefObject,
+  UIEventHandler,
 } from 'react';
 import {
   Children,
@@ -100,6 +101,8 @@ export interface AutocompleteProps
   placeholder?: string;
   items?: SelectItemType[];
   popoverClassName?: string;
+  /** Fires when the dropdown list scrolls — use it to page in more async results. */
+  onPopoverScroll?: UIEventHandler<HTMLElement>;
   selectedItems: SelectItemType[] | ListData<SelectItemType>;
   icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
@@ -304,7 +307,7 @@ const InnerAutocomplete = ({
 const AutocompleteTrigger = ({
   size,
   placeholder,
-  icon: Icon = SearchLg,
+  icon: Icon = Search,
   isDisabled: _isDisabled,
   isInvalid,
   ...otherProps
@@ -361,6 +364,7 @@ export const AutocompleteBase = ({
   onItemInserted,
   placeholder = 'Search',
   popoverClassName,
+  onPopoverScroll,
   renderTag,
   filterOption,
   onFocus,
@@ -616,7 +620,8 @@ export const AutocompleteBase = ({
                   className={popoverClassName}
                   size="md"
                   style={{ width: popoverWidth }}
-                  triggerRef={triggerRef}>
+                  triggerRef={triggerRef}
+                  onScroll={onPopoverScroll}>
                   <AriaListBox
                     className="tw:size-full tw:outline-hidden"
                     renderEmptyState={() => <SelectEmptyState />}
