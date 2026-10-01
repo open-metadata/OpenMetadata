@@ -21,6 +21,7 @@ import {
   getEntityActivityByFqn,
   getEntityActivityById,
   getFollowingActivityFeed,
+  getMentionsActivityFeed,
   getMyActivityFeed,
   getUserActivity,
   listActivityReplies,
@@ -101,6 +102,14 @@ describe('activityAPI', () => {
 
     expect(APIClient.get).toHaveBeenCalledWith('/activity/following', {
       params: undefined,
+    });
+  });
+
+  it('lists activity whose replies mention the viewer', async () => {
+    await getMentionsActivityFeed({ days: 30, limit: 200 });
+
+    expect(APIClient.get).toHaveBeenCalledWith('/activity/mentions', {
+      params: { days: 30, limit: 200 },
     });
   });
 

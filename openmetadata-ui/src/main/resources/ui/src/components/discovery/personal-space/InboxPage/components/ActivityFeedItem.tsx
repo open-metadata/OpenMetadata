@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Box,
   Button,
   Tooltip,
@@ -82,6 +83,8 @@ export interface ActivityFeedItemProps {
   feed?: Conversation;
   // Luxon format for the time; a day-grouped feed shows only the clock time.
   timeFormat?: string;
+  // The item, or a reply under it, names the viewer or one of their teams.
+  isMentioned?: boolean;
 }
 
 const getActorName = (
@@ -222,10 +225,44 @@ const getEventTimestamp = (
  * change-event activities are read-only). Renders either a 2.0 activity event
  * or a conversation. Clicking opens the detail drawer.
  */
+// The header's right side: whether it names the viewer, and when it happened.
+const CardMeta = ({
+  isMentioned,
+  timeFormat,
+  timestamp,
+}: {
+  isMentioned: boolean;
+  timeFormat: string;
+  timestamp?: number;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {isMentioned && (
+        <Badge
+          className="tw:shrink-0"
+          color="brand"
+          data-testid="activity-mentioned-you"
+          size="sm"
+          type="color">
+          {t('label.mentioned-you')}
+        </Badge>
+      )}
+      <Tooltip title={formatDateTime(timestamp)}>
+        <TooltipTrigger className="tw:shrink-0 tw:whitespace-nowrap tw:text-sm tw:text-quaternary">
+          {formatDateTimeLong(timestamp, timeFormat)}
+        </TooltipTrigger>
+      </Tooltip>
+    </>
+  );
+};
+
 const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   activity,
   feed,
   timeFormat = ACTIVITY_DATE_FORMAT,
+  isMentioned = false,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -364,11 +401,11 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                 </span>{' '}
                 {actionLabel}
               </Typography>
-              <Tooltip title={formatDateTime(timestamp)}>
-                <TooltipTrigger className="tw:shrink-0 tw:whitespace-nowrap tw:text-sm tw:text-quaternary">
-                  {formatDateTimeLong(timestamp, timeFormat)}
-                </TooltipTrigger>
-              </Tooltip>
+              <CardMeta
+                isMentioned={isMentioned}
+                timeFormat={timeFormat}
+                timestamp={timestamp}
+              />
             </Box>
             {target.leaf && (
               <Box align="center" className="tw:min-w-0 tw:gap-1.5">

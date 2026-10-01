@@ -32,11 +32,18 @@ let activityState: {
   isLoading: boolean;
 };
 const mockUseInboxActivity = jest.fn();
+// What the Mentions feed returns, read separately to mark mentioned cards.
+let mockMentionItems: MockInboxItem[] = [];
 
 jest.mock('../useInboxActivity', () => ({
+  getInboxItemId: (item: MockInboxItem) =>
+    String(item.activity?.id ?? item.feed?.id ?? ''),
   getInboxItemTimestamp: (item: MockInboxItem) => item.activity?.timestamp ?? 0,
-  useInboxActivity: (...args: unknown[]) => {
-    mockUseInboxActivity(...args);
+  useInboxActivity: (filter: string, ...args: unknown[]) => {
+    if (filter === 'mentions') {
+      return { items: mockMentionItems, total: 0, isLoading: false };
+    }
+    mockUseInboxActivity(filter, ...args);
 
     return {
       items: activityState.items,
@@ -74,13 +81,18 @@ jest.mock('../components/ActivityFeedItem', () => ({
   default: ({
     activity,
     feed,
+    isMentioned,
     timeFormat,
   }: {
     activity?: MockItem;
     feed?: MockItem;
+    isMentioned?: boolean;
     timeFormat?: string;
   }) => (
-    <div data-testid="feed-item" data-time-format={timeFormat}>
+    <div
+      data-mentioned={isMentioned}
+      data-testid="feed-item"
+      data-time-format={timeFormat}>
       {activity?.id ?? feed?.id}
     </div>
   ),
@@ -194,6 +206,23 @@ describe('ActivityTab', () => {
     render(<ActivityTab />);
 
     expect(screen.getByText('t1')).toBeInTheDocument();
+  });
+
+  it('marks the cards the Mentions feed names', () => {
+    activityState = {
+      items: [{ activity: { id: 'a1' } }, { feed: { id: 't1' } }],
+      total: 2,
+      isLoading: false,
+    };
+    mockMentionItems = [{ feed: { id: 't1' } }];
+
+    render(<ActivityTab />);
+
+    expect(
+      screen
+        .getAllByTestId('feed-item')
+        .map((el) => el.getAttribute('data-mentioned'))
+    ).toEqual(['false', 'true']);
   });
 
   it('fetches the sub-tab the toolbar selects', () => {

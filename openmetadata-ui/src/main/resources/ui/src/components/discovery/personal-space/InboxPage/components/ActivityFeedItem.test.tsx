@@ -317,6 +317,18 @@ describe('ActivityFeedItem', () => {
     );
   });
 
+  it('flags a card that mentions the viewer, and only then', () => {
+    const { rerender } = render(
+      <ActivityFeedItem isMentioned feed={baseFeed} />
+    );
+
+    expect(screen.getByText('label.mentioned-you')).toBeInTheDocument();
+
+    rerender(<ActivityFeedItem feed={baseFeed} />);
+
+    expect(screen.queryByText('label.mentioned-you')).not.toBeInTheDocument();
+  });
+
   it('renders a conversation with its message', () => {
     render(<ActivityFeedItem feed={baseFeed} />);
 

@@ -38,6 +38,7 @@ import {
   InboxDateRange,
 } from '../inbox.utils';
 import {
+  getInboxItemId,
   getInboxItemTimestamp,
   InboxActivityItem,
   useInboxActivity,
@@ -108,6 +109,16 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   // Shared with the badge (one fetch); merge semantics documented on the hook.
   const { items, total, isLoading } = useInboxActivity(filter, dateRange);
   const counts = useInboxActivityCounts(dateRange);
+  // The Mentions feed (already read for its count) marks the cards that name
+  // the viewer, whichever tab they appear under.
+  const { items: mentionItems } = useInboxActivity(
+    ActivityFilter.Mentions,
+    dateRange
+  );
+  const mentionedIds = useMemo(
+    () => new Set(mentionItems.map(getInboxItemId)),
+    [mentionItems]
+  );
   // ponytail: types filter the loaded page only; the server has no type filter.
   const filteredItems = useMemo(
     () =>
@@ -198,12 +209,13 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
               <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
             </Box>
             {group.items.map((item) => {
-              const itemId = item.activity?.id ?? item.feed?.id;
+              const itemId = getInboxItemId(item);
 
               return (
                 <ActivityFeedItem
                   activity={item.activity}
                   feed={item.feed}
+                  isMentioned={mentionedIds.has(itemId)}
                   key={itemId}
                   timeFormat={timeFormat}
                 />

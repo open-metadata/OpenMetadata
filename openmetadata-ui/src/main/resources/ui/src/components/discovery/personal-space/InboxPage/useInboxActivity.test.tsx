@@ -19,6 +19,7 @@ import { ConversationFilterType } from '../../../../generated/type/conversationF
 const mockGetActivityEvents = jest.fn();
 const mockGetMyActivityFeed = jest.fn();
 const mockGetFollowingActivityFeed = jest.fn();
+const mockGetMentionsActivityFeed = jest.fn();
 const mockListConversations = jest.fn();
 let mockCurrentUser: { id?: string } | undefined;
 
@@ -27,6 +28,8 @@ jest.mock('rest/activityAPI', () => ({
   getMyActivityFeed: (...args: unknown[]) => mockGetMyActivityFeed(...args),
   getFollowingActivityFeed: (...args: unknown[]) =>
     mockGetFollowingActivityFeed(...args),
+  getMentionsActivityFeed: (...args: unknown[]) =>
+    mockGetMentionsActivityFeed(...args),
 }));
 
 jest.mock('rest/conversationsAPI', () => ({
@@ -64,6 +67,7 @@ beforeEach(() => {
     mockGetActivityEvents,
     mockGetMyActivityFeed,
     mockGetFollowingActivityFeed,
+    mockGetMentionsActivityFeed,
   ].forEach((mock) => mock.mockResolvedValue(threeEvents));
   mockListConversations.mockResolvedValue(twoThreads);
 });
@@ -123,14 +127,15 @@ describe('fetchInboxActivity', () => {
     }
   );
 
-  // Activity events carry no mentions yet, so Mentions is conversations only.
-  it('shows only the conversations that mention the viewer for Mentions', async () => {
+  // Replies that name the viewer, plus the conversations that do.
+  it('reads the mentions feed and mentioning conversations for Mentions', async () => {
     const { activities } = await fetchInboxActivity(
       ActivityFilter.Mentions,
       'u1'
     );
 
-    expect(activities).toEqual([]);
+    expect(activities).toEqual(threeEvents.data);
+    expect(mockGetMentionsActivityFeed).toHaveBeenCalled();
     expect(mockGetActivityEvents).not.toHaveBeenCalled();
     expect(mockListConversations).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -291,7 +296,6 @@ describe('useInboxActivity', () => {
 });
 
 describe('useInboxActivityCounts', () => {
-  // Mentions reads conversations only, so its count skips the three events.
   it('counts each sub-tab as its list would show it', async () => {
     const { result } = renderHook(() => useInboxActivityCounts(), {
       wrapper: createWrapper(),
@@ -300,7 +304,7 @@ describe('useInboxActivityCounts', () => {
     await waitFor(() =>
       expect(result.current).toEqual({
         [ActivityFilter.All]: 5,
-        [ActivityFilter.Mentions]: 2,
+        [ActivityFilter.Mentions]: 5,
         [ActivityFilter.MyAssets]: 5,
         [ActivityFilter.Following]: 5,
       })

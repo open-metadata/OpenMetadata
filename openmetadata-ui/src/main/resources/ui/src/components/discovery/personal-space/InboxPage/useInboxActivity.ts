@@ -20,6 +20,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   getActivityEvents,
   getFollowingActivityFeed,
+  getMentionsActivityFeed,
   getMyActivityFeed,
 } from '../../../../rest/activityAPI';
 import { listConversations } from '../../../../rest/conversationsAPI';
@@ -49,20 +50,20 @@ export interface InboxActivityItem {
   feed?: Conversation;
 }
 
+export const getInboxItemId = (item: InboxActivityItem): string =>
+  String(item.activity?.id ?? item.feed?.id ?? '');
+
 // When an item happened: an event's timestamp, a conversation's last activity.
 export const getInboxItemTimestamp = (item: InboxActivityItem): number =>
   item.activity?.timestamp ?? (item.feed ? getFeedSortTimestamp(item.feed) : 0);
 
-// Each sub-tab's activity events. Mentions has none: activity events carry no
-// mentions yet, so that tab shows the conversations that mention the viewer.
-const ACTIVITY_REQUEST: Record<
-  ActivityFilter,
-  typeof getActivityEvents | undefined
-> = {
+// Each sub-tab's activity events. Mentions are the events whose replies name
+// the viewer; the conversations that name them come alongside.
+const ACTIVITY_REQUEST: Record<ActivityFilter, typeof getActivityEvents> = {
   [ActivityFilter.All]: getActivityEvents,
   [ActivityFilter.MyAssets]: getMyActivityFeed,
   [ActivityFilter.Following]: getFollowingActivityFeed,
-  [ActivityFilter.Mentions]: undefined,
+  [ActivityFilter.Mentions]: getMentionsActivityFeed,
 };
 
 // "All" is everything the viewer is allowed to see, so no conversation filter.
@@ -87,7 +88,7 @@ export const fetchInboxActivity = async (
     return { activities: [], threads: [] };
   }
   const days = getActivityWindowDays({ startTs, endTs });
-  const activityRequest = ACTIVITY_REQUEST[filter]?.({
+  const activityRequest = ACTIVITY_REQUEST[filter]({
     days,
     limit: ACTIVITY_LIMIT,
   });
@@ -168,6 +169,7 @@ export const useInboxActivity = (
       })),
       ...(data?.threads ?? []).map((feed) => ({ feed })),
     ];
+
     // Sort merges newest-first by last activity (updatedAt-first for
     // conversations), matching upstream's ActivityFeedListV1New sort. The id
     // localeCompare tiebreaker mirrors upstream exactly; without it equal-
@@ -175,13 +177,10 @@ export const useInboxActivity = (
     // The id is coerced to a string so a non-string id (e.g. a numeric mock or
     // malformed payload) cannot crash the sort with `localeCompare is not a
     // function`; upstream avoids this by normalizing `id: string` up front.
-    const itemId = (item: InboxActivityItem): string =>
-      String(item.activity?.id ?? item.feed?.id ?? '');
-
     return merged.sort(
       (a, b) =>
         getInboxItemTimestamp(b) - getInboxItemTimestamp(a) ||
-        itemId(a).localeCompare(itemId(b))
+        getInboxItemId(a).localeCompare(getInboxItemId(b))
     );
   }, [data]);
 

@@ -1840,6 +1840,7 @@
     "memory-plural": "메모리",
     "mention-plural": "언급들",
     "mentioned-in": "언급된 위치",
+    "mentioned-you": "나를 멘션함",
     "merge": "병합",
     "merge-with-existing": "기존과 병합",
     "message-lowercase": "메시지",
