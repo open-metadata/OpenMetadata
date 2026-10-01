@@ -69,6 +69,7 @@ describe('light and dark palettes', () => {
       expect(Object.keys(palette.status).sort()).toEqual([
         'failed',
         'info',
+        'muted',
         'neutral',
         'success',
         'warning',
@@ -86,6 +87,7 @@ describe('light and dark palettes', () => {
       failed: '#cb5a50',
       info: '#1570ef',
       neutral: '#e9eaeb',
+      muted: '#98a2b3',
     });
   });
 

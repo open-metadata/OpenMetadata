@@ -52,6 +52,9 @@ export const LIGHT_CHART_PALETTE: ChartPalette = {
     failed: '#cb5a50', // visualization-dq-failed
     info: '#1570ef', // brand-600
     neutral: '#e9eaeb', // gray-200
+    // A mid grey for a data line that should not compete with
+    // status-coloured points.
+    muted: '#98a2b3', // visualization-gray-400
   },
   scale: ['#e3edfd', '#1570ef'],
 };
@@ -82,6 +85,9 @@ export const DARK_CHART_PALETTE: ChartPalette = {
     failed: '#f97066', // error-400
     info: '#53b1fd', // blue-400
     neutral: '#373a41', // gray-700
+    // A mid grey for a data line that should not compete with
+    // status-coloured points.
+    muted: '#85888e', // gray-500
   },
   scale: ['#1a2a4a', '#53b1fd'],
 };

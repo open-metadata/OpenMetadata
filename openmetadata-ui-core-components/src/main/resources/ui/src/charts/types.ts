@@ -39,7 +39,13 @@ import type {
  * stay the same in light and dark.
  */
 /** A colour that carries meaning, e.g. a test result. */
-export type ChartStatus = 'success' | 'warning' | 'failed' | 'info' | 'neutral';
+export type ChartStatus =
+  | 'success'
+  | 'warning'
+  | 'failed'
+  | 'info'
+  | 'neutral'
+  | 'muted';
 
 export interface ChartPalette {
   /** Categorical colours, cycled by series or slice index. */
