@@ -277,6 +277,7 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
       color: YELLOW_3,
+      status: 'warning' as const,
       stackId: OPERATION_METRICS,
     },
   ],

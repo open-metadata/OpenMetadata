@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { CurveType } from 'recharts/types/shape/Curve';
@@ -31,6 +32,8 @@ export type MetricChartType = {
     dataKey: string;
     stackId?: string;
     color: string;
+    /** Chart colour that carries meaning, e.g. a delete; else the next palette colour. */
+    status?: ChartStatus;
     fill?: string;
     latestValue?: string | number;
     extra?: string;

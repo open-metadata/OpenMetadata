@@ -40,7 +40,12 @@ const props: CustomBarChartProps = {
   chartCollection: {
     information: [
       { title: 'Insert', dataKey: 'INSERT', color: 'var(--a)' },
-      { title: 'Delete', dataKey: 'DELETE', color: 'var(--b)' },
+      {
+        title: 'Delete',
+        dataKey: 'DELETE',
+        color: 'var(--b)',
+        status: 'warning',
+      },
     ],
     data: [
       { name: 'Jan 1', timestamp: 1, INSERT: 4, DELETE: 1 },
@@ -67,7 +72,12 @@ describe('CustomBarChart', () => {
     );
     expect(barProps().series).toEqual([
       { key: 'INSERT', name: 'Insert', stack: 'custom-bar-chart' },
-      { key: 'DELETE', name: 'Delete', stack: 'custom-bar-chart' },
+      {
+        key: 'DELETE',
+        name: 'Delete',
+        stack: 'custom-bar-chart',
+        status: 'warning',
+      },
     ]);
   });
 
