@@ -1,6 +1,7 @@
 package org.openmetadata.service.events.scheduled;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -8,14 +9,21 @@ import static org.mockito.Mockito.when;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.AlertRows;
+import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
+import org.quartz.SchedulerException;
 
 /** A scheduled round can fail in any way without the reconciler going quiet. */
 class AlertReconcilerTest {
@@ -58,6 +66,44 @@ class AlertReconcilerTest {
     }
 
     assertEquals(0.0, failedRounds());
+  }
+
+  // A repair the scheduler refuses leaves the alert broken, so the round counts a failure.
+  @Test
+  void aRepairTheSchedulerRefusesIsAFailureNotARepair() throws SchedulerException {
+    UUID alertId = UUID.randomUUID();
+    AlertJobView jobs = mock(AlertJobView.class);
+    when(jobs.jobKeys()).thenReturn(Set.of());
+    when(jobs.hasCurrentJobClass(alertId)).thenReturn(false);
+    EventSubscription alert =
+        new EventSubscription().withId(alertId).withEnabled(true).withPollInterval(60);
+    CollectionDAO dao = daoListing(alertId);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<AlertRecord> record = mockStatic(AlertRecord.class);
+        MockedStatic<AlertRows> rows = mockStatic(AlertRows.class);
+        MockedStatic<AlertJobs> alertJobs = mockStatic(AlertJobs.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(dao);
+      record.when(AlertRecord::alertIdsWithRows).thenReturn(List.of());
+      rows.when(() -> AlertRows.readOrNull(alertId)).thenReturn(alert);
+      alertJobs
+          .when(() -> AlertJobs.convergeOrThrow(alertId))
+          .thenThrow(new SchedulerException("job store unavailable"));
+
+      ReconcileRound round = new AlertReconciler(jobs).reconcile();
+
+      assertEquals(0, round.repaired());
+      assertEquals(1, round.failed());
+    }
+  }
+
+  private static CollectionDAO daoListing(UUID alertId) {
+    EventSubscriptionDAO subscriptions = mock(EventSubscriptionDAO.class);
+    when(subscriptions.databaseTimeMillis()).thenReturn(System.currentTimeMillis());
+    when(subscriptions.listAllIds()).thenReturn(List.of(alertId.toString()));
+    CollectionDAO dao = mock(CollectionDAO.class);
+    when(dao.eventSubscriptionDAO()).thenReturn(subscriptions);
+    return dao;
   }
 
   private static CollectionDAO daoFailingWith(Throwable failure) {
