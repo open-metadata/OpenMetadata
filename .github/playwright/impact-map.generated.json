@@ -1721,6 +1721,7 @@
         "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
       ]
@@ -2210,6 +2211,7 @@
         "playwright/e2e/Pages/Teams.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/VersionPages/ClassificationVersionPage.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/MetricVersionPage.spec.ts",
@@ -2974,6 +2976,7 @@
         "playwright/e2e/Pages/UserCreationWithPersona.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/MetricVersionPage.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -3029,7 +3032,8 @@
         "playwright/e2e/Pages/DataInsight.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/TaskComments.spec.ts"
+        "playwright/e2e/Pages/TaskComments.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -7594,7 +7598,8 @@
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -9084,7 +9089,8 @@
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -9110,7 +9116,8 @@
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -10849,6 +10856,7 @@
         "playwright/e2e/Pages/UserCreationWithPersona.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/Search/SearchNightly.spec.ts",
         "playwright/e2e/Search/SearchRelevance.spec.ts",
         "playwright/e2e/VersionPages/ClassificationVersionPage.spec.ts",

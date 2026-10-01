@@ -22,7 +22,7 @@
 #   * `refresh-timing-baseline` — full workflow_dispatch on main; direct commit
 #                                 that keeps `.github/playwright/timing-baseline.json`
 #                                 fresh from that run (merge groups upload no
-#                                 reports, so they cannot feed it)
+#                                 timing metrics, so they cannot feed it)
 #                                 (materiality-gated; see the job comment).
 #
 # Reusable jobs are reported as `<caller-job> / <sub-job>` — GH always
@@ -37,7 +37,7 @@
 name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
-  # Daily full run on main. Merge groups upload no reports, so this (plus manual
+  # Daily full run on main. Merge groups upload no timing metrics, so this (plus manual
   # full dispatches) is what feeds ci/playwright-timing and the full-suite timing
   # artifacts PR planning downloads.
   schedule:
@@ -174,9 +174,9 @@ jobs:
           console.log(`${matrix.length} shards passed tests and local coverage verification.`);
           NODE
 
-      # Merge-queue failures go to #ci-cleanup. Queue runs upload no reports and
-      # never check out code here, so this is inline: the failed shards' results
-      # (they upload on failure only), the failed jobs, and the queued PRs.
+      # Merge-queue failures go to #ci-cleanup. This runs before Checkout, and
+      # queue runs upload only trace reports plus failure-only results, so this
+      # is inline: the failed shards' results, the failed jobs, and the queued PRs.
       - name: Download failed merge-queue shard results
         if: ${{ failure() && github.event_name == 'merge_group' }}
         continue-on-error: true
@@ -283,10 +283,12 @@ jobs:
       # rewrite the check result. Use the base branch's SHA on pull_request_target so
       # only reviewed-and-merged versions of these scripts ever run. Everything else
       # keeps github.sha (PR merge commit / dispatch ref). Merge groups use the
-      # inline gate and alert above and never execute checked-out code here.
+      # inline gate and alert above; they check out only to merge the HTML
+      # report so queue failures and retry passes keep their traces.
       - name: Checkout
-        if: ${{ github.event_name != 'merge_group' }}
         id: checkout
+        # always(): a failed merge-group gate must not skip the trace report.
+        if: always()
         continue-on-error: true
         uses: actions/checkout@v7
         with:
@@ -295,7 +297,7 @@ jobs:
 
       - name: Download blob reports
         id: download-blobs
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -383,7 +385,7 @@ jobs:
 
       - name: Setup Node.js
         id: setup-node
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/setup-node@v5
         with:
@@ -397,7 +399,7 @@ jobs:
       # yarn-pkg-cache-* key is written under main by
       # populate-playwright-caches.yml, so this hits on every event.
       - name: Restore yarn package cache
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/cache/restore@v6
         with:
@@ -408,7 +410,7 @@ jobs:
 
       - name: Install report dependencies
         id: install-report-dependencies
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
@@ -424,7 +426,7 @@ jobs:
 
       - name: Merge HTML report
         id: merge-report
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
@@ -487,7 +489,7 @@ jobs:
 
       - name: Upload merged Playwright report
         id: upload-report
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -732,7 +734,7 @@ jobs:
           if-no-files-found: ignore
 
   # Auto-refresh the checked-in timing baseline from successful full-mode
-  # workflow_dispatch runs on main. Merge groups upload no reports (their
+  # workflow_dispatch runs on main. Merge groups upload no timing metrics (their
   # shards verify coverage locally), so they cannot be the source. Without this, `.github/playwright/timing-baseline.json`
   # only gets updated by hand — and it drifts fast (see PR #30871 for the
   # 12-day, 23%-dead-title snapshot that triggered this workflow addition).
@@ -747,7 +749,7 @@ jobs:
   # merge-queue entries, which is why the materiality threshold exists.
   #
   # Guards:
-  #   * workflow_dispatch on main only (merge groups upload no reports;
+  #   * workflow_dispatch on main only (merge groups upload no timing metrics;
   #     a PR run is not a known-good snapshot of main)
   #   * full execution mode only (targeted PR plans do not exercise every
   #     spec — a targeted refresh would lose coverage)

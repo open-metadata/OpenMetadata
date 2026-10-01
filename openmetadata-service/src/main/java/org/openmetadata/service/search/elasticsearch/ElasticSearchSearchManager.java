@@ -14,6 +14,8 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.ErrorCause;
@@ -31,6 +33,7 @@ import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.elasticsearch.indices.GetMappingResponse;
 import es.co.elastic.clients.json.JsonData;
+import es.co.elastic.clients.json.JsonpDeserializer;
 import es.co.elastic.clients.json.JsonpMapper;
 import io.micrometer.core.instrument.Timer;
 import jakarta.json.Json;
@@ -77,6 +80,7 @@ import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.QueryFilterShape;
 import org.openmetadata.service.search.SearchEngineErrors;
+import org.openmetadata.service.search.SearchEntityTypeCounts;
 import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -1304,6 +1308,81 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
   }
 
+  public Response getEntityTypeCounts(
+      org.openmetadata.schema.search.SearchRequest request,
+      String index,
+      SubjectContext subjectContext)
+      throws IOException {
+    SearchSettings settings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    try {
+      return new SearchEntityTypeCounts(
+              Entity.getSearchRepository(),
+              (perType, configured) -> prepareCountQuery(perType, subjectContext, configured),
+              (body, indexes) -> executeCountAggregation(body, indexes, subjectContext),
+              hint -> doSearch(hint, subjectContext, settings, clusterAlias))
+          .search(request, index, settings);
+    } catch (ElasticsearchException e) {
+      throw buildSearchException(e);
+    }
+  }
+
+  private ObjectNode prepareCountQuery(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      SearchSettings settings)
+      throws IOException {
+    SearchRequest prepared =
+        buildSearchRequestBuilder(request, subjectContext, settings, clusterAlias)
+            .build(request.getIndex());
+    return SearchEntityTypeCounts.toJson(
+        client._transport().jsonpMapper().jsonProvider(),
+        generator -> prepared.serialize(generator, client._transport().jsonpMapper()));
+  }
+
+  private ObjectNode executeCountAggregation(
+      ObjectNode body, String index, SubjectContext subjectContext) throws IOException {
+    SearchRequest request = countRequest(body, index, subjectContext);
+    Timer.Sample timer = RequestLatencyContext.startSearchOperation();
+    try {
+      SearchResponse<JsonData> response = client.search(request, JsonData.class);
+      return SearchEntityTypeCounts.toJson(
+          client._transport().jsonpMapper().jsonProvider(),
+          generator -> response.serialize(generator, client._transport().jsonpMapper()));
+    } finally {
+      if (timer != null) {
+        RequestLatencyContext.endSearchOperation(timer);
+      }
+    }
+  }
+
+  private SearchRequest countRequest(ObjectNode body, String index, SubjectContext subjectContext) {
+    ElasticSearchRequestBuilder builder =
+        new ElasticSearchRequestBuilder()
+            .query(readCountJson(body.path("query"), Query._DESERIALIZER))
+            .from(0)
+            .size(0)
+            .fetchSource(false)
+            .trackTotalHits(false)
+            .timeout("30s")
+            .preference(SearchUtils.searchPreferenceFor(subjectContext))
+            .contextMemoryVisibilityResolved();
+    body.path("aggs")
+        .fields()
+        .forEachRemaining(
+            entry ->
+                builder.aggregation(
+                    entry.getKey(), readCountJson(entry.getValue(), Aggregation._DESERIALIZER)));
+    return builder.build(index);
+  }
+
+  private <T> T readCountJson(JsonNode node, JsonpDeserializer<T> deserializer) {
+    var mapper = client._transport().jsonpMapper();
+    try (var parser = mapper.jsonProvider().createParser(new StringReader(node.toString()))) {
+      return deserializer.deserialize(parser, mapper);
+    }
+  }
+
   /**
    * Runs the ranked query, then re-runs it without the fuzzy stage when the query turns out to name
    * an entity exactly.
@@ -1324,43 +1403,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     return SearchRankingHelper.searchWithIdentifierPrecision(
-        request.getQuery(),
+        request,
         searchSettings,
-        new SearchRankingHelper.SearchWindow(
-            request.getFrom() == null ? 0 : request.getFrom(),
-            request.getSize() == null ? 0 : request.getSize(),
-            !nullOrEmpty(request.getSearchAfter())),
         (settings, window) ->
-            executeSearchRequest(windowed(request, window), subjectContext, settings, clusterAlias),
+            executeSearchRequest(
+                SearchRankingHelper.windowed(request, window),
+                subjectContext,
+                settings,
+                clusterAlias),
         ElasticSearchSearchManager::hitIdentifiers);
-  }
-
-  /**
-   * The same request restricted to a different window, so the identity probe can read the top of
-   * the ranking whichever page was asked for. The probe window is not cursor paged, so it drops any
-   * {@code search_after}: leaving the cursor on would scroll the probe to wherever the caller had
-   * got to and it would judge the same window the caller asked for, which is the tear it exists to
-   * prevent. Returns the original when nothing needs changing, which is the common case.
-   */
-  private static org.openmetadata.schema.search.SearchRequest windowed(
-      org.openmetadata.schema.search.SearchRequest request,
-      SearchRankingHelper.SearchWindow window) {
-    Integer currentFrom = request.getFrom();
-    Integer currentSize = request.getSize();
-    boolean sameWindow =
-        currentFrom != null
-            && currentFrom == window.from()
-            && currentSize != null
-            && currentSize == window.size();
-    boolean keepsCursor = window.cursorPaged() || nullOrEmpty(request.getSearchAfter());
-    if (sameWindow && keepsCursor) {
-      return request;
-    }
-    org.openmetadata.schema.search.SearchRequest copy =
-        JsonUtils.deepCopy(request, org.openmetadata.schema.search.SearchRequest.class)
-            .withFrom(window.from())
-            .withSize(window.size());
-    return window.cursorPaged() ? copy : copy.withSearchAfter(List.of());
   }
 
   /**

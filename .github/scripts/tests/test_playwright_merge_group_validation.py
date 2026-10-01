@@ -143,22 +143,41 @@ def test_shard_status_records_execution_identity():
         assert f"{field}: ${field}" in status["run"]
 
 
-def test_merge_groups_upload_no_reports():
+TRACE_REPORT_STEPS = {
+    "Checkout",
+    "Download blob reports",
+    "Setup Node.js",
+    "Restore yarn package cache",
+    "Install report dependencies",
+    "Merge HTML report",
+    "Upload merged Playwright report",
+}
+
+
+def test_merge_groups_upload_only_the_trace_report():
     steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
         "steps"
     ]
     for step in steps:
+        condition = step.get("if", "")
+        if step["name"] in TRACE_REPORT_STEPS:
+            assert "merge_group" not in condition, step["name"]
+            assert "always()" in condition, step["name"]
+            continue
         if step["name"] == "Gate verified merge-group shards":
             continue
-        if "github.event_name == 'merge_group'" in step["if"]:
-            continue  # queue-only Slack alerts: inline, no reports or checkout
-        assert "github.event_name != 'merge_group'" in step["if"], step["name"]
-    # A green queue run costs no artifact storage, but a broken one must still
-    # leave evidence: re-running it locally is a different SHA on a moving base.
+        if "github.event_name == 'merge_group'" in condition:
+            continue  # queue-only Slack alerts: inline
+        assert "github.event_name != 'merge_group'" in condition, step["name"]
+    # Traces ship on every queue run so retry passes stay debuggable; the other
+    # uploads still leave evidence only when the shard failed or was cancelled.
     for step in shard_steps():
         if not step.get("uses", "").startswith("actions/upload-artifact"):
             continue
         condition = step["if"]
+        if step["name"] == "Upload Playwright blob report":
+            assert condition == "always()"
+            continue
         if "github.event_name != 'merge_group'" in condition:
             continue
         assert "failure()" in condition, step["name"]
