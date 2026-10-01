@@ -12,7 +12,10 @@
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { isArray, isPlainObject, uniq } from 'lodash';
-import { PROPERTY_TYPES_WITH_ENTITY_REFERENCE } from '../../../../constants/CustomProperty.constants';
+import {
+  ENTITY_REFERENCE_OPTIONS,
+  PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
+} from '../../../../constants/CustomProperty.constants';
 import {
   Config,
   CustomProperty,
@@ -23,6 +26,14 @@ import { EditCustomPropertyFormValues } from './CustomPropertyEditForm.interface
 const toSelectItem = (value: string): FormSelectItem => ({
   id: value,
   label: value,
+});
+
+// Seeded with the option's label so saved types read like newly picked ones.
+const toEntityReferenceItem = (value: string): FormSelectItem => ({
+  id: value,
+  label:
+    ENTITY_REFERENCE_OPTIONS.find((option) => option.value === value)?.label ??
+    value,
 });
 
 export const isEnumProperty = (property: CustomProperty) =>
@@ -54,7 +65,7 @@ export const getEditFormValues = (
     description: property.description ?? '',
     enumConfig: (enumConfig?.values ?? []).map(toSelectItem),
     multiSelect: Boolean(enumConfig?.multiSelect),
-    entityReferenceConfig: entityReferences.map(toSelectItem),
+    entityReferenceConfig: entityReferences.map(toEntityReferenceItem),
   };
 };
 

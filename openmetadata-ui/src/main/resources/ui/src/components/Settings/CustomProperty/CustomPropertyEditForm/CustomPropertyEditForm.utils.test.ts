@@ -34,7 +34,7 @@ const entityRefProperty: CustomProperty = {
     type: 'type',
     name: 'entityReferenceList',
   },
-  customPropertyConfig: { config: ['user'] },
+  customPropertyConfig: { config: ['user', 'unknownType'] },
 };
 
 const stringProperty: CustomProperty = {
@@ -57,9 +57,10 @@ describe('getEditFormValues', () => {
     });
   });
 
-  it('seeds entity reference types', () => {
+  it('seeds entity reference types with their option labels', () => {
     expect(getEditFormValues(entityRefProperty).entityReferenceConfig).toEqual([
-      { id: 'user', label: 'user' },
+      { id: 'user', label: 'User' },
+      { id: 'unknownType', label: 'unknownType' },
     ]);
   });
 });
