@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { ActivityFilter, ActivityGrouping } from '../inbox.utils';
 import ActivityToolbar from './ActivityToolbar';
@@ -69,9 +69,11 @@ jest.mock('react-i18next', () => ({
 
 const renderToolbar = () => {
   const props = {
+    datePreset: 'last30days',
     filter: ActivityFilter.All,
     grouping: ActivityGrouping.Day,
     typeKeys: [],
+    onDatePresetChange: jest.fn(),
     onFilterChange: jest.fn(),
     onGroupingChange: jest.fn(),
     onTypeKeysChange: jest.fn(),
@@ -101,7 +103,9 @@ describe('ActivityToolbar', () => {
 
     expect(onGroupingChange).toHaveBeenLastCalledWith(ActivityGrouping.User);
 
-    fireEvent.click(screen.getAllByText('clear')[0]);
+    fireEvent.click(
+      within(screen.getByTestId('activity-group-filter')).getByText('clear')
+    );
 
     expect(onGroupingChange).toHaveBeenLastCalledWith(ActivityGrouping.Day);
   });
@@ -116,5 +120,17 @@ describe('ActivityToolbar', () => {
     fireEvent.click(screen.getByText('label.owner-plural'));
 
     expect(onTypeKeysChange).toHaveBeenCalledWith(['label.owner-plural']);
+  });
+
+  it('offers the date presets up to 30 days and reports the one picked', () => {
+    const { onDatePresetChange } = renderToolbar();
+    const dates = screen.getByTestId('activity-date-filter');
+
+    expect(dates).toHaveTextContent('label.yesterday');
+    expect(dates).not.toHaveTextContent('60');
+
+    fireEvent.click(screen.getByText('label.yesterday'));
+
+    expect(onDatePresetChange).toHaveBeenCalledWith('yesterday');
   });
 });

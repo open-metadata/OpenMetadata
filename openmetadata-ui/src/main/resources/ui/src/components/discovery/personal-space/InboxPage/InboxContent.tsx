@@ -13,20 +13,17 @@
 
 import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { DateRangeObject } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
-import {
-  getEndOfDayInMillis,
-  getStartOfDayInMillis,
-} from '../../../../utils/date-time/DateTimeUtils';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
-import InboxFilterBar from './components/InboxFilterBar';
 import {
+  DEFAULT_INBOX_DATE_PRESET,
   getDefaultInboxDateRange,
+  getInboxDateRange,
   InboxDateRange,
+  INBOX_DATE_RANGE_OPTIONS,
 } from './inbox.utils';
 import InboxPage from './InboxPage';
 import ActivityTab from './tabs/ActivityTab';
@@ -74,41 +71,33 @@ const InboxContent: React.FC = () => {
   const selectedTab: InboxTabKey =
     pathname === PERSONAL_SPACE_ROUTES.INBOX_TASKS ? 'tasks' : DEFAULT_TAB;
 
-  const defaultDateRange = useMemo(
-    () =>
-      ({ ...getDefaultInboxDateRange(), key: 'last30days' } as DateRangeObject),
-    []
-  );
-
   const storedDateRange = usePersonalSpaceStore((s) => s.inboxDateRange);
   const setInboxDateRange = usePersonalSpaceStore((s) => s.setInboxDateRange);
   const [dateRange, setDateRange] = useState<InboxDateRange>(
-    storedDateRange ?? defaultDateRange
+    () =>
+      storedDateRange ?? {
+        ...getDefaultInboxDateRange(),
+        key: DEFAULT_INBOX_DATE_PRESET,
+      }
   );
-  // Tracks whether the active window differs from the default 30-day range, so
-  // an empty Activity feed can show the "no results" vs first-run empty state.
-  // Compare on the preset key (not timestamps, which drift between mounts).
-  const [isDateFiltered, setIsDateFiltered] = useState<boolean>(
-    Boolean(storedDateRange) && storedDateRange?.key !== defaultDateRange.key
-  );
+  // A narrowed window turns an empty feed into "no activity in this period".
+  // Compared on the preset key: timestamps drift between mounts.
+  const isDateFiltered = dateRange.key !== DEFAULT_INBOX_DATE_PRESET;
 
   // Counts come from a shared fetch (not the mounted tab) so both tab badges
   // stay accurate when switching between Activity and Tasks.
   const { activityCount, taskCount } = useInboxCounts(dateRange);
 
-  const handleDateRangeChange = useCallback(
-    (value: DateRangeObject) => {
+  const handleDatePresetChange = useCallback(
+    (key: string) => {
       const nextRange: InboxDateRange = {
-        startTs: getStartOfDayInMillis(value.startTs),
-        endTs: getEndOfDayInMillis(value.endTs),
-        key: value.key,
-        title: value.title,
+        ...getInboxDateRange(INBOX_DATE_RANGE_OPTIONS[key].days),
+        key,
       };
       setDateRange(nextRange);
       setInboxDateRange(nextRange);
-      setIsDateFiltered(value.key !== defaultDateRange.key);
     },
-    [setInboxDateRange, defaultDateRange.key]
+    [setInboxDateRange]
   );
 
   const onTabChange = useCallback(
@@ -147,12 +136,11 @@ const InboxContent: React.FC = () => {
       <Box
         className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:px-3"
         direction="col">
-        <InboxFilterBar
+        <ActivityTab
           dateRange={dateRange}
-          defaultDateRange={defaultDateRange}
-          onDateRangeChange={handleDateRangeChange}
+          isFiltered={isDateFiltered}
+          onDatePresetChange={handleDatePresetChange}
         />
-        <ActivityTab dateRange={dateRange} isFiltered={isDateFiltered} />
       </Box>
     );
 

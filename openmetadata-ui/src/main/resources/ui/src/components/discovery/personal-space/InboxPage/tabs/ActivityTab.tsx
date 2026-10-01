@@ -31,6 +31,7 @@ import {
   ActivityGrouping,
   ACTIVITY_CLOCK_FORMAT,
   ACTIVITY_DATE_FORMAT,
+  DEFAULT_INBOX_DATE_PRESET,
   getActivityDayLabel,
   getActivityTypeKey,
   InboxDateRange,
@@ -75,6 +76,7 @@ const GROUPING: Record<
 
 export interface ActivityTabProps {
   dateRange?: InboxDateRange;
+  onDatePresetChange?: (key: string) => void;
   // Narrowed window → empty reads as "no activity in period" vs first-run state.
   isFiltered?: boolean;
   onCountChange?: (count: number) => void;
@@ -82,6 +84,7 @@ export interface ActivityTabProps {
 
 const ActivityTab: React.FC<ActivityTabProps> = ({
   dateRange,
+  onDatePresetChange,
   isFiltered = false,
   onCountChange,
 }) => {
@@ -226,9 +229,11 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
           direction="col"
           gap={4}>
           <ActivityToolbar
+            datePreset={dateRange?.key ?? DEFAULT_INBOX_DATE_PRESET}
             filter={filter}
             grouping={grouping}
             typeKeys={typeKeys}
+            onDatePresetChange={onDatePresetChange}
             onFilterChange={setFilter}
             onGroupingChange={setGrouping}
             onTypeKeysChange={setTypeKeys}

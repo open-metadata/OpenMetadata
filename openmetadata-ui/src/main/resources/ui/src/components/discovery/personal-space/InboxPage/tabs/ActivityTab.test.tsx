@@ -68,11 +68,6 @@ jest.mock('../components/ActivityToolbar', () => ({
   ),
 }));
 
-jest.mock('../components/InboxFilterBar', () => ({
-  __esModule: true,
-  default: () => <div data-testid="inbox-filter-bar" />,
-}));
-
 jest.mock('../components/ActivityFeedItem', () => ({
   __esModule: true,
   default: ({

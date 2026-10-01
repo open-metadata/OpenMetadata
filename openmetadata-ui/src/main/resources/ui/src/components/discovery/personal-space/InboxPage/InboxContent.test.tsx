@@ -19,25 +19,22 @@ jest.mock('./useInboxCounts', () => ({
   useInboxCounts: () => ({ activityCount: 5, taskCount: 2, isLoading: false }),
 }));
 
-interface CapturedDateFilterProps {
+interface CapturedActivityTabProps {
   dateRange?: InboxDateRange;
-  onDateRangeChange: (range: InboxDateRange) => void;
+  isFiltered?: boolean;
+  onDatePresetChange: (key: string) => void;
 }
 
-let dateFilterProps: CapturedDateFilterProps;
+let mockActivityTabProps: CapturedActivityTabProps;
 
-jest.mock('./components/InboxDateFilter', () => ({
-  __esModule: true,
-  default: (props: CapturedDateFilterProps) => {
-    dateFilterProps = props;
-
-    return <div data-testid="inbox-date-filter" />;
-  },
-}));
-
+// The Activity toolbar owns the date filter; the shell holds the window.
 jest.mock('./tabs/ActivityTab', () => ({
   __esModule: true,
-  default: () => <div data-testid="activity" />,
+  default: (props: CapturedActivityTabProps) => {
+    mockActivityTabProps = props;
+
+    return <div data-testid="activity" />;
+  },
 }));
 
 jest.mock('./tabs/TasksTab', () => ({
@@ -110,7 +107,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('constants/profiler.constant', () => ({
-  PROFILER_FILTER_RANGE: { last30days: { days: 30 } },
+  PROFILER_FILTER_RANGE: {
+    last7days: { days: 7 },
+    last30days: { days: 30 },
+  },
 }));
 
 jest.mock('utils/date-time/DateTimeUtils', () => ({
@@ -197,20 +197,23 @@ describe('InboxContent', () => {
     expect(tasksCount).toHaveAttribute('data-color', 'brand');
   });
 
-  it('keeps the selected custom range (with its label) as the live filter range', () => {
+  it('starts on the default window, unfiltered', () => {
+    render(<InboxContent />);
+
+    expect(mockActivityTabProps.dateRange?.key).toBe('last30days');
+    expect(mockActivityTabProps.isFiltered).toBe(false);
+  });
+
+  it('narrows the window to the preset the toolbar picks', () => {
     render(<InboxContent />);
 
     act(() => {
-      dateFilterProps.onDateRangeChange({
-        startTs: 1,
-        endTs: 2,
-        key: 'customRange',
-        title: 'Custom Range',
-      });
+      mockActivityTabProps.onDatePresetChange('last7days');
     });
 
-    expect(dateFilterProps.dateRange).toEqual(
-      expect.objectContaining({ key: 'customRange', title: 'Custom Range' })
+    expect(mockActivityTabProps.dateRange).toEqual(
+      expect.objectContaining({ key: 'last7days' })
     );
+    expect(mockActivityTabProps.isFiltered).toBe(true);
   });
 });

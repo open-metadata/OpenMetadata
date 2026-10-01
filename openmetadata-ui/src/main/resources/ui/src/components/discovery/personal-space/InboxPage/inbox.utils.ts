@@ -274,12 +274,17 @@ export type { InboxDateRange } from '../../../../interface/inbox.interface';
 
 // Default Inbox window: the last 30 days (start-of-day to now), used by the page
 // on first render and by the sidebar inbox-icon count.
-export const getDefaultInboxDateRange = (): InboxDateRange => ({
-  startTs: getStartOfDayInMillis(
-    getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
-  ),
+// The window a date preset covers: from the start of its first day to the end
+// of today.
+export const getInboxDateRange = (days: number): InboxDateRange => ({
+  startTs: getStartOfDayInMillis(getEpochMillisForPastDays(days)),
   endTs: getEndOfDayInMillis(getCurrentMillis()),
 });
+
+export const DEFAULT_INBOX_DATE_PRESET = 'last30days';
+
+export const getDefaultInboxDateRange = (): InboxDateRange =>
+  getInboxDateRange(PROFILER_FILTER_RANGE.last30days.days);
 
 const ACTIVITY_DAY_MS = 24 * 60 * 60 * 1000;
 

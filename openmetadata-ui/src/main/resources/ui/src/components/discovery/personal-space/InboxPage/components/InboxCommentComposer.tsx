@@ -99,7 +99,6 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
         }>
         <ActivityFeedEditorNew
           className="inbox-comment-composer__editor tw:w-full"
-          focused={focused}
           editAction={
             <Button
               aria-label={t('label.send')}
@@ -113,6 +112,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
             />
           }
           emptyMentionText={t('message.no-match-found')}
+          focused={focused}
           placeHolder={placeholderText}
           ref={editorRef}
           onSave={handleEditorSave}
