@@ -176,5 +176,7 @@ def test_account_usage_shim_serves_the_connector_queries_in_real_time(snowflake_
         ]
         counts = {row["query_id"]: (row["rows_inserted"], row["rows_updated"], row["rows_deleted"]) for row in history}
         assert counts[update.query_id] == (0, 1, 0)
-        assert _schema_exists(snowflake_instance, shim.schema)
+        assert source.run(
+            f"SELECT COMMENT, RETENTION_TIME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '{shim.schema}'"
+        ) == [(SCHEMA_COMMENT, 0)]
     assert not _schema_exists(snowflake_instance, shim.schema)

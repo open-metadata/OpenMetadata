@@ -348,7 +348,10 @@ class SnowflakeSource:
         self.require_active()
         if self._shim is None:
             shim = AccountUsageShim(self.database, f"{self.schema}{_SHIM_SUFFIX}", self.instance.admin_engine)
-            _execute(self.instance.admin_engine, f"CREATE SCHEMA {shim.qualified} COMMENT = '{SCHEMA_COMMENT}'")
+            _execute(
+                self.instance.admin_engine,
+                f"CREATE SCHEMA {shim.qualified} DATA_RETENTION_TIME_IN_DAYS = 0 COMMENT = '{SCHEMA_COMMENT}'",
+            )
             self._cleanup.callback(
                 _execute, self.instance.admin_engine, f"DROP SCHEMA IF EXISTS {shim.qualified} CASCADE"
             )
