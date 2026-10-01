@@ -272,3 +272,63 @@ class TestForSnowflake:
         )
 
         assert setter.get_parameters(test_case) == IsInstance(TableDiffRuntimeParameters)
+
+
+class TestResolvedConnection:
+    """The workflow's resolved connection, from the YAML serviceConnections or the server, must build the diff URL.
+
+    A non-bot token reads the stored connection with its secrets masked, and a service may store no connection.
+    """
+
+    @pytest.fixture
+    def service_connection_config(self) -> SnowflakeConnection:
+        return SnowflakeConnection(account="account", username="username", warehouse="warehouse", password="secret")
+
+    @pytest.fixture
+    def service1(self) -> DatabaseService:
+        return DatabaseService.model_construct(
+            id=uuid.uuid4(),
+            name="TestService1",
+            fullyQualifiedName="TestService1",
+            serviceType=DatabaseServiceType.Snowflake,
+            connection=DatabaseConnection(
+                config=SnowflakeConnection(
+                    account="account", username="username", warehouse="warehouse", password="*********"
+                )
+            ),
+        )
+
+    @pytest.fixture
+    def service2(self, service_connection_config: SnowflakeConnection) -> DatabaseService:
+        return DatabaseService.model_construct(
+            id=uuid.uuid4(),
+            name="TestService2",
+            fullyQualifiedName="TestService2",
+            serviceType=DatabaseServiceType.Snowflake,
+            connection=DatabaseConnection(config=service_connection_config),
+        )
+
+    @pytest.fixture
+    def setter(
+        self,
+        metadata: OpenMetadata,
+        service_connection_config: SnowflakeConnection,
+        sampler: SamplerInterface,
+        table1: Table,
+    ) -> TableDiffParamsSetter:
+        return TableDiffParamsSetter(
+            ometa_client=metadata,
+            service_connection_config=service_connection_config,
+            sampler=sampler,
+            table_entity=table1,
+        )
+
+    def test_table1_url_uses_the_resolved_connection(
+        self, setter: TableDiffParamsSetter, parameter_values: list[TestCaseParameterValue]
+    ) -> None:
+        test_case = TestCase.model_construct(
+            parameterValues=[*parameter_values, TestCaseParameterValue(name="keyColumns", value=json.dumps(["name"]))],
+        )
+        service_url = setter.get_parameters(test_case).table1.serviceUrl
+        assert ":secret@" in str(service_url)
+        assert "*********" not in str(service_url)

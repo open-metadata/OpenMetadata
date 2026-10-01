@@ -32,7 +32,7 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
     RuntimeParameterSetter,
 )
 from metadata.generated.schema.entity.data.table import Constraint, Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection, DatabaseService
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils import fqn
@@ -109,7 +109,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         table1_param_setter = self.get_param_setter(service1)
         table2_param_setter = self.get_param_setter(service2)
 
-        service1_url = self.get_service_url(table1_param_setter, service1)
+        service1_url = self.get_service_url(table1_param_setter, self._with_resolved_connection(service1))
 
         if table2.service == self.table_entity.service:
             service2_url = self.get_parameter(test_case, "service2Url") or service1_url
@@ -157,6 +157,16 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             extraColumns=list(extra_columns),
             whereClause=self.build_where_clause(test_case),
         )
+
+    def _with_resolved_connection(self, service: DatabaseService) -> DatabaseService:
+        """Use the connection the workflow resolved for the table's own service.
+
+        The server's copy reaches a non-bot token with its secrets masked, and the
+        workflow's serviceConnections can supply a connection the server does not store.
+        """
+        if self.service_connection_config is None:
+            return service
+        return service.model_copy(update={"connection": DatabaseConnection(config=self.service_connection_config)})
 
     def build_where_clause(self, test_case) -> str | None:
         param_where_clause = self.get_parameter(test_case, "where", None)
