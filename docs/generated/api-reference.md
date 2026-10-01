@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1863 endpoints** across 75 resource packages · 1853 carry a summary.
+**1908 endpoints** across 75 resource packages · 1898 carry a summary.
 
 ## (root)
 
@@ -221,6 +221,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/apiEndpoints/name/{fqn}` | Delete a APIEndpoint by fully qualified name |
 | `GET` | `/v1/apiEndpoints/name/{fqn}` | Get a Endpoint by fully qualified name. |
 | `PATCH` | `/v1/apiEndpoints/name/{fqn}` | Update a APIEndpoint using name. |
+| `GET` | `/v1/apiEndpoints/name/{fqn}/columns` | Get paginated schema fields of an API endpoint by fully qualified name |
 | `PUT` | `/v1/apiEndpoints/restore` | Restore a soft deleted APIEndpoint |
 | `DELETE` | `/v1/apiEndpoints/{id}` | Delete a APIEndpoint by id |
 | `GET` | `/v1/apiEndpoints/{id}` | Get a APIEndpoint by id |
@@ -732,6 +733,19 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/v1/dataQuality/dimensions` | List data quality dimensions |
+| `POST` | `/v1/dataQuality/dimensions` | Create a data quality dimension |
+| `PUT` | `/v1/dataQuality/dimensions` | Update a data quality dimension |
+| `DELETE` | `/v1/dataQuality/dimensions/name/{name}` | Delete a data quality dimension by name |
+| `GET` | `/v1/dataQuality/dimensions/name/{name}` | Get a data quality dimension by name |
+| `PUT` | `/v1/dataQuality/dimensions/restore` | Restore a soft deleted data quality dimension |
+| `GET` | `/v1/dataQuality/dimensions/testCaseCounts` | Count the test cases attached to each dimension |
+| `GET` | `/v1/dataQuality/dimensions/testDefinitionCounts` | Count the test definitions classified under each dimension |
+| `DELETE` | `/v1/dataQuality/dimensions/{id}` | Delete a data quality dimension |
+| `GET` | `/v1/dataQuality/dimensions/{id}` | Get a data quality dimension by Id |
+| `PATCH` | `/v1/dataQuality/dimensions/{id}` | Update a data quality dimension |
+| `GET` | `/v1/dataQuality/dimensions/{id}/versions` | List data quality dimension versions |
+| `GET` | `/v1/dataQuality/dimensions/{id}/versions/{version}` | Get a version of a data quality dimension |
 | `GET` | `/v1/dataQuality/testCases` | List test cases |
 | `POST` | `/v1/dataQuality/testCases` | Create a test case |
 | `PUT` | `/v1/dataQuality/testCases` | Update test case |
@@ -741,6 +755,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/dataQuality/testCases/dimensionResults/{fqn}/dimensions` | List available dimensions for a test case |
 | `PUT` | `/v1/dataQuality/testCases/logicalTestCases` | Add test cases to a logical test suite |
 | `PUT` | `/v1/dataQuality/testCases/logicalTestCases/bulk` | Add test cases to a logical test suite |
+| `POST` | `/v1/dataQuality/testCases/logicalTestCases/bulk/remove` | Remove test cases from a logical test suite |
 | `DELETE` | `/v1/dataQuality/testCases/logicalTestCases/{testSuiteId}/{id}` | Delete a logical test case by Id from a test suite |
 | `DELETE` | `/v1/dataQuality/testCases/name/{fqn}` | Delete a test case by fully qualified name |
 | `GET` | `/v1/dataQuality/testCases/name/{fqn}` | Get a test case by fully qualified name |
@@ -911,6 +926,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/drives/worksheets/name/{fqn}` | Delete a worksheet by fully qualified name |
 | `GET` | `/v1/drives/worksheets/name/{fqn}` | Get a worksheet by fully qualified name |
 | `PATCH` | `/v1/drives/worksheets/name/{fqn}` | Update a worksheet by name. |
+| `GET` | `/v1/drives/worksheets/name/{fqn}/columns` | Get paginated columns of a worksheet by fully qualified name |
 | `PUT` | `/v1/drives/worksheets/restore` | Restore a soft deleted worksheet by id |
 | `DELETE` | `/v1/drives/worksheets/{id}` | Delete a worksheet by Id |
 | `GET` | `/v1/drives/worksheets/{id}` | Get a worksheet by Id |
@@ -1215,6 +1231,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/lineage/getPaginationInfo` | Get lineage pagination information |
 | `GET` | `/v1/lineage/getPlatformLineage` | Get Platform Lineage |
 | `POST` | `/v1/lineage/hydrate` | Batch-hydrate lineage nodes into full entity objects |
+| `GET` | `/v1/lineage/scene` | Get semantic lineage scene |
 | `DELETE` | `/v1/lineage/source/name/{entityType}/{entityFQN}/type/{lineageSource}` | Delete lineage edges by type and entity FQN |
 | `DELETE` | `/v1/lineage/{entityType}/{entityId}/type/{lineageSource}` | Delete a lineage edge by Type |
 | `GET` | `/v1/lineage/{entity}/name/{fqn}` | Get lineage by fully qualified name |
@@ -1298,6 +1315,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/mlmodels/name/{fqn}` | Delete a ML model by fully qualified name |
 | `GET` | `/v1/mlmodels/name/{fqn}` | Get an ML model by fully qualified name |
 | `PATCH` | `/v1/mlmodels/name/{fqn}` | Update an ML model by name. |
+| `GET` | `/v1/mlmodels/name/{fqn}/columns` | Get paginated features of an ML model by fully qualified name |
 | `PUT` | `/v1/mlmodels/restore` | Restore a soft deleted ML model |
 | `DELETE` | `/v1/mlmodels/{id}` | Delete an ML model by Id |
 | `GET` | `/v1/mlmodels/{id}` | Get an ML model by Id |
@@ -1402,6 +1420,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/pipelines/name/{fqn}` | Delete a pipeline by fully qualified name |
 | `GET` | `/v1/pipelines/name/{fqn}` | Get a pipeline by fully qualified name |
 | `PATCH` | `/v1/pipelines/name/{fqn}` | Update a pipeline by name. |
+| `GET` | `/v1/pipelines/name/{fqn}/columns` | Get paginated tasks of a pipeline by fully qualified name |
 | `GET` | `/v1/pipelines/name/{fqn}/observability` | Get pipeline observability data |
 | `PUT` | `/v1/pipelines/restore` | Restore a soft deleted pipeline |
 | `GET` | `/v1/pipelines/runtimeTrend` | Get pipeline runtime trend |
@@ -1512,6 +1531,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/rdf/search/similar/{entityType}/{id}` | Find similar entities |
 | `GET` | `/v1/rdf/sparql` | Execute SPARQL query via GET |
 | `POST` | `/v1/rdf/sparql` | Execute SPARQL query via POST |
+| `POST` | `/v1/rdf/sparql/agent` | Execute a permissioned read-only SPARQL SELECT for agent tools |
 | `POST` | `/v1/rdf/sparql/update` | Execute SPARQL UPDATE |
 | `POST` | `/v1/rdf/sql/query` | Execute SQL query over RDF data |
 | `POST` | `/v1/rdf/sql/translate` | Translate SQL to SPARQL |
@@ -1586,6 +1606,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/searchIndexes/name/{fqn}` | Delete a SearchIndex by fully qualified name |
 | `GET` | `/v1/searchIndexes/name/{fqn}` | Get a SearchIndex by fully qualified name |
 | `PATCH` | `/v1/searchIndexes/name/{fqn}` | Update a SearchIndex using name. |
+| `GET` | `/v1/searchIndexes/name/{fqn}/columns` | Get paginated fields of a search index by fully qualified name |
 | `PUT` | `/v1/searchIndexes/restore` | Restore a soft deleted SearchIndex |
 | `DELETE` | `/v1/searchIndexes/{id}` | Delete a SearchIndex by id |
 | `GET` | `/v1/searchIndexes/{id}` | Get a SearchIndex by id |
@@ -1728,6 +1749,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/services/ingestionPipelines/progress/{fqn}/stream/{runId}` | Stream progress updates for a pipeline run |
 | `PUT` | `/v1/services/ingestionPipelines/progress/{fqn}/{runId}` | Update pipeline progress |
 | `PUT` | `/v1/services/ingestionPipelines/restore` | Restore a soft deleted ingestion pipeline |
+| `POST` | `/v1/services/ingestionPipelines/run` | Run the pipeline that owns an entity, scoped to that entity |
 | `GET` | `/v1/services/ingestionPipelines/status` | Check the airflow REST status |
 | `POST` | `/v1/services/ingestionPipelines/toggleIngestion/{id}` | Set an ingestion pipeline either as enabled or disabled |
 | `POST` | `/v1/services/ingestionPipelines/trigger/{id}` | Trigger an ingestion pipeline run |
@@ -1952,6 +1974,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PATCH` | `/v1/containers/name/{fqn}` | Update a Container using name. |
 | `GET` | `/v1/containers/name/{fqn}/ancestors` | List ancestor containers (parent chain) |
 | `GET` | `/v1/containers/name/{fqn}/children` | List children containers |
+| `GET` | `/v1/containers/name/{fqn}/columns` | Get paginated data model columns of a container by fully qualified name |
 | `PUT` | `/v1/containers/restore` | Restore a soft deleted Container. |
 | `DELETE` | `/v1/containers/{id}` | Delete a Container |
 | `GET` | `/v1/containers/{id}` | Get an Object Store Container |
@@ -2221,6 +2244,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/topics/name/{fqn}` | Delete a topic by fully qualified name |
 | `GET` | `/v1/topics/name/{fqn}` | Get a topic by fully qualified name |
 | `PATCH` | `/v1/topics/name/{fqn}` | Update a topic using name. |
+| `GET` | `/v1/topics/name/{fqn}/columns` | Get paginated schema fields of a topic by fully qualified name |
 | `PUT` | `/v1/topics/restore` | Restore a soft deleted topic |
 | `DELETE` | `/v1/topics/{id}` | Delete a topic by id |
 | `GET` | `/v1/topics/{id}` | Get a topic by id |
@@ -2243,6 +2267,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/metadata/types` | Create or update a type |
 | `DELETE` | `/v1/metadata/types/async/{id}` | Asynchronously delete a type by id |
 | `GET` | `/v1/metadata/types/customProperties` |  |
+| `GET` | `/v1/metadata/types/fields/workflowTriggerFields` | Get workflow trigger fields |
 | `GET` | `/v1/metadata/types/fields/{entityType}` |  |
 | `GET` | `/v1/metadata/types/name/{entityType}/customProperties` | Get custom properties for an entity type |
 | `PATCH` | `/v1/metadata/types/name/{fqn}` | Update a type using name. |
