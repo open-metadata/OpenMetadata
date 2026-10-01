@@ -27,8 +27,12 @@ Highest-value constraints, all machine-enforced:
 
 - No positional locators (`.first()`, `.last()`, `.nth()`) — narrow the locator, or use
   `getRowByName()` from `playwright/utils/scopedLocators.ts`.
-- **Sign in with a role page fixture, not a bespoke user.** `support/fixtures/userPages.ts` owns
-  every signed-in page (`adminPage`, `dataConsumerPage`, `dataStewardPage`, `ownerPage`,
+- **Never authenticate by driving the sign-in form; prefer a role page fixture.**
+  `openmetadata-playwright/no-form-sign-in` enforces the first half at **error**. The second half is
+  a recommendation it cannot check — `new UserClass()` + `signIn()` passes the rule — so reach for a
+  fixture because it owns the account lifecycle, not because lint made you.
+
+  `support/fixtures/userPages.ts` owns every signed-in page (`adminPage`, `dataConsumerPage`, `dataStewardPage`, `ownerPage`,
   `editDescriptionPage`, `editTagsPage`, `editGlossaryTermPage`, `viewOnlyPage`);
   `e2e/fixtures/pages.ts` re-exports them and aliases `page` to `adminPage`. When the test needs its
   own account, `support/fixtures/isolatedUser.ts` has `isolatedUserPage` (one per worker) and
@@ -38,8 +42,8 @@ Highest-value constraints, all machine-enforced:
   POST and runs the identical post-sign-in steps. Creating a user as *test data* is fine; signing
   one in through the form is what the rule flags.
 
-  The rule is at **error** with no suppressions and **no disables**. The two cases that genuinely
-  need the form call `signInThroughForm(page, user)` from `utils/formSignIn.ts` — the one module on
+  No suppressions and **no disables**. The two cases that genuinely need the form call
+  `signInThroughForm(page, user)` from `utils/formSignIn.ts` — the one module on
   the rule's exemption list — so the intent reads at the call site instead of as a suppression:
   either the form is the subject (`Auth/Login.spec.ts`), or the *route the app lands on* after
   sign-in is the assertion, which `signInViaApi` would mask because it finishes on `/my-data`

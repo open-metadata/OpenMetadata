@@ -17,7 +17,7 @@ import { UserClass } from '../support/user/UserClass';
  * Sign in by driving the sign-in form, on purpose.
  *
  * Almost no test wants this — `UserClass.signIn()` establishes the same session
- * with one POST instead of nine UI interactions, and `prefer-role-page-fixture`
+ * with one POST instead of nine UI interactions, and `no-form-sign-in`
  * enforces that at `error`. Two kinds of test legitimately need the form, and
  * calling this instead of `login()` is how they say so:
  *

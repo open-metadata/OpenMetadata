@@ -26,7 +26,7 @@ test('exports the aggregation wait helper rule', () => {
 });
 
 test('exports the role page fixture rule', () => {
-  assert.ok(playwrightPlugin.rules['prefer-role-page-fixture']);
+  assert.ok(playwrightPlugin.rules['no-form-sign-in']);
 });
 
 const ruleTester = new RuleTester({
@@ -137,8 +137,8 @@ ruleTester.run(
 );
 
 ruleTester.run(
-  'prefer-role-page-fixture',
-  playwrightPlugin.rules['prefer-role-page-fixture'],
+  'no-form-sign-in',
+  playwrightPlugin.rules['no-form-sign-in'],
   {
     valid: [
       {
@@ -194,18 +194,18 @@ ruleTester.run(
     invalid: [
       {
         code: 'await regularUser.login(page);',
-        errors: [{ messageId: 'preferRolePageFixture' }],
+        errors: [{ messageId: 'noFormSignIn' }],
         filename: 'playwright/e2e/Pages/Example.spec.ts',
       },
       {
         code: 'await user.login(await browser.newPage());',
-        errors: [{ messageId: 'preferRolePageFixture' }],
+        errors: [{ messageId: 'noFormSignIn' }],
         filename: 'playwright/e2e/Pages/Example.spec.ts',
       },
       {
         // Trailing options do not make it any less a bespoke login.
         code: 'await user.login(page, undefined, undefined, { skipTour: true });',
-        errors: [{ messageId: 'preferRolePageFixture' }],
+        errors: [{ messageId: 'noFormSignIn' }],
         filename: 'playwright/e2e/Flow/Example.spec.ts',
       },
     ],

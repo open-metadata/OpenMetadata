@@ -496,7 +496,7 @@ Two things to know if you touch this path:
   `e2e/Features/TokenStorage.spec.ts` guards both, and the third case in it exists specifically to
   fail if the fallback is what is under test.
 
-`openmetadata-playwright/prefer-role-page-fixture` runs at **error** with no suppressions: the
+`openmetadata-playwright/no-form-sign-in` runs at **error** with no suppressions: the
 whole corpus was migrated, so a `login()` in a spec is either new code that should be using
 `signIn()` or a fixture, or a spec that is genuinely testing the sign-in form. It flags
 *authenticating as* a bespoke user, not *creating* one — `new UserClass()` for an owner, reviewer
@@ -1408,7 +1408,7 @@ not hand-edit it, run `yarn generate:playwright-rules` instead.
 | `om-playwright/no-blanket-test-slow` | error | Disallow test.slow() at file or describe scope |
 | `om-playwright/no-positional-locator` | error | Disallow positional locators (.first(), .last(), .nth()) |
 | `om-playwright/require-assertion-per-test` | error | Flag tests that only perform page interactions and verify nothing |
-| `openmetadata-playwright/prefer-role-page-fixture` | error | Prefer the shared role page fixtures over creating and logging in a bespoke user |
+| `openmetadata-playwright/no-form-sign-in` | error | Do not authenticate by driving the sign-in form; use signIn() or a page fixture |
 | `openmetadata-playwright/require-aggregation-wait-helper` | warn | Require waitForAggregation instead of waiting on search/aggregate directly |
 | `playwright/missing-playwright-await` | error | Identify false positives when async Playwright APIs are not properly awaited. |
 | `playwright/no-element-handle` | error | The use of ElementHandle is discouraged, use Locator instead |

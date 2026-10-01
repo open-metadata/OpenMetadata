@@ -129,6 +129,12 @@ const requireAggregationWaitHelper = {
  * The implementation modules that must log in (auth.setup, the fixtures, the
  * login helpers) are exempt by path.
  *
+ * Scope, stated plainly so the name is not read as more than it is: this rule
+ * rejects *driving the sign-in form*. It does not require a role fixture, and
+ * `new UserClass()` + `signIn()` passes it — moving a spec onto
+ * `userPages`/`isolatedUser` is a recommendation the rule cannot check, because
+ * whether a bespoke account is warranted is a judgement about the test.
+ *
  * It runs at `error` with zero suppressions and zero disables. The ~290 call
  * sites that made a warn-level rule the only honest setting have been migrated.
  * The two cases that legitimately need the form — the form is the subject
@@ -161,15 +167,15 @@ const LOGIN_IMPLEMENTATION_PATHS = [
   'support/user/',
 ];
 
-const preferRolePageFixture = {
+const noFormSignIn = {
   meta: {
     docs: {
       description:
-        'Prefer the shared role page fixtures over creating and logging in a bespoke user',
+        'Do not authenticate by driving the sign-in form; use signIn() or a page fixture',
     },
     messages: {
-      preferRolePageFixture:
-        '`login()` drives the sign-in form — nine UI interactions before this test has done anything. Use `signIn()` instead: same session, same post-sign-in steps, one POST. Better still, take a fixture and let it own the account: one of {{fixtures}} from support/fixtures/userPages (or e2e/fixtures/pages) for a seeded role, or `isolatedUserPage` / `freshUserPage` from support/fixtures/isolatedUser when the test needs its own account — those create and delete it for you, so there is no beforeAll/afterAll bookkeeping to get wrong. If the form itself is what the test asserts — or the route the app lands on after sign-in is the assertion, which `signInViaApi` would mask by finishing on /my-data — call `signInThroughForm(page, user)` from utils/formSignIn, which says so at the call site instead of suppressing this rule.',
+      noFormSignIn:
+        '`login()` drives the sign-in form — nine UI interactions before this test has done anything. Use `signIn()` instead: same session, same post-sign-in steps, one POST. Better still — though this rule does not enforce it — take a fixture and let it own the account: one of {{fixtures}} from support/fixtures/userPages (or e2e/fixtures/pages) for a seeded role, or `isolatedUserPage` / `freshUserPage` from support/fixtures/isolatedUser when the test needs its own account, which removes the beforeAll/afterAll bookkeeping entirely. If the form itself is what the test asserts — or the route the app lands on after sign-in is the assertion, which `signInViaApi` would mask by finishing on /my-data — call `signInThroughForm(page, user)` from utils/formSignIn, which says so at the call site instead of suppressing this rule.',
     },
     schema: [],
     type: 'suggestion',
@@ -184,7 +190,7 @@ const preferRolePageFixture = {
     const report = (node) =>
       context.report({
         node,
-        messageId: 'preferRolePageFixture',
+        messageId: 'noFormSignIn',
         data: { fixtures: ROLE_FIXTURES.join(', ') },
       });
 
@@ -215,6 +221,6 @@ const preferRolePageFixture = {
 export default {
   rules: {
     'require-aggregation-wait-helper': requireAggregationWaitHelper,
-    'prefer-role-page-fixture': preferRolePageFixture,
+    'no-form-sign-in': noFormSignIn,
   },
 };
