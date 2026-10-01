@@ -9,15 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Daily merge-queue Playwright report: one PDF in #pw-health instead of one Slack
-# post per queue run.
+# Daily merge-queue Playwright report: one HTML file in #pw-health instead of one
+# Slack post per queue run.
 #
 # For every merge-group run of playwright-postgresql-e2e.yml in the window it reads
 # the shards' "Retry pass in merge queue" annotations (flaky tests, one GraphQL
 # query per run) and, for failed runs, the failed shards' results JSON (failed
 # tests and errors). Tests are ranked by distinct PRs (a re-queued PR counts
-# once); flaky tests not seen in the previous 24h or on main are marked NEW. A
-# dispatched window is at most 48h.
+# once); each test opens to list every run that hit it. A dispatched window is at
+# most 48h.
 name: Playwright Flaky Daily Report
 
 on:
@@ -35,7 +35,7 @@ on:
         type: string
         default: ""
       post_to_slack:
-        description: Post the report to #pw-health. Off = scan only (job summary + PDF artifact).
+        description: Post the report to #pw-health. Off = scan only (job summary + HTML artifact).
         type: boolean
         default: true
 
@@ -43,7 +43,7 @@ permissions:
   # Naming any permission sets every other one to none:
   #   actions  — list merge-group runs, their jobs, and failed shards' results JSON
   #   checks   — the shards' retry-pass and failure annotations
-  #   contents — checkout, and flake-baseline.json on ci/playwright-timing
+  #   contents — checkout
   actions: read
   checks: read
   contents: read
@@ -80,19 +80,12 @@ jobs:
             --channel C0C008ZAK0V \
             --out-dir "$REPORT_DIR"
 
-      # Chrome is preinstalled on ubuntu-latest, so printing needs no new dependency.
-      - name: Print the report to PDF
-        run: |
-          google-chrome --headless=new --no-sandbox --disable-gpu --no-pdf-header-footer \
-            --print-to-pdf="$REPORT_DIR/report.pdf" "file://$REPORT_DIR/report.html"
-          test -s "$REPORT_DIR/report.pdf"
-
       - name: Upload the report
         uses: actions/upload-artifact@v7
         with:
           name: playwright-flaky-report
           path: |
-            ${{ env.REPORT_DIR }}/report.pdf
+            ${{ env.REPORT_DIR }}/*.html
             ${{ env.REPORT_DIR }}/report.md
           retention-days: 14
 

@@ -9,17 +9,13 @@ For every merge-group run of playwright-postgresql-e2e.yml in the window it read
     artifacts, which the queue uploads only on failure;
   * for a failed run that names no failed test (a shard killed by its timeout, a
     job that never got a runner) — the failed jobs and their failure annotations.
-It writes an HTML report (the workflow prints it to PDF), a markdown job summary,
-and a Slack `files.uploadV2` payload.
+It writes a self-contained HTML report (one collapsible entry per test, listing
+every run that hit it), a markdown job summary, and a Slack `files.uploadV2`
+payload that attaches the HTML.
 
-Counting rules, taken from triaging the queue by hand:
-  * A dequeued PR is re-queued and re-runs the same tests, so one stall can
-    triple every count. Tests are ranked by distinct PRs; raw runs sit beside it.
-  * Flaky hits in runs that passed are the clean signal; hits in runs that failed
-    (ejected batches) are counted separately.
-  * A flaky test is "new" when it was not flaky in the `--lookback-hours` before
-    `--since` and is not in main's flake baseline. The PR of the first run that
-    hit it is the suspect.
+A dequeued PR is re-queued and re-runs the same tests, so one stall can triple
+every count. Tests are ranked by distinct PRs, with raw runs beside it, and flaky
+hits in passing runs are counted apart from hits in failed (ejected) runs.
 
 Exits:
   0 — report written
@@ -29,7 +25,6 @@ Exits:
 from __future__ import annotations
 
 import argparse
-import base64
 import html
 import io
 import json
@@ -50,16 +45,14 @@ WORKFLOW = "playwright-postgresql-e2e.yml"
 RETRY_PASS = "Retry pass in merge queue"
 RESULTS_ARTIFACT = "playwright-results-json-"
 SUMMARY_JOB = "playwright-summary"
-BASELINE_REF = "ci/playwright-timing"
 TEST_RE = re.compile(r"^(?P<file>.+?):(?P<line>\d+) › (?P<title>.+)$")
 ANSI = re.compile(r"[\x1b\ufffd]\[[0-9;]*m")
 TOP = 10
 MAX_ERRORS_SHOWN = 3
 # A passing run costs one GraphQL query; a failed run adds an artifact listing and
-# one download per failed shard. Both caps keep a run far inside GITHUB_TOKEN's
+# one download per failed shard. The cap keeps a run far inside GITHUB_TOKEN's
 # hourly budget on any plan.
 MAX_WINDOW_HOURS = 48
-MAX_LOOKBACK_HOURS = 24
 # Every job of a run in one query. ponytail: 50 annotations per job, and the usual
 # two are runner notices; a shard with more than that loses the rest.
 ANNOTATIONS_QUERY = """query($id: ID!) { node(id: $id) { ... on CheckSuite {
@@ -75,7 +68,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--since", default="", help="UTC ISO date or time; default 24h before --until"
     )
     parser.add_argument("--until", default="", help="UTC ISO date or time; default now")
-    parser.add_argument("--lookback-hours", type=float, default=24)
     parser.add_argument("--channel", required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     return parser.parse_args(argv)
@@ -262,10 +254,10 @@ READ_ERRORS = (
 )
 
 
-def collect(owner: str, repo: str, run: dict, token: str, failures: bool) -> dict:
-    """One run's tests. `failures` False (lookback runs) reads the flakes only."""
+def collect(owner: str, repo: str, run: dict, token: str) -> dict:
     record = {
         "runId": run["id"],
+        "attempt": run.get("run_attempt", 1),
         "url": run["html_url"],
         "createdAt": mq.parse_ts(run["created_at"]),
         "conclusion": run.get("conclusion") or "unknown",
@@ -278,7 +270,7 @@ def collect(owner: str, repo: str, run: dict, token: str, failures: bool) -> dic
     }
     try:
         record["flaky"] = read_flaky(run, token)
-        if failures and record["conclusion"] == "failure":
+        if record["conclusion"] == "failure":
             failed, flaky = read_failures(owner, repo, run, token)
             record["failed"] = failed
             # A shard that failed before writing its annotation still reports its flakes here.
@@ -291,56 +283,35 @@ def collect(owner: str, repo: str, run: dict, token: str, failures: bool) -> dic
     return record
 
 
-def main_flaky(owner: str, repo: str, token: str) -> set[tuple[str, str]]:
-    """(file, title) of every test main itself flaked on, from refresh_flake_baseline.py."""
-    query = urlencode({"ref": BASELINE_REF})
-    try:
-        payload = mq.rest(
-            f"/repos/{owner}/{repo}/contents/flake-baseline.json?{query}", token
-        )
-        entries = json.loads(base64.b64decode(payload["content"]))["entries"].values()
-        return {(entry["file"], entry["title"]) for entry in entries}
-    except (
-        mq.ApiError,
-        OSError,
-        ValueError,
-        KeyError,
-        TypeError,
-        AttributeError,
-    ) as exc:
-        print(
-            f"::warning::Main flake baseline unreadable, no tests tagged as main: {exc}"
-        )
-        return set()
-
-
 # ----------------------------------------------------------------- aggregating
 
 
 def tally(
-    tests: dict, key: tuple[str, str], line: int, run: dict, **fields: Any
-) -> dict:
-    test = tests.get(key)
-    if test is None:
-        test = tests[key] = {
+    tests: dict, key: tuple[str, str], line: int, run: dict, error: str = ""
+) -> None:
+    test = tests.setdefault(
+        key,
+        {
             "file": key[0],
             "title": key[1],
-            "runs": 0,
             "passedRuns": 0,
             "prs": set(),
             "errors": Counter(),
-            "firstRun": run,
-            **fields,
-        }
+            "hits": [],
+        },
+    )
     test["line"] = line
-    test["runs"] += 1
     test["passedRuns"] += run["conclusion"] == "success"
     test["prs"].update(run["prs"])
-    test["lastRun"] = run
-    return test
+    test["hits"].append((run, error))
+    if error:
+        test["errors"][error] += 1
 
 
 def ranked(tests: dict) -> list[dict]:
+    for test in tests.values():
+        test["runs"] = len(test["hits"])
+        test["hits"].reverse()  # newest first
     return sorted(
         tests.values(),
         key=lambda test: (
@@ -352,33 +323,15 @@ def ranked(tests: dict) -> list[dict]:
     )
 
 
-def aggregate(
-    records: list[dict], since: datetime, on_main: set[tuple[str, str]]
-) -> dict[str, Any]:
-    prior = [record for record in records if record["createdAt"] < since]
-    window = sorted(
-        (record for record in records if record["createdAt"] >= since),
-        key=lambda record: record["createdAt"],
-    )
-    # Without readable history every test would look new, so "new" is not claimed.
-    has_history = any(record["flaky"] is not None for record in prior)
-    seen_before = {key for record in prior for key in record["flaky"] or {}}
+def aggregate(records: list[dict]) -> dict[str, Any]:
+    window = sorted(records, key=lambda record: record["createdAt"])
     flaky: dict[tuple[str, str], dict] = {}
     failed: dict[tuple[str, str], dict] = {}
     for run in window:
         for key, line in (run["flaky"] or {}).items():
-            tally(
-                flaky,
-                key,
-                line,
-                run,
-                onMain=key in on_main,
-                new=has_history and key not in seen_before and key not in on_main,
-            )
+            tally(flaky, key, line, run)
         for key, (line, error) in run["failed"].items():
-            test = tally(failed, key, line, run)
-            if error:
-                test["errors"][error] += 1
+            tally(failed, key, line, run, error)
     flaky_tests = ranked(flaky)
     specs: dict[str, dict] = {}
     for test in flaky_tests:
@@ -391,12 +344,11 @@ def aggregate(
     return {
         "flaky": flaky_tests,
         "failed": ranked(failed),
-        "broken": [run for run in window if run["broken"]],
+        "broken": [run for run in reversed(window) if run["broken"]],
         "specs": sorted(
             (spec for spec in specs.values() if spec["tests"] > 1),
             key=lambda spec: (-spec["tests"], -spec["runs"], spec["file"]),
         ),
-        "hasHistory": has_history,
         "runs": len(window),
         "passed": conclusions["success"],
         "failedRuns": conclusions["failure"],
@@ -408,6 +360,17 @@ def aggregate(
 
 # ------------------------------------------------------------------- rendering
 
+FAILED_NOTE = "Failed every attempt in a queue run, so the run was ejected. Ranked by distinct PRs."
+FLAKY_NOTE = (
+    "Failed, then passed on retry. Ranked by distinct PRs, so a re-queued PR counts once; "
+    "runs are split into passed and failed (ejected) queue runs."
+)
+BROKEN_NOTE = (
+    "Ejected without a test to blame: a shard killed by its timeout, "
+    "a job that never got a runner, a failed build."
+)
+SPECS_NOTE = "Several flaky tests in one spec often share one cause, such as setup."
+
 
 def test_name(test: dict) -> str:
     return (
@@ -418,212 +381,212 @@ def test_name(test: dict) -> str:
 
 
 def run_label(run: dict) -> str:
-    return f"{utc(run['createdAt'])}" + (f" · #{run['prs'][0]}" if run["prs"] else "")
+    pr = f"PR #{run['prs'][0]} · " if run["prs"] else ""
+    attempt = f" (attempt {run['attempt']})" if run["attempt"] > 1 else ""
+    return f"{pr}run {run['runId']}{attempt}"
 
 
-def first_seen(test: dict, repo_url: str) -> tuple[str, str]:
-    run = test["firstRun"]
-    return run_label(run), f"{repo_url}/pull/{run['prs'][0]}" if run["prs"] else run[
-        "url"
-    ]
+def plural(count: int, word: str) -> str:
+    return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
 
-def latest_run(test: dict) -> tuple[str, str]:
-    return utc(test["lastRun"]["createdAt"]), test["lastRun"]["url"]
-
-
-def errors_cell(test: dict) -> str:
-    shown = test["errors"].most_common(MAX_ERRORS_SHOWN)
-    lines = [
-        f"{error} (×{count})" if len(test["errors"]) > 1 else error
-        for error, count in shown
-    ]
-    if len(test["errors"]) > MAX_ERRORS_SHOWN:
-        lines.append(f"+{len(test['errors']) - MAX_ERRORS_SHOWN} more distinct errors")
-    return "\n".join(lines)
-
-
-def tag(test: dict) -> str:
-    return "NEW" if test["new"] else "main" if test["onMain"] else ""
-
-
-def tables(report: dict, repo_url: str) -> list[tuple[str, str, list, list]]:
-    failed_rows = [
-        [
-            str(index),
-            test_name(test),
-            str(len(test["prs"])),
-            str(test["runs"]),
-            errors_cell(test),
-            first_seen(test, repo_url),
-            latest_run(test),
-        ]
-        for index, test in enumerate(report["failed"], 1)
-    ]
-    flaky_rows = [
-        [
-            str(index),
-            test_name(test),
-            str(len(test["prs"])),
-            f"{test['runs']} ({test['passedRuns']} / {test['runs'] - test['passedRuns']})",
-            first_seen(test, repo_url),
-            tag(test),
-            latest_run(test),
-        ]
-        for index, test in enumerate(report["flaky"], 1)
-    ]
-    broken_rows = [
-        [
-            str(index),
-            (run_label(run), run["url"]),
-            "\n".join(f"{job['name']}: {job['reason']}" for job in run["broken"]),
-        ]
-        for index, run in enumerate(report["broken"], 1)
-    ]
-    sections = [
-        (
-            f"Failed tests ({len(failed_rows)})",
-            "Failed every attempt in a queue run, so the run was ejected. Ranked by distinct PRs.",
-            [
-                "#",
-                "Test",
-                "PRs",
-                "Failed runs",
-                "Error",
-                "First seen",
-                "Latest run (trace)",
-            ],
-            failed_rows,
-        ),
-        (
-            f"Flaky tests ({len(flaky_rows)})",
-            "Failed, then passed on retry. Ranked by distinct PRs, so a re-queued PR counts once. "
-            "Tag NEW = not flaky the day before and not on main; main = also flaky on main.",
-            [
-                "#",
-                "Test",
-                "PRs",
-                "Runs (passed / failed)",
-                "First seen",
-                "Tag",
-                "Latest run (trace)",
-            ],
-            flaky_rows,
-        ),
-    ]
-    if broken_rows:
-        sections.append(
-            (
-                f"Failed runs with no failing test ({len(broken_rows)})",
-                "Ejected without a test to blame: a shard killed by its timeout, "
-                "a job that never got a runner, a failed build.",
-                ["#", "Run", "Failed jobs"],
-                broken_rows,
-            )
-        )
-    if report["specs"]:
-        sections.append(
-            (
-                "Specs with several flaky tests",
-                "Several flaky tests in one spec often share one cause, such as setup.",
-                ["Spec", "Flaky tests", "Runs"],
-                [
-                    [spec["file"], str(spec["tests"]), str(spec["runs"])]
-                    for spec in report["specs"]
-                ],
-            )
-        )
-    return sections
+def counts(test: dict, failed: bool) -> str:
+    prs = plural(len(test["prs"]), "PR")
+    if failed:
+        return f"{prs} · {plural(test['runs'], 'failed run')}"
+    return f"{prs} · {plural(test['runs'], 'run')} ({test['passedRuns']} passed, {test['runs'] - test['passedRuns']} failed)"
 
 
 def headline(report: dict) -> list[str]:
     lines = [
-        f"{report['runs']} merge-queue runs ({report['passed']} passed, {report['failedRuns']} failed"
+        f"{plural(report['runs'], 'merge-queue run')} ({report['passed']} passed, {report['failedRuns']} failed"
         + (f", {report['other']} other" if report["other"] else "")
-        + f") for {report['prs']} PRs",
-        f"{len(report['failed'])} failed tests · {len(report['flaky'])} flaky tests"
+        + f") for {plural(report['prs'], 'PR')}",
+        f"{plural(len(report['failed']), 'failed test')} · {plural(len(report['flaky']), 'flaky test')}"
         + (
-            f" · {len(report['broken'])} failed runs with no failing test"
+            f" · {plural(len(report['broken']), 'failed run')} with no failing test"
             if report["broken"]
             else ""
         ),
     ]
     if report["unreadable"]:
         lines.append(
-            f"{report['unreadable']} runs could not be read and are not counted"
+            f"{plural(report['unreadable'], 'run')} could not be read and are not counted"
         )
-    if not report["hasHistory"]:
-        lines.append("No readable history before this window, so no test is marked NEW")
     return lines
 
 
-def cell_html(cell: str | tuple[str, str]) -> str:
-    if isinstance(cell, tuple):
-        return f'<a href="{html.escape(cell[1])}">{html.escape(cell[0])}</a>'
-    return html.escape(cell).replace("\n", "<br>")
+def e(text: Any) -> str:
+    return html.escape(str(text))
 
 
-def cell_md(cell: str | tuple[str, str]) -> str:
-    text = (
-        f"[{html.escape(cell[0])}]({cell[1]})"
-        if isinstance(cell, tuple)
-        else html.escape(cell)
+def link(label: str, url: str) -> str:
+    return f'<a href="{e(url)}" target="_blank" rel="noreferrer">{e(label)}</a>'
+
+
+def test_entry(test: dict, failed: bool) -> str:
+    errors = "".join(
+        f"<li>{e(error)}{f' <span class=n>×{count}</span>' if len(test['errors']) > 1 else ''}</li>"
+        for error, count in test["errors"].most_common()
     )
-    return text.replace("|", "\\|").replace("\n", "<br>")
+    hits = "".join(
+        f"<li>{link(run_label(run), run['url'])} <span class=muted>{e(utc(run['createdAt']))}</span> "
+        f"<span class='tag {'ok' if run['conclusion'] == 'success' else 'bad'}'>"
+        f"{'passed' if run['conclusion'] == 'success' else e(run['conclusion'])}</span>"
+        f"{f' <span class=err>{e(error)}</span>' if error and len(test['errors']) > 1 else ''}</li>"
+        for run, error in test["hits"]
+    )
+    return (
+        f"<details><summary><span class='count {'bad' if failed else 'warn'}'>{test['runs']}</span>"
+        f"<span class=name>{e(test_name(test))}</span><span class=muted>{e(counts(test, failed))}</span></summary>"
+        f"<div class=body>{f'<ul class=errors>{errors}</ul>' if errors else ''}<ol class=runs>{hits}</ol></div></details>"
+    )
 
 
-def render_html(report: dict, title: str, repo_url: str) -> str:
-    body = [f"<h1>{html.escape(title)}</h1>", "<ul>"]
-    body += [f"<li>{html.escape(line)}</li>" for line in headline(report)]
-    body.append("</ul>")
-    for heading, note, columns, rows in tables(report, repo_url):
-        body += [
-            f"<h2>{html.escape(heading)}</h2>",
-            f"<p class='note'>{html.escape(note)}</p>",
-        ]
-        if not rows:
-            body.append("<p>None.</p>")
-            continue
-        body.append(
-            "<table><tr>"
-            + "".join(f"<th>{html.escape(c)}</th>" for c in columns)
-            + "</tr>"
+def section(title: str, note: str, entries: list[str]) -> str:
+    body = "".join(entries) or "<p class=muted>None.</p>"
+    return f"<h2>{e(title)}</h2><p class=note>{e(note)}</p>{body}"
+
+
+def render_html(report: dict, title: str) -> str:
+    broken = "".join(
+        f"<tr><td>{link(run_label(run), run['url'])}<br><span class=muted>{e(utc(run['createdAt']))}</span></td>"
+        f"<td>{'<br>'.join(link(job['name'], job['url']) + ' — ' + e(job['reason']) for job in run['broken'])}</td></tr>"
+        for run in report["broken"]
+    )
+    specs = "".join(
+        f"<tr><td>{e(spec['file'])}</td><td>{spec['tests']}</td><td>{spec['runs']}</td></tr>"
+        for spec in report["specs"]
+    )
+    parts = [
+        f"<h1>{e(title)}</h1>",
+        "<p class=meta>" + "<br>".join(e(line) for line in headline(report)) + "</p>",
+        "<p class=tools><button onclick=\"document.querySelectorAll('details').forEach(d=>d.open=true)\">Expand all</button>"
+        "<button onclick=\"document.querySelectorAll('details').forEach(d=>d.open=false)\">Collapse all</button></p>",
+        section(
+            f"Failed tests ({len(report['failed'])})",
+            FAILED_NOTE,
+            [test_entry(t, True) for t in report["failed"]],
+        ),
+        section(
+            f"Flaky tests ({len(report['flaky'])})",
+            FLAKY_NOTE,
+            [test_entry(t, False) for t in report["flaky"]],
+        ),
+    ]
+    if broken:
+        parts.append(
+            f"<h2>Failed runs with no failing test ({len(report['broken'])})</h2><p class=note>{e(BROKEN_NOTE)}</p>"
+            f"<table><tr><th>Run</th><th>Failed jobs</th></tr>{broken}</table>"
         )
-        body += [
-            "<tr>" + "".join(f"<td>{cell_html(c)}</td>" for c in row) + "</tr>"
-            for row in rows
-        ]
-        body.append("</table>")
+    if specs:
+        parts.append(
+            f"<h2>Specs with several flaky tests</h2><p class=note>{e(SPECS_NOTE)}</p>"
+            f"<table><tr><th>Spec</th><th>Flaky tests</th><th>Runs</th></tr>{specs}</table>"
+        )
     style = """
-      @page { size: A4 landscape; margin: 10mm; }
-      body { font: 10px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #1f2328; }
-      h1 { font-size: 18px; margin: 0 0 6px; } h2 { font-size: 14px; margin: 16px 0 2px; }
-      .note { color: #59636e; margin: 0 0 6px; }
+      :root { --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --bg: #fff; --head: #f6f8fa;
+              --link: #0969da; --bad: #cf222e; --warn: #9a6700; --ok: #1a7f37; }
+      @media (prefers-color-scheme: dark) {
+        :root { --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --bg: #0d1117; --head: #151b23;
+                --link: #4493f8; --bad: #f85149; --warn: #d29922; --ok: #3fb950; } }
+      body { font: 14px/1.45 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--fg);
+             background: var(--bg); max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+      h1 { font-size: 22px; margin: 0 0 8px; } h2 { font-size: 17px; margin: 28px 0 4px; }
+      .meta, .note, .muted { color: var(--muted); } .note { margin: 0 0 8px; }
+      a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
+      button { font: inherit; margin-right: 8px; padding: 3px 10px; border: 1px solid var(--line);
+               border-radius: 6px; background: var(--head); color: var(--fg); cursor: pointer; }
+      details { border: 1px solid var(--line); border-radius: 6px; margin: 4px 0; }
+      summary { display: flex; gap: 10px; align-items: baseline; padding: 6px 10px; cursor: pointer; }
+      summary .name { flex: 1; word-break: break-word; }
+      summary .muted { white-space: nowrap; font-size: 12px; }
+      .count { min-width: 28px; text-align: right; font-weight: 600; }
+      .count.bad, .tag.bad { color: var(--bad); } .count.warn { color: var(--warn); } .tag.ok { color: var(--ok); }
+      .body { border-top: 1px solid var(--line); padding: 6px 12px 8px 48px; background: var(--head); }
+      .errors { margin: 4px 0 8px; padding-left: 18px; font-family: ui-monospace, monospace; font-size: 12px; }
+      .runs { margin: 0; padding-left: 18px; } .runs li { margin: 2px 0; }
+      .tag, .n { font-size: 12px; } .err { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); }
       table { border-collapse: collapse; width: 100%; }
-      th, td { border: 1px solid #d1d9e0; padding: 3px 5px; text-align: left; vertical-align: top; }
-      th { background: #f6f8fa; } tr { break-inside: avoid; }
-      td { word-break: break-word; }
-      a { color: #0969da; text-decoration: none; }
+      th, td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+      th { background: var(--head); } td { word-break: break-word; }
     """
     return (
-        f"<!doctype html><html><head><meta charset='utf-8'><title>{html.escape(title)}</title>"
-        f"<style>{style}</style></head><body>{''.join(body)}</body></html>"
+        f"<!doctype html><html><head><meta charset='utf-8'>"
+        f"<meta name='viewport' content='width=device-width, initial-scale=1'><title>{e(title)}</title>"
+        f"<style>{style}</style></head><body>{''.join(parts)}</body></html>"
     )
 
 
-def render_md(report: dict, title: str, repo_url: str) -> str:
+def render_md(report: dict, title: str) -> str:
+    def cell(text: str) -> str:
+        return html.escape(text).replace("|", "\\|").replace("\n", "<br>")
+
+    def latest(test: dict) -> str:
+        run = test["hits"][0][0]
+        return f"[{utc(run['createdAt'])}]({run['url']})"
+
     lines = [f"## {title}", ""] + [f"- {line}" for line in headline(report)]
-    for heading, note, columns, rows in tables(report, repo_url):
+    tables = [
+        (
+            f"Failed tests ({len(report['failed'])})",
+            FAILED_NOTE,
+            ["#", "Test", "PRs", "Failed runs", "Error", "Latest run"],
+            [
+                [
+                    str(i),
+                    cell(test_name(t)),
+                    str(len(t["prs"])),
+                    str(t["runs"]),
+                    cell("\n".join(error for error, _ in t["errors"].most_common(3))),
+                    latest(t),
+                ]
+                for i, t in enumerate(report["failed"], 1)
+            ],
+        ),
+        (
+            f"Flaky tests ({len(report['flaky'])})",
+            FLAKY_NOTE,
+            ["#", "Test", "PRs", "Runs (passed / failed)", "Latest run"],
+            [
+                [
+                    str(i),
+                    cell(test_name(t)),
+                    str(len(t["prs"])),
+                    f"{t['runs']} ({t['passedRuns']} / {t['runs'] - t['passedRuns']})",
+                    latest(t),
+                ]
+                for i, t in enumerate(report["flaky"], 1)
+            ],
+        ),
+        (
+            f"Failed runs with no failing test ({len(report['broken'])})",
+            BROKEN_NOTE,
+            ["Run", "Failed jobs"],
+            [
+                [
+                    f"[{run_label(run)}]({run['url']})",
+                    cell(
+                        "\n".join(
+                            f"{job['name']}: {job['reason']}" for job in run["broken"]
+                        )
+                    ),
+                ]
+                for run in report["broken"]
+            ],
+        ),
+    ]
+    for heading, note, columns, rows in tables:
         lines += ["", f"### {heading}", "", note, ""]
         if not rows:
             lines.append("None.")
             continue
         lines += ["| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
-        lines += ["| " + " | ".join(cell_md(c) for c in row) + " |" for row in rows]
+        lines += ["| " + " | ".join(row) + " |" for row in rows]
     return "\n".join(lines) + "\n"
 
 
-def slack_text(report: dict, title: str, repo_url: str, lookback: float) -> str:
+def slack_text(report: dict, title: str) -> str:
     lines = [f":bar_chart: *{title}*"] + headline(report)
     if report["unreadable"] == report["runs"]:
         return "\n".join(lines + [":warning: No run in this window could be read."])
@@ -633,29 +596,25 @@ def slack_text(report: dict, title: str, repo_url: str, lookback: float) -> str:
             + [":large_green_circle: No failed or flaky tests in the merge queue."]
         )
 
-    def line(test, unit):
-        label, url = first_seen(test, repo_url)
+    def line(test: dict, failed: bool) -> str:
+        run = test["hits"][0][0]
         return (
-            f"`{mq.sanitize_external(test_name(test))}` — {len(test['prs'])} PRs, "
-            f"{test['runs']} {unit}, first <{url}|{label}>"
+            f"`{mq.sanitize_external(test_name(test))}` — {counts(test, failed)}, "
+            f"latest <{run['url']}|{utc(run['createdAt'])}>"
         )
 
     if report["failed"]:
         lines.append(":red_circle: *Failed* (by distinct PRs):")
-        lines += [f"• {line(test, 'failed runs')}" for test in report["failed"][:5]]
-    new = [test for test in report["flaky"] if test["new"]]
-    if new:
-        lines.append(
-            f":new: *New flaky* (not in the prior {lookback:g}h, not flaky on main):"
-        )
-        lines += [f"• {line(test, 'runs')}" for test in new[:5]]
+        lines += [f"• {line(test, True)}" for test in report["failed"][:5]]
     if report["flaky"]:
         lines.append(":large_yellow_circle: *Top flaky* (by distinct PRs):")
         lines += [
-            f"{index}. {line(test, 'runs')}"
-            for index, test in enumerate(report["flaky"][:TOP], 1)
+            f"{i}. {line(test, False)}"
+            for i, test in enumerate(report["flaky"][:TOP], 1)
         ]
-    lines.append("Full report in the attached PDF.")
+    lines.append(
+        "Every run of every test is in the attached HTML report; open it in a browser."
+    )
     return "\n".join(lines)
 
 
@@ -668,63 +627,43 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("--since must be before --until")
     if until - since > timedelta(hours=MAX_WINDOW_HOURS):
         raise SystemExit(f"The window may be at most {MAX_WINDOW_HOURS}h")
-    if args.lookback_hours > MAX_LOOKBACK_HOURS:
-        raise SystemExit(f"--lookback-hours may be at most {MAX_LOOKBACK_HOURS}")
     try:
-        runs = list_runs(
-            args.owner,
-            args.repo,
-            since - timedelta(hours=args.lookback_hours),
-            until,
-            token,
-        )
+        runs = list_runs(args.owner, args.repo, since, until, token)
     except (mq.ApiError, OSError) as exc:
         print(f"::error::Could not list merge-queue runs: {exc}")
         return 1
     with ThreadPoolExecutor(max_workers=6) as pool:
         records = list(
-            pool.map(
-                lambda run: collect(
-                    args.owner,
-                    args.repo,
-                    run,
-                    token,
-                    mq.parse_ts(run["created_at"]) >= since,
-                ),
-                runs,
-            )
+            pool.map(lambda run: collect(args.owner, args.repo, run, token), runs)
         )
-    report = aggregate(records, since, main_flaky(args.owner, args.repo, token))
+    report = aggregate(records)
 
-    repo_url = f"https://github.com/{args.owner}/{args.repo}"
     title = f"Merge-queue Playwright report, {utc(since)} to {utc(until)} UTC"
+    stamp = "-to-".join(
+        f"{value.astimezone(timezone.utc):%Y-%m-%d-%H%M}" for value in (since, until)
+    )
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
-    (out / "report.html").write_text(render_html(report, title, repo_url))
-    markdown = render_md(report, title, repo_url)
+    page = out / f"merge-queue-{stamp}.html"
+    page.write_text(render_html(report, title))
+    markdown = render_md(report, title)
     (out / "report.md").write_text(markdown)
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(summary, "a", encoding="utf-8") as handle:
             handle.write(markdown)
-    stamp = "-to-".join(
-        f"{value.astimezone(timezone.utc):%Y-%m-%d-%H%M}" for value in (since, until)
-    )
     (out / "slack.json").write_text(
         json.dumps(
             {
                 "channel_id": args.channel,
-                "initial_comment": slack_text(
-                    report, title, repo_url, args.lookback_hours
-                ),
-                "file": str((out / "report.pdf").resolve()),
-                "filename": f"merge-queue-{stamp}.pdf",
+                "initial_comment": slack_text(report, title),
+                "file": str(page.resolve()),
+                "filename": page.name,
                 "title": title,
             }
         )
     )
     print(
-        f"{report['runs']} runs, {len(report['failed'])} failed tests, "
-        f"{len(report['flaky'])} flaky tests"
+        f"{report['runs']} runs, {len(report['failed'])} failed tests, {len(report['flaky'])} flaky tests"
     )
     return 0
 

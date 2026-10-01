@@ -43,8 +43,6 @@ def run(run_id, created, pr, conclusion="success", flaky=(), failed=None, broken
 
 
 RUNS = [
-    # Lookback: the filters setup was already flaky before the window.
-    run(1, "2026-09-29T10:00:00Z", 100, flaky=[FILTERS]),
     run(2, "2026-09-30T06:44:00Z", 34042, flaky=[GLOSSARY, FILTERS, MAIN]),
     # The same PR re-queued after an ejection hits the same tests again.
     run(
@@ -78,6 +76,7 @@ RUNS = [
     ),
     run(7, "2026-09-30T12:00:00Z", 400, flaky=None),
 ]
+PAGE = "merge-queue-2026-09-30-0000-to-2026-10-01-0000.html"
 
 
 def build(tmp_path, monkeypatch, runs=RUNS):
@@ -101,7 +100,6 @@ def build(tmp_path, monkeypatch, runs=RUNS):
     monkeypatch.setattr(
         report_script, "failed_jobs", lambda o, repo, r, t: by_id[r["id"]]["_broken"]
     )
-    monkeypatch.setattr(report_script, "main_flaky", lambda *a: {MAIN})
     code = report_script.main(
         [
             "--owner",
@@ -122,38 +120,51 @@ def build(tmp_path, monkeypatch, runs=RUNS):
     return json.loads((tmp_path / "slack.json").read_text()), calls
 
 
-def test_failures_are_read_only_for_failed_runs_in_the_window(tmp_path, monkeypatch):
+def test_failures_are_read_only_for_failed_runs(tmp_path, monkeypatch):
     _, calls = build(tmp_path, monkeypatch)
     assert sorted(calls) == [3, 5, 6]
 
 
-def test_ranks_by_distinct_prs_and_marks_new_against_history(tmp_path, monkeypatch):
+def test_slack_text_ranks_by_distinct_prs(tmp_path, monkeypatch):
     slack, _ = build(tmp_path, monkeypatch)
     text = slack["initial_comment"]
     assert "6 merge-queue runs (3 passed, 3 failed) for 4 PRs" in text
-    assert "1 failed tests · 4 flaky tests · 1 failed runs with no failing test" in text
-    assert "1 runs could not be read" in text
+    assert "1 failed test · 4 flaky tests · 1 failed run with no failing test" in text
+    assert "1 run could not be read" in text
     # Glossary hit 3 runs but only 2 PRs: the re-queue does not triple it.
     glossary = "Features/CustomizeDetailPage.spec.ts:10 › Glossary Term tabs"
     assert (
-        f"1. `{glossary}` — 2 PRs, 3 runs, first <https://github.com/o/r/pull/34042|"
-        in text
-    )
+        f"1. `{glossary}` — 2 PRs · 3 runs (2 passed, 1 failed), "
+        "latest <https://github.com/o/r/actions/runs/4|2026-09-30 10:00>"
+    ) in text
     # Ejected twice for one PR.
     assert (
-        "`Features/ProfileNotificationTab.spec.ts:478 › Destination` — 1 PRs, 2 failed runs"
+        "`Features/ProfileNotificationTab.spec.ts:478 › Destination` — 1 PR · 2 failed runs"
         in text
     )
-    new = text.split("*New flaky*")[1].split("*Top flaky*")[0]
-    assert "Glossary Term tabs" in new and "sort options" in new
-    assert "domain filter" not in new, "flaky before the window"
-    assert "asset count" not in new, "already flaky on main"
+    assert "NEW" not in text and "New flaky" not in text
     assert slack["channel_id"] == "C1"
-    assert slack["file"] == str((tmp_path / "report.pdf").resolve())
-    assert slack["filename"] == "merge-queue-2026-09-30-0000-to-2026-10-01-0000.pdf"
+    assert slack["file"] == str((tmp_path / PAGE).resolve())
+    assert slack["filename"] == PAGE
 
 
-def test_report_has_failed_flaky_and_broken_sections(tmp_path, monkeypatch):
+def test_html_lists_every_run_of_every_test_newest_first(tmp_path, monkeypatch):
+    build(tmp_path, monkeypatch)
+    page = (tmp_path / PAGE).read_text()
+    assert page.count("<details>") == 5  # 1 failed + 4 flaky
+    glossary = page[page.index("Glossary Term tabs") :].split("</details>")[0]
+    runs = [f"actions/runs/{n}" for n in (4, 3, 2)]
+    assert [glossary.index(r) for r in runs] == sorted(glossary.index(r) for r in runs)
+    assert "PR #34042 · run 3" in glossary and "tag bad" in glossary
+    destination = page[page.index("› Destination") :].split("</details>")[0]
+    assert "TimeoutError: add-header-button-1" in destination
+    assert "actions/runs/5" in destination and "actions/runs/3" in destination
+    assert "Failed runs with no failing test (1)" in page
+    assert "playwright-ci (chromium-05)</a> — exit code 124 (timed out)." in page
+    assert "Expand all" in page
+
+
+def test_job_summary_has_failed_flaky_and_broken_tables(tmp_path, monkeypatch):
     build(tmp_path, monkeypatch)
     markdown = (tmp_path / "report.md").read_text()
     for heading in [
@@ -167,12 +178,10 @@ def test_report_has_failed_flaky_and_broken_sections(tmp_path, monkeypatch):
     glossary_row = next(
         line for line in markdown.splitlines() if "Glossary Term tabs" in line
     )
-    assert "| 2 | 3 (2 / 1) |" in glossary_row
-    assert "[2026-09-30 10:00](https://github.com/o/r/actions/runs/4)" in glossary_row
-    assert "playwright-ci (chromium-05): exit code 124 (timed out)." in markdown
-    assert "Features/ContextCenterArticlesFilters.spec.ts | 2 | 2" in markdown
-    page = (tmp_path / "report.html").read_text()
-    assert "<td>main</td>" in page and "<td>NEW</td>" in page
+    assert (
+        "| 2 | 3 (2 / 1) | [2026-09-30 10:00](https://github.com/o/r/actions/runs/4) |"
+        in glossary_row
+    )
 
 
 def test_untrusted_test_names_are_escaped(tmp_path, monkeypatch):
@@ -181,9 +190,12 @@ def test_untrusted_test_names_are_escaped(tmp_path, monkeypatch):
         tmp_path, monkeypatch, [run(9, "2026-09-30T06:00:00Z", 1, flaky=[evil])]
     )
     assert "<!channel>" not in slack["initial_comment"]
-    assert "<script>" not in (tmp_path / "report.html").read_text()
-    assert "No readable history" in slack["initial_comment"]
-    assert "*New flaky*" not in slack["initial_comment"]
+    assert (
+        "<script>"
+        not in (
+            tmp_path / "merge-queue-2026-09-30-0000-to-2026-10-01-0000.html"
+        ).read_text()
+    )
 
 
 def test_quiet_window_still_posts(tmp_path, monkeypatch):
@@ -201,8 +213,6 @@ def test_window_over_48h_is_refused(monkeypatch):
         report_script.main(
             args + ["--since", "2026-09-28T23:00", "--until", "2026-09-30T23:01"]
         )
-    with pytest.raises(SystemExit, match="at most 24"):
-        report_script.main(args + ["--lookback-hours", "48"])
 
 
 def test_retry_pass_annotations_are_read_from_one_check_suite_query(monkeypatch):
