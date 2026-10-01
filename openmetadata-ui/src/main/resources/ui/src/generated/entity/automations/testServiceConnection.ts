@@ -2935,6 +2935,11 @@ export interface AuthenticationType {
      */
     hostPort?: string;
     /**
+     * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+     * is 'validate'.
+     */
+    sslConfig?: ConsumerConfigSSLClass;
+    /**
      * Username for authenticating with Dremio Software. This user should have appropriate
      * permissions to access metadata.
      *
@@ -2951,6 +2956,13 @@ export interface AuthenticationType {
      * SFTP username
      */
     username?: string;
+    /**
+     * How the certificate of the Dremio server is checked when Host and Port is an https URL.
+     * 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check
+     * it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL
+     * Config.
+     */
+    verifySSL?: VerifySSL;
     /**
      * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
      * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
@@ -3332,6 +3344,76 @@ export enum CloudRegion {
 }
 
 /**
+ * Client SSL configuration
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
+ *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
+ *
+ * SSL Configuration for Prefect API connection.
+ *
+ * SSL Configuration for OpenMetadata Server
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface ConsumerConfigSSLClass {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
+ *
+ * How the certificate of the Dremio server is checked when Host and Port is an https URL.
+ * 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check
+ * it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL
+ * Config.
+ *
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
+ *
+ * Flag to verify SSL Certificate for OpenMetadata Server.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
+}
+
+/**
  * Choose how to authenticate with SAP SuccessFactors OData API.
  *
  * Authentication type to connect to SAP SuccessFactors.
@@ -3536,52 +3618,6 @@ export enum KafkaSecurityProtocol {
     SSL = "SSL",
     SaslPlaintext = "SASL_PLAINTEXT",
     SaslSSL = "SASL_SSL",
-}
-
-/**
- * Client SSL configuration
- *
- * SSL Configuration details for DB2 connection. Provide CA certificate for server
- * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * SSL Configuration details.
- *
- * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
- * client certificate, and private key for mutual TLS authentication.
- *
- * SSL Configuration details. Provide the CA certificate to validate the Informix server
- * certificate. Paste the PEM content directly or upload the certificate file.
- *
- * CA certificate, client certificate, and private key for SSL validation. Required when
- * verifySSL is 'validate'.
- *
- * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
- * connection.
- *
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * TLS/SSL configuration for secure NATS connections.
- *
- * SSL Configuration for Prefect API connection.
- *
- * SSL Configuration for OpenMetadata Server
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface ConsumerConfigSSLClass {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
 }
 
 /**
@@ -4151,6 +4187,9 @@ export enum ConnectionScheme {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
+ *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
@@ -4216,22 +4255,6 @@ export enum ConnectionType {
     RESTAPI = "RestAPI",
     S3 = "S3",
     SQLite = "SQLite",
-}
-
-/**
- * Client SSL verification. Make sure to configure the SSLConfig if enabled.
- *
- * Client SSL verification.
- *
- * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
- * validation, 'validate' to verify against a CA certificate.
- *
- * Flag to verify SSL Certificate for OpenMetadata Server.
- */
-export enum VerifySSL {
-    Ignore = "ignore",
-    NoSSL = "no-ssl",
-    Validate = "validate",
 }
 
 /**
@@ -4977,6 +5000,9 @@ export enum SpaceType {
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
+ *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
  *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.

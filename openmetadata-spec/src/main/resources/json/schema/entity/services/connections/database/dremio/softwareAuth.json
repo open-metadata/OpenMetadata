@@ -21,6 +21,16 @@
       "description": "Password for the Dremio Software user account.",
       "type": "string",
       "format": "password"
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "How the certificate of the Dremio server is checked when Host and Port is an https URL. 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL Config.",
+      "$ref": "../../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL"
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "description": "The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL is 'validate'.",
+      "$ref": "../../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     }
   },
   "additionalProperties": false,

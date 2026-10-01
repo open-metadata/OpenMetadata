@@ -1462,10 +1462,22 @@ export interface AuthenticationType {
      */
     hostPort?: string;
     /**
+     * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+     * is 'validate'.
+     */
+    sslConfig?: Config;
+    /**
      * Username for authenticating with Dremio Software. This user should have appropriate
      * permissions to access metadata.
      */
     username?: string;
+    /**
+     * How the certificate of the Dremio server is checked when Host and Port is an https URL.
+     * 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check
+     * it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL
+     * Config.
+     */
+    verifySSL?: VerifySSL;
     /**
      * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
      * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
@@ -1722,6 +1734,56 @@ export interface GCPImpersonateServiceAccountValues {
 export enum CloudRegion {
     Eu = "EU",
     Us = "US",
+}
+
+/**
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * Client SSL configuration
+ *
+ * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
+ *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
+ * Client SSL verification.
+ *
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * How the certificate of the Dremio server is checked when Host and Port is an https URL.
+ * 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check
+ * it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL
+ * Config.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }
 
 /**
@@ -2204,37 +2266,6 @@ export enum HiveMetastoreConnectionDetailsScheme {
 }
 
 /**
- * SSL Configuration details for DB2 connection. Provide CA certificate for server
- * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * Client SSL configuration
- *
- * SSL Configuration details.
- *
- * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
- * client certificate, and private key for mutual TLS authentication.
- *
- * SSL Configuration details. Provide the CA certificate to validate the Informix server
- * certificate. Paste the PEM content directly or upload the certificate file.
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface Config {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
-}
-
-/**
  * SSL Mode to connect to database.
  *
  * SSL Mode to connect to Informix. Use 'disable' for no SSL, 'require' for encrypted SSL
@@ -2457,17 +2488,6 @@ export enum ConfigType {
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
-}
-
-/**
- * Client SSL verification.
- *
- * Client SSL verification. Make sure to configure the SSLConfig if enabled.
- */
-export enum VerifySSL {
-    Ignore = "ignore",
-    NoSSL = "no-ssl",
-    Validate = "validate",
 }
 
 /**
