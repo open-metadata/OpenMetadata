@@ -10,15 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { CustomProperty } from '../../../../generated/type/customProperty';
-import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.interface';
+import { CustomPropertyChanges } from '../../../../rest/metadataTypeAPI';
 
-export interface CustomPropertiesRightPanelProps {
-  properties: CustomProperty[];
-  extension?: Record<string, unknown>;
-  widgetSettings?: CustomPropertiesWidgetSettings;
-  /** Link to the Custom Properties tab, set when the widget hides properties. */
-  viewAllPath?: string;
-  hasEditPermissions: boolean;
-  onValueSave: (property: CustomProperty, value: unknown) => Promise<void>;
+export interface EditCustomPropertyFormValues {
+  displayName?: string;
+  description: string;
+  enumConfig?: FormSelectItem[];
+  multiSelect?: boolean;
+  entityReferenceConfig?: FormSelectItem[];
+}
+
+export interface CustomPropertyEditFormProps {
+  property: CustomProperty;
+  formId: string;
+  showHint?: boolean;
+  onSubmit: (changes: CustomPropertyChanges) => Promise<void> | void;
 }

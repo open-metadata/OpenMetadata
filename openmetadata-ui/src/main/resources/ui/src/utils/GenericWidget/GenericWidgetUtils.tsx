@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 import { Owner } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { lazy, type ComponentType } from 'react';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
-import type { PropertyValueProps } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import type { DomainLabelProps } from '../../components/common/DomainLabel/DomainLabel.interface';
 import type { PreviewerProp } from '../../components/common/RichTextEditor/RichTextEditor.interface';
 import type { EntityUnion } from '../../components/Explore/ExplorePage.interface';
@@ -26,7 +24,6 @@ import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interfac
 import {
   DUMMY_OWNER_LIST,
   DUMMY_TAGS_LIST,
-  WIDGET_CUSTOM_PROPERTIES,
 } from '../../constants/CustomizeWidgets.constants';
 import {
   DetailPageWidgetKeys,
@@ -37,14 +34,6 @@ import type { EntityReference } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/tests/testCase';
 import domainClassBase from '../Domain/DomainClassBase';
 import tableClassBase from '../TableClassBase';
-
-const PropertyValue = withSuspenseFallback(
-  lazy(() =>
-    import('../../components/common/CustomPropertyTable/PropertyValue').then(
-      (m) => ({ default: m.PropertyValue })
-    )
-  )
-) as ComponentType<PropertyValueProps>;
 
 const DomainLabel = withSuspenseFallback(
   lazy(() =>
@@ -287,35 +276,6 @@ export const WIDGET_COMPONENTS = {
       showLabel={false}
     />
   ),
-  [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: () => (
-    <div className="flex gap-2 flex-col">
-      {WIDGET_CUSTOM_PROPERTIES.map((prop, index) => (
-        <div
-          className={classNames(' bordered', {
-            'top-border-radius': index === 0,
-            'bottom-border-radius':
-              index === WIDGET_CUSTOM_PROPERTIES.length - 1,
-          })}
-          key={prop.name}>
-          <PropertyValue
-            extension={{
-              [prop.name]: prop.value,
-            }}
-            hasEditPermissions={false}
-            key={prop.name}
-            property={{
-              name: prop.name,
-              propertyType: prop.propertyType,
-              description: prop.description,
-              displayName: prop.displayName,
-            }}
-            onExtensionUpdate={() => Promise.resolve()}
-          />
-        </div>
-      ))}
-    </div>
-  ),
-
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: () => (
     <Owner
       hasPermission={false}
