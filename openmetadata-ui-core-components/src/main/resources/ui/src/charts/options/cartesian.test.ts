@@ -248,6 +248,8 @@ describe('buildLineOption', () => {
       backgroundColor: 'transparent',
     });
     expect(tooltip.extraCssText).toContain('box-shadow:none');
+    // The content card's own shadow would be clipped by a scroll box.
+    expect(tooltip.extraCssText).not.toContain('overflow');
   });
 
   it('hides dots and smooths lines unless the series says otherwise', () => {

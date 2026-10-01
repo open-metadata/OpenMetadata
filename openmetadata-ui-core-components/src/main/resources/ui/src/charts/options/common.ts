@@ -93,9 +93,11 @@ export const tooltipConfig = (
   backgroundColor: theme.tooltipBg,
   borderColor: theme.tooltipBorder,
   textStyle: { color: theme.tooltipText },
-  extraCssText: `max-height:${TOOLTIP_MAX_HEIGHT}px;overflow:auto;${
-    props.bare ? 'box-shadow:none;' : ''
-  }`,
+  // A bare tooltip's content brings its own card; a scroll box would clip
+  // that card's shadow.
+  extraCssText: props.bare
+    ? 'box-shadow:none;'
+    : `max-height:${TOOLTIP_MAX_HEIGHT}px;overflow:auto;`,
   valueFormatter: (value) => formatTooltipValue(value),
   ...(props.bare ? BARE_TOOLTIP : {}),
   ...(props.formatter ? { formatter: props.formatter } : {}),
