@@ -471,7 +471,6 @@ export default [
       'src/components/Database/Profiler/TestSummary/TestSummaryGraph.test.tsx',
       'src/components/Database/Profiler/TestSummary/TestSummaryGraph.tsx',
       'src/components/MyData/Widgets/KPIWidget/KPIWidget.component.tsx',
-      'src/components/Visualisations/Chart/OperationDateBarChart.tsx',
       'src/constants/DataContract.constants.ts',
       'src/constants/DataInsight.constants.ts',
       'src/interface/data-insight.interface.ts',
