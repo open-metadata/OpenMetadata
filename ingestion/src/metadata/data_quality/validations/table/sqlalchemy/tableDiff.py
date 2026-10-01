@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 # pylint: disable=missing-module-docstring
-import logging
 import random
 import string
 import traceback
@@ -17,7 +16,6 @@ from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from decimal import Decimal
 from functools import reduce
-from itertools import islice
 from typing import cast
 from urllib.parse import urlparse
 
@@ -60,6 +58,7 @@ from metadata.profiler.orm.functions.substr import Substr
 from metadata.profiler.orm.registry import Dialects, PythonDialects
 from metadata.sampler.config import resolve_static_sampling_config
 from metadata.utils.collections import CaseInsensitiveList
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.credentials import normalize_pem_string
 from metadata.utils.logger import test_suite_logger
 
@@ -224,6 +223,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     """
 
     runtime_params: TableDiffRuntimeParameters
+    # The first differing rows of the last run, kept while counting so showing them takes no second diff
+    failed_rows_sample: list[tuple[str, tuple[str, ...]]] | None = None
 
     def _run_validation(self):
         """Run validation for the table diff test"""
@@ -303,17 +304,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         with self._duplicate_keys_named():
             if not threshold or self.test_case.computePassedFailedRowCount:
                 # Only the counts are needed: don't keep every differing row (all its columns) in memory
-                stats = table_diff_iter.get_stats_dict(retain_rows=False)
+                stats = table_diff_iter.get_stats_dict(retain_rows=False, sample_size=SAMPLE_DATA_DEFAULT_COUNT)
+                self.failed_rows_sample = list(table_diff_iter.sample)
                 if stats["total"] > 0:
                     logger.debug("Sample of failed rows:")
-                    # depending on the data, this require scanning a lot of data
-                    # so we only log the sample in debug mode. data can be sensitive
-                    # so it is masked by default
-                    # A second diff, so only when debug logs are on: logger.level is NOTSET (0) on this logger
-                    for s in islice(
-                        self.safe_table_diff_iterator(),
-                        10 if logger.isEnabledFor(logging.DEBUG) else 0,
-                    ):
+                    # data can be sensitive so it is masked by default
+                    for s in self.failed_rows_sample[:10]:
                         logger.debug("%s", str([s[0]] + [masked(st) for st in s[1]]))
                 test_case_result = self.get_row_diff_test_case_result(
                     threshold,
@@ -331,8 +327,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 return test_case_result
             # The raw iterator: iterating the wrapper would keep every row in its result_list
             diff = table_diff_iter.diff
+            self.failed_rows_sample = []
             try:
-                total_diffs = self.calculate_diffs_with_limit(diff, threshold)
+                total_diffs = self.calculate_diffs_with_limit(
+                    self._keep_sample(diff, self.failed_rows_sample), threshold
+                )
             finally:
                 diff.close()  # Stops data-diff's worker pool rather than diffing the rest of the table
             return self.get_row_diff_test_case_result(threshold, total_diffs, column_diff=column_diff)
@@ -811,6 +810,16 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             if len(key_set) > limit:
                 break  # Over the threshold: no need to diff the rest of the table
         return len(key_set)
+
+    @staticmethod
+    def _keep_sample(
+        rows: Iterable[tuple[str, tuple[str, ...]]], sample: list[tuple[str, tuple[str, ...]]]
+    ) -> Iterator[tuple[str, tuple[str, ...]]]:
+        """Pass `rows` through, keeping the first of them in `sample`."""
+        for row in rows:
+            if len(sample) < SAMPLE_DATA_DEFAULT_COUNT:
+                sample.append(row)
+            yield row
 
     def safe_table_diff_iterator(self) -> DiffResultWrapper:
         """A safe iterator object which properly closes the diff object when the generator is exhausted.
