@@ -566,6 +566,23 @@ describe('ActivityFeedItem', () => {
       expect(screen.queryByTestId('activity-thread')).not.toBeInTheDocument();
     });
 
+    // Opened with Reply, or emptied by a delete: the thread can still close.
+    it('keeps a way to close a thread that has no replies', () => {
+      render(<ActivityFeedItem activity={baseActivity} />);
+
+      fireEvent.click(screen.getByTestId('activity-reply'));
+      const toggle = screen.getByTestId('activity-replies-toggle');
+
+      expect(toggle).toHaveTextContent('label.hide-reply-plural');
+
+      fireEvent.click(toggle);
+
+      expect(screen.queryByTestId('activity-thread')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('activity-replies-toggle')
+      ).not.toBeInTheDocument();
+    });
+
     it('reads one reply as one', () => {
       mockReplies = [reply('r1', 'bob')];
       render(<ActivityFeedItem activity={baseActivity} />);

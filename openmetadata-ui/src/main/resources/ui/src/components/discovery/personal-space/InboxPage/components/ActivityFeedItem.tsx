@@ -44,7 +44,10 @@ import {
   ActivityEvent,
   ActivityEventType,
 } from '../../../../../generated/entity/activity/activityEvent';
-import { Conversation } from '../../../../../generated/entity/feed/conversation';
+import {
+  Conversation,
+  ConversationReply,
+} from '../../../../../generated/entity/feed/conversation';
 import { EntityReference } from '../../../../../generated/type/entityReference';
 import { Reaction, ReactionType } from '../../../../../generated/type/reaction';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -211,6 +214,49 @@ const getRepliesToggleLabel = (
     : t('label.number-reply-plural', { number: count });
 };
 
+interface RepliesToggleProps {
+  isOpen: boolean;
+  replies: ConversationReply[];
+  onToggle: () => void;
+}
+
+// Who replied and how many; stays while the thread is open, so it can close
+// even once its last reply is deleted.
+const RepliesToggle = ({ isOpen, replies, onToggle }: RepliesToggleProps) => {
+  const { t } = useTranslation();
+  const replyFaces = uniqBy(replies, ({ author }) => author?.name).slice(
+    0,
+    MAX_REPLY_FACES
+  );
+
+  return replies.length > 0 || isOpen ? (
+    <Button
+      aria-expanded={isOpen}
+      className={classNames({
+        'tw:bg-brand-primary tw:text-brand-secondary': isOpen,
+      })}
+      color="tertiary"
+      data-testid="activity-replies-toggle"
+      iconLeading={
+        <span className="tw:flex tw:items-center tw:-space-x-1">
+          {replyFaces.map(({ id, author }) => (
+            <ProfilePicture
+              displayName={author?.displayName}
+              key={id}
+              name={author?.name ?? ''}
+              width="20"
+            />
+          ))}
+        </span>
+      }
+      iconTrailing={isOpen ? ChevronUp : ChevronDown}
+      size="sm"
+      onPress={onToggle}>
+      {getRepliesToggleLabel(isOpen, replies.length, t)}
+    </Button>
+  ) : null;
+};
+
 const getEventTimestamp = (
   isActivity: boolean,
   activity?: ActivityEvent,
@@ -318,10 +364,6 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const [isThreadOpen, setIsThreadOpen] = useState(false);
   // Opened with Reply rather than the toggle: focus the composer.
   const [isReplying, setIsReplying] = useState(false);
-  const replyFaces = uniqBy(replies, ({ author }) => author?.name).slice(
-    0,
-    MAX_REPLY_FACES
-  );
 
   const openThread = (focusComposer: boolean) => {
     setIsThreadOpen(true);
@@ -485,34 +527,13 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             onPress={() => openThread(true)}>
             {t('label.reply')}
           </Button>
-          {replies.length > 0 && (
-            <Button
-              aria-expanded={isThreadOpen}
-              className={classNames({
-                'tw:bg-brand-primary tw:text-brand-secondary': isThreadOpen,
-              })}
-              color="tertiary"
-              data-testid="activity-replies-toggle"
-              iconLeading={
-                <span className="tw:flex tw:items-center tw:-space-x-1">
-                  {replyFaces.map(({ id, author }) => (
-                    <ProfilePicture
-                      displayName={author?.displayName}
-                      key={id}
-                      name={author?.name ?? ''}
-                      width="20"
-                    />
-                  ))}
-                </span>
-              }
-              iconTrailing={isThreadOpen ? ChevronUp : ChevronDown}
-              size="sm"
-              onPress={() =>
-                isThreadOpen ? setIsThreadOpen(false) : openThread(false)
-              }>
-              {getRepliesToggleLabel(isThreadOpen, replies.length, t)}
-            </Button>
-          )}
+          <RepliesToggle
+            isOpen={isThreadOpen}
+            replies={replies}
+            onToggle={() =>
+              isThreadOpen ? setIsThreadOpen(false) : openThread(false)
+            }
+          />
         </Box>
       </Box>
 

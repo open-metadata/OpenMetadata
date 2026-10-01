@@ -21,7 +21,7 @@ import {
   Hourglass01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { groupBy } from 'lodash';
+import { countBy, groupBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
@@ -145,16 +145,19 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
       `${filter}:${typeKeys}:${dateRange?.startTs}:${dateRange?.endTs}`
     );
 
-  // Groups keep the feed's newest-first order, as does each group's cards.
+  // Groups keep the feed's newest-first order, as does each group's cards. Only
+  // the revealed batch renders, but a header counts its whole group.
   const groups = useMemo(() => {
     const { key, title } = GROUPING[grouping];
+    const totals = countBy(filteredItems, key);
 
     return Object.values(groupBy(visibleItems, key)).map((groupItems) => ({
       key: key(groupItems[0]),
       title: title(groupItems[0]),
       items: groupItems,
+      total: totals[key(groupItems[0])],
     }));
-  }, [visibleItems, grouping]);
+  }, [filteredItems, visibleItems, grouping]);
   const timeFormat =
     grouping === ActivityGrouping.Day
       ? ACTIVITY_CLOCK_FORMAT
@@ -203,10 +206,10 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
                 {group.title}
               </Typography>
               <Typography className="tw:text-quaternary" size="text-sm">
-                {group.items.length === 1
+                {group.total === 1
                   ? t('label.one-update')
                   : t('label.number-update-plural', {
-                      number: group.items.length,
+                      number: group.total,
                     })}
               </Typography>
               <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />

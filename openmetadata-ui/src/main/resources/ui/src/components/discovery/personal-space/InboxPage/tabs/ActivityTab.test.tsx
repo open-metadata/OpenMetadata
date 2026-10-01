@@ -128,7 +128,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: { number?: number }) =>
+      options?.number === undefined ? key : `${key}:${options.number}`,
+  }),
 }));
 
 import ActivityTab from './ActivityTab';
@@ -270,6 +273,24 @@ describe('ActivityTab', () => {
     expect(screen.getByTestId('feed-item')).toHaveAttribute(
       'data-time-format',
       'hh:mm a'
+    );
+  });
+
+  // Cards render a batch at a time; the header still counts the whole day.
+  it('counts the whole group in its header, not the rendered batch', () => {
+    activityState = {
+      items: Array.from({ length: 45 }, (_, index) => ({
+        activity: { id: `a${index}`, timestamp: 1 },
+      })),
+      total: 45,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+
+    expect(screen.getAllByTestId('feed-item')).toHaveLength(40);
+    expect(screen.getByTestId('activity-group')).toHaveTextContent(
+      'label.number-update-plural:45'
     );
   });
 
