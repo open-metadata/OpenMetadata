@@ -192,13 +192,12 @@ const KPIWidget = ({
     }
   };
 
-  const { domain, ticks } = useMemo(() => {
-    if (kpiResults) {
-      return getYAxisTicks(kpiResults, 10);
-    }
-
-    return { domain: [0, 60], ticks: [0, 15, 30, 45, 60] };
-  }, [kpiResults]);
+  // Only the upper bound is ours; ECharts picks the step so a large count does
+  // not produce one label per 10.
+  const domain = useMemo(
+    () => (kpiResults ? getYAxisTicks(kpiResults, 10).domain : [0, 60]),
+    [kpiResults]
+  );
 
   const kpiNames = useMemo(() => Object.keys(kpiResults), [kpiResults]);
 
@@ -252,10 +251,7 @@ const KPIWidget = ({
     [kpiNames, palette]
   );
 
-  const yAxis = useMemo(
-    () => ({ min: domain[0], max: domain[1], interval: ticks[1] - ticks[0] }),
-    [domain, ticks]
-  );
+  const yAxis = useMemo(() => ({ min: domain[0], max: domain[1] }), [domain]);
 
   const xAxis = useMemo(
     () => ({

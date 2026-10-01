@@ -164,9 +164,9 @@ describe('KPIWidget', () => {
         seriesOption: { connectNulls: true },
       })
     );
-    expect(props.yAxis).toEqual(
-      expect.objectContaining({ min: 0, interval: 10 })
-    );
+    expect(props.yAxis).toEqual({ min: 0, max: expect.any(Number) });
+    expect(props.yAxis.max).toBeGreaterThan(0);
+    expect(props.yAxis).not.toHaveProperty('interval');
     expect(props.legend).toEqual({ show: false });
     expect(props['data-testid']).toBe('kpi-widget-chart');
   });
