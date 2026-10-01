@@ -495,6 +495,26 @@ describe('prepareChartData', () => {
     });
   });
 
+  it('should leave out the Table Diff values that are not numbers', () => {
+    const result = prepareChartData({
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          timestamp: 1720525804736,
+          testCaseStatus: 'Failed',
+          testResultValue: [
+            { name: 'diffCount', value: '52' },
+            { name: 'columnDiffCounts', value: '{"city": 49, "name": 3}' },
+          ],
+        },
+      ],
+      tasks: [],
+    } as PrepareChartDataType);
+
+    expect(result.information.map(({ label }) => label)).toEqual(['diffCount']);
+    expect(result.data[0]).not.toHaveProperty('columnDiffCounts');
+  });
+
   it('should name no series when there are no runs', () => {
     expect(
       prepareChartData({
