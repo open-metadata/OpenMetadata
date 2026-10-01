@@ -162,6 +162,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         self.table_constraints = []
         self.context.storage_location = None
         # Caches to avoid redundant API calls (N+1 optimization)
+        self._iceberg_lookup_unavailable = False
         self._catalog_cache: dict[str, Any] = {}
         self._schema_cache: dict[tuple[str, str], Any] = {}
         self.owner_resolver = DatabricksOwnerResolver(
@@ -485,7 +486,13 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
 
         ``None`` (as opposed to an empty set) tells the caller it learned nothing, so
         it must not read DELTA as proof of Delta Lake.
+
+        A failure here is a property of the workspace (revoked permission, an older
+        Unity Catalog), not of the schema, and each attempt burns the full SDK retry
+        budget, so the first failure stands for the rest of the run.
         """
+        if self._iceberg_lookup_unavailable:
+            return None
         names: set[str] = set()
         query: dict[str, Any] = {
             "catalog_name": catalog_name,
@@ -518,8 +525,10 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     return names
                 query["page_token"] = page_token
         except Exception as exc:
+            self._iceberg_lookup_unavailable = True
             logger.warning(
-                "Could not list Iceberg tables of schema [%s.%s] (%s); storage-format detection is skipped for it.",
+                "Could not list Iceberg tables of schema [%s.%s] (%s); storage-format detection is skipped "
+                "for it and for every schema after it.",
                 catalog_name,
                 schema_name,
                 exc,

@@ -82,6 +82,9 @@ def _make_source():
     source = Mock()
     source._state_lock = RLock()
     source.config.sourceConfig.config.useFqnForFiltering = False
+    # Mock() answers any attribute with a truthy Mock, so the real __init__ default
+    # has to be restated here or the very first lookup would read as unavailable.
+    source._iceberg_lookup_unavailable = False
     return source
 
 
@@ -162,6 +165,16 @@ def test_iceberg_table_names_none_and_warns_on_error(caplog):
     with caplog.at_level(logging.WARNING):
         assert UnitycatalogSource._iceberg_table_names(source, "demo", "s") is None
     assert "boom" in caplog.text
+
+
+def test_iceberg_lookup_not_retried_after_a_failure():
+    # A revoked permission or an older Unity Catalog fails for every schema, and each
+    # attempt burns the full SDK retry budget, so the first failure stands for the run.
+    source = _make_source()
+    source.client.api_client.do = Mock(side_effect=RuntimeError("boom"))
+    assert UnitycatalogSource._iceberg_table_names(source, "demo", "s1") is None
+    assert UnitycatalogSource._iceberg_table_names(source, "demo", "s2") is None
+    assert source.client.api_client.do.call_count == 1
 
 
 @pytest.mark.parametrize(
