@@ -387,6 +387,37 @@ public class ActivityResourceIT {
   }
 
   @Test
+  void test_mentionsFeedFollowsMentionsInActivityReplies(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-reply-mentions");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    ConversationReply reply =
+        addActivityReply(
+            SdkClients.adminClient(),
+            activity.getId(),
+            "<#E::user::shared_user2> can you check this change?");
+
+    assertTrue(mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()));
+    assertFalse(
+        mentionedActivityIds(SdkClients.user1Client()).contains(activity.getId()),
+        "Only the mentioned user sees the activity");
+
+    patchConversationReply(
+        SdkClients.adminClient(), activity.getId(), reply.getId(), "No mention any more");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "Editing the mention out drops the activity");
+
+    patchConversationReply(
+        SdkClients.adminClient(), activity.getId(), reply.getId(), "<#E::user::shared_user2>");
+    deleteConversationReply(SdkClients.adminClient(), activity.getId(), reply.getId());
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "Deleting the reply drops the activity");
+  }
+
+  @Test
   void test_activityRepliesRemainReadableButBecomeImmutableAfterTargetDeletion(TestNamespace ns)
       throws Exception {
     Table table = createTestTable(ns, "deleted-activity-target");
@@ -1541,6 +1572,20 @@ public class ActivityResourceIT {
                 null,
                 options.build());
     return MAPPER.readValue(response, ConversationReplyList.class);
+  }
+
+  private List<UUID> mentionedActivityIds(OpenMetadataClient client) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                ACTIVITY_PATH + "/mentions",
+                null,
+                buildActivityRequestOptions(200, 1, null));
+    return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
+        .map(ActivityEvent::getId)
+        .toList();
   }
 
   private ActivityEventList getMyFeed(OpenMetadataClient client, int limit, int days)
