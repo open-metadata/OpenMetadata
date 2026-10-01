@@ -11,6 +11,19 @@
  *  limitations under the License.
  */
 
+/** @deprecated Kept for Collate's FreshnessGraph until it moves to core charts (C7); not used by OpenMetadata. */
+export const TEST_SUMMARY_CHART_MARGIN = {
+  top: 16,
+  bottom: 100,
+  right: 40,
+  left: 16,
+} as const;
+
+/** @deprecated Kept for Collate's FreshnessGraph until it moves to core charts (C7); not used by OpenMetadata. */
+export const STATUS_DOT_RADIUS = 4;
+/** @deprecated Kept for Collate's FreshnessGraph until it moves to core charts (C7); not used by OpenMetadata. */
+export const STATUS_DOT_SIZE = STATUS_DOT_RADIUS * 2;
+
 // Space between a point and the tooltip it opens.
 export const TOOLTIP_GAP = 4;
 // Long enough for the pointer to cross from the point into the tooltip.
