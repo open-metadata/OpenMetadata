@@ -61,6 +61,7 @@ MAX_WINDOW_HOURS = 48
 # runs (~35 min) time to finish and makes daily windows line up exactly.
 SETTLE = timedelta(hours=1)
 MAX_RESULTS_BYTES = 64 * 1024 * 1024
+SHARD_JOB_RE = re.compile(r"playwright-ci \(([^,)]+)")
 RESULTS_RE = re.compile(
     r"^playwright-results-json-(?P<shard>.+)-a(?P<attempt>\d+)(?P<retry>-retry)?$"
 )
@@ -127,11 +128,14 @@ def list_runs(
             "created": f"{start.astimezone(timezone.utc):{stamp}}..{end.astimezone(timezone.utc):{stamp}}",
         }
     )
-    return mq.paginated_items(
+    runs = mq.paginated_items(
         f"/repos/{owner}/{repo}/actions/workflows/{WORKFLOW}/runs?{query}",
         "workflow_runs",
         token,
     )
+    # `created=a..b` includes both ends; consecutive windows share an end, so keep
+    # [start, end) or a run created on the boundary is reported twice.
+    return [run for run in runs if mq.parse_ts(run["created_at"]) < end]
 
 
 def read_flaky(run: dict, token: str) -> dict[tuple[str, str], int]:
@@ -210,13 +214,17 @@ def pick_results(artifacts: list[dict], attempt: int) -> list[dict]:
     return list(picked.values())
 
 
-def read_failures(owner: str, repo: str, run: dict, token: str) -> tuple[dict, dict]:
-    """Failed and flaky tests from the failed shards of the run's latest attempt."""
+def read_failures(
+    owner: str, repo: str, run: dict, token: str
+) -> tuple[dict, dict, set[str]]:
+    """Failed and flaky tests from the failed shards of the run's latest attempt,
+    and the shards whose results were read."""
     artifacts = mq.paginated_items(
         f"/repos/{owner}/{repo}/actions/runs/{run['id']}/artifacts", "artifacts", token
     )
     failed, flaky = {}, {}
-    for artifact in pick_results(artifacts, run.get("run_attempt", 1)):
+    picked = pick_results(artifacts, run.get("run_attempt", 1))
+    for artifact in picked:
         with zipfile.ZipFile(
             io.BytesIO(download_zip(owner, repo, artifact, token))
         ) as archive:
@@ -231,22 +239,22 @@ def read_failures(owner: str, repo: str, run: dict, token: str) -> tuple[dict, d
                 )
                 failed.update(shard_failed)
                 flaky.update(shard_flaky)
-    return failed, flaky
+    return failed, flaky, {RESULTS_RE.match(a["name"])["shard"] for a in picked}
 
 
 def failed_jobs(owner: str, repo: str, run: dict, token: str) -> list[dict]:
-    """Why a failed run with no failed test failed: its failed jobs' error annotations."""
     jobs = mq.paginated_items(
         f"/repos/{owner}/{repo}/actions/runs/{run['id']}/attempts/{run.get('run_attempt', 1)}/jobs",
         "jobs",
         token,
     )
-    failed = [job for job in jobs if job.get("conclusion") in ("failure", "timed_out")]
-    # playwright-summary fails whenever anything upstream does; it is the cause
-    # only when it failed alone.
-    own = [job for job in failed if job["name"] != SUMMARY_JOB] or failed
+    return [job for job in jobs if job.get("conclusion") in ("failure", "timed_out")]
+
+
+def job_reasons(owner: str, repo: str, jobs: list[dict], token: str) -> list[dict]:
+    """Each job's failure annotations, less the generic exit-code-1 line."""
     reasons = []
-    for job in own:
+    for job in jobs:
         notes = mq.rest(
             f"/repos/{owner}/{repo}/check-runs/{job['id']}/annotations", token
         )
@@ -268,6 +276,24 @@ def failed_jobs(owner: str, repo: str, run: dict, token: str) -> list[dict]:
             }
         )
     return reasons
+
+
+def unexplained_jobs(
+    jobs: list[dict], shards_read: set[str], any_failed: bool
+) -> list[dict]:
+    """Failed jobs whose failure no read results explain. A failed shard can leave
+    no results JSON (killed by its timeout, or both uploads failed, which they may:
+    they are continue-on-error), and its failed tests would otherwise vanish."""
+    missing = [
+        job
+        for job in jobs
+        if (match := SHARD_JOB_RE.search(job["name"])) and match[1] not in shards_read
+    ]
+    if missing or any_failed:
+        return missing
+    # playwright-summary fails whenever anything upstream does; it is the cause
+    # only when it failed alone.
+    return [job for job in jobs if job["name"] != SUMMARY_JOB] or jobs
 
 
 READ_ERRORS = (
@@ -303,13 +329,14 @@ def collect(owner: str, repo: str, run: dict, token: str) -> dict:
         print(f"::warning::Run {run['id']} retry passes: {exc}")
     if record["conclusion"] == "failure":
         try:
-            failed, flaky = read_failures(owner, repo, run, token)
+            jobs = failed_jobs(owner, repo, run, token)
+            failed, flaky, shards_read = read_failures(owner, repo, run, token)
             record["failed"] = failed
             if record["flaky"] is not None:
                 # A shard that failed before writing its annotation still reports its flakes here.
                 record["flaky"] = {**flaky, **record["flaky"]}
-            if not failed:
-                record["broken"] = failed_jobs(owner, repo, run, token)
+            unexplained = unexplained_jobs(jobs, shards_read, bool(failed))
+            record["broken"] = job_reasons(owner, repo, unexplained, token)
         except READ_ERRORS as exc:
             print(f"::warning::Run {run['id']} failed tests: {exc}")
             record["failed"] = None
@@ -401,8 +428,9 @@ FLAKY_NOTE = (
     "runs are split into passed and failed (ejected) queue runs."
 )
 BROKEN_NOTE = (
-    "Ejected without a test to blame: a shard killed by its timeout, "
-    "a job that never got a runner, a failed build."
+    "Failed jobs that left no test results to blame: a shard killed by its timeout, "
+    "a shard whose results upload failed, a job that never got a runner, a failed build. "
+    "A run can also have failed tests listed above."
 )
 SPECS_NOTE = "Several flaky tests in one spec often share one cause, such as setup."
 
@@ -439,7 +467,7 @@ def headline(report: dict) -> list[str]:
         + f") for {plural(report['prs'], 'PR')}",
         f"{plural(len(report['failed']), 'failed test')} · {plural(len(report['flaky']), 'flaky test')}"
         + (
-            f" · {plural(len(report['broken']), 'failed run')} with no failing test"
+            f" · {plural(len(report['broken']), 'run')} with failed jobs and no test results"
             if report["broken"]
             else ""
         ),
@@ -632,7 +660,9 @@ def render_html(report: dict, title: str, window: str, repo_url: str) -> str:
         ("warn", len(report["flaky"]), "flaky tests"),
     ]
     if report["broken"]:
-        tiles.append(("bad", len(report["broken"]), "ejected with no failing test"))
+        tiles.append(
+            ("bad", len(report["broken"]), "runs with failed jobs, no results")
+        )
     if report["unreadable"]:
         tiles.append(("warn", report["unreadable"], "runs not readable"))
     chips = [
@@ -640,7 +670,7 @@ def render_html(report: dict, title: str, window: str, repo_url: str) -> str:
         ("flaky", f"Flaky {len(report['flaky'])}"),
     ]
     if report["broken"]:
-        chips.append(("broken", f"No failing test {len(report['broken'])}"))
+        chips.append(("broken", f"No results {len(report['broken'])}"))
     if report["specs"]:
         chips.append(("specs", "Specs"))
     broken = "".join(
@@ -685,7 +715,7 @@ def render_html(report: dict, title: str, window: str, repo_url: str) -> str:
         parts.append(
             section(
                 "broken",
-                f"Failed runs with no failing test ({len(report['broken'])})",
+                f"Failed jobs with no test results ({len(report['broken'])})",
                 BROKEN_NOTE,
                 f"<table class=plain><tr><th>Run</th><th>Failed jobs</th></tr>{broken}</table>",
             )
@@ -751,7 +781,7 @@ def render_md(report: dict, title: str) -> str:
             ],
         ),
         (
-            f"Failed runs with no failing test ({len(report['broken'])})",
+            f"Failed jobs with no test results ({len(report['broken'])})",
             BROKEN_NOTE,
             ["Run", "Failed jobs"],
             [
@@ -815,7 +845,9 @@ def fallback_text(report: dict, title: str, run_url: str) -> str:
     """Plain message for when the HTML upload fails (e.g. the bot lacks files:write):
     the worst flaky offenders inline, and the run that holds the report artifact."""
     lines = [f":bar_chart: *{title}*"] + slack_headline(report)
-    if report["flaky"]:
+    if report["unreadable"] == report["runs"]:
+        lines.append(":warning: No run in this window could be read.")
+    elif report["flaky"]:
         lines.append(
             f":large_yellow_circle: *Top {min(FALLBACK_TOP, len(report['flaky']))} flaky:*"
         )

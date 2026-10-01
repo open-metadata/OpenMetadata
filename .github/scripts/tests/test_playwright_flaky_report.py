@@ -93,13 +93,24 @@ def build(tmp_path, monkeypatch, runs=RUNS):
 
     def read_failures(o, repo, r, token):
         calls.append(r["id"])
-        return by_id[r["id"]]["_failed"], {}
+        return by_id[r["id"]]["_failed"], {}, set()
+
+    def failed_jobs(o, repo, r, token):
+        # A run with broken jobs has one failed shard that left no results JSON.
+        broken = by_id[r["id"]]["_broken"]
+        return (
+            [{"name": "playwright / playwright-ci (chromium-05, x)", "run": r["id"]}]
+            if broken
+            else []
+        )
+
+    def job_reasons(o, repo, jobs, token):
+        return [reason for job in jobs for reason in by_id[job["run"]]["_broken"]]
 
     monkeypatch.setattr(report_script, "read_flaky", read_flaky)
     monkeypatch.setattr(report_script, "read_failures", read_failures)
-    monkeypatch.setattr(
-        report_script, "failed_jobs", lambda o, repo, r, t: by_id[r["id"]]["_broken"]
-    )
+    monkeypatch.setattr(report_script, "failed_jobs", failed_jobs)
+    monkeypatch.setattr(report_script, "job_reasons", job_reasons)
     code = report_script.main(
         [
             "--owner",
@@ -156,7 +167,7 @@ def test_html_lists_every_run_of_every_test_newest_first(tmp_path, monkeypatch):
     destination = page[page.index(">Destination<") :].split("</details>")[0]
     assert "TimeoutError: add-header-button-1" in destination
     assert "actions/runs/5" in destination and "actions/runs/3" in destination
-    assert "Failed runs with no failing test (1)" in page
+    assert "Failed jobs with no test results (1)" in page
     assert "playwright-ci (chromium-05)</a> — exit code 124 (timed out)." in page
     assert "Expand all" in page and "id=q" in page  # filter box
     # Theme button, with both an OS-following and a forced dark palette.
@@ -170,7 +181,7 @@ def test_job_summary_has_failed_flaky_and_broken_tables(tmp_path, monkeypatch):
     for heading in [
         "### Failed tests (1)",
         "### Flaky tests (4)",
-        "### Failed runs with no failing test (1)",
+        "### Failed jobs with no test results (1)",
     ]:
         assert heading in markdown
     failed_row = next(line for line in markdown.splitlines() if "› Destination" in line)
@@ -393,3 +404,50 @@ def test_fallback_message_lists_top_offenders_and_links_the_run(tmp_path, monkey
     assert "*Top 5 flaky:*" in text and "\n6. " not in text
     assert "<https://github.com/o/r/actions/runs/777|the workflow run>" in text
     assert "`playwright-flaky-report`" in text
+
+
+def job(shard):
+    return {
+        "name": f"playwright / playwright-ci ({shard}, {shard}.json, 3, chromium, false)"
+    }
+
+
+SUMMARY = {"name": "playwright-summary"}
+
+
+def test_a_failed_shard_without_results_is_reported_even_beside_other_failures():
+    jobs = [job("chromium-01"), job("chromium-02"), SUMMARY]
+    # chromium-01's results were read and named failures; chromium-02 left none.
+    assert report_script.unexplained_jobs(jobs, {"chromium-01"}, True) == [jobs[1]]
+    assert (
+        report_script.unexplained_jobs(jobs, {"chromium-01", "chromium-02"}, True) == []
+    )
+
+
+def test_without_failed_tests_the_summary_job_counts_only_when_alone():
+    plan = {"name": "playwright / plan-playwright"}
+    assert report_script.unexplained_jobs([plan, SUMMARY], set(), False) == [plan]
+    assert report_script.unexplained_jobs([SUMMARY], set(), False) == [SUMMARY]
+
+
+def test_window_is_half_open(monkeypatch):
+    from datetime import datetime, timezone
+
+    runs = [
+        {"created_at": "2026-10-01T02:00:00Z"},
+        {"created_at": "2026-10-01T01:59:59Z"},
+    ]
+    monkeypatch.setattr(mq, "paginated_items", lambda *a: runs)
+    start = datetime(2026, 9, 30, 2, tzinfo=timezone.utc)
+    end = datetime(2026, 10, 1, 2, tzinfo=timezone.utc)
+    kept = report_script.list_runs("o", "r", start, end, "t")
+    assert [r["created_at"] for r in kept] == ["2026-10-01T01:59:59Z"]
+
+
+def test_fallback_warns_instead_of_all_clear_when_nothing_was_read(
+    tmp_path, monkeypatch
+):
+    build(tmp_path, monkeypatch, [run(9, "2026-09-30T06:00:00Z", 1, flaky=None)])
+    text = json.loads((tmp_path / "slack-fallback.json").read_text())["text"]
+    assert "No run in this window could be read." in text
+    assert "No flaky tests" not in text
