@@ -487,13 +487,9 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
 
     await expect(kpiWidgetContent).toBeVisible();
 
-    const kpiChart = widget.locator('.recharts-responsive-container');
+    const kpiChart = widget.getByTestId('kpi-widget-chart');
     await expect(kpiChart).toBeVisible();
-    await expect(
-      kpiChart.locator('.recharts-area').filter({
-        has: page.locator(`[fill="url(#gradient-${kpi.name})"]`),
-      })
-    ).toBeVisible();
+    await expect(kpiChart.locator('svg path')).not.toHaveCount(0);
   });
 
   await test.step('Test widget customization', async () => {

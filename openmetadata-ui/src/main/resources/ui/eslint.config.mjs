@@ -460,7 +460,6 @@ export default [
       'src/components/DataContract/ContractExecutionChart/ContractExecutionChart.component.tsx',
       'src/components/DataContract/ContractExecutionChart/ContractExecutionChartTooltip.component.tsx',
       'src/components/DataContract/ContractExecutionChart/ContractExecutionChartTooltip.test.tsx',
-      'src/components/MyData/Widgets/KPIWidget/KPIWidget.component.tsx',
       'src/constants/DataContract.constants.ts',
     ],
     rules: {

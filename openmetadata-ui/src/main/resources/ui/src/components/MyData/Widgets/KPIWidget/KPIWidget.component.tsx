@@ -11,21 +11,18 @@
  *  limitations under the License.
  */
 
+import {
+  AreaChart,
+  chartColor,
+  ChartSeries,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { ReactComponent as KPIIcon } from '../../../../assets/svg/entity/kpi.svg';
 import { ReactComponent as KPINoDataPlaceholder } from '../../../../assets/svg/no-search-placeholder.svg';
 import {
@@ -39,7 +36,6 @@ import {
   KpiResult,
   KpiTargetType,
 } from '../../../../generated/dataInsight/kpi/kpi';
-import { useDataInsightChartColors } from '../../../../hooks/insights/useDataInsightChartColors';
 import { UIKpiResult } from '../../../../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../../../../rest/DataInsightAPI';
 import {
@@ -47,13 +43,20 @@ import {
   getListKpiResult,
   getListKPIs,
 } from '../../../../rest/KpiAPI';
-import { CustomTooltip } from '../../../../utils/DataInsightChartUtils';
+import {
+  getDataInsightTooltip,
+  HIDDEN_CHART_LEGEND,
+} from '../../../../utils/DataInsightChartUtils';
 import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getYAxisTicks } from '../../../../utils/KPI/KPIUtils';
+import {
+  buildKpiChartRows,
+  getYAxisTicks,
+  KpiChartRow,
+} from '../../../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
@@ -61,23 +64,6 @@ import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './kpi-widget.less';
 import KPILegend from './KPILegend/KPILegend';
 import { KPIWidgetProps } from './KPIWidget.interface';
-
-const buildKpiDataPoint = (
-  day: number,
-  kpiNames: string[],
-  kpiResults: Record<string, DataInsightCustomChartResult['results']>
-) => {
-  const dataPoint: Record<string, number> = { day };
-
-  kpiNames.forEach((kpiName) => {
-    const kpiData = kpiResults[kpiName];
-    const dayData = kpiData?.find((d) => d.day === day);
-
-    dataPoint[kpiName] = dayData?.count || 0;
-  });
-
-  return dataPoint;
-};
 
 const KPIWidget = ({
   isEditView = false,
@@ -88,8 +74,7 @@ const KPIWidget = ({
   handleLayoutUpdate,
 }: KPIWidgetProps) => {
   const { t } = useTranslation();
-  const { activeDotBorder, axis, grid, kpiSeries } =
-    useDataInsightChartColors();
+  const palette = useChartPalette();
   const navigate = useNavigate();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(true);
@@ -107,26 +92,6 @@ const KPIWidget = ({
   const isFullSizeWidget = useMemo(() => {
     return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
   }, [currentLayout, widgetKey]);
-
-  const customTooltipStyles = useMemo(
-    () => ({
-      cardStyles: {
-        maxWidth: '300px',
-        maxHeight: '350px',
-        overflow: 'auto',
-      },
-      labelStyles: {
-        maxWidth: '160px',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap' as const,
-      },
-      listContainerStyles: {
-        padding: '4px 12px',
-      },
-    }),
-    []
-  );
 
   const getKPIResult = async (kpi: Kpi) => {
     const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
@@ -249,16 +214,16 @@ const KPIWidget = ({
     );
   }, [kpiList]);
 
-  const kpiTooltipValueFormatter = (
-    value: string | number,
-    key?: string
-  ): string => {
-    const isPercentage = key
-      ? mapKPIMetricType[key] === KpiTargetType.Percentage
-      : false;
+  const kpiTooltipValueFormatter = useCallback(
+    (value: string | number, key?: string): string => {
+      const isPercentage = key
+        ? mapKPIMetricType[key] === KpiTargetType.Percentage
+        : false;
 
-    return isPercentage ? round(Number(value), 2) + '%' : value + '';
-  };
+      return isPercentage ? round(Number(value), 2) + '%' : value + '';
+    },
+    [mapKPIMetricType]
+  );
 
   const emptyState = useMemo(
     () => (
@@ -273,129 +238,59 @@ const KPIWidget = ({
     [t]
   );
 
-  // Consolidate data for proper tooltip display
-  const consolidatedChartData = useMemo(() => {
-    if (!kpiResults || isEmpty(kpiResults)) {
-      return [];
-    }
+  const rows = useMemo(() => buildKpiChartRows(kpiResults), [kpiResults]);
 
-    const allDays = new Set<number>();
-    Object.values(kpiResults).forEach((data) => {
-      data.forEach((point) => allDays.add(point.day));
-    });
+  const series = useMemo<ChartSeries[]>(
+    () =>
+      kpiNames.map((key, index) => ({
+        key,
+        name: key,
+        color: chartColor(palette, index),
+        showDots: true,
+        seriesOption: { connectNulls: true },
+      })),
+    [kpiNames, palette]
+  );
 
-    return Array.from(allDays)
-      .sort()
-      .map((day) => buildKpiDataPoint(day, kpiNames, kpiResults));
-  }, [kpiResults, kpiNames]);
+  const yAxis = useMemo(
+    () => ({ min: domain[0], max: domain[1], interval: ticks[1] - ticks[0] }),
+    [domain, ticks]
+  );
+
+  const xAxis = useMemo(
+    () => ({
+      formatter: (value: string | number) =>
+        customFormatDateTime(Number(value), 'd MMM, yy'),
+    }),
+    []
+  );
+
+  const tooltip = useMemo(
+    () =>
+      getDataInsightTooltip<KpiChartRow>({
+        timeKey: 'day',
+        valueFormatter: kpiTooltipValueFormatter,
+        className: 'tw:max-h-[350px] tw:max-w-[300px] tw:overflow-auto',
+      }),
+    [kpiTooltipValueFormatter]
+  );
 
   const kpiChartData = useMemo(() => {
     return (
       <Row className="p-t-sm p-x-md" gutter={[16, 16]}>
         <Col span={isFullSizeWidget ? 16 : 24}>
-          <ResponsiveContainer debounce={1} height={350} width="100%">
-            <AreaChart
-              data={consolidatedChartData}
-              margin={{
-                top: 10,
-                right: 30,
-                left: -30,
-                bottom: 0,
-              }}>
-              <defs>
-                {kpiNames.map((key, i) => (
-                  <linearGradient
-                    id={`gradient-${key}`}
-                    key={key}
-                    x1="0"
-                    x2="0"
-                    y1="0"
-                    y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor={kpiSeries[i % kpiSeries.length]}
-                      stopOpacity={0.4}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor={kpiSeries[i % kpiSeries.length]}
-                      stopOpacity={0.05}
-                    />
-                  </linearGradient>
-                ))}
-              </defs>
-
-              <Tooltip
-                content={
-                  <CustomTooltip
-                    {...customTooltipStyles}
-                    timeStampKey="day"
-                    valueFormatter={kpiTooltipValueFormatter}
-                  />
-                }
-              />
-
-              <CartesianGrid
-                stroke={grid}
-                strokeDasharray="3 3"
-                vertical={false}
-              />
-
-              <XAxis
-                allowDuplicatedCategory={false}
-                axisLine={false}
-                dataKey="day"
-                interval="preserveStartEnd"
-                tick={{ fill: axis, fontSize: 12 }}
-                tickFormatter={(value: number) =>
-                  customFormatDateTime(value, 'd MMM, yy')
-                }
-                tickLine={false}
-                tickMargin={10}
-                type="category"
-              />
-
-              <YAxis
-                axisLine={{
-                  stroke: grid,
-                  strokeWidth: 1,
-                  strokeDasharray: '3 3',
-                }}
-                domain={domain}
-                padding={{ top: 0, bottom: 0 }}
-                tick={{ fill: axis, fontSize: 12 }}
-                tickLine={{
-                  stroke: grid,
-                  strokeWidth: 1,
-                  strokeDasharray: '3 3',
-                }}
-                ticks={ticks}
-              />
-
-              {kpiNames.map((key, i) => (
-                <Area
-                  activeDot={{
-                    r: 5,
-                    fill: kpiSeries[i % kpiSeries.length],
-                    stroke: activeDotBorder,
-                    strokeWidth: 2,
-                  }}
-                  dataKey={key}
-                  dot={{
-                    stroke: kpiSeries[i % kpiSeries.length],
-                    strokeWidth: 2,
-                    fill: kpiSeries[i % kpiSeries.length],
-                    r: 4,
-                  }}
-                  fill={`url(#gradient-${key})`}
-                  key={key}
-                  stroke={kpiSeries[i % kpiSeries.length]}
-                  strokeWidth={2}
-                  type="monotone"
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
+          <AreaChart<KpiChartRow>
+            ariaLabel={t('label.kpi-title')}
+            data={rows}
+            data-testid="kpi-widget-chart"
+            height={350}
+            legend={HIDDEN_CHART_LEGEND}
+            series={series}
+            tooltip={tooltip}
+            xAxis={xAxis}
+            xKey="day"
+            yAxis={yAxis}
+          />
         </Col>
 
         {!isUndefined(kpiLatestResults) &&
@@ -408,17 +303,14 @@ const KPIWidget = ({
       </Row>
     );
   }, [
-    consolidatedChartData,
-    kpiNames,
     isFullSizeWidget,
-    domain,
-    ticks,
     kpiLatestResults,
-    kpiTooltipValueFormatter,
-    activeDotBorder,
-    axis,
-    grid,
-    kpiSeries,
+    rows,
+    series,
+    t,
+    tooltip,
+    xAxis,
+    yAxis,
   ]);
 
   useEffect(() => {
