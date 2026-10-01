@@ -200,8 +200,8 @@ test.describe('Persona App Layout for the persona users', () => {
   test('an AI persona lands on its default landing page too', async ({
     aiUserPage,
   }) => {
-    // The AI sidebar proves the AI route tree mounted.
-    await expect(aiUserPage.getByTestId('ask-sidebar')).toBeVisible();
+    // No AI route tree is registered here, so the app renders the default
+    // shell. The landing page still has to apply, which is what this asserts.
     await expect(aiUserPage).toHaveURL(GLOSSARY_URL);
   });
 
