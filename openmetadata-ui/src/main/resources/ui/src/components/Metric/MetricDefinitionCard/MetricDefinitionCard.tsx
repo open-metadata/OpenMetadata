@@ -28,8 +28,8 @@ import {
   Edit03,
   Percent01,
   Tag01,
-  Variable,
-} from '@untitledui/icons';
+  Variable01 as Variable,
+} from '@openmetadata/ui-core-components/icons';
 import type { TFunction } from 'i18next';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
@@ -48,7 +48,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { stringToHTML } from '../../../utils/RichTextStringUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import MetricExpression from '../MetricExpression/MetricExpression';
 

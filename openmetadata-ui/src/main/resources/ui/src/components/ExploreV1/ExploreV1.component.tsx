@@ -29,7 +29,7 @@ import {
   FilterFunnel01,
   InfoCircle,
   Trash01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { Card, Col, Menu, Modal, Radio, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

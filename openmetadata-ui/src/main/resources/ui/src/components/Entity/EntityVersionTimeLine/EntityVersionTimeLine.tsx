@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider } from '@openmetadata/ui-core-components';
-import { Button, Col, Drawer, Row, Tooltip, Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Drawer, Row, Tooltip } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
@@ -73,12 +73,12 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               </div>
             </Tooltip>
             <div className="version-pricing-reached">
-              <Typography.Title className="font-medium" level={4}>
+              <Typography as="h4" className="font-medium">
                 {t('message.unlock-all-version-history')}
-              </Typography.Title>
-              <Typography.Text className="text-grey-muted font-normal">
+              </Typography>
+              <Typography className="font-normal" color="secondary">
                 {t('message.upgrade-to-paid-plan-for-version-history')}
-              </Typography.Text>
+              </Typography>
 
               <Button
                 block
@@ -108,9 +108,9 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         <>
           <Row className="p-b-xss" justify="space-between">
             <Col>
-              <Typography.Text className="font-medium">
+              <Typography className="font-medium tw:text-primary">
                 {t('label.version-plural-history')}
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col>
               <CloseIcon handleCancel={onBack} />

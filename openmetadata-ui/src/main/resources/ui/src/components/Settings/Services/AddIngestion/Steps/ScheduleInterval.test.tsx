@@ -27,7 +27,7 @@ jest.mock('cronstrue/i18n', () => ({
   },
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Clock: () => <span data-testid="clock-icon" />,
 }));
 

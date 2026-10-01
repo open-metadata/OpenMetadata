@@ -15,16 +15,12 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Divider, Skeleton } from '@openmetadata/ui-core-components';
 import {
-  AlertProps,
-  Checkbox,
-  Col,
-  MenuProps,
-  Select,
-  Tooltip,
+  Divider,
+  Skeleton,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { AlertProps, Checkbox, Col, MenuProps, Select, Tooltip } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqBy } from 'lodash';
@@ -644,7 +640,7 @@ export const getAlertRecentEventsFilterOptions = () => {
     const label = getAlertEventsFilterLabels(status);
 
     return {
-      label: <Typography.Text>{label}</Typography.Text>,
+      label: <Typography>{label}</Typography>,
       key: status,
     };
   });

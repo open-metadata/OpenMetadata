@@ -136,44 +136,6 @@ export const updateTags = async (
   expect(response.status()).toBe(200);
 };
 
-export const updateDataAsset = async (
-  page: Page,
-  dataAsset: TopicClass,
-  title: string
-) => {
-  const updateKnowledgePage = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/contextCenter/pages/') &&
-      response.request().method() === 'PATCH'
-  );
-  await page.getByTestId('add-data-assets-container').click();
-
-  await page.waitForSelector(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
-    { state: 'visible' }
-  );
-  await page.fill(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
-    dataAsset.entity.name
-  );
-  await page
-    .locator('.ant-select-item-option-content', {
-      hasText: dataAsset.entity.name,
-    })
-    .click();
-  await page.locator('[data-testid="saveDataAssets"]').click();
-
-  const response = await updateKnowledgePage;
-  expect(response.status()).toBe(200);
-
-  await page.waitForSelector(`[data-testid="${dataAsset.entity.name}"]`, {
-    state: 'visible',
-  });
-  await page.click(`[data-testid="${dataAsset.entity.name}"]`);
-
-  await page.getByRole('link', { name: title }).click();
-};
-
 export const updateVotes = async (page: Page) => {
   await page.click('[data-testid="up-vote-btn"]');
 
@@ -753,11 +715,15 @@ export const verifyTextFormatting = async (
     code: 'code',
   }[format];
 
-  await expect(editor.locator(formatTag).filter({ hasText: text })).toBeVisible(
-    {
-      timeout: 15_000,
-    }
-  );
+  // Assert the WHOLE text carries the format — a last-word fallback would let a half-applied
+  // format (e.g. only "text" of "Italic text" italic) pass. Escape regex metacharacters in `text`.
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  await expect(
+    editor.locator(formatTag).filter({ hasText: new RegExp(`^${escaped}$`) })
+  ).toBeVisible({
+    timeout: 15_000,
+  });
 };
 
 export const undo = async (page: Page): Promise<void> => {

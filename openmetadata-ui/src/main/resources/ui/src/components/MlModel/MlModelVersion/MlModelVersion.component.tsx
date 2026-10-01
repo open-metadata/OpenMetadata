@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Divider, Tabs } from '@openmetadata/ui-core-components';
-import { Card, Space, Typography } from 'antd';
+import {
+  Box,
+  Divider,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -166,9 +171,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                         <Divider className="m-y-md" />
                       </div>
                       <div>
-                        <Typography.Title level={5}>
+                        <Typography as="h5" size="text-md" weight="semibold">
                           {t('label.feature-plural-used')}
-                        </Typography.Title>
+                        </Typography>
                       </div>
 
                       {mlFeaturesData?.map((feature: MlFeature) => (
@@ -180,40 +185,40 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                             key={feature.fullyQualifiedName}>
                             <Box direction="col">
                               <div className="m-b-xs">
-                                <Typography.Text className="font-semibold">
+                                <Typography className="font-semibold">
                                   {feature.name}
-                                </Typography.Text>
+                                </Typography>
                               </div>
                               <div className="m-b-xs">
                                 <Space align="start">
                                   <Space>
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.type')}:`}
-                                    </Typography.Text>{' '}
-                                    <Typography.Text>
+                                    </Typography>{' '}
+                                    <Typography>
                                       {feature.dataType || '--'}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Space>
                                   <Divider
                                     className="tw:mx-2 tw:h-[0.9em] tw:self-center"
                                     orientation="vertical"
                                   />
                                   <Space>
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.algorithm')}:`}
-                                    </Typography.Text>{' '}
-                                    <Typography.Text>
+                                    </Typography>{' '}
+                                    <Typography>
                                       {feature.featureAlgorithm || '--'}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Space>
                                 </Space>
                               </div>
                               <div className="m-b-xs">
                                 <Box gap={2}>
                                   <div className="tw:flex-[0_0_130px]">
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.glossary-term-plural')} :`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </div>
 
                                   <div className="tw:min-w-0 tw:flex-auto">
@@ -231,9 +236,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                               <div className="m-b-xs">
                                 <Box gap={2}>
                                   <div className="tw:flex-[0_0_130px]">
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.tag-plural')} :`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </div>
                                   <div className="tw:min-w-0 tw:flex-auto">
                                     <TagsViewer
@@ -250,9 +255,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                               <div className="m-b-xs">
                                 <Box gap={2}>
                                   <div className="tw:flex-[0_0_120px]">
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.description')} :`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </div>
                                   <div className="tw:min-w-0 tw:flex-auto">
                                     <Space align="start">
@@ -262,11 +267,11 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                           markdown={feature.description}
                                         />
                                       ) : (
-                                        <Typography.Text className="text-grey-muted">
+                                        <Typography color="secondary">
                                           {t('label.no-entity', {
                                             entity: t('label.description'),
                                           })}
-                                        </Typography.Text>
+                                        </Typography>
                                       )}
                                     </Space>
                                   </div>

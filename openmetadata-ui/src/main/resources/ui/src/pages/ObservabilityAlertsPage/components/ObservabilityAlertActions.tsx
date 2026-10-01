@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from '@openmetadata/ui-core-components';
-import { Button, Tooltip, Typography } from 'antd';
+import { Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -47,11 +47,7 @@ function ObservabilityAlertActions({
     isUndefined(alertPermission) ||
     (!alertPermission.edit && !alertPermission.delete)
   ) {
-    return (
-      <Typography.Text className="p-l-xs">
-        {NO_DATA_PLACEHOLDER}
-      </Typography.Text>
-    );
+    return <Typography className="p-l-xs">{NO_DATA_PLACEHOLDER}</Typography>;
   }
 
   const editButton = (

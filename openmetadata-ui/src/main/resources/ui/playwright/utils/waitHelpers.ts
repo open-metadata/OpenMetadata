@@ -82,3 +82,33 @@ export const clickAndWaitFor = async (
 
   return response;
 };
+
+/** React Aria counterpart of `waitForAntOverlayToOpen`: a click landing mid-slide cancels the press. */
+export const waitForAriaOverlayToSettle = async (page: Page) => {
+  await expect(page.locator('[data-entering]')).toHaveCount(0);
+};
+
+/**
+ * Clicks `trigger` until `target` appears; a click swallowed by a re-layout
+ * fires no event, so retrying is the only fix. `force` is off by default — it
+ * also clicks through a real intercepting overlay and would hide that bug.
+ */
+export const clickUntilVisible = async (
+  trigger: Locator,
+  target: Locator,
+  options?: { timeout?: number; force?: 'onRetry' | 'always' }
+) => {
+  let attempt = 0;
+  await expect(async () => {
+    const isRetry = attempt++ > 0;
+    if (!(await target.isVisible())) {
+      await trigger.click({
+        force:
+          options?.force === 'always' ||
+          (options?.force === 'onRetry' && isRetry),
+        timeout: 5_000,
+      });
+    }
+    await expect(target).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: options?.timeout ?? 30_000, intervals: [500, 1_000] });
+};

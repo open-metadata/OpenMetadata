@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SkeletonParagraph } from '@openmetadata/ui-core-components';
-import { Progress, Space, Typography } from 'antd';
+import {
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Progress, Space } from 'antd';
 import classNames from 'classnames';
 import { isNumber, round } from 'lodash';
 import { useMemo } from 'react';
@@ -59,17 +62,19 @@ export const SummaryCard = ({
         data-testid="summary-card-label">
         <Space align="center" size={8}>
           {titleIcon}
-          <Typography.Paragraph
+          <Typography
+            as="p"
             className="summary-card-title"
             data-testid="summary-card-title">
             {title}
-          </Typography.Paragraph>
+          </Typography>
         </Space>
-        <Typography.Paragraph
+        <Typography
+          as="p"
           className="summary-card-description"
           data-testid="summary-card-description">
           {isNumber(value) ? formatNumberWithComma(value) : value}
-        </Typography.Paragraph>
+        </Typography>
       </div>
 
       {showProgressBar && (

@@ -12,8 +12,11 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { SkeletonParagraph } from '@openmetadata/ui-core-components';
-import { Card, Col, Row, Tooltip, Typography } from 'antd';
+import {
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
@@ -24,7 +27,6 @@ import { getDiagnosticItems } from '../../../../utils/Alerts/AlertsUtilPure';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 function AlertDiagnosticInfoTab() {
-  const { Text } = Typography;
   const { fqn } = useFqn();
   const [diagnosticData, setDiagnosticData] =
     useState<EventSubscriptionDiagnosticInfo>();
@@ -69,20 +71,20 @@ function AlertDiagnosticInfoTab() {
             <Col key={item.key} span={12}>
               <Row align="middle">
                 <Col className="d-flex items-center" span={12}>
-                  <Typography.Text className="d-flex items-center gap-1">
-                    <Typography.Text className="m-0" type="secondary">
+                  <Typography className="d-flex items-center gap-1">
+                    <Typography className="m-0" color="secondary">
                       {`${item.key}:`}
-                    </Typography.Text>
+                    </Typography>
                     <Tooltip placement="bottom" title={item.description}>
                       <InfoCircleOutlined
                         className="info-icon"
                         style={{ color: GRAYED_OUT_COLOR }}
                       />
                     </Tooltip>
-                  </Typography.Text>
+                  </Typography>
                 </Col>
                 <Col span={12}>
-                  <Text>{formatValue(item.value)}</Text>
+                  <Typography>{formatValue(item.value)}</Typography>
                 </Col>
               </Row>
             </Col>

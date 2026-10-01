@@ -217,6 +217,49 @@ describe('RunTestCaseButton', () => {
     expect(getIngestionPipelines).toHaveBeenCalledTimes(2);
   });
 
+  it('reloads the test case once a run in progress finishes', async () => {
+    const running = pipeline({
+      pipelineStatuses: [
+        {
+          runId: 'running-run',
+          pipelineState: PipelineState.Running,
+          timestamp: Date.now(),
+        },
+      ],
+    });
+    (getIngestionPipelines as jest.Mock)
+      .mockResolvedValueOnce({ data: [running] })
+      .mockResolvedValue({ data: [pipeline()] });
+    setPipelinePermission(true);
+    (runIngestionPipelineForEntity as jest.Mock).mockResolvedValue({});
+
+    const { queryClient } = renderWithQueryClient(
+      <RunTestCaseButton testCase={testCase} />
+    );
+    const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
+    fireEvent.click(await screen.findByTestId('run-test-case-button'));
+
+    await waitFor(() =>
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['testCase', testCase.fullyQualifiedName],
+      })
+    );
+  });
+
+  it('does not reload the test case when no run was in progress', async () => {
+    setPipelines([pipeline()]);
+    setPipelinePermission(true);
+
+    const { queryClient } = renderWithQueryClient(
+      <RunTestCaseButton testCase={testCase} />
+    );
+    const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
+
+    await screen.findByTestId('run-test-case-button');
+
+    expect(invalidateQueries).not.toHaveBeenCalled();
+  });
+
   it('shows the server error when the run is rejected', async () => {
     const error = new AxiosError('Failed to trigger IngestionPipeline');
     setPipelines([pipeline()]);

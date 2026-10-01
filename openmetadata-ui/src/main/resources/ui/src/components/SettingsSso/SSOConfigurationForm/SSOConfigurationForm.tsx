@@ -12,6 +12,12 @@
  */
 
 import { removeSession } from '@analytics/session-utils';
+import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Check,
+  UploadCloud02,
+  X,
+} from '@openmetadata/ui-core-components/icons';
 import Form, { IChangeEvent } from '@rjsf/core';
 import {
   CustomValidator,
@@ -21,8 +27,7 @@ import {
   RJSFSchema,
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Check, UploadCloud02, X } from '@untitledui/icons';
-import { Button, Card, Typography, Upload } from 'antd';
+import { Button, Card, Upload } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -103,6 +108,7 @@ import {
 } from './SSOConfigurationForm.interface';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 import SsoRolesSelectField from './SsoRolesSelectField';
+
 interface MetadataUploadStatusCardProps {
   status: 'success' | 'error';
   fileName: string;
@@ -139,14 +145,14 @@ const MetadataUploadStatusCard = ({
             <X className="text-white" size={16} />
           )}
         </div>
-        <Typography.Text className="text-grey-body text-sm font-medium">
+        <Typography className="text-grey-body text-sm font-medium">
           {t(
             isSuccess
               ? 'message.metadata-xml-file-parsed-success'
               : 'message.metadata-xml-file-parsed-error',
             { fileName }
           )}
-        </Typography.Text>
+        </Typography>
       </div>
       <Button
         data-testid="change-metadata-xml-btn"
@@ -1216,7 +1222,7 @@ const SSOConfigurationFormRJSF = ({
               <div
                 className="flex align-center flex-wrap gap-4 justify-center"
                 style={{ maxWidth: '220px' }}>
-                <Typography.Text className="font-medium">
+                <Typography className="font-medium">
                   {t('label.click-to')}{' '}
                   <Button
                     className="h-auto p-0 font-semibold"
@@ -1225,11 +1231,11 @@ const SSOConfigurationFormRJSF = ({
                     {t('label.upload-lowercase')}
                   </Button>{' '}
                   {t('label.or-drag-and-drop-an-xml-file-here')}
-                </Typography.Text>
+                </Typography>
               </div>
-              <Typography.Text className="text-grey-muted text-xs">
+              <Typography className="text-xs" color="secondary">
                 {t('message.upload-saml-metadata-xml-description')}
-              </Typography.Text>
+              </Typography>
             </div>
           </Upload.Dragger>
         )}
@@ -1350,9 +1356,9 @@ const SSOConfigurationFormRJSF = ({
               />
             )}
           </div>
-          <Typography.Title className="m-0 text-md">
+          <Typography as="h1" className="sso-provider-title m-0 text-md">
             {getProviderDisplayName(currentProvider)} {t('label.set-up')}
-          </Typography.Title>
+          </Typography>
         </div>
         {hasExistingConfig && onChangeProvider && (
           <Button

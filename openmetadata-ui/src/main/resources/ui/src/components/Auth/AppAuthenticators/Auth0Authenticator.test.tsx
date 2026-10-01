@@ -14,6 +14,7 @@
 import { act, render } from '@testing-library/react';
 import { createRef } from 'react';
 import { AccessTokenResponse } from '../../../rest/auth-API';
+import { ReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import Auth0Authenticator from './Auth0Authenticator';
@@ -191,6 +192,70 @@ describe('Auth0Authenticator', () => {
       await expect(renewer?.()).rejects.toThrow(
         'Auth0 renewal returned no idToken'
       );
+    });
+
+    it.each([
+      'login_required',
+      'consent_required',
+      'interaction_required',
+      'missing_refresh_token',
+      'invalid_grant',
+      'timeout',
+    ])(
+      'should ask for re-authentication when Auth0 answers %s',
+      async (error) => {
+        // With cacheLocation "memory" a reload loses the refresh token, and
+        // the iframe fallback is blocked with third-party cookies; a
+        // top-level redirect still rides the Auth0 session.
+        mockGetAccessTokenSilently.mockImplementationOnce(() =>
+          Promise.reject(Object.assign(new Error(error), { error }))
+        );
+        render(
+          <Auth0Authenticator ref={createRef<AuthenticatorRef>()}>
+            <div>Child</div>
+          </Auth0Authenticator>
+        );
+
+        const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+        await expect(renewer?.()).rejects.toBeInstanceOf(ReauthRequiredError);
+      }
+    );
+
+    it('should rethrow failures a redirect cannot fix', async () => {
+      const networkError = new Error('Failed to fetch');
+      mockGetAccessTokenSilently.mockImplementationOnce(() =>
+        Promise.reject(networkError)
+      );
+      render(
+        <Auth0Authenticator ref={createRef<AuthenticatorRef>()}>
+          <div>Child</div>
+        </Auth0Authenticator>
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      await expect(renewer?.()).rejects.toBe(networkError);
+    });
+  });
+
+  it('invokeSilentReauth redirects to Auth0 with prompt=none and returns to the current page', async () => {
+    const ref = createRef<AuthenticatorRef>();
+    render(
+      <Auth0Authenticator ref={ref}>
+        <div>Child</div>
+      </Auth0Authenticator>
+    );
+
+    await act(async () => {
+      await ref.current?.invokeSilentReauth?.();
+    });
+
+    expect(loginWithRedirect).toHaveBeenCalledWith({
+      prompt: 'none',
+      appState: {
+        returnTo: `${window.location.pathname}${window.location.search}`,
+      },
     });
   });
 });

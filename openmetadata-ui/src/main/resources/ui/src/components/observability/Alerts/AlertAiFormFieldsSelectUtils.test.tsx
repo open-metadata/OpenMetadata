@@ -21,20 +21,7 @@ import {
   getAuthTypeItems,
   getDestinationCategoryItems,
   getSelectArgumentConfig,
-  getTemplateItems,
 } from './AlertAiFormFieldsSelectUtils';
-import {
-  CUSTOM_TEMPLATE_VALUE,
-  SYSTEM_DEFAULT_TEMPLATES,
-} from './Template.constants';
-
-jest.mock('./NotificationTemplateUtils', () => ({
-  getTemplateEntityRefObject: jest.fn((template) => ({
-    id: template.id,
-    name: template.name,
-    type: 'notificationTemplate',
-  })),
-}));
 
 const t = ((key: string, params?: Record<string, string>) =>
   params ? `${key}:${Object.values(params).join(':')}` : key) as TFunction;
@@ -47,28 +34,6 @@ describe('AlertAiFormFieldsSelectUtils', () => {
       {
         id: Type.Oauth2,
         label: 'label.oauth2-client-credential-plural',
-      },
-    ]);
-  });
-
-  it('includes selected unloaded notification template in options', () => {
-    const selectedTemplate = JSON.stringify({
-      displayName: 'Custom Alert Template',
-      name: 'custom_alert_template',
-    });
-
-    expect(getTemplateItems([], selectedTemplate, t)).toEqual([
-      {
-        id: selectedTemplate,
-        label: 'Custom Alert Template',
-      },
-      {
-        id: SYSTEM_DEFAULT_TEMPLATES,
-        label: 'label.system-default-template',
-      },
-      {
-        id: CUSTOM_TEMPLATE_VALUE,
-        label: 'label.create-entity:label.custom-template',
       },
     ]);
   });

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row, Space } from 'antd';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +32,7 @@ import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.com
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';
 import { HeaderProps } from '../../../PageHeader/PageHeader.interface';
+
 interface AlertDetailsComponentProps {
   alerts: EventSubscription;
   onDelete: () => void;
@@ -82,20 +83,24 @@ export const AlertDetailsComponent = ({
       <Col span={24}>
         <Card>
           <Space direction="vertical" size={8}>
-            <Typography.Title className="m-0" level={5}>
+            <Typography
+              as="h5"
+              className="m-0"
+              size="text-md"
+              weight="semibold">
               {t('label.trigger')}
-            </Typography.Title>
-            <Typography.Text data-testid="display-name-entities">
+            </Typography>
+            <Typography data-testid="display-name-entities">
               {alerts?.filteringRules?.resources
                 ?.map(getDisplayNameForEntities)
                 ?.join(', ')}
-            </Typography.Text>
+            </Typography>
           </Space>
           <Divider className="tw:my-6" />
-          <Typography.Title level={5}>
+          <Typography as="h5" size="text-md" weight="semibold">
             {t('label.filter-plural')}
-          </Typography.Title>
-          <Typography.Paragraph>
+          </Typography>
+          <Typography as="p">
             {alerts?.filteringRules?.rules?.map((filter) => {
               const conditions = isArray(filter.condition)
                 ? filter.condition.join(', ')
@@ -107,18 +112,18 @@ export const AlertDetailsComponent = ({
 
               return (
                 <Fragment key={filter.name}>
-                  <Typography.Text code>
-                    {`${conditionName} ${effect} ${conditions}`}
-                  </Typography.Text>
+                  <Typography>
+                    <code>{`${conditionName} ${effect} ${conditions}`}</code>
+                  </Typography>
                   <br />
                 </Fragment>
               );
             })}
-          </Typography.Paragraph>
+          </Typography>
           <Divider className="tw:my-6" />
-          <Typography.Title level={5}>
+          <Typography as="h5" size="text-md" weight="semibold">
             {t('label.destination')}
-          </Typography.Title>
+          </Typography>
           <Row gutter={[16, 16]} />
         </Card>
       </Col>

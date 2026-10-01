@@ -15,8 +15,13 @@ import {
   Button as CoreButton,
   EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
+import {
+  BookOpen01,
+  Data,
+  File02,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen01, Data, File02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';

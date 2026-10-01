@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
+import { Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
@@ -60,17 +59,17 @@ const QueryCount = ({ tableId }: { tableId: string }) => {
 
   if (queryCount.count === 0) {
     return (
-      <Typography.Text>
+      <Typography>
         {t('label.no-entity', { entity: t('label.query-plural') })}
-      </Typography.Text>
+      </Typography>
     );
   } else {
     return (
-      <Typography.Text>
+      <Typography>
         {`${queryCount.count} ${t(
           queryCount.count === 1 ? 'label.query' : 'label.query-plural'
         )}`}
-      </Typography.Text>
+      </Typography>
     );
   }
 };

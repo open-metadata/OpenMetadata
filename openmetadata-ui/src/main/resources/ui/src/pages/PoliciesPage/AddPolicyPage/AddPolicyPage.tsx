@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Space, Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -131,13 +131,14 @@ const AddPolicyPage = () => {
           <div data-testid="add-policy-container">
             <TitleBreadcrumb titleLinks={translatedAddPolicyBreadcrumb} />
             <div className="m-t-md">
-              <Typography.Paragraph
-                className="text-base"
+              <Typography
+                as="p"
+                className="text-base tw:mb-4!"
                 data-testid="form-title">
                 {t('label.add-new-entity', {
                   entity: t('label.policy'),
                 })}
-              </Typography.Paragraph>
+              </Typography>
               <Form
                 data-testid="policy-form"
                 id="policy-form"
@@ -197,12 +198,12 @@ const AddPolicyPage = () => {
       secondPanel={{
         children: (
           <>
-            <Typography.Paragraph className="text-base font-medium">
+            <Typography as="p" className="text-base font-medium tw:mb-4!">
               {t('label.add-entity', {
                 entity: t('label.policy'),
               })}
-            </Typography.Paragraph>
-            <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
+            </Typography>
+            <Typography>{t('message.add-policy-message')}</Typography>
           </>
         ),
         className: 'content-resizable-panel-container',

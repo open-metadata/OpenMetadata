@@ -77,6 +77,7 @@ export interface RelationshipOperation {
 
 export enum OperationType {
     AddRelationship = "ADD_RELATIONSHIP",
+    CreateGlossary = "CREATE_GLOSSARY",
     CreateTerm = "CREATE_TERM",
     DeleteAttribute = "DELETE_ATTRIBUTE",
     DeleteAxiom = "DELETE_AXIOM",
