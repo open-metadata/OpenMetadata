@@ -10,6 +10,7 @@
 #  limitations under the License.
 # pylint: disable=missing-module-docstring
 import logging
+import operator
 import random
 import string
 import traceback
@@ -18,7 +19,7 @@ from contextlib import contextmanager
 from decimal import Decimal
 from functools import reduce
 from itertools import islice
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
 import data_diff
@@ -28,7 +29,8 @@ from data_diff.errors import DataDiffDuplicateKeyError, DataDiffMismatchingKeyTy
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
 from pydantic import BaseModel, Field
 from sqlalchemy import Column as SAColumn
-from sqlalchemy import literal, select
+from sqlalchemy import func, literal, literal_column, select
+from sqlalchemy.dialects import mssql
 from sqlalchemy.engine import make_url
 
 from metadata.data_quality.validations import utils
@@ -40,7 +42,7 @@ from metadata.data_quality.validations.models import (
     TableDiffRuntimeParameters,
     TableParameter,
 )
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaScheme,
 )
@@ -63,6 +65,9 @@ from metadata.utils.collections import CaseInsensitiveList
 from metadata.utils.credentials import normalize_pem_string
 from metadata.utils.logger import test_suite_logger
 
+if TYPE_CHECKING:
+    from sqlalchemy.sql.elements import ColumnElement
+
 logger = test_suite_logger()
 
 SUPPORTED_DIALECTS = [
@@ -81,6 +86,13 @@ SUPPORTED_DIALECTS = [
 ]
 
 DUPLICATE_KEY_MESSAGE = "Duplicate primary keys"
+
+SQL_SERVER_SERVICE_TYPES = (DatabaseServiceType.Mssql, DatabaseServiceType.AzureSQL)
+# Sampling hashes the text of the key, so it only selects the same rows in both tables when both databases hash the
+# same bytes. They do for integers. Not for strings: SQL Server hashes a VARCHAR in its collation's code page and an
+# NVARCHAR as UTF-16 where other databases hash UTF-8, so a key with any accent would be sampled on one side only.
+# Dates, decimals, uuids... are rendered differently from one database to another.
+SQL_SERVER_SAMPLING_KEY_TYPES = {DataType.TINYINT, DataType.SMALLINT, DataType.INT, DataType.BIGINT}
 
 
 class SchemaDiffResult(BaseModel):
@@ -108,6 +120,8 @@ class ColumnDiffResult(BaseModel):
 
 
 def build_sample_where_clause(table: TableParameter, key_columns: list[str], salt: str, hex_nounce: str) -> str:
+    if table.database_service_type in SQL_SERVER_SERVICE_TYPES:
+        return build_sql_server_sample_where_clause(table, key_columns, salt, hex_nounce)
     sql_alchemy_columns = [
         build_orm_col(i, c, table.database_service_type)
         for i, c in enumerate(table.columns)
@@ -127,6 +141,30 @@ def build_sample_where_clause(table: TableParameter, key_columns: list[str], sal
         )
         .whereclause.compile(
             dialect=sqa_dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+
+
+def build_sql_server_sample_where_clause(
+    table: TableParameter, key_columns: list[str], salt: str, hex_nounce: str
+) -> str:
+    """`build_sample_where_clause` for SQL Server, which has to hash the same text as the other database.
+
+    SQL Server's `+` adds an integer key to the salt instead of concatenating them, and CONVERT renders a digest in
+    upper-case hex. So every key is cast to VARCHAR, and the hex digest is lower-cased. Only integer keys hash the
+    same as elsewhere (see SQL_SERVER_SAMPLING_KEY_TYPES).
+    """
+    key_texts: list[ColumnElement] = [
+        build_orm_col(i, c, table.database_service_type).cast(sqlalchemy.types.VARCHAR())
+        for i, c in enumerate(table.columns)
+        if c.name.root in key_columns
+    ]
+    digest = func.HASHBYTES("MD5", reduce(operator.add, key_texts + [literal(salt, sqlalchemy.types.VARCHAR)]))
+    hex_digest = func.LOWER(func.CONVERT(literal_column("VARCHAR(32)"), digest, 2))
+    return str(
+        (Substr(hex_digest, 1, 8) < hex_nounce).compile(
+            dialect=mssql.dialect(),
             compile_kwargs={"literal_binds": True},
         )
     )
@@ -498,11 +536,14 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         profile_sample_type = static.profileSampleType if static else None
         if profile_sample is None or (profile_sample_type == ProfileSampleType.PERCENTAGE and profile_sample == 100):
             return None, None
-        if DatabaseServiceType.Mssql in [
-            self.runtime_params.table1.database_service_type,
-            self.runtime_params.table2.database_service_type,
-        ]:
-            logger.warning("Sampling not supported in MSSQL. Skipping sampling.")
+        unsampleable_keys = self.sql_server_keys_unfit_for_sampling()
+        if unsampleable_keys:
+            logger.warning(
+                "Skipping sampling: a SQL Server table can only be sampled on integer key columns, which hash the"
+                " same in every database, so that both tables select the same rows. Not supported: %s."
+                " Comparing all the rows instead.",
+                ", ".join(unsampleable_keys),
+            )
             return None, None
         nounce = self.calculate_nounce()
         # SQL MD5 returns a 32 character hex string even with leading zeros so we need to
@@ -530,6 +571,20 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 hex_nounce,
             ),
         )
+
+    def sql_server_keys_unfit_for_sampling(self) -> list[str]:
+        """The key columns of a SQL Server table that aren't integers, as 'name (TYPE)'."""
+        unfit = []
+        for table in (self.runtime_params.table1, self.runtime_params.table2):
+            if table.database_service_type not in SQL_SERVER_SERVICE_TYPES:
+                continue
+            key_columns = self.maybe_case_sensitive(table.key_columns or [])
+            unfit.extend(
+                f"{column.name.root} ({column.dataType.value})"
+                for column in table.columns
+                if column.name.root in key_columns and column.dataType not in SQL_SERVER_SAMPLING_KEY_TYPES
+            )
+        return unfit
 
     def maybe_case_sensitive(self, iterable: Iterable[str]) -> list[str]:
         return CaseInsensitiveList(iterable) if not self.get_case_sensitive() else list(iterable)
