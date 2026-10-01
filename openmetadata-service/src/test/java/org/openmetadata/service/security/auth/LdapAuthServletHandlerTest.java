@@ -157,7 +157,8 @@ class LdapAuthServletHandlerTest {
         .thenReturn(Optional.of(leasedSession));
     when(sessionService.decryptOmRefreshToken(leasedSession)).thenReturn("current-refresh-token");
     when(authenticator.getNewAccessToken(any())).thenReturn(jwtResponse);
-    when(sessionService.completeRefresh(leasedSession, "rotated-refresh-token", null))
+    when(sessionService.completeRefresh(
+            leasedSession, "rotated-refresh-token", SessionService.ProviderTokenUpdate.NONE))
         .thenReturn(Optional.of(revokedSession));
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
