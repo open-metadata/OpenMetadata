@@ -7827,6 +7827,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/CustomProperty/CustomPropertyEditForm/CustomPropertyEditForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/CustomProperty/EditCustomPropertyModal/EditCustomPropertyModal.tsx"
       ],
       "specs": [
