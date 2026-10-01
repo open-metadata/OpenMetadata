@@ -278,11 +278,6 @@ export default [
         {
           patterns: [
             {
-              group: ['@untitledui/icons', '@untitledui/icons/*'],
-              message:
-                'Import icons from @openmetadata/ui-core-components/icons, not directly from @untitledui/icons.',
-            },
-            {
               group: ['**/assets/**/*.svg'],
               message:
                 'Do not import SVG icons directly from assets/ paths; use the designated abstraction instead.',
