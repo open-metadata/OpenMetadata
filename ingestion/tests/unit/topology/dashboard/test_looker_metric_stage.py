@@ -42,7 +42,7 @@ from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest, OMetaLineageRequest
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
-from metadata.ingestion.source.dashboard.looker.measures import looker_metric_name
+from metadata.ingestion.source.dashboard.looker.measures import candidates_from_view, looker_metric_name
 from metadata.ingestion.source.dashboard.looker.metadata import (
     DATAMODEL_LINEAGE_SENTINEL,
     LookerSource,
@@ -487,3 +487,27 @@ def test_a_measure_missing_from_the_view_file_still_links_to_its_view(records):
 
     assert edge.from_entity_fqn == _view_model_fqn("my_view")
     assert edge.lineage_details.columnsLineage is None
+
+
+def test_same_view_name_in_two_projects_keeps_each_metric_on_its_own_data_model():
+    """Two projects both declaring an `orders` view must not share one resolved data model."""
+    looker = _looker_source(includeMetrics=True)
+    view = LookMlView(name="orders", measures=[_measure("total", type="sum", sql="${TABLE}.amount")])
+    looker._pending_views = [
+        ("sales", "orders", "sales_model_orders_view"),
+        ("ops", "orders", "ops_model_orders_view"),
+    ]
+    with patch.object(LookerSource, "_build_data_model", side_effect=lambda name: _data_model(name, view)):
+        looker._resolve_pending_datamodels()
+
+    for project in ("sales", "ops"):
+        (candidate,) = candidates_from_view(view, project)
+        edges = [
+            either.right
+            for either in looker._yield_metric_lineage(
+                candidate, looker_metric_name(SERVICE, project, "orders", "total"), []
+            )
+        ]
+
+        assert [edge.from_entity_fqn for edge in edges] == [f"{SERVICE}.model.{project}_model_orders_view"]
+        assert model_str(looker._metric_assets(candidate)[0].name) == f"{project}_model_orders_view"

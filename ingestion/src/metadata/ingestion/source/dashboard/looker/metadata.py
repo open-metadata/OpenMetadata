@@ -262,6 +262,9 @@ class LookerSource(DashboardServiceSource):
 
         self._explores_cache = {}
         self._views_cache = {}
+        # Measures are project-scoped, while `_views_cache` is keyed by view name alone, so two
+        # projects declaring an `orders` view would hand each other's metrics the wrong data model.
+        self._project_views_cache: dict[tuple[str, str], DashboardDataModel | None] = {}
         self._repo_credentials: ReadersCredentials | None = None
         self._reader_class: type[Reader] | None = None
         self._project_parsers: dict[str, BulkLkmlParser] | None = None
@@ -277,7 +280,7 @@ class LookerSource(DashboardServiceSource):
         # Data models yielded by the bulk stage but not yet written by the sink. They are
         # resolved in `_yield_bulk_datamodel_lineage`, after the Barrier has flushed them.
         self._pending_explores: list[str] = []
-        self._pending_views: list[tuple[str, str]] = []
+        self._pending_views: list[tuple[str, str, str]] = []
         self._processed_view_names: set[str] = set()
         self._pending_view_lineage: list[tuple[LookMlView, ExploreRef, str]] = []
         self._pending_standalone_lineage: list[tuple[LookMlView, str, str, str]] = []
@@ -675,7 +678,7 @@ class LookerSource(DashboardServiceSource):
 
                 # Resolution and lineage are deferred to `_yield_bulk_datamodel_lineage`,
                 # once the Barrier has committed this request.
-                self._pending_views.append((view.name, datamodel_view_name))
+                self._pending_views.append((first_project, view.name, datamodel_view_name))
                 self._processed_view_names.add(view.name)
                 self._pending_standalone_lineage.append((view, first_project, first_model_name, datamodel_view_name))
 
@@ -861,8 +864,10 @@ class LookerSource(DashboardServiceSource):
             self._explores_cache[datamodel_name] = resolve(datamodel_name)
         self._pending_explores = []
 
-        for view_name, datamodel_view_name in self._pending_views:
-            self._views_cache[view_name] = resolve(datamodel_view_name)
+        for project_name, view_name, datamodel_view_name in self._pending_views:
+            data_model = resolve(datamodel_view_name)
+            self._views_cache[view_name] = data_model
+            self._project_views_cache[(project_name, view_name)] = data_model
         self._pending_views = []
 
         return resolved
@@ -911,7 +916,7 @@ class LookerSource(DashboardServiceSource):
         assets: list[EntityReference] = []
         seen: set[str] = set()
         data_models = [
-            self._views_cache.get(candidate.view),
+            self._project_views_cache.get((candidate.project, candidate.view)),
             *(self._explores_cache.get(name) for name in self._metric_explores.get(candidate.key, [])),
         ]
         for data_model in data_models:
@@ -1014,7 +1019,7 @@ class LookerSource(DashboardServiceSource):
                 )
             )
 
-        view_data_model = self._views_cache.get(candidate.view)
+        view_data_model = self._project_views_cache.get((candidate.project, candidate.view))
         if view_data_model is None:
             return
 
@@ -1113,7 +1118,7 @@ class LookerSource(DashboardServiceSource):
 
                 # Resolution and lineage are deferred to `_yield_bulk_datamodel_lineage`,
                 # once the Barrier has committed this request.
-                self._pending_views.append((view.name, datamodel_view_name))
+                self._pending_views.append((explore.project_name or "", view.name, datamodel_view_name))
                 self._processed_view_names.add(view.name)
                 self._pending_view_lineage.append(
                     (view, ExploreRef(explore.model_name, explore.name), datamodel_view_name)
