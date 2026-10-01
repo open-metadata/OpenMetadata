@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import { PieChart } from '@openmetadata/ui-core-components/charts';
-import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -228,12 +227,12 @@ const TotalDataAssetsWidget = ({
             <PieChart
               ariaLabel={t('label.data-insight-total-entity-summary')}
               centerLabel={
-                <CoreTypography
+                <Typography
                   className="tw:text-secondary"
                   size="display-xs"
                   weight="semibold">
                   {totalDatAssets.toLocaleString()}
-                </CoreTypography>
+                </Typography>
               }
               data={pieData}
               height={250}
@@ -263,9 +262,9 @@ const TotalDataAssetsWidget = ({
                         pieChartColors[index % pieChartColors.length],
                     }}
                   />
-                  <Typography.Text ellipsis={{ tooltip: true }}>
+                  <Typography ellipsis={{ tooltip: true }}>
                     {startCase(label)}
-                  </Typography.Text>
+                  </Typography>
                   <span
                     className="text-xs font-medium p-y-xss p-x-xs data-value"
                     data-testid={`legend-count-${label}`}>

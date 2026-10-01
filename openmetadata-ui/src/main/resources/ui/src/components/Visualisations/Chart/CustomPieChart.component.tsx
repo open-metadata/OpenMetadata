@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import type { PieDatum } from '@openmetadata/ui-core-components/charts';
 import {
   chartColor,
   PieChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Space, Typography } from 'antd';
+import { Space } from 'antd';
 import { isString } from 'lodash';
 import { useCallback } from 'react';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
@@ -38,9 +38,9 @@ const CustomPieChart = ({
 }: CustomPieChartProps) => {
   const palette = useChartPalette();
   const centerLabel = isString(label) ? (
-    <CoreTypography color="secondary" size="text-sm" weight="medium">
+    <Typography color="secondary" size="text-sm" weight="medium">
       {label}
-    </CoreTypography>
+    </Typography>
   ) : (
     label
   );
@@ -82,15 +82,18 @@ const CustomPieChart = ({
                   backgroundColor: chartColor(palette, index, item.status),
                 }}
               />
-              <Typography.Paragraph className="text-grey-muted m-b-0 font-medium">
+              <Typography
+                as="p"
+                className="m-b-0 font-medium"
+                color="secondary">
                 {item.name}{' '}
-                <Typography.Text
-                  strong
-                  className="text-grey-muted"
-                  data-testid={`legend-count-${item.name.toLowerCase()}`}>
+                <Typography
+                  color="secondary"
+                  data-testid={`legend-count-${item.name.toLowerCase()}`}
+                  weight="semibold">
                   {formatNumberWithComma(item.value)}
-                </Typography.Text>
-              </Typography.Paragraph>
+                </Typography>
+              </Typography>
             </Space>
           ))}
         </Space>

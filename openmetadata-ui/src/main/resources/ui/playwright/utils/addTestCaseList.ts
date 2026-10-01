@@ -22,29 +22,27 @@ export interface AddTestCaseListFilterContext {
   waitAfterFilterUpdate: () => Promise<void>;
 }
 
-export function waitForAddTestCaseListTableSearchQuery(
+// The filter dropdown is a popover rendered outside the Add Test Cases modal
+// and can close again right after it opens (timing-dependent). Reopen and
+// retype until the searched option is shown instead of racing that close.
+async function searchAddTestCaseListFilterOption(
   page: Page,
-  tableEntityName: string
+  searchKey: string,
+  searchText: string,
+  optionTestId: string
 ) {
-  return page.waitForResponse((res) => {
-    const u = res.url();
-    if (res.request().method() !== 'GET') {
-      return false;
+  const menu = page.getByTestId('drop-down-menu');
+  const option = menu.getByTestId(optionTestId);
+
+  await expect(async () => {
+    if (!(await menu.isVisible())) {
+      await page.getByTestId(`search-dropdown-${searchKey}`).click();
     }
-    if (!u.includes('/api/v1/search/query')) {
-      return false;
-    }
-    if (!/[?&]index=table(?:&|$)/.test(u)) {
-      return false;
-    }
-    if (!tableEntityName) {
-      return false;
-    }
-    return (
-      u.includes(encodeURIComponent(tableEntityName)) ||
-      u.includes(tableEntityName)
-    );
-  });
+    await menu.getByTestId('search-input').fill(searchText, { timeout: 5_000 });
+    await expect(option).toBeVisible({ timeout: 10_000 });
+  }).toPass({ timeout: 60_000 });
+
+  return option;
 }
 
 export async function addTestCaseListFilterByTestType(
@@ -84,19 +82,12 @@ export async function addTestCaseListFilterByTable(
   tableEntityName: string,
   tableFqn: string
 ) {
-  const tableSearchResponse = waitForAddTestCaseListTableSearchQuery(
+  const tableOption = await searchAddTestCaseListFilterOption(
     page,
-    tableEntityName
+    'Table',
+    tableEntityName,
+    tableFqn
   );
-  await page.getByTestId('search-dropdown-Table').click();
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId('search-input')
-    .fill(tableEntityName);
-  await tableSearchResponse;
-
-  const tableOption = page.getByTestId('drop-down-menu').getByTestId(tableFqn);
-  await tableOption.waitFor({ state: 'visible' });
   await tableOption.click();
 
   // Table filter must pair entityLink with includeAllTests=true so column
@@ -120,16 +111,12 @@ export async function addTestCaseListFilterByColumn(
   page: Page,
   columnName: string
 ) {
-  await page.getByTestId('search-dropdown-Column').click();
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId('search-input')
-    .fill(columnName);
-
-  const columnOption = page
-    .getByTestId('drop-down-menu')
-    .getByTestId(columnName);
-  await columnOption.waitFor({ state: 'visible' });
+  const columnOption = await searchAddTestCaseListFilterOption(
+    page,
+    'Column',
+    columnName,
+    columnName
+  );
   await columnOption.click();
 
   const testCaseByColumnResponse = page.waitForResponse(

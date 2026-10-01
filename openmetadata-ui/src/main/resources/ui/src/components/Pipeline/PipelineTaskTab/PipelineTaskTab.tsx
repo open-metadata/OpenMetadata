@@ -15,8 +15,8 @@ import {
   ButtonGroup,
   ButtonGroupItem,
   Card,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -334,7 +334,9 @@ export const PipelineTaskTab = () => {
         width: 180,
         title: t('label.type'),
         render: (text) => (
-          <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {text || NO_DATA_PLACEHOLDER}
+          </Typography>
         ),
       },
       {

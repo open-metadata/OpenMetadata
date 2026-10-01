@@ -15,9 +15,10 @@ import {
   Card,
   ClassificationTag,
   Owner,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
+import { Button, Checkbox, Col, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
@@ -262,12 +263,12 @@ const BreadcrumbAndScoreCell = ({
         <div className="flex items-center gap-1 score-container">
           <ScoreIcon />
 
-          <Typography.Text className="text-xs score">
+          <Typography className="text-xs score">
             <span className="font-normal">
               {t('label.score-label').toUpperCase()}
             </span>
             <span className="font-semibold">{score.toFixed(4)}</span>
-          </Typography.Text>
+          </Typography>
         </div>
       )}
     </Col>
@@ -300,11 +301,11 @@ const EntityTitleColumn = ({
     span={24}>
     {isTourOpen ? (
       <Button data-testid={source.fullyQualifiedName} type="link">
-        <Typography.Text
+        <Typography
           className="text-lg font-medium text-link-color"
           data-testid="entity-header-display-name">
           {renderHighlightedText(searchClassBase.getEntityName(source))}
-        </Typography.Text>
+        </Typography>
       </Button>
     ) : (
       <div className="w-full d-flex items-center">
@@ -324,11 +325,11 @@ const EntityTitleColumn = ({
           to={isObject(entityLink) ? entityLink.pathname : entityLink}
           onFocus={handlePrefetch}
           onMouseEnter={handlePrefetch}>
-          <Typography.Text
+          <Typography
             className="text-lg font-medium text-link-color break-word whitespace-normal"
             data-testid="entity-header-display-name">
             {renderHighlightedText(searchClassBase.getEntityName(source))}
-          </Typography.Text>
+          </Typography>
         </Link>
 
         {/* Column docs carry the parent table's certification; a column isn't certified itself */}
@@ -404,11 +405,12 @@ const SignalBoostsSection = ({
       className="ranking-score-explanation"
       data-testid="ranking-signal-boosts">
       <div className="ranking-details-header">
-        <Typography.Text className="text-xs font-medium">
+        <Typography className="text-xs font-medium">
           {t('label.signal-boost-plural')}
-        </Typography.Text>
-        <Typography.Text
-          className="text-xs text-grey-muted"
+        </Typography>
+        <Typography
+          className="text-xs"
+          color="secondary"
           data-testid="ranking-signal-total">
           {signalBoosts.isCapped && signalBoosts.maxBoost !== undefined
             ? t('message.search-ranking-signal-capped', {
@@ -416,30 +418,31 @@ const SignalBoostsSection = ({
                 raw: formatScoreValue(signalBoosts.rawTotal),
               })
             : `+${formatScoreValue(signalBoosts.total)}`}
-        </Typography.Text>
+        </Typography>
       </div>
       {signalBoosts.contributions.map(({ label, value }) => (
         <div
           className="ranking-score-contributor"
           data-testid="ranking-signal-contributor"
           key={`${label}-${value}`}>
-          <Typography.Text className="text-xs font-medium">
+          <Typography className="text-xs font-medium">
             {`+${formatScoreValue(value)}`}
-          </Typography.Text>
-          <Typography.Text className="text-xs text-grey-muted">
+          </Typography>
+          <Typography className="text-xs" color="secondary">
             {label}
-          </Typography.Text>
+          </Typography>
         </div>
       ))}
       {signalBoosts.lexicalScore !== undefined ? (
-        <Typography.Text
-          className="text-xs text-grey-muted"
+        <Typography
+          className="text-xs"
+          color="secondary"
           data-testid="ranking-score-breakdown">
           {t('message.search-ranking-score-breakdown', {
             lexical: formatScoreValue(signalBoosts.lexicalScore),
             signals: formatScoreValue(signalBoosts.total),
           })}
-        </Typography.Text>
+        </Typography>
       ) : null}
     </div>
   );
@@ -465,15 +468,15 @@ const RankingDetailsSection = ({
   return (
     <div className="ranking-details-container" data-testid="ranking-details">
       <div className="ranking-details-header">
-        <Typography.Text className="ranking-details-title">
+        <Typography className="ranking-details-title">
           {t('label.ranking-detail-plural')}
-        </Typography.Text>
+        </Typography>
         {score !== undefined && (
-          <Typography.Text
+          <Typography
             className="ranking-details-score"
             data-testid="ranking-score">
             {t('label.score')}: {formatScoreValue(score)}
-          </Typography.Text>
+          </Typography>
         )}
       </div>
       {rankingStages.length > 0 ? (
@@ -483,12 +486,10 @@ const RankingDetailsSection = ({
               className="ranking-stage-item"
               data-testid={`ranking-stage-${name}`}
               key={name}>
-              <Typography.Text className="text-xs font-medium">
-                {label}
-              </Typography.Text>
-              <Typography.Text className="text-xs text-grey-muted">
+              <Typography className="text-xs font-medium">{label}</Typography>
+              <Typography className="text-xs" color="secondary">
                 {description}
-              </Typography.Text>
+              </Typography>
             </div>
           ))}
         </div>
@@ -497,28 +498,28 @@ const RankingDetailsSection = ({
         <div
           className="ranking-score-explanation"
           data-testid="ranking-score-explanation">
-          <Typography.Text className="text-xs font-medium">
+          <Typography className="text-xs font-medium">
             {t('label.reason')}
-          </Typography.Text>
+          </Typography>
           {scoreReasons.map(({ description, value }) => (
             <div
               className="ranking-score-contributor"
               data-testid="ranking-score-contributor"
               key={`${description}-${value}`}>
-              <Typography.Text className="text-xs font-medium">
+              <Typography className="text-xs font-medium">
                 {formatScoreValue(value)}
-              </Typography.Text>
-              <Typography.Text className="text-xs text-grey-muted">
+              </Typography>
+              <Typography className="text-xs" color="secondary">
                 {description}
-              </Typography.Text>
+              </Typography>
             </div>
           ))}
         </div>
       ) : null}
       <SignalBoostsSection signalBoosts={signalBoosts} t={t} />
-      <Typography.Text className="text-xs text-grey-muted">
+      <Typography className="text-xs" color="secondary">
         {t('message.search-ranking-signals-explanation')}
-      </Typography.Text>
+      </Typography>
     </div>
   );
 };

@@ -17,7 +17,8 @@ import {
   type ChartSeries,
   type ChartTooltipRenderProps,
 } from '@openmetadata/ui-core-components/charts';
-import { Card, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { startCase, uniqBy } from 'lodash';
 import { GRAYED_OUT_COLOR, HOVER_CHART_OPACITY } from '../constants/constants';
 import {
@@ -109,12 +110,14 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         className="custom-data-insight-tooltip"
         style={cardStyles}
         title={
-          <Typography.Title
+          <Typography
+            as="h5"
             className="custom-data-insight-tooltip-title"
-            level={5}
-            style={titleStyles}>
+            size="text-md"
+            style={titleStyles}
+            weight="semibold">
             {timestamp}
-          </Typography.Title>
+          </Typography>
         }>
         <ul
           className="custom-data-insight-tooltip-container"
