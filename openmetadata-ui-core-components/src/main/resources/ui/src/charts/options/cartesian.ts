@@ -226,6 +226,9 @@ const bandSeries = <T extends object>(
     type: 'line',
     name: series.name,
     stack: `${series.key}${BAND_SERIES_SUFFIXES[1]}`,
+    // The default only stacks values of the same sign, which would draw a
+    // span above a negative low from zero instead of from the low.
+    stackStrategy: 'all',
     silent: true,
     smooth: false,
     showSymbol: false,

@@ -493,4 +493,37 @@ describe('band series on a real chart', () => {
     expect(span.get(stacked, 0)).toBe(6);
     expect(span.get(stacked, 1)).toBe(8);
   });
+
+  it('stacks the span from a negative low', () => {
+    const chart = mount(
+      buildComposedOption(
+        {
+          data: [
+            { day: 'Mon', range: [-3, 2] },
+            { day: 'Tue', range: [-1, 4] },
+          ],
+          xKey: 'day',
+          ariaLabel: 'Runs',
+          series: [{ key: 'range', name: 'Range', type: 'band' }],
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    type SeriesData = {
+      getCalculationInfo: (key: string) => string;
+      get: (dim: string, index: number) => number;
+    };
+    const model = (
+      chart as unknown as {
+        getModel: () => {
+          getSeriesByIndex: (i: number) => { getData: () => SeriesData };
+        };
+      }
+    ).getModel();
+    const span = model.getSeriesByIndex(1).getData();
+    const stacked = span.getCalculationInfo('stackResultDimension');
+
+    expect(span.get(stacked, 0)).toBe(2);
+    expect(span.get(stacked, 1)).toBe(4);
+  });
 });
