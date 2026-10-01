@@ -226,7 +226,10 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
           beforeSignIn
         );
       } catch (err) {
-        if (err instanceof ConfigurationCheckFailedError) {
+        if (
+          err instanceof ConfigurationCheckFailedError ||
+          runId !== runIdRef.current
+        ) {
           return;
         }
         // Failure obtaining the token in the popup (cancelled / blocked / refused).
@@ -239,6 +242,9 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
         return;
       } finally {
         globalThis.localStorage.removeItem(SSO_TEST_LOGIN_CANDIDATE_KEY);
+      }
+      if (runId !== runIdRef.current) {
+        return;
       }
 
       if (!idToken) {
@@ -269,6 +275,9 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
         return undefined;
       }
       const { data } = await getTestLoginResult(testSessionId);
+      if (runId !== runIdRef.current) {
+        return undefined;
+      }
       const popupClosed = popupRef.current?.closed ?? true;
       if (isTestLoginSettled(data) || popupClosed || Date.now() > deadline) {
         return data;
@@ -339,7 +348,9 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
         // The server could not even begin a sign-in; its result already explains why.
         popup?.close();
         const { data } = await getTestLoginResult(session.testSessionId);
-        setResult(data);
+        if (runId === runIdRef.current) {
+          setResult(data);
+        }
       }
     },
     [awaitRedirectResult]

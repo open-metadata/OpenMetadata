@@ -216,6 +216,38 @@ describe('useSsoTestLogin', () => {
       ).toBeNull();
     });
 
+    it('should not report a sign-in that fails after the test was reset', async () => {
+      let failSignIn: (error: Error) => void = jest.fn();
+      let signInStarted = false;
+      mockUserManager.mockImplementation(() =>
+        userManagerWith(
+          () =>
+            new Promise((_resolve, reject) => {
+              signInStarted = true;
+              failSignIn = reject;
+            })
+        )
+      );
+
+      const { result } = renderHook(() => useSsoTestLogin());
+      let run: Promise<void> = Promise.resolve();
+      await act(async () => {
+        run = result.current.runTestLogin(publicGoogle);
+      });
+      await waitFor(() => expect(signInStarted).toBe(true));
+      act(() => {
+        result.current.reset();
+      });
+
+      await act(async () => {
+        failSignIn(new Error('popup closed'));
+        await run;
+      });
+
+      expect(result.current.error).toBeUndefined();
+      expect(mockTestLoginValidateToken).not.toHaveBeenCalled();
+    });
+
     it('should surface a popup error when the sign-in is cancelled and not call the backend', async () => {
       mockUserManager.mockImplementation(() =>
         userManagerWith(() => Promise.reject(new Error('popup closed')))
@@ -452,6 +484,79 @@ describe('useSsoTestLogin', () => {
       });
 
       expect(result.current.error).toBe('message.sso-test-login-popup-closed');
+    });
+
+    it('should not let an abandoned run’s poll overwrite the newer run', async () => {
+      globalThis.open = jest
+        .fn()
+        .mockReturnValueOnce(fakePopup() as unknown as Window)
+        .mockReturnValueOnce(fakePopup() as unknown as Window);
+      mockStartTestLogin.mockResolvedValue(asResponse(session));
+      let answerFirstPoll: (response: AxiosResponse<TestLoginResult>) => void =
+        jest.fn();
+      mockGetTestLoginResult
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            answerFirstPoll = resolve;
+          })
+        )
+        .mockReturnValue(new Promise(jest.fn()));
+
+      const { result } = renderHook(() => useSsoTestLogin());
+      let firstRun: Promise<void> = Promise.resolve();
+      await act(async () => {
+        firstRun = result.current.runTestLogin(confidentialOidc);
+      });
+      await waitFor(() => expect(mockGetTestLoginResult).toHaveBeenCalled());
+      await act(async () => {
+        void result.current.runTestLogin(confidentialOidc);
+      });
+      await waitFor(() =>
+        expect(mockGetTestLoginResult).toHaveBeenCalledTimes(2)
+      );
+
+      await act(async () => {
+        answerFirstPoll(
+          asResponse<TestLoginResult>({ status: Status.Pending })
+        );
+        await firstRun;
+      });
+
+      expect(result.current.result).toBeUndefined();
+    });
+
+    it('should not show a result that arrives after the test was reset', async () => {
+      globalThis.open = jest.fn(() => fakePopup() as unknown as Window);
+      mockStartTestLogin.mockResolvedValue(
+        asResponse<TestLoginSession>({
+          testSessionId: 'session-2',
+          protocol: Protocol.Oidc,
+        })
+      );
+      let answerResult: (response: AxiosResponse<TestLoginResult>) => void =
+        jest.fn();
+      mockGetTestLoginResult.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answerResult = resolve;
+        })
+      );
+
+      const { result } = renderHook(() => useSsoTestLogin());
+      let run: Promise<void> = Promise.resolve();
+      await act(async () => {
+        run = result.current.runTestLogin(confidentialOidc);
+      });
+      await waitFor(() => expect(mockGetTestLoginResult).toHaveBeenCalled());
+      act(() => {
+        result.current.reset();
+      });
+
+      await act(async () => {
+        answerResult(asResponse<TestLoginResult>({ status: Status.Failed }));
+        await run;
+      });
+
+      expect(result.current.result).toBeUndefined();
     });
 
     it('should show why the server could not even start the sign-in', async () => {
