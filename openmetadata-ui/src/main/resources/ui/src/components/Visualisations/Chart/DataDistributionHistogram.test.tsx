@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 
+import {
+  BarChart,
+  type BarChartProps,
+} from '@openmetadata/ui-core-components/charts';
 import { queryByAttribute, render, screen } from '@testing-library/react';
+import { tooltipFormatter } from '../../../utils/ChartUtils';
 import DataDistributionHistogram from './DataDistributionHistogram.component';
 
-jest.mock('../../../hooks/useChartColors', () => ({
-  useChartColors: jest.fn().mockReturnValue({
-    cursorFill: '#123456',
-    grid: '#234567',
-    primary: '#345678',
-  }),
-}));
+type HistogramRow = { name?: string; frequency: number };
+const mockBarChart = BarChart as unknown as jest.Mock<
+  null,
+  [BarChartProps<HistogramRow>]
+>;
 
 const MOCK_HISTOGRAM_DATA = [
   {
@@ -148,6 +151,44 @@ describe('DataDistributionHistogram component test', () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText(/label.skew:/)).toHaveLength(1);
     expect(screen.getAllByText(/Jan 20, 1970/)).toHaveLength(1);
+  });
+
+  it('draws one brand-coloured frequency bar series per day, with a legend', () => {
+    mockBarChart.mockClear();
+    render(
+      <DataDistributionHistogram
+        data={{
+          firstDayData: MOCK_HISTOGRAM_DATA[1],
+          currentDayData: MOCK_HISTOGRAM_DATA[0],
+        }}
+      />
+    );
+    const calls = mockBarChart.mock.calls.map(([props]) => props);
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEqual(
+      expect.objectContaining({
+        xKey: 'name',
+        height: 350,
+        radius: 8,
+        legend: { show: true },
+      })
+    );
+    expect(calls[0].series).toEqual([
+      {
+        key: 'frequency',
+        name: 'label.frequency',
+        status: 'info',
+        seriesOption: { barWidth: 22 },
+      },
+    ]);
+    expect(calls[0].data[0]).toEqual({
+      name: '5.00 to 100.00',
+      frequency: 56,
+    });
+    expect(calls[0].tooltip?.valueFormatter?.(1200, 'frequency')).toBe(
+      String(tooltipFormatter(1200))
+    );
   });
 
   it('No data placeholder should render when firstDay & currentDay data is undefined', async () => {

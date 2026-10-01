@@ -12,53 +12,93 @@
  */
 
 import { Badge } from '@openmetadata/ui-core-components';
+import {
+  BarChart,
+  type ChartSeries,
+  type ChartTooltipProps,
+  type ChartYAxisProps,
+} from '@openmetadata/ui-core-components/charts';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { DEFAULT_HISTOGRAM_DATA } from '../../../constants/profiler.constant';
 import { HistogramClass } from '../../../generated/entity/data/table';
-import { useChartColors } from '../../../hooks/useChartColors';
-import {
-  axisTickFormatter,
-  createHorizontalGridLineRenderer,
-  tooltipFormatter,
-} from '../../../utils/ChartUtils';
-import { CustomDQTooltip } from '../../../utils/DataQuality/CustomDQTooltip.component';
+import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataDistributionHistogramProps } from './Chart.interface';
+
+interface HistogramRow {
+  name?: string;
+  frequency: number;
+}
+
+const CHART_HEIGHT = 350;
+const LEGEND_SHOWN = { show: true };
+const Y_AXIS: ChartYAxisProps = {
+  formatter: (value) => String(axisTickFormatter(Number(value))),
+};
+const TOOLTIP: ChartTooltipProps = {
+  valueFormatter: (value) => String(tooltipFormatter(value)),
+};
 
 const DataDistributionHistogram = ({
   data,
   noDataPlaceholderText,
 }: DataDistributionHistogramProps) => {
   const { t } = useTranslation();
-  const { axis, cursorFill, grid, primary } = useChartColors();
 
-  const renderHorizontalGridLine = useMemo(
-    () => createHorizontalGridLineRenderer(),
-    []
+  const series = useMemo<ChartSeries[]>(
+    () => [
+      {
+        key: 'frequency',
+        name: t('label.frequency'),
+        status: 'info',
+        seriesOption: { barWidth: 22 },
+      },
+    ],
+    [t]
+  );
+
+  const charts = useMemo(
+    () =>
+      Object.entries(data)
+        .filter(([, columnProfile]) => !isUndefined(columnProfile?.histogram))
+        .map(([key, columnProfile]) => {
+          const histogram =
+            (columnProfile?.histogram as HistogramClass) ||
+            DEFAULT_HISTOGRAM_DATA;
+          const skew = columnProfile?.nonParametricSkew;
+          let skewColor: 'success' | 'error' | 'blue' = 'blue';
+          if (skew) {
+            skewColor = skew > 0 ? 'success' : 'error';
+          }
+
+          return {
+            key,
+            skew,
+            skewColor,
+            date: customFormatDateTime(
+              columnProfile?.timestamp || 0,
+              'MMM dd, yyyy'
+            ),
+            rows: (histogram.frequencies ?? []).map(
+              (frequency, i): HistogramRow => ({
+                name: histogram.boundaries?.[i],
+                frequency,
+              })
+            ),
+          };
+        }),
+    [data]
   );
 
   const showSingleGraph =
     isUndefined(data.firstDayData?.histogram) ||
     isUndefined(data.currentDayData?.histogram);
 
-  if (
-    isUndefined(data.firstDayData?.histogram) &&
-    isUndefined(data.currentDayData?.histogram)
-  ) {
+  if (charts.length === 0) {
     return (
       <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full">
         <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
@@ -66,121 +106,55 @@ const DataDistributionHistogram = ({
     );
   }
 
-  const dataEntries = Object.entries(data).filter(
-    ([, columnProfile]) => !isUndefined(columnProfile?.histogram)
-  );
-
   return (
     <div className="tw:flex tw:w-full" data-testid="chart-container">
-      {dataEntries.map(([key, columnProfile], index) => {
-        const histogramData =
-          (columnProfile?.histogram as HistogramClass) ||
-          DEFAULT_HISTOGRAM_DATA;
-
-        const graphData = histogramData.frequencies?.map((frequency, i) => ({
-          name: histogramData?.boundaries?.[i],
-          frequency,
-        }));
-
-        const graphDate = customFormatDateTime(
-          columnProfile?.timestamp || 0,
-          'MMM dd, yyyy'
-        );
-
-        let skewColor: 'success' | 'error' | 'blue' = 'blue';
-        if (columnProfile?.nonParametricSkew) {
-          skewColor = columnProfile.nonParametricSkew > 0 ? 'success' : 'error';
-        }
-
-        const colClassName = classNames(
-          'tw:min-w-0 tw:flex tw:flex-col tw:pt-2 tw:pb-2',
-          showSingleGraph
-            ? 'tw:flex-1 tw:basis-full tw:px-4'
-            : 'tw:flex-1 tw:basis-1/2 tw:px-3',
-          {
-            'tw:border-r tw:border-border-secondary':
-              !showSingleGraph && index === 0,
-          }
-        );
-
-        return (
-          <div className={colClassName} key={key}>
-            <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
-              <Badge
-                className="tw:font-semibold"
-                color="gray"
-                data-testid="date"
-                size="lg"
-                type="color">
-                {graphDate}
-              </Badge>
-              <Badge
-                className="tw:font-semibold"
-                color={skewColor}
-                size="lg"
-                type="color">
-                {`${t('label.skew')}: ${
-                  columnProfile?.nonParametricSkew || '--'
-                }`}
-              </Badge>
-            </div>
-            <div className="tw:flex-1 tw:min-h-87.5">
-              <ResponsiveContainer
-                debounce={200}
-                height="100%"
-                id={`${key}-histogram`}
-                width="100%">
-                <BarChart
-                  data={graphData}
-                  margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-                  <CartesianGrid
-                    horizontal={renderHorizontalGridLine}
-                    stroke={grid}
-                    strokeDasharray="3 3"
-                    vertical={false}
-                  />
-                  <XAxis
-                    axisLine={false}
-                    dataKey="name"
-                    padding={{ left: 16, right: 16 }}
-                    tick={{ fill: axis, fontSize: 12 }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    allowDataOverflow
-                    axisLine={false}
-                    padding={{ top: 16, bottom: 16 }}
-                    tick={{ fill: axis, fontSize: 12 }}
-                    tickFormatter={(props) => axisTickFormatter(props)}
-                    tickLine={false}
-                  />
-                  <Legend />
-                  <Tooltip
-                    content={
-                      <CustomDQTooltip
-                        displayDateInHeader={false}
-                        timeStampKey="name"
-                        valueFormatter={(value) => tooltipFormatter(value)}
-                      />
-                    }
-                    cursor={{
-                      fill: cursorFill,
-                      stroke: grid,
-                      strokeDasharray: '3 3',
-                    }}
-                  />
-                  <Bar
-                    barSize={22}
-                    dataKey="frequency"
-                    fill={primary}
-                    radius={[8, 8, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+      {charts.map((chart, index) => (
+        <div
+          className={classNames(
+            'tw:min-w-0 tw:flex tw:flex-col tw:pt-2 tw:pb-2',
+            showSingleGraph
+              ? 'tw:flex-1 tw:basis-full tw:px-4'
+              : 'tw:flex-1 tw:basis-1/2 tw:px-3',
+            {
+              'tw:border-r tw:border-border-secondary':
+                !showSingleGraph && index === 0,
+            }
+          )}
+          key={chart.key}>
+          <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
+            <Badge
+              className="tw:font-semibold"
+              color="gray"
+              data-testid="date"
+              size="lg"
+              type="color">
+              {chart.date}
+            </Badge>
+            <Badge
+              className="tw:font-semibold"
+              color={chart.skewColor}
+              size="lg"
+              type="color">
+              {`${t('label.skew')}: ${chart.skew || '--'}`}
+            </Badge>
           </div>
-        );
-      })}
+          <div
+            className="tw:flex-1 tw:min-h-87.5"
+            id={`${chart.key}-histogram`}>
+            <BarChart
+              ariaLabel={`${t('label.frequency')} ${chart.date}`}
+              data={chart.rows}
+              height={CHART_HEIGHT}
+              legend={LEGEND_SHOWN}
+              radius={8}
+              series={series}
+              tooltip={TOOLTIP}
+              xKey="name"
+              yAxis={Y_AXIS}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 };
