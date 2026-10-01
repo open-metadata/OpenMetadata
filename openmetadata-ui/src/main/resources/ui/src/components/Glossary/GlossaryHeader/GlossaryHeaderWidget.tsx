@@ -15,7 +15,6 @@ import {
   GlossaryTerm as GlossaryTermIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 
@@ -29,20 +28,12 @@ export const GlossaryHeaderWidget = ({
   const icon = useMemo(() => {
     if (isGlossary) {
       return (
-        <GlossaryIcon
-          className="align-middle"
-          color={DE_ACTIVE_COLOR}
-          size={36}
-        />
+        <GlossaryIcon className="align-middle tw:text-quaternary" size={36} />
       );
     }
 
     return (
-      <GlossaryTermIcon
-        className="align-middle"
-        color={DE_ACTIVE_COLOR}
-        size={36}
-      />
+      <GlossaryTermIcon className="align-middle tw:text-quaternary" size={36} />
     );
   }, [isGlossary]);
 

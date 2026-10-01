@@ -34,7 +34,6 @@ import { ManageButtonItemLabel } from '../../../components/common/ManageButtonCo
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -565,11 +564,7 @@ const GlossaryHeader = ({
   const icon = useMemo(() => {
     if (isGlossary) {
       return (
-        <GlossaryIcon
-          className="align-middle"
-          color={DE_ACTIVE_COLOR}
-          size={36}
-        />
+        <GlossaryIcon className="align-middle tw:text-quaternary" size={36} />
       );
     }
 
@@ -578,8 +573,7 @@ const GlossaryHeader = ({
         className="align-middle"
         fallback={
           <GlossaryTermIcon
-            className="align-middle"
-            color={DE_ACTIVE_COLOR}
+            className="align-middle tw:text-quaternary"
             size={36}
           />
         }
