@@ -227,8 +227,8 @@ v1 → v2 mapping:
 Added beyond v1: `ingest.repeat`, `sample.values.replacement`. v1's usage config builder was never called,
 so usage, query-log lineage and stored-procedure lineage stay out of scope.
 
-Snowflake reports every integer and fixed-point column as `NUMBER(p, s)`, a synonym of `DECIMAL`, and OM
-has always ingested it as `DECIMAL`. `VARIANT` and `OBJECT` are `JSON` and every `TIMESTAMP` variant is
+Snowflake reports every integer and fixed-point column as `NUMBER(p, s)`, a synonym of `DECIMAL`, and
+ingestion has always stored it as `DECIMAL`. `VARIANT` and `OBJECT` are `JSON` and every `TIMESTAMP` variant is
 `TIMESTAMP`, as the type parser declares for Snowflake. Table-level profile metrics come from
 `INFORMATION_SCHEMA.TABLES` and describe the whole table, so a partitioned profile shows its window in
 column metrics only.

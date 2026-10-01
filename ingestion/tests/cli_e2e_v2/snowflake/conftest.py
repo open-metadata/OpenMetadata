@@ -142,7 +142,7 @@ def snowflake_sample_table(snowflake_source):
 
 @pytest.fixture
 def snowflake_tag(request, snowflake_source, om):
-    """A tag unique to this test, and removal of the OM classification its ingestion creates."""
+    """A tag unique to this test, and removal of the classification its ingestion creates on the server."""
     name = f"E2E_SENSITIVITY_{uuid.uuid4().hex[:12].upper()}"
     snowflake_source.run(f"CREATE TAG {snowflake_source.qualified}.{name} ALLOWED_VALUES 'PII', 'PUBLIC'")
 

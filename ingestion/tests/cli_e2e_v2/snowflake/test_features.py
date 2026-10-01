@@ -60,7 +60,7 @@ def test_stored_procedures_and_udfs(cli, snowflake):
 def test_source_tags_on_schema_table_and_column(cli, snowflake, snowflake_tag):
     """A Snowflake tag holds one value per object, and a table without its own value inherits the schema's.
 
-    Column tags stay direct: OM keeps a table's tags on the table instead of copying them to every column.
+    Column tags stay direct: a table's tags stay on the table instead of being copied to every column.
     """
     qualified = snowflake.source.qualified
     tag = f"{qualified}.{snowflake_tag}"

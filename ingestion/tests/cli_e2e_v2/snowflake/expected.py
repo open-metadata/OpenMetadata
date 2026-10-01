@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Expected OM catalog derived from authored Snowflake declarations and an independent type map."""
+"""Expected persisted catalog derived from authored Snowflake declarations and an independent type map."""
 
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 SNOWFLAKE_TYPE_MAP: TypeMap = {
     **CORE_TYPE_MAP,
     # Snowflake stores every integer as NUMBER(38, 0) and every fixed-point type as NUMBER(p, s).
-    # NUMBER, DECIMAL and NUMERIC are synonyms there, and OM has always ingested them as DECIMAL.
+    # NUMBER, DECIMAL and NUMERIC are synonyms there, and ingestion has always stored them as DECIMAL.
     Integer: DataType.DECIMAL,
     BigInteger: DataType.DECIMAL,
     SmallInteger: DataType.DECIMAL,

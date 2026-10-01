@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Live Snowflake schema isolation, owned cleanup, helper scoping and shim fidelity (no OpenMetadata server)."""
+"""Live Snowflake schema isolation, owned cleanup, helper scoping and shim fidelity (no metadata server)."""
 
 import pytest
 from sqlalchemy import text

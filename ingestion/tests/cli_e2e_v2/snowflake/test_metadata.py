@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Real Snowflake source to CLI to persisted OpenMetadata metadata scenarios.
+"""Real Snowflake source to CLI to persisted metadata scenarios.
 
 Routines live in ACCOUNT_USAGE only, so these runs set `includeStoredProcedures=False`
 and leave routine coverage to the shim-backed `procedure.code` scenario.
@@ -56,7 +56,7 @@ def test_catalog(cli, snowflake):
 
 @pytest.mark.e2e_contract("fk.relationships")
 def test_foreign_key(cli, snowflake):
-    """Snowflake keeps foreign keys only as metadata, and OM must still persist the relationship."""
+    """Snowflake keeps foreign keys only as metadata, and ingestion must still persist the relationship."""
     cli.run(snowflake.invocation(_metadata()))
     expect.poll(snowflake.table_query("TRANSACTIONS")).satisfies(
         table_has_foreign_key(("CUSTOMER_ID",), (snowflake.column_fqn("CUSTOMERS", "ID"),))
