@@ -16,7 +16,7 @@ import {
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Bell01 } from '@untitledui/icons';
+import { Bell01 } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Collapse, Dropdown, Row, Skeleton, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';

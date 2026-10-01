@@ -27,7 +27,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { UploadCloud01 } from '@untitledui/icons';
+import { UploadCloud01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';

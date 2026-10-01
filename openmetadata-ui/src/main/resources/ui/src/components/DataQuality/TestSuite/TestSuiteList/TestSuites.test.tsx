@@ -388,8 +388,8 @@ jest.mock(
   })
 );
 
-jest.mock('@untitledui/icons', () => ({
-  SearchLg: () => <span data-testid="search-icon" />,
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Search: () => <span data-testid="search-icon" />,
 }));
 
 jest.mock('../../SummaryPannel/PieChartSummaryPanel.component', () => ({

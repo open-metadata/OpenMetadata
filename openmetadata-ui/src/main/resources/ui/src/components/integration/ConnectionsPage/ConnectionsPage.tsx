@@ -18,7 +18,11 @@ import {
   Input,
   PageLayout,
 } from '@openmetadata/ui-core-components';
-import { LayoutGrid01, List, SearchLg } from '@untitledui/icons';
+import {
+  LayoutGrid01,
+  List,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -182,7 +186,7 @@ const ConnectionsPage: React.FC = () => {
             <div className="tw:w-[280px]">
               <Input
                 fontSize="sm"
-                icon={SearchLg}
+                icon={Search}
                 iconClassName="tw:size-[18px]!"
                 inputClassName="tw:h-11! tw:py-0! tw:text-[15px]!"
                 inputDataTestId="search-connections-input"

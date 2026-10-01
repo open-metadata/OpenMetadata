@@ -17,7 +17,7 @@ import { LineageData } from '../../../../interface/lineage.interface';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import LineageTabContent from './LineageTabContent';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronRight: jest
     .fn()
     .mockImplementation((props: React.SVGProps<SVGSVGElement>) => (

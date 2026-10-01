@@ -23,6 +23,7 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import i18n, { t } from '../../../utils/i18next/LocalUtil';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 
 const SummaryPanelSkeleton = withSuspenseFallback(
@@ -106,7 +107,7 @@ const KnowledgePageSummary = ({
                 <Link
                   className="text-primary"
                   target="_blank"
-                  to={quickLinkData.url}>
+                  to={getSafeHttpUrl(quickLinkData.url) ?? '#'}>
                   {quickLinkData.url}
                 </Link>
               </Col>

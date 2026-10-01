@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from '@openmetadata/ui-core-components';
-import { UploadCloud01 } from '@untitledui/icons';
+import { UploadCloud01 } from '@openmetadata/ui-core-components/icons';
 import { Space, UploadProps } from 'antd';
 import type { RcFile } from 'antd/lib/upload';
 import Dragger from 'antd/lib/upload/Dragger';

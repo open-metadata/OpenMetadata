@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Badge, Tooltip } from '@openmetadata/ui-core-components';
-import { Link } from '@openmetadata/ui-core-components/icons';
+import { Link01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
 import { VersionStatus } from '../../../utils/EntityVersionUtils.interface';
@@ -80,7 +80,7 @@ export const ReferenceBadge = ({
           color={color}
           size="sm"
           type="color">
-          <Link
+          <Link01
             className="tw:size-3.5 tw:shrink-0"
             data-testid="external-link-icon"
           />

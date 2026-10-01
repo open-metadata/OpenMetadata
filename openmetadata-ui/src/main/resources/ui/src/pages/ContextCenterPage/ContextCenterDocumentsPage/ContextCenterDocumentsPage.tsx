@@ -16,7 +16,7 @@ import {
   EmptyPlaceholder,
   PageLayout,
 } from '@openmetadata/ui-core-components';
-import { Stars01 } from '@untitledui/icons';
+import { Stars01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';

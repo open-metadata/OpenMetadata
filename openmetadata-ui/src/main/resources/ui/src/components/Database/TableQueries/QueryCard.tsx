@@ -12,7 +12,7 @@
  */
 
 import { Card, Typography } from '@openmetadata/ui-core-components';
-import { Copy } from '@openmetadata/ui-core-components/icons';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
@@ -263,7 +263,7 @@ const QueryCard: FC<QueryCardProp> = ({
                 <Button
                   className="flex-center"
                   data-testid="query-entity-copy-button"
-                  icon={<Copy size={16} />}
+                  icon={<Copy01 size={16} />}
                   onClick={onCopyToClipBoard}
                 />
               </Tooltip>

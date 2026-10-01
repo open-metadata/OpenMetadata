@@ -12,7 +12,7 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { GitMerge, X } from '@untitledui/icons';
+import { GitMerge, X } from '@openmetadata/ui-core-components/icons';
 import { Button, Tooltip } from 'antd';
 import { TFunction } from 'i18next';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
