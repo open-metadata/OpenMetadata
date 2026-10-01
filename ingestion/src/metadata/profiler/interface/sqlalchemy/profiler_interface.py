@@ -49,7 +49,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.metrics.core import HybridMetric, MetricTypes
+from metadata.profiler.metrics.core import HybridMetric, MetricTypes, StaticMetric
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.mean import Mean
@@ -165,7 +165,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     @staticmethod
     def _compute_static_metrics_wo_sum(
-        metrics: list[Metrics],
+        metrics: list[type[StaticMetric]],
         runner: QueryRunner,
         session,
         column: Column,
