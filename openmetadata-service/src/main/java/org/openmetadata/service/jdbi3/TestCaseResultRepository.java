@@ -9,11 +9,11 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -55,6 +55,13 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
         ctx.op = 'noop';
       }
       """;
+
+  /** Group-by field of the latest-result-per-test-case listings. */
+  public static final String LATEST_PER_TEST_CASE = "testCaseFQN.keyword";
+
+  // A result's test case, its table and its type never change between its results.
+  private static final Set<String> TEST_CASE_INVARIANT_PARAMS =
+      Set.of("entityFQN", "testCaseFQN", "testCaseType");
   public static final String TEST_CASE_INDEX_FIELDS =
       "testDefinition,testSuite,testSuites,owners,tags,followers";
   private static final int STATUS_UPDATE_ATTEMPTS = 3;
@@ -400,6 +407,11 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     return Arrays.asList(INCLUDE_SEARCH_FIELDS.split(","));
   }
 
+  @Override
+  protected Set<String> getGroupInvariantParams(String groupBy) {
+    return LATEST_PER_TEST_CASE.equals(groupBy) ? TEST_CASE_INVARIANT_PARAMS : Set.of();
+  }
+
   protected void deleteAllTestCaseResults(String fqn) {
     deleteAllTestCaseResults(List.of(fqn));
   }
@@ -442,21 +454,5 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       // Store each dimensional result
       dimensionResultRepository.storeDimensionResult(testCaseFQN, dimResult);
     }
-  }
-
-  public boolean hasTestCaseFailure(String fqn) throws IOException {
-    ResultList<TestCaseResult> testCaseResultResults =
-        listLatestFromSearch(
-            EntityUtil.Fields.EMPTY_FIELDS,
-            new SearchListFilter().addQueryParam("entityFQN", fqn),
-            "testCaseFQN.keyword",
-            null,
-            null,
-            null,
-            null,
-            null);
-    return testCaseResultResults.getData().stream()
-        .anyMatch(
-            testCaseResult -> testCaseResult.getTestCaseStatus().equals(TestCaseStatus.Failed));
   }
 }

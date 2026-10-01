@@ -18,9 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 // The core-components icon barrel re-exports the design team's own SVG set
-// only; it carries no trend glyph, so this one comes from the shared
-// `@untitledui/icons` both packages pin at the same range.
-import { TrendUp02 } from '@untitledui/icons';
+import { TrendUp02 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

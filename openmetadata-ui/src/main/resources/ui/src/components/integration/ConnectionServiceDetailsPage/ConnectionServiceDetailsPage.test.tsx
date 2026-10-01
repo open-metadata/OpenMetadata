@@ -385,7 +385,7 @@ jest.mock('./DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Settings01: () => null,
 }));
 

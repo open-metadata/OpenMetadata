@@ -77,6 +77,12 @@ export const RESULT_METRIC_BY_DEFINITION: Record<string, ResultMetric> = {
   },
 };
 
+/**
+ * Shown where a run has no value to report. An em dash, as in the mock, rather
+ * than NO_DATA_PLACEHOLDER's '--': nothing to report is not missing data.
+ */
+export const NO_VALUE = '—';
+
 export const DEFAULT_RESULT_METRIC: ResultMetric = {
   labelKey: 'label.result-metric-values',
 };

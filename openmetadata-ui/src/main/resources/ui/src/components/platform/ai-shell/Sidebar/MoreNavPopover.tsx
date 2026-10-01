@@ -17,7 +17,7 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { DotsHorizontal } from '@untitledui/icons';
+import { DotsHorizontal } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

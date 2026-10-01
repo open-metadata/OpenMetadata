@@ -174,6 +174,23 @@ def test_auto_classification_tags_pii_columns(cli, oracle):
             id="mix",
             marks=pytest.mark.e2e_contract("filter.table.mix"),
         ),
+        pytest.param(
+            {"tableFilterPattern": {"includes": ["customer.*"], "excludes": ["customer_txn.*"]}},
+            {"CUSTOMERS"},
+            id="regex-exclude-wins",
+            marks=pytest.mark.e2e_contract("filter.table.regex-exclude-wins"),
+        ),
+        pytest.param(
+            {
+                "tableFilterPattern": {
+                    "includes": [".*"],
+                    "excludes": ["transactions", "all_types", "customer_txn_summary"],
+                }
+            },
+            {"CUSTOMERS"},
+            id="exclude-wins",
+            marks=pytest.mark.e2e_contract("filter.table.exclude-wins"),
+        ),
     ],
 )
 def test_table_filter(filters, expected_tables, cli, oracle):
@@ -182,18 +199,32 @@ def test_table_filter(filters, expected_tables, cli, oracle):
     expect.poll(oracle.catalog_query()).satisfies(catalog_matches(expected))
 
 
-@pytest.mark.e2e_contract("filter.schema.include-one")
-def test_schema_filter_include_one(cli, oracle, oracle_admin_engine, oracle_ingestion_engine):
+@pytest.mark.parametrize(
+    "filter_kind",
+    [
+        pytest.param("include-one", marks=pytest.mark.e2e_contract("filter.schema.include-one")),
+        pytest.param("exclude-wins", marks=pytest.mark.e2e_contract("filter.schema.exclude-wins")),
+    ],
+)
+def test_schema_filter(filter_kind, cli, oracle, oracle_admin_engine, oracle_ingestion_engine):
+    """Only the owned schema is ingested, whether selected by include or by exclude priority."""
     with fresh_oracle_source(oracle_admin_engine) as excluded:
         # Prove both schemas are populated and readable before trusting the exclusion.
         for source in (oracle.source, excluded):
             with oracle_ingestion_engine.connect() as connection:
                 assert connection.execute(text(f"SELECT COUNT(*) FROM {source.schema}.customers")).scalar_one() == 5
-        invocation = oracle.invocation(
-            MetadataPipeline(includeDDL=True, includeStoredProcedures=True),
-            sources=(oracle.source, excluded),
-            filters={"schemaFilterPattern": {"includes": [f"^{oracle.source.schema}$"]}},
+        pattern = {"includes": [f"^{oracle.source.schema}$"]}
+        if filter_kind == "exclude-wins":
+            pattern = {
+                "includes": [f"^{oracle.source.schema}$", f"^{excluded.schema}$"],
+                "excludes": [f"^{excluded.schema}$"],
+            }
+        cli.run(
+            oracle.invocation(
+                MetadataPipeline(includeDDL=True, includeStoredProcedures=True),
+                sources=(oracle.source, excluded),
+                filters={"schemaFilterPattern": pattern},
+            )
         )
-        cli.run(invocation)
         expected = oracle_expected(oracle.service_name, schema=oracle.source.schema)
         expect.poll(oracle.catalog_query()).satisfies(catalog_matches(expected))

@@ -1053,35 +1053,13 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         getResourceContextById(entityId));
 
     EntityInterface entity = Entity.getEntity(entityType, entityId, "*", Include.NON_DELETED);
-
-    // Get the entity's direct contract (if exists)
-    DataContract directContract = repository.getEntityDataContractSafely(entity);
-
-    // Get the effective contract (with inherited properties)
-    DataContract effectiveContract = repository.getEffectiveDataContract(entity);
-
-    if (effectiveContract == null) {
-      throw EntityNotFoundException.byMessage(
-          String.format("No data contract found for entity %s", entityId));
-    }
-
-    // If entity has no direct contract but has an inherited one, materialize an empty contract
-    DataContract contractForValidation;
-    if (directContract == null && Boolean.TRUE.equals(effectiveContract.getInherited())) {
-      // Materialize an empty contract for this entity to store validation results
-      // Use the Data Product contract name as prefix for the new contract name
-      contractForValidation =
-          repository.materializeInheritedContract(
-              entity, effectiveContract.getName(), securityContext.getUserPrincipal().getName());
-    } else {
-      contractForValidation = directContract != null ? directContract : effectiveContract;
-    }
-
-    // Validate using the effective contract (to include inherited rules)
-    // but store results against the entity's own contract
-    RestUtil.PutResponse<DataContractResult> result =
-        repository.validateContractWithEffective(contractForValidation, effectiveContract);
-    return result.toResponse();
+    return repository
+        .validateEntityContract(entity, securityContext.getUserPrincipal().getName())
+        .orElseThrow(
+            () ->
+                EntityNotFoundException.byMessage(
+                    String.format("No data contract found for entity %s", entityId)))
+        .toResponse();
   }
 
   // Add runId and dataContractFQN to the result if not incoming

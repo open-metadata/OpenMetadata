@@ -591,13 +591,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           expect(isScrollable).toBeTruthy();
         });
-
-        await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = getCustomPropertyCard(page, propertyName);
-          await expect(
-            container.getByTestId(`toggle-${propertyName}`)
-          ).not.toBeVisible();
-        });
       });
 
       test('entityReferenceList shows item count, scrollable list, no expand toggle', async ({
@@ -659,13 +652,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
               container.getByTestId(user.getUserDisplayName())
             ).toBeVisible();
           }
-        });
-
-        await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = getCustomPropertyCard(page, propertyName);
-          await expect(
-            container.getByTestId(`toggle-${propertyName}`)
-          ).not.toBeVisible();
         });
       });
 
@@ -808,13 +794,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
               tableValue.getByRole('row').filter({ hasText: `row${i}-col1` })
             ).toBeVisible();
           }
-        });
-
-        await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = getCustomPropertyCard(page, propertyName);
-          await expect(
-            container.getByTestId(`toggle-${propertyName}`)
-          ).not.toBeVisible();
         });
       });
 

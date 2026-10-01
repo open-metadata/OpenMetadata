@@ -28,18 +28,26 @@ def _sample_options() -> AutoClassificationPipeline:
     return AutoClassificationPipeline(storeSampleData=True, enableAutoClassification=False, sampleDataCount=10)
 
 
-@pytest.mark.e2e_contract("sample.values.original")
-def test_persisted_native_sample_values(cli, oracle):
-    """Sample data for the seeded Oracle-native row is persisted with the declared value."""
+@pytest.mark.parametrize(
+    "int_value",
+    [
+        pytest.param(123456, id="original", marks=pytest.mark.e2e_contract("sample.values.original")),
+        pytest.param(654321, id="updated", marks=pytest.mark.e2e_contract("sample.values.updated")),
+    ],
+)
+def test_persisted_native_sample_values(int_value, cli, oracle):
+    """Sample data reflects the Oracle-native value currently in the source."""
     cli.run(oracle.invocation(MetadataPipeline(includeStoredProcedures=False), filters=_FILTERS))
     table = expect.poll(oracle.table_query("ALL_TYPES")).satisfies(entity_exists)
+    if int_value != 123456:
+        oracle.source.set_value("all_types", 1, "number_int_col", int_value)
 
     cli.run(oracle.invocation(_sample_options(), filters=_FILTERS))
 
     def values_match(sampled):
         rows = native_sample_rows(sampled)
         actual = {key: row["number_int_col"] for key, row in rows.items()}
-        assert actual == {1: 123456, 2: None, 3: None}, f"number_int_col samples: {actual!r}"
+        assert actual == {1: int_value, 2: None, 3: None}, f"number_int_col samples: {actual!r}"
 
     expect.poll(sample_query(oracle.om, table)).satisfies(values_match)
 

@@ -13,7 +13,7 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Edit05, XCircle } from '@untitledui/icons';
+import { Edit05, XCircle } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';

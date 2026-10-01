@@ -19,7 +19,7 @@ import {
   ProgressBar,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@untitledui/icons';
+import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import {
   OntologyBulkJob,

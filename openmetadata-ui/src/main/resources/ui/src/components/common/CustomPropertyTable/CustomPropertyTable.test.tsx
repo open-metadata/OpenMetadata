@@ -15,6 +15,7 @@ import {
   screen,
   waitFor,
   waitForElementToBeRemoved,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
@@ -43,10 +44,6 @@ const mockCustomProperties = [
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
-}));
-
-jest.mock('./PropertyValue', () => ({
-  PropertyValue: jest.fn().mockReturnValue(<div>PropertyValue</div>),
 }));
 
 jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
@@ -174,10 +171,15 @@ describe('Test CustomProperty Table Component', () => {
     expect(
       await screen.findByTestId('custom-property-xName-card')
     ).toBeInTheDocument();
-    expect(screen.queryByText('PropertyValue')).not.toBeInTheDocument();
   });
 
-  it('Should render the legacy property values in version view', async () => {
+  it('Should render read-only property rows in version view', async () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: { extension: { xName: 'Data Platform' } },
+      onUpdate: jest.fn(),
+      filterWidgets: jest.fn(),
+    });
+
     await act(async () => {
       renderWithQueryClient(
         <CustomPropertyTable
@@ -188,7 +190,13 @@ describe('Test CustomProperty Table Component', () => {
       );
     });
 
-    expect(await screen.findByText('PropertyValue')).toBeInTheDocument();
+    const row = await screen.findByTestId('custom-property-xName-row');
+
+    expect(within(row).getByTestId('property-value')).toHaveTextContent(
+      'Data Platform'
+    );
+    expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('add-value-button')).not.toBeInTheDocument();
   });
 
   it('Should save an edited value as the merged entity extension', async () => {
