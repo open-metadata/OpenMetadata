@@ -390,7 +390,6 @@ export class OverviewPageObject extends RightPanelBase {
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
     await this.userSearchBar.waitFor({ state: 'visible' });
-    await this.userSearchBar.scrollIntoViewIfNeeded();
 
     const searchUser = this.page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
@@ -420,7 +419,6 @@ export class OverviewPageObject extends RightPanelBase {
   async editOwners(ownerName: string): Promise<OverviewPageObject> {
     await this.openOwnerSelector();
     await expect(this.userSearchBar).toBeVisible();
-    await this.userSearchBar.scrollIntoViewIfNeeded();
     await this.userSearchBar.fill(ownerName);
     await this.loader.waitFor({ state: 'hidden' });
     await this.userListItem
@@ -496,7 +494,6 @@ export class OverviewPageObject extends RightPanelBase {
 
   private async openOwnerSelector(): Promise<void> {
     await this.waitForLoadersToDisappear();
-    await this.editOwnersIcon.scrollIntoViewIfNeeded();
 
     await expect(this.editOwnersIcon).toBeVisible({ timeout: 10_000 });
     await expect(this.editOwnersIcon).toBeEnabled();
