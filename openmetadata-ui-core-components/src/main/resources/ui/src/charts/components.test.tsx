@@ -195,6 +195,34 @@ describe('BarChart', () => {
       expect.anything()
     );
   });
+  it('reports a category label click, and still maps bar clicks to rows', () => {
+    const onCategoryClick = vi.fn();
+    const onPointClick = vi.fn();
+    render(
+      <BarChart
+        ariaLabel="Runs"
+        data={rows}
+        layout="horizontal"
+        series={series}
+        xKey="day"
+        onCategoryClick={onCategoryClick}
+        onPointClick={onPointClick}
+      />
+    );
+    clickHost({
+      componentType: 'yAxis',
+      value: 'Tue',
+    } as Partial<ECElementEvent>);
+    clickHost({ componentType: 'series', dataIndex: 0, seriesId: 'passed' });
+
+    expect(onCategoryClick).toHaveBeenCalledWith('Tue', expect.anything());
+    expect(onPointClick).toHaveBeenCalledWith(
+      rows[0],
+      'passed',
+      expect.anything()
+    );
+    expect(onPointClick).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('ComposedChart', () => {

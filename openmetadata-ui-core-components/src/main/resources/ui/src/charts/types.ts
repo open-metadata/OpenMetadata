@@ -166,6 +166,13 @@ export interface CartesianBuildInput<T extends object> {
   referenceLines?: ChartReferenceLine[];
   /** `'auto'` turns zoom on above 15 points. Defaults to false. */
   zoom?: boolean | 'auto';
+  /**
+   * With zoom on, how many points the window shows at first; `'auto'` turns
+   * zoom on above this many. Defaults to 15.
+   */
+  zoomVisiblePoints?: number;
+  /** Category-axis labels emit click events. Set by `onCategoryClick`. */
+  categoryClickable?: boolean;
   /** Merged into the built option last. Objects merge, arrays replace. */
   option?: ChartOption;
   /** Bar charts only. */

@@ -203,9 +203,10 @@ export const gridFor = ({
 
 export const dataZoomFor = (
   pointCount: number,
-  { legend, horizontal }: Omit<GridLayout, 'hasZoom'>
+  { legend, horizontal }: Omit<GridLayout, 'hasZoom'>,
+  visiblePoints = DATAZOOM_THRESHOLD
 ): DataZoomComponentOption[] => {
-  const end = Math.min(100, (DATAZOOM_THRESHOLD / pointCount) * 100);
+  const end = Math.min(100, (visiblePoints / pointCount) * 100);
   const legendBottom = Boolean(legend?.show) && legend?.top !== 0;
   const axis = horizontal ? { yAxisIndex: 0 } : { xAxisIndex: 0 };
   const slider = horizontal

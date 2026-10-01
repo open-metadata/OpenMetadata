@@ -43,12 +43,14 @@ export const CartesianChartBase = <T extends object>({
   legend,
   referenceLines,
   zoom,
+  zoomVisiblePoints,
   option,
   layout,
   getBarStatus,
   showValueLabels,
   radius,
   onPointClick,
+  onCategoryClick,
   height,
   isDark,
   loading,
@@ -70,6 +72,8 @@ export const CartesianChartBase = <T extends object>({
           legend,
           referenceLines,
           zoom,
+          zoomVisiblePoints,
+          categoryClickable: Boolean(onCategoryClick),
           option,
           layout,
           getBarStatus,
@@ -90,6 +94,8 @@ export const CartesianChartBase = <T extends object>({
       legend,
       referenceLines,
       zoom,
+      zoomVisiblePoints,
+      onCategoryClick,
       option,
       layout,
       getBarStatus,
@@ -98,20 +104,25 @@ export const CartesianChartBase = <T extends object>({
     ]
   );
 
-  const onEvents = useMemo(
-    () =>
-      onPointClick
-        ? {
-            click: (event: ECElementEvent) => {
-              const datum = data[event.dataIndex];
-              if (datum) {
-                onPointClick(datum, String(event.seriesId), event);
-              }
-            },
-          }
-        : undefined,
-    [data, onPointClick]
-  );
+  const onEvents = useMemo(() => {
+    if (!onPointClick && !onCategoryClick) {
+      return undefined;
+    }
+
+    return {
+      click: (event: ECElementEvent) => {
+        const isAxisLabel =
+          event.componentType === 'xAxis' || event.componentType === 'yAxis';
+        const datum = isAxisLabel ? undefined : data[event.dataIndex];
+        if (isAxisLabel) {
+          onCategoryClick?.(String(event.value), event);
+        }
+        if (datum) {
+          onPointClick?.(datum, String(event.seriesId), event);
+        }
+      },
+    };
+  }, [data, onPointClick, onCategoryClick]);
 
   return (
     <EChart

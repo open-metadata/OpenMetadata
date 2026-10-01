@@ -246,13 +246,17 @@ export const buildCartesianOption = <T extends object>(
   ];
   const names = input.series.map((s) => s.name);
   const legend = legendConfig(names, theme, input.legend);
+  const visiblePoints = input.zoomVisiblePoints ?? DATAZOOM_THRESHOLD;
   const hasZoom =
     input.zoom === true ||
-    (input.zoom === 'auto' && input.data.length > DATAZOOM_THRESHOLD);
+    (input.zoom === 'auto' && input.data.length > visiblePoints);
   const categories = isTime
     ? undefined
     : input.data.map((datum) => String((datum as Datum)[input.xKey]));
-  const category = categoryAxis(categories, theme, input.xAxis, horizontal);
+  const axis = categoryAxis(categories, theme, input.xAxis, horizontal);
+  const category = input.categoryClickable
+    ? { ...axis, triggerEvent: true }
+    : axis;
   const values = valueAxes(theme, input.yAxis, horizontal);
   const valueSlot = values.length === 1 ? values[0] : values;
   const layout = { legend, horizontal };
@@ -274,7 +278,9 @@ export const buildCartesianOption = <T extends object>(
     yAxis: horizontal
       ? (category as YAXisComponentOption)
       : (valueSlot as YAXisComponentOption),
-    ...(hasZoom ? { dataZoom: dataZoomFor(input.data.length, layout) } : {}),
+    ...(hasZoom
+      ? { dataZoom: dataZoomFor(input.data.length, layout, visiblePoints) }
+      : {}),
     series,
   };
 

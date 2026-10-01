@@ -48,10 +48,16 @@ export interface ChartCommonProps {
 export interface CartesianChartProps<T extends object>
   extends Omit<
       CartesianBuildInput<T>,
-      'layout' | 'getBarStatus' | 'showValueLabels' | 'radius'
+      | 'layout'
+      | 'getBarStatus'
+      | 'showValueLabels'
+      | 'radius'
+      | 'categoryClickable'
     >,
     ChartCommonProps {
   onPointClick?: (datum: T, seriesKey: string, event: ECElementEvent) => void;
+  /** A click on a category-axis label. Receives the category value. */
+  onCategoryClick?: (category: string, event: ECElementEvent) => void;
 }
 
 export interface BarChartProps<T extends object>

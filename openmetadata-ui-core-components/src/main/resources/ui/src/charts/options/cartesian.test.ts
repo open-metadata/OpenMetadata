@@ -195,6 +195,47 @@ describe('buildLineOption', () => {
     ]);
   });
 
+  it('sizes the zoom window and the auto threshold from zoomVisiblePoints', () => {
+    const many = Array.from({ length: 600 }, (_, i) => ({
+      day: `d${i}`,
+      passed: i,
+    }));
+    const zoomed = buildBarOption(
+      { ...base, data: many, zoom: 'auto', zoomVisiblePoints: 500 },
+      LIGHT_CHART_THEME
+    );
+    const notZoomed = buildBarOption(
+      {
+        ...base,
+        data: many.slice(0, 500),
+        zoom: 'auto',
+        zoomVisiblePoints: 500,
+      },
+      LIGHT_CHART_THEME
+    );
+    const zooms = zoomed.dataZoom as DataZoomComponentOption[];
+
+    expect(zooms.map((zoom) => zoom.end)).toEqual([
+      (500 / 600) * 100,
+      (500 / 600) * 100,
+    ]);
+    expect(notZoomed.dataZoom).toBeUndefined();
+  });
+
+  it('lets category labels trigger events only when categoryClickable', () => {
+    const clickable = buildBarOption(
+      { ...base, layout: 'horizontal', categoryClickable: true },
+      LIGHT_CHART_THEME
+    );
+    const plain = buildBarOption(
+      { ...base, layout: 'horizontal' },
+      LIGHT_CHART_THEME
+    );
+
+    expect(yAxesOf(clickable)[0].triggerEvent).toBe(true);
+    expect(yAxesOf(plain)[0].triggerEvent).toBeUndefined();
+  });
+
   it('hides dots and smooths lines unless the series says otherwise', () => {
     const option = buildLineOption(
       {
