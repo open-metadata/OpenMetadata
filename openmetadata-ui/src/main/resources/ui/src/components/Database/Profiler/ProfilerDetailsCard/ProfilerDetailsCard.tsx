@@ -40,7 +40,7 @@ import ProfilerLatestValue from '../ProfilerLatestValue/ProfilerLatestValue';
 type MetricRow = MetricChartType['data'][number];
 
 const CHART_HEIGHT = 300;
-// Text columns: min / max are strings, plotted as categories.
+// Date columns: min / max are date strings, plotted as categories.
 const CATEGORY_Y_AXIS: ChartYAxisProps = { type: 'category' };
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
