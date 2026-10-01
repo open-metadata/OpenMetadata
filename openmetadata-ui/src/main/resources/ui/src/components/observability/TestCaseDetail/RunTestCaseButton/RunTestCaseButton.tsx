@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Tooltip } from '@openmetadata/ui-core-components';
-import { Play } from '@untitledui/icons';
+import { Play } from '@openmetadata/ui-core-components/icons';
 import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { TestCase } from '../../../../generated/tests/testCase';

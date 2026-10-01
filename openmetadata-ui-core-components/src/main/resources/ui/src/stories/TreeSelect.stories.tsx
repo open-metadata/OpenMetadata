@@ -12,7 +12,7 @@
  */
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
-import { Edit, GlossaryTerm } from '../icons';
+import { Edit01, GlossaryTerm } from '../icons';
 import { ButtonUtility } from '../components/base/buttons/button-utility';
 import { Card } from '../components/base/card/card';
 import { GlossaryTag } from '../components/application/tag/glossary-tag';
@@ -252,7 +252,7 @@ export const WidgetEditPopover: StoryObj = {
                 renderTrigger={({ toggle }) => (
                   <ButtonUtility
                     color="tertiary"
-                    icon={Edit}
+                    icon={Edit01}
                     size="xs"
                     tooltip="Edit Glossary Terms"
                     onClick={toggle}

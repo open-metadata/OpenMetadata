@@ -18,7 +18,7 @@ import {
   Grid01,
   HeartRounded,
   Star04,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

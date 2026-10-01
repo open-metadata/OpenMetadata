@@ -17,7 +17,7 @@ import {
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@untitledui/icons';
+import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { FormEvent, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
