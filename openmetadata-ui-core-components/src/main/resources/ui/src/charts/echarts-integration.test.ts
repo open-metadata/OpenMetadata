@@ -366,3 +366,28 @@ describe('pie on a real chart', () => {
     expect(arcs(chart)).toBe(1);
   });
 });
+
+describe('category value axis on a real chart', () => {
+  it('draws string values as categories in order of appearance', () => {
+    const chart = mount(
+      buildLineOption(
+        {
+          data: [
+            { day: 'Mon', min: 'apac' },
+            { day: 'Tue', min: 'eu' },
+            { day: 'Wed', min: 'apac' },
+          ],
+          xKey: 'day',
+          ariaLabel: 'Min',
+          series: [{ key: 'min', name: 'Min' }],
+          yAxis: { type: 'category' },
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    const svg = chart.renderToSVGString();
+
+    expect(svg).toContain('apac');
+    expect(svg).toContain('eu');
+  });
+});

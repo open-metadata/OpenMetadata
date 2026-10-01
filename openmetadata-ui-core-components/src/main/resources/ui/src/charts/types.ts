@@ -129,7 +129,14 @@ export type ChartXAxisProps = ChartAxisProps<XAXisComponentOption> & {
   type?: 'category' | 'time';
 };
 
-export type ChartYAxisProps = ChartAxisProps<YAXisComponentOption>;
+export type ChartYAxisProps = ChartAxisProps<YAXisComponentOption> & {
+  /**
+   * `'category'` plots string values (e.g. the min / max of a text column);
+   * categories are collected from the data in order of appearance.
+   * Defaults to `'value'`.
+   */
+  type?: 'value' | 'category';
+};
 
 export interface ChartTooltipProps {
   show?: boolean;

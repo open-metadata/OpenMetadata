@@ -27,6 +27,7 @@ import type {
   ChartReferenceLine,
   ChartTheme,
   ChartTooltipProps,
+  ChartYAxisProps,
 } from '../types';
 import { mergeOption } from './merge';
 
@@ -143,12 +144,17 @@ export const categoryAxis = (
 
 export const valueAxis = (
   theme: ChartTheme,
-  props: ChartAxisProps<YAXisComponentOption> = {},
+  props: ChartYAxisProps = {},
   position: 'left' | 'right' | 'bottom' = 'left'
 ): YAXisComponentOption => {
   const vertical = position !== 'bottom';
+  const isCategory = props.type === 'category';
+  // Category ticks are the values themselves; K/M/B only suits numbers.
+  const formatter =
+    props.formatter ??
+    (isCategory ? undefined : (value: number) => formatYAxisTick(value));
   const base = {
-    type: 'value',
+    type: isCategory ? 'category' : 'value',
     position,
     name: props.label,
     nameLocation: 'middle',
@@ -157,7 +163,7 @@ export const valueAxis = (
     nameTextStyle: { color: theme.axisTitle, fontSize: 12, fontWeight: 500 },
     axisLabel: {
       color: theme.axisTick,
-      formatter: props.formatter ?? ((value: number) => formatYAxisTick(value)),
+      ...(formatter ? { formatter } : {}),
     },
     // A right-hand axis would draw a second, misaligned set of grid lines.
     splitLine: { show: position !== 'right', lineStyle: { color: theme.grid } },

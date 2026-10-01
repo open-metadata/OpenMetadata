@@ -339,6 +339,58 @@ describe('buildLineOption', () => {
     expect(yLabel.formatter(2500)).toBe('2.5K');
   });
 
+  it('keeps string values on a category value axis', () => {
+    const option = buildLineOption(
+      {
+        data: [
+          { day: 'Mon', min: 'apac' },
+          { day: 'Tue', min: '' },
+          { day: 'Wed', min: 'eu' },
+          { day: 'Thu', min: 42 },
+        ],
+        xKey: 'day',
+        ariaLabel: 'Min',
+        series: [{ key: 'min', name: 'Min' }],
+        yAxis: { type: 'category' },
+      },
+      LIGHT_CHART_THEME
+    );
+
+    expect(yAxesOf(option)[0].type).toBe('category');
+    expect(seriesOf(option)[0].data).toEqual(['apac', null, 'eu', '42']);
+  });
+
+  it('shows raw category ticks unless a formatter is given', () => {
+    const raw = buildLineOption(
+      { ...base, yAxis: { type: 'category' } },
+      LIGHT_CHART_THEME
+    );
+    const formatted = buildLineOption(
+      { ...base, yAxis: { type: 'category', formatter: (v) => `<${v}>` } },
+      LIGHT_CHART_THEME
+    );
+    const rawLabel = yAxesOf(raw)[0].axisLabel as { formatter?: unknown };
+    const formattedLabel = yAxesOf(formatted)[0].axisLabel as {
+      formatter: (v: string) => string;
+    };
+
+    expect(rawLabel.formatter).toBeUndefined();
+    expect(formattedLabel.formatter('eu')).toBe('<eu>');
+  });
+
+  it('still drops non-numeric strings on a value axis', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        data: [{ day: 'Mon', passed: 'apac' as unknown as number }],
+      },
+      LIGHT_CHART_THEME
+    );
+
+    expect(yAxesOf(option)[0].type).toBe('value');
+    expect(seriesOf(option)[0].data).toEqual([null]);
+  });
+
   it('adds a second value axis for series on yAxisIndex 1', () => {
     const option = buildLineOption(
       {

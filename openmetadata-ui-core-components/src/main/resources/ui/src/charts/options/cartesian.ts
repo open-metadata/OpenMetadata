@@ -65,12 +65,37 @@ interface SeriesContext<T extends object> {
   composed: boolean;
 }
 
+// Values on a category axis stay strings; ECharts maps them to categories.
+const categoryValue = (value: unknown): string | null =>
+  value === null || value === undefined || value === ''
+    ? null
+    : String(value);
+
+const isCategoryValueAxis = <T extends object>(
+  input: CartesianBuildInput<T>,
+  axisIndex: number
+): boolean => {
+  if (input.layout === 'horizontal') {
+    return false;
+  }
+  const axis = Array.isArray(input.yAxis)
+    ? input.yAxis[axisIndex]
+    : axisIndex === 0
+    ? input.yAxis
+    : undefined;
+
+  return axis?.type === 'category';
+};
+
 const pointValue = <T extends object>(
   ctx: SeriesContext<T>,
   datum: T,
-  key: string
+  series: ChartSeries
 ) => {
-  const value = toNumberOrNull((datum as Datum)[key]);
+  const raw = (datum as Datum)[series.key];
+  const value = isCategoryValueAxis(ctx.input, series.yAxisIndex ?? 0)
+    ? categoryValue(raw)
+    : toNumberOrNull(raw);
 
   return ctx.isTime ? [(datum as Datum)[ctx.input.xKey], value] : value;
 };
@@ -111,7 +136,7 @@ const barSeries = <T extends object>(
     label: barLabel(ctx),
     ...(ctx.composed ? { z: Z_BAR } : {}),
     data: input.data.map((datum, index) => {
-      const value = pointValue(ctx, datum, series.key);
+      const value = pointValue(ctx, datum, series);
       const status = input.getBarStatus?.(datum, index);
 
       return status
@@ -136,7 +161,7 @@ const lineSeries = <T extends object>(
   areaStyle: filled ? { color: areaGradient(color) } : undefined,
   ...(ctx.composed ? { z: Z_LINE } : {}),
   data: ctx.input.data.map((datum) =>
-    pointValue(ctx, datum, series.key)
+    pointValue(ctx, datum, series)
   ) as LineSeriesOption['data'],
 });
 
