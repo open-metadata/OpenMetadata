@@ -697,7 +697,7 @@ const GlossaryHeader = ({
         <Button
           color="primary"
           data-testid="add-new-tag-button-header"
-          size="md"
+          size="sm"
           onPress={handleAddGlossaryTermClick}>
           {t('label.add-entity', { entity: t('label.term-lowercase') })}
         </Button>
@@ -714,7 +714,7 @@ const GlossaryHeader = ({
                     color="primary"
                     data-testid="glossary-term-add-button-menu"
                     iconTrailing={ChevronDown}
-                    size="md">
+                    size="sm">
                     {t('label.add')}
                   </Button>
                 }
@@ -788,8 +788,20 @@ const GlossaryHeader = ({
     }
   }, [id]);
 
+  // Same placement as ContextCenterHeader: classic mode shows the trail (with
+  // Home) above the card, AI mode tucks it inside the card without Home.
+  const breadcrumbEl = (
+    <HeaderBreadcrumb
+      autoCollapse
+      noMargin
+      items={breadcrumbItems}
+      showHome={!isAiMode}
+    />
+  );
+
   return (
     <>
+      {!isAiMode && <div className="tw:mb-3">{breadcrumbEl}</div>}
       <PageHeader
         actions={
           <GlossaryHeaderActions
@@ -808,15 +820,7 @@ const GlossaryHeader = ({
             votes={selectedData.votes}
           />
         }
-        breadcrumb={
-          <HeaderBreadcrumb
-            autoCollapse
-            className="tw:mb-0"
-            items={breadcrumbItems}
-            showHome={false}
-            size="xs"
-          />
-        }
+        breadcrumb={isAiMode ? breadcrumbEl : undefined}
         className="glossary-header"
         data-testid="glossary-header"
         title={

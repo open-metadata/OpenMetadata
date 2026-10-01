@@ -191,30 +191,42 @@ describe('GlossaryHeader component', () => {
     expect(screen.getByText('EntityHeader')).toBeInTheDocument();
   });
 
-  it('should render the core breadcrumb ending with the current entity', () => {
-    const originalData = mockContext.data;
-    mockContext.data = {
-      ...originalData,
-      name: 'glossaryTest',
-      fullyQualifiedName: 'glossaryTest',
-    };
+  it.each([
+    [false, false],
+    [true, true],
+  ])(
+    'should render the breadcrumb ending with the current entity, inside the header card only in AI mode (AI mode: %s)',
+    (isAiMode, isInsideHeader) => {
+      const originalData = mockContext.data;
+      mockContext.data = {
+        ...originalData,
+        name: 'glossaryTest',
+        fullyQualifiedName: 'glossaryTest',
+      };
+      mockIsAiMode.mockReturnValue(isAiMode);
 
-    render(
-      <GlossaryHeader
-        updateVote={mockOnUpdateVote}
-        onAddGlossaryTerm={mockOnDelete}
-        onDelete={mockOnDelete}
-      />
-    );
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
 
-    const breadcrumb = screen.getByTestId('breadcrumb');
+      const breadcrumb = screen.getByTestId('breadcrumb');
 
-    expect(breadcrumb).toHaveTextContent('label.glossary-plural');
-    expect(breadcrumb).toHaveTextContent('glossaryTest');
-    expect(screen.getByTestId('glossary-header')).toContainElement(breadcrumb);
+      expect(breadcrumb).toHaveTextContent('glossaryTest');
+      expect(screen.getByTestId('glossary-header').contains(breadcrumb)).toBe(
+        isInsideHeader
+      );
+      expect(screen.queryByRole('link', { name: 'label.home' }) !== null).toBe(
+        !isAiMode
+      );
 
-    mockContext.data = originalData;
-  });
+      mockContext.data = originalData;
+      mockIsAiMode.mockReturnValue(false);
+    }
+  );
 
   it.each([
     [true, true],
@@ -222,7 +234,7 @@ describe('GlossaryHeader component', () => {
   ])(
     'should render the gradient header background only in AI mode (AI mode: %s)',
     (isAiMode, hasGradient) => {
-      mockIsAiMode.mockReturnValueOnce(isAiMode);
+      mockIsAiMode.mockReturnValue(isAiMode);
 
       render(
         <GlossaryHeader
@@ -237,6 +249,8 @@ describe('GlossaryHeader component', () => {
           .getByTestId('glossary-header')
           .className.includes('linear-gradient')
       ).toBe(hasGradient);
+
+      mockIsAiMode.mockReturnValue(false);
     }
   );
 
