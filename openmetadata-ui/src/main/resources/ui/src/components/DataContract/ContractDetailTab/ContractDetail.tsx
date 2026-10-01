@@ -752,7 +752,6 @@ const ContractDetail: React.FC<{
                 <div className="contract-card-items">
                   <AlertBar
                     defaultExpand
-                    className="h-full"
                     message={latestContractResults?.result ?? ''}
                     type="error"
                   />

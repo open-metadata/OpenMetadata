@@ -12,32 +12,13 @@
  */
 @import (reference) '../../styles/variables.less';
 
-@keyframes resize-show-animation {
-  from {
-    height: 0px;
-    padding: 0 var(--om-space-16);
-  }
-  to {
-    height: max-content;
-    padding: var(--om-space-8) var(--om-space-16);
-  }
-}
-
-@keyframes resize-hide-animation {
-  from {
-    height: max-content;
-    padding: var(--om-space-8) var(--om-space-16);
-  }
-  to {
-    height: 0px;
-    padding: 0 var(--om-space-16);
-  }
-}
-
 .alert-container {
-  height: 0px;
+  display: flex;
+  align-items: center;
+  padding: var(--om-space-8) var(--om-space-16);
   color: @alert-text-color;
   border: 1px solid;
+  border-radius: var(--om-radius-xl);
 
   .alert-message {
     display: -webkit-box;
@@ -67,18 +48,6 @@
     font-size: var(--om-font-size-xl);
     border-radius: 50%;
     padding: var(--om-space-8);
-  }
-
-  &.show-alert {
-    animation: resize-show-animation var(--om-duration-300) ease-in-out forwards;
-    display: flex;
-    align-items: center;
-    border-radius: var(--om-radius-xl);
-    margin-bottom: var(--om-space-12);
-  }
-
-  &.hide-alert {
-    animation: resize-hide-animation var(--om-duration-200) ease-in-out forwards;
   }
 
   &.info {
