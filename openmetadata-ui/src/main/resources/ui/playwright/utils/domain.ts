@@ -28,6 +28,9 @@ import { SubDomain } from '../support/domain/SubDomain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { DashboardServiceClass } from '../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../support/entity/service/MessagingServiceClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { TagClass } from '../support/tag/TagClass';
@@ -50,6 +53,7 @@ import {
   addOwner,
   escapeESReservedCharacters,
   openClassificationTagPicker,
+  visitEntityPageByFqn,
   waitForAllLoadersToDisappear,
 } from './entity';
 import {
@@ -956,7 +960,7 @@ export const addAssetsToDomain = async (
 export const addServicesToDomain = async (
   page: Page,
   domain: Domain['data'],
-  assets: EntityClass[]
+  services: Array<{ name?: string; fullyQualifiedName?: string }>
 ) => {
   await goToAssetsTab(page, domain);
 
@@ -966,10 +970,7 @@ export const addServicesToDomain = async (
   await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
   await assetRes;
 
-  for (const asset of assets) {
-    const name = get(asset, 'name') ?? '';
-    const fqn = get(asset, 'fullyQualifiedName');
-
+  for (const { name = '', fullyQualifiedName: fqn } of services) {
     const searchRes = page.waitForResponse(
       `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
     );
@@ -1048,16 +1049,26 @@ export const addAssetsToDataProduct = async (
 
   await checkAssetsCount(page, assets.length);
 
+  // Data-product page URL to return to after visiting each asset's page.
+  const dataProductUrl = page.url();
+
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
 
-    await page
-      .locator(
-        `[data-testid="table-data-card_${fqn}"] a[data-testid="entity-link"]`
-      )
-      .click();
+    if (!fqn) {
+      throw new Error(
+        `addAssetsToDataProduct verification: asset missing entityResponseData.fullyQualifiedName`
+      );
+    }
 
-    await waitForAllLoadersToDisappear(page);
+    // Navigate to the entity page via URL instead of clicking the
+    // entity-link inside the asset card. The card body re-renders
+    // asynchronously as tags / owners / counts stream in, so `.click()`
+    // retries "element is not stable" for the full test timeout under
+    // SharedInfra load. Direct navigation bypasses the stability race.
+    await visitEntityPageByFqn({ page, endpoint: asset.endpoint, fqn });
 
     await expect(
       page
@@ -1065,10 +1076,12 @@ export const addAssetsToDataProduct = async (
         .getByTestId('data-products-list')
         .getByTestId(`data-product-${dataProductFqn}`)
     ).toBeVisible();
-
-    await page.goBack({ waitUntil: 'domcontentloaded' });
-    await waitForAllLoadersToDisappear(page);
   }
+
+  // Return to the data-product page so the caller's next assertions
+  // (asset count, remove-assets, delete) can run against it.
+  await page.goto(dataProductUrl);
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const removeAssetsFromDataProduct = async (
@@ -1078,9 +1091,37 @@ export const removeAssetsFromDataProduct = async (
 ) => {
   await page.getByTestId('assets').click();
   for (const asset of assets) {
-    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const name = get(asset, 'entityResponseData.name') as string | undefined;
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName') as
+      | string
+      | undefined;
+
+    if (!name || !fqn) {
+      throw new Error(
+        `removeAssetsFromDataProduct: asset missing entityResponseData.name or fullyQualifiedName. Got name=${name}, fqn=${fqn}`
+      );
+    }
+
+    // Narrow to this card so neighbor cards' streaming metadata
+    // (tags/owners/counts) can't reflow the target during .check().
+    // Tab wraps `q=*<value>*`, so match the name anywhere in the URL.
+    const searchRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(name)
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+    await waitForAllLoadersToDisappear(page);
+
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
+
+  // Clear the filter before delete-all so the request URL matches the
+  // helper's wait pattern (a filtered list can otherwise defer or drop
+  // the /assets/remove request).
+  await page.getByTestId('searchbar').clear();
+  await waitForAllLoadersToDisappear(page);
 
   const assetsRemoveRes = page.waitForResponse(
     `/api/v1/dataProducts/${encodeURIComponent(
@@ -1092,11 +1133,25 @@ export const removeAssetsFromDataProduct = async (
   await assetsRemoveRes;
 };
 
-export const setupAssetsForDomain = async (page: Page) => {
+/**
+ * `ownServices` gives each asset its own service — pass it when the test
+ * assigns the domain to the services too; the shared ones would carry every
+ * concurrent test's domain.
+ */
+export const setupAssetsForDomain = async (
+  page: Page,
+  { ownServices = false }: { ownServices?: boolean } = {}
+) => {
   const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
-  const topic = new TopicClass();
-  const dashboard = new DashboardClass();
+  const table = new TableClass(
+    ownServices ? { service: new DatabaseServiceClass() } : {}
+  );
+  const topic = new TopicClass(
+    ownServices ? { service: new MessagingServiceClass() } : {}
+  );
+  const dashboard = new DashboardClass(
+    ownServices ? { service: new DashboardServiceClass() } : {}
+  );
   await Promise.all([
     table.create(apiContext),
     topic.create(apiContext),

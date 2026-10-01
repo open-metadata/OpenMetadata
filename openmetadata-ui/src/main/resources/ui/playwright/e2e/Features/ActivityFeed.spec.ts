@@ -784,7 +784,7 @@ const CHINESE_MENTION_THREAD_MESSAGE =
 test.describe('Mentions: Chinese character encoding in activity feed', () => {
   const database = new DatabaseClass();
   const endpointName = `测试Endpoint-${uuid()}`;
-  const apiEndpoint = new ApiEndpointClass(undefined, endpointName);
+  const apiEndpoint = new ApiEndpointClass({ name: endpointName });
   let schemaFqn: string;
   const userName = `测试-${uuid()}`;
   const chineseMentionUser = new UserClass({
