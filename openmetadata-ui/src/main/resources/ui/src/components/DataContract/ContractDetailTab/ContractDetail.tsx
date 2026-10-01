@@ -816,7 +816,11 @@ const ContractDetail: React.FC<{
                 );
               })()}
 
-              <ContractSLA contract={contract} />
+              <ContractSLA
+                contract={contract}
+                contractStatus={constraintStatus['sla']}
+                latestContractResults={latestContractResults}
+              />
 
               {renderSchemaSection()}
 
