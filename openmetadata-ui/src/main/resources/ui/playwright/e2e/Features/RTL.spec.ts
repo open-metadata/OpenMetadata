@@ -70,10 +70,10 @@ test.describe('Verify RTL Layout for landing page', () => {
     await expect(
       page
         .getByTestId('explore-tree')
-        .locator('span')
+        .getByRole('row')
         .filter({ hasText: serviceType })
         .first()
-    ).toHaveClass(/ant-tree-node-selected/);
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   test('Verify Following widget functionality', async ({ page }) => {

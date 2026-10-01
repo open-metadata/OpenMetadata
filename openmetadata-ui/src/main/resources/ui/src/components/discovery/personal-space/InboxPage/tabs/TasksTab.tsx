@@ -18,8 +18,8 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { CheckCircle, Inbox01 } from '@openmetadata/ui-core-components/icons';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle, Inbox01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { DateRangeObject } from 'Models';
 import React, {

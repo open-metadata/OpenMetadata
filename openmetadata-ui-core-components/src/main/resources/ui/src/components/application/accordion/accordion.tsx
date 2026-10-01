@@ -12,7 +12,7 @@
  */
 import type { ReactNode } from 'react';
 import { useContext } from 'react';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '../../../icons';
 import type {
   ButtonProps as AriaButtonProps,
   DisclosureGroupProps as AriaDisclosureGroupProps,

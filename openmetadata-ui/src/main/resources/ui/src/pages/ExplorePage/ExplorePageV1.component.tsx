@@ -331,19 +331,24 @@ const ExplorePageV1: FC<unknown> = () => {
 
   // Use the utility function to generate tab items
   const tabItems = useMemo(() => {
-    const items = generateTabItems(tabsInfo, searchHitCounts, searchIndex);
+    const items = generateTabItems(tabsInfo, searchHitCounts);
 
+    // Keep the active tab even at zero hits: react-aria Tabs auto-select the
+    // first tab (and fire onSelectionChange) when the selected key is missing.
     return searchQueryParam
-      ? items.filter((tabItem) => {
-          return tabItem.count > 0 || tabItem.key === searchCriteria;
-        })
+      ? items.filter(
+          (tabItem) =>
+            tabItem.count > 0 ||
+            tabItem.key === searchCriteria ||
+            tabItem.key === searchIndex
+        )
       : items;
   }, [
     tabsInfo,
     searchHitCounts,
-    searchIndex,
     searchQueryParam,
     searchCriteria,
+    searchIndex,
   ]);
 
   const getAdvancedSearchQuickFilters = useCallback(() => {
@@ -468,6 +473,11 @@ const ExplorePageV1: FC<unknown> = () => {
         )
       );
     };
+    const finishResultsLoading = () => {
+      if (!isStale()) {
+        setIsLoading(false);
+      }
+    };
     const captureSetSearchResults: typeof setSearchResults = (value) => {
       if (isStale()) {
         return;
@@ -571,6 +581,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
         onNlqAppliedFilters: handleNlqAppliedFilters,
+        onResultsSettled: finishResultsLoading,
         showRankingDetails,
       }).then(commitCacheIfFresh);
 
@@ -603,6 +614,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
         onNlqAppliedFilters: handleNlqAppliedFilters,
+        onResultsSettled: finishResultsLoading,
         showRankingDetails,
       });
       commitCacheIfFresh();

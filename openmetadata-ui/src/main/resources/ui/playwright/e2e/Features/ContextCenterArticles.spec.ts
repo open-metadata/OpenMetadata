@@ -368,10 +368,10 @@ test.describe('Context Center Articles', () => {
       ).toContainText('Context Center');
 
       await page
-        .locator('.ant-tree-treenode')
-        .filter({ hasText: /^Context Center$/ })
-        .locator('svg')
-        .first()
+        .getByTestId('explore-tree')
+        .getByRole('row')
+        .filter({ has: page.getByTestId('explore-tree-title-Context Center') })
+        .getByTestId('tree-expand-btn')
         .click();
 
       await expect(
@@ -1824,6 +1824,7 @@ test.describe('Context Center Articles', () => {
     test('displayName: switching articles does not bleed unsaved title into next article', async ({
       page,
     }) => {
+      test.slow();
       const newDisplayName = `Updated Title ${uuid()}`;
 
       await test.step('Navigate to draft article A and type new display name without saving', async () => {

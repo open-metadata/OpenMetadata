@@ -7,6 +7,7 @@
     "close": "關閉",
     "close-navigation-menu": "關閉導覽選單",
     "copy-link": "複製連結",
+    "count-remaining": "剩餘 {{count}} 項",
     "count-selected": "已選擇 {{count}} 項",
     "current-page": "目前頁面",
     "date-range-picker": "日期範圍選擇器",
@@ -36,6 +37,7 @@
     "select-date": "選取日期",
     "select-dates": "選取日期",
     "select-only-one-row": "選取一列",
+    "show-count-more": "顯示另外 {{count}} 項",
     "show-hidden-breadcrumbs": "顯示隱藏的階層路徑",
     "today": "今天",
     "tree-select": "樹狀選擇"

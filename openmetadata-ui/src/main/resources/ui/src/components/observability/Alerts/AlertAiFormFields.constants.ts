@@ -43,15 +43,6 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
     'tw:[&_[role=group]>div>span]:min-w-0 tw:[&_[role=group]>div>span]:max-w-full',
   card: 'tw:rounded-lg tw:bg-secondary tw:px-4 tw:py-3',
   columnSpanFull: 'tw:col-span-2',
-  customTemplateBodyEditor: 'tw:min-h-[180px]',
-  customTemplateBodyTextArea: 'tw:min-h-[140px]',
-  customTemplateEditorFrame:
-    'tw:overflow-hidden tw:rounded-lg tw:bg-primary tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
-  customTemplateFields: 'tw:flex tw:flex-col tw:gap-3',
-  customTemplateInfoBanner:
-    'tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-3',
-  customTemplateFieldError: 'tw:mt-1 tw:text-sm tw:text-error-primary',
-  customTemplateSubjectFooter: 'tw:mt-1 tw:text-sm tw:text-quaternary',
   descriptionTextArea: 'tw:min-h-[140px]',
   destinationAlert: 'tw:px-4',
   // Stays bg-primary: on bg-surface the core Toggle off-track (bg-tertiary) is the

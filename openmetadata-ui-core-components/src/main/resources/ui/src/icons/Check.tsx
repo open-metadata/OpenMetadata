@@ -32,7 +32,7 @@ export const Check: FC<Props> = ({
     viewBox="0 0 24 24"
     width={size}
     {...props}>
-    <path d="M20 6 9 17l-5-5" stroke="currentColor" strokeWidth={2} />
+    <path d="M20 6 9 17l-5-5" stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 Check.displayName = 'Check';

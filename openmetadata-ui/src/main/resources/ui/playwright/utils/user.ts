@@ -30,7 +30,6 @@ import {
   descriptionBoxReadOnly,
   fillDescriptionBox,
   getAuthContext,
-  getToken,
   redirectToHomePage,
   toastNotification,
   visitOwnProfilePage,
@@ -64,6 +63,17 @@ export const searchUserByEmail = async (
   await expect(page.getByTestId(userName)).toBeVisible();
 };
 
+/**
+ * A signed-in page for `user`, plus an API context authenticated as them.
+ *
+ * Signs in through the API rather than the form. The nine UI interactions
+ * `UserClass.login()` performs are not what any caller of this helper is
+ * testing, and every one of them is a step that can time out — swapping the
+ * mechanism here speeds up and de-flakes every call site without any of them
+ * changing. A spec that is genuinely testing the sign-in *form* should call
+ * `signInThroughForm(page, user)` from utils/formSignIn instead of coming
+ * through here; `UserClass.login()` in a spec is a lint error.
+ */
 export const performUserLogin = async (browser: Browser, user: UserClass) => {
   const context = await browser.newContext({
     storageState: {
@@ -73,8 +83,12 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
   });
   await installServerLoadReducers(context);
   const page = await context.newPage();
-  await user.login(page);
-  const token = await getToken(page);
+  // `/`, not the default `/my-data`: callers of this helper assert where
+  // sign-in *lands* (PersonaAppLayout checks the persona's configured landing
+  // page), and the form path this replaced never chose a destination either.
+  const token = await user.signIn(page, undefined, undefined, {
+    landingPath: '/',
+  });
   const apiContext = await getAuthContext(token);
   const afterAction = async () => {
     await apiContext.dispose();

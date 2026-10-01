@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { RefreshCcw01, Trash01, UploadCloud01 } from '@untitledui/icons';
+import { RefreshCcw01, Trash01, UploadCloud01 } from '../../../../icons';
 import type {
   ChangeEvent,
   CSSProperties,

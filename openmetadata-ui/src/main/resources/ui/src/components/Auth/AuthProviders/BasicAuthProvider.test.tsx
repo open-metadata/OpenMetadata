@@ -43,7 +43,7 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../../../utils/WebAnalyticsUtils', () => ({
+jest.mock('../../../utils/WebAnalyticsSessionUtils', () => ({
   resetWebAnalyticSession: jest.fn(),
 }));
 

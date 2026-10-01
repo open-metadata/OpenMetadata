@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Card,
-  Col,
-  Collapse,
-  Divider,
-  Row,
-  Space,
-  Spin,
-  Tag,
-  Typography,
-} from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Collapse, Divider, Row, Space, Spin, Tag } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -50,7 +41,6 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import './UserPermissions.style.less';
 
 const { Panel } = Collapse;
-const { Title, Text } = Typography;
 
 interface UserPermissionsProps {
   username: string;
@@ -100,14 +90,16 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     <div className="rule-item m-b-sm" key={index}>
       <Space className="w-full" direction="vertical">
         <Space>
-          <Text strong>{rule.name}</Text>
+          <Typography weight="semibold">{rule.name}</Typography>
           <Tag color={rule.effect === 'ALLOW' ? 'success' : 'error'}>
             {rule.effect}
           </Tag>
         </Space>
         {!isEmpty(rule.operations) && (
           <div>
-            <Text type="secondary">{t('label.operation-plural')}: </Text>
+            <Typography color="secondary">
+              {t('label.operation-plural')}:{' '}
+            </Typography>
             {rule.operations.map((op) => (
               <Tag className="m-r-xs" key={op}>
                 {op}
@@ -117,7 +109,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         )}
         {!isEmpty(rule.resources) && (
           <div>
-            <Text type="secondary">{t('label.resource-plural')}: </Text>
+            <Typography color="secondary">
+              {t('label.resource-plural')}:{' '}
+            </Typography>
             {rule.resources.map((res) => (
               <Tag className="m-r-xs" key={res}>
                 {res}
@@ -127,8 +121,10 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         )}
         {rule.condition && (
           <div>
-            <Text type="secondary">{t('label.condition')}: </Text>
-            <Text code>{rule.condition}</Text>
+            <Typography color="secondary">{t('label.condition')}: </Typography>
+            <Typography>
+              <code>{rule.condition}</code>
+            </Typography>
           </div>
         )}
       </Space>
@@ -153,10 +149,10 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                 {getEntityName(policy.policy)}
               </Link>
               <Tag color={policyTagColor}>{policy.effect}</Tag>
-              <Text type="secondary">
+              <Typography color="secondary">
                 <span>{policy.rules.length}</span>
                 {t('label.rule-lowercase-plural')}
-              </Text>
+              </Typography>
             </Space>
           }
           key={index}>
@@ -179,7 +175,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
           (rolePermission: DirectRolePermission) => (
             <div className="m-b-md" key={rolePermission.role.id}>
               <Space className="m-b-sm">
-                <Text strong>{t('label.role')}: </Text>
+                <Typography weight="semibold">{t('label.role')}: </Typography>
                 <Link
                   to={getEntityLink(
                     'role',
@@ -205,7 +201,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     <div className="m-b-md" key={index}>
       <Space className="w-full" direction="vertical">
         <Space>
-          <Text strong>{t('label.role') + ': '}</Text>
+          <Typography weight="semibold">{t('label.role') + ': '}</Typography>
           <Link
             to={getEntityLink(
               'role',
@@ -217,10 +213,10 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             <Tag color="blue">{t('label.default-role')}</Tag>
           )}
         </Space>
-        <Text type="secondary">
+        <Typography color="secondary">
           {t('label.inherited-from')}:{' '}
           <span>{rolePermission.inheritedFrom}</span>
-        </Text>
+        </Typography>
         {rolePermission.policies.map((policy, policyIndex) =>
           renderPolicy(policy, policyIndex)
         )}
@@ -242,7 +238,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
               key={teamPermission.team.id}>
               <Space className="w-full" direction="vertical">
                 <Space>
-                  <Text strong>{t('label.team')}: </Text>
+                  <Typography weight="semibold">{t('label.team')}: </Typography>
                   <Link
                     to={getEntityLink(
                       'team',
@@ -265,9 +261,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                 {!isEmpty(teamPermission.teamHierarchy) &&
                   teamPermission.teamHierarchy.length > 1 && (
                     <div>
-                      <Text type="secondary">
+                      <Typography color="secondary">
                         {t('label.hierarchy') + ': '}
-                      </Text>
+                      </Typography>
                       {teamPermission.teamHierarchy.map((team, idx) => (
                         <React.Fragment key={team.id}>
                           <Link
@@ -286,9 +282,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
                 {!isEmpty(teamPermission.rolePermissions) && (
                   <div className="m-t-sm">
-                    <Text strong className="m-b-sm">
+                    <Typography className="m-b-sm" weight="semibold">
                       {t('label.team-role-plural')}:{' '}
-                    </Text>
+                    </Typography>
                     {teamPermission.rolePermissions.map(
                       (rolePermission, roleIndex) =>
                         renderRolePermission(rolePermission, roleIndex)
@@ -298,9 +294,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
                 {!isEmpty(teamPermission.directPolicies) && (
                   <div className="m-t-sm">
-                    <Text strong className="m-b-sm">
+                    <Typography className="m-b-sm" weight="semibold">
                       {t('label.direct-team-policy-plural')}:{' '}
-                    </Text>
+                    </Typography>
                     {teamPermission.directPolicies.map((policy, policyIndex) =>
                       renderPolicy(policy, policyIndex)
                     )}
@@ -333,16 +329,20 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
               }`}>
               <Space className="w-full" direction="vertical">
                 <Space>
-                  <Text strong>{t('label.type') + ': '}</Text>
+                  <Typography weight="semibold">
+                    {t('label.type') + ': '}
+                  </Typography>
                   <Tag color="purple">
                     {t(`label.${inherited.permissionType.toLowerCase()}`) ||
                       inherited.permissionType}
                   </Tag>
                 </Space>
-                <Text>{inherited.description}</Text>
+                <Typography>{inherited.description}</Typography>
                 {inherited.source && (
                   <div>
-                    <Text type="secondary">{t('label.source') + ': '}</Text>
+                    <Typography color="secondary">
+                      {t('label.source') + ': '}
+                    </Typography>
                     <Link
                       to={getEntityLink(
                         inherited.source.type || '',
@@ -375,39 +375,47 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <Space direction="vertical">
-              <Text type="secondary">{t('label.total-role-plural')}</Text>
-              <Title level={4}>{summary.totalRoles}</Title>
-              <Text type="secondary">
+              <Typography color="secondary">
+                {t('label.total-role-plural')}
+              </Typography>
+              <Typography as="h4">{summary.totalRoles}</Typography>
+              <Typography color="secondary">
                 <span>{summary.directRoles}</span> {t('label.direct-lowercase')}
                 {', '}
                 <span>{summary.inheritedRoles}</span> {t('label.inherited')}
-              </Text>
+              </Typography>
             </Space>
           </Col>
           <Col span={8}>
             <Space direction="vertical">
-              <Text type="secondary">{t('label.policy-plural')}</Text>
-              <Title level={4}>{summary.totalPolicies}</Title>
-              <Text type="secondary">
+              <Typography color="secondary">
+                {t('label.policy-plural')}
+              </Typography>
+              <Typography as="h4">{summary.totalPolicies}</Typography>
+              <Typography color="secondary">
                 {summary.totalRules} {t('label.rule-lowercase-plural')}
-              </Text>
+              </Typography>
             </Space>
           </Col>
           <Col span={8}>
             <Space direction="vertical">
-              <Text type="secondary">{t('label.team-plural')}</Text>
-              <Title level={4}>{summary.teamCount}</Title>
-              <Text type="secondary">
+              <Typography color="secondary">
+                {t('label.team-plural')}
+              </Typography>
+              <Typography as="h4">{summary.teamCount}</Typography>
+              <Typography color="secondary">
                 {t('label.max-hierarchy-depth')}:{' '}
                 <span>{summary.maxHierarchyDepth}</span>
-              </Text>
+              </Typography>
             </Space>
           </Col>
         </Row>
 
         {!isEmpty(summary.effectiveOperations) && (
           <div className="m-t-md">
-            <Text strong>{t('label.allowed-operation-plural') + ': '}</Text>
+            <Typography weight="semibold">
+              {t('label.allowed-operation-plural') + ': '}
+            </Typography>
             <div className="m-t-xs">
               {summary.effectiveOperations.map((op) => (
                 <Tag className="m-r-xs m-b-xs" color="success" key={op}>
@@ -420,7 +428,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
         {!isEmpty(summary.deniedOperations) && (
           <div className="m-t-md">
-            <Text strong>{t('label.denied-operation-plural') + ': '}</Text>
+            <Typography weight="semibold">
+              {t('label.denied-operation-plural') + ': '}
+            </Typography>
             <div className="m-t-xs">
               {summary.deniedOperations.map((op) => (
                 <Tag className="m-r-xs m-b-xs" color="error" key={op}>
