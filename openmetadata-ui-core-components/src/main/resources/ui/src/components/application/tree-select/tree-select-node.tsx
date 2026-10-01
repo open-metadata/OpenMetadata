@@ -16,7 +16,7 @@ import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Typography } from '@/components/foundations/typography';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { RefreshCw01 } from '@untitledui/icons';
+import { RefreshCw01 } from '../../../icons';
 import { Tree } from '../tree/tree';
 import type { TreeSelectNode } from './tree-select.types';
 

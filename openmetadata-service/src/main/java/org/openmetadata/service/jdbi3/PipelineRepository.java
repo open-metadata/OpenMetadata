@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.Relationship.OWNS;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
@@ -966,7 +967,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public EntityRepository<Pipeline>.EntityUpdater getUpdater(
       Pipeline original, Pipeline updated, Operation operation, ChangeSource changeSource) {
-    return new PipelineUpdater(original, updated, operation);
+    return new PipelineUpdater(original, updated, operation, changeSource);
   }
 
   @Override
@@ -1062,8 +1063,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class PipelineUpdater extends EntityUpdater {
-    public PipelineUpdater(Pipeline original, Pipeline updated, Operation operation) {
-      super(original, updated, operation);
+    public PipelineUpdater(
+        Pipeline original, Pipeline updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction
@@ -1122,6 +1124,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           continue;
         }
         updateTaskDescription(storedTask, updatedTask);
+        updateTaskDisplayName(storedTask, updatedTask);
         updateTags(
             storedTask.getFullyQualifiedName(),
             EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
@@ -1142,6 +1145,24 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               deleteTaskOwnerRelationship(d);
             });
       }
+    }
+
+    /**
+     * Records a task display-name change so it survives the update. Without this the new value is
+     * applied in memory, produces no FieldChange, and is dropped before the entity is stored.
+     * Mirrors TopicRepository.updateFieldDisplayName, including its bot guard: sibling repositories
+     * with inline children (topic, searchIndex, apiEndpoint schema fields) all record display-name
+     * changes, and pipeline tasks were the one collection that did not.
+     */
+    private void updateTaskDisplayName(Task origTask, Task updatedTask) {
+      if (operation.isPut() && !nullOrEmpty(origTask.getDisplayName()) && updatedByBot()) {
+        updatedTask.setDisplayName(origTask.getDisplayName());
+        return;
+      }
+      recordChange(
+          EntityUtil.getFieldName(TASKS_FIELD, origTask.getName(), FIELD_DISPLAY_NAME),
+          origTask.getDisplayName(),
+          updatedTask.getDisplayName());
     }
 
     private void updateTaskDescription(Task origTask, Task updatedTask) {
