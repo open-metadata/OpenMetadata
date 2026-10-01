@@ -19,9 +19,10 @@
 #   * `playwright-summary`    — the required PR check + PR-comment
 #                               payload uploader (comment forwarding lives
 #                               in playwright-postgresql-pr-comment.yml).
-#   * `refresh-timing-baseline` — merge_group-only direct commit to main
+#   * `refresh-timing-baseline` — full workflow_dispatch on main; direct commit
 #                                 that keeps `.github/playwright/timing-baseline.json`
-#                                 fresh from the latest full-mode run
+#                                 fresh from that run (merge groups upload no
+#                                 timing metrics, so they cannot feed it)
 #                                 (materiality-gated; see the job comment).
 #
 # Reusable jobs are reported as `<caller-job> / <sub-job>` — GH always
@@ -36,6 +37,11 @@
 name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
+  # Daily full run on main. Merge groups upload no timing metrics, so this (plus manual
+  # full dispatches) is what feeds ci/playwright-timing and the full-suite timing
+  # artifacts PR planning downloads.
+  schedule:
+    - cron: '30 2 * * *'
   workflow_dispatch:
     inputs:
       full_suite:
@@ -108,6 +114,13 @@ jobs:
       full_suite: ${{ github.event_name == 'workflow_dispatch' && inputs.full_suite || true }}
       protocol: ${{ github.event_name == 'workflow_dispatch' && inputs.protocol || 'http' }}
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
+      # One retry everywhere while the first-attempt signal is collected: the
+      # main-health job alerts Slack on every failure and flaky pass so each can
+      # be fixed. Once main runs clean, flip PRs to zero retries with:
+      #   retries: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && 1 || 0 }}
+      # (numeric, inverted so `0` is the else branch: `X && 0 || 1` would
+      # short-circuit to 1, and a string breaks the reusable's `type: number`).
+      retries: 1
 
   playwright-summary:
     name: >-
@@ -126,11 +139,142 @@ jobs:
     timeout-minutes: 20
     permissions:
       actions: read
+      # Reads shard annotations for the merge-queue flaky alert.
+      checks: read
       contents: read
       # For the budget-breach tracked issue (Signal Playwright budget
       # breaches step below).
       issues: write
     steps:
+      - name: Gate verified merge-group shards
+        if: ${{ github.event_name == 'merge_group' }}
+        env:
+          GATE_RESULT: ${{ needs.playwright.outputs.gate_result }}
+          SHOULD_RUN: ${{ needs.playwright.outputs.gate_should_run }}
+          PLAN_RESULT: ${{ needs.playwright.outputs.plan_playwright_result }}
+          SHARD_RESULT: ${{ needs.playwright.outputs.playwright_ci_result }}
+          EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
+        run: |
+          node <<'NODE'
+          const checks = {
+            authorization: process.env.GATE_RESULT === 'success',
+            selected: process.env.SHOULD_RUN === 'true',
+            planning: process.env.PLAN_RESULT === 'success',
+            shards: process.env.SHARD_RESULT === 'success',
+          };
+          const matrix = JSON.parse(process.env.EXPECTED_MATRIX || '{}').include;
+          checks.nonemptyPlan = Array.isArray(matrix) && matrix.length > 0 &&
+            matrix.every(shard => typeof shard.shardId === 'string' && shard.shardId.length > 0) &&
+            new Set(matrix.map(shard => shard.shardId)).size === matrix.length;
+          const failed = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);
+          if (failed.length) {
+            console.error(`Merge-group validation failed: ${failed.join(', ')}`);
+            process.exit(1);
+          }
+          console.log(`${matrix.length} shards passed tests and local coverage verification.`);
+          NODE
+
+      # Merge-queue failures go to #ci-cleanup. This runs before Checkout, and
+      # queue runs upload only trace reports plus failure-only results, so this
+      # is inline: the failed shards' results, the failed jobs, and the queued PRs.
+      - name: Download failed merge-queue shard results
+        if: ${{ failure() && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          # Current attempt only: artifacts belong to the run, so a re-run would
+          # otherwise report tests that failed only in an earlier attempt.
+          pattern: playwright-results-json-*-a${{ github.run_attempt }}*
+          path: queue-results
+          merge-multiple: false
+
+      - name: Build the merge-queue failure message
+        id: queue-slack
+        if: ${{ failure() && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -uo pipefail
+          prs=$(grep -oE 'pr-[0-9]+' <<< "$HEAD_REF" | sed 's/pr-//' | sort -u | tr '\n' ' ')
+          jobs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure") | .name' 2>/dev/null | sort -u || true)
+          # shellcheck disable=SC2016 # \(...) is jq interpolation, not shell
+          tests=$(find queue-results -name results.json -type f -print0 2>/dev/null |
+            xargs -0 -r jq -r '[.. | objects | select(has("tests") and has("title")) | . as $s | .tests[] | select(.status == "unexpected") | "\($s.file) › \($s.title)"] | .[]' 2>/dev/null |
+            sort -u || true)
+          jq -n --arg channel C0AC5T013V1 --arg prs "$prs" --arg jobs "$jobs" --arg tests "$tests" \
+            --arg run "$RUN_URL" --arg repo "$REPO_URL" '
+            def lines($s): $s | split("\n") | map(select(length > 0));
+            {channel: $channel, text: ([
+              ":red_circle: *Merge queue: Playwright failed*" +
+                (if ($prs | length) > 0 then " for " + ([$prs | split(" ")[] | select(length > 0) | "<\($repo)/pull/\(.)|#\(.)>"] | join(", ")) else "" end)
+            ] + [lines($tests)[:15][] | "• FAILED `\(.)`"]
+              + (if (lines($tests) | length) == 0 then [lines($jobs)[:10][] | "• job `\(.)`"] else [] end)
+              + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/queue-slack.json"
+
+      - name: Post the merge-queue failure to Slack (ci-cleanup)
+        if: ${{ failure() && github.event_name == 'merge_group' && steps.queue-slack.outcome == 'success' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/queue-slack.json
+
+      # Queue flakes go to #pw-health with the daily main-run flakes. Each shard
+      # leaves one "Retry pass in merge queue" annotation listing its retry
+      # passes (one per line), so this reads those instead of uploading reports;
+      # inline for the same reason as the failure alert above.
+      - name: Build the merge-queue flaky message
+        id: queue-flaky
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -uo pipefail
+          prs=$(grep -oE 'pr-[0-9]+' <<< "$HEAD_REF" | sed 's/pr-//' | sort -u | tr '\n' ' ')
+          flaky=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
+              --jq '.jobs[] | select(.name | contains("playwright-ci")) | .id' 2>/dev/null |
+            while read -r job; do
+              gh api --paginate "repos/$GITHUB_REPOSITORY/check-runs/$job/annotations" \
+                --jq '.[] | select(.title == "Retry pass in merge queue") | .message' 2>/dev/null
+            done | sed '/^$/d' | sort -u)
+          if [[ -z "$flaky" ]]; then
+            echo "No retry passes in this queue run."
+            exit 0
+          fi
+          # shellcheck disable=SC2016 # \(...) is jq interpolation, not shell
+          jq -n --arg channel C0C008ZAK0V --arg prs "$prs" --arg flaky "$flaky" \
+            --arg run "$RUN_URL" --arg repo "$REPO_URL" '
+            def lines($s): $s | split("\n") | map(select(length > 0));
+            (lines($flaky)) as $tests |
+            {channel: $channel, text: ([
+              ":large_yellow_circle: *Merge queue: \($tests | length) test(s) passed only on retry*" +
+                (if ($prs | length) > 0 then " for " + ([$prs | split(" ")[] | select(length > 0) | "<\($repo)/pull/\(.)|#\(.)>"] | join(", ")) else "" end)
+            ] + [$tests[:15][] | "• FLAKY `\(.)`"]
+              + (if ($tests | length) > 15 then ["…and \(($tests | length) - 15) more (see the run)"] else [] end)
+              + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/queue-flaky.json"
+          echo "posted=true" >> "$GITHUB_OUTPUT"
+
+      - name: Post merge-queue flaky tests to Slack (pw-health)
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' && steps.queue-flaky.outputs.posted == 'true' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/queue-flaky.json
+
       # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
       # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we
       # check out here becomes trusted code executing with token access. For fork PRs
@@ -138,9 +282,13 @@ jobs:
       # could otherwise edit render_playwright_summary.cjs to exfiltrate the token or
       # rewrite the check result. Use the base branch's SHA on pull_request_target so
       # only reviewed-and-merged versions of these scripts ever run. Everything else
-      # keeps github.sha (PR merge commit / merge-queue commit / dispatch ref).
+      # keeps github.sha (PR merge commit / dispatch ref). Merge groups use the
+      # inline gate and alert above; they check out only to merge the HTML
+      # report so queue failures and retry passes keep their traces.
       - name: Checkout
         id: checkout
+        # always(): a failed merge-group gate must not skip the trace report.
+        if: always()
         continue-on-error: true
         uses: actions/checkout@v7
         with:
@@ -159,7 +307,7 @@ jobs:
 
       - name: Download timing metrics
         id: download-timings
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -168,7 +316,7 @@ jobs:
 
       - name: Download shard plans
         id: download-plans
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:
@@ -177,7 +325,7 @@ jobs:
 
       - name: Download all results JSON
         id: download-results
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -201,7 +349,7 @@ jobs:
           merge-multiple: false
 
       - name: Keep only the newest attempt per shard
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: python3 .github/scripts/keep_latest_playwright_attempt.py results
 
@@ -212,8 +360,19 @@ jobs:
       # `results/playwright-results-json-<shardId>/results.json` (expected)
       # or somewhere else. Remove once single-shard runs are consistently
       # green.
+      - name: Validate and normalize execution artifacts
+        id: normalize-results
+        # Checks every shard's results came from this commit and run, collapses
+        # transport duplicates, and fails on conflicting evidence. Advisory: its
+        # outcome feeds the classifier's artifactIntegrityVerified measurement.
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+        run: node .github/scripts/normalize_playwright_artifacts.cjs results "$EXPECTED_HEAD_SHA"
+
       - name: Diagnose downloaded results layout
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: |
           echo "=== results/ tree ==="
@@ -231,25 +390,23 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
-          # setup-node's built-in cache SAVES as a post-step under the current
-          # ref, and there is no restore-only mode. On merge_group that ref is
-          # gh-readonly-queue/*, which dies after the run — but the ~1.2 GB
-          # node-cache-Linux-x64-yarn-* entry it leaves behind stays charged
-          # against the repo's 10 GB LRU budget. This job is the only
-          # setup-node+cache writer on a merge_group trigger in the repo;
-          # measured 2026-09-09 it held 2.35 GB across dead queue refs while
-          # main's scope had zero fixture / distribution / ingestion-image
-          # entries left — all evicted. A cold `yarn --ignore-scripts` here
-          # costs ~1 min on the summary job; a missed golden fixture costs
-          # ~17 min on every shard's critical path. Keep the cache on
-          # pull_request (the PR ref outlives the run and re-pushes hit it);
-          # disable the write on merge_group. Same rule the reusable applies
-          # to its own saves. Follow-up: switch to actions/cache/restore
-          # against populate-playwright-caches.yml's main-scoped
-          # yarn-pkg-cache-* key so merge_group gets a hit instead of a cold
-          # install — different key family, so setup-node cannot restore it.
-          cache: ${{ github.event_name != 'merge_group' && 'yarn' || '' }}
-          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      # Restore-only. setup-node's built-in `cache: yarn` saves a ~1.4 GB
+      # node-cache-* entry under the current ref as a post-step and has no
+      # restore-only mode; nothing on main writes that key family, so every
+      # PR missed and saved its own copy (3 x 1.4 GB measured 2026-09-29,
+      # 43% of the 10 GB budget) and evicted the warmer's fixtures. The
+      # yarn-pkg-cache-* key is written under main by
+      # populate-playwright-caches.yml, so this hits on every event.
+      - name: Restore yarn package cache
+        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
 
       - name: Install report dependencies
         id: install-report-dependencies
@@ -263,7 +420,7 @@ jobs:
 
       - name: Mark report generation start
         id: mark-report-start
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: echo "PW_REPORT_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
@@ -284,7 +441,7 @@ jobs:
 
       - name: Merge Playwright timing history
         id: merge-timings
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
@@ -299,7 +456,7 @@ jobs:
 
       - name: Verify Playwright timing coverage
         id: verify-coverage
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         run: |
           timeout --foreground --signal=TERM --kill-after=30s 1m \
@@ -311,7 +468,7 @@ jobs:
 
       - name: Evaluate Playwright performance
         id: evaluate-performance
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
@@ -343,7 +500,7 @@ jobs:
 
       - name: Record reporting and report-upload duration
         id: record-report-duration
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.playwright.outputs.detect_changes_mode }}
@@ -380,7 +537,7 @@ jobs:
       # innocent PRs from the merge queue.
       - name: Signal Playwright budget breaches
         id: budget-signal
-        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -454,7 +611,7 @@ jobs:
 
       - name: Upload timing history
         id: upload-timing-history
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -464,13 +621,21 @@ jobs:
           if-no-files-found: warn
 
       - name: Evaluate zero-retry gate in shadow mode
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         env:
           EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
           MATRIX_OUTCOME: ${{ needs.playwright.outputs.playwright_ci_result }}
           SOURCE_SHA: ${{ github.sha }}
         run: |
+          # main's flake baseline lets the ledger separate a retry pass this run
+          # introduced (newRetryPassStableIds) from one main already has. Report
+          # only; a missing baseline just means every retry pass is unattributed.
+          baseline_args=()
+          if git fetch --depth=1 --no-tags origin ci/playwright-timing 2>/dev/null &&
+            git show FETCH_HEAD:flake-baseline.json > "$RUNNER_TEMP/flake-baseline.json" 2>/dev/null; then
+            baseline_args=(--retry-baseline "$RUNNER_TEMP/flake-baseline.json")
+          fi
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/playwright-results-json-*/results.json' \
             --status-glob 'results/playwright-results-json-*/ci-status.json' \
@@ -478,10 +643,13 @@ jobs:
             --expected-matrix-json "$EXPECTED_MATRIX" \
             --profile postgresql-pr \
             --source-sha "$SOURCE_SHA" \
+            --coverage "$RUNNER_TEMP/playwright-timing-history/playwright-coverage.json" \
+            --artifact-integrity-outcome "${{ steps.normalize-results.outcome }}" \
+            ${baseline_args[@]+"${baseline_args[@]}"} \
             --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
 
       - name: Upload Playwright shadow-gate ledger
-        if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -497,7 +665,7 @@ jobs:
       # explicit skip decision — hiding the gate failure and letting a
       # required check pass on an invalid pipeline state.
       - name: Guard against missing gate decision
-        if: ${{ needs.playwright.outputs.gate_result != 'success' }}
+        if: ${{ github.event_name != 'merge_group' && needs.playwright.outputs.gate_result != 'success' }}
         run: |
           echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
           exit 1
@@ -511,14 +679,14 @@ jobs:
       # the pipeline correctly opting out. Match on the exact "false"
       # string (not != 'true') so unset outputs never fall through here.
       - name: Report gate-skipped run as green
-        if: ${{ needs.playwright.outputs.gate_should_run == 'false' }}
+        if: ${{ github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'false' }}
         run: |
           echo "Gate decided should_run=false for event=${{ github.event_name }}."
           echo "This run is intentionally skipped; the authoritative playwright-summary comes from the sibling event's run."
           echo "Exiting 0 so this check does not block branch protection."
 
       - name: Render consolidated job summary and gate on results
-        if: ${{ always() && needs.playwright.outputs.gate_should_run == 'true' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' }}
         uses: actions/github-script@v9
         env:
           CHECK_CHANGES_RESULT: ${{ needs.playwright.outputs.check_changes_result }}
@@ -556,7 +724,7 @@ jobs:
             await renderPlaywrightSummary({ github, context, core });
 
       - name: Upload Playwright PR comment payload
-        if: always()
+        if: ${{ always() && github.event_name != 'merge_group' }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -566,7 +734,8 @@ jobs:
           if-no-files-found: ignore
 
   # Auto-refresh the checked-in timing baseline from successful full-mode
-  # merge_group runs. Without this, `.github/playwright/timing-baseline.json`
+  # workflow_dispatch runs on main. Merge groups upload no timing metrics (their
+  # shards verify coverage locally), so they cannot be the source. Without this, `.github/playwright/timing-baseline.json`
   # only gets updated by hand — and it drifts fast (see PR #30871 for the
   # 12-day, 23%-dead-title snapshot that triggered this workflow addition).
   #
@@ -580,8 +749,8 @@ jobs:
   # merge-queue entries, which is why the materiality threshold exists.
   #
   # Guards:
-  #   * merge_group event only (skip on PR/dispatch — the ci-status
-  #     signal on merge_group is the safest known-good snapshot)
+  #   * workflow_dispatch on main only (merge groups upload no timing metrics;
+  #     a PR run is not a known-good snapshot of main)
   #   * full execution mode only (targeted PR plans do not exercise every
   #     spec — a targeted refresh would lose coverage)
   #   * playwright-summary success only (no partial data on gate failures)
@@ -593,12 +762,180 @@ jobs:
   #     drifting/shifting significantly produce a commit
   #   * fetch → regenerate → push retry loop (3 attempts) absorbs races
   #     with the queue landing merges mid-refresh
+  # After each full run on main, record what main itself does not reliably
+  # pass and alert #pw-health on any failure or flaky pass (failed first, passed
+  # on retry). #ci-cleanup is reserved for merge-queue failures. The flake baseline lives next to the timing
+  # baseline on ci/playwright-timing, so PR summaries can tell a flake they
+  # introduced from one main already has.
+  main-health:
+    name: Main health
+    needs: [playwright, playwright-summary]
+    if: |
+      always() &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
+      needs.playwright.outputs.playwright_ci_result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: write
+    env:
+      DATA_BRANCH: ci/playwright-timing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Download all results JSON
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          pattern: playwright-results-json-*
+          path: results
+          merge-multiple: false
+
+      - name: Keep only the newest attempt per shard
+        continue-on-error: true
+        run: python3 .github/scripts/keep_latest_playwright_attempt.py results
+
+      - name: Classify the run and refresh the flake baseline
+        id: classify
+        env:
+          EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
+          MATRIX_OUTCOME: ${{ needs.playwright.outputs.playwright_ci_result }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          data="$RUNNER_TEMP/timing-data"
+          ledger="$RUNNER_TEMP/main-health/outcome.json"
+          # Regenerate inside the retry loop: the timing refresh pushes to the
+          # same branch, so a rejected push re-reads the latest baseline.
+          for attempt in 1 2 3; do
+            rm -rf "$data"
+            git fetch --no-tags origin "$DATA_BRANCH"
+            git worktree prune
+            git worktree add --detach "$data" FETCH_HEAD
+            git -C "$data" config user.email "github-actions[bot]@users.noreply.github.com"
+            git -C "$data" config user.name "github-actions[bot]"
+            baseline_args=() current=()
+            if [[ -f "$data/flake-baseline.json" ]]; then
+              baseline_args=(--retry-baseline "$data/flake-baseline.json")
+              cp "$data/flake-baseline.json" "$RUNNER_TEMP/previous-flake-baseline.json"
+              current=(--current "$RUNNER_TEMP/previous-flake-baseline.json")
+            fi
+
+            python3 .github/scripts/classify_playwright_outcome.py \
+              --report-glob 'results/playwright-results-json-*/results.json' \
+              --status-glob 'results/playwright-results-json-*/ci-status.json' \
+              --matrix-outcome "$MATRIX_OUTCOME" \
+              --expected-matrix-json "$EXPECTED_MATRIX" \
+              --profile postgresql-main \
+              --source-sha "$SOURCE_SHA" \
+              ${baseline_args[@]+"${baseline_args[@]}"} \
+              --output "$ledger" || exit 1
+            echo "classification=$(jq -r .classification "$ledger")" >> "$GITHUB_OUTPUT"
+
+            python3 .github/scripts/refresh_flake_baseline.py \
+              --ledger "$ledger" \
+              ${current[@]+"${current[@]}"} \
+              --output "$data/flake-baseline.json" \
+              --window 10 \
+              --threshold 2 \
+              --run-id "$GITHUB_RUN_ID" \
+              --source-sha "$SOURCE_SHA" \
+              --summary "$RUNNER_TEMP/flake-baseline-summary.md"
+            rc=$?
+            # 3 = the run measured nothing (cancelled, no results): keep the
+            # stored baseline rather than ageing real entries out of the window.
+            if [[ "$rc" -eq 3 ]]; then exit 0; fi
+            if [[ "$rc" -ne 0 ]]; then exit "$rc"; fi
+            cat "$RUNNER_TEMP/flake-baseline-summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+            git -C "$data" add flake-baseline.json
+            if git -C "$data" diff --cached --quiet; then exit 0; fi
+            git -C "$data" commit -q -m "chore(playwright): update flake baseline from run ${GITHUB_RUN_ID}"
+            if git -C "$data" push origin "HEAD:refs/heads/$DATA_BRANCH"; then exit 0; fi
+            echo "Push rejected on attempt $attempt ($DATA_BRANCH moved); retrying." >&2
+          done
+          echo "Failed to push the flake baseline after 3 attempts." >&2
+          exit 1
+
+      - name: Publish the result to the job summary
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          ledger="$RUNNER_TEMP/main-health/outcome.json"
+          [[ -f "$ledger" ]] || exit 0
+          jq -r '
+            "### Playwright on main",
+            "",
+            "- Classification: `\(.classification)`",
+            "- Tests: \(.counts.tests) · failed \(.counts.failed) · passed only on retry \(.counts.retryPassed) · skipped \(.counts.skipped)",
+            (.infrastructureIssues[:10][] | "- :warning: \(.)"),
+            (.failures[:20][] | "- FAILED `\(.file)` › \(.title)"),
+            (.retryPasses[:20][] | "- FLAKY `\(.file)` › \(.title)")
+          ' "$ledger" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the main-health ledger
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-main-health-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/main-health/outcome.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      # Everything from main goes to #pw-health: failures and flaky passes are
+      # the fix list for dropping PR retries.
+      - name: Build the Slack message
+        id: slack
+        if: ${{ always() && steps.classify.outputs.classification != '' && steps.classify.outputs.classification != 'passed' }}
+        continue-on-error: true
+        env:
+          CLASSIFICATION: ${{ steps.classify.outputs.classification }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+        run: |
+          set -euo pipefail
+          channel=C0C008ZAK0V  # #pw-health
+          case "$CLASSIFICATION" in
+            passed_with_retries|cancelled) emoji=':large_yellow_circle:' ;;
+            *) emoji=':red_circle:' ;;
+          esac
+          jq -n --arg channel "$channel" --arg emoji "$emoji" \
+            --arg cls "$CLASSIFICATION" --arg sha "${GITHUB_SHA:0:7}" \
+            --arg commit "$COMMIT_URL" --arg run "$RUN_URL" \
+            --slurpfile ledger "$RUNNER_TEMP/main-health/outcome.json" '
+            $ledger[0] as $l |
+            {channel: $channel, text: ([
+              "\($emoji) *Playwright on main* — `\($cls)` at <\($commit)|\($sha)>",
+              "\($l.counts.failed) failed and \($l.counts.retryPassed) passed only on retry, of \($l.counts.tests) tests."
+            ] + [$l.failures[:10][] | "• FAILED `\(.file)` › \(.title)"]
+              + [$l.retryPasses[:10][] | "• FLAKY `\(.file)` › \(.title)"]
+              + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/slack.json"
+
+      - name: Post to Slack
+        if: ${{ always() && steps.slack.outcome == 'success' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          # The action discards Slack API errors by default.
+          errors: true
+          payload-file-path: ${{ runner.temp }}/slack.json
+
   refresh-timing-baseline:
     name: Refresh timing baseline
     needs: [playwright, playwright-summary]
     if: |
       always() &&
-      github.event_name == 'merge_group' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/main' &&
       needs.playwright.outputs.detect_changes_mode == 'full' &&
       needs.playwright-summary.result == 'success'
     runs-on: ubuntu-latest
@@ -606,17 +943,16 @@ jobs:
     permissions:
       contents: write
     steps:
-      # NOTE: pushing to a protected `main` requires the token identity to
-      # be on the branch-protection bypass list. RELEASE_BOT_TOKEN is the
-      # same identity auto-revert-release.yml uses to push release
-      # branches; GITHUB_TOKEN is the fallback for repos where Actions is
-      # allowed to bypass.
+      # The baseline lives on the data-only `ci/playwright-timing` branch, not
+      # main: main only takes changes through the merge queue (every direct push
+      # was rejected with GH013), and a push there would reset every in-flight
+      # queue entry. The data branch has no ruleset, so the workflow token can
+      # push to it directly.
       - name: Checkout
         uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: true
-          token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Download timing history artifact
         uses: actions/download-artifact@v7
@@ -635,29 +971,29 @@ jobs:
           fi
           echo "history_path=$history" >> "$GITHUB_OUTPUT"
 
-      - name: Refresh baseline and commit to main
+      - name: Refresh baseline on ci/playwright-timing
         env:
           HISTORY_PATH: ${{ steps.locate.outputs.history_path }}
           RUN_ID: ${{ github.run_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          DATA_BRANCH: ci/playwright-timing
         run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-
-          # Regenerate INSIDE the retry loop: each attempt rebuilds the
-          # baseline against the freshly-fetched main, so a queue merge (or
-          # a concurrent refresh run) landing mid-refresh changes the
-          # regeneration input instead of producing a rejected push — the
-          # race that killed the bot-branch design (run 32354038772).
+          data="$RUNNER_TEMP/timing-data"
+          # Regenerate inside the retry loop so a concurrent refresh landing first
+          # changes the input rather than producing a rejected push.
           for attempt in 1 2 3; do
-            git fetch origin main
-            git reset --hard origin/main
+            rm -rf "$data"
+            git fetch --no-tags origin "$DATA_BRANCH"
+            git worktree prune
+            git worktree add --detach "$data" FETCH_HEAD
+            git -C "$data" config user.email "github-actions[bot]@users.noreply.github.com"
+            git -C "$data" config user.name "github-actions[bot]"
 
             set +e
             python3 .github/scripts/refresh_timing_baseline.py \
               --history "$HISTORY_PATH" \
-              --current .github/playwright/timing-baseline.json \
-              --output .github/playwright/timing-baseline.json \
+              --current "$data/timing-baseline.json" \
+              --output "$data/timing-baseline.json" \
               --source-run-id "$RUN_ID" \
               --min-materiality-percent 10 \
               --summary "$RUNNER_TEMP/baseline-refresh-summary.md"
@@ -672,40 +1008,22 @@ jobs:
               exit "$rc"
             fi
 
-            if git diff --quiet -- .github/playwright/timing-baseline.json; then
-              echo "Baseline identical to main; nothing to commit."
+            if git -C "$data" diff --quiet -- timing-baseline.json; then
+              echo "Baseline unchanged; nothing to commit."
               exit 0
             fi
 
-            git add .github/playwright/timing-baseline.json
-            git commit \
-              -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID} [skip ci]" \
+            git -C "$data" add timing-baseline.json
+            git -C "$data" commit \
+              -m "chore(playwright): refresh timing baseline from run ${RUN_ID}" \
               -m "$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")" \
               -m "Source: ${RUN_URL}"
-            push_rc=0
-            push_output=$(git push origin HEAD:main 2>&1) || push_rc=$?
-            echo "$push_output"
-            if [[ "$push_rc" -eq 0 ]]; then
-              echo "Baseline refreshed on main (attempt $attempt)."
+            if git -C "$data" push origin "HEAD:refs/heads/$DATA_BRANCH"; then
+              echo "Baseline refreshed on $DATA_BRANCH (attempt $attempt)."
+              cat "$RUNNER_TEMP/baseline-refresh-summary.md" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
-            # A ruleset/branch-protection rejection (GH013: "changes must be
-            # made through the merge queue") is a CONFIGURATION gap, not a
-            # pipeline failure: the token identity is not on main's bypass
-            # list yet. Failing the job here turns every full-mode
-            # merge_group run red and ejects innocent PRs (runs 32750389130,
-            # 32750390655) — the exact failure mode this pipeline exists to
-            # prevent. Surface loudly, skip gracefully.
-            if grep -qE "GH013|rule violations|protected branch" <<< "$push_output"; then
-              echo "::warning::Baseline refresh skipped: push to main rejected by repository ruleset (GH013). Grant the workflow token (RELEASE_BOT_TOKEN or Actions) bypass on main's ruleset to enable auto-refresh."
-              {
-                echo "## ⚠️ Timing-baseline auto-refresh blocked by ruleset"
-                echo
-                echo "The direct push to \`main\` was rejected (GH013). The refresh is skipped — downstream planning keeps using the current baseline. Grant the workflow token bypass on the main ruleset to enable it."
-              } >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            echo "Push rejected (main moved during refresh); retrying." >&2
+            echo "Push rejected ($DATA_BRANCH moved during refresh); retrying." >&2
           done
 
           echo "Failed to push refreshed baseline after 3 attempts." >&2

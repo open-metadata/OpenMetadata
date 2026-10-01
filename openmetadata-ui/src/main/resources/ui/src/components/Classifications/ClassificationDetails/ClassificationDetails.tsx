@@ -13,14 +13,16 @@
 import {
   Box,
   Button,
-  Card,
   EmptyPlaceholder,
   Owner,
   PageHeader,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
-import { Plus, Tag01 } from '@untitledui/icons';
+import {
+  Plus,
+  RefreshCcw01,
+  Tag01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {
@@ -78,6 +80,8 @@ import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -94,7 +98,6 @@ import {
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
-import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
@@ -205,6 +208,7 @@ const ClassificationDetails = forwardRef(
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
     const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
+    const domainProps = useGenericDomainLabel();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
     const isLoading = isTagsLoading || isClassificationLoading;
@@ -767,7 +771,7 @@ const ClassificationDetails = forwardRef(
             Promise.resolve(handleUpdateClassification?.(updatedData))
           }>
           <div className="classification-details-content tw:mt-4 tw:flex tw:min-h-0 tw:flex-1 tw:gap-4">
-            <Card className="classification-details-card tw:flex tw:min-w-0 tw:flex-3 tw:flex-col tw:p-4">
+            <div className="classification-details-card tw:flex tw:min-w-0 tw:flex-3 tw:flex-col">
               <div className="m-b-sm" data-testid="description-container">
                 <Description
                   wrapInCard
@@ -782,12 +786,14 @@ const ClassificationDetails = forwardRef(
               </div>
 
               {renderTagsPanel()}
-            </Card>
+            </div>
             <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-5">
-              <DomainLabelV2
+              <DomainLabel
+                {...domainProps}
                 multiple
                 showDomainHeading
                 hasPermission={editDomainPermission}
+                variant="widget"
               />
               <WidgetCard
                 dataTestId="classification-owner-name"

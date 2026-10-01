@@ -14,7 +14,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Inbox01: () => <span data-testid="inbox-icon" />,
 }));
 

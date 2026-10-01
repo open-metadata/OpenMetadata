@@ -226,16 +226,13 @@ jest.mock(
 const mockSetShowAILearningBanner = jest.fn();
 const mockSetSelectedRunTimestamp = jest.fn();
 let mockSelectedRunTimestamp: number | undefined;
-jest.mock(
-  '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
-  () => ({
-    useTestCaseStore: jest.fn().mockImplementation(() => ({
-      setShowAILearningBanner: mockSetShowAILearningBanner,
-      selectedRunTimestamp: mockSelectedRunTimestamp,
-      setSelectedRunTimestamp: mockSetSelectedRunTimestamp,
-    })),
-  })
-);
+jest.mock('../../../DataQuality/IncidentManager/useTestCase.store', () => ({
+  useTestCaseStore: jest.fn().mockImplementation(() => ({
+    setShowAILearningBanner: mockSetShowAILearningBanner,
+    selectedRunTimestamp: mockSelectedRunTimestamp,
+    setSelectedRunTimestamp: mockSetSelectedRunTimestamp,
+  })),
+}));
 
 describe('TestSummaryGraph', () => {
   beforeEach(() => {
@@ -284,6 +281,22 @@ describe('TestSummaryGraph', () => {
     expect(screen.getByTestId('rechart-legend')).toBeInTheDocument();
     expect(screen.getByTestId('min')).toBeInTheDocument();
     expect(screen.getByTestId('max')).toBeInTheDocument();
+  });
+
+  it('should draw no legend for a single series', () => {
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseResults={[
+          {
+            ...mockProps.testCaseResults[0],
+            testResultValue: [{ name: 'rowCount', value: '9990' }],
+          },
+        ]}
+      />
+    );
+
+    expect(screen.queryByTestId('rechart-legend')).not.toBeInTheDocument();
   });
 
   it("legend filter should update the graph's activeKeys", async () => {

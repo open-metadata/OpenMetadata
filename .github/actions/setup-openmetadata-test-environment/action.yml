@@ -183,10 +183,20 @@ runs:
     # Saved here rather than at job end so a later failure (server startup,
     # tests) still leaves the venv cached. Fork PRs under pull_request_target
     # skip the save — actions/cache-poisoning; their restore above still runs.
+    # merge_group and pull_request are excluded: a queue ref dies after the
+    # run and a PR ref is visible only to that PR's own re-runs, but both
+    # copies (~300 MB per Python version) count against the shared 10 GB
+    # budget and evict the main-scoped fixtures every run needs. Measured
+    # 2026-09-29: four identical om-venv copies under four PR refs and none
+    # under main. populate-playwright-caches.yml's warm-venv job is the
+    # main-scoped writer; the restore above is unconditional so every event
+    # hits it.
     - name: Save ingestion Python venv
       if: >-
         ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' &&
         steps.cache-python-venv.outputs.cache-hit != 'true' &&
+        github.event_name != 'merge_group' &&
+        github.event_name != 'pull_request' &&
         !(github.event_name == 'pull_request_target' &&
           github.event.pull_request.head.repo.full_name != github.repository) }}
       continue-on-error: true

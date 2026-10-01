@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Tooltip } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { Typography } from 'antd';
 import { startCase } from 'lodash';
 import type { Column, RenderCellProps } from 'react-data-grid';

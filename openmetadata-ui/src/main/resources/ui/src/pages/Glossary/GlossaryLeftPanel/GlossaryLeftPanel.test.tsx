@@ -16,15 +16,8 @@ import { mockedGlossaries } from '../../../mocks/Glossary.mock';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import GlossaryLeftPanel from './GlossaryLeftPanel.component';
 
-const mockNavigate = jest.fn();
+const mockOnAddGlossary = jest.fn();
 let mockFqn = '';
-
-jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockReturnValue({
-    glossaryName: 'GlossaryName',
-  }),
-  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
-}));
 
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: mockFqn })),
@@ -87,7 +80,12 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
 describe('Test GlossaryLeftPanel component', () => {
   it('GlossaryLeftPanel Page Should render', async () => {
     act(() => {
-      render(<GlossaryLeftPanel glossaries={mockedGlossaries} />);
+      render(
+        <GlossaryLeftPanel
+          glossaries={mockedGlossaries}
+          onAddGlossary={mockOnAddGlossary}
+        />
+      );
     });
 
     expect(await screen.findByTestId('add-glossary')).toBeInTheDocument();
@@ -99,9 +97,14 @@ describe('Test GlossaryLeftPanel component', () => {
     ).toBeInTheDocument();
   });
 
-  it('Add Glossary button should work properly', async () => {
+  it('Add Glossary button should open the create glossary drawer', async () => {
     act(() => {
-      render(<GlossaryLeftPanel glossaries={mockedGlossaries} />);
+      render(
+        <GlossaryLeftPanel
+          glossaries={mockedGlossaries}
+          onAddGlossary={mockOnAddGlossary}
+        />
+      );
     });
 
     const addButton = await screen.findByTestId('add-glossary');
@@ -112,11 +115,16 @@ describe('Test GlossaryLeftPanel component', () => {
       fireEvent.click(addButton);
     });
 
-    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockOnAddGlossary).toHaveBeenCalledTimes(1);
   });
 
   it('should render each glossary as a link to its page', async () => {
-    render(<GlossaryLeftPanel glossaries={glossaries} />);
+    render(
+      <GlossaryLeftPanel
+        glossaries={glossaries}
+        onAddGlossary={mockOnAddGlossary}
+      />
+    );
 
     const link = await screen.findByRole('link', {
       name: glossaries[1].displayName,
@@ -130,7 +138,12 @@ describe('Test GlossaryLeftPanel component', () => {
 
   it('should mark the first glossary as current when no fqn is in the url', async () => {
     mockFqn = '';
-    render(<GlossaryLeftPanel glossaries={glossaries} />);
+    render(
+      <GlossaryLeftPanel
+        glossaries={glossaries}
+        onAddGlossary={mockOnAddGlossary}
+      />
+    );
 
     expect(
       await screen.findByRole('link', { name: glossaries[0].displayName })
@@ -142,7 +155,12 @@ describe('Test GlossaryLeftPanel component', () => {
 
   it('should mark the owning glossary as current for a nested term fqn', async () => {
     mockFqn = `${glossaries[1].fullyQualifiedName}.Term`;
-    render(<GlossaryLeftPanel glossaries={glossaries} />);
+    render(
+      <GlossaryLeftPanel
+        glossaries={glossaries}
+        onAddGlossary={mockOnAddGlossary}
+      />
+    );
 
     expect(
       await screen.findByRole('link', { name: glossaries[1].displayName })

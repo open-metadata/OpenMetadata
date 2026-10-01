@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Button } from '@openmetadata/ui-core-components';
-import { Expand } from '@openmetadata/ui-core-components/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -111,7 +111,7 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
             className="tw:self-start tw:*:data-icon:size-4"
             color="link-color"
             data-testid={preset.testIds.addRule}
-            iconLeading={Expand}
+            iconLeading={Plus}
             size="sm"
             onClick={() => actions.addRule(path)}>
             {t('label.add-new-entity', { entity: t('label.field') })}

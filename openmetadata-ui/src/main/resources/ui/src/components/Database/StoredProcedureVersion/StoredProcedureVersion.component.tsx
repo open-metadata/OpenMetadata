@@ -66,17 +66,22 @@ const StoredProcedureVersion = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   const { tags, description, displayName } = useMemo(
     () => ({
@@ -197,6 +202,7 @@ const StoredProcedureVersion = ({
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
+                domains={domainRef}
                 entityType={EntityType.STORED_PROCEDURE}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

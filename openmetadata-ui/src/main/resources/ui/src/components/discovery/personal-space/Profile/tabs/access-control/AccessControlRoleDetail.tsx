@@ -24,7 +24,10 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01 as Edit,
+  Trash01 as Delete,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -435,12 +438,13 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     try {
       const data = await getRoleByName(fqn, 'policies,teams,users');
       setRole(data);
+      onRename?.(getEntityName(data));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [fqn]);
+  }, [fqn, onRename]);
 
   useEffect(() => {
     fetchRole();

@@ -1680,23 +1680,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fromCache = cacheAllowed(fromCache);
     var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
-      // On the explicit-bypass path the L1 cache is being skipped entirely, so checking the
-      // negative cache before touching the DB is a clear win — short-circuits a known-missing
-      // entity without paying for the DB round-trip.
-      if (include == NON_DELETED
-          && notFoundCache != null
-          && notFoundCache.isMarkedNotFoundById(entityType, id)) {
-        throw new EntityNotFoundException(entityNotFound(entityType, id));
-      }
+      // A read that bypasses the cache is answered by the database alone. A not-found marker
+      // can only be stale here, for example one left by a delete that rolled back.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
       T entity;
       try (var ignored = phase("dbFindByIdNoCache")) {
         entity = dao.findEntityById(id, include);
       }
       if (entity == null) {
-        if (include == NON_DELETED && notFoundCache != null) {
-          notFoundCache.markNotFoundById(entityType, id);
-        }
         throw new EntityNotFoundException(entityNotFound(entityType, id));
       }
       if (entity.getId() == null) {
@@ -2329,23 +2320,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
-      // Explicit cache bypass — checking the negative cache before the DB still saves the
-      // DB hit on a known-missing entity. (Same reasoning as find(UUID, …).)
-      String bypassCanonicalFqn = cacheNameKey(entityType, fqn).getRight();
-      if (include == NON_DELETED
-          && notFoundCache != null
-          && notFoundCache.isMarkedNotFoundByName(entityType, bypassCanonicalFqn)) {
-        throw new EntityNotFoundException(entityNotFound(entityType, fqn));
-      }
+      // Answered by the database alone, as in find(UUID, …).
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
       T entity;
       try (var ignored = phase("dbFindByNameNoCache")) {
         entity = dao.findEntityByName(fqn, include);
       }
       if (entity == null) {
-        if (include == NON_DELETED && notFoundCache != null) {
-          notFoundCache.markNotFoundByName(entityType, bypassCanonicalFqn);
-        }
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
@@ -5256,11 +5237,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
           () ->
               Entity.getJdbi()
                   .inTransaction(
-                      handle -> {
-                        RepositoryTransactionContext.runWith(
-                            handle.attach(CollectionDAO.class), flushBody);
-                        return null;
-                      }));
+                      handle ->
+                          TransactionRollbackTracker.runAttempt(
+                              () -> {
+                                RepositoryTransactionContext.runWith(
+                                    handle.attach(CollectionDAO.class), flushBody);
+                                return null;
+                              })));
     } finally {
       exitRetryableBoundary(ownsRetry);
     }
@@ -5371,10 +5354,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return DeadlockRetry.execute(
         () ->
             daoCollection.inTransaction(
-                ignored -> {
-                  scope.reopenForAttempt();
-                  return work.get();
-                }));
+                ignored ->
+                    TransactionRollbackTracker.runAttempt(
+                        () -> {
+                          scope.reopenForAttempt();
+                          return work.get();
+                        })));
   }
 
   /** Nested boundary: the outermost one owns the retry, so this only joins its transaction. */
@@ -11254,9 +11239,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(columnPrefix, stored, updated);
-        if (!Objects.equals(stored.getExtension(), updated.getExtension())) {
-          storeColumnExtension(entityId, updated);
-        }
+        updateColumnExtension(entityId, columnPrefix, stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateColumns(
@@ -11275,6 +11258,51 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected void handleColumnLineageUpdates(
         List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       // NO-OP – to be overridden by entity-specific updaters when needed.
+    }
+
+    /**
+     * Whether column custom-property (extension) changes are recorded as FieldChanges. Only
+     * entities that hydrate column extension on read and register a column custom-property type
+     * (Table via {@code tableColumn}, DashboardDataModel via {@code dashboardDataModelColumn})
+     * override this to {@code true}. For the rest the read path never loads the baseline, so
+     * recording would emit a spurious change on every update; they keep the persist-only behavior.
+     */
+    protected boolean supportsColumnExtension() {
+      return false;
+    }
+
+    private void updateColumnExtension(
+        UUID entityId, String columnPrefix, Column origColumn, Column updatedColumn) {
+      if (!supportsColumnExtension()) {
+        if (!Objects.equals(origColumn.getExtension(), updatedColumn.getExtension())) {
+          storeColumnExtension(entityId, updatedColumn);
+        }
+        return;
+      }
+      // A PUT never removes an existing column custom property (mirrors entity-level
+      // updateExtension): a connector re-ingesting the table omits the field, and that absence
+      // must not be read as a deletion.
+      if (operation == Operation.PUT
+          && updatedColumn.getExtension() == null
+          && origColumn.getExtension() != null) {
+        updatedColumn.setExtension(origColumn.getExtension());
+      }
+      boolean changed =
+          recordChange(
+              EntityUtil.getFieldName(columnPrefix, FIELD_EXTENSION),
+              origColumn.getExtension(),
+              updatedColumn.getExtension(),
+              true);
+      if (changed) {
+        if (updatedColumn.getExtension() == null) {
+          daoCollection
+              .entityExtensionDAO()
+              .delete(
+                  entityId, FullyQualifiedName.buildHash(updatedColumn.getFullyQualifiedName()));
+        } else {
+          storeColumnExtension(entityId, updatedColumn);
+        }
+      }
     }
 
     private static final class ColumnLineageChanges {

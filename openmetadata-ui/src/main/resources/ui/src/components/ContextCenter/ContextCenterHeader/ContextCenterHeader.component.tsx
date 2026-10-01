@@ -12,7 +12,7 @@
  */
 
 import { Button, Input, PageLayout } from '@openmetadata/ui-core-components';
-import { Plus, SearchMd } from '@untitledui/icons';
+import { Plus, Search } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
@@ -81,7 +81,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
       {onSearch && (
         <Input
           data-testid="search-input"
-          icon={SearchMd}
+          icon={Search}
           inputClassName="tw:w-75"
           placeholder={searchPlaceholder}
           value={searchQuery ?? ''}

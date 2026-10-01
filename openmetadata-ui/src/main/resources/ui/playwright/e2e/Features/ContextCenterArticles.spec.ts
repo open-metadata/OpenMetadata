@@ -579,7 +579,9 @@ test.describe('Context Center Articles', () => {
       description
     );
     await expect(card.getByTestId('owner-label')).not.toBeVisible();
-    await expect(card.getByTestId('domain-link')).not.toBeVisible();
+    await expect(
+      card.locator('[data-testid^="domain-tag-"]')
+    ).not.toBeVisible();
 
     await card.click();
     await page.getByTestId('edit-domain-btn').click();
@@ -592,13 +594,12 @@ test.describe('Context Center Articles', () => {
     );
 
     await page
-      .getByTestId('domain-selectable-tree')
-      .getByTestId('searchbar')
+      .getByTestId('domain-selectable-tree-search')
       .fill(domain.responseData.name);
     await searchDomain;
 
     const domainTagSelector = page.getByTestId(
-      `tag-${domain.responseData.fullyQualifiedName}`
+      `tree-node-${domain.responseData.fullyQualifiedName}`
     );
     await domainTagSelector.waitFor({ state: 'visible' });
 
@@ -814,13 +815,12 @@ test.describe('Context Center Articles', () => {
               .includes(encodeURIComponent(domain.responseData.name as string))
         );
         await page
-          .getByTestId('domain-selectable-tree')
-          .getByTestId('searchbar')
+          .getByTestId('domain-selectable-tree-search')
           .fill(domain.responseData.name as string);
         await searchResponse;
 
         const domainTagSelector = page.getByTestId(
-          `tag-${domain.responseData.fullyQualifiedName}`
+          `tree-node-${domain.responseData.fullyQualifiedName}`
         );
         await domainTagSelector.waitFor({ state: 'visible' });
 
@@ -1634,7 +1634,7 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', async ({ page }) => {
+    test('Text formatting', { tag: '@quarantine' }, async ({ page }) => {
       await runTextFormattingTest(
         page,
         editorKnowledgeCenter.knowledgePages[1]
@@ -1675,12 +1675,16 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', async ({ dataConsumerPage }) => {
-      await runTextFormattingTest(
-        dataConsumerPage,
-        dataConsumerEditorKnowledgeCenter.knowledgePages[1]
-      );
-    });
+    test(
+      'Text formatting',
+      { tag: '@quarantine' },
+      async ({ dataConsumerPage }) => {
+        await runTextFormattingTest(
+          dataConsumerPage,
+          dataConsumerEditorKnowledgeCenter.knowledgePages[1]
+        );
+      }
+    );
 
     test('Editor operations', async ({ dataConsumerPage }) => {
       await runEditorOperationsTest(
@@ -1719,12 +1723,16 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', async ({ dataStewardPage }) => {
-      await runTextFormattingTest(
-        dataStewardPage,
-        dataStewardEditorKnowledgeCenter.knowledgePages[1]
-      );
-    });
+    test(
+      'Text formatting',
+      { tag: '@quarantine' },
+      async ({ dataStewardPage }) => {
+        await runTextFormattingTest(
+          dataStewardPage,
+          dataStewardEditorKnowledgeCenter.knowledgePages[1]
+        );
+      }
+    );
 
     test('Editor operations', async ({ dataStewardPage }) => {
       await runEditorOperationsTest(

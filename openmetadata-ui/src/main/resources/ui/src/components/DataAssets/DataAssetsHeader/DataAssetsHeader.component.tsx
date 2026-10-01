@@ -25,7 +25,7 @@ import {
   RefreshCcw01,
   ThumbsDown,
   ThumbsUp,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
@@ -170,6 +170,7 @@ export const DataAssetsHeader = ({
   onUpdateRetentionPeriod,
   extraDropdownContent,
   badge,
+  headerActions,
   isDqAlertSupported = false,
   isCustomizedView = false,
   disableRunAgentsButton = true,
@@ -1268,6 +1269,7 @@ export const DataAssetsHeader = ({
             {dataContractLatestResultButton}
             {sourceUrlButton}
             {tableClassBase.getRequestDataAccessButton()}
+            {headerActions}
             {renderManageButton()}
           </div>
         </div>

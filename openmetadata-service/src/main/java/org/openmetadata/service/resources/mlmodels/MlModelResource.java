@@ -48,6 +48,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -97,6 +98,78 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     addViewOperation("dashboard", MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
+  }
+
+  public static class MlModelFeatureList extends ResultList<FieldInterface> {
+    /* Required for serde */
+  }
+
+  @GET
+  @Path("/name/{fqn}/columns")
+  @Operation(
+      operationId = "getMlModelFeaturesPaginatedByFQN",
+      summary = "Get paginated features of an ML model by fully qualified name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Paginated features",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MlModelFeatureList.class))),
+        @ApiResponse(responseCode = "404", description = "ML Model not found")
+      })
+  public MlModelFeatureList getFeaturesPaginatedByFQN(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the ML model",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of features returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset,
+      @Parameter(description = "Fields requested in the returned features (tags)")
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Include all, deleted, or non-deleted entities.")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description =
+                  "Sort features by. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
+    ResultList<FieldInterface> page =
+        getChildFieldPage(
+            securityContext, fqn, limit, offset, fieldsParam, include, sortBy, sortOrder);
+    MlModelFeatureList result = new MlModelFeatureList();
+    result.setData(page.getData());
+    result.setPaging(page.getPaging());
+    return result;
   }
 
   public static class MlModelList extends ResultList<MlModel> {
