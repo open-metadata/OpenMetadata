@@ -97,6 +97,14 @@ public final class AlertJobs {
     }
   }
 
+  /** As {@link #converge}, but a scheduler that fails is left to the caller, which counts it. */
+  static void convergeOrThrow(UUID alertId) throws SchedulerException {
+    AlertJobs jobs = started;
+    if (jobs != null) {
+      jobs.settle(alertId);
+    }
+  }
+
   /**
    * Converges once the unit of work that changed the row has committed, and not at all when it
    * rolls back. A save or a delete nested in an outer one, such as an owned alert saved with its

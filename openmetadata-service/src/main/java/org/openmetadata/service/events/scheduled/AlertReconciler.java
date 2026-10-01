@@ -161,7 +161,7 @@ final class AlertReconciler {
   private void removeLeftovers(UUID id, long now) throws SchedulerException {
     if (olderThanMinimumAge(id, now)) {
       if (jobs.exists(id)) {
-        AlertJobs.converge(id);
+        AlertJobs.convergeOrThrow(id);
         count("job without an alert");
       }
       if (AlertRecord.hasRows(id)) {
@@ -180,7 +180,7 @@ final class AlertReconciler {
 
   private void removeJobOfDisabled(UUID id) throws SchedulerException {
     if (jobs.exists(id)) {
-      AlertJobs.converge(id);
+      AlertJobs.convergeOrThrow(id);
       count("job of a disabled alert");
     }
   }
@@ -193,7 +193,7 @@ final class AlertReconciler {
     Optional<String> unhealthy = whyUnhealthy(alert, now);
     lastVerdicts.put(alert.getId(), new Verdict(now, unhealthy.orElse(HEALTHY)));
     if (unhealthy.isPresent()) {
-      AlertJobs.converge(alert.getId());
+      AlertJobs.convergeOrThrow(alert.getId());
       count(unhealthy.get());
     }
   }
