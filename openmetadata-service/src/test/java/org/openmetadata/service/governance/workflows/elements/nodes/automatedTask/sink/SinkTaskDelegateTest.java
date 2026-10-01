@@ -436,6 +436,34 @@ class SinkTaskDelegateTest {
   }
 
   @Test
+  void consecutiveSubBatchesWhoseEntitiesAllFailToLoadStopTheBatch() {
+    AtomicInteger loads = new AtomicInteger();
+    AtomicInteger writes = new AtomicInteger();
+    delegate.entityLoader =
+        link -> {
+          loads.incrementAndGet();
+          throw new IllegalStateException("entity store unavailable");
+        };
+    SinkProvider provider =
+        scripted(
+            entities -> {
+              writes.incrementAndGet();
+              return failedWrite(entities);
+            });
+
+    runBatchWithLoader(provider, 1000);
+
+    assertEquals(0, writes.get(), "no entity was loaded, so none reached the provider");
+    int prefetchedAhead = SinkTaskDelegate.MAX_CONSECUTIVE_FAILED_SUB_BATCHES + 1;
+    assertTrue(
+        loads.get() <= prefetchedAhead * SinkProvider.DEFAULT_BATCH_SIZE,
+        () -> "loading continued past the failure limit: %d loads".formatted(loads.get()));
+    verify(execution).setVariable(eq("process_syncedCount"), eq(0));
+    verify(execution).setVariable(eq("process_failedCount"), eq(1000));
+    verify(execution).setVariable(eq("process_result"), eq("failure"));
+  }
+
+  @Test
   void subBatchesWithPartialProgressDoNotStopTheBatch() {
     AtomicInteger calls = new AtomicInteger();
     SinkProvider flaky =

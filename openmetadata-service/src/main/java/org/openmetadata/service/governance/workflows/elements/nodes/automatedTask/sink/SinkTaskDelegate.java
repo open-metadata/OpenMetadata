@@ -281,7 +281,11 @@ public class SinkTaskDelegate implements JavaDelegate {
         entities.isEmpty()
             ? SinkResult.builder().success(true).build()
             : sinkProvider.writeBatch(context, entities);
-    boolean writeFailed = !entities.isEmpty() && madeNoProgress(written, entities.size());
+    // A sub-batch whose every entity failed to load reached no provider, yet failed as a whole.
+    boolean writeFailed =
+        entities.isEmpty()
+            ? !subBatch.fetchErrors().isEmpty()
+            : madeNoProgress(written, entities.size());
     return new SubBatchOutcome(written, subBatch.fetchErrors(), writeFailed);
   }
 
@@ -331,7 +335,10 @@ public class SinkTaskDelegate implements JavaDelegate {
   /** Result of a sink run; {@code stopRequested} means an administrator stopped it part-way. */
   private record SinkRun(SinkResult result, boolean stopRequested) {}
 
-  /** Result of one sub-batch; {@code writeFailed} means the provider failed all of its entities. */
+  /**
+   * Result of one sub-batch; {@code writeFailed} means none of its entities was synced: the provider
+   * failed all of them, or none could be loaded.
+   */
   private record SubBatchOutcome(
       SinkResult written, List<SinkResult.SinkError> fetchErrors, boolean writeFailed) {}
 

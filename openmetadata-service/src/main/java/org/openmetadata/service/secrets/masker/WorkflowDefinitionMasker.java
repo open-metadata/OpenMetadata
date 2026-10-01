@@ -14,6 +14,7 @@
 package org.openmetadata.service.secrets.masker;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -102,6 +103,19 @@ public final class WorkflowDefinitionMasker {
     sinkTasks(definition)
         .filter(WorkflowDefinitionMasker::hasSinkConfig)
         .forEach(sinkTask -> transformSinkTask(sinkTask, transform));
+  }
+
+  /** Whether a sink task of {@code definition} holds a non-empty secret value. */
+  public static boolean hasSinkSecrets(WorkflowDefinition definition) {
+    return sinkTasks(definition)
+        .filter(WorkflowDefinitionMasker::hasSinkConfig)
+        .anyMatch(WorkflowDefinitionMasker::hasSecret);
+  }
+
+  private static boolean hasSecret(SinkTaskDefinition sinkTask) {
+    JsonNode sinkConfig = JsonUtils.valueToTree(sinkTask.getConfig().getSinkConfig());
+    return secretPointers(sinkTask).stream()
+        .anyMatch(pointer -> !nullOrEmpty(sinkConfig.at(pointer).textValue()));
   }
 
   /**

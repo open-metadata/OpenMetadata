@@ -16,8 +16,12 @@ package org.openmetadata.service.migration.utils.v210;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
@@ -31,25 +35,37 @@ import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.secrets.WorkflowSinkSecrets;
+import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Fernet-encrypts plaintext sink secrets of stored workflow definitions: the current definition,
- * its change descriptions and every version snapshot. The definitions that changed are
- * redeployed so their Flowable BPMN carries the ciphertext too. Values already encrypted are left
- * as they are, so running it again changes nothing.
+ * its change descriptions and every version snapshot. Every active definition with a sink secret is
+ * then redeployed so its Flowable BPMN carries the ciphertext, including one an earlier run
+ * encrypted but could not redeploy. Values already encrypted are left as they are, so running it
+ * again changes no stored row. A redeploy that fails is logged and does not fail the upgrade.
  */
 @Slf4j
 public final class WorkflowSinkSecretsMigration {
-  static final int VERSION_PAGE_SIZE = 500;
+  static final int PAGE_SIZE = 500;
+  static final String REDEPLOY_ENDPOINT = "/v1/governance/workflowDefinitions/{id}/redeploy";
 
-  private static final String DELETED = "deleted";
-  private static final String FULLY_QUALIFIED_NAME = "fullyQualifiedName";
-
-  private static final String SELECT_DEFINITIONS_MYSQL =
-      "SELECT id, json FROM workflow_definition_entity";
-  private static final String SELECT_DEFINITIONS_POSTGRES =
-      "SELECT id, json::text AS json FROM workflow_definition_entity";
+  private static final String REDEPLOY_ABORTED_MESSAGE =
+      """
+      v210: could not redeploy the workflow definitions with sink secrets; each keeps its \
+      previous deployment until it is redeployed with POST {}\
+      """;
+  private static final String REDEPLOY_FAILED_MESSAGE =
+      """
+      v210: {} workflow definition(s) with sink secrets could not be redeployed and keep their \
+      previous deployment until each is redeployed with POST {}: {}\
+      """;
+  private static final StoredRow FIRST_PAGE = new StoredRow("", "", null);
+  private static final String SELECT_DEFINITIONS =
+      """
+      SELECT id, %s AS json FROM workflow_definition_entity
+      WHERE id > :id ORDER BY id LIMIT :pageSize
+      """;
   private static final String UPDATE_DEFINITION_MYSQL =
       "UPDATE workflow_definition_entity SET json = :json WHERE id = :id";
   private static final String UPDATE_DEFINITION_POSTGRES =
@@ -73,62 +89,158 @@ public final class WorkflowSinkSecretsMigration {
   public static void encryptSinkSecrets(
       Handle handle, ConnectionType connectionType, Runnable initializeWorkflowHandler) {
     if (Fernet.getInstance().isKeyDefined()) {
-      List<JsonNode> encrypted = encryptDefinitions(handle, connectionType);
+      int definitions = encryptDefinitions(handle, connectionType);
       int versions = encryptVersions(handle, connectionType);
       LOG.info(
           "v210: encrypted the sink secrets of {} workflow definition(s) and {} version(s)",
-          encrypted.size(),
+          definitions,
           versions);
-      redeployActive(encrypted, initializeWorkflowHandler);
+      redeploySinkWorkflows(
+          cursor -> definitionPage(handle, connectionType, cursor),
+          initializeWorkflowHandler,
+          WorkflowSinkSecretsMigration::deploy);
     } else {
       LOG.info("v210: no Fernet key is configured; workflow sink secrets are left as stored");
     }
   }
 
-  private static void redeployActive(
-      List<JsonNode> definitions, Runnable initializeWorkflowHandler) {
-    // A soft-deleted definition has no deployment, and deploying it would revive its trigger.
-    List<JsonNode> active =
-        definitions.stream().filter(definition -> !definition.path(DELETED).asBoolean()).toList();
-    if (!active.isEmpty()) {
-      initializeWorkflowHandler.run();
-      active.forEach(WorkflowSinkSecretsMigration::redeploy);
-    }
-  }
-
-  /** Encrypts the stored definitions and returns the JSON of those that held a plaintext secret. */
-  static List<JsonNode> encryptDefinitions(Handle handle, ConnectionType connectionType) {
-    boolean mysql = connectionType == ConnectionType.MYSQL;
-    String select = mysql ? SELECT_DEFINITIONS_MYSQL : SELECT_DEFINITIONS_POSTGRES;
-    String update = mysql ? UPDATE_DEFINITION_MYSQL : UPDATE_DEFINITION_POSTGRES;
-    List<JsonNode> encrypted = new ArrayList<>();
-    for (StoredRow row : handle.createQuery(select).map(StoredRow::read).list()) {
-      JsonNode definition = encryptedOrNull(row);
-      if (definition != null) {
-        handle
-            .createUpdate(update)
-            .bind("id", row.id())
-            .bind("json", definition.toString())
-            .execute();
-        encrypted.add(definition);
-      }
-    }
-    return encrypted;
+  static int encryptDefinitions(Handle handle, ConnectionType connectionType) {
+    String update =
+        connectionType == ConnectionType.MYSQL
+            ? UPDATE_DEFINITION_MYSQL
+            : UPDATE_DEFINITION_POSTGRES;
+    return foldPages(
+        cursor -> definitionPage(handle, connectionType, cursor),
+        0,
+        (encrypted, page) -> encrypted + encryptPage(handle, update, page));
   }
 
   static int encryptVersions(Handle handle, ConnectionType connectionType) {
     boolean mysql = connectionType == ConnectionType.MYSQL;
     String select = SELECT_VERSIONS.formatted(mysql ? "json" : "json::text");
     String update = mysql ? UPDATE_VERSION_MYSQL : UPDATE_VERSION_POSTGRES;
-    StoredRow cursor = new StoredRow("", "", null);
-    int encrypted = 0;
+    return foldPages(
+        cursor -> versionPage(handle, select, cursor),
+        0,
+        (encrypted, page) -> encrypted + encryptPage(handle, update, page));
+  }
+
+  /**
+   * Redeploys, page by page, every stored definition that is not deleted and holds a sink secret.
+   * The workflow handler is initialized before the first redeploy only, so an installation without
+   * sink workflows never starts it. Neither a failed initialization nor a failed redeploy is
+   * thrown: both are logged with the endpoint that redeploys a definition by hand.
+   *
+   * @return the definitions that could not be redeployed, as {@code name (id): cause}
+   */
+  static List<String> redeploySinkWorkflows(
+      Function<StoredRow, List<StoredRow>> pageAfter,
+      Runnable initializeWorkflowHandler,
+      Consumer<WorkflowDefinition> deployer) {
+    OnceRunnable initializeOnce = new OnceRunnable(initializeWorkflowHandler);
+    List<String> failed = List.of();
+    try {
+      failed =
+          foldPages(
+              pageAfter,
+              List.of(),
+              (failedSoFar, page) ->
+                  Stream.concat(failedSoFar.stream(), redeployPage(page, initializeOnce, deployer))
+                      .toList());
+      logFailedRedeploys(failed);
+    } catch (RuntimeException e) {
+      LOG.error(REDEPLOY_ABORTED_MESSAGE, REDEPLOY_ENDPOINT, e);
+    }
+    return failed;
+  }
+
+  private static Stream<String> redeployPage(
+      List<StoredRow> page, Runnable initializeOnce, Consumer<WorkflowDefinition> deployer) {
+    List<WorkflowDefinition> candidates =
+        page.stream()
+            .map(WorkflowSinkSecretsMigration::redeployCandidate)
+            .flatMap(Optional::stream)
+            .toList();
+    if (!candidates.isEmpty()) {
+      initializeOnce.run();
+    }
+    return candidates.stream()
+        .map(definition -> redeployFailure(definition, deployer))
+        .flatMap(Optional::stream);
+  }
+
+  /** The stored definition when it is not deleted and holds a sink secret. */
+  static Optional<WorkflowDefinition> redeployCandidate(StoredRow row) {
+    Optional<WorkflowDefinition> candidate = Optional.empty();
+    try {
+      WorkflowDefinition definition = JsonUtils.readValue(row.json(), WorkflowDefinition.class);
+      // A soft-deleted definition has no deployment, and deploying it would revive its trigger.
+      boolean isActive = !Boolean.TRUE.equals(definition.getDeleted());
+      candidate =
+          Optional.of(definition)
+              .filter(stored -> isActive && WorkflowDefinitionMasker.hasSinkSecrets(stored));
+    } catch (JsonParsingException e) {
+      LOG.warn(
+          "v210: not redeploying workflow definition row id={} that could not be read: {}",
+          row.id(),
+          e.getMessage());
+    }
+    return candidate;
+  }
+
+  /** Redeploys {@code definition}; returns {@code name (id): cause} when that fails. */
+  private static Optional<String> redeployFailure(
+      WorkflowDefinition definition, Consumer<WorkflowDefinition> deployer) {
+    Optional<String> failure = Optional.empty();
+    try {
+      deployer.accept(definition);
+    } catch (RuntimeException e) {
+      LOG.debug("v210: failed to redeploy workflow definition '{}'", definition.getName(), e);
+      failure =
+          Optional.of(
+              "%s (%s): %s".formatted(definition.getName(), definition.getId(), e.getMessage()));
+    }
+    return failure;
+  }
+
+  private static void logFailedRedeploys(List<String> failed) {
+    if (!failed.isEmpty()) {
+      LOG.warn(REDEPLOY_FAILED_MESSAGE, failed.size(), REDEPLOY_ENDPOINT, failed);
+    }
+  }
+
+  private static void deploy(WorkflowDefinition definition) {
+    WorkflowHandler.getInstance().deploy(new Workflow(definition));
+  }
+
+  /**
+   * Folds {@code step} over the keyset pages {@code pageAfter} returns: each page starts after the
+   * last row of the one before, and a page shorter than {@link #PAGE_SIZE} is the last.
+   */
+  static <R> R foldPages(
+      Function<StoredRow, List<StoredRow>> pageAfter,
+      R initial,
+      BiFunction<R, List<StoredRow>, R> step) {
+    R folded = initial;
+    StoredRow cursor = FIRST_PAGE;
     List<StoredRow> page;
     do {
-      page = versionPage(handle, select, cursor);
-      encrypted += encryptPage(handle, update, page);
+      page = pageAfter.apply(cursor);
+      folded = step.apply(folded, page);
       cursor = page.isEmpty() ? cursor : page.getLast();
-    } while (page.size() == VERSION_PAGE_SIZE);
-    return encrypted;
+    } while (page.size() == PAGE_SIZE);
+    return folded;
+  }
+
+  private static List<StoredRow> definitionPage(
+      Handle handle, ConnectionType connectionType, StoredRow cursor) {
+    String json = connectionType == ConnectionType.MYSQL ? "json" : "json::text";
+    return handle
+        .createQuery(SELECT_DEFINITIONS.formatted(json))
+        .bind("id", cursor.id())
+        .bind("pageSize", PAGE_SIZE)
+        .map(StoredRow::read)
+        .list();
   }
 
   private static List<StoredRow> versionPage(Handle handle, String select, StoredRow cursor) {
@@ -137,7 +249,7 @@ public final class WorkflowSinkSecretsMigration {
         .bind("id", cursor.id())
         .bind("extension", cursor.extension())
         .bind("extensionPattern", VERSION_EXTENSION_PATTERN)
-        .bind("pageSize", VERSION_PAGE_SIZE)
+        .bind("pageSize", PAGE_SIZE)
         .map(StoredRow::readVersion)
         .list();
   }
@@ -146,13 +258,9 @@ public final class WorkflowSinkSecretsMigration {
     PreparedBatch batch = handle.prepareBatch(update);
     int encrypted = 0;
     for (StoredRow row : page) {
-      JsonNode version = encryptedOrNull(row);
-      if (version != null) {
-        batch
-            .bind("id", row.id())
-            .bind("extension", row.extension())
-            .bind("json", version.toString())
-            .add();
+      JsonNode json = encryptedOrNull(row);
+      if (json != null) {
+        bindRow(batch, row, json).add();
         encrypted++;
       }
     }
@@ -160,6 +268,15 @@ public final class WorkflowSinkSecretsMigration {
       batch.execute();
     }
     return encrypted;
+  }
+
+  private static PreparedBatch bindRow(PreparedBatch batch, StoredRow row, JsonNode json) {
+    batch.bind("id", row.id()).bind("json", json.toString());
+    // A definition row has no extension; only its version snapshots are keyed by one.
+    if (row.extension() != null) {
+      batch.bind("extension", row.extension());
+    }
+    return batch;
   }
 
   /** The row's JSON with its sink secrets encrypted, or null when it held no plaintext secret. */
@@ -178,18 +295,6 @@ public final class WorkflowSinkSecretsMigration {
     return encrypted;
   }
 
-  private static void redeploy(JsonNode definition) {
-    try {
-      WorkflowHandler.getInstance()
-          .deploy(new Workflow(JsonUtils.treeToValue(definition, WorkflowDefinition.class)));
-    } catch (Exception e) {
-      LOG.warn(
-          "v210: failed to redeploy workflow definition '{}' with encrypted sink secrets",
-          definition.path(FULLY_QUALIFIED_NAME).asText(),
-          e);
-    }
-  }
-
   /** A stored JSON row: a definition (no extension) or one of its version snapshots. */
   record StoredRow(String id, String extension, String json) {
     private static StoredRow read(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -198,6 +303,24 @@ public final class WorkflowSinkSecretsMigration {
 
     private static StoredRow readVersion(ResultSet rs, StatementContext ctx) throws SQLException {
       return new StoredRow(rs.getString("id"), rs.getString("extension"), rs.getString("json"));
+    }
+  }
+
+  /** Runs its action the first time it is run and does nothing after that. */
+  private static final class OnceRunnable implements Runnable {
+    private final Runnable action;
+    private boolean hasRun;
+
+    OnceRunnable(Runnable action) {
+      this.action = action;
+    }
+
+    @Override
+    public void run() {
+      if (!hasRun) {
+        action.run();
+        hasRun = true;
+      }
     }
   }
 }

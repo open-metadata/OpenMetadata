@@ -76,7 +76,8 @@ public class Migration extends MigrationProcessImpl {
     // as untagged from any FQN-prefix query. Idempotent. DB-agnostic, so it runs on both engines.
     backfillMlFeatureTags(collectionDAO);
     // Fernet-encrypts plaintext sink secrets of stored workflow definitions and their versions, and
-    // redeploys the changed definitions so their Flowable BPMN carries the ciphertext. Idempotent.
+    // redeploys every active definition with a sink secret so its Flowable BPMN carries the
+    // ciphertext. Idempotent; a failed redeploy is logged and does not block the upgrade.
     encryptSinkSecrets(handle, POSTGRES, this::initializeWorkflowHandler);
   }
 }
