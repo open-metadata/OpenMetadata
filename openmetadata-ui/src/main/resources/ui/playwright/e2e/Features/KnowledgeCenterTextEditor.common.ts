@@ -36,7 +36,6 @@ import {
   redo,
   selectAll,
   selectAllText,
-  selectLastWord,
   toggleTask,
   typeInTableCell,
   undo,
@@ -168,7 +167,9 @@ export const runTextFormattingTest = async (
     await page.keyboard.type('Italic text');
 
     await expect(page.getByText('Italic text')).toBeVisible();
-    await selectLastWord(page, 2, editor);
+    // Triple-click selects the whole paragraph deterministically — no word-count guess, no
+    // cross-platform Home/End ambiguity — so the entire run gets formatted.
+    await editor.getByText('Italic text').click({ clickCount: 3 });
     await applyTextFormatting(page, 'italic');
 
     await expect(page.getByText('Italic text')).toBeVisible();
@@ -180,7 +181,7 @@ export const runTextFormattingTest = async (
     await page.keyboard.type('inline code');
 
     await expect(page.getByText('inline code')).toBeVisible();
-    await selectLastWord(page, 2, editor);
+    await editor.getByText('inline code').click({ clickCount: 3 });
     await applyTextFormatting(page, 'code');
 
     await expect(page.getByText('inline code')).toBeVisible();
