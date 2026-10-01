@@ -341,14 +341,21 @@ const ExpandedBody = ({
       onClick={onClick}
     />
 
+    {/* Raised like the rest: rendered markdown is real content — it carries
+          links and mentions, and people select and copy it — so it must not
+          sit under the overlay, which would turn every click into "open the
+          announcement". Unlike the collapsed strip it gets no `onClick` of its
+          own; a handler here would fire on those links too. */}
     {hasDescription && (
-      <RichTextEditorPreviewerV1
-        className="tw:[&_p]:text-secondary tw:[&_p]:text-sm"
-        data-testid="announcement-description"
-        enableSeeMoreVariant={false}
-        markdown={announcement.description}
-        showReadMoreBtn={false}
-      />
+      <div className={OVER_OVERLAY_CLASS}>
+        <RichTextEditorPreviewerV1
+          className="tw:[&_p]:text-secondary tw:[&_p]:text-sm"
+          data-testid="announcement-description"
+          enableSeeMoreVariant={false}
+          markdown={announcement.description}
+          showReadMoreBtn={false}
+        />
+      </div>
     )}
 
     <AnnouncementFooter announcement={announcement} showEntity={showEntity} />
@@ -389,13 +396,15 @@ const FullBody = ({
       </Box>
 
       {hasDescription && (
-        <RichTextEditorPreviewerV1
-          className="tw:[&_p]:text-primary tw:[&_p]:text-sm"
-          data-testid="announcement-description"
-          enableSeeMoreVariant={false}
-          markdown={announcement.description}
-          showReadMoreBtn={false}
-        />
+        <div className={OVER_OVERLAY_CLASS}>
+          <RichTextEditorPreviewerV1
+            className="tw:[&_p]:text-primary tw:[&_p]:text-sm"
+            data-testid="announcement-description"
+            enableSeeMoreVariant={false}
+            markdown={announcement.description}
+            showReadMoreBtn={false}
+          />
+        </div>
       )}
 
       <AnnouncementFooter showEntity announcement={announcement} />

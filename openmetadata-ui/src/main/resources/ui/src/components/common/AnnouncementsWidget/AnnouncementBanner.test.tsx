@@ -33,7 +33,13 @@ jest.mock('../ProfilePicture/ProfilePicture', () =>
 );
 
 jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
-  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+  jest
+    .fn()
+    .mockImplementation(
+      ({ markdown, ...rest }: { markdown: string; 'data-testid'?: string }) => (
+        <div data-testid={rest['data-testid']}>{markdown}</div>
+      )
+    )
 );
 
 const announcement: AnnouncementEntity = {
@@ -252,6 +258,28 @@ describe('AnnouncementBanner', () => {
     fireEvent.click(overlay);
 
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('should keep the rendered description above the overlay when expanded', () => {
+    const { rerender } = renderBanner({ expanded: true, onClick: jest.fn() });
+
+    // Rendered markdown carries links and mentions and people select it, so it
+    // cannot sit under the overlay — every click there would open the drawer.
+    expect(
+      screen.getByTestId('announcement-description').parentElement
+    ).toHaveClass('tw:relative', 'tw:z-20');
+
+    rerender(
+      <AnnouncementBanner
+        announcement={announcement}
+        variant="full"
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('announcement-description').parentElement
+    ).toHaveClass('tw:relative', 'tw:z-20');
   });
 
   it('should give the title and the description each their own tooltip', () => {
