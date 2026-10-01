@@ -19,7 +19,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
-import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import AppLogo from '../AppLogo/AppLogo.component';
@@ -107,12 +106,14 @@ const ApplicationCard = ({
 
   if (disabledReason) {
     return (
-      <Tooltip placement="top" title={disabledReason}>
-        {/* Focusable consumes the tooltip's hover context without wrapping the
-            card (which holds a button) in another button. */}
-        <Focusable>
-          <div className="tw:h-full">{card}</div>
-        </Focusable>
+      // Out of the tab order: an AriaButton trigger would nest the card's
+      // Configure button inside another button.
+      <Tooltip
+        excludeTriggerFromTabOrder
+        placement="top"
+        title={disabledReason}
+        triggerClassName="tw:block tw:h-full">
+        {card}
       </Tooltip>
     );
   }

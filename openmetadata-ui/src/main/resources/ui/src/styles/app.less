@@ -91,6 +91,12 @@ p {
   border-radius: @border-rad-base;
   color: @error-color;
   background-color: @error-light-color;
+
+  // The light error-600 on a salmon tint reads too dim on dark surfaces.
+  .dark-mode & {
+    color: var(--om-color-text-error);
+    background-color: var(--om-color-bg-error);
+  }
 }
 
 .page-container {
