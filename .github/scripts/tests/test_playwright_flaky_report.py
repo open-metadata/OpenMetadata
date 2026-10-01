@@ -151,17 +151,17 @@ def test_slack_text_ranks_by_distinct_prs(tmp_path, monkeypatch):
 def test_html_lists_every_run_of_every_test_newest_first(tmp_path, monkeypatch):
     build(tmp_path, monkeypatch)
     page = (tmp_path / PAGE).read_text()
-    assert page.count("<details>") == 5  # 1 failed + 4 flaky
+    assert page.count("<details class=") == 5  # 1 failed + 4 flaky
     glossary = page[page.index("Glossary Term tabs") :].split("</details>")[0]
     runs = [f"actions/runs/{n}" for n in (4, 3, 2)]
     assert [glossary.index(r) for r in runs] == sorted(glossary.index(r) for r in runs)
-    assert "PR #34042 · run 3" in glossary and "tag bad" in glossary
-    destination = page[page.index("› Destination") :].split("</details>")[0]
+    assert "/pull/34042" in glossary and "pill bad" in glossary
+    destination = page[page.index(">Destination<") :].split("</details>")[0]
     assert "TimeoutError: add-header-button-1" in destination
     assert "actions/runs/5" in destination and "actions/runs/3" in destination
     assert "Failed runs with no failing test (1)" in page
     assert "playwright-ci (chromium-05)</a> — exit code 124 (timed out)." in page
-    assert "Expand all" in page
+    assert "Expand all" in page and "id=q" in page  # filter box
 
 
 def test_job_summary_has_failed_flaky_and_broken_tables(tmp_path, monkeypatch):
@@ -190,12 +190,8 @@ def test_untrusted_test_names_are_escaped(tmp_path, monkeypatch):
         tmp_path, monkeypatch, [run(9, "2026-09-30T06:00:00Z", 1, flaky=[evil])]
     )
     assert "<!channel>" not in slack["initial_comment"]
-    assert (
-        "<script>"
-        not in (
-            tmp_path / "merge-queue-2026-09-30-0000-to-2026-10-01-0000.html"
-        ).read_text()
-    )
+    page = (tmp_path / PAGE).read_text()
+    assert "<script> `x`" not in page and "&lt;script&gt;" in page
 
 
 def test_quiet_window_still_posts(tmp_path, monkeypatch):

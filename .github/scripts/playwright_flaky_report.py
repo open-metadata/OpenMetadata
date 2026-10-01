@@ -424,33 +424,152 @@ def link(label: str, url: str) -> str:
     return f'<a href="{e(url)}" target="_blank" rel="noreferrer">{e(label)}</a>'
 
 
-def test_entry(test: dict, failed: bool) -> str:
+STYLE = """
+:root { --bg:#f7f7f7; --card:#fff; --fg:#181d27; --muted:#535862; --line:#e9eaeb; --soft:#fafafa;
+  --brand:#1570ef; --bad:#d92d20; --bad-soft:#fef3f2; --warn:#dc6803; --warn-soft:#fffaeb;
+  --ok:#079455; --ok-soft:#ecfdf3; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0c0e12; --card:#13161b; --fg:#f7f7f7; --muted:#94979c;
+  --line:#22262f; --soft:#181b21; --brand:#53b1fd; --bad:#f97066; --bad-soft:#55160c;
+  --warn:#fdb022; --warn-soft:#4e1d09; --ok:#47cd89; --ok-soft:#053321; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 Inter, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color:var(--brand); text-decoration:none; } a:hover { text-decoration:underline; }
+header { background:var(--card); border-bottom:1px solid var(--line); }
+.wrap { max-width:1240px; margin:0 auto; padding:0 24px; }
+header .wrap { padding-top:20px; padding-bottom:20px; }
+.eyebrow { color:var(--brand); font-weight:600; font-size:12px; letter-spacing:.04em; text-transform:uppercase; }
+h1 { font-size:22px; margin:2px 0 4px; } .sub { color:var(--muted); margin:0; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:20px 0 8px; }
+.tile { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+.tile b { display:block; font-size:26px; line-height:1.2; } .tile span { color:var(--muted); font-size:13px; }
+.tile.bad b { color:var(--bad); } .tile.warn b { color:var(--warn); }
+.bar { position:sticky; top:0; z-index:2; background:var(--bg); padding:12px 0; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.bar input { flex:1; min-width:220px; font:inherit; padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
+.chip, button { font:inherit; font-size:13px; padding:6px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); cursor:pointer; }
+.chip:hover, button:hover { border-color:var(--brand); text-decoration:none; }
+section { background:var(--card); border:1px solid var(--line); border-radius:12px; margin:16px 0; overflow:hidden; scroll-margin-top:64px; }
+section > h2 { margin:0; padding:14px 16px 2px; font-size:16px; }
+section > .note { margin:0; padding:0 16px 12px; color:var(--muted); font-size:13px; border-bottom:1px solid var(--line); }
+section > .none { padding:12px 16px; color:var(--muted); margin:0; }
+details { border-bottom:1px solid var(--line); } details:last-child { border-bottom:0; }
+details[open] { background:var(--soft); }
+summary { list-style:none; display:grid; grid-template-columns:44px 1fr auto; gap:12px; align-items:center; padding:10px 16px; cursor:pointer; border-left:3px solid transparent; }
+summary::-webkit-details-marker { display:none; }
+.failed summary { border-left-color:var(--bad); } .flaky summary { border-left-color:var(--warn); }
+summary:hover { background:var(--soft); }
+.count { font-weight:700; text-align:center; border-radius:999px; padding:2px 0; font-size:13px; }
+.failed .count { color:var(--bad); background:var(--bad-soft); } .flaky .count { color:var(--warn); background:var(--warn-soft); }
+.name { min-width:0; } .name .file { color:var(--muted); font-size:12px; display:block; } .name .title { font-weight:500; word-break:break-word; }
+.meta { display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+.pill { font-size:12px; padding:2px 8px; border-radius:999px; background:var(--soft); border:1px solid var(--line); white-space:nowrap; }
+.pill.ok { color:var(--ok); background:var(--ok-soft); border-color:transparent; }
+.pill.bad { color:var(--bad); background:var(--bad-soft); border-color:transparent; }
+.strip { display:flex; gap:2px; } .strip i { width:8px; height:14px; border-radius:2px; background:var(--ok); opacity:.85; }
+.strip i.f { background:var(--bad); }
+.body { padding:4px 16px 14px 72px; }
+.errors { margin:6px 0 10px; padding:0; list-style:none; }
+.errors li { font:12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background:var(--bad-soft); color:var(--bad); padding:6px 10px; border-radius:6px; margin:4px 0; word-break:break-word; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { text-align:left; color:var(--muted); font-weight:500; padding:6px 8px; border-bottom:1px solid var(--line); }
+td { padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-word; } tr:last-child td { border-bottom:0; }
+td.err { font:12px ui-monospace, Menlo, monospace; color:var(--muted); }
+.plain td, .plain th { padding:8px 16px; }
+footer { color:var(--muted); font-size:12px; padding:8px 0 32px; }
+@media (max-width:640px) { .wrap { padding:0 16px; } summary { grid-template-columns:36px 1fr; } .meta { grid-column:2; justify-content:flex-start; } .body { padding-left:16px; } }
+"""
+
+# Hides every entry whose text does not contain the filter; closed <details> are
+# still searched, so a match inside a run list or error counts.
+FILTER_JS = """<script>
+const q = document.getElementById('q');
+q.addEventListener('input', () => { const v = q.value.toLowerCase();
+  document.querySelectorAll('details').forEach(d => { d.hidden = v && !d.textContent.toLowerCase().includes(v); }); });
+</script>"""
+SET_ALL = "document.querySelectorAll('details').forEach(d=>d.open={})"
+STRIP_MAX = 30
+
+
+def runs_table(test: dict, failed: bool, repo_url: str) -> str:
+    # One distinct error is already shown above the table; repeat it per run only
+    # when the runs disagree.
+    show_error = failed and len(test["errors"]) > 1
+    rows = []
+    for run, error in test["hits"]:
+        passed = run["conclusion"] == "success"
+        pr = (
+            link(f"#{run['prs'][0]}", f"{repo_url}/pull/{run['prs'][0]}")
+            if run["prs"]
+            else "—"
+        )
+        attempt = f" (attempt {run['attempt']})" if run["attempt"] > 1 else ""
+        rows.append(
+            f"<tr><td>{pr}</td><td>{link('run ' + str(run['runId']) + attempt, run['url'])}</td>"
+            f"<td>{e(utc(run['createdAt']))}</td>"
+            f"<td><span class='pill {'ok' if passed else 'bad'}'>{'passed' if passed else e(run['conclusion'])}</span></td>"
+            + (f"<td class=err>{e(error)}</td>" if show_error else "")
+            + "</tr>"
+        )
+    head = (
+        "<tr><th>PR</th><th>Run</th><th>Time (UTC)</th><th>Queue run</th>"
+        + ("<th>Error</th>" if show_error else "")
+        + "</tr>"
+    )
+    return f"<table>{head}{''.join(rows)}</table>"
+
+
+def test_entry(test: dict, failed: bool, repo_url: str) -> str:
     errors = "".join(
-        f"<li>{e(error)}{f' <span class=n>×{count}</span>' if len(test['errors']) > 1 else ''}</li>"
+        f"<li>{e(error)}{f' ×{count}' if len(test['errors']) > 1 else ''}</li>"
         for error, count in test["errors"].most_common()
     )
-    hits = "".join(
-        f"<li>{link(run_label(run), run['url'])} <span class=muted>{e(utc(run['createdAt']))}</span> "
-        f"<span class='tag {'ok' if run['conclusion'] == 'success' else 'bad'}'>"
-        f"{'passed' if run['conclusion'] == 'success' else e(run['conclusion'])}</span>"
-        f"{f' <span class=err>{e(error)}</span>' if error and len(test['errors']) > 1 else ''}</li>"
-        for run, error in test["hits"]
+    squares = "".join(
+        f"<i class='{'' if run['conclusion'] == 'success' else 'f'}' title='{e(run_label(run))} · {e(utc(run['createdAt']))}'></i>"
+        for run, _ in test["hits"][:STRIP_MAX]
     )
+    pills = [
+        f"<span class=strip title='Newest first'>{squares}</span>",
+        f"<span class=pill>{e(plural(len(test['prs']), 'PR'))}</span>",
+    ]
+    if not failed:
+        pills.append(f"<span class='pill ok'>{test['passedRuns']} passed</span>")
+        if test["runs"] > test["passedRuns"]:
+            pills.append(
+                f"<span class='pill bad'>{test['runs'] - test['passedRuns']} failed</span>"
+            )
     return (
-        f"<details><summary><span class='count {'bad' if failed else 'warn'}'>{test['runs']}</span>"
-        f"<span class=name>{e(test_name(test))}</span><span class=muted>{e(counts(test, failed))}</span></summary>"
-        f"<div class=body>{f'<ul class=errors>{errors}</ul>' if errors else ''}<ol class=runs>{hits}</ol></div></details>"
+        f"<details class={'failed' if failed else 'flaky'}><summary><span class=count>{test['runs']}</span>"
+        f"<span class=name><span class=file>{e(test['file'])}:{test['line']}</span><span class=title>{e(test['title'])}</span></span>"
+        f"<span class=meta>{''.join(pills)}</span></summary>"
+        f"<div class=body>{f'<ul class=errors>{errors}</ul>' if errors else ''}{runs_table(test, failed, repo_url)}</div></details>"
     )
 
 
-def section(title: str, note: str, entries: list[str]) -> str:
-    body = "".join(entries) or "<p class=muted>None.</p>"
-    return f"<h2>{e(title)}</h2><p class=note>{e(note)}</p>{body}"
+def section(anchor: str, title: str, note: str, body: str) -> str:
+    return f"<section id={anchor}><h2>{e(title)}</h2><p class=note>{e(note)}</p>{body or '<p class=none>None.</p>'}</section>"
 
 
-def render_html(report: dict, title: str) -> str:
+def render_html(report: dict, title: str, window: str, repo_url: str) -> str:
+    tiles = [
+        ("", report["runs"], f"queue runs · {report['passed']} passed"),
+        ("bad", report["failedRuns"], "ejected runs"),
+        ("", report["prs"], "PRs"),
+        ("bad", len(report["failed"]), "failed tests"),
+        ("warn", len(report["flaky"]), "flaky tests"),
+    ]
+    if report["broken"]:
+        tiles.append(("bad", len(report["broken"]), "ejected with no failing test"))
+    if report["unreadable"]:
+        tiles.append(("warn", report["unreadable"], "runs not readable"))
+    chips = [
+        ("failed", f"Failed {len(report['failed'])}"),
+        ("flaky", f"Flaky {len(report['flaky'])}"),
+    ]
+    if report["broken"]:
+        chips.append(("broken", f"No failing test {len(report['broken'])}"))
+    if report["specs"]:
+        chips.append(("specs", "Specs"))
     broken = "".join(
-        f"<tr><td>{link(run_label(run), run['url'])}<br><span class=muted>{e(utc(run['createdAt']))}</span></td>"
+        f"<tr><td>{link(run_label(run), run['url'])}<br><span class=sub>{e(utc(run['createdAt']))}</span></td>"
         f"<td>{'<br>'.join(link(job['name'], job['url']) + ' — ' + e(job['reason']) for job in run['broken'])}</td></tr>"
         for run in report["broken"]
     )
@@ -459,62 +578,59 @@ def render_html(report: dict, title: str) -> str:
         for spec in report["specs"]
     )
     parts = [
-        f"<h1>{e(title)}</h1>",
-        "<p class=meta>" + "<br>".join(e(line) for line in headline(report)) + "</p>",
-        "<p class=tools><button onclick=\"document.querySelectorAll('details').forEach(d=>d.open=true)\">Expand all</button>"
-        "<button onclick=\"document.querySelectorAll('details').forEach(d=>d.open=false)\">Collapse all</button></p>",
+        "<header><div class=wrap><div class=eyebrow>OpenMetadata · Merge queue</div>"
+        f"<h1>Playwright failed &amp; flaky tests</h1><p class=sub>{e(window)} · ranked by distinct PRs, "
+        "so a re-queued PR counts once</p></div></header><div class=wrap>",
+        "<div class=tiles>"
+        + "".join(
+            f"<div class='tile {cls}'><b>{value}</b><span>{e(label)}</span></div>"
+            for cls, value, label in tiles
+        )
+        + "</div>",
+        "<div class=bar><input id=q type=search placeholder='Filter tests, specs, PRs, errors…' aria-label='Filter'>"
+        + "".join(
+            f"<a class=chip href='#{anchor}'>{e(label)}</a>" for anchor, label in chips
+        )
+        + f'<button type=button onclick="{SET_ALL.format("true")}">Expand all</button>'
+        f'<button type=button onclick="{SET_ALL.format("false")}">Collapse all</button></div>',
         section(
+            "failed",
             f"Failed tests ({len(report['failed'])})",
             FAILED_NOTE,
-            [test_entry(t, True) for t in report["failed"]],
+            "".join(test_entry(t, True, repo_url) for t in report["failed"]),
         ),
         section(
+            "flaky",
             f"Flaky tests ({len(report['flaky'])})",
             FLAKY_NOTE,
-            [test_entry(t, False) for t in report["flaky"]],
+            "".join(test_entry(t, False, repo_url) for t in report["flaky"]),
         ),
     ]
     if broken:
         parts.append(
-            f"<h2>Failed runs with no failing test ({len(report['broken'])})</h2><p class=note>{e(BROKEN_NOTE)}</p>"
-            f"<table><tr><th>Run</th><th>Failed jobs</th></tr>{broken}</table>"
+            section(
+                "broken",
+                f"Failed runs with no failing test ({len(report['broken'])})",
+                BROKEN_NOTE,
+                f"<table class=plain><tr><th>Run</th><th>Failed jobs</th></tr>{broken}</table>",
+            )
         )
     if specs:
         parts.append(
-            f"<h2>Specs with several flaky tests</h2><p class=note>{e(SPECS_NOTE)}</p>"
-            f"<table><tr><th>Spec</th><th>Flaky tests</th><th>Runs</th></tr>{specs}</table>"
+            section(
+                "specs",
+                "Specs with several flaky tests",
+                SPECS_NOTE,
+                f"<table class=plain><tr><th>Spec</th><th>Flaky tests</th><th>Runs</th></tr>{specs}</table>",
+            )
         )
-    style = """
-      :root { --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --bg: #fff; --head: #f6f8fa;
-              --link: #0969da; --bad: #cf222e; --warn: #9a6700; --ok: #1a7f37; }
-      @media (prefers-color-scheme: dark) {
-        :root { --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --bg: #0d1117; --head: #151b23;
-                --link: #4493f8; --bad: #f85149; --warn: #d29922; --ok: #3fb950; } }
-      body { font: 14px/1.45 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--fg);
-             background: var(--bg); max-width: 1200px; margin: 24px auto; padding: 0 16px; }
-      h1 { font-size: 22px; margin: 0 0 8px; } h2 { font-size: 17px; margin: 28px 0 4px; }
-      .meta, .note, .muted { color: var(--muted); } .note { margin: 0 0 8px; }
-      a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
-      button { font: inherit; margin-right: 8px; padding: 3px 10px; border: 1px solid var(--line);
-               border-radius: 6px; background: var(--head); color: var(--fg); cursor: pointer; }
-      details { border: 1px solid var(--line); border-radius: 6px; margin: 4px 0; }
-      summary { display: flex; gap: 10px; align-items: baseline; padding: 6px 10px; cursor: pointer; }
-      summary .name { flex: 1; word-break: break-word; }
-      summary .muted { white-space: nowrap; font-size: 12px; }
-      .count { min-width: 28px; text-align: right; font-weight: 600; }
-      .count.bad, .tag.bad { color: var(--bad); } .count.warn { color: var(--warn); } .tag.ok { color: var(--ok); }
-      .body { border-top: 1px solid var(--line); padding: 6px 12px 8px 48px; background: var(--head); }
-      .errors { margin: 4px 0 8px; padding-left: 18px; font-family: ui-monospace, monospace; font-size: 12px; }
-      .runs { margin: 0; padding-left: 18px; } .runs li { margin: 2px 0; }
-      .tag, .n { font-size: 12px; } .err { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); }
-      table { border-collapse: collapse; width: 100%; }
-      th, td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
-      th { background: var(--head); } td { word-break: break-word; }
-    """
+    parts.append(
+        "<footer>Generated by playwright-flaky-daily-report.yml</footer></div>"
+    )
     return (
-        f"<!doctype html><html><head><meta charset='utf-8'>"
-        f"<meta name='viewport' content='width=device-width, initial-scale=1'><title>{e(title)}</title>"
-        f"<style>{style}</style></head><body>{''.join(parts)}</body></html>"
+        "<!doctype html><html lang=en><head><meta charset=utf-8>"
+        f"<meta name=viewport content='width=device-width, initial-scale=1'><title>{e(title)}</title>"
+        f"<style>{STYLE}</style></head><body>{''.join(parts)}{FILTER_JS}</body></html>"
     )
 
 
@@ -645,7 +761,12 @@ def main(argv: list[str] | None = None) -> int:
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
     page = out / f"merge-queue-{stamp}.html"
-    page.write_text(render_html(report, title))
+    window = f"{utc(since)} → {utc(until)} UTC"
+    page.write_text(
+        render_html(
+            report, title, window, f"https://github.com/{args.owner}/{args.repo}"
+        )
+    )
     markdown = render_md(report, title)
     (out / "report.md").write_text(markdown)
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
