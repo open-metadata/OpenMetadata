@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
-import {
-  chartColor,
-  PieChart,
-  useChartPalette,
-} from '@openmetadata/ui-core-components/charts';
+import { PieChart } from '@openmetadata/ui-core-components/charts';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -33,13 +29,16 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/widget/total-assets.svg';
+import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
+import { generatePalette } from '../../../../styles/colorPallet';
 import { getDataInsightPathWithFqn } from '../../../../utils/DataInsightPureUtils';
 import {
   customFormatDateTime,
@@ -69,6 +68,7 @@ const TotalDataAssetsWidget = ({
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { applicationConfig } = useApplicationStore();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [chartData, setChartData] = useState<DataInsightCustomChartResult>();
   const [selectedDate, setSelectedDate] = useState<number | undefined>();
@@ -76,7 +76,14 @@ const TotalDataAssetsWidget = ({
     DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS
   );
 
-  const palette = useChartPalette();
+  // Shades of the brand colour, dark to light, so the largest count is darkest.
+  const pieChartColors = useMemo(() => {
+    const primaryColor =
+      applicationConfig?.customTheme?.primaryColor ??
+      DEFAULT_THEME.primaryColor;
+
+    return generatePalette(primaryColor).reverse();
+  }, [applicationConfig?.customTheme?.primaryColor]);
 
   const widgetData = useMemo(() => {
     return currentLayout?.find((item) => item.i === widgetKey);
@@ -155,15 +162,15 @@ const TotalDataAssetsWidget = ({
     };
   }, [selectedDate, dataByDate]);
 
-  // Same order as the legend beside the chart, so slice i and legend dot i
-  // take the same palette colour.
+  // Same order and colours as the legend beside the chart.
   const pieData = useMemo(
     () =>
-      sortedEntityList.map((entity) => ({
+      sortedEntityList.map((entity, index) => ({
         name: startCase(entity),
         value: selectedDateData[entity] ?? 0,
+        color: pieChartColors[index % pieChartColors.length],
       })),
-    [sortedEntityList, selectedDateData]
+    [sortedEntityList, selectedDateData, pieChartColors]
   );
 
   const fetchData = async () => {
@@ -213,7 +220,7 @@ const TotalDataAssetsWidget = ({
       <div
         className={classNames(
           'total-data-assets-widget-content d-flex flex-column',
-          isFullSizeWidget ? 'gap-1' : 'gap-8'
+          isFullSizeWidget ? 'gap-1' : 'gap-4'
         )}>
         <div className={isFullSizeWidget ? 'd-flex gap-6' : ''}>
           {/* Donut Chart */}
@@ -252,7 +259,8 @@ const TotalDataAssetsWidget = ({
                     data-testid={`legend-color-${label}`}
                     style={{
                       borderRadius: '50%',
-                      backgroundColor: chartColor(palette, index),
+                      backgroundColor:
+                        pieChartColors[index % pieChartColors.length],
                     }}
                   />
                   <Typography.Text ellipsis={{ tooltip: true }}>
@@ -302,7 +310,7 @@ const TotalDataAssetsWidget = ({
     totalDatAssets,
     sortedEntityList,
     isFullSizeWidget,
-    palette,
+    pieChartColors,
   ]);
 
   useEffect(() => {

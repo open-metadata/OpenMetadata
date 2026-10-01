@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import {
-  chartColor,
-  LIGHT_CHART_PALETTE,
   PieChart,
   type PieChartProps,
 } from '@openmetadata/ui-core-components/charts';
@@ -25,12 +23,14 @@ import {
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
+import { generatePalette } from '../../../../styles/colorPallet';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -451,7 +451,7 @@ describe('TotalDataAssetsWidget', () => {
       );
     });
 
-    it('should draw one slice per entity type, highest count first, with legend dots in palette order', async () => {
+    it('should draw one slice per entity type, highest count first, in brand shades matching the legend', async () => {
       await act(async () => {
         renderTotalDataAssetsWidget({
           currentLayout: [{ i: 'test-widget-key', x: 0, y: 0, w: 2, h: 4 }],
@@ -466,13 +466,14 @@ describe('TotalDataAssetsWidget', () => {
       expect(values).toEqual([...values].sort((a, b) => b - a));
       expect(legendDots).toHaveLength(slices.length);
 
-      // No slice names a colour, so slice i takes palette colour i; the
-      // legend dot beside it must take the same one.
-      expect(slices.every((slice) => slice.status === undefined)).toBe(true);
+      // Shades of the brand colour, darkest for the largest count; the legend
+      // dot beside each slice takes the same shade.
+      const brandShades = generatePalette(DEFAULT_THEME.primaryColor).reverse();
 
-      legendDots.forEach((dot, index) => {
-        expect(dot).toHaveStyle({
-          backgroundColor: chartColor(LIGHT_CHART_PALETTE, index),
+      slices.forEach((slice, index) => {
+        expect(slice.color).toBe(brandShades[index]);
+        expect(legendDots[index]).toHaveStyle({
+          backgroundColor: brandShades[index],
         });
       });
     });
