@@ -99,8 +99,6 @@ class SparqlQueryToolAgentProfileTest {
             "DESCRIBE <https://open-metadata.org/entity/table/abc>", "QUERY_FORM_NOT_ALLOWED",
             "SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }", "GRAPH_SELECTION_NOT_ALLOWED",
             "SELECT * FROM <urn:g> WHERE { ?s ?p ?o }", "GRAPH_SELECTION_NOT_ALLOWED",
-            "SELECT * WHERE { SERVICE <https://x.example/sparql> { ?s ?p ?o } }",
-                "FEDERATION_NOT_ALLOWED",
             "SELECT * WHERE { ?s ?p ?o FILTER(<java:java.lang.Math.abs>(1)) }",
                 "QUERY_FORM_NOT_ALLOWED");
     final RdfRepository repository = repositoryReturning(EMPTY_SELECT_RESULT);
@@ -115,6 +113,24 @@ class SparqlQueryToolAgentProfileTest {
 
     verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
     verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
+
+  @Test
+  void aBlockedServiceClauseIsForbiddenLikeOnTheRestEndpointsAndTheAdminPath() {
+    final RdfRepository repository = repositoryReturning(EMPTY_SELECT_RESULT);
+
+    final AuthorizationException blocked =
+        assertThrows(
+            AuthorizationException.class,
+            () ->
+                run(
+                    repository,
+                    Map.of(
+                        "query",
+                        "SELECT * WHERE { SERVICE <https://x.example/sparql> { ?s ?p ?o } }")));
+
+    assertTrue(blocked.getMessage().startsWith("FEDERATION_NOT_ALLOWED:"));
+    verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
   }
 
   @Test

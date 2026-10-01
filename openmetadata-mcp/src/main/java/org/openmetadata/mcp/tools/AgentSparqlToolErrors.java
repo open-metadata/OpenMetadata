@@ -14,6 +14,7 @@
 package org.openmetadata.mcp.tools;
 
 import org.openmetadata.service.rdf.agent.AgentSparqlException;
+import org.openmetadata.service.security.AuthorizationException;
 
 /**
  * Maps the stable agent-profile error codes onto the exception kinds {@code DefaultToolContext}
@@ -30,8 +31,9 @@ final class AgentSparqlToolErrors {
           QUERY_FORM_NOT_ALLOWED,
           GRAPH_SELECTION_NOT_ALLOWED,
           QUERY_LIMIT_EXCEEDED,
-          FEDERATION_NOT_ALLOWED,
           RESULT_OUTPUT_LIMIT_EXCEEDED -> new IllegalArgumentException(message, failure);
+        // A blocked SERVICE is a 403 on the REST endpoints and, for administrators, on this tool.
+      case FEDERATION_NOT_ALLOWED -> new AuthorizationException(message);
       case EXECUTION_CAPACITY_EXHAUSTED,
           PROJECTION_NOT_READY,
           RDF_REPOSITORY_UNAVAILABLE -> new RdfRetryLaterException(
