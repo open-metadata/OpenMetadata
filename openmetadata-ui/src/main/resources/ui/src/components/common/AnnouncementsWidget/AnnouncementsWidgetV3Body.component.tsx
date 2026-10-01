@@ -12,7 +12,10 @@
  */
 
 import { Box, ButtonUtility, Skeleton } from '@openmetadata/ui-core-components';
-import { ChevronLeft, ChevronRight } from '@untitledui/icons';
+import {
+  ChevronLeft,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -20,7 +20,7 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { Edit03, Plus, Trash01 } from '@untitledui/icons';
+import { Edit03, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';

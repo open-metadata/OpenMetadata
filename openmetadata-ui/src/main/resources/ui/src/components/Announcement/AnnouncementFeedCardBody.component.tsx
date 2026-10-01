@@ -16,7 +16,7 @@ import {
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Calendar } from '@untitledui/icons';
+import { Calendar } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, pick } from 'lodash';

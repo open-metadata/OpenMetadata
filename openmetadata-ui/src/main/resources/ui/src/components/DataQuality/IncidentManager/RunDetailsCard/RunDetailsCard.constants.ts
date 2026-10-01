@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
-import { CheckCircle, Clock } from '@untitledui/icons';
+import {
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+} from '@openmetadata/ui-core-components/icons';
 import type { FC, SVGProps } from 'react';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 

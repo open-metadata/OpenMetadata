@@ -24,7 +24,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@untitledui/icons';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';

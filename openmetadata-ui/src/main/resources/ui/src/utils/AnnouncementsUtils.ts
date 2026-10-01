@@ -20,7 +20,7 @@ import {
   Announcement02,
   InfoCircle,
   SlashCircle01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { EntityType } from '../enums/entity.enum';
 import {
   AnnouncementColor,

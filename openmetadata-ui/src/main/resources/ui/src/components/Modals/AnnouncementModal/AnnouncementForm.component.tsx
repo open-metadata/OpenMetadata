@@ -23,7 +23,10 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Announcement02, Calendar } from '@untitledui/icons';
+import {
+  Announcement02,
+  Calendar,
+} from '@openmetadata/ui-core-components/icons';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';

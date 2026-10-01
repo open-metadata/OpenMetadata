@@ -19,7 +19,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Announcement02 } from '@untitledui/icons';
+import { Announcement02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useMemo, useState } from 'react';

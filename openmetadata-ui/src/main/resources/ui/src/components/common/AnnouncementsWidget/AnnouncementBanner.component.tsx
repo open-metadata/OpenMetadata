@@ -20,7 +20,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { MouseEvent, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -20,7 +20,7 @@ import {
   SelectItemType,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import React, {
   useCallback,
