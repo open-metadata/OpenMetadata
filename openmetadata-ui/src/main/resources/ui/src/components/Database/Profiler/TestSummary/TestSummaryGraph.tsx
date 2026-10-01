@@ -70,6 +70,7 @@ import TestSummaryStatusKey from './TestSummaryStatusKey';
 type PlottedPoint = TestCaseChartDataType['data'][number];
 
 // The tooltip is the app's own React component, so ECharts draws none.
+const MULTI_SERIES_EMPHASIS = { emphasis: { focus: 'series' as const } };
 const TOOLTIP_OFF = { show: false };
 
 // Aborted is drawn as a ring, matching the status key: a run that produced no
@@ -382,7 +383,9 @@ function TestSummaryGraph({
               hollow: point.status === POINT_STATUS_HOLLOW,
               selected: point.name === activeRunTimestamp,
             },
-      seriesOption: { emphasis: { focus: 'series' } },
+      // Focusing the hovered series fades the others, and with them the band
+      // and the expectation label; only worth it when there are others.
+      seriesOption: isSingleSeries ? undefined : MULTI_SERIES_EMPHASIS,
     }));
 
     return [...band, ...lines];
