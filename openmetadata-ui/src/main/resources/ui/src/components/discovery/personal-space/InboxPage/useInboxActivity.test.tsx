@@ -16,12 +16,17 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { ConversationFilterType } from '../../../../generated/type/conversationFilterType';
 
-const mockGetUserActivity = jest.fn();
+const mockGetActivityEvents = jest.fn();
+const mockGetMyActivityFeed = jest.fn();
+const mockGetFollowingActivityFeed = jest.fn();
 const mockListConversations = jest.fn();
 let mockCurrentUser: { id?: string } | undefined;
 
 jest.mock('rest/activityAPI', () => ({
-  getUserActivity: (...args: unknown[]) => mockGetUserActivity(...args),
+  getActivityEvents: (...args: unknown[]) => mockGetActivityEvents(...args),
+  getMyActivityFeed: (...args: unknown[]) => mockGetMyActivityFeed(...args),
+  getFollowingActivityFeed: (...args: unknown[]) =>
+    mockGetFollowingActivityFeed(...args),
 }));
 
 jest.mock('rest/conversationsAPI', () => ({
@@ -32,6 +37,7 @@ jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
+import { ActivityFilter } from './inbox.utils';
 import { fetchInboxActivity, useInboxActivity } from './useInboxActivity';
 
 const threeEvents = { data: [{ id: '1' }, { id: '2' }, { id: '3' }] };
@@ -50,26 +56,30 @@ const createWrapper = () => {
 beforeEach(() => {
   jest.clearAllMocks();
   mockCurrentUser = { id: 'u1' };
-  mockGetUserActivity.mockResolvedValue(threeEvents);
+  [
+    mockGetActivityEvents,
+    mockGetMyActivityFeed,
+    mockGetFollowingActivityFeed,
+  ].forEach((mock) => mock.mockResolvedValue(threeEvents));
   mockListConversations.mockResolvedValue(twoThreads);
 });
 
 describe('fetchInboxActivity', () => {
-  it('fetches the user’s own activity + every conversation for "all" (admin)', async () => {
+  // "All" is everything the viewer may see: every event, every conversation.
+  it('fetches every activity event and conversation for All', async () => {
     const { activities, threads } = await fetchInboxActivity(
-      'all',
+      ActivityFilter.All,
       'u1',
       100,
       200
     );
 
-    // Activity is always the user's own events (actor-based).
-    expect(mockGetUserActivity).toHaveBeenCalledWith('u1', {
+    expect(mockGetActivityEvents).toHaveBeenCalledWith({
       days: 1,
       limit: 200,
     });
-    // Admin conversations are unfiltered (no filterType, no userId). The limit is
-    // 100, not ACTIVITY_LIMIT: /conversations rejects anything above @Max(100).
+    // The limit is 100, not ACTIVITY_LIMIT: /conversations rejects anything
+    // above @Max(100).
     expect(mockListConversations).toHaveBeenCalledWith({
       filterType: undefined,
       userId: undefined,
@@ -81,20 +91,49 @@ describe('fetchInboxActivity', () => {
     expect(threads).toHaveLength(2);
   });
 
-  it('scopes conversations to owned/followed ones for "me" (non-admin)', async () => {
-    await fetchInboxActivity('me', 'u1');
+  it.each([
+    [
+      ActivityFilter.MyAssets,
+      mockGetMyActivityFeed,
+      ConversationFilterType.Owner,
+    ],
+    [
+      ActivityFilter.Following,
+      mockGetFollowingActivityFeed,
+      ConversationFilterType.Follows,
+    ],
+  ])(
+    'scopes %s to its activity feed and conversations',
+    async (filter, activityRequest, filterType) => {
+      await fetchInboxActivity(filter, 'u1');
 
-    expect(mockGetUserActivity).toHaveBeenCalledWith('u1', {
-      days: 30,
-      limit: 200,
-    });
-    expect(mockListConversations).toHaveBeenCalledWith({
-      filterType: ConversationFilterType.OwnerOrFollows,
-      userId: 'u1',
-      limit: 100,
-      startTs: undefined,
-      endTs: undefined,
-    });
+      expect(activityRequest).toHaveBeenCalledWith({ days: 30, limit: 200 });
+      expect(mockGetActivityEvents).not.toHaveBeenCalled();
+      expect(mockListConversations).toHaveBeenCalledWith({
+        filterType,
+        userId: 'u1',
+        limit: 100,
+        startTs: undefined,
+        endTs: undefined,
+      });
+    }
+  );
+
+  // Activity events carry no mentions yet, so Mentions is conversations only.
+  it('shows only the conversations that mention the viewer for Mentions', async () => {
+    const { activities } = await fetchInboxActivity(
+      ActivityFilter.Mentions,
+      'u1'
+    );
+
+    expect(activities).toEqual([]);
+    expect(mockGetActivityEvents).not.toHaveBeenCalled();
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filterType: ConversationFilterType.Mentions,
+        userId: 'u1',
+      })
+    );
   });
 
   // Regression: these were fetched with Promise.all, so a rejected conversation
@@ -102,33 +141,39 @@ describe('fetchInboxActivity', () => {
   it('still returns activity when the conversation fetch fails', async () => {
     mockListConversations.mockRejectedValue(new Error('400 Bad Request'));
 
-    const { activities, threads } = await fetchInboxActivity('all', 'u1');
+    const { activities, threads } = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1'
+    );
 
     expect(activities).toHaveLength(3);
     expect(threads).toEqual([]);
   });
 
   it('still returns conversations when the activity fetch fails', async () => {
-    mockGetUserActivity.mockRejectedValue(new Error('boom'));
+    mockGetActivityEvents.mockRejectedValue(new Error('boom'));
 
-    const { activities, threads } = await fetchInboxActivity('all', 'u1');
+    const { activities, threads } = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1'
+    );
 
     expect(activities).toEqual([]);
     expect(threads).toHaveLength(2);
   });
 
   it('returns empty lists when the user id is not resolved yet', async () => {
-    const result = await fetchInboxActivity('all', undefined);
+    const result = await fetchInboxActivity(ActivityFilter.All, undefined);
 
     expect(result).toEqual({ activities: [], threads: [] });
-    expect(mockGetUserActivity).not.toHaveBeenCalled();
+    expect(mockGetActivityEvents).not.toHaveBeenCalled();
     expect(mockListConversations).not.toHaveBeenCalled();
   });
 });
 
 describe('useInboxActivity', () => {
   it('merges activity events and conversations into one list', async () => {
-    const { result } = renderHook(() => useInboxActivity('all'), {
+    const { result } = renderHook(() => useInboxActivity(ActivityFilter.All), {
       wrapper: createWrapper(),
     });
 
@@ -143,7 +188,7 @@ describe('useInboxActivity', () => {
   });
 
   it('orders the merged list by timestamp, newest first', async () => {
-    mockGetUserActivity.mockResolvedValue({
+    mockGetActivityEvents.mockResolvedValue({
       data: [
         { id: 'a-old', timestamp: 100 },
         { id: 'a-new', timestamp: 400 },
@@ -158,7 +203,7 @@ describe('useInboxActivity', () => {
       ],
     });
 
-    const { result } = renderHook(() => useInboxActivity('all'), {
+    const { result } = renderHook(() => useInboxActivity(ActivityFilter.All), {
       wrapper: createWrapper(),
     });
 
@@ -170,9 +215,9 @@ describe('useInboxActivity', () => {
   });
 
   it('shows conversations alone when the user has no events', async () => {
-    mockGetUserActivity.mockResolvedValue({ data: [] });
+    mockGetActivityEvents.mockResolvedValue({ data: [] });
 
-    const { result } = renderHook(() => useInboxActivity('all'), {
+    const { result } = renderHook(() => useInboxActivity(ActivityFilter.All), {
       wrapper: createWrapper(),
     });
 
@@ -190,7 +235,7 @@ describe('useInboxActivity', () => {
   // production shape (backend always sets createdAt on insert, bumps only
   // updatedAt), where the `?? updatedAt` fallback never fires.
   it('orders a replied conversation above a newer unreplied one by last-activity', async () => {
-    mockGetUserActivity.mockResolvedValue({ data: [] });
+    mockGetActivityEvents.mockResolvedValue({ data: [] });
     mockListConversations.mockResolvedValue({
       data: [
         // Replied Aug 20, reply landed Sep 4 -> updatedAt >> createdAt.
@@ -200,7 +245,7 @@ describe('useInboxActivity', () => {
       ],
     });
 
-    const { result } = renderHook(() => useInboxActivity('all'), {
+    const { result } = renderHook(() => useInboxActivity(ActivityFilter.All), {
       wrapper: createWrapper(),
     });
 
@@ -219,7 +264,7 @@ describe('useInboxActivity', () => {
   // the inbox would still diverge on equal-timestamp ordering and rely on JS
   // sort stability plus the server's `updatedAt DESC, id DESC` order.
   it('breaks timestamp ties by ascending id, matching upstream', async () => {
-    mockGetUserActivity.mockResolvedValue({ data: [] });
+    mockGetActivityEvents.mockResolvedValue({ data: [] });
     mockListConversations.mockResolvedValue({
       data: [
         // Both unreplied, equal timestamps -> tie decided by id.
@@ -228,7 +273,7 @@ describe('useInboxActivity', () => {
       ],
     });
 
-    const { result } = renderHook(() => useInboxActivity('all'), {
+    const { result } = renderHook(() => useInboxActivity(ActivityFilter.All), {
       wrapper: createWrapper(),
     });
 

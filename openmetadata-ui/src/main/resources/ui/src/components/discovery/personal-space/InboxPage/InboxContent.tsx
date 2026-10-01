@@ -16,7 +16,6 @@ import { DateRangeObject } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../hooks/authHooks';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import {
   getEndOfDayInMillis,
@@ -24,11 +23,7 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
 import InboxDateFilter from './components/InboxDateFilter';
-import {
-  getDefaultInboxDateRange,
-  InboxDateRange,
-  InboxScope,
-} from './inbox.utils';
+import { getDefaultInboxDateRange, InboxDateRange } from './inbox.utils';
 import ActivityTab from './tabs/ActivityTab';
 import TasksTab from './tabs/TasksTab';
 import { useInboxCounts } from './useInboxCounts';
@@ -44,17 +39,11 @@ const DEFAULT_TAB: InboxTabKey = 'activity';
  */
 const InboxContent: React.FC = () => {
   const { t } = useTranslation();
-  const { isAdminUser } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   // Sub-tab derived from path so it's deep-linkable.
   const selectedTab: InboxTabKey =
     pathname === PERSONAL_SPACE_ROUTES.INBOX_TASKS ? 'tasks' : DEFAULT_TAB;
-
-  // Mirrors OSS ActivityFeedTab: activity is always the current user's own
-  // events; only the conversation fallback widens for admins (every
-  // conversation) vs. everyone else (owned/followed threads).
-  const effectiveScope: InboxScope = isAdminUser ? 'all' : 'me';
 
   const defaultDateRange = useMemo(
     () =>
@@ -76,10 +65,7 @@ const InboxContent: React.FC = () => {
 
   // Counts come from a shared fetch (not the mounted tab) so both tab badges
   // stay accurate when switching between Activity and Tasks.
-  const { activityCount, taskCount } = useInboxCounts(
-    effectiveScope,
-    dateRange
-  );
+  const { activityCount, taskCount } = useInboxCounts(dateRange);
 
   const handleDateRangeChange = useCallback(
     (value: DateRangeObject) => {
@@ -153,11 +139,7 @@ const InboxContent: React.FC = () => {
             onDateRangeChange={handleDateRangeChange}
           />
         ) : (
-          <ActivityTab
-            dateRange={dateRange}
-            isFiltered={isDateFiltered}
-            scope={effectiveScope}
-          />
+          <ActivityTab dateRange={dateRange} isFiltered={isDateFiltered} />
         )}
       </Box>
     </Box>

@@ -15,12 +15,6 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import type { InboxDateRange } from './inbox.utils';
 
-let mockIsAdmin: boolean | undefined;
-
-jest.mock('hooks/authHooks', () => ({
-  useAuth: () => ({ isAdminUser: mockIsAdmin }),
-}));
-
 jest.mock('./useInboxCounts', () => ({
   useInboxCounts: () => ({ activityCount: 5, taskCount: 2, isLoading: false }),
 }));
@@ -43,16 +37,12 @@ jest.mock('./components/InboxDateFilter', () => ({
 
 jest.mock('./tabs/ActivityTab', () => ({
   __esModule: true,
-  default: ({ scope }: { scope?: string }) => (
-    <div data-testid="activity">{`scope:${scope}`}</div>
-  ),
+  default: () => <div data-testid="activity" />,
 }));
 
 jest.mock('./tabs/TasksTab', () => ({
   __esModule: true,
-  default: ({ scope }: { scope?: string }) => (
-    <div data-testid="tasks">{`scope:${scope}`}</div>
-  ),
+  default: () => <div data-testid="tasks" />,
 }));
 
 let tabsOnChange: ((key: string) => void) | undefined;
@@ -128,7 +118,6 @@ import InboxContent from './InboxContent';
 describe('InboxContent', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockIsAdmin = true;
     mockPathname = '/inbox';
   });
 
@@ -167,20 +156,6 @@ describe('InboxContent', () => {
     render(<InboxContent />);
 
     expect(screen.getByTestId('activity')).toBeInTheDocument();
-  });
-
-  it('widens the conversation scope to "all" for admins', () => {
-    mockIsAdmin = true;
-    render(<InboxContent />);
-
-    expect(screen.getByTestId('activity')).toHaveTextContent('scope:all');
-  });
-
-  it('scopes to "me" for non-admins', () => {
-    mockIsAdmin = false;
-    render(<InboxContent />);
-
-    expect(screen.getByTestId('activity')).toHaveTextContent('scope:me');
   });
 
   it('shows the activity and task counts on the tab badges', () => {

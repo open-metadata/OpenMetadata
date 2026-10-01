@@ -13,7 +13,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
-import { InboxDateRange, InboxScope } from './inbox.utils';
+import { ActivityFilter, InboxDateRange } from './inbox.utils';
 import { useInboxActivity } from './useInboxActivity';
 
 export interface InboxCounts {
@@ -32,18 +32,15 @@ const INBOX_COUNTS_STALE_TIME = 30 * 1000;
  * list); tasks are the user's visible-open total, keyed on
  * `INBOX_COUNTS_QUERY_KEY` so a mutation elsewhere can invalidate it.
  */
-export const useInboxCounts = (
-  scope: InboxScope,
-  dateRange?: InboxDateRange
-): InboxCounts => {
+export const useInboxCounts = (dateRange?: InboxDateRange): InboxCounts => {
   const startTs = dateRange?.startTs;
   const endTs = dateRange?.endTs;
 
   const { total: activityCount, isLoading: isActivityLoading } =
-    useInboxActivity(scope, dateRange);
+    useInboxActivity(ActivityFilter.All, dateRange);
 
   const { data: taskCount = 0, isFetching: isTaskFetching } = useQuery({
-    queryKey: [INBOX_COUNTS_QUERY_KEY, scope, startTs, endTs],
+    queryKey: [INBOX_COUNTS_QUERY_KEY, startTs, endTs],
     // Only Open tasks, so the badge matches the sidebar red bubble.
     queryFn: () =>
       listMyVisibleTasks({

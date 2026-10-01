@@ -12,7 +12,7 @@
  */
 
 import { TFunction } from 'i18next';
-import { castArray, compact } from 'lodash';
+import { castArray, compact, uniq } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType } from 'Models';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
@@ -52,8 +52,13 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
 // e.g. "Jun 05, 2026, 03:01 PM" — no timezone offset.
-const ACTIVITY_DATE_FORMAT = 'MMM dd, yyyy, hh:mm a';
+export const ACTIVITY_DATE_FORMAT = 'MMM dd, yyyy, hh:mm a';
+// Under a day header the date is already shown, so a card needs only the time.
+export const ACTIVITY_CLOCK_FORMAT = 'hh:mm a';
+// The day header's date, e.g. "Thu, Jul 30".
+const ACTIVITY_DAY_FORMAT = 'ccc, MMM d';
 
 /**
  * Recent activity reads best relative ("2 hours ago"); once it is a few days
@@ -231,9 +236,37 @@ export const pairFieldChanges = (
   return folded.filter((activity) => !paired.has(activity));
 };
 
-// Activity feed scope: "all" shows every conversation; "me" restricts to
-// conversations the current user owns or follows.
-export type InboxScope = 'all' | 'me';
+// The Activity tab's sub-tabs: whose activity the feed shows.
+export enum ActivityFilter {
+  All = 'all',
+  Mentions = 'mentions',
+  MyAssets = 'my-assets',
+  Following = 'following',
+}
+
+export enum ActivityGrouping {
+  Day = 'day',
+  Asset = 'asset',
+  User = 'user',
+}
+
+// The Type filter's options: the change panel's field labels, plus Other for
+// everything without one (lifecycle events, conversations).
+export const ACTIVITY_TYPE_OTHER = 'label.other';
+export const ACTIVITY_TYPE_KEYS = [
+  ...uniq(compact(Object.values(CHANGE_LABEL_KEY))),
+  ACTIVITY_TYPE_OTHER,
+];
+
+export const getActivityTypeKey = (activity?: ActivityEvent): string =>
+  (activity && CHANGE_LABEL_KEY[activity.eventType]) ?? ACTIVITY_TYPE_OTHER;
+
+// "Today · Thu, Jul 30"
+export const getActivityDayLabel = (timestamp: number): string =>
+  `${getRelativeCalendar(timestamp)} · ${formatDateTimeLong(
+    timestamp,
+    ACTIVITY_DAY_FORMAT
+  )}`;
 
 // Selected date window for the Inbox (Activity + Tasks), passed to the feed/task
 // list APIs as startTs/endTs (server-side filtering).

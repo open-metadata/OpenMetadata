@@ -17,15 +17,19 @@ import { ActivityEvent } from '../../../../generated/entity/activity/activityEve
 import { Conversation } from '../../../../generated/entity/feed/conversation';
 import { ConversationFilterType } from '../../../../generated/type/conversationFilterType';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getUserActivity } from '../../../../rest/activityAPI';
+import {
+  getActivityEvents,
+  getFollowingActivityFeed,
+  getMyActivityFeed,
+} from '../../../../rest/activityAPI';
 import { listConversations } from '../../../../rest/conversationsAPI';
 import {
   ACTIVITY_LIMIT,
+  ActivityFilter,
   CONVERSATION_LIMIT,
   getActivityWindowDays,
   getFeedSortTimestamp,
   InboxDateRange,
-  InboxScope,
   pairFieldChanges,
 } from './inbox.utils';
 
@@ -45,13 +49,36 @@ export interface InboxActivityItem {
   feed?: Conversation;
 }
 
-/**
- * Mirrors OSS ActivityFeedTab: the user's own activity events
- * (`/activity/user/{id}`) plus conversations. Admins see every conversation
- * (no filter); everyone else only owned/followed ones.
- */
+// When an item happened: an event's timestamp, a conversation's last activity.
+export const getInboxItemTimestamp = (item: InboxActivityItem): number =>
+  item.activity?.timestamp ?? (item.feed ? getFeedSortTimestamp(item.feed) : 0);
+
+// Each sub-tab's activity events. Mentions has none: activity events carry no
+// mentions yet, so that tab shows the conversations that mention the viewer.
+const ACTIVITY_REQUEST: Record<
+  ActivityFilter,
+  typeof getActivityEvents | undefined
+> = {
+  [ActivityFilter.All]: getActivityEvents,
+  [ActivityFilter.MyAssets]: getMyActivityFeed,
+  [ActivityFilter.Following]: getFollowingActivityFeed,
+  [ActivityFilter.Mentions]: undefined,
+};
+
+// "All" is everything the viewer is allowed to see, so no conversation filter.
+const CONVERSATION_FILTER: Record<
+  ActivityFilter,
+  ConversationFilterType | undefined
+> = {
+  [ActivityFilter.All]: undefined,
+  [ActivityFilter.MyAssets]: ConversationFilterType.Owner,
+  [ActivityFilter.Following]: ConversationFilterType.Follows,
+  [ActivityFilter.Mentions]: ConversationFilterType.Mentions,
+};
+
+/** The selected sub-tab's activity events plus its conversations. */
 export const fetchInboxActivity = async (
-  scope: InboxScope,
+  filter: ActivityFilter,
   userId: string | undefined,
   startTs?: number,
   endTs?: number
@@ -60,16 +87,15 @@ export const fetchInboxActivity = async (
     return { activities: [], threads: [] };
   }
   const days = getActivityWindowDays({ startTs, endTs });
-  const isAll = scope === 'all';
-
-  const activityRequest = getUserActivity(userId, {
+  const activityRequest = ACTIVITY_REQUEST[filter]?.({
     days,
     limit: ACTIVITY_LIMIT,
   });
+  const filterType = CONVERSATION_FILTER[filter];
 
   const conversationRequest = listConversations({
-    filterType: isAll ? undefined : ConversationFilterType.OwnerOrFollows,
-    userId: isAll ? undefined : userId,
+    filterType,
+    userId: filterType ? userId : undefined,
     limit: CONVERSATION_LIMIT,
     startTs,
     endTs,
@@ -86,7 +112,7 @@ export const fetchInboxActivity = async (
 
   return {
     activities:
-      activityRes.status === 'fulfilled' ? activityRes.value.data ?? [] : [],
+      activityRes.status === 'fulfilled' ? activityRes.value?.data ?? [] : [],
     threads:
       conversationRes.status === 'fulfilled'
         ? conversationRes.value.data ?? []
@@ -107,7 +133,7 @@ export interface UseInboxActivity {
  * newest-first — upstream parity, OpenMetadata#30879.
  */
 export const useInboxActivity = (
-  scope: InboxScope,
+  filter: ActivityFilter,
   dateRange?: InboxDateRange
 ): UseInboxActivity => {
   const { currentUser } = useApplicationStore();
@@ -116,8 +142,8 @@ export const useInboxActivity = (
   const endTs = dateRange?.endTs;
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: [INBOX_ACTIVITY_QUERY_KEY, scope, startTs, endTs, userId],
-    queryFn: () => fetchInboxActivity(scope, userId, startTs, endTs),
+    queryKey: [INBOX_ACTIVITY_QUERY_KEY, filter, startTs, endTs, userId],
+    queryFn: () => fetchInboxActivity(filter, userId, startTs, endTs),
     enabled: Boolean(userId),
     staleTime: INBOX_ACTIVITY_STALE_TIME,
   });
@@ -136,15 +162,12 @@ export const useInboxActivity = (
     // The id is coerced to a string so a non-string id (e.g. a numeric mock or
     // malformed payload) cannot crash the sort with `localeCompare is not a
     // function`; upstream avoids this by normalizing `id: string` up front.
-    const itemTimestamp = (item: InboxActivityItem) =>
-      item.activity?.timestamp ??
-      (item.feed ? getFeedSortTimestamp(item.feed) : 0);
     const itemId = (item: InboxActivityItem): string =>
       String(item.activity?.id ?? item.feed?.id ?? '');
 
     return merged.sort(
       (a, b) =>
-        itemTimestamp(b) - itemTimestamp(a) ||
+        getInboxItemTimestamp(b) - getInboxItemTimestamp(a) ||
         itemId(a).localeCompare(itemId(b))
     );
   }, [data]);

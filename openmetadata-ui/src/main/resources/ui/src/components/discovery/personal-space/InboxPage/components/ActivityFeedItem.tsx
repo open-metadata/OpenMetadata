@@ -50,7 +50,10 @@ import { EntityReference } from '../../../../../generated/type/entityReference';
 import { Reaction, ReactionType } from '../../../../../generated/type/reaction';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../../../hooks/user-profile/useUserProfile';
-import { formatDateTime } from '../../../../../utils/date-time/DateTimeUtils';
+import {
+  formatDateTime,
+  formatDateTimeLong,
+} from '../../../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../../../utils/EntityLink';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
@@ -58,7 +61,7 @@ import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import {
-  formatActivityTime,
+  ACTIVITY_DATE_FORMAT,
   getActivityChange,
   getActivityEventLabel,
   toggleActivityReaction,
@@ -77,6 +80,8 @@ export interface ActivityFeedItemProps {
   activity?: ActivityEvent;
   feed?: Conversation;
   isActive?: boolean;
+  // Luxon format for the time; a day-grouped feed shows only the clock time.
+  timeFormat?: string;
   onClick: (selection: ActivityFeedItemSelection) => void;
 }
 
@@ -220,6 +225,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   activity,
   feed,
   isActive,
+  timeFormat = ACTIVITY_DATE_FORMAT,
   onClick,
 }) => {
   const { t } = useTranslation();
@@ -350,7 +356,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             </Typography>
             <Tooltip title={formatDateTime(timestamp)}>
               <TooltipTrigger className="tw:shrink-0 tw:whitespace-nowrap tw:text-sm tw:text-quaternary">
-                {formatActivityTime(timestamp)}
+                {formatDateTimeLong(timestamp, timeFormat)}
               </TooltipTrigger>
             </Tooltip>
           </Box>

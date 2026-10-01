@@ -116,6 +116,7 @@ jest.mock('utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: (ts: number) => ts,
   getCurrentMillis: () => 0,
   formatDateTime: () => 'Jun 05, 2026, 03:01 PM',
+  formatDateTimeLong: () => '03:01 PM',
 }));
 
 jest.mock('utils/EntityNameUtils', () => ({

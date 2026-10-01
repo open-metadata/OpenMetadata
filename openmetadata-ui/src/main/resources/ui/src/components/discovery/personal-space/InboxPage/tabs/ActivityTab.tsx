@@ -11,27 +11,72 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FilterFunnel01, Hourglass01 } from '@untitledui/icons';
-import React, { useCallback, useEffect, useState } from 'react';
+import { groupBy } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
+import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import ActivityDetailDrawer from '../components/ActivityDetailDrawer';
 import ActivityFeedItem, {
   ActivityFeedItemSelection,
 } from '../components/ActivityFeedItem';
 import ActivitySkeleton from '../components/ActivitySkeleton';
-import { InboxDateRange, InboxScope } from '../inbox.utils';
-import { useInboxActivity } from '../useInboxActivity';
+import ActivityToolbar from '../components/ActivityToolbar';
+import {
+  ACTIVITY_CLOCK_FORMAT,
+  ACTIVITY_DATE_FORMAT,
+  ActivityFilter,
+  ActivityGrouping,
+  getActivityDayLabel,
+  getActivityTypeKey,
+  InboxDateRange,
+} from '../inbox.utils';
+import {
+  getInboxItemTimestamp,
+  InboxActivityItem,
+  useInboxActivity,
+} from '../useInboxActivity';
 import { useIncrementalRender } from '../useIncrementalRender';
 
 // Cards rendered per batch. The feed is fetched whole (up to ACTIVITY_LIMIT),
 // but mounting all of it made opening the detail drawer block for a second.
 const ACTIVITY_RENDER_BATCH = 40;
 
+const getItemEntity = ({ activity, feed }: InboxActivityItem) =>
+  activity?.entity ?? feed?.entityRef;
+const getItemActor = ({ activity, feed }: InboxActivityItem) =>
+  activity?.actor ?? feed?.createdBy;
+
+// How each grouping keys an item and titles its group.
+const GROUPING: Record<
+  ActivityGrouping,
+  {
+    key: (item: InboxActivityItem) => string;
+    title: (item: InboxActivityItem) => string;
+  }
+> = {
+  [ActivityGrouping.Day]: {
+    key: (item) => formatDate(getInboxItemTimestamp(item)),
+    title: (item) => getActivityDayLabel(getInboxItemTimestamp(item)),
+  },
+  [ActivityGrouping.Asset]: {
+    key: (item) => getItemEntity(item)?.id ?? '',
+    title: (item) => getEntityName(getItemEntity(item)),
+  },
+  [ActivityGrouping.User]: {
+    key: (item) => getItemActor(item)?.name ?? '',
+    title: (item) => getEntityName(getItemActor(item)),
+  },
+};
+
 export interface ActivityTabProps {
-  // Admin ("all") widens the conversation fallback; "me" scopes it to the user.
-  scope?: InboxScope;
   dateRange?: InboxDateRange;
   // Narrowed window → empty reads as "no activity in period" vs first-run state.
   isFiltered?: boolean;
@@ -39,7 +84,6 @@ export interface ActivityTabProps {
 }
 
 const ActivityTab: React.FC<ActivityTabProps> = ({
-  scope = 'all',
   dateRange,
   isFiltered = false,
   onCountChange,
@@ -47,6 +91,9 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   const { t } = useTranslation();
   const [selected, setSelected] = useState<ActivityFeedItemSelection>();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [filter, setFilter] = useState(ActivityFilter.All);
+  const [grouping, setGrouping] = useState(ActivityGrouping.Day);
+  const [typeKeys, setTypeKeys] = useState<string[]>([]);
   const markInboxActivitySeen = usePersonalSpaceStore(
     (s) => s.markInboxActivitySeen
   );
@@ -59,8 +106,18 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
   const { items, total, isLoading, refetch } = useInboxActivity(
-    scope,
+    filter,
     dateRange
+  );
+  // ponytail: types filter the loaded page only; the server has no type filter.
+  const filteredItems = useMemo(
+    () =>
+      typeKeys.length
+        ? items.filter(({ activity }) =>
+            typeKeys.includes(getActivityTypeKey(activity))
+          )
+        : items,
+    [items, typeKeys]
   );
 
   useEffect(() => {
@@ -69,10 +126,25 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   const { visibleItems, hasMore, scrollRef, sentinelRef } =
     useIncrementalRender(
-      items,
+      filteredItems,
       ACTIVITY_RENDER_BATCH,
-      `${scope}:${dateRange?.startTs}:${dateRange?.endTs}`
+      `${filter}:${typeKeys}:${dateRange?.startTs}:${dateRange?.endTs}`
     );
+
+  // Groups keep the feed's newest-first order, as does each group's cards.
+  const groups = useMemo(() => {
+    const { key, title } = GROUPING[grouping];
+
+    return Object.values(groupBy(visibleItems, key)).map((groupItems) => ({
+      key: key(groupItems[0]),
+      title: title(groupItems[0]),
+      items: groupItems,
+    }));
+  }, [visibleItems, grouping]);
+  const timeFormat =
+    grouping === ActivityGrouping.Day
+      ? ACTIVITY_CLOCK_FORMAT
+      : ACTIVITY_DATE_FORMAT;
 
   const handleSelect = useCallback((selection: ActivityFeedItemSelection) => {
     setSelected(selection);
@@ -81,50 +153,73 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   const selectedId = selected?.activity?.id ?? selected?.feed?.id;
 
-  const emptyPlaceholder = isFiltered ? (
-    <EmptyPlaceholder
-      data-testid="inbox-activity-no-results"
-      description={t('message.activity-feed-no-results-description')}
-      icon={
-        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
-      }
-      title={t('label.no-activity-in-period')}
-      variant="blank"
-    />
-  ) : (
-    <EmptyPlaceholder
-      data-testid="inbox-activity-empty"
-      description={t('message.activity-feed-empty-description')}
-      icon={<Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />}
-      title={t('label.activity-feed-starts-here')}
-      variant="blank"
-    />
-  );
+  const emptyPlaceholder =
+    isFiltered || typeKeys.length ? (
+      <EmptyPlaceholder
+        data-testid="inbox-activity-no-results"
+        description={t('message.activity-feed-no-results-description')}
+        icon={
+          <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
+        }
+        title={t('label.no-activity-in-period')}
+        variant="blank"
+      />
+    ) : (
+      <EmptyPlaceholder
+        data-testid="inbox-activity-empty"
+        description={t('message.activity-feed-empty-description')}
+        icon={<Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />}
+        title={t('label.activity-feed-starts-here')}
+        variant="blank"
+      />
+    );
 
   let activityContent: React.ReactNode;
   if (isLoading) {
     activityContent = <ActivitySkeleton />;
-  } else if (items.length === 0) {
+  } else if (filteredItems.length === 0) {
     activityContent = emptyPlaceholder;
   } else {
     activityContent = (
-      <Box
-        className="tw:mx-auto tw:w-full tw:max-w-220"
-        direction="col"
-        gap={3}>
-        {visibleItems.map((item) => {
-          const itemId = item.activity?.id ?? item.feed?.id;
+      <Box direction="col" gap={4}>
+        {groups.map((group) => (
+          <Box
+            data-testid="activity-group"
+            direction="col"
+            gap={3}
+            key={group.key}>
+            <Box align="center" gap={2}>
+              <Typography
+                className="tw:text-primary"
+                size="text-xs"
+                weight="semibold">
+                {group.title}
+              </Typography>
+              <Typography className="tw:text-quaternary" size="text-sm">
+                {group.items.length === 1
+                  ? t('label.one-update')
+                  : t('label.number-update-plural', {
+                      number: group.items.length,
+                    })}
+              </Typography>
+              <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
+            </Box>
+            {group.items.map((item) => {
+              const itemId = item.activity?.id ?? item.feed?.id;
 
-          return (
-            <ActivityFeedItem
-              activity={item.activity}
-              feed={item.feed}
-              isActive={isDrawerOpen && selectedId === itemId}
-              key={itemId}
-              onClick={handleSelect}
-            />
-          );
-        })}
+              return (
+                <ActivityFeedItem
+                  activity={item.activity}
+                  feed={item.feed}
+                  isActive={isDrawerOpen && selectedId === itemId}
+                  key={itemId}
+                  timeFormat={timeFormat}
+                  onClick={handleSelect}
+                />
+              );
+            })}
+          </Box>
+        ))}
         {hasMore && (
           <div
             aria-hidden
@@ -144,7 +239,20 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
           className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-4 tw:pr-1"
           data-testid="inbox-activity-tab"
           ref={scrollRef}>
-          {activityContent}
+          <Box
+            className="tw:mx-auto tw:w-full tw:max-w-220"
+            direction="col"
+            gap={4}>
+            <ActivityToolbar
+              filter={filter}
+              grouping={grouping}
+              typeKeys={typeKeys}
+              onFilterChange={setFilter}
+              onGroupingChange={setGrouping}
+              onTypeKeysChange={setTypeKeys}
+            />
+            {activityContent}
+          </Box>
         </div>
       </Box>
 

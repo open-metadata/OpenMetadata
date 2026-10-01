@@ -16,6 +16,9 @@ import { PropsWithChildren, ReactNode } from 'react';
 
 interface MockItem {
   id: string;
+  eventType?: string;
+  timestamp?: number;
+  actor?: { id: string; name: string; displayName?: string };
 }
 
 interface MockInboxItem {
@@ -29,14 +32,42 @@ let activityState: {
   isLoading: boolean;
 };
 const mockRefetch = jest.fn();
+const mockUseInboxActivity = jest.fn();
 
 jest.mock('../useInboxActivity', () => ({
-  useInboxActivity: () => ({
-    items: activityState.items,
-    total: activityState.total,
-    isLoading: activityState.isLoading,
-    refetch: mockRefetch,
-  }),
+  getInboxItemTimestamp: (item: MockInboxItem) => item.activity?.timestamp ?? 0,
+  useInboxActivity: (...args: unknown[]) => {
+    mockUseInboxActivity(...args);
+
+    return {
+      items: activityState.items,
+      total: activityState.total,
+      isLoading: activityState.isLoading,
+      refetch: mockRefetch,
+    };
+  },
+}));
+
+// Exercised by its own suite; here it only drives the tab's state.
+jest.mock('../components/ActivityToolbar', () => ({
+  __esModule: true,
+  default: ({
+    onFilterChange,
+    onGroupingChange,
+    onTypeKeysChange,
+  }: {
+    onFilterChange: (value: string) => void;
+    onGroupingChange: (value: string) => void;
+    onTypeKeysChange: (value: string[]) => void;
+  }) => (
+    <div>
+      <button onClick={() => onFilterChange('following')}>following</button>
+      <button onClick={() => onGroupingChange('user')}>by-user</button>
+      <button onClick={() => onTypeKeysChange(['label.tag-plural'])}>
+        tags-only
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock('../components/InboxFilterBar', () => ({
@@ -49,14 +80,17 @@ jest.mock('../components/ActivityFeedItem', () => ({
   default: ({
     activity,
     feed,
+    timeFormat,
     onClick,
   }: {
     activity?: MockItem;
     feed?: MockItem;
+    timeFormat?: string;
     onClick: (selection: { activity?: MockItem; feed?: MockItem }) => void;
   }) => (
     <button
       data-testid="feed-item"
+      data-time-format={timeFormat}
       onClick={() => onClick(activity ? { activity } : { feed })}>
       {activity?.id ?? feed?.id}
     </button>
@@ -83,7 +117,12 @@ jest.mock('../components/ActivitySkeleton', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children }: PropsWithChildren) => <div>{children}</div>,
+  Box: ({
+    children,
+    ...props
+  }: PropsWithChildren<{ 'data-testid'?: string }>) => (
+    <div data-testid={props['data-testid']}>{children}</div>
+  ),
   Typography: ({ children }: PropsWithChildren) => <span>{children}</span>,
   EmptyPlaceholder: ({
     title,
@@ -193,5 +232,79 @@ describe('ActivityTab', () => {
     fireEvent.click(screen.getByTestId('feed-item'));
 
     expect(screen.getByTestId('drawer')).toHaveTextContent('a1');
+  });
+
+  it('fetches the sub-tab the toolbar selects', () => {
+    render(<ActivityTab />);
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', undefined);
+
+    fireEvent.click(screen.getByText('following'));
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'following',
+      undefined
+    );
+  });
+
+  it('keeps only the chosen types', () => {
+    activityState = {
+      items: [
+        { activity: { id: 'tags', eventType: 'TagsUpdated' } },
+        { activity: { id: 'created', eventType: 'EntityCreated' } },
+      ],
+      total: 2,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(
+      screen.getAllByTestId('feed-item').map((el) => el.textContent)
+    ).toEqual(['tags']);
+  });
+
+  it('heads each day with its date and shows clock times beneath it', () => {
+    activityState = {
+      items: [{ activity: { id: 'a1', timestamp: 1 } }],
+      total: 1,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+
+    expect(screen.getAllByTestId('activity-group')).toHaveLength(1);
+    expect(screen.getByText('label.one-update')).toBeInTheDocument();
+    expect(screen.getByTestId('feed-item')).toHaveAttribute(
+      'data-time-format',
+      'hh:mm a'
+    );
+  });
+
+  it('groups by the person who acted, with full dates on the cards', () => {
+    const alice = { id: 'u1', name: 'alice', displayName: 'Alice' };
+    activityState = {
+      items: [
+        { activity: { id: 'a1', actor: alice } },
+        { activity: { id: 'b1', actor: { id: 'u2', name: 'bob' } } },
+        { activity: { id: 'a2', actor: alice } },
+      ],
+      total: 3,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('by-user'));
+
+    const groups = screen.getAllByTestId('activity-group');
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toHaveTextContent('Alice');
+    expect(groups[0]).toHaveTextContent('a1a2');
+    expect(screen.getAllByTestId('feed-item')[0]).toHaveAttribute(
+      'data-time-format',
+      'MMM dd, yyyy, hh:mm a'
+    );
   });
 });
