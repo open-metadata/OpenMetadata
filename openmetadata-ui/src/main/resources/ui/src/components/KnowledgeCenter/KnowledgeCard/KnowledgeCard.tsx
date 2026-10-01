@@ -51,7 +51,7 @@ import {
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';

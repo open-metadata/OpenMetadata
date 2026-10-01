@@ -1,7 +1,7 @@
 import type { HTMLAttributes, PropsWithChildren } from 'react';
 import { Fragment, useContext, useState } from 'react';
 import type { CalendarDate } from '@internationalized/date';
-import { ChevronLeft, ChevronRight } from '@untitledui/icons';
+import { ChevronLeft, ChevronRight } from '../../../icons';
 import { useDateFormatter } from 'react-aria';
 import type {
   RangeCalendarProps as AriaRangeCalendarProps,

@@ -12,11 +12,12 @@ import { Typography } from '@/components/foundations/typography';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '../../../icons';
 import type {
   FocusEventHandler,
   KeyboardEvent,
   PointerEventHandler,
+  UIEvent,
   ReactNode,
   RefAttributes,
   RefObject,
@@ -29,6 +30,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -46,6 +48,8 @@ import {
   Input as AriaInput,
   ListBox as AriaListBox,
   ComboBoxStateContext,
+  ListLayout,
+  Virtualizer,
 } from 'react-aria-components';
 import type { ListData } from 'react-stately';
 import { Avatar } from '../avatar/avatar';
@@ -307,7 +311,7 @@ const InnerAutocomplete = ({
 const AutocompleteTrigger = ({
   size,
   placeholder,
-  icon: Icon = SearchLg,
+  icon: Icon = Search,
   isDisabled: _isDisabled,
   isInvalid,
   ...otherProps
@@ -347,6 +351,16 @@ const AutocompleteTrigger = ({
     </AriaGroup>
   );
 };
+
+/**
+ * Option count above which the listbox renders only the rows in view. Small
+ * lists keep plain DOM rows so their height and styling stay as they are.
+ */
+const AUTOCOMPLETE_VIRTUALIZATION_THRESHOLD = 200;
+
+// Estimate only: ListLayout measures each row, so wrapped labels and
+// supporting text still get their real height.
+const VIRTUALIZED_LAYOUT_OPTIONS = { estimatedRowHeight: 40 };
 
 const resolveSelectedItems = (
   value: SelectItemType[] | ListData<SelectItemType>
@@ -526,6 +540,45 @@ export const AutocompleteBase = ({
 
   const triggerRef = useRef<HTMLDivElement>(null);
 
+  // Decided on the full list, not the filtered one, so typing never swaps
+  // the listbox between plain and virtualized rendering.
+  const isVirtualized = allItems.length > AUTOCOMPLETE_VIRTUALIZATION_THRESHOLD;
+
+  // Crossing the threshold moves scrolling from the popover to the listbox.
+  // React's onScroll does not bubble, so the handler follows the scroller, and
+  // the offset is carried over so the newly loaded page stays in view instead
+  // of the list jumping back to the top.
+  const listBoxRef = useRef<HTMLDivElement>(null);
+  const scrollTopRef = useRef(0);
+
+  const handleScroll = useCallback(
+    (event: UIEvent<HTMLElement>) => {
+      scrollTopRef.current = event.currentTarget.scrollTop;
+      onPopoverScroll?.(event);
+    },
+    [onPopoverScroll]
+  );
+
+  useLayoutEffect(() => {
+    if (isVirtualized && listBoxRef.current) {
+      listBoxRef.current.scrollTop = scrollTopRef.current;
+    }
+  }, [isVirtualized]);
+
+  const listBox = (
+    <AriaListBox
+      className={cx(
+        'tw:size-full tw:outline-hidden',
+        isVirtualized && 'tw:max-h-80 tw:overflow-y-auto tw:py-1'
+      )}
+      ref={listBoxRef}
+      renderEmptyState={() => <SelectEmptyState />}
+      selectionMode="multiple"
+      onScroll={isVirtualized ? handleScroll : undefined}>
+      {visibleChildren}
+    </AriaListBox>
+  );
+
   // Match the popover width to the trigger. The base Popover relies on
   // `--trigger-width`, but react-aria only sets that on a trigger's own context
   // popover — a standalone `<Popover triggerRef>` (as used here) never receives
@@ -617,17 +670,24 @@ export const AutocompleteBase = ({
 
               {!hideDropdown && (
                 <Popover
-                  className={popoverClassName}
+                  className={cx(
+                    // A virtualized listbox is its own bounded scroller.
+                    isVirtualized && 'tw:overflow-hidden tw:py-0',
+                    popoverClassName
+                  )}
                   size="md"
                   style={{ width: popoverWidth }}
                   triggerRef={triggerRef}
-                  onScroll={onPopoverScroll}>
-                  <AriaListBox
-                    className="tw:size-full tw:outline-hidden"
-                    renderEmptyState={() => <SelectEmptyState />}
-                    selectionMode="multiple">
-                    {visibleChildren}
-                  </AriaListBox>
+                  onScroll={isVirtualized ? undefined : handleScroll}>
+                  {isVirtualized ? (
+                    <Virtualizer
+                      layout={ListLayout}
+                      layoutOptions={VIRTUALIZED_LAYOUT_OPTIONS}>
+                      {listBox}
+                    </Virtualizer>
+                  ) : (
+                    listBox
+                  )}
                 </Popover>
               )}
 

@@ -13,7 +13,7 @@
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx, sortCx } from '@/utils/cx';
-import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
+import { ChevronRight, DotsHorizontal } from '../../../icons';
 import type { FC, HTMLAttributes, Key, ReactNode } from 'react';
 import {
   useEffect,

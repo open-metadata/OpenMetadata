@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, PageLayout } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';

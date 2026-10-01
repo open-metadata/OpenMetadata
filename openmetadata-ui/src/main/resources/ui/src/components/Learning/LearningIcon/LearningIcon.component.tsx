@@ -18,7 +18,7 @@ import {
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowRight } from '@untitledui/icons';
+import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
