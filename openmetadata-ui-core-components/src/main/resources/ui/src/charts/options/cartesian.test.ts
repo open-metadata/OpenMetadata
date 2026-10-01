@@ -21,7 +21,7 @@ import type {
   YAXisComponentOption,
 } from 'echarts';
 import { describe, expect, it } from 'vitest';
-import { CHART_PALETTE } from '../palette';
+import { DARK_CHART_PALETTE, LIGHT_CHART_PALETTE } from '../palette';
 import { DARK_CHART_THEME, LIGHT_CHART_THEME } from '../theme';
 import type { ChartOption } from '../types';
 import {
@@ -128,12 +128,12 @@ describe('buildLineOption', () => {
     ]);
   });
 
-  it('cycles palette colours past 15 series and lets an explicit colour win', () => {
+  it('cycles palette colours past 15 series and lets a status colour win', () => {
     const series = Array.from({ length: 16 }, (_, i) => ({
       key: `s${i}`,
       name: `S${i}`,
     }));
-    series[1] = { ...series[1], color: '#123456' } as (typeof series)[number];
+    series[1] = { ...series[1], status: 'failed' } as (typeof series)[number];
     const option = buildLineOption(
       { data: [], xKey: 'x', ariaLabel: 'Many', series },
       LIGHT_CHART_THEME
@@ -142,9 +142,32 @@ describe('buildLineOption', () => {
       (s) => (s.itemStyle as { color: string }).color
     );
 
-    expect(colors[0]).toBe(CHART_PALETTE[0]);
-    expect(colors[1]).toBe('#123456');
-    expect(colors[15]).toBe(CHART_PALETTE[0]);
+    expect(colors[0]).toBe(LIGHT_CHART_PALETTE.series[0]);
+    expect(colors[1]).toBe(LIGHT_CHART_PALETTE.status.failed);
+    expect(colors[15]).toBe(LIGHT_CHART_PALETTE.series[0]);
+  });
+
+  it('takes series colours from the dark palette in dark mode', () => {
+    const option = buildLineOption(
+      {
+        data: [],
+        xKey: 'x',
+        ariaLabel: 'Dark',
+        series: [
+          { key: 'a', name: 'A' },
+          { key: 'b', name: 'B', status: 'success' },
+        ],
+      },
+      DARK_CHART_THEME
+    );
+    const colors = seriesOf(option).map(
+      (s) => (s.itemStyle as { color: string }).color
+    );
+
+    expect(colors).toEqual([
+      DARK_CHART_PALETTE.series[0],
+      DARK_CHART_PALETTE.status.success,
+    ]);
   });
 
   it('hides dots and smooths lines unless the series says otherwise', () => {
@@ -278,7 +301,7 @@ describe('buildLineOption', () => {
       {
         ...base,
         referenceLines: [
-          { axis: 'y', value: 80, label: 'Target', color: '#ff0000' },
+          { axis: 'y', value: 80, label: 'Target', status: 'failed' },
           { axis: 'x', value: 'Tue' },
         ],
       },
@@ -305,7 +328,7 @@ describe('buildLineOption', () => {
     expect(markLine.data[0]).toMatchObject({
       yAxis: 80,
       label: { formatter: 'Target' },
-      lineStyle: { color: '#ff0000', type: 'dashed' },
+      lineStyle: { color: LIGHT_CHART_PALETTE.status.failed, type: 'dashed' },
     });
     expect(markLine.data[1]).toMatchObject({ xAxis: 'Tue' });
     expect(all[0].markLine).toBeUndefined();
@@ -514,19 +537,19 @@ describe('buildBarOption', () => {
     ).toEqual([0, 4, 4, 0]);
   });
 
-  it('colours each bar from getBarColor', () => {
+  it('colours each bar from getBarStatus', () => {
     const option = buildBarOption(
       {
         ...base,
         series: [base.series[0]],
-        getBarColor: (row: Row) => (row.passed === 5 ? '#00ff00' : undefined),
+        getBarStatus: (row: Row) => (row.passed === 5 ? 'success' : undefined),
       },
       LIGHT_CHART_THEME
     );
 
     expect(seriesOf(option)[0].data).toEqual([
       3,
-      { value: 5, itemStyle: { color: '#00ff00' } },
+      { value: 5, itemStyle: { color: LIGHT_CHART_PALETTE.status.success } },
       4,
     ]);
   });

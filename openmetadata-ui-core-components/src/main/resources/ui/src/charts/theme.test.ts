@@ -12,6 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { DARK_CHART_PALETTE, LIGHT_CHART_PALETTE } from './palette';
 import { buildChartTheme, DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
 
 describe('buildChartTheme', () => {
@@ -41,6 +42,7 @@ describe('chart themes', () => {
       tooltipBg: '#ffffff',
       tooltipText: '#374151',
       tooltipBorder: '#e5e7eb',
+      palette: LIGHT_CHART_PALETTE,
     });
   });
 
@@ -57,6 +59,7 @@ describe('chart themes', () => {
       tooltipBg: '#22262f',
       tooltipText: '#f7f7f7',
       tooltipBorder: '#373a41',
+      palette: DARK_CHART_PALETTE,
     });
   });
 });

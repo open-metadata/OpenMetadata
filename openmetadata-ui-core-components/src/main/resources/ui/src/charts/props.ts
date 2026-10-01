@@ -48,7 +48,7 @@ export interface ChartCommonProps {
 export interface CartesianChartProps<T extends object>
   extends Omit<
       CartesianBuildInput<T>,
-      'layout' | 'getBarColor' | 'showValueLabels' | 'radius'
+      'layout' | 'getBarStatus' | 'showValueLabels' | 'radius'
     >,
     ChartCommonProps {
   onPointClick?: (datum: T, seriesKey: string, event: ECElementEvent) => void;
@@ -58,7 +58,7 @@ export interface BarChartProps<T extends object>
   extends CartesianChartProps<T>,
     Pick<
       CartesianBuildInput<T>,
-      'layout' | 'getBarColor' | 'showValueLabels' | 'radius'
+      'layout' | 'getBarStatus' | 'showValueLabels' | 'radius'
     > {}
 
 export interface PieChartProps extends PieBuildInput, ChartCommonProps {

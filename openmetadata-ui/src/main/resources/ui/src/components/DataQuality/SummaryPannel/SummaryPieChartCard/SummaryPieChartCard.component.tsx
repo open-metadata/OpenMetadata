@@ -16,6 +16,10 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  chartColor,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import classNames from 'classnames';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import { SummaryDonut } from '../SummaryDonut.component';
@@ -32,6 +36,7 @@ const SummaryPieChartCard = ({
   paddingAngle = 0,
   iconData,
 }: SummaryPieChartCardProps) => {
+  const palette = useChartPalette();
   if (isLoading) {
     return (
       <Card className="pie-chart-summary-panel h-full">
@@ -65,11 +70,13 @@ const SummaryPieChartCard = ({
         <Box align="center" gap={4}>
           {showLegends && (
             <Box direction="col" gap={1}>
-              {chartData.map((item) => (
+              {chartData.map((item, index) => (
                 <Box align="center" gap={2} key={item.name}>
                   <span
                     className="legend-dot"
-                    style={{ backgroundColor: item.color }}
+                    style={{
+                      backgroundColor: chartColor(palette, index, item.status),
+                    }}
                   />
                   <Typography
                     className="tw:whitespace-nowrap tw:text-tertiary"

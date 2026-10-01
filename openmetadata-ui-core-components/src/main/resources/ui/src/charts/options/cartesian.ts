@@ -17,7 +17,7 @@ import type {
   XAXisComponentOption,
   YAXisComponentOption,
 } from 'echarts';
-import { getSeriesColor } from '../palette';
+import { chartColor } from '../palette';
 import type {
   CartesianBuildInput,
   ChartOption,
@@ -59,6 +59,7 @@ export const toNumberOrNull = (value: unknown): number | null => {
 
 interface SeriesContext<T extends object> {
   input: CartesianBuildInput<T>;
+  theme: ChartTheme;
   isTime: boolean;
   horizontal: boolean;
   composed: boolean;
@@ -111,9 +112,11 @@ const barSeries = <T extends object>(
     ...(ctx.composed ? { z: Z_BAR } : {}),
     data: input.data.map((datum, index) => {
       const value = pointValue(ctx, datum, series.key);
-      const barColor = input.getBarColor?.(datum, index);
+      const status = input.getBarStatus?.(datum, index);
 
-      return barColor ? { value, itemStyle: { color: barColor } } : value;
+      return status
+        ? { value, itemStyle: { color: ctx.theme.palette.status[status] } }
+        : value;
     }) as BarSeriesOption['data'],
   };
 };
@@ -143,7 +146,7 @@ const buildSeries = <T extends object>(
   index: number,
   type: ChartSeriesType
 ): CartesianSeriesOption => {
-  const color = series.color ?? getSeriesColor(index);
+  const color = chartColor(ctx.theme.palette, index, series.status);
   const body =
     type === 'bar'
       ? barSeries(ctx, series, color)
@@ -227,7 +230,7 @@ export const buildCartesianOption = <T extends object>(
 ): ChartOption => {
   const isTime = input.xAxis?.type === 'time';
   const horizontal = input.layout === 'horizontal';
-  const ctx: SeriesContext<T> = { input, isTime, horizontal, composed };
+  const ctx: SeriesContext<T> = { input, theme, isTime, horizontal, composed };
   const built = input.series.map((series, index) =>
     buildSeries(
       ctx,

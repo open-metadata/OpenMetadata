@@ -23,8 +23,8 @@ const pieProps = () =>
   mockPieChart.mock.calls[mockPieChart.mock.calls.length - 1]?.[0];
 
 const chartData: ChartData[] = [
-  { name: 'success', value: 8, color: '#21bf73' },
-  { name: 'failed', value: 2, color: '#cb2531' },
+  { name: 'success', value: 8, status: 'success' },
+  { name: 'failed', value: 2, status: 'failed' },
 ];
 
 describe('SummaryDonut component', () => {

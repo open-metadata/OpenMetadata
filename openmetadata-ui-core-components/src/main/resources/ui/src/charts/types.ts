@@ -38,6 +38,18 @@ import type {
  * Series colours are not part of the theme — they come from the palette and
  * stay the same in light and dark.
  */
+/** A colour that carries meaning, e.g. a test result. */
+export type ChartStatus = 'success' | 'warning' | 'failed' | 'info' | 'neutral';
+
+export interface ChartPalette {
+  /** Categorical colours, cycled by series or slice index. */
+  series: readonly string[];
+  /** Colours that carry meaning. */
+  status: Readonly<Record<ChartStatus, string>>;
+  /** Low and high ends of a continuous scale, e.g. a geo map. */
+  scale: readonly [string, string];
+}
+
 export interface ChartTheme {
   isDark: boolean;
   axisText: string;
@@ -53,6 +65,8 @@ export interface ChartTheme {
   tooltipBg: string;
   tooltipText: string;
   tooltipBorder: string;
+  /** Every series, slice and scale colour comes from here. */
+  palette: ChartPalette;
 }
 
 /**
@@ -81,8 +95,8 @@ export interface ChartSeries {
   key: string;
   /** Legend and tooltip label. Translated by the caller. */
   name: string;
-  /** Defaults to `getSeriesColor(index)`. */
-  color?: string;
+  /** Status colour; without one the series takes the next palette colour. */
+  status?: ChartStatus;
   /** Only read by `ComposedChart`; other charts fix the type. */
   type?: ChartSeriesType;
   /** Series with the same stack id are stacked. */
@@ -130,7 +144,8 @@ export interface ChartReferenceLine {
   axis: 'x' | 'y';
   value: number | string;
   label?: string;
-  color?: string;
+  /** Status colour of the line. Defaults to the axis text colour. */
+  status?: ChartStatus;
 }
 
 export interface CartesianBuildInput<T extends object> {
@@ -150,8 +165,8 @@ export interface CartesianBuildInput<T extends object> {
   option?: ChartOption;
   /** Bar charts only. */
   layout?: 'vertical' | 'horizontal';
-  /** Bar charts only. Colour of one bar; `undefined` keeps the series colour. */
-  getBarColor?: (datum: T, index: number) => string | undefined;
+  /** Bar charts only. Status of one bar; `undefined` keeps the series colour. */
+  getBarStatus?: (datum: T, index: number) => ChartStatus | undefined;
   /** Bar charts only. */
   showValueLabels?:
     | boolean
@@ -164,8 +179,8 @@ export interface PieDatum {
   /** Slice label. Translated by the caller. */
   name: string;
   value: number;
-  /** Defaults to `getSeriesColor(index)`. */
-  color?: string;
+  /** Status colour; without one the slice takes the next palette colour. */
+  status?: ChartStatus;
 }
 
 export interface PieBuildInput {
@@ -227,8 +242,6 @@ export interface GeoMapBuildInput {
   resolveRegion?: (raw: string) => string | undefined;
   /** Colour-scale legend under the map. Defaults to true. */
   showScale?: boolean;
-  /** Low → high colours of the scale. Defaults to `GEO_COLOR_RANGE`. */
-  colorRange?: string[];
   tooltip?: ChartTooltipProps;
   /** Merged into the built option last. Objects merge, arrays replace. */
   option?: ChartOption;

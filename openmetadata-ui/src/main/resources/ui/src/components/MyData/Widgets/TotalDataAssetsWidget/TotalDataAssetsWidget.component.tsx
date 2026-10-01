@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
-import { PieChart } from '@openmetadata/ui-core-components/charts';
+import {
+  chartColor,
+  PieChart,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -29,16 +33,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/widget/total-assets.svg';
-import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
-import { generatePalette } from '../../../../styles/colorPallet';
 import { getDataInsightPathWithFqn } from '../../../../utils/DataInsightPureUtils';
 import {
   customFormatDateTime,
@@ -68,7 +69,6 @@ const TotalDataAssetsWidget = ({
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { applicationConfig } = useApplicationStore();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [chartData, setChartData] = useState<DataInsightCustomChartResult>();
   const [selectedDate, setSelectedDate] = useState<number | undefined>();
@@ -76,17 +76,7 @@ const TotalDataAssetsWidget = ({
     DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS
   );
 
-  const pieChartColors = useMemo(() => {
-    const primaryColor =
-      applicationConfig?.customTheme?.primaryColor ??
-      DEFAULT_THEME.primaryColor;
-
-    // Generate palette and arrange from dark to light for high-to-low data
-    const fullPalette = generatePalette(primaryColor);
-
-    // Reverse the palette to ensure dark-to-light order for high-to-low data
-    return fullPalette.slice().reverse();
-  }, [applicationConfig?.customTheme?.primaryColor]);
+  const palette = useChartPalette();
 
   const widgetData = useMemo(() => {
     return currentLayout?.find((item) => item.i === widgetKey);
@@ -165,15 +155,15 @@ const TotalDataAssetsWidget = ({
     };
   }, [selectedDate, dataByDate]);
 
-  // Same order and colours as the legend beside the chart.
+  // Same order as the legend beside the chart, so slice i and legend dot i
+  // take the same palette colour.
   const pieData = useMemo(
     () =>
-      sortedEntityList.map((entity, index) => ({
+      sortedEntityList.map((entity) => ({
         name: startCase(entity),
         value: selectedDateData[entity] ?? 0,
-        color: pieChartColors[index % pieChartColors.length],
       })),
-    [sortedEntityList, selectedDateData, pieChartColors]
+    [sortedEntityList, selectedDateData]
   );
 
   const fetchData = async () => {
@@ -262,8 +252,7 @@ const TotalDataAssetsWidget = ({
                     data-testid={`legend-color-${label}`}
                     style={{
                       borderRadius: '50%',
-                      backgroundColor:
-                        pieChartColors[index % pieChartColors.length],
+                      backgroundColor: chartColor(palette, index),
                     }}
                   />
                   <Typography.Text ellipsis={{ tooltip: true }}>
@@ -313,7 +302,7 @@ const TotalDataAssetsWidget = ({
     totalDatAssets,
     sortedEntityList,
     isFullSizeWidget,
-    pieChartColors,
+    palette,
   ]);
 
   useEffect(() => {

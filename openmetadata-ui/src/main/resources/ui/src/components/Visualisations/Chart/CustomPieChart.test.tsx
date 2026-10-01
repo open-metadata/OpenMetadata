@@ -11,20 +11,23 @@
  *  limitations under the License.
  */
 import {
+  chartColor,
+  LIGHT_CHART_PALETTE,
   PieChart,
   type PieChartProps,
 } from '@openmetadata/ui-core-components/charts';
 import { render, screen } from '@testing-library/react';
+import { CustomPieChartData } from './Chart.interface';
 import CustomPieChart from './CustomPieChart.component';
 
 const mockPieChart = PieChart as unknown as jest.Mock<null, [PieChartProps]>;
 const pieProps = () =>
   mockPieChart.mock.calls[mockPieChart.mock.calls.length - 1]?.[0];
 
-const mockData = [
-  { name: 'Success', value: 400, color: '#0088FE' },
-  { name: 'Failed', value: 0, color: '#00C49F' },
-  { name: 'Aborted', value: 3, color: '#FFBB28' },
+const mockData: CustomPieChartData[] = [
+  { name: 'Success', value: 400, status: 'success' },
+  { name: 'Failed', value: 0, status: 'failed' },
+  { name: 'Aborted', value: 3 },
 ];
 
 describe('CustomPieChart', () => {
@@ -123,6 +126,23 @@ describe('CustomPieChart', () => {
 
     expect(screen.getByTestId('legend-count-success')).toHaveTextContent('400');
     expect(screen.getByTestId('legend-count-failed')).toHaveTextContent('0');
+  });
+
+  it('colours legend dots like the slices: status colour, else palette by index', () => {
+    const { container } = render(
+      <CustomPieChart showLegends ariaLabel="x" data={mockData} name="test" />
+    );
+    const dots = container.querySelectorAll('.legend-dot');
+
+    expect(dots[0]).toHaveStyle({
+      backgroundColor: LIGHT_CHART_PALETTE.status.success,
+    });
+    expect(dots[1]).toHaveStyle({
+      backgroundColor: LIGHT_CHART_PALETTE.status.failed,
+    });
+    expect(dots[2]).toHaveStyle({
+      backgroundColor: chartColor(LIGHT_CHART_PALETTE, 2),
+    });
   });
 
   it('renders no legends by default', () => {

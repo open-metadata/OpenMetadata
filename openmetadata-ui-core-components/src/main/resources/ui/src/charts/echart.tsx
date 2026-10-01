@@ -19,7 +19,6 @@ import { ReactNode, useMemo, useRef } from 'react';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { resolveCssVarColors } from './css-vars';
 import { applyZoomWindow, ZoomWindow } from './options/common';
 import { REPLACE_MERGE_KEYS } from './options/merge';
 import { echarts, registerChartParts } from './register';
@@ -98,17 +97,13 @@ export const EChart = ({
   const theme = buildChartTheme({ isDark: dark });
   const resolved = useMemo(
     () =>
-      resolveCssVarColors(
-        applyZoomWindow(
-          withAria(
-            typeof option === 'function' ? option(theme) : option,
-            ariaLabel
-          ),
-          zoomRef.current
+      applyZoomWindow(
+        withAria(
+          typeof option === 'function' ? option(theme) : option,
+          ariaLabel
         ),
-        containerRef.current ?? document.documentElement
+        zoomRef.current
       ),
-    // `theme` flips with the colour mode, which also re-resolves the variables.
     [option, theme, ariaLabel]
   );
   const events = useMemo(

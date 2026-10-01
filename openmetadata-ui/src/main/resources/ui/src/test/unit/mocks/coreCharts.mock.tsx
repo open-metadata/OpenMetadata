@@ -36,6 +36,30 @@ const mockChart = (fallbackTestId: string) =>
     )
   );
 
+// Stand-in palette: distinct, recognisable values tests can assert against.
+export const LIGHT_CHART_PALETTE = {
+  series: ['#100000', '#200000', '#300000', '#400000'],
+  status: {
+    success: '#00a000',
+    warning: '#a0a000',
+    failed: '#a00000',
+    info: '#0000a0',
+    neutral: '#a0a0a0',
+  },
+  scale: ['#000010', '#0000ff'],
+};
+
+export const useChartPalette = jest.fn(() => LIGHT_CHART_PALETTE);
+
+export const chartColor = (
+  palette: typeof LIGHT_CHART_PALETTE,
+  index: number,
+  status?: keyof typeof LIGHT_CHART_PALETTE.status
+) =>
+  status
+    ? palette.status[status]
+    : palette.series[index % palette.series.length];
+
 export const PieChart = mockChart('core-pie-chart');
 export const LineChart = mockChart('core-line-chart');
 export const AreaChart = mockChart('core-area-chart');

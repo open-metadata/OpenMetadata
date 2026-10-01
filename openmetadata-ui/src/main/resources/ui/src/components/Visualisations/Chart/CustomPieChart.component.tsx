@@ -12,7 +12,11 @@
  */
 import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import type { PieDatum } from '@openmetadata/ui-core-components/charts';
-import { PieChart } from '@openmetadata/ui-core-components/charts';
+import {
+  chartColor,
+  PieChart,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { Space, Typography } from 'antd';
 import { isString } from 'lodash';
 import { useCallback } from 'react';
@@ -32,6 +36,7 @@ const CustomPieChart = ({
   showLegends = false,
   onSegmentClick,
 }: CustomPieChartProps) => {
+  const palette = useChartPalette();
   const centerLabel = isString(label) ? (
     <CoreTypography color="secondary" size="text-sm" weight="medium">
       {label}
@@ -69,11 +74,13 @@ const CustomPieChart = ({
 
       {showLegends && (
         <Space wrap size={16}>
-          {data.map((item) => (
+          {data.map((item, index) => (
             <Space align="center" key={item.name} size={8}>
               <div
                 className="legend-dot"
-                style={{ backgroundColor: item.color }}
+                style={{
+                  backgroundColor: chartColor(palette, index, item.status),
+                }}
               />
               <Typography.Paragraph className="text-grey-muted m-b-0 font-medium">
                 {item.name}{' '}

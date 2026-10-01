@@ -17,13 +17,13 @@ import type {
   TooltipComponentOption,
 } from 'echarts';
 import { describe, expect, it } from 'vitest';
-import { CHART_PALETTE } from '../palette';
+import { DARK_CHART_PALETTE, LIGHT_CHART_PALETTE } from '../palette';
 import { DARK_CHART_THEME, LIGHT_CHART_THEME } from '../theme';
 import type { ChartOption, PieDatum } from '../types';
 import { buildPieOption, isPieEmpty, PIE_TRACK_SERIES_ID } from './pie';
 
 const data: PieDatum[] = [
-  { name: 'Success', value: 6, color: '#00aa00' },
+  { name: 'Success', value: 6, status: 'success' },
   { name: 'Failed', value: 3 },
   { name: 'Aborted', value: 1 },
 ];
@@ -33,14 +33,38 @@ const base = { data, ariaLabel: 'Test status' };
 const pieOf = (option: ChartOption) => (option.series as PieSeriesOption[])[0];
 
 describe('buildPieOption', () => {
-  it('builds one slice per datum with explicit or palette colours', () => {
+  it('builds one slice per datum with status or palette colours', () => {
     const slices = pieOf(buildPieOption(base, LIGHT_CHART_THEME))
       .data as Array<{ name: string; value: number; itemStyle: object }>;
 
     expect(slices).toEqual([
-      { name: 'Success', value: 6, itemStyle: { color: '#00aa00' } },
-      { name: 'Failed', value: 3, itemStyle: { color: CHART_PALETTE[1] } },
-      { name: 'Aborted', value: 1, itemStyle: { color: CHART_PALETTE[2] } },
+      {
+        name: 'Success',
+        value: 6,
+        itemStyle: { color: LIGHT_CHART_PALETTE.status.success },
+      },
+      {
+        name: 'Failed',
+        value: 3,
+        itemStyle: { color: LIGHT_CHART_PALETTE.series[1] },
+      },
+      {
+        name: 'Aborted',
+        value: 1,
+        itemStyle: { color: LIGHT_CHART_PALETTE.series[2] },
+      },
+    ]);
+  });
+
+  it('takes slice colours from the dark palette in dark mode', () => {
+    const slices = pieOf(buildPieOption(base, DARK_CHART_THEME)).data as Array<{
+      itemStyle: { color: string };
+    }>;
+
+    expect(slices.map((slice) => slice.itemStyle.color)).toEqual([
+      DARK_CHART_PALETTE.status.success,
+      DARK_CHART_PALETTE.series[1],
+      DARK_CHART_PALETTE.series[2],
     ]);
   });
 

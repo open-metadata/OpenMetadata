@@ -17,10 +17,6 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as HealthCheckIcon } from '../../../../assets/svg/ic-green-heart-border.svg';
-import {
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-} from '../../../../constants/Color.constants';
 import { INITIAL_ENTITY_HEALTH_MATRIX } from '../../../../constants/profiler.constant';
 import { fetchEntityCoveredWithDQ } from '../../../../rest/dataQualityDashboardAPI';
 import { getTestCaseTabPath } from '../../../../utils/DataQuality/DataQualityPureUtils';
@@ -78,12 +74,12 @@ const EntityHealthStatusPieChartWidget = ({
         {
           name: t('label.healthy'),
           value: entityHealthStates.healthy,
-          color: DQ_CHART_SUCCESS_COLOR,
+          status: 'success' as const,
         },
         {
           name: t('label.unhealthy'),
           value: entityHealthStates.unhealthy,
-          color: DQ_CHART_FAILED_COLOR,
+          status: 'failed' as const,
         },
       ],
       chartLabel: getPieChartLabel(

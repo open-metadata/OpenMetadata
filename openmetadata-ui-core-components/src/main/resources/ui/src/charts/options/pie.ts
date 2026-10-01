@@ -12,7 +12,7 @@
  */
 
 import type { PieSeriesOption } from 'echarts';
-import { getSeriesColor } from '../palette';
+import { chartColor } from '../palette';
 import type {
   ChartOption,
   ChartTheme,
@@ -88,7 +88,7 @@ export const buildPieOption = (
     data: input.data.map((datum, index) => ({
       name: datum.name,
       value: sliceValue(datum.value),
-      itemStyle: { color: datum.color ?? getSeriesColor(index) },
+      itemStyle: { color: chartColor(theme.palette, index, datum.status) },
     })),
   };
 

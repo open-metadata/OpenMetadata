@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { ReactNode } from 'react';
 import { ColumnProfile } from '../../../generated/entity/data/table';
 import { MetricChartType } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -33,7 +34,8 @@ export interface DataDistributionHistogramProps {
 export type CustomPieChartData = {
   name: string;
   value: number;
-  color: string;
+  /** Colour that carries meaning; otherwise the next palette colour. */
+  status?: ChartStatus;
 };
 export interface CustomPieChartProps {
   name: string;

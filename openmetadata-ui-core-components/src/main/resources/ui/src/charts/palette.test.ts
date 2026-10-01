@@ -12,7 +12,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { CHART_PALETTE, getSeriesColor } from './palette';
+import {
+  CHART_PALETTE,
+  chartColor,
+  DARK_CHART_PALETTE,
+  getSeriesColor,
+  LIGHT_CHART_PALETTE,
+} from './palette';
 
 describe('CHART_PALETTE', () => {
   // AI charts persist the colours they were painted with, so changing an entry
@@ -36,10 +42,82 @@ describe('CHART_PALETTE', () => {
       '#cb5a50',
     ]);
   });
+
+  it('is the light series palette', () => {
+    expect(LIGHT_CHART_PALETTE.series).toBe(CHART_PALETTE);
+  });
+});
+
+describe('light and dark palettes', () => {
+  const HEX = /^#[0-9a-f]{6}$/;
+
+  it.each([
+    ['light', LIGHT_CHART_PALETTE],
+    ['dark', DARK_CHART_PALETTE],
+  ])('%s has 15 distinct hex series colours', (_, palette) => {
+    expect(palette.series).toHaveLength(15);
+    expect(new Set(palette.series).size).toBe(15);
+    palette.series.forEach((color) => expect(color).toMatch(HEX));
+  });
+
+  it.each([
+    ['light', LIGHT_CHART_PALETTE],
+    ['dark', DARK_CHART_PALETTE],
+  ])(
+    '%s has a hex colour for every status and both scale ends',
+    (_, palette) => {
+      expect(Object.keys(palette.status).sort()).toEqual([
+        'failed',
+        'info',
+        'neutral',
+        'success',
+        'warning',
+      ]);
+      [...Object.values(palette.status), ...palette.scale].forEach((color) =>
+        expect(color).toMatch(HEX)
+      );
+    }
+  );
+
+  it('pins the light status colours to the design tokens charts used before', () => {
+    expect(LIGHT_CHART_PALETTE.status).toEqual({
+      success: '#17b26a',
+      warning: '#f79009',
+      failed: '#cb5a50',
+      info: '#1570ef',
+      neutral: '#e9eaeb',
+    });
+  });
+
+  it('gives dark mode its own colours', () => {
+    expect(DARK_CHART_PALETTE.series[0]).not.toBe(
+      LIGHT_CHART_PALETTE.series[0]
+    );
+    expect(DARK_CHART_PALETTE.status.success).not.toBe(
+      LIGHT_CHART_PALETTE.status.success
+    );
+  });
+});
+
+describe('chartColor', () => {
+  it('cycles the series colours by index', () => {
+    expect(chartColor(DARK_CHART_PALETTE, 0)).toBe(
+      DARK_CHART_PALETTE.series[0]
+    );
+    expect(chartColor(DARK_CHART_PALETTE, 16)).toBe(
+      DARK_CHART_PALETTE.series[1]
+    );
+  });
+
+  it('uses the status colour when a status is given', () => {
+    expect(chartColor(DARK_CHART_PALETTE, 3, 'failed')).toBe(
+      DARK_CHART_PALETTE.status.failed
+    );
+  });
 });
 
 describe('getSeriesColor', () => {
-  it('returns the palette colour at the series index', () => {
+  it('returns the light palette colour at the series index', () => {
     expect(getSeriesColor(0)).toBe('#1570ef');
     expect(getSeriesColor(14)).toBe('#cb5a50');
   });

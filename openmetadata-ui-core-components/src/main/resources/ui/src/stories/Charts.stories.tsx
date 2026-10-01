@@ -64,9 +64,9 @@ const cost = DAYS.map((day, i) => ({
 }));
 
 const status = [
-  { name: 'Success', value: 42, color: '#17b26a' },
-  { name: 'Failed', value: 7, color: '#f04438' },
-  { name: 'Aborted', value: 3, color: '#f79009' },
+  { name: 'Success', value: 42, status: 'success' as const },
+  { name: 'Failed', value: 7, status: 'failed' as const },
+  { name: 'Aborted', value: 3, status: 'warning' as const },
 ];
 
 // A 3×3 grid of made-up regions — real map data belongs to the caller.
@@ -238,14 +238,14 @@ export const StackedArea: Story = {
             key: 'success',
             name: 'Success',
             stack: 'status',
-            color: '#17b26a',
+            status: 'success',
           },
-          { key: 'failed', name: 'Failed', stack: 'status', color: '#f04438' },
+          { key: 'failed', name: 'Failed', stack: 'status', status: 'failed' },
           {
             key: 'aborted',
             name: 'Aborted',
             stack: 'status',
-            color: '#f79009',
+            status: 'warning',
           },
         ]}
         xKey="day"
@@ -262,7 +262,7 @@ export const BarWithReferenceLine: Story = {
         ariaLabel="Failed runs per day"
         data={runs}
         referenceLines={[{ axis: 'y', value: 5, label: 'Threshold' }]}
-        series={[{ key: 'failed', name: 'Failed', color: '#f04438' }]}
+        series={[{ key: 'failed', name: 'Failed', status: 'failed' }]}
         xKey="day"
       />
     </Frame>
@@ -275,7 +275,7 @@ export const HorizontalDivergingBar: Story = {
       <BarChart
         ariaLabel="Completeness change by field"
         data={completeness}
-        getBarColor={(row) => (row.delta < 0 ? '#f04438' : '#17b26a')}
+        getBarStatus={(row) => (row.delta < 0 ? 'failed' : 'success')}
         layout="horizontal"
         referenceLines={[{ axis: 'x', value: 0 }]}
         series={[{ key: 'delta', name: 'Change' }]}

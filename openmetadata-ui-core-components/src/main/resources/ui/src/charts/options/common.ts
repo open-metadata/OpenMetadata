@@ -260,7 +260,7 @@ export const referenceLinesToMarkLine = (
       color: theme.axisText,
     },
     lineStyle: {
-      color: line.color ?? theme.axisText,
+      color: line.status ? theme.palette.status[line.status] : theme.axisText,
       type: 'dashed',
       width: 1,
     },

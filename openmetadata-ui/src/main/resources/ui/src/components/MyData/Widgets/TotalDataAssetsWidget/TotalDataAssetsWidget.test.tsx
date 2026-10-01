@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import {
+  chartColor,
+  LIGHT_CHART_PALETTE,
   PieChart,
   type PieChartProps,
 } from '@openmetadata/ui-core-components/charts';
@@ -449,7 +451,7 @@ describe('TotalDataAssetsWidget', () => {
       );
     });
 
-    it('should draw one slice per entity type, highest count first, coloured like the legend', async () => {
+    it('should draw one slice per entity type, highest count first, with legend dots in palette order', async () => {
       await act(async () => {
         renderTotalDataAssetsWidget({
           currentLayout: [{ i: 'test-widget-key', x: 0, y: 0, w: 2, h: 4 }],
@@ -464,9 +466,13 @@ describe('TotalDataAssetsWidget', () => {
       expect(values).toEqual([...values].sort((a, b) => b - a));
       expect(legendDots).toHaveLength(slices.length);
 
-      slices.forEach((slice, index) => {
-        expect(legendDots[index]).toHaveStyle({
-          backgroundColor: slice.color,
+      // No slice names a colour, so slice i takes palette colour i; the
+      // legend dot beside it must take the same one.
+      expect(slices.every((slice) => slice.status === undefined)).toBe(true);
+
+      legendDots.forEach((dot, index) => {
+        expect(dot).toHaveStyle({
+          backgroundColor: chartColor(LIGHT_CHART_PALETTE, index),
         });
       });
     });
