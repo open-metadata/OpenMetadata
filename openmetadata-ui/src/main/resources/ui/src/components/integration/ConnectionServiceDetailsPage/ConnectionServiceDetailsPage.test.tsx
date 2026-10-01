@@ -19,7 +19,9 @@ import {
   waitFor,
 } from '@testing-library/react';
 import React from 'react';
+import { getDatabases } from '../../../rest/databaseAPI';
 import { getServiceByFQN } from '../../../rest/serviceAPI';
+import { getTopics } from '../../../rest/topicsAPI';
 import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
 import ConnectionServiceDetailsPage from './ConnectionServiceDetailsPage';
 
@@ -38,6 +40,17 @@ const MOCK_SERVICE = {
 const mockNavigate = jest.fn();
 let mockTabParam: string | undefined = undefined;
 let mockServiceCategory = 'databaseServices';
+const mockPermissions: { database: Record<string, boolean> } = { database: {} };
+const FULL_SERVICE_PERMISSION = { EditAll: true, Delete: true, ViewAll: true };
+let mockServicePermission: Record<string, boolean> = FULL_SERVICE_PERMISSION;
+const mockTableFilters: { showDeletedTables: boolean; schema?: string } = {
+  showDeletedTables: false,
+};
+const mockSetFilters = jest.fn();
+const mockPagingCursor: { cursorType?: string; cursorValue?: string } = {};
+const mockHandlePageChange = jest.fn();
+// Stable like the real hook's `setPaging`: a fresh function per render would refetch forever.
+const mockHandlePagingChange = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -50,11 +63,10 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
-    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-      EditAll: true,
-      Delete: true,
-      ViewAll: true,
-    }),
+    permissions: mockPermissions,
+    getEntityPermissionByFqn: jest.fn(() =>
+      Promise.resolve(mockServicePermission)
+    ),
   }),
 }));
 
@@ -155,14 +167,16 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
     paging: { total: 0 },
     pageSize: 15,
     currentPage: 1,
-    handlePagingChange: jest.fn(),
+    handlePagingChange: mockHandlePagingChange,
+    handlePageChange: mockHandlePageChange,
+    pagingCursor: mockPagingCursor,
   }),
 }));
 
 jest.mock('../../../hooks/useTableFilters', () => ({
   useTableFilters: () => ({
-    filters: { showDeletedTables: false },
-    setFilters: jest.fn(),
+    filters: mockTableFilters,
+    setFilters: mockSetFilters,
   }),
 }));
 
@@ -336,7 +350,20 @@ jest.mock(
 
 jest.mock('./DataAssetsTab', () => ({
   __esModule: true,
-  default: () => <div data-testid="data-assets-tab" />,
+  default: ({
+    data,
+    onShowDeletedChange,
+  }: {
+    data: { name: string }[];
+    onShowDeletedChange: (value: boolean) => void;
+  }) => (
+    <div data-testid="data-assets-tab">
+      <button onClick={() => onShowDeletedChange(true)}>show-deleted</button>
+      {data.map(({ name }) => (
+        <span key={name}>{name}</span>
+      ))}
+    </div>
+  ),
 }));
 
 // Exercises the owner/domain/tier editing UI on its own OSS primitives (DomainSelectableList,
@@ -344,7 +371,18 @@ jest.mock('./DataAssetsTab', () => ({
 // it for real here would pull in every icon those primitives import.
 jest.mock('./DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow', () => ({
   __esModule: true,
-  default: () => <div data-testid="entity-meta-strip" />,
+  default: ({
+    canEditDomains,
+    canEditOwners,
+    canEditTier,
+  }: Record<'canEditDomains' | 'canEditOwners' | 'canEditTier', boolean>) => (
+    <div
+      data-can-edit-domains={String(canEditDomains)}
+      data-can-edit-owners={String(canEditOwners)}
+      data-can-edit-tier={String(canEditTier)}
+      data-testid="entity-meta-strip"
+    />
+  ),
 }));
 
 jest.mock('@untitledui/icons', () => ({
@@ -352,11 +390,34 @@ jest.mock('@untitledui/icons', () => ({
 }));
 
 jest.mock('../../../constants/constants', () => ({
+  INITIAL_PAGING_VALUE: 1,
   INITIAL_TABLE_FILTERS: { showDeletedTables: false },
   pagingObject: {},
 }));
 
 jest.mock('fast-json-patch', () => ({ compare: jest.fn(() => []) }));
+
+// Holds each list request open until the test resolves it — by index, in request order — so a
+// request can be made to resolve after the one that followed it.
+type ResolveList = (names: string[]) => void;
+
+const toListResponse = (names: string[]) => ({
+  data: names.map((name) => ({ name })),
+  paging: {},
+});
+
+const deferListResponses = (count: number): ResolveList[] => {
+  const resolvers: ResolveList[] = [];
+  const deferred = () =>
+    new Promise((resolve) => {
+      resolvers.push((names) => resolve(toListResponse(names)));
+    });
+  for (let i = 0; i < count; i++) {
+    (getDatabases as jest.Mock).mockImplementationOnce(deferred);
+  }
+
+  return resolvers;
+};
 
 // ── Tests ─────────────────────────────────────────────────────────────────
 
@@ -372,6 +433,12 @@ describe('ConnectionServiceDetailsPage', () => {
     jest.clearAllMocks();
     mockTabParam = undefined;
     mockServiceCategory = 'databaseServices';
+    mockPermissions.database = {};
+    mockServicePermission = FULL_SERVICE_PERMISSION;
+    mockTableFilters.showDeletedTables = false;
+    delete mockTableFilters.schema;
+    delete mockPagingCursor.cursorType;
+    delete mockPagingCursor.cursorValue;
     Object.keys(contributionsByPoint).forEach(
       (key) => delete contributionsByPoint[key]
     );
@@ -439,6 +506,92 @@ describe('ConnectionServiceDetailsPage', () => {
     });
   });
 
+  describe('read-only user', () => {
+    beforeEach(() => {
+      mockServicePermission = { ViewAll: true, ViewBasic: true };
+    });
+
+    // The tab shows the connection config; classic keeps it to those who may edit it.
+    it('does not offer the connection tab', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
+      );
+
+      expect(
+        screen.queryByRole('button', { name: /label\.connection/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('lands a connection deep link on the default tab without showing the config', async () => {
+      mockTabParam = 'connection';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument()
+      );
+
+      expect(
+        screen.queryByTestId('edit-connection-button')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('header edits', () => {
+    const renderHeader = async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      return screen.findByTestId('entity-meta-strip');
+    };
+
+    it('lets a user who may edit the service change its domain, owners and tier', async () => {
+      const header = await renderHeader();
+
+      await waitFor(() =>
+        expect(header).toHaveAttribute('data-can-edit-owners', 'true')
+      );
+
+      expect(header).toHaveAttribute('data-can-edit-domains', 'true');
+      expect(header).toHaveAttribute('data-can-edit-tier', 'true');
+    });
+
+    it('gates each field on its own permission', async () => {
+      mockServicePermission = { ViewAll: true, EditOwners: true };
+      const header = await renderHeader();
+
+      await waitFor(() =>
+        expect(header).toHaveAttribute('data-can-edit-owners', 'true')
+      );
+
+      expect(header).toHaveAttribute('data-can-edit-domains', 'false');
+      expect(header).toHaveAttribute('data-can-edit-tier', 'false');
+    });
+
+    it('allows no edits on a soft-deleted service', async () => {
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        deleted: true,
+      });
+      const header = await renderHeader();
+
+      await waitFor(() =>
+        expect(screen.getByTestId('deleted-badge')).toBeInTheDocument()
+      );
+
+      expect(header).toHaveAttribute('data-can-edit-domains', 'false');
+      expect(header).toHaveAttribute('data-can-edit-owners', 'false');
+      expect(header).toHaveAttribute('data-can-edit-tier', 'false');
+    });
+  });
+
   it('identifies the connection schema by service type, not by FQN', async () => {
     mockTabParam = 'connection';
 
@@ -468,6 +621,161 @@ describe('ConnectionServiceDetailsPage', () => {
 
     expect(screen.getByText('label.delete')).toBeInTheDocument();
     expect(screen.queryByText('label.restore')).not.toBeInTheDocument();
+  });
+
+  describe('data assets fetch', () => {
+    // The table renders owner, domain, data product, tag, tier and certification columns;
+    // requesting no fields left every one of them empty.
+    const ASSET_FIELDS = 'tags,owners,domains,dataProducts,certification';
+
+    it('requests the fields the databases table renders', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getDatabases).toHaveBeenCalledWith(
+        'test-service',
+        ASSET_FIELDS,
+        expect.anything(),
+        'non-deleted'
+      );
+    });
+
+    it('also requests usage when the user may view it', async () => {
+      mockPermissions.database = { ViewUsage: true };
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getDatabases).toHaveBeenCalledWith(
+        'test-service',
+        `${ASSET_FIELDS},usageSummary`,
+        expect.anything(),
+        'non-deleted'
+      );
+    });
+
+    it('requests the same fields for other service categories', async () => {
+      mockServiceCategory = 'messagingServices';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getTopics).toHaveBeenCalledWith(
+        'test-service',
+        ASSET_FIELDS,
+        expect.anything(),
+        'non-deleted'
+      );
+    });
+
+    it('lists the soft-deleted children of a soft-deleted service', async () => {
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        deleted: true,
+      });
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getDatabases).toHaveBeenCalledWith(
+        'test-service',
+        ASSET_FIELDS,
+        expect.anything(),
+        'deleted'
+      );
+    });
+
+    it('lists deleted children of a live service when the deleted switch is on', async () => {
+      mockTableFilters.showDeletedTables = true;
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getDatabases).toHaveBeenCalledWith(
+        'test-service',
+        ASSET_FIELDS,
+        expect.anything(),
+        'deleted'
+      );
+    });
+
+    it('returns to the first page when the deleted switch flips', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      fireEvent.click(await screen.findByText('show-deleted'));
+
+      expect(mockSetFilters).toHaveBeenCalledWith({
+        showDeletedTables: 'true',
+      });
+      expect(mockHandlePageChange).toHaveBeenCalledWith(1, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    });
+
+    it('fetches the page the URL cursor points at', async () => {
+      mockPagingCursor.cursorType = 'after';
+      mockPagingCursor.cursorValue = 'cursor-2';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      // Without this the pager advanced the page number while the rows stayed on page one.
+      expect(getDatabases).toHaveBeenCalledWith(
+        'test-service',
+        ASSET_FIELDS,
+        { after: 'cursor-2', limit: 15 },
+        'non-deleted'
+      );
+    });
+
+    it('leaves the list to the search while one is active', async () => {
+      mockTableFilters.schema = 'sales';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(getDatabases).not.toHaveBeenCalled();
+    });
+
+    it('keeps the latest page when an earlier request resolves after it', async () => {
+      const pendingPages = deferListResponses(2);
+      const { rerender } = render(<ConnectionServiceDetailsPage />);
+      await waitFor(() => expect(getDatabases).toHaveBeenCalledTimes(1));
+
+      mockPagingCursor.cursorType = 'after';
+      mockPagingCursor.cursorValue = 'cursor-2';
+      rerender(<ConnectionServiceDetailsPage />);
+      await waitFor(() => expect(getDatabases).toHaveBeenCalledTimes(2));
+
+      await act(async () => pendingPages[1](['page-two']));
+      await act(async () => pendingPages[0](['page-one']));
+
+      expect(screen.getByText('page-two')).toBeInTheDocument();
+      expect(screen.queryByText('page-one')).not.toBeInTheDocument();
+    });
+
+    it('drops a list request still in flight once a search takes over', async () => {
+      const pendingLists = deferListResponses(1);
+      const { rerender } = render(<ConnectionServiceDetailsPage />);
+      await waitFor(() => expect(getDatabases).toHaveBeenCalledTimes(1));
+
+      mockTableFilters.schema = 'sales';
+      rerender(<ConnectionServiceDetailsPage />);
+      await act(async () => pendingLists[0](['unfiltered']));
+
+      expect(screen.getByTestId('data-assets-tab')).toBeInTheDocument();
+      expect(screen.queryByText('unfiltered')).not.toBeInTheDocument();
+    });
   });
 
   describe('deleted service', () => {

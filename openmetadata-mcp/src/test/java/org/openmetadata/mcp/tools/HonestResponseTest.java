@@ -88,7 +88,7 @@ class HonestResponseTest {
   void aShortFailingTestListIsReportedComplete() {
     Map<String, Object> tests = new HashMap<>();
 
-    RootCauseAnalysisTool.annotateCompleteness(tests, 3);
+    RootCauseAnalysisTool.annotateCompleteness(tests, 3, false);
 
     assertEquals(3, tests.get("failingTestCount"));
     assertEquals(Boolean.TRUE, tests.get("complete"), "three of three is genuinely the whole set");
@@ -96,16 +96,27 @@ class HonestResponseTest {
   }
 
   @Test
-  void aFullBucketIsNotClaimedComplete() {
+  void aHundredFailingTestsCanStillBeTheWholeSet() {
     Map<String, Object> tests = new HashMap<>();
 
-    RootCauseAnalysisTool.annotateCompleteness(tests, 100);
+    RootCauseAnalysisTool.annotateCompleteness(tests, 100, false);
+
+    assertEquals(
+        Boolean.TRUE,
+        tests.get("complete"),
+        "the count alone says nothing about truncation; only the lookup knows whether it cut");
+  }
+
+  @Test
+  void aTruncatedLookupIsNotClaimedComplete() {
+    Map<String, Object> tests = new HashMap<>();
+
+    RootCauseAnalysisTool.annotateCompleteness(tests, 3, true);
 
     assertEquals(
         Boolean.FALSE,
         tests.get("complete"),
-        "the lookup passes no limit, so the terms aggregation caps at 100 buckets and a full page "
-            + "cannot be distinguished from a truncated one - 'complete: true' was hardcoded");
+        "when the lookup left test cases out, even a short list may be missing failures");
     assertTrue(
         tests.get("completeNote").toString().contains("originEntityFQN"),
         "the caveat carries the way to get the full set, not just the fact that it is capped");
