@@ -264,7 +264,7 @@ OpenMetadata is a unified metadata platform for data discovery, data observabili
 ## Architecture Overview
 - **Backend**: Java 21 + Dropwizard REST API framework, multi-module Maven project
 - **Frontend**: React + TypeScript + Ant Design, built with Webpack and Yarn
-- **Ingestion**: Python 3.9-3.11 with Pydantic 2.x, 75+ data source connectors  
+- **Ingestion**: Python 3.10-3.12 with Pydantic 2.x, 75+ data source connectors  
 - **Database**: MySQL (default) or PostgreSQL with Flyway migrations
 - **Search**: Elasticsearch 7.17+ or OpenSearch 2.6+ for metadata discovery
 - **Infrastructure**: Apache Airflow for workflow orchestration
@@ -272,7 +272,7 @@ OpenMetadata is a unified metadata platform for data discovery, data observabili
 ## Prerequisites and Setup
 
 ### Required Software Versions
-- **Python**: 3.9, 3.10, or 3.11 (NOT 3.12+)
+- **Python**: 3.10, 3.11, or 3.12
 - **Java**: 21 (OpenJDK 21.0.8+)
 - **Maven**: 3.6-3.9 (tested with 3.9.11)
 - **Node.js**: 18 (LTS, NOT 20+)
@@ -479,7 +479,7 @@ After making changes, ALWAYS test complete user scenarios:
 - **Java version error**: Ensure `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64` is exported
 - **ANTLR missing**: Install with `make install_antlr_cli` - **REQUIRED for frontend tests and builds**
 - **Frontend tests fail with missing modules**: Run `make generate` and `yarn run build-check` first
-- **Python dependency conflicts**: Use Python 3.9-3.11, NOT 3.12+
+- **Python dependency conflicts**: Use Python 3.10-3.12
 - **Node version issues**: Use Node 18 LTS, NOT Node 20+
 
 ### Network Timeouts
