@@ -13,6 +13,8 @@
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import {
+  AlertTriangle,
+  CheckCircle,
   ChevronRight,
   Database01,
 } from '@openmetadata/ui-core-components/icons';
@@ -118,6 +120,123 @@ export const InspectorStatement = ({
     </Box>
   </Box>
 );
+
+interface IdentityCardProps {
+  /** Short caps label above the identifier — e.g. "FULL PATH", "USERNAME", "FQN". */
+  fieldLabel: string;
+  /** Identifier value rendered in mono. */
+  value: string;
+  /** Dot colour matching the type palette. */
+  color: string;
+  /** Family label — e.g. "Table", "User", "Database Schema". */
+  family: string;
+  valueTestId?: string;
+}
+
+/**
+ * Identity card for an entity selection: a labelled identifier and a type pill.
+ * Replaces the sentence-shaped InspectorStatement for entity drawers.
+ */
+export const InspectorIdentityCard = ({
+  fieldLabel,
+  value,
+  color,
+  family,
+  valueTestId,
+}: IdentityCardProps) => (
+  <Box className="kg-inspector-statement" direction="col" gap={2}>
+    <span className="kg-inspector-section-title">{fieldLabel}</span>
+    <Typography
+      className="tw:break-all tw:font-mono tw:text-utility-purple-700"
+      data-testid={valueTestId}
+      size="text-xs"
+      weight="medium">
+      {value}
+    </Typography>
+    <Box align="center" gap={2}>
+      <span
+        aria-hidden="true"
+        className="kg-inspector-dot"
+        style={{ backgroundColor: color }}
+      />
+      <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
+        {family}
+      </Typography>
+    </Box>
+  </Box>
+);
+
+interface KeyValueProps {
+  label: string;
+  value: ReactNode;
+}
+
+/** A plain `Label: value` row for drawer meta like "Team: Finance" or "System name: upstream". */
+export const InspectorKeyValue = ({ label, value }: KeyValueProps) => (
+  <Box align="baseline" gap={2}>
+    <Typography className="tw:text-tertiary" size="text-sm">
+      {label + ':'}
+    </Typography>
+    <Typography className="tw:break-all tw:text-primary" size="text-sm">
+      {value}
+    </Typography>
+  </Box>
+);
+
+interface GapNoteProps {
+  tone: 'warning' | 'success';
+  text: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  actionHref?: string;
+  actionTestId?: string;
+}
+
+/** Full-width gap callout: an icon, a short status, and an optional CTA. */
+export const InspectorGapNote = ({
+  tone,
+  text,
+  actionLabel,
+  onAction,
+  actionHref,
+  actionTestId,
+}: GapNoteProps) => {
+  const Icon = tone === 'warning' ? AlertTriangle : CheckCircle;
+  const toneClass =
+    tone === 'warning'
+      ? 'tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:text-utility-warning-700'
+      : 'tw:border-utility-success-200 tw:bg-utility-success-50 tw:text-utility-success-700';
+
+  return (
+    <Box
+      align="center"
+      className={classNames(
+        'tw:rounded-md tw:border tw:px-3 tw:py-2',
+        toneClass
+      )}
+      gap={2}
+      justify="between">
+      <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
+        <Icon aria-hidden="true" size={16} />
+        <Typography className="tw:text-current" size="text-sm" weight="medium">
+          {text}
+        </Typography>
+      </Box>
+      {actionLabel && (actionHref || onAction) && (
+        <Button
+          color="secondary"
+          data-testid={actionTestId}
+          href={actionHref}
+          rel={actionHref ? 'noopener noreferrer' : undefined}
+          size="sm"
+          target={actionHref ? '_blank' : undefined}
+          onPress={onAction}>
+          {actionLabel}
+        </Button>
+      )}
+    </Box>
+  );
+};
 
 interface SectionProps {
   title: string;

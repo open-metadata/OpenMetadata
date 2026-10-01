@@ -502,10 +502,10 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 />
               )}
               <KnowledgeGraphOverlays
+                coverage={coverage}
                 edges={scene.edges}
                 key={entityType + ':' + entity.id}
                 nodes={scene.nodes}
-                rootId={rootEntityId}
                 selection={selection}
                 tooltip={canvas.tooltip}
                 onExpandGroup={expandGroup}
