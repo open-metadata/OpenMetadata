@@ -489,7 +489,10 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
 
     const kpiChart = widget.getByTestId('kpi-widget-chart');
     await expect(kpiChart).toBeVisible();
-    await expect(kpiChart.locator('svg path')).not.toHaveCount(0);
+    // ECharts labels its root `role="img"` with `<chart title>. <series names>`,
+    // so the KPI being named there proves it was plotted (axis and grid lines
+    // are also svg paths, which makes a path count vacuous).
+    await expect(kpiChart.getByRole('img', { name: kpi.name })).toBeVisible();
   });
 
   await test.step('Test widget customization', async () => {
