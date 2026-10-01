@@ -10,19 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  BLUE_500,
-  GREEN_3,
-  RED_3,
-  YELLOW_3,
-} from '../../constants/Color.constants';
 import { Task } from '../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
   applyStatusPlacements,
   formatTestSummaryYAxis,
   getStatusChartStatus,
-  getStatusDotColor,
   getTestSummaryTooltipPosition,
   getThresholdReference,
   isSameTooltipPosition,
@@ -505,26 +498,6 @@ describe('prepareChartData', () => {
         tasks: [],
       } as PrepareChartDataType).information
     ).toEqual([]);
-  });
-});
-
-describe('getStatusDotColor', () => {
-  it('should return GREEN_3 for Success', () => {
-    expect(getStatusDotColor(TestCaseStatus.Success)).toBe(GREEN_3);
-  });
-
-  it('should return RED_3 for Failed', () => {
-    expect(getStatusDotColor(TestCaseStatus.Failed)).toBe(RED_3);
-  });
-
-  it('should return YELLOW_3 for Aborted', () => {
-    expect(getStatusDotColor(TestCaseStatus.Aborted)).toBe(YELLOW_3);
-  });
-
-  // Aborted and Queued read as the same run to a colour-blind eye when they
-  // share a dot: one produced no result, the other has not run yet.
-  it('should return BLUE_500 for Queued', () => {
-    expect(getStatusDotColor(TestCaseStatus.Queued)).toBe(BLUE_500);
   });
 });
 

@@ -17,12 +17,6 @@ import isUndefined from 'lodash/isUndefined';
 import omitBy from 'lodash/omitBy';
 import round from 'lodash/round';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import {
-  BLUE_500,
-  GREEN_3,
-  RED_3,
-  YELLOW_3,
-} from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
 import { Task } from '../../generated/entity/tasks/task';
 import {
@@ -316,24 +310,6 @@ export const applyStatusPlacements = (
       [PLACED_KEYS_FIELD]: missing,
     };
   });
-};
-
-// Aborted and Queued used to share one colour, which read as a single state:
-// a run that produced no result and a run that has not happened yet.
-export const getStatusDotColor = (status: TestCaseStatus): string => {
-  if (status === TestCaseStatus.Success) {
-    return GREEN_3;
-  }
-
-  if (status === TestCaseStatus.Failed) {
-    return RED_3;
-  }
-
-  if (status === TestCaseStatus.Queued) {
-    return BLUE_500;
-  }
-
-  return YELLOW_3;
 };
 
 export const getStatusChartStatus = (status?: TestCaseStatus): ChartStatus => {
