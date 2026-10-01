@@ -1181,7 +1181,7 @@ export default function EntitySummaryPanel({
             data-testid="drawer-close-icon"
             icon={XClose}
             size="xs"
-            onPress={handleClosePanel}
+            onClick={handleClosePanel}
           />
         </div>
       )}

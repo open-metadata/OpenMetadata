@@ -54,6 +54,7 @@ import {
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
+import { clickUntilVisible } from './waitHelpers';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -914,9 +915,8 @@ export const updateDescriptionForChildren = async (
   }
 };
 
-// Opens the ClassificationTagPicker popover with retry logic to handle the
-// race condition where the outside-click handler closes the popover before
-// the search input becomes visible (mirrors openGlossaryPicker in glossaryPicker.ts).
+// Opens the ClassificationTagPicker; the outside-click handler can close the
+// popover before the search input shows, so the open is retried.
 export const openClassificationTagPicker = async (
   page: Page,
   trigger: Locator
@@ -924,19 +924,11 @@ export const openClassificationTagPicker = async (
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
 
-  const searchInput = page.getByTestId('classification-tag-picker-search');
-
-  // On CI the first click routinely lands without opening the popover, and
-  // one force-click retry was the only margin left. Keep clicking until the
-  // input shows, but only while it is hidden, so a retry can never toggle an
-  // already-open popover shut.
-  let attempt = 0;
-  await expect(async () => {
-    if (!(await searchInput.isVisible())) {
-      await trigger.click({ force: attempt++ > 0, timeout: 5_000 });
-    }
-    await expect(searchInput).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 30_000 });
+  await clickUntilVisible(
+    trigger,
+    page.getByTestId('classification-tag-picker-search'),
+    { force: 'onRetry' }
+  );
 };
 
 export const assignTag = async (

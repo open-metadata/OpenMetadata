@@ -148,6 +148,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Typography: actual.Typography,
     toOwnerRef: actual.toOwnerRef,
     toOwnerRefs: actual.toOwnerRefs,
+    Typography: actual.Typography,
   };
 });
 

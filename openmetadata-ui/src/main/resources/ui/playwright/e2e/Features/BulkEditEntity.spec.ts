@@ -602,7 +602,7 @@ test.describe('Bulk Edit Entity', () => {
     await afterAction();
   });
 
-  test('Table', { tag: '@quarantine' }, async ({ page }) => {
+  test('Table', async ({ page }) => {
     test.slow(true);
 
     const tableEntity = new TableClass({ service: new DatabaseServiceClass() });

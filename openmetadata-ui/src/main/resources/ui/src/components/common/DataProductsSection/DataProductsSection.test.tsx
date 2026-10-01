@@ -243,7 +243,9 @@ describe('DataProductsSection', () => {
     it('renders with data products', () => {
       const { container } = render(<DataProductsSection {...defaultProps} />);
 
-      expect(screen.getByText('label.data-product-plural')).toBeInTheDocument();
+      expect(screen.getByText('label.data-product-plural').tagName).toBe(
+        'SPAN'
+      );
 
       // display list
       expect(screen.getByText('DP 1')).toBeInTheDocument();

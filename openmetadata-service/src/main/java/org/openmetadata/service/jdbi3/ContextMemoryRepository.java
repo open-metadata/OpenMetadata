@@ -36,6 +36,8 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ontology.OntologyAiAvailability;
+import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.util.EntityUtil;
@@ -57,6 +59,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
   static final String FIELD_RELATED_ENTITIES = "relatedEntities";
+  static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
   static final String FIELD_SOURCE_FILE = "sourceFile";
   static final String FIELD_SOURCE_ENTITY = "sourceEntity";
   private static final String PATCH_FIELDS =
@@ -92,12 +95,52 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   @Override
+  protected void postCreate(ContextMemory memory) {
+    super.postCreate(memory);
+    ontologyQueue().enqueue(memory, memory.getUpdatedBy());
+  }
+
+  @Override
+  protected void postCreate(List<ContextMemory> memories) {
+    super.postCreate(memories);
+    if (nullOrEmpty(memories)) {
+      return;
+    }
+    OntologyMemoryDerivationQueue queue = ontologyQueue();
+    memories.forEach(memory -> queue.enqueue(memory, memory.getUpdatedBy()));
+  }
+
+  @Override
+  protected void postUpdate(ContextMemory previous, ContextMemory updated) {
+    super.postUpdate(previous, updated);
+    if (OntologyMemoryDerivationQueue.hasNewPublishedContent(previous, updated)
+        && OntologyAiAvailability.isMemoryDerivationEnabled()
+        && getDerivedEntities(updated).isEmpty()) {
+      ontologyQueue().enqueue(updated, updated.getUpdatedBy());
+    }
+  }
+
+  /** Whether the memory row exists, soft-deleted or not; provenance may point at either. */
+  static boolean memoryExists(UUID memoryId) {
+    EntityDAO<?> dao = Entity.getEntityRepository(Entity.CONTEXT_MEMORY).getDao();
+    return dao.exists(dao.getTableName(), memoryId);
+  }
+
+  private OntologyMemoryDerivationQueue ontologyQueue() {
+    return new OntologyMemoryDerivationQueue(
+        Entity.getJobDAO(), OntologyAiAvailability::isMemoryDerivationEnabled);
+  }
+
+  @Override
   protected void setFields(ContextMemory entity, Fields fields, RelationIncludes relationIncludes) {
     if (fields.contains(FIELD_PRIMARY_ENTITY)) {
       entity.setPrimaryEntity(getPrimaryEntity(entity));
     }
     if (fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(getRelatedEntities(entity));
+    }
+    if (fields.contains(FIELD_DERIVED_ENTITIES)) {
+      entity.setDerivedEntities(getDerivedEntities(entity));
     }
     if (fields.contains(FIELD_SOURCE_ENTITY) || fields.contains(FIELD_SOURCE_FILE)) {
       EntityReference source = getSourceEntity(entity);
@@ -118,6 +161,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (!fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(null);
     }
+    if (!fields.contains(FIELD_DERIVED_ENTITIES)) {
+      entity.setDerivedEntities(null);
+    }
     if (!fields.contains(FIELD_SOURCE_ENTITY)) {
       entity.setSourceEntity(null);
     }
@@ -133,6 +179,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     fetchAndSetPrimaryEntities(entities, fields);
     fetchAndSetRelatedEntities(entities, fields);
+    fetchAndSetDerivedEntities(entities, fields);
     fetchAndSetSources(entities, fields);
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
@@ -257,6 +304,42 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   private List<EntityReference> getRelatedEntities(ContextMemory entity) {
     return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null);
+  }
+
+  private List<EntityReference> getDerivedEntities(ContextMemory entity) {
+    return findFrom(
+        entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM);
+  }
+
+  private void fetchAndSetDerivedEntities(List<ContextMemory> entities, Fields fields) {
+    if (!fields.contains(FIELD_DERIVED_ENTITIES)) {
+      return;
+    }
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.DERIVED_FROM.ordinal(),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    Map<UUID, List<EntityReference>> derivedById = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      if (!Entity.GLOSSARY_TERM.equals(record.getFromEntity())) {
+        continue;
+      }
+      EntityReference ref = refById.get(record.getFromId());
+      if (ref != null) {
+        derivedById
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(ref);
+      }
+    }
+    derivedById.values().forEach(refs -> refs.sort(EntityUtil.compareEntityReference));
+    entities.forEach(
+        memory ->
+            memory.setDerivedEntities(
+                derivedById.getOrDefault(memory.getId(), Collections.emptyList())));
   }
 
   /** The single Context Center source (file or page) a memory was extracted from, via MENTIONED_IN. */

@@ -480,7 +480,7 @@ const EdgeInfoDrawer = ({
               data-testid="drawer-close-icon"
               icon={X}
               size="xs"
-              onPress={onClose}
+              onClick={onClose}
             />
           </div>
           <div

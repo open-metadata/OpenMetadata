@@ -10,20 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   CheckCircleTwoTone,
   ClockCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import {
-  Avatar,
-  Button,
-  Card,
-  Collapse,
-  Divider,
-  Space,
-  Typography,
-} from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Avatar, Button, Card, Collapse, Divider, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -66,11 +60,11 @@ const AppInstallVerifyCard = ({
           size={100}
         />
       </Space>
-      <Typography.Title className="m-t-md" level={5}>
+      <Typography as="h5" className="m-t-md" size="text-md" weight="semibold">
         {t('label.authorize-app', {
           app: getEntityName(appData),
         })}
-      </Typography.Title>
+      </Typography>
       <Card className="w-500 m-t-md">
         <Space size={12}>
           <UserPopOverCard
@@ -78,7 +72,7 @@ const AppInstallVerifyCard = ({
             userName={currentUser?.name ?? ''}
           />
           <div className="d-flex flex-col">
-            <Typography.Text className="font-medium">
+            <Typography className="font-medium">
               <Transi18next
                 i18nKey="label.application-by-developer"
                 renderElement={
@@ -95,12 +89,12 @@ const AppInstallVerifyCard = ({
                   app: getEntityName(appData),
                 }}
               />
-            </Typography.Text>
-            <Typography.Text className="text-grey-muted text-xs">
+            </Typography>
+            <Typography className="text-xs" color="secondary">
               {t('label.wants-to-access-your-account', {
                 username: currentUser?.displayName ?? currentUser?.name,
               })}
-            </Typography.Text>
+            </Typography>
           </div>
         </Space>
 
@@ -132,17 +126,17 @@ const AppInstallVerifyCard = ({
         <div className="d-flex items-center justify-between">
           <Space size={8}>
             <UserOutlined />
-            <Typography.Text className="text-xs text-grey-muted">
+            <Typography className="text-xs" color="secondary">
               {t('label.developed-by-developer', {
                 developer: appData?.developer,
               })}
-            </Typography.Text>
+            </Typography>
           </Space>
           <Space size={8}>
             <ClockCircleOutlined />
-            <Typography.Text className="text-xs text-grey-muted">
+            <Typography className="text-xs" color="secondary">
               {`${t('label.updated')} ${getRelativeTime(appData?.updatedAt)}`}
-            </Typography.Text>
+            </Typography>
           </Space>
         </div>
       </Card>
