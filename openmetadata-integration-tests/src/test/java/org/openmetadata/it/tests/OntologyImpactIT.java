@@ -21,17 +21,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SqlQueryCounter;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
@@ -49,13 +50,15 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.service.Entity;
 
-@Execution(ExecutionMode.CONCURRENT)
+@Isolated("Counts SQL statements issued by ontology impact requests")
 @ExtendWith(TestNamespaceExtension.class)
 public class OntologyImpactIT {
   private static final String PROTECTED_TAG = "PII.Sensitive";
@@ -167,6 +170,130 @@ public class OntologyImpactIT {
     assertUnchanged(deletedGrandchild);
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void authorizesDeletedTermsOnlyWithinReassignedSubtrees(
+      final boolean deletedDirectChild, final TestNamespace namespace) {
+    final Hierarchy hierarchy = createHierarchy(namespace, !deletedDirectChild);
+    SdkClients.adminClient()
+        .glossaryTerms()
+        .delete(hierarchy.protectedTerm().getId().toString(), Map.of("hardDelete", "false"));
+    final GlossaryTerm deletedTerm = getIncludingDeleted(hierarchy.protectedTerm());
+    final OpenMetadataClient caller =
+        restrictedClient(namespace, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    final DeleteOntologyResource request =
+        deleteRequest(caller, hierarchy.parent())
+            .withReassignChildrenTo(hierarchy.glossary().getEntityReference());
+
+    if (deletedDirectChild) {
+      // Retained deleted children block the final delete, but do not require move permission.
+      final InvalidRequestException exception =
+          assertThrows(
+              InvalidRequestException.class,
+              () ->
+                  caller.ontologyImpacts().deleteGlossaryTerm(hierarchy.parent().getId(), request));
+      assertEquals(400, exception.getStatusCode());
+      assertTrue(exception.getMessage().contains("glossaryTerm is not empty"));
+      assertNull(getIncludingDeleted(hierarchy.child()).getParent());
+    } else {
+      assertThrows(
+          ForbiddenException.class,
+          () -> caller.ontologyImpacts().deleteGlossaryTerm(hierarchy.parent().getId(), request));
+      assertUnchanged(hierarchy.child());
+    }
+    assertUnchanged(hierarchy.parent());
+    assertUnchanged(deletedTerm);
+  }
+
+  @Test
+  void descendantAuthorizationQueriesStayBoundedForWideSubtrees(final TestNamespace namespace) {
+    final OpenMetadataClient caller = restrictedClient(namespace, MetadataOperation.DELETE);
+    final Hierarchy narrow = createHierarchy(namespace, true);
+    final Hierarchy wide = createHierarchy(namespace, true);
+    addChildren(namespace, wide, 30);
+
+    final int narrowQueries = deniedCascadeQueries(caller, narrow.parent());
+    final int wideQueries = deniedCascadeQueries(caller, wide.parent());
+
+    // Row order can short-circuit the deny before a policy loads the shared glossary's owners.
+    assertTrue(
+        wideQueries <= narrowQueries + 4,
+        "Thirty additional descendants must not add per-term queries: narrow="
+            + narrowQueries
+            + ", wide="
+            + wideQueries);
+    assertUnchanged(wide.parent());
+    assertUnchanged(wide.child());
+    assertUnchanged(wide.protectedTerm());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void adminCascadeSkipsDescendantAuthorizationReads(
+      final boolean hardDelete, final TestNamespace namespace) {
+    final Hierarchy hierarchy = createHierarchy(namespace, true);
+    addChildren(namespace, hierarchy, 30);
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final DeleteOntologyResource request =
+        deleteRequest(admin, hierarchy.parent())
+            .withCascadeConfirmed(true)
+            .withHardDelete(hardDelete);
+
+    try (var subtreeQueries =
+            SqlQueryCounter.forRequests(
+                Entity.getJdbi(), "select json from glossary_term_entity where fqnhash like");
+        var childQueries =
+            SqlQueryCounter.forRequests(
+                Entity.getJdbi(),
+                "select toId, toEntity, json from entity_relationship where fromId =",
+                OntologyImpactIT::isContainmentRead)) {
+      final OntologyDeleteResult result =
+          admin.ontologyImpacts().deleteGlossaryTerm(hierarchy.parent().getId(), request);
+
+      assertTrue(result.getCascaded());
+      assertEquals(hardDelete, result.getHardDeleted());
+      assertEquals(
+          0, subtreeQueries.count(), "Admins must not discover descendants for policy checks");
+      assertEquals(
+          1, childQueries.count(), "Only the impact snapshot may look up children individually");
+    }
+  }
+
+  private static boolean isContainmentRead(final StatementContext context) {
+    return context
+        .getBinding()
+        .findForName("relation", context)
+        .map(
+            argument ->
+                Integer.toString(Relationship.CONTAINS.ordinal()).equals(argument.toString()))
+        .orElse(false);
+  }
+
+  private static int deniedCascadeQueries(
+      final OpenMetadataClient caller, final GlossaryTerm parent) {
+    final DeleteOntologyResource request = deleteRequest(caller, parent).withCascadeConfirmed(true);
+    assertThrows(
+        ForbiddenException.class,
+        () -> caller.ontologyImpacts().deleteGlossaryTerm(parent.getId(), request));
+    try (var queries = SqlQueryCounter.forRequests(Entity.getJdbi(), "select")) {
+      assertThrows(
+          ForbiddenException.class,
+          () -> caller.ontologyImpacts().deleteGlossaryTerm(parent.getId(), request));
+      return queries.count();
+    }
+  }
+
+  private static void addChildren(
+      final TestNamespace namespace, final Hierarchy hierarchy, final int count) {
+    for (int index = 0; index < count; index++) {
+      createTerm(
+          SdkClients.adminClient(),
+          hierarchy.glossary(),
+          namespace.prefix("child" + index),
+          hierarchy.parent().getFullyQualifiedName());
+    }
+  }
+
   @Test
   void enforcesOwnerBasedDescendantPolicy(final TestNamespace namespace) {
     final OpenMetadataClient admin = SdkClients.adminClient();
@@ -202,7 +329,8 @@ public class OntologyImpactIT {
         GlossaryTestFactory.createWithName(namespace, namespace.uniqueShortId());
     final GlossaryTerm parent = createTerm(admin, glossary, namespace.prefix("parent"), null);
     final GlossaryTerm child =
-        createTerm(admin, glossary, namespace.prefix("child"), parent.getFullyQualifiedName());
+        createTerm(
+            admin, glossary, namespace.prefix("child.with.dot"), parent.getFullyQualifiedName());
     final GlossaryTerm grandchild =
         createTerm(admin, glossary, namespace.prefix("grandchild"), child.getFullyQualifiedName());
     final OpenMetadataClient caller = restrictedClient(namespace, MetadataOperation.DELETE);
@@ -232,7 +360,8 @@ public class OntologyImpactIT {
         GlossaryTestFactory.createWithName(namespace, namespace.uniqueShortId());
     final GlossaryTerm parent = createTerm(admin, glossary, namespace.prefix("parent"), null);
     final GlossaryTerm child =
-        createTerm(admin, glossary, namespace.prefix("child"), parent.getFullyQualifiedName());
+        createTerm(
+            admin, glossary, namespace.prefix("child.with.dot"), parent.getFullyQualifiedName());
     final GlossaryTerm protectedTerm =
         admin
             .glossaryTerms()

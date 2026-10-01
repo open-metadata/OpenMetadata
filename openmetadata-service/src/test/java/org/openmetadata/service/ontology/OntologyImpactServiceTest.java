@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,8 +69,9 @@ class OntologyImpactServiceTest {
   private static final UUID ASSET_ID = UUID.fromString("a2980889-bd2d-469c-8480-b48f1b0c2d94");
   private static final Instant NOW = Instant.parse("2026-07-18T21:00:00Z");
   private static final String PRINCIPAL = "alice";
-  private static final BiConsumer<UUID, MetadataOperation> ALLOW_ALL = (id, operation) -> {};
-  private static final BiConsumer<UUID, MetadataOperation> REJECT_AUTHORIZATION =
+  private static final BiConsumer<Supplier<List<UUID>>, MetadataOperation> ALLOW_ALL =
+      (ids, operation) -> {};
+  private static final BiConsumer<Supplier<List<UUID>>, MetadataOperation> REJECT_AUTHORIZATION =
       (id, operation) -> {
         throw new AssertionError(
             "Invalid requests must be rejected before descendant authorization");
