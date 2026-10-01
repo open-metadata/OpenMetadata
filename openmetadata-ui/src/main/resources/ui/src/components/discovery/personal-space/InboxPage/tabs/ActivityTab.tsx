@@ -18,22 +18,19 @@ import {
 } from '@openmetadata/ui-core-components';
 import { FilterFunnel01, Hourglass01 } from '@untitledui/icons';
 import { groupBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
 import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import ActivityDetailDrawer from '../components/ActivityDetailDrawer';
-import ActivityFeedItem, {
-  ActivityFeedItemSelection,
-} from '../components/ActivityFeedItem';
+import ActivityFeedItem from '../components/ActivityFeedItem';
 import ActivitySkeleton from '../components/ActivitySkeleton';
 import ActivityToolbar from '../components/ActivityToolbar';
 import {
-  ACTIVITY_CLOCK_FORMAT,
-  ACTIVITY_DATE_FORMAT,
   ActivityFilter,
   ActivityGrouping,
+  ACTIVITY_CLOCK_FORMAT,
+  ACTIVITY_DATE_FORMAT,
   getActivityDayLabel,
   getActivityTypeKey,
   InboxDateRange,
@@ -89,8 +86,6 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   onCountChange,
 }) => {
   const { t } = useTranslation();
-  const [selected, setSelected] = useState<ActivityFeedItemSelection>();
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [filter, setFilter] = useState(ActivityFilter.All);
   const [grouping, setGrouping] = useState(ActivityGrouping.Day);
   const [typeKeys, setTypeKeys] = useState<string[]>([]);
@@ -105,10 +100,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   }, [markInboxActivitySeen]);
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
-  const { items, total, isLoading, refetch } = useInboxActivity(
-    filter,
-    dateRange
-  );
+  const { items, total, isLoading } = useInboxActivity(filter, dateRange);
   // ponytail: types filter the loaded page only; the server has no type filter.
   const filteredItems = useMemo(
     () =>
@@ -145,13 +137,6 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     grouping === ActivityGrouping.Day
       ? ACTIVITY_CLOCK_FORMAT
       : ACTIVITY_DATE_FORMAT;
-
-  const handleSelect = useCallback((selection: ActivityFeedItemSelection) => {
-    setSelected(selection);
-    setIsDrawerOpen(true);
-  }, []);
-
-  const selectedId = selected?.activity?.id ?? selected?.feed?.id;
 
   const emptyPlaceholder =
     isFiltered || typeKeys.length ? (
@@ -211,10 +196,8 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
                 <ActivityFeedItem
                   activity={item.activity}
                   feed={item.feed}
-                  isActive={isDrawerOpen && selectedId === itemId}
                   key={itemId}
                   timeFormat={timeFormat}
-                  onClick={handleSelect}
                 />
               );
             })}
@@ -233,37 +216,27 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   }
 
   return (
-    <>
-      <Box className="tw:flex tw:h-full tw:min-h-0" direction="col">
-        <div
-          className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-4 tw:pr-1"
-          data-testid="inbox-activity-tab"
-          ref={scrollRef}>
-          <Box
-            className="tw:mx-auto tw:w-full tw:max-w-220"
-            direction="col"
-            gap={4}>
-            <ActivityToolbar
-              filter={filter}
-              grouping={grouping}
-              typeKeys={typeKeys}
-              onFilterChange={setFilter}
-              onGroupingChange={setGrouping}
-              onTypeKeysChange={setTypeKeys}
-            />
-            {activityContent}
-          </Box>
-        </div>
-      </Box>
-
-      <ActivityDetailDrawer
-        activity={selected?.activity}
-        feed={selected?.feed}
-        open={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        onPosted={refetch}
-      />
-    </>
+    <Box className="tw:flex tw:h-full tw:min-h-0" direction="col">
+      <div
+        className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-4 tw:pr-1"
+        data-testid="inbox-activity-tab"
+        ref={scrollRef}>
+        <Box
+          className="tw:mx-auto tw:w-full tw:max-w-220"
+          direction="col"
+          gap={4}>
+          <ActivityToolbar
+            filter={filter}
+            grouping={grouping}
+            typeKeys={typeKeys}
+            onFilterChange={setFilter}
+            onGroupingChange={setGrouping}
+            onTypeKeysChange={setTypeKeys}
+          />
+          {activityContent}
+        </Box>
+      </div>
+    </Box>
   );
 };
 

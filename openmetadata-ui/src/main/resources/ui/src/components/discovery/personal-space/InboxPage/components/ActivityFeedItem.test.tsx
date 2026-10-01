@@ -24,6 +24,46 @@ const mockToggle = jest.fn();
 const mockToggleConversation = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockGetActivityChange = jest.fn();
+const mockCreateThreadReply = jest.fn();
+const mockRefetchReplies = jest.fn();
+let mockReplies: { id: string; author?: { name: string } }[] = [];
+
+// Cards are on screen in tests, so their replies load straight away.
+jest.mock('react-intersection-observer', () => ({
+  useInView: () => ({ ref: jest.fn(), inView: true }),
+}));
+
+jest.mock('../useActivityReplies', () => ({
+  createThreadReply: (...args: unknown[]) => mockCreateThreadReply(...args),
+  useActivityReplies: (ids: {
+    activityId?: string;
+    conversationId?: string;
+  }) => ({
+    threadId: ids.conversationId ?? ids.activityId,
+    replies: mockReplies,
+    isLoading: false,
+    refetch: mockRefetchReplies,
+  }),
+}));
+
+// Exercised by its own suite; here it reports how it was opened and posts.
+jest.mock('./ActivityThread', () => ({
+  __esModule: true,
+  default: ({
+    focusComposer,
+    onReply,
+  }: {
+    focusComposer: boolean;
+    onReply: (message: string) => void;
+  }) => (
+    <button
+      data-focus-composer={String(focusComposer)}
+      data-testid="activity-thread"
+      onClick={() => onReply('hello')}>
+      thread
+    </button>
+  ),
+}));
 
 jest.mock('../inbox.utils', () => ({
   formatActivityTime: () => '12 min ago',
@@ -141,28 +181,26 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children?: ReactNode;
     onPress?: () => void;
     'aria-pressed'?: boolean;
+    'aria-expanded'?: boolean;
     'data-testid'?: string;
   }) => (
     <button
+      aria-expanded={props['aria-expanded']}
       aria-pressed={props['aria-pressed']}
       data-testid={props['data-testid']}
       onClick={onPress}>
       {children}
     </button>
   ),
-  Box: ({
-    children,
-    onClick,
-    onKeyDown,
-  }: {
-    children?: ReactNode;
-    onClick?: (...args: unknown[]) => void;
-    onKeyDown?: (...args: unknown[]) => void;
-  }) => (
-    <div role="presentation" onClick={onClick} onKeyDown={onKeyDown}>
-      {children}
-    </div>
-  ),
+  // The card hands its root a ref for the on-screen check.
+  Box: jest
+    .requireActual('react')
+    .forwardRef(
+      (
+        { children }: { children?: ReactNode },
+        ref: React.Ref<HTMLDivElement>
+      ) => <div ref={ref}>{children}</div>
+    ),
   Tooltip: ({ children }: { children?: ReactNode }) => <>{children}</>,
   TooltipTrigger: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
@@ -173,7 +211,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@untitledui/icons', () => ({
+  ChevronDown: () => <span />,
+  ChevronUp: () => <span />,
   Edit05: () => <span />,
+  MessageCircle01: () => <span />,
   File02: () => <span />,
   Globe01: () => <span />,
   MessageDotsCircle: () => <span />,
@@ -216,17 +257,18 @@ const baseFeed = {
 } as unknown as Conversation;
 
 describe('ActivityFeedItem', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockReplies = [];
+  });
 
-  it('renders actor, action, entity chip and message without a comment affordance', () => {
-    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+  it('renders actor, action, entity and message', () => {
+    render(<ActivityFeedItem activity={baseActivity} />);
 
     expect(screen.getByText('Alice')).toBeInTheDocument();
     expect(screen.getByText('updated description for')).toBeInTheDocument();
     expect(screen.getByText('dim_address')).toBeInTheDocument();
     expect(screen.getByText('Updated style')).toBeInTheDocument();
-    // Change-event activities are read-only — no comment affordance.
-    expect(screen.queryByText('label.comment-plural')).not.toBeInTheDocument();
   });
 
   it('shows what changed in place of the summary when the change parses', () => {
@@ -237,7 +279,7 @@ describe('ActivityFeedItem', () => {
       isText: false,
     });
 
-    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+    render(<ActivityFeedItem activity={baseActivity} />);
 
     expect(screen.getByTestId('activity-change-panel')).toHaveTextContent(
       'label.tag-plural'
@@ -246,7 +288,7 @@ describe('ActivityFeedItem', () => {
   });
 
   it('links the asset line to the entity', () => {
-    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+    render(<ActivityFeedItem activity={baseActivity} />);
 
     expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
       'href',
@@ -263,7 +305,6 @@ describe('ActivityFeedItem', () => {
             about: '<#E::table::svc.db.sch.dim::columns::email::tags>',
           } as ActivityEvent
         }
-        onClick={jest.fn()}
       />
     );
 
@@ -274,42 +315,18 @@ describe('ActivityFeedItem', () => {
     );
   });
 
-  it('leaves Enter on an inner control to that control', () => {
-    const onClick = jest.fn();
-    render(<ActivityFeedItem activity={baseActivity} onClick={onClick} />);
-
-    fireEvent.keyDown(screen.getByText('Alice'), { key: 'Enter' });
-
-    expect(onClick).not.toHaveBeenCalled();
-  });
-
-  it('fires onClick with the activity selection when the card is activated', () => {
-    const onClick = jest.fn();
-    render(<ActivityFeedItem activity={baseActivity} onClick={onClick} />);
-
-    fireEvent.click(screen.getByText('Alice'));
-
-    expect(onClick).toHaveBeenCalledWith({ activity: baseActivity });
-  });
-
-  it('renders a conversation with its reply count', () => {
-    render(<ActivityFeedItem feed={baseFeed} onClick={jest.fn()} />);
+  it('renders a conversation with its message', () => {
+    render(<ActivityFeedItem feed={baseFeed} />);
 
     expect(screen.getByText('label.posted-on')).toBeInTheDocument();
     expect(screen.getByText('Hello thread')).toBeInTheDocument();
-    expect(screen.getByText('2 label.comment-plural')).toBeInTheDocument();
   });
 
-  it('emits the feed selection and reacts via the conversation endpoint', async () => {
+  it('reacts to a conversation via the conversation endpoint', async () => {
     mockToggleConversation.mockResolvedValue([
       { reactionType: 'heart', user: { id: 'u1' } },
     ]);
-    const onClick = jest.fn();
-    render(<ActivityFeedItem feed={baseFeed} onClick={onClick} />);
-
-    fireEvent.click(screen.getByText('label.posted-on'));
-
-    expect(onClick).toHaveBeenCalledWith({ feed: baseFeed });
+    render(<ActivityFeedItem feed={baseFeed} />);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('react-btn'));
@@ -330,7 +347,7 @@ describe('ActivityFeedItem', () => {
       { reactionType: 'heart', user: { id: 'u1' } },
     ]);
 
-    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+    render(<ActivityFeedItem activity={baseActivity} />);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('react-btn'));
@@ -356,7 +373,7 @@ describe('ActivityFeedItem', () => {
     } as unknown as ActivityEvent;
     mockToggle.mockResolvedValue([]);
 
-    render(<ActivityFeedItem activity={reacted} onClick={jest.fn()} />);
+    render(<ActivityFeedItem activity={reacted} />);
 
     expect(screen.getByTestId('react-btn')).toHaveTextContent('r1');
 
@@ -382,7 +399,7 @@ describe('ActivityFeedItem', () => {
       .mockResolvedValueOnce([{ reactionType: 'heart', user: { id: 'u1' } }])
       .mockResolvedValueOnce([]);
 
-    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+    render(<ActivityFeedItem activity={baseActivity} />);
 
     // Add, then remove the same reaction: the second toggle must still fire
     // (the Reactions remount keys off the reaction set, clearing any latch).
@@ -407,7 +424,7 @@ describe('ActivityFeedItem', () => {
     const err = new Error('fail');
     mockToggle.mockRejectedValue(err);
 
-    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+    render(<ActivityFeedItem activity={baseActivity} />);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('react-btn'));
@@ -418,9 +435,7 @@ describe('ActivityFeedItem', () => {
   });
 
   it('re-syncs local reactions when the activity prop changes', () => {
-    const { rerender } = render(
-      <ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />
-    );
+    const { rerender } = render(<ActivityFeedItem activity={baseActivity} />);
 
     expect(screen.getByTestId('react-btn')).toHaveTextContent('r0');
 
@@ -432,7 +447,6 @@ describe('ActivityFeedItem', () => {
             reactions: [{ reactionType: 'heart' }],
           } as unknown as ActivityEvent
         }
-        onClick={jest.fn()}
       />
     );
 
@@ -444,7 +458,7 @@ describe('ActivityFeedItem', () => {
       { reactionType: 'thumbsUp', user: { id: 'u1' } },
     ]);
 
-    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+    render(<ActivityFeedItem activity={baseActivity} />);
 
     expect(screen.getByTestId('activity-like')).toHaveTextContent('label.like');
 
@@ -477,7 +491,7 @@ describe('ActivityFeedItem', () => {
       reactions: [{ reactionType: 'thumbsUp', user: { id: 'u1' } }],
     } as unknown as ActivityEvent;
 
-    render(<ActivityFeedItem activity={liked} onClick={jest.fn()} />);
+    render(<ActivityFeedItem activity={liked} />);
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('activity-like'));
@@ -490,5 +504,91 @@ describe('ActivityFeedItem', () => {
       'remove',
       expect.objectContaining({ id: 'u1' })
     );
+  });
+
+  describe('thread', () => {
+    const reply = (id: string, name: string) => ({ id, author: { name } });
+
+    it('opens the thread with the composer focused from Reply', () => {
+      render(<ActivityFeedItem activity={baseActivity} />);
+
+      expect(screen.queryByTestId('activity-thread')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('activity-reply'));
+
+      expect(screen.getByTestId('activity-thread')).toHaveAttribute(
+        'data-focus-composer',
+        'true'
+      );
+    });
+
+    it('shows no replies toggle until there are replies', () => {
+      render(<ActivityFeedItem activity={baseActivity} />);
+
+      expect(
+        screen.queryByTestId('activity-replies-toggle')
+      ).not.toBeInTheDocument();
+    });
+
+    it('counts the replies on the toggle, which opens and hides them', () => {
+      mockReplies = [reply('r1', 'bob'), reply('r2', 'carol')];
+      render(<ActivityFeedItem activity={baseActivity} />);
+      const toggle = screen.getByTestId('activity-replies-toggle');
+
+      expect(toggle).toHaveTextContent('label.number-reply-plural');
+
+      fireEvent.click(toggle);
+
+      expect(screen.getByTestId('activity-thread')).toHaveAttribute(
+        'data-focus-composer',
+        'false'
+      );
+      expect(toggle).toHaveTextContent('label.hide-reply-plural');
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+      fireEvent.click(toggle);
+
+      expect(screen.queryByTestId('activity-thread')).not.toBeInTheDocument();
+    });
+
+    it('reads one reply as one', () => {
+      mockReplies = [reply('r1', 'bob')];
+      render(<ActivityFeedItem activity={baseActivity} />);
+
+      expect(screen.getByTestId('activity-replies-toggle')).toHaveTextContent(
+        'label.one-reply'
+      );
+    });
+
+    it('posts a reply to the activity and re-reads the thread', async () => {
+      mockCreateThreadReply.mockResolvedValue({});
+      render(<ActivityFeedItem activity={baseActivity} />);
+
+      fireEvent.click(screen.getByTestId('activity-reply'));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('activity-thread'));
+      });
+
+      expect(mockCreateThreadReply).toHaveBeenCalledWith('hello', {
+        activityId: 'a1',
+        conversationId: undefined,
+      });
+      expect(mockRefetchReplies).toHaveBeenCalled();
+    });
+
+    // e.g. a reply on an activity whose asset was deleted is refused.
+    it('shows the refusal when a reply fails', async () => {
+      const err = new Error('read-only');
+      mockCreateThreadReply.mockRejectedValue(err);
+      render(<ActivityFeedItem activity={baseActivity} />);
+
+      fireEvent.click(screen.getByTestId('activity-reply'));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('activity-thread'));
+      });
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(err);
+      expect(mockRefetchReplies).not.toHaveBeenCalled();
+    });
   });
 });

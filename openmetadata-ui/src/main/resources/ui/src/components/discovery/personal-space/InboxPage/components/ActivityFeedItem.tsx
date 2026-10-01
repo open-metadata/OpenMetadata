@@ -12,7 +12,6 @@
  */
 
 import {
-  BadgeWithIcon,
   Box,
   Button,
   Tooltip,
@@ -20,9 +19,12 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  ChevronDown,
+  ChevronUp,
   Edit05,
   File02,
   Globe01,
+  MessageCircle01,
   MessageDotsCircle,
   Plus,
   RefreshCcw01,
@@ -34,8 +36,10 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { uniqBy } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useInView } from 'react-intersection-observer';
 import { Link } from 'react-router-dom';
 import Reactions from '../../../../../components/ActivityFeed/Reactions/Reactions';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
@@ -67,22 +71,20 @@ import {
   toggleActivityReaction,
   toggleConversationReaction,
 } from '../inbox.utils';
+import { createThreadReply, useActivityReplies } from '../useActivityReplies';
 import './activity-feed-item.less';
 import ActivityChangePanel from './ActivityChangePanel';
+import ActivityThread from './ActivityThread';
 
-export interface ActivityFeedItemSelection {
-  activity?: ActivityEvent;
-  feed?: Conversation;
-}
+// Repliers shown on the collapsed thread toggle.
+const MAX_REPLY_FACES = 3;
 
 export interface ActivityFeedItemProps {
   // Exactly one of `activity` (2.0 event) or `feed` (conversation fallback).
   activity?: ActivityEvent;
   feed?: Conversation;
-  isActive?: boolean;
   // Luxon format for the time; a day-grouped feed shows only the clock time.
   timeFormat?: string;
-  onClick: (selection: ActivityFeedItemSelection) => void;
 }
 
 const getActorName = (
@@ -208,6 +210,21 @@ const getEntityTarget = (
   };
 };
 
+// "Hide replies" while open; otherwise how many there are.
+const getRepliesToggleLabel = (
+  isOpen: boolean,
+  count: number,
+  t: TFunction
+): string => {
+  if (isOpen) {
+    return t('label.hide-reply-plural');
+  }
+
+  return count === 1
+    ? t('label.one-reply')
+    : t('label.number-reply-plural', { number: count });
+};
+
 const getEventTimestamp = (
   isActivity: boolean,
   activity?: ActivityEvent,
@@ -224,9 +241,7 @@ const getEventTimestamp = (
 const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   activity,
   feed,
-  isActive,
   timeFormat = ACTIVITY_DATE_FORMAT,
-  onClick,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -247,7 +262,6 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const actionLabel = getActionLabel(activity, feed, t);
   const { entity, entityName } = getEventEntity(isActivity, activity, feed);
   const timestamp = getEventTimestamp(isActivity, activity, feed);
-  const commentCount = feed?.replyCount ?? 0;
   const { icon: KindIcon, className: kindClassName } =
     getActivityKind(activity);
   const target = getEntityTarget(entity, entityName, activity?.about);
@@ -273,9 +287,36 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
     [isActivity, activity?.summary, feed?.message]
   );
 
-  const handleActivate = useCallback(() => {
-    onClick(isActivity ? { activity } : { feed });
-  }, [feed, activity, isActivity, onClick]);
+  // Replies load once the card is on screen, so the collapsed toggle can show
+  // their count and who wrote them.
+  const { ref, inView } = useInView({ triggerOnce: true, rootMargin: '200px' });
+  const threadIds = { activityId: activity?.id, conversationId: feed?.id };
+  const { threadId, replies, isLoading, refetch } = useActivityReplies(
+    threadIds,
+    inView
+  );
+  const [isThreadOpen, setIsThreadOpen] = useState(false);
+  // Opened with Reply rather than the toggle: focus the composer.
+  const [isReplying, setIsReplying] = useState(false);
+  const replyFaces = uniqBy(replies, ({ author }) => author?.name).slice(
+    0,
+    MAX_REPLY_FACES
+  );
+
+  const openThread = (focusComposer: boolean) => {
+    setIsThreadOpen(true);
+    setIsReplying(focusComposer);
+  };
+
+  const handleReply = async (message: string) => {
+    try {
+      await createThreadReply(message, threadIds);
+      refetch();
+    } catch (error) {
+      // e.g. a reply on an activity whose asset was deleted is refused.
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const handleReactionSelect = async (
     reactionType: ReactionType,
@@ -306,154 +347,168 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
   return (
     <Box
-      className={classNames(
-        'tw:cursor-pointer tw:rounded-xl tw:border tw:bg-primary tw:px-5 tw:py-4 tw:shadow-xs tw:transition-colors',
-        isActive
-          ? 'tw:border-brand'
-          : 'tw:border-secondary tw:hover:border-primary'
-      )}
+      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:pb-4 tw:shadow-xs tw:transition-colors tw:hover:border-primary"
       data-testid="activity-feed-item"
       direction="col"
-      gap={3}
-      role="button"
-      tabIndex={0}
-      onClick={handleActivate}
-      onKeyDown={(e) => {
-        // Keys pressed on the asset link or a reaction are theirs, not the card's.
-        if (
-          e.target === e.currentTarget &&
-          (e.key === 'Enter' || e.key === ' ')
-        ) {
-          e.preventDefault();
-          handleActivate();
-        }
-      }}>
-      <Box gap={3}>
-        <span className="tw:relative tw:h-10 tw:shrink-0">
-          <ProfilePicture
-            displayName={authorName}
-            name={actorName}
-            width="40"
-          />
-          <span
-            className={classNames(
-              'tw:absolute tw:-right-1 tw:-bottom-1 tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:text-white tw:outline-2 tw:outline-bg-primary',
-              kindClassName
-            )}
-            data-testid="activity-kind-badge">
-            <KindIcon className="tw:size-3" />
-          </span>
-        </span>
-        <Box className="tw:min-w-0 tw:flex-1" direction="col">
-          <Box align="center" gap={2}>
-            <Typography
-              className="tw:min-w-0 tw:flex-1 tw:text-tertiary"
-              size="text-md">
-              <span className="tw:font-semibold tw:text-primary">
-                {authorName}
-              </span>{' '}
-              {actionLabel}
-            </Typography>
-            <Tooltip title={formatDateTime(timestamp)}>
-              <TooltipTrigger className="tw:shrink-0 tw:whitespace-nowrap tw:text-sm tw:text-quaternary">
-                {formatDateTimeLong(timestamp, timeFormat)}
-              </TooltipTrigger>
-            </Tooltip>
-          </Box>
-          {target.leaf && (
-            <Box align="center" className="tw:min-w-0 tw:gap-1.5">
-              {entity?.type && (
-                <span className="tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4">
-                  {searchClassBase.getEntityIcon(entity.type)}
-                </span>
+      gap={4}
+      ref={ref}>
+      <Box className="tw:px-5 tw:pt-4" direction="col" gap={3}>
+        <Box gap={3}>
+          <span className="tw:relative tw:h-10 tw:shrink-0">
+            <ProfilePicture
+              displayName={authorName}
+              name={actorName}
+              width="40"
+            />
+            <span
+              className={classNames(
+                'tw:absolute tw:-right-1 tw:-bottom-1 tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:text-white tw:outline-2 tw:outline-bg-primary',
+                kindClassName
               )}
+              data-testid="activity-kind-badge">
+              <KindIcon className="tw:size-3" />
+            </span>
+          </span>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col">
+            <Box align="center" gap={2}>
               <Typography
-                className="tw:truncate tw:text-quaternary"
-                size="text-sm"
-                weight="medium">
-                {target.parent}
-                {target.path ? (
-                  <Link
-                    className="tw:font-semibold tw:text-primary tw:underline tw:decoration-border-primary tw:underline-offset-3 tw:hover:text-brand-secondary"
-                    data-testid="activity-entity-link"
-                    to={target.path}
-                    onClick={(e) => e.stopPropagation()}>
-                    {target.leaf}
-                  </Link>
-                ) : (
-                  <span className="tw:font-semibold tw:text-primary">
-                    {target.leaf}
+                className="tw:min-w-0 tw:flex-1 tw:text-tertiary"
+                size="text-md">
+                <span className="tw:font-semibold tw:text-primary">
+                  {authorName}
+                </span>{' '}
+                {actionLabel}
+              </Typography>
+              <Tooltip title={formatDateTime(timestamp)}>
+                <TooltipTrigger className="tw:shrink-0 tw:whitespace-nowrap tw:text-sm tw:text-quaternary">
+                  {formatDateTimeLong(timestamp, timeFormat)}
+                </TooltipTrigger>
+              </Tooltip>
+            </Box>
+            {target.leaf && (
+              <Box align="center" className="tw:min-w-0 tw:gap-1.5">
+                {entity?.type && (
+                  <span className="tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4">
+                    {searchClassBase.getEntityIcon(entity.type)}
                   </span>
                 )}
-              </Typography>
-            </Box>
+                <Typography
+                  className="tw:truncate tw:text-quaternary"
+                  size="text-sm"
+                  weight="medium">
+                  {target.parent}
+                  {target.path ? (
+                    <Link
+                      className="tw:font-semibold tw:text-primary tw:underline tw:decoration-border-primary tw:underline-offset-3 tw:hover:text-brand-secondary"
+                      data-testid="activity-entity-link"
+                      to={target.path}>
+                      {target.leaf}
+                    </Link>
+                  ) : (
+                    <span className="tw:font-semibold tw:text-primary">
+                      {target.leaf}
+                    </span>
+                  )}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Box>
+
+        <Box className="tw:ml-13" direction="col">
+          {change ? (
+            <ActivityChangePanel change={change} />
+          ) : (
+            <RichTextEditorPreviewerV1
+              className="inbox-feed-message tw:text-sm"
+              markdown={message}
+            />
+          )}
+        </Box>
+
+        <Box align="center" className="inbox-feed-actions tw:ml-13 tw:gap-2">
+          <Button
+            aria-pressed={isLiked}
+            className={classNames({
+              'tw:text-brand-secondary tw:*:data-icon:text-fg-brand-secondary':
+                isLiked,
+            })}
+            color="tertiary"
+            data-testid="activity-like"
+            iconLeading={ThumbsUp}
+            size="sm"
+            onPress={() =>
+              handleReactionSelect(
+                ReactionType.ThumbsUp,
+                isLiked ? ReactionOperation.REMOVE : ReactionOperation.ADD
+              )
+            }>
+            {likes.length
+              ? `${t('label.like')} · ${likes.length}`
+              : t('label.like')}
+          </Button>
+          <Reactions
+            key={otherReactions
+              .map(
+                (reaction) => `${reaction.reactionType}:${reaction.user?.id}`
+              )
+              .join('|')}
+            reactions={otherReactions}
+            onReactionSelect={handleReactionSelect}
+          />
+          <Button
+            color="tertiary"
+            data-testid="activity-reply"
+            iconLeading={MessageCircle01}
+            size="sm"
+            onPress={() => openThread(true)}>
+            {t('label.reply')}
+          </Button>
+          {replies.length > 0 && (
+            <Button
+              aria-expanded={isThreadOpen}
+              className={classNames({
+                'tw:bg-brand-primary tw:text-brand-secondary': isThreadOpen,
+              })}
+              color="tertiary"
+              data-testid="activity-replies-toggle"
+              iconLeading={
+                <span className="tw:flex tw:items-center tw:-space-x-1">
+                  {replyFaces.map(({ id, author }) => (
+                    <ProfilePicture
+                      displayName={author?.displayName}
+                      key={id}
+                      name={author?.name ?? ''}
+                      width="20"
+                    />
+                  ))}
+                </span>
+              }
+              iconTrailing={isThreadOpen ? ChevronUp : ChevronDown}
+              size="sm"
+              onPress={() =>
+                isThreadOpen ? setIsThreadOpen(false) : openThread(false)
+              }>
+              {getRepliesToggleLabel(isThreadOpen, replies.length, t)}
+            </Button>
           )}
         </Box>
       </Box>
 
-      <Box className="tw:ml-13" direction="col">
-        {change ? (
-          <ActivityChangePanel change={change} />
-        ) : (
-          <RichTextEditorPreviewerV1
-            className="inbox-feed-message tw:text-sm"
-            markdown={message}
-          />
-        )}
-      </Box>
-
-      <Box
-        align="center"
-        className="inbox-feed-actions tw:ml-13 tw:gap-2"
-        onClick={(e) => e.stopPropagation()}>
-        <Button
-          aria-pressed={isLiked}
-          className={classNames({
-            'tw:text-brand-secondary tw:*:data-icon:text-fg-brand-secondary':
-              isLiked,
-          })}
-          color="tertiary"
-          data-testid="activity-like"
-          iconLeading={ThumbsUp}
-          size="sm"
-          onPress={() =>
-            handleReactionSelect(
-              ReactionType.ThumbsUp,
-              isLiked ? ReactionOperation.REMOVE : ReactionOperation.ADD
-            )
-          }>
-          {likes.length
-            ? `${t('label.like')} · ${likes.length}`
-            : t('label.like')}
-        </Button>
-        <Reactions
-          key={otherReactions
-            .map((reaction) => `${reaction.reactionType}:${reaction.user?.id}`)
-            .join('|')}
-          reactions={otherReactions}
-          onReactionSelect={handleReactionSelect}
+      {isThreadOpen && threadId && (
+        <ActivityThread
+          focusComposer={isReplying}
+          isLoading={isLoading}
+          replies={replies}
+          threadId={threadId}
+          onChanged={refetch}
+          onReply={handleReply}
         />
-        {/* Change-event activities are read-only (no comments) — the
-            affordance renders for conversations only. */}
-        {!isActivity && (
-          <button
-            className="tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0"
-            type="button"
-            onClick={handleActivate}>
-            <BadgeWithIcon
-              color="gray"
-              iconLeading={MessageDotsCircle}
-              size="sm"
-              type="modern">
-              {`${commentCount} ${t('label.comment-plural')}`}
-            </BadgeWithIcon>
-          </button>
-        )}
-      </Box>
+      )}
     </Box>
   );
 };
 
-// Selecting a card re-renders the tab; only the card whose isActive changed
-// needs to render again, not every card and its markdown.
+// Switching a filter or grouping re-renders the tab; the cards whose item did
+// not change need not render again, nor their markdown.
 export default React.memo(ActivityFeedItem);

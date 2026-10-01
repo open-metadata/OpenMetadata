@@ -22,6 +22,7 @@ import './inbox-comment-composer.less';
 export interface InboxCommentComposerProps {
   onSave: (message: string) => void;
   placeHolder?: string;
+  focused?: boolean;
 }
 
 /**
@@ -35,6 +36,7 @@ export interface InboxCommentComposerProps {
 const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
   onSave,
   placeHolder,
+  focused,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -62,6 +64,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
         }>
         <ActivityFeedEditorNew
           className="inbox-comment-composer__editor tw:w-full"
+          focused={focused}
           placeHolder={placeholderText}
           onSave={onSave}
         />

@@ -385,8 +385,8 @@ export interface ActivityBucket {
 // Display timestamp for a conversation card/drawer ("Posted on …"). createdAt is
 // the Conversation V2 counterpart of the legacy threadTs, so the posted time is
 // shown createdAt-first (matches upstream's card display). Used by
-// ActivityDetailDrawer and by getActivityBuckets (display grouping), NOT by the
-// merged-list sort (use getFeedSortTimestamp for that).
+// getActivityBuckets (display grouping), NOT by the merged-list sort (use
+// getFeedSortTimestamp for that).
 export const getFeedTimestamp = (feed: Conversation): number =>
   feed.createdAt ?? feed.updatedAt ?? 0;
 

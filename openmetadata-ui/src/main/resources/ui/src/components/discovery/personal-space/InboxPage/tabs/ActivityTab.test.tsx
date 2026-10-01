@@ -31,7 +31,6 @@ let activityState: {
   total: number;
   isLoading: boolean;
 };
-const mockRefetch = jest.fn();
 const mockUseInboxActivity = jest.fn();
 
 jest.mock('../useInboxActivity', () => ({
@@ -43,7 +42,6 @@ jest.mock('../useInboxActivity', () => ({
       items: activityState.items,
       total: activityState.total,
       isLoading: activityState.isLoading,
-      refetch: mockRefetch,
     };
   },
 }));
@@ -81,34 +79,15 @@ jest.mock('../components/ActivityFeedItem', () => ({
     activity,
     feed,
     timeFormat,
-    onClick,
   }: {
     activity?: MockItem;
     feed?: MockItem;
     timeFormat?: string;
-    onClick: (selection: { activity?: MockItem; feed?: MockItem }) => void;
   }) => (
-    <button
-      data-testid="feed-item"
-      data-time-format={timeFormat}
-      onClick={() => onClick(activity ? { activity } : { feed })}>
+    <div data-testid="feed-item" data-time-format={timeFormat}>
       {activity?.id ?? feed?.id}
-    </button>
+    </div>
   ),
-}));
-
-jest.mock('../components/ActivityDetailDrawer', () => ({
-  __esModule: true,
-  default: ({
-    open,
-    activity,
-    feed,
-  }: {
-    open: boolean;
-    activity?: MockItem;
-    feed?: MockItem;
-  }) =>
-    open ? <div data-testid="drawer">{activity?.id ?? feed?.id}</div> : null,
 }));
 
 jest.mock('../components/ActivitySkeleton', () => ({
@@ -219,19 +198,6 @@ describe('ActivityTab', () => {
     render(<ActivityTab />);
 
     expect(screen.getByText('t1')).toBeInTheDocument();
-  });
-
-  it('opens the detail drawer when an item is clicked', () => {
-    activityState = {
-      items: [{ activity: { id: 'a1' } }],
-      total: 1,
-      isLoading: false,
-    };
-
-    render(<ActivityTab />);
-    fireEvent.click(screen.getByTestId('feed-item'));
-
-    expect(screen.getByTestId('drawer')).toHaveTextContent('a1');
   });
 
   it('fetches the sub-tab the toolbar selects', () => {

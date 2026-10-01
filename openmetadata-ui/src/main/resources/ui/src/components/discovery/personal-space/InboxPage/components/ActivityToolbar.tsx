@@ -16,9 +16,9 @@ import { FilterLines, LayersTwo01 } from '@untitledui/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ACTIVITY_TYPE_KEYS,
   ActivityFilter,
   ActivityGrouping,
+  ACTIVITY_TYPE_KEYS,
 } from '../inbox.utils';
 
 const FILTER_LABEL_KEY: Record<ActivityFilter, string> = {

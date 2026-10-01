@@ -24,8 +24,8 @@ import {
 } from '../../../../rest/activityAPI';
 import { listConversations } from '../../../../rest/conversationsAPI';
 import {
-  ACTIVITY_LIMIT,
   ActivityFilter,
+  ACTIVITY_LIMIT,
   CONVERSATION_LIMIT,
   getActivityWindowDays,
   getFeedSortTimestamp,
@@ -124,7 +124,6 @@ export interface UseInboxActivity {
   items: InboxActivityItem[];
   total: number;
   isLoading: boolean;
-  refetch: () => void;
 }
 
 /**
@@ -141,7 +140,7 @@ export const useInboxActivity = (
   const startTs = dateRange?.startTs;
   const endTs = dateRange?.endTs;
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: [INBOX_ACTIVITY_QUERY_KEY, filter, startTs, endTs, userId],
     queryFn: () => fetchInboxActivity(filter, userId, startTs, endTs),
     enabled: Boolean(userId),
@@ -176,8 +175,5 @@ export const useInboxActivity = (
     items,
     total: items.length,
     isLoading,
-    refetch: () => {
-      refetch();
-    },
   };
 };
