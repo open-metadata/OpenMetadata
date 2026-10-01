@@ -11,25 +11,64 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import {
+  Box,
+  Typography as CoreTypography,
+} from '@openmetadata/ui-core-components';
+import {
+  FailedTests,
+  MinusCircle,
+  SuccessfulTests,
+} from '@openmetadata/ui-core-components/icons';
 import { Col, Divider, Tooltip, Typography } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
-import { useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { DATA_CONTRACT_SLA } from '../../../constants/DataContract.constants';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
+import {
+  DataContractResult,
+  RefreshedAtSource,
+  SlaValidation,
+} from '../../../generated/entity/datacontract/dataContractResult';
+import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-sla.less';
 
+const SLA_ICON_SIZE = 16;
+
+/** The requirements contract validation checks, and where their outcome is. */
+const SLA_CHECK_OUTCOME: Partial<
+  Record<string, (validation: SlaValidation) => boolean | undefined>
+> = {
+  [DATA_CONTRACT_SLA.REFRESH_FREQUENCY]: (validation) =>
+    validation.refreshFrequencyMet,
+  [DATA_CONTRACT_SLA.TIME_AVAILABILITY]: (validation) =>
+    validation.availabilityMet,
+  [DATA_CONTRACT_SLA.MAX_LATENCY]: (validation) => validation.latencyMet,
+};
+
+const REFRESH_SOURCE_LABEL: Record<RefreshedAtSource, string> = {
+  [RefreshedAtSource.SlaColumnProfile]: 'label.column-profile',
+  [RefreshedAtSource.SystemProfile]: 'label.system-metric-plural',
+  [RefreshedAtSource.LifeCycle]: 'label.life-cycle',
+};
+
 const ContractSLA: React.FC<{
   contract: DataContract;
-}> = ({ contract }) => {
+  latestContractResults?: DataContractResult;
+  contractStatus?: string;
+}> = ({ contract, latestContractResults, contractStatus }) => {
   const { t } = useTranslation();
   const { data: tableData } = useGenericContext();
+  const slaValidation = latestContractResults?.slaValidation;
 
   const tableColumnNameMap = useMemo(() => {
     const columns = (tableData as Table).columns;
@@ -145,6 +184,46 @@ const ContractSLA: React.FC<{
     return slaList;
   }, [contract.sla, tableColumnNameMap]);
 
+  const renderOutcomeIcon = (key: string): ReactNode => {
+    const outcomeOf = SLA_CHECK_OUTCOME[key];
+    if (!slaValidation || !outcomeOf) {
+      return <Icon className="sla-icon" component={DefaultIcon} />;
+    }
+    const met = outcomeOf(slaValidation);
+    if (met === true) {
+      return (
+        <SuccessfulTests
+          aria-hidden={false}
+          aria-label={t('label.passed')}
+          className="sla-icon tw:text-fg-success-primary"
+          data-testid={`sla-${key}-passed`}
+          role="img"
+          size={SLA_ICON_SIZE}
+        />
+      );
+    }
+
+    return met === false ? (
+      <FailedTests
+        aria-hidden={false}
+        aria-label={t('label.failed')}
+        className="sla-icon tw:text-fg-error-primary"
+        data-testid={`sla-${key}-failed`}
+        role="img"
+        size={SLA_ICON_SIZE}
+      />
+    ) : (
+      <MinusCircle
+        aria-hidden={false}
+        aria-label={t('label.not-evaluated')}
+        className="sla-icon tw:text-fg-quaternary"
+        data-testid={`sla-${key}-not-evaluated`}
+        role="img"
+        size={SLA_ICON_SIZE}
+      />
+    );
+  };
+
   if (isEmpty(renderSLAData)) {
     return null;
   }
@@ -176,11 +255,55 @@ const ContractSLA: React.FC<{
       <div className="sla-item-container">
         {renderSLAData.map((item) => (
           <div className="sla-item" key={item.key}>
-            <Icon className="sla-icon" component={DefaultIcon} />
+            {renderOutcomeIcon(item.key)}
             <span className="sla-description">{item.label}</span>
           </div>
         ))}
       </div>
+
+      {slaValidation && (
+        <Box
+          className="tw:mt-3"
+          data-testid="sla-validation-result"
+          direction="col"
+          gap={1}>
+          {contractStatus && (
+            <Box align="center" gap={2}>
+              <CoreTypography size="text-sm">
+                {`${t('label.entity-status', {
+                  entity: t('label.service-level-agreement'),
+                })} :`}
+              </CoreTypography>
+              <StatusBadgeV2
+                dataTestId="contract-status-card-item-sla-status"
+                label={contractStatus}
+                status={getContractStatusType(contractStatus)}
+              />
+            </Box>
+          )}
+          {slaValidation.lastRefreshedAt && slaValidation.refreshedAtSource && (
+            <CoreTypography
+              color="secondary"
+              data-testid="sla-last-refreshed"
+              size="text-sm">
+              {t('message.sla-last-refreshed', {
+                time: formatDateTime(slaValidation.lastRefreshedAt),
+                source: t(
+                  REFRESH_SOURCE_LABEL[slaValidation.refreshedAtSource]
+                ),
+              })}
+            </CoreTypography>
+          )}
+          {slaValidation.message && (
+            <CoreTypography
+              color="secondary"
+              data-testid="sla-validation-message"
+              size="text-sm">
+              {slaValidation.message}
+            </CoreTypography>
+          )}
+        </Box>
+      )}
     </Col>
   );
 };

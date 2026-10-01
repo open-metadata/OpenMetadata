@@ -21,6 +21,19 @@
     "actualLatency": {
       "description": "Actual latency in milliseconds.",
       "type": "integer"
+    },
+    "lastRefreshedAt": {
+      "description": "When the data was last refreshed, as far as OpenMetadata can tell. Absent when no source records it.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "refreshedAtSource": {
+      "description": "Where the last refresh time comes from: the latest profile of the SLA column (its newest value), the table's system metrics (its latest write), or its life cycle (its last update).",
+      "type": "string",
+      "enum": ["slaColumnProfile", "systemProfile", "lifeCycle"]
+    },
+    "message": {
+      "description": "Which SLA requirements were missed, and which could not be evaluated and why.",
+      "type": "string"
     }
   },
   "additionalProperties": false
