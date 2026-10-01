@@ -515,14 +515,27 @@ ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 -- into an index equality. Derived by stripping the final '.'-separated segment rather than a
 -- fixed 33-character suffix, so it holds regardless of hash width. VIRTUAL keeps the ALTER
 -- metadata-only (no table rebuild); the index below materialises the value.
-ALTER TABLE storage_container_entity
-  ADD COLUMN parentFqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
-  GENERATED ALWAYS AS (
-    CASE
-      WHEN LOCATE('.', REVERSE(fqnHash)) = 0 THEN ''
-      ELSE LEFT(fqnHash, CHAR_LENGTH(fqnHash) - LOCATE('.', REVERSE(fqnHash)))
-    END
-  ) VIRTUAL;
+--
+-- Both statements are guarded so a re-run is a no-op, like the rest of this file. The
+-- prepared-statement names are unique on purpose: the runner records each statement by
+-- (version, hash of its text) and skips text it has already run, so a second block reusing
+-- `PREPARE stmt FROM @ddl; EXECUTE stmt;` would be skipped rather than executed.
+SET @container_parent_fqn_hash_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'storage_container_entity'
+        AND column_name = 'parentFqnHash'
+    ),
+    'SELECT 1',
+    'ALTER TABLE storage_container_entity ADD COLUMN parentFqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin GENERATED ALWAYS AS (CASE WHEN LOCATE(''.'', REVERSE(fqnHash)) = 0 THEN '''' ELSE LEFT(fqnHash, CHAR_LENGTH(fqnHash) - LOCATE(''.'', REVERSE(fqnHash))) END) VIRTUAL'
+  )
+);
+PREPARE container_parent_fqn_hash_column_stmt FROM @container_parent_fqn_hash_column_ddl;
+EXECUTE container_parent_fqn_hash_column_stmt;
+DEALLOCATE PREPARE container_parent_fqn_hash_column_stmt;
 
 -- (parentFqnHash, deleted) answers the filter; (name, id) supplies the listing's sort order,
 -- so the common non-deleted page needs neither a filesort nor a row lookup per candidate.
@@ -535,5 +548,19 @@ ALTER TABLE storage_container_entity
 -- index with ALGORITHM=INPLACE and permits concurrent DML, and the VIRTUAL column add above
 -- is metadata-only, so neither statement blocks traffic. The PostgreSQL companion has to
 -- build CONCURRENTLY and still pays an ACCESS EXCLUSIVE table rewrite for its STORED column.
-CREATE INDEX idx_storage_container_entity_parent_children
-  ON storage_container_entity (parentFqnHash, deleted, name, id);
+SET @container_parent_children_index_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'storage_container_entity'
+        AND index_name = 'idx_storage_container_entity_parent_children'
+    ),
+    'SELECT 1',
+    'ALTER TABLE storage_container_entity ADD INDEX idx_storage_container_entity_parent_children (parentFqnHash, deleted, name, id)'
+  )
+);
+PREPARE container_parent_children_index_stmt FROM @container_parent_children_index_ddl;
+EXECUTE container_parent_children_index_stmt;
+DEALLOCATE PREPARE container_parent_children_index_stmt;
