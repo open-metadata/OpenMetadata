@@ -1019,6 +1019,11 @@ export const editCreatedProperty = async (
         .locator('input'),
       page.getByRole('option', { exact: true, name: 'Table' })
     );
+
+    // A multi-select listbox stays open after a pick and covers the footer;
+    // clicking elsewhere in the dialog closes it without closing the modal.
+    await modal.getByRole('heading').click();
+    await expect(page.getByRole('listbox')).toBeHidden();
   }
 
   const saves = recordCustomPropertySaves(page);
