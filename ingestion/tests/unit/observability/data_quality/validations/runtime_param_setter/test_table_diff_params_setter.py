@@ -372,7 +372,10 @@ class TestResolvedConnection:
             privateKey="resolved-key",
             snowflakePrivatekeyPassphrase="resolved-passphrase",
         )
-        same_service_table2 = table2.model_copy(update={"service": table1.service})
+        # Same service ID, but a reference projected with different optional fields.
+        same_service_table2 = table2.model_copy(
+            update={"service": table1.service.model_copy(update={"displayName": "Another projection"})}
+        )
         metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: same_service_table2
         setter = TableDiffParamsSetter(
             ometa_client=metadata,

@@ -103,7 +103,9 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         if table2.service is None:
             raise ValueError("Table2 service must be set")
         service2_id = require_entity_reference_id(table2.service, "Table2 service")
-        if table2.service == self.table_entity.service:
+        # References to one service can differ in optional fields, so compare the IDs.
+        same_service = service2_id == service1_id
+        if same_service:
             service2 = service1
         else:
             service2 = cast(
@@ -116,7 +118,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
 
         service1_url = self.get_service_url(table1_param_setter, service1)
 
-        if table2.service == self.table_entity.service:
+        if same_service:
             service2_url = self.get_parameter(test_case, "service2Url") or service1_url
         else:
             service2_url = self.get_service_url(table2_param_setter, service2)
