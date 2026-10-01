@@ -19,8 +19,8 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check, Search, XClose } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Check, SearchLg, XClose } from '@untitledui/icons';
 import type { FC, FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -155,7 +155,7 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
           </Box>
         )}
         <Input
-          icon={SearchLg}
+          icon={Search}
           placeholder={t('label.search-entity', {
             entity: t('label.related-metric-plural'),
           })}

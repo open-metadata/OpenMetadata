@@ -21,7 +21,7 @@ import {
   Globe01,
   Home02,
   Settings01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { ROUTES } from './constants';
 

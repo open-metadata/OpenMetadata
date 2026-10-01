@@ -36,7 +36,7 @@ PGSPIDER_GET_CHILD_TABLES = textwrap.dedent(
         JOIN pg_foreign_server fs ON ft.ftserver = fs.oid GROUP BY srvname ORDER BY srvname),
         regex_pattern AS 
             (SELECT '^' || relname || '\\_\\_' || srv.srvname  || '\\_\\_[0-9]+$' regex FROM pg_class
-            CROSS JOIN srv where relname = '{multi_tenant_table}')
+            CROSS JOIN srv where relname = :multi_tenant_table)
             SELECT relname FROM pg_class
             WHERE (relname ~ (SELECT string_agg(regex, '|') FROM regex_pattern))
             AND (relname NOT LIKE '%%\\_%%\\_seq')

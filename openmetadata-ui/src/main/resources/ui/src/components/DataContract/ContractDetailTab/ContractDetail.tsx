@@ -31,7 +31,7 @@ import {
   Plus,
   Trash01,
   Upload01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import type { RadioChangeEvent } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -816,7 +816,11 @@ const ContractDetail: React.FC<{
                 );
               })()}
 
-              <ContractSLA contract={contract} />
+              <ContractSLA
+                contract={contract}
+                contractStatus={constraintStatus['sla']}
+                latestContractResults={latestContractResults}
+              />
 
               {renderSchemaSection()}
 

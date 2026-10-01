@@ -150,8 +150,8 @@ def test_merge_groups_upload_no_reports():
     for step in steps:
         if step["name"] == "Gate verified merge-group shards":
             continue
-        if "failure() && github.event_name == 'merge_group'" in step["if"]:
-            continue  # the #ci-cleanup alert: runs only when the queue fails
+        if "github.event_name == 'merge_group'" in step["if"]:
+            continue  # queue-only Slack alerts: inline, no reports or checkout
         assert "github.event_name != 'merge_group'" in step["if"], step["name"]
     # A green queue run costs no artifact storage, but a broken one must still
     # leave evidence: re-running it locally is a different SHA on a moving base.
@@ -240,3 +240,52 @@ def test_queue_retry_report_lists_only_retry_passes(tmp_path):
     assert "retry pass" in summary.read_text()
     assert "real failure" not in summary.read_text()
     assert result.stdout.count("::warning") == 1
+
+
+def test_merge_queue_flaky_tests_alert_pw_health_from_annotations():
+    steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
+        "steps"
+    ]
+    build = next(s for s in steps if s.get("id") == "queue-flaky")
+    assert "github.event_name == 'merge_group'" in build["if"]
+    assert "failure()" not in build["if"], "flakes are reported on green queue runs too"
+    assert "C0C008ZAK0V" in build["run"]  # #pw-health
+    # Reads what the shards already emit instead of uploading reports.
+    assert '"Retry pass in merge queue"' in build["run"]
+    assert ".github/scripts" not in build["run"]
+    shard_warning = next(
+        s for s in shard_steps() if s.get("id") == "verify-shard-coverage"
+    )["run"]
+    assert "::warning title=Retry pass in merge queue::" in shard_warning
+    permissions = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
+        "permissions"
+    ]
+    assert permissions.get("checks") == "read"
+
+
+def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
+    # GitHub keeps only 10 warning annotations per step; one per test would
+    # silently drop the rest before the queue's #pw-health alert reads them.
+    coverage = next(step for step in shard_steps() if step.get("id") == "verify-shard-coverage")
+    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE'):]
+    output = tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/output"
+    output.mkdir(parents=True)
+    titles = [f"flaky {index:02d}" for index in range(12)] + ["50% done"]
+    specs = [
+        {"title": title, "file": "Pages/X.spec.ts", "line": 1,
+         "tests": [{"status": "flaky", "results": [{}, {}]}]}
+        for title in titles
+    ]
+    (output / "results.json").write_text(json.dumps({"suites": [{"specs": specs}]}))
+    summary = tmp_path / "summary.md"
+    summary.touch()
+    result = subprocess.run(
+        ["bash", "-e", "-c", report_part],
+        env={**os.environ, "GITHUB_WORKSPACE": str(tmp_path),
+             "GITHUB_STEP_SUMMARY": str(summary), "SHARD_ID": "chromium-01"},
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    [warning] = [line for line in result.stdout.splitlines() if line.startswith("::warning")]
+    message = warning.split("::", 2)[2].replace("%0A", "\n").replace("%25", "%")
+    assert sorted(line.split(" › ")[1] for line in message.splitlines()) == sorted(titles)

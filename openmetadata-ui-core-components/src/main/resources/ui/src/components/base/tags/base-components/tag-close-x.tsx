@@ -1,5 +1,5 @@
 import type { RefAttributes } from 'react';
-import { XClose } from '@untitledui/icons';
+import { XClose } from '../../../../icons';
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,

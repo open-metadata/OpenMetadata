@@ -13,6 +13,11 @@
 
 import { removeSession } from '@analytics/session-utils';
 import { Button as CoreButton } from '@openmetadata/ui-core-components';
+import {
+  Check,
+  UploadCloud02,
+  X,
+} from '@openmetadata/ui-core-components/icons';
 import Form, { IChangeEvent } from '@rjsf/core';
 import {
   CustomValidator,
@@ -23,7 +28,6 @@ import {
   RJSFSchema,
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Check, UploadCloud02, X } from '@untitledui/icons';
 import { Button, Card, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
