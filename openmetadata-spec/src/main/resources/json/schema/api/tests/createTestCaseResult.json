@@ -68,6 +68,14 @@
       "items": {
         "$ref": "../../tests/basic.json#/definitions/testCaseDimensionResult"
       }
+    },
+    "duration": {
+      "description": "Wall-clock time the test case run took, in milliseconds.",
+      "type": "number"
+    },
+    "errorDetails": {
+      "description": "Structured error details when the run was aborted by an error.",
+      "$ref": "../../tests/basic.json#/definitions/testCaseErrorDetails"
     }
   },
   "required": ["timestamp", "testCaseStatus", "testResultValue"],

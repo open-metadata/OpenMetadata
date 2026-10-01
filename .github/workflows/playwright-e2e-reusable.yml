@@ -738,12 +738,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p "$RUNNER_TEMP/playwright-history"
+          # Filter on conclusion here, not with `--status success`: on this
+          # workflow's run history the API's status filter returns runs days to
+          # months old, in a different set per call, so the planner would get
+          # stale timings or none at all depending on when it ran.
           gh run list \
             --workflow ${{ inputs.workflow_filename }} \
-            --status success \
-            --limit 50 \
-            --json databaseId,createdAt \
-            --jq 'sort_by(.createdAt) | reverse | .[].databaseId' | while read -r run_id; do
+            --limit 100 \
+            --json databaseId,createdAt,conclusion \
+            --jq '[.[] | select(.conclusion == "success")] | sort_by(.createdAt) | reverse | .[].databaseId' | while read -r run_id; do
               full_count=$(find "$RUNNER_TEMP/playwright-history" -name 'playwright-timing-history.json' -type f -print0 2>/dev/null | xargs -0 -I{} jq -r 'select(.mode == "full") | .sourceSha' {} | wc -l | tr -d ' ')
               [[ "$full_count" -ge 3 ]] && break
               run_dir="$RUNNER_TEMP/playwright-history/$run_id"
@@ -1802,7 +1805,7 @@ jobs:
             --result-glob "$GITHUB_WORKSPACE/openmetadata-ui/src/main/resources/ui/playwright/output/results.json" \
             --output "$RUNNER_TEMP/shard-coverage.json"
           jq '{plannedTests, executedTests, zeroAttemptSkippedTestIds}' "$RUNNER_TEMP/shard-coverage.json"
-          # The queue uploads no reports, so surface retry passes here: they are the
+          # The queue uploads no results JSON when green, so surface retry passes here: they are the
           # evidence for when the queue can drop its retry. Playwright marks a test
           # that failed and then passed on retry as `flaky`; one that failed every
           # attempt is `unexpected` and is a real failure, not a retry pass.
@@ -1812,8 +1815,13 @@ jobs:
             echo "### Passed only on retry ($SHARD_ID)" >> "$GITHUB_STEP_SUMMARY"
             while read -r test; do
               echo "- $test" >> "$GITHUB_STEP_SUMMARY"
-              echo "::warning title=Retry pass in merge queue::$test"
             done <<< "$retried"
+            # One annotation carrying the whole list: GitHub keeps only 10 warning
+            # annotations per step, and the queue's #pw-health alert reads these.
+            # Workflow-command escaping: % -> %25, newline -> %0A.
+            encoded=${retried//'%'/'%25'}
+            encoded=${encoded//$'\n'/'%0A'}
+            echo "::warning title=Retry pass in merge queue::$encoded"
           fi
 
       - name: Record shard phase metrics
@@ -1917,9 +1925,11 @@ jobs:
               }
             }' > "$STATUS_DIR/ci-status.json"
 
+      # Uploaded on merge_group too: the blob carries the traces the merged HTML
+      # report links to, the only way to debug a queue failure or retry pass.
       - name: Upload Playwright blob report
         uses: actions/upload-artifact@v6
-        if: ${{ always() && github.event_name != 'merge_group' }}
+        if: always()
         continue-on-error: true
         with:
           name: playwright-blob-${{ matrix.shardId }}

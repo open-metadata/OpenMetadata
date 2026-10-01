@@ -18,6 +18,7 @@ import { isUndefined, omitBy, toString } from 'lodash';
 import { FunctionComponent, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -364,4 +365,4 @@ const TopicDetailsPage: FunctionComponent = () => {
   );
 };
 
-export default TopicDetailsPage;
+export default withSuggestions(TopicDetailsPage);

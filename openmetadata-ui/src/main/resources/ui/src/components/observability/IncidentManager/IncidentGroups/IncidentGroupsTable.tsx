@@ -20,8 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 // The core-components icon barrel re-exports the design team's own SVG set
 // only; it carries no generic person glyph, so this one comes from the shared
-// `@untitledui/icons` both packages pin at the same range.
-import { User01 } from '@untitledui/icons';
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';

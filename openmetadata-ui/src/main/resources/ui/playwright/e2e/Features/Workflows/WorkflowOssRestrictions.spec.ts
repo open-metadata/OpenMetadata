@@ -652,6 +652,19 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         page,
       }) => {
         await redirectToHomePage(page);
+
+        // Trigger fires on table Created, so pin the payload to stay deterministic.
+        await page.route(
+          '**/api/v1/governance/workflowInstances**',
+          async (route) => {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ data: [], paging: { total: 0 } }),
+            });
+          }
+        );
+
         await navigateToWorkflowDetailPage(page, workflowName);
 
         const historyResponse = page.waitForResponse(
@@ -665,7 +678,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await historyResponse;
 
         await expect(
-          page.getByTestId('workflow-execution-history-table')
+          page.getByTestId('workflow-execution-history-empty')
         ).toBeVisible();
       });
     });
