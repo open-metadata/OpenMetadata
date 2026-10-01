@@ -13,7 +13,7 @@
 #
 # Each connector lives under ingestion/tests/cli_e2e_v2/<connector>/ and
 # is a self-contained pytest module (no inheritance). The matrix below
-# grows by one entry per connector migration PR; the connector's
+# grows as migrated connector suites are ready for CI; each connector's
 # v1 entry remains until the replacement has passed its stability window.
 #
 # Triggers: workflow_dispatch during the v2 stabilization window. A
@@ -26,7 +26,7 @@ on:
       connectors:
         description: "Connectors to run (JSON array)"
         required: true
-        default: '["mysql", "postgres"]'
+        default: '["mysql", "postgres", "bigquery"]'
 
 permissions:
   id-token: write
@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        connector: ${{ fromJSON(inputs.connectors || '["mysql", "postgres"]') }}
+        connector: ${{ fromJSON(inputs.connectors || '["mysql", "postgres", "bigquery"]') }}
     environment: test
     env:
       E2E_CONNECTOR: ${{ matrix.connector }}
@@ -49,7 +49,7 @@ jobs:
         shell: bash
         run: |
           case "$E2E_CONNECTOR" in
-            mysql|postgres) ;;
+            mysql|postgres|bigquery) ;;
             *) echo "Unsupported E2E connector" >&2; exit 1 ;;
           esac
 
@@ -75,19 +75,24 @@ jobs:
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test
         env:
-          # Each connector provisions a disposable source container and tears
-          # it down from its pytest fixture. No shared source credentials are needed.
-          # Only OM-server admin creds (used to mint the ingestion-bot
-          # JWT) need to be exported here; they come from the bundled
-          # docker-compose and are not secrets.
+          # The bundled server uses these admin credentials to mint a JWT.
+          # BigQuery secrets resolve only for its matrix job.
           OM_ADMIN_EMAIL: admin@open-metadata.org
           OM_ADMIN_PASSWORD: admin
+          E2E_BQ_PROJECT_ID: ${{ matrix.connector == 'bigquery' && secrets.TEST_BQ_PROJECT_ID || '' }}
+          E2E_BQ_PROJECT_ID2: ${{ matrix.connector == 'bigquery' && secrets.TEST_BQ_PROJECT_ID2 || '' }}
+          E2E_BQ_PRIVATE_KEY: ${{ matrix.connector == 'bigquery' && secrets.TEST_BQ_PRIVATE_KEY_E2E || '' }}
+          E2E_BQ_PRIVATE_KEY_ID: ${{ matrix.connector == 'bigquery' && secrets.TEST_BQ_PRIVATE_KEY_ID || '' }}
+          E2E_BQ_CLIENT_EMAIL: ${{ matrix.connector == 'bigquery' && secrets.TEST_BQ_CLIENT_EMAIL || '' }}
         run: |
           source env/bin/activate
           cd ingestion
           mkdir -p junit
-          pytest -v \
-            --e2e-contract-check \
+          pytest_args=(-v --e2e-contract-check)
+          if [[ "$E2E_CONNECTOR" == bigquery ]]; then
+            pytest_args+=(-n 6)
+          fi
+          pytest "${pytest_args[@]}" \
             --junitxml="junit/test-results-v2-${E2E_CONNECTOR}.xml" \
             "tests/cli_e2e_v2/${E2E_CONNECTOR}"
         shell: bash

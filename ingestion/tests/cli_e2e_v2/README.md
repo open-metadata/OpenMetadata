@@ -180,3 +180,5 @@ life-cycle query (403). That is a permission difference in the environment, not 
 
 Remove the v1 BigQuery tests and their `py-cli-e2e-tests.yml` matrix entries only after this suite has
 passed for the agreed stability window.
+The manually dispatched v2 workflow runs BigQuery with six workers and passes the existing test
+environment credentials only to its BigQuery matrix job.
