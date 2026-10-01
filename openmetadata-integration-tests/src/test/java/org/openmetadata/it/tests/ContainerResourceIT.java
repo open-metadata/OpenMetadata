@@ -1338,7 +1338,8 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
    * (see {@link org.openmetadata.service.jdbi3.EntityRepository#processDeletionBatch}).
    * We simulate that exact state here by deleting the relationship row directly and
    * assert the root listing now excludes the orphan via the FQN-depth predicate
-   * ({@code fqnHash NOT LIKE :serviceHashChild}).
+   * ({@code parentFqnHash LIKE :serviceHashExact}), which is derived from the FQN rather
+   * than from entity_relationship.
    */
   @Test
   void test_rootListingExcludesOrphanedChild(TestNamespace ns) {
@@ -1446,7 +1447,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
    * relied on the parent CONTAINS edge being present on every non-root container; orphans
    * and bulk-imported leaves missing that edge would surface at the service root with a
    * deeply-nested FQN, contradicting the breadcrumb the UI shows on click. The FQN-depth
-   * predicate ({@code fqnHash NOT LIKE :serviceHashChild}) makes the FQN itself the source
+   * predicate ({@code parentFqnHash LIKE :serviceHashExact}) makes the FQN itself the source
    * of truth. This test exercises the depth check at three levels (root, child, grandchild)
    * to guard against regressions in either direction (over-filtering or under-filtering).
    */
@@ -1484,11 +1485,12 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   /**
    * {@code ?root=true} without {@code ?service=} must succeed: it returns every direct
    * child of any service across the whole tenant. The depth predicate
-   * ({@code fqnHash NOT LIKE :serviceHashChild}) needs the bind to be present even in
+   * ({@code parentFqnHash LIKE :serviceHashExact}) needs the bind to be present even in
    * this case, but {@link org.openmetadata.service.jdbi3.ListFilter#getServiceCondition}
    * only adds it when {@code ?service=} is present — the
-   * {@code ContainerDAO.rootListingParams} default ({@code '%.%.%'}) is what makes the
-   * SQL runnable here.
+   * {@code ContainerDAO.rootListingParams} default ({@code '%'}) is what makes the SQL
+   * runnable here, leaving the companion {@code parentFqnHash NOT LIKE '%.%'} to keep only
+   * containers whose parent is a bare service hash.
    *
    * <p>Regression guard for the "GET /containers?root=true (no service) crashes with a
    * missing-named-parameter error" bug. Also verifies the depth check still excludes
