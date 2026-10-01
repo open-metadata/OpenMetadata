@@ -208,16 +208,18 @@ public final class TestLoginOidcHandler {
   /**
    * A test popup is a fresh, interactive sign-in, so prompt=none could only come back as
    * login_required — the same reasoning the live handler applies to the MCP flow. Every other
-   * prompt value is deliberate admin policy and is kept.
+   * prompt value is deliberate admin policy and is kept. Both values are read as the live login
+   * reads them, so a max_age=0 the live login ignores does not force a fresh login here either.
    */
   private static void addInteractivePromptAndMaxAge(
       OidcClientConfig candidate, Map<String, String> params) {
-    String prompt = candidate.getPrompt();
-    if (!nullOrEmpty(prompt) && !PROMPT_NONE.equalsIgnoreCase(prompt)) {
+    String prompt = AuthenticationCodeFlowHandler.normalizePrompt(candidate.getPrompt());
+    if (prompt != null && !PROMPT_NONE.equalsIgnoreCase(prompt)) {
       params.put(OidcConfiguration.PROMPT, prompt);
     }
-    if (!nullOrEmpty(candidate.getMaxAge())) {
-      params.put(OidcConfiguration.MAX_AGE, candidate.getMaxAge());
+    String maxAge = AuthenticationCodeFlowHandler.normalizeMaxAge(candidate.getMaxAge());
+    if (maxAge != null) {
+      params.put(OidcConfiguration.MAX_AGE, maxAge);
     }
   }
 

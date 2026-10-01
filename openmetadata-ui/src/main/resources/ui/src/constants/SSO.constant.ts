@@ -136,6 +136,9 @@ export const COMMON_UI_FIELDS = {
   oidcMaxAge: { 'ui:title': 'OIDC Max Age' },
   oidcPrompt: { 'ui:title': 'OIDC Prompt' },
   oidcSessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
+  oidcEndSessionWithProvider: {
+    'ui:title': 'End Session With Identity Provider',
+  },
   // Common non-OIDC fields
   authority: {
     'ui:title': 'Authority',
@@ -406,6 +409,7 @@ export const OIDC_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   // Hide LDAP/SAML specific fields for OIDC
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -444,6 +448,7 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
@@ -480,6 +485,7 @@ export const AZURE_OAUTH_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
@@ -516,6 +522,7 @@ export const OKTA_OAUTH_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
@@ -561,6 +568,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
       'ui:title': 'OIDC Session Expiry',
       'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.sessionExpiry}`,
     },
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   authority: {
     'ui:title': 'Authority',

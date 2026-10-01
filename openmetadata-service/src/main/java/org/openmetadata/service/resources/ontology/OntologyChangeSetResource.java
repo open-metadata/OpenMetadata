@@ -13,11 +13,15 @@
 
 package org.openmetadata.service.resources.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -34,12 +38,15 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateOntologyChangeSet;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -60,6 +67,7 @@ import org.openmetadata.service.ontology.OntologyEditLockService;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -100,14 +108,22 @@ public class OntologyChangeSetResource
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @QueryParam("fields") final String fields,
-      @QueryParam("state") final OntologyChangeSetState state,
+      @Parameter(description = "Comma-separated change set states to include") @QueryParam("state")
+          final String state,
+      @Parameter(description = "Return only drafts proposed from context memories")
+          @QueryParam("memorySourced")
+          @DefaultValue("false")
+          final boolean memorySourced,
       @QueryParam("limit") @DefaultValue("50") @Min(0) @Max(1000000) final int limit,
       @QueryParam("before") final String before,
       @QueryParam("after") final String after,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
     final ListFilter filter = new ListFilter(include);
-    if (state != null) {
-      filter.addQueryParam("state", state.value());
+    if (state != null && !state.isBlank()) {
+      filter.addQueryParam("state", requireStates(state));
+    }
+    if (memorySourced) {
+      filter.addQueryParam("memorySourced", "true");
     }
     return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
   }
@@ -268,6 +284,19 @@ public class OntologyChangeSetResource
     return repository.get(null, id, repository.getFields(FIELDS), Include.NON_DELETED, false);
   }
 
+  // Normalizes a comma-separated filter such as "DRAFT,SUBMITTED" and rejects unknown states.
+  private static String requireStates(final String states) {
+    try {
+      return Arrays.stream(states.split(","))
+          .map(String::trim)
+          .map(value -> OntologyChangeSetState.fromValue(value).value())
+          .distinct()
+          .collect(Collectors.joining(","));
+    } catch (IllegalArgumentException exception) {
+      throw new BadRequestException("Unknown ontology change set state in: " + states);
+    }
+  }
+
   private void authorizeChangeSet(final SecurityContext securityContext, final UUID changeSetId) {
     authorizer.authorize(
         securityContext,
@@ -280,6 +309,20 @@ public class OntologyChangeSetResource
       final OntologyChangeSet changeSet,
       final MetadataOperation operation) {
     for (final EntityReference glossary : changeSet.getGlossaries()) {
+      final Glossary planned =
+          listOrEmpty(changeSet.getOperations()).stream()
+              .filter(change -> change.getGlossary() != null)
+              .map(change -> change.getGlossary())
+              .filter(candidate -> candidate.getId().equals(glossary.getId()))
+              .findFirst()
+              .orElse(null);
+      if (planned != null) {
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(Entity.GLOSSARY, MetadataOperation.CREATE),
+            new CreateResourceContext<>(Entity.GLOSSARY, planned));
+        continue;
+      }
       authorizer.authorize(
           securityContext,
           new OperationContext(Entity.GLOSSARY, operation),

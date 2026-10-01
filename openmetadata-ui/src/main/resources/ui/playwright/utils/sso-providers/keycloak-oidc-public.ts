@@ -28,6 +28,10 @@ import {
   KEYCLOAK_SEEDED_CREDS,
   performProviderLogin,
 } from './keycloak-saml';
+import {
+  endKeycloakSession,
+  trackPromptNoneNavigations,
+} from './silent-reauth';
 
 // Public client — no secret. The browser (oidc-client UserManager) drives the
 // whole authorization-code flow, so this is the fixture that exercises
@@ -119,6 +123,7 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   hasBackendIssuedRefreshCookie: false,
   usesPkce: true,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: true,
 
   expectedResponseType: 'code',
   signInButtonPattern: /(sign in|log in) with Keycloak/i,
@@ -238,4 +243,31 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   },
 
   forceTokenExpiry,
+
+  // What a dead renewal looks like to signinSilent. oidc-client renews with
+  // the refresh token Keycloak issued, so refuse that grant the way Keycloak
+  // refuses a token it no longer honours; without a refresh token it would
+  // use the hidden iframe, which third-party cookie blocking starves. The
+  // top-level redirect to Keycloak, and its authorization-code exchange, are
+  // unaffected.
+  async breakSilentRenewal(page: Page) {
+    await page.route('**/silent-callback*', (route) => route.abort());
+    await page.route('**/protocol/openid-connect/token', (route) =>
+      route.request().postData()?.includes('grant_type=refresh_token')
+        ? route.fulfill({
+            status: 400,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              error: 'invalid_grant',
+              error_description: 'Token is not active',
+            }),
+          })
+        : route.fallback()
+    );
+  },
+
+  killIdpSession: endKeycloakSession,
+
+  trackSilentReauth: (page: Page) =>
+    trackPromptNoneNavigations(page, /\/protocol\/openid-connect\/auth/),
 };

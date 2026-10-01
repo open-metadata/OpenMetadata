@@ -80,6 +80,24 @@ class TestLoginOidcHandlerTest {
   }
 
   @Test
+  void authorizeIgnoresMaxAgeZeroAsTheLiveLoginDoes() {
+    Map<String, String> forcedReauthentication =
+        FakeOidcProvider.queryOf(
+            TestLoginOidcHandler.authorize(provider.confidentialClient().withMaxAge("0"), MARKER)
+                .authorizationUrl());
+    Map<String, String> bounded =
+        FakeOidcProvider.queryOf(
+            TestLoginOidcHandler.authorize(
+                    provider.confidentialClient().withMaxAge(" 3600 ").withPrompt(" login "),
+                    MARKER)
+                .authorizationUrl());
+
+    assertFalse(forcedReauthentication.containsKey("max_age"));
+    assertEquals("3600", bounded.get("max_age"));
+    assertEquals("login", bounded.get("prompt"));
+  }
+
+  @Test
   void completeRedeemsTheCodeWithTheCandidateSecretAndPkceVerifier() {
     TestLoginOidcHandler.Authorization authorization =
         TestLoginOidcHandler.authorize(provider.confidentialClient(), MARKER);
