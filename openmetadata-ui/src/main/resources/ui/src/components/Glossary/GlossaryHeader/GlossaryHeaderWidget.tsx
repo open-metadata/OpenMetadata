@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Glossary as GlossaryIcon,
+  GlossaryTerm as GlossaryTermIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
-import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
@@ -30,20 +32,16 @@ export const GlossaryHeaderWidget = ({
         <GlossaryIcon
           className="align-middle"
           color={DE_ACTIVE_COLOR}
-          height={36}
-          name="folder"
-          width={32}
+          size={36}
         />
       );
     }
 
     return (
-      <IconTerm
+      <GlossaryTermIcon
         className="align-middle"
         color={DE_ACTIVE_COLOR}
-        height={36}
-        name="doc"
-        width={32}
+        size={36}
       />
     );
   }, [isGlossary]);

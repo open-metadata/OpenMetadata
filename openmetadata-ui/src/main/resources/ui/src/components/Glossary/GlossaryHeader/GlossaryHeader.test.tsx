@@ -127,6 +127,12 @@ jest.mock('../../../utils/EntityVoteUtils', () => ({
 jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
   getEntityDeleteMessage: jest.fn(),
 }));
+const mockIsAiMode = jest.fn().mockReturnValue(false);
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode(),
+}));
+
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue('glossary.test1'),
 }));
@@ -209,6 +215,30 @@ describe('GlossaryHeader component', () => {
 
     mockContext.data = originalData;
   });
+
+  it.each([
+    [true, true],
+    [false, false],
+  ])(
+    'should render the gradient header background only in AI mode (AI mode: %s)',
+    (isAiMode, hasGradient) => {
+      mockIsAiMode.mockReturnValueOnce(isAiMode);
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(
+        screen
+          .getByTestId('glossary-header')
+          .className.includes('linear-gradient')
+      ).toBe(hasGradient);
+    }
+  );
 
   it('should render import and export dropdown menu items only for glossary', async () => {
     render(

@@ -14,20 +14,20 @@ import { Box, Button, PageHeader } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
   ChevronDown,
+  Download01,
+  Edit01,
+  Glossary as GlossaryIcon,
+  GlossaryTerm as GlossaryTermIcon,
   RefreshCcw01,
+  Trash01,
+  Upload01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { cloneDeep, isEmpty, toString } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { ReactComponent as ChangeHierarchyIcon } from '../../../assets/svg/ic-change-hierarchy.svg';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -50,6 +50,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { Votes } from '../../../generated/type/votes';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
@@ -133,7 +134,7 @@ const buildManageButtonContent = ({
               description={t('message.export-entity-help', {
                 entity: t('label.glossary-term-lowercase-plural'),
               })}
-              icon={ExportIcon}
+              icon={Upload01}
               id="export-button"
               name={t('label.export')}
             />
@@ -151,7 +152,7 @@ const buildManageButtonContent = ({
               description={t('message.import-entity-help', {
                 entity: t('label.glossary-term-lowercase'),
               })}
-              icon={ImportIcon}
+              icon={Download01}
               id="import-button"
               name={t('label.import')}
             />
@@ -167,7 +168,7 @@ const buildManageButtonContent = ({
           label: (
             <ManageButtonItemLabel
               description={t('message.import-ontology-help')}
-              icon={ImportIcon}
+              icon={Download01}
               id="import-ontology-button"
               name={t('label.import-ontology')}
             />
@@ -191,7 +192,7 @@ const buildManageButtonContent = ({
                   ? t('label.glossary')
                   : t('label.glossary-term'),
               })}
-              icon={EditIcon}
+              icon={Edit01}
               id="rename-button"
               name={t('label.rename')}
             />
@@ -258,7 +259,7 @@ const buildManageButtonContent = ({
                   ? t('label.glossary')
                   : t('label.glossary-term'),
               })}
-              icon={IconDelete}
+              icon={Trash01}
               id="delete-button"
               name={t('label.delete')}
             />
@@ -464,6 +465,7 @@ const GlossaryHeader = ({
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { currentUser } = useApplicationStore();
+  const isAiMode = useIsAiMode();
   const {
     onUpdate,
     data: selectedData,
@@ -566,9 +568,7 @@ const GlossaryHeader = ({
         <GlossaryIcon
           className="align-middle"
           color={DE_ACTIVE_COLOR}
-          height={36}
-          name="folder"
-          width={32}
+          size={36}
         />
       );
     }
@@ -577,12 +577,10 @@ const GlossaryHeader = ({
       <EntityStyleIcon
         className="align-middle"
         fallback={
-          <IconTerm
+          <GlossaryTermIcon
             className="align-middle"
             color={DE_ACTIVE_COLOR}
-            height={36}
-            name="doc"
-            width={32}
+            size={36}
           />
         }
         iconValue={selectedData.style?.iconURL}
@@ -705,7 +703,7 @@ const GlossaryHeader = ({
         <Button
           color="primary"
           data-testid="add-new-tag-button-header"
-          size="sm"
+          size="md"
           onPress={handleAddGlossaryTermClick}>
           {t('label.add-entity', { entity: t('label.term-lowercase') })}
         </Button>
@@ -722,7 +720,7 @@ const GlossaryHeader = ({
                     color="primary"
                     data-testid="glossary-term-add-button-menu"
                     iconTrailing={ChevronDown}
-                    size="sm">
+                    size="md">
                     {t('label.add')}
                   </Button>
                 }
@@ -839,6 +837,7 @@ const GlossaryHeader = ({
             suffix={getGlossaryHeaderSuffix(isGlossary)}
           />
         }
+        variant={isAiMode ? 'gradient' : 'flat'}
       />
       <GlossaryHeaderModals
         handleDelete={handleDelete}
