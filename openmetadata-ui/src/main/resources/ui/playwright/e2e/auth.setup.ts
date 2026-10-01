@@ -160,8 +160,8 @@ setup('authenticate all users', async ({ browser }) => {
     // captures is what every worker in every lane reuses, so the only thing
     // that matters is that the session is real; how it was established is not
     // part of the fixture's contract. `loginAsAdmin` above already took this
-    // path. A spec that is testing the sign-in *form* drives
-    // `UserClass.login()` directly instead.
+    // path. A spec that is testing the sign-in *form* calls
+    // `signInThroughForm(page, user)` from utils/formSignIn instead.
     const newAdminPage = await browser.newPage();
     await admin.signIn(newAdminPage);
 

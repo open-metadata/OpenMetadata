@@ -366,13 +366,14 @@ export class UserClass {
     page: Page,
     userName = this.data.email,
     password = this.data.password,
-    options: { suppressWelcomeScreen?: boolean } = {}
+    options: { suppressWelcomeScreen?: boolean; landingPath?: string } = {}
   ): Promise<string> {
     const token = await signInViaApi(page, {
       email: userName,
       password,
       userName: this.responseData?.name ?? userName,
       suppressWelcome: options.suppressWelcomeScreen ?? true,
+      landingPath: options.landingPath,
     });
 
     await this.completeSignIn(page);

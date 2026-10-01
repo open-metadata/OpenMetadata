@@ -71,6 +71,18 @@ export const signInViaApi = async (
     userName?: string;
     /** Seed `loggedInUsers` so the landing-page welcome banner never renders. */
     suppressWelcome?: boolean;
+    /**
+     * Where to land once the token is seeded. Defaults to `/my-data`, which is
+     * what most callers want and assert against.
+     *
+     * Pass `'/'` when the *landing page itself* matters. The form path never
+     * picks a destination — it posts to /signin and lets the app route — so a
+     * user whose persona configures a different default (say `/glossary`) ends
+     * up there. Hard-navigating to `/my-data` would overwrite that resolution
+     * and make the helper disagree with real sign-in; `'/'` lets the app decide,
+     * exactly as the form does.
+     */
+    landingPath?: string;
   }
 ): Promise<string> => {
   // Post through the page's own context, not a standalone `request.newContext()`.
@@ -131,7 +143,9 @@ export const signInViaApi = async (
     await page.unroute(`**${PRIMER_PATH}`);
   }
 
-  await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+  await page.goto(credentials.landingPath ?? '/my-data', {
+    waitUntil: 'domcontentloaded',
+  });
 
   // Either shell counts. A user whose persona resolves to AI mounts the AI route
   // tree, whose sidebar is `ask-sidebar` — waiting only for `left-sidebar` made

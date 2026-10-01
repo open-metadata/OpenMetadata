@@ -471,7 +471,7 @@ in for every test.
 Both fixtures authenticate through `utils/apiSignIn.ts` rather than `UserClass.login()`:
 
 ```typescript
-await signInUserViaApi(page, user); // one POST + two navigations
+await user.signIn(page); // one POST + two navigations
 ```
 
 `UserClass.login()` performs nine UI interactions — navigate to /signin, wait for the form, fill,
@@ -481,8 +481,10 @@ collapse the sidebar. The suite does that ~290 times and none of it is what the 
 the base64 password the UI's `btoa()` produces) and writes the returned token with `setToken`,
 which is the exact inverse of the `getToken` that `auth.setup.ts` reads back after a real sign-in.
 
-`performUserLogin` already routes through it, so its call sites got the speed-up without changing.
-Drive `UserClass.login()` directly only in a spec that is testing the sign-in **form**.
+`performUserLogin` already routes through it, so its call sites got the speed-up without changing;
+it signs in with `landingPath: '/'` so the app resolves the user's configured landing page, the way
+the form does. When a spec genuinely needs the form, call `signInThroughForm(page, user)` from
+`utils/formSignIn.ts` — never `UserClass.login()` directly, which the lint rule rejects.
 
 Two things to know if you touch this path:
 
@@ -501,11 +503,12 @@ whole corpus was migrated, so a `login()` in a spec is either new code that shou
 or assignee is ordinary test data and is untouched, as is `performUserLogin`, which signs in
 through the API and owns its page, context and teardown.
 
-Nine files legitimately keep `login()` because the sign-in flow is what they are testing —
-`Pages/Login.spec.ts`, `Features/OnlineUsers.spec.ts`, `Flow/Tour.spec.ts` and the `Features/AppMode`
-specs. Each call there carries a justified disable
-(`// eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- <why>`) naming the
-reason. If you find yourself adding a tenth, check first that `signIn()` really cannot do the job.
+Seven files legitimately drive the form, and they call `signInThroughForm(page, user)` from
+`utils/formSignIn.ts` — the one module on the rule's exemption list, so no file needs a disable.
+Two reasons qualify: the form is the subject (`Auth/Login.spec.ts`), or the *route the app lands on*
+after sign-in is the assertion (`Features/AppMode/**`, where `AppModeAiPersonaLandsAtRoot` records
+every navigation and asserts `/my-data` is never among them). If you find yourself adding an eighth,
+check first that `signIn()` really cannot do the job.
 
 ---
 

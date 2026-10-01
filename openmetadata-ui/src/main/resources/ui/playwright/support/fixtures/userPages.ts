@@ -28,7 +28,7 @@ import { installServerLoadReducers } from './serverLoad';
  * seeded roles cannot express (a specific team, a custom policy, a rename), and
  * say so in a comment.
  *
- * `openmetadata-playwright/prefer-role-page-fixture` (warn) enforces this.
+ * `openmetadata-playwright/prefer-role-page-fixture` (error) enforces this.
  *
  * Available roles and what `auth.setup.ts` grants them:
  *
