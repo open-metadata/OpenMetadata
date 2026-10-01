@@ -209,10 +209,12 @@ const CheckboxCell = ({
   checked,
   showCheckboxes,
   onCheckboxChange,
+  t,
 }: {
   checked: boolean;
   showCheckboxes: boolean;
   onCheckboxChange?: (checked: boolean) => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }) => {
   if (!showCheckboxes) {
     return null;
@@ -221,7 +223,7 @@ const CheckboxCell = ({
   return (
     <div className="tw:relative tw:max-w-full tw:min-h-px tw:px-0.5 tw:flex-[0_0_25px]">
       <Checkbox
-        aria-label="select-asset"
+        aria-label={t('label.select-entity', { entity: t('label.asset') })}
         className="assets-checkbox"
         data-testid="asset-checkbox"
         isSelected={checked}
@@ -880,6 +882,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           <CheckboxCell
             checked={checked}
             showCheckboxes={Boolean(showCheckboxes)}
+            t={t}
             onCheckboxChange={onCheckboxChange}
           />
           <BreadcrumbAndScoreCell
