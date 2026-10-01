@@ -18,7 +18,7 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Integer, String, func
+from sqlalchemy import TEXT, Column, Integer, Numeric, String, func
 from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
@@ -517,6 +517,81 @@ class SampleTest(TestCase):
         assert all(results[i] == results[0] for i in range(1, len(results))), (
             "Expected deterministic row ordering with randomizedSample=False"
         )
+
+    def test_user_query_samples_go_through_the_cell_hook(self, sampler_mock):
+        """A profile query returns raw cells, which must get the same per-column processing as a regular sample."""
+
+        class TaggingSampler(SQASampler):
+            def _process_sample_value(self, column, value):
+                return f"processed {value}" if column.name == "name" else value
+
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = TaggingSampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                config=DatabaseSamplerConfig(sample_query="SELECT id, name AS NAME, upper(name) AS shout FROM users"),
+            )
+        sample_data = sampler.fetch_sample_data()
+        assert [col.root for col in sample_data.columns] == ["id", "NAME", "shout"]
+        assert sample_data.rows
+        for row in sample_data.rows:
+            assert isinstance(row[0], int)
+            assert row[1].startswith("processed ")
+            assert not row[2].startswith("processed ")
+
+    def test_user_query_samples_convert_values_like_a_regular_sample(self, sampler_mock):
+        """A profile query returns raw driver values, which must convert through the table column types."""
+
+        class QueriedBinary(Base):
+            __tablename__ = "queried_binary"
+            id = Column(Integer, primary_key=True)
+            password_hash = Column(CustomTypes.BYTES.value)
+
+        QueriedBinary.__table__.create(bind=self.engine)
+        try:
+            self.session.add(QueriedBinary(id=1, password_hash=b"foo"))
+            self.session.commit()
+            samples = []
+            for sample_query in (None, "SELECT id, password_hash, password_hash AS raw_hash FROM queried_binary"):
+                with patch.object(SQASampler, "build_table_orm", return_value=QueriedBinary):
+                    sampler = SQASampler(
+                        service_connection_config=self.sqlite_conn,
+                        ometa_client=None,
+                        entity=None,
+                        config=DatabaseSamplerConfig(sample_query=sample_query),
+                    )
+                samples.append(sampler.fetch_sample_data().rows)
+            regular, queried = samples
+            assert regular == [[1, "foo"]]
+            assert queried == [[1, "foo", b"foo"]]
+        finally:
+            QueriedBinary.__table__.drop(bind=self.engine)
+
+    def test_user_query_keeps_values_the_column_type_cannot_convert(self, sampler_mock):
+        """A computed value named like a table column, but of another type, stays as the query returned it."""
+
+        class QueriedAmount(Base):
+            __tablename__ = "queried_amount"
+            id = Column(Integer, primary_key=True)
+            amount = Column(Numeric(10, 2))
+
+        QueriedAmount.__table__.create(bind=self.engine)
+        try:
+            self.session.add(QueriedAmount(id=1, amount=1))
+            self.session.commit()
+            with patch.object(SQASampler, "build_table_orm", return_value=QueriedAmount):
+                sampler = SQASampler(
+                    service_connection_config=self.sqlite_conn,
+                    ometa_client=None,
+                    entity=None,
+                    config=DatabaseSamplerConfig(
+                        sample_query="SELECT id, 'not a number' AS amount FROM queried_amount"
+                    ),
+                )
+            assert sampler.fetch_sample_data().rows == [[1, "not a number"]]
+        finally:
+            QueriedAmount.__table__.drop(bind=self.engine)
 
     @classmethod
     def tearDownClass(cls) -> None:
