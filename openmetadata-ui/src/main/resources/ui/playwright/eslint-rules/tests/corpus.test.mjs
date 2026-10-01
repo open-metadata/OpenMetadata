@@ -45,7 +45,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // main's count, less one in entity.ts: replyAnnouncement now targets the
     // announcement banner's title button instead of the first of a list of
     // items.
-    'om-playwright/no-positional-locator': 1111,
+    'om-playwright/no-positional-locator': 1101,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 21,

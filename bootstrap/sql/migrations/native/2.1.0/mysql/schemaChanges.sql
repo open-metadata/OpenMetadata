@@ -497,6 +497,26 @@ PREPARE announcement_type_index_stmt FROM @announcement_type_index_ddl;
 EXECUTE announcement_type_index_stmt;
 DEALLOCATE PREPARE announcement_type_index_stmt;
 
+-- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
+-- that already exists, so existing installs get the rule here. The rule is only added while an allow
+-- rule of the policy still lists ViewAll, since the grant is acceptable only where Data Consumers can
+-- already view everything. Deny rules in other policies are not visible to this statement.
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule',
+        'description', 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.',
+        'resources', JSON_ARRAY('all'),
+        'operations', JSON_ARRAY('ExecuteSparqlQuery'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'), '$.rules')
+  AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('ViewAll')), '$.rules');
+
 -- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
 -- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
 -- version is reprocessed statement-by-statement against SERVER_MIGRATION_SQL_LOGS, and the

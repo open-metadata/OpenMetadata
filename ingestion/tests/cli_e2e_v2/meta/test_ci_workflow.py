@@ -49,6 +49,11 @@ def _run_workflow(tmp_path, connector, pytest_exit=0):
     for step in job["steps"]:
         if "run" not in step:
             continue
+        condition = step.get("if")
+        if condition is not None:
+            assert condition in ("matrix.connector == 'bigquery'", "matrix.connector != 'bigquery'")
+            if (connector == "bigquery") != (condition == "matrix.connector == 'bigquery'"):
+                continue
         result = subprocess.run(
             ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", render(step["run"])],
             cwd=tmp_path,
@@ -58,21 +63,54 @@ def _run_workflow(tmp_path, connector, pytest_exit=0):
             timeout=10,
             check=False,
         )
-        if result.returncode or step.get("id") == "e2e-v2-test":
+        if result.returncode or step.get("id") in ("e2e-v2-test", "e2e-v2-bigquery-test"):
             return result
     raise AssertionError("Workflow did not execute its E2E test step")
 
 
+@pytest.mark.parametrize("connector", ["mysql", "postgres", "bigquery"])
 @pytest.mark.parametrize("pytest_exit", [0, 1, 5])
-def test_ci_runs_the_allowed_connector_and_preserves_pytest_exit(tmp_path, pytest_exit):
-    result = _run_workflow(tmp_path, "mysql", pytest_exit)
+def test_ci_runs_the_allowed_connector_and_preserves_pytest_exit(tmp_path, connector, pytest_exit):
+    result = _run_workflow(tmp_path, connector, pytest_exit)
     assert result.returncode == pytest_exit, result.stderr
-    assert json.loads((tmp_path / "ingestion/pytest-args.json").read_text()) == [
+    expected_args = [
         "-v",
         "--e2e-contract-check",
-        "--junitxml=junit/test-results-v2-mysql.xml",
-        "tests/cli_e2e_v2/mysql",
     ]
+    if connector == "bigquery":
+        expected_args.extend(["-n", "6"])
+    expected_args.extend(
+        [
+            f"--junitxml=junit/test-results-v2-{connector}.xml",
+            f"tests/cli_e2e_v2/{connector}",
+        ]
+    )
+    assert json.loads((tmp_path / "ingestion/pytest-args.json").read_text()) == expected_args
+
+
+def test_ci_defaults_to_all_connectors_and_limits_bigquery_secrets():
+    root = Path(__file__).resolve().parents[4]
+    workflow = yaml.safe_load((root / ".github/workflows/py-cli-e2e-tests-v2.yml").read_text())
+    job = workflow["jobs"]["py-cli-e2e-tests-v2"]
+    dispatch = workflow.get("on", workflow.get(True))["workflow_dispatch"]
+    default = dispatch["inputs"]["connectors"]["default"]
+    assert json.loads(default) == ["mysql", "postgres", "bigquery"]
+    assert f"'{default}'" in job["strategy"]["matrix"]["connector"]
+
+    regular_step = next(step for step in job["steps"] if step.get("id") == "e2e-v2-test")
+    bigquery_step = next(step for step in job["steps"] if step.get("id") == "e2e-v2-bigquery-test")
+    assert regular_step["if"] == "matrix.connector != 'bigquery'"
+    assert bigquery_step["if"] == "matrix.connector == 'bigquery'"
+    for key, secret in {
+        "E2E_BQ_PROJECT_ID": "TEST_BQ_PROJECT_ID",
+        "E2E_BQ_PROJECT_ID2": "TEST_BQ_PROJECT_ID2",
+        "E2E_BQ_PRIVATE_KEY": "TEST_BQ_PRIVATE_KEY_E2E",
+        "E2E_BQ_PRIVATE_KEY_ID": "TEST_BQ_PRIVATE_KEY_ID",
+        "E2E_BQ_CLIENT_EMAIL": "TEST_BQ_CLIENT_EMAIL",
+    }.items():
+        assert key not in job["env"]
+        assert key not in regular_step["env"]
+        assert bigquery_step["env"][key] == f"${{{{ secrets.{secret} }}}}"
 
 
 @pytest.mark.parametrize(

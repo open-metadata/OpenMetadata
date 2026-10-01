@@ -378,6 +378,26 @@ ALTER TABLE announcement_entity
   GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Notice')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
 
+-- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
+-- that already exists, so existing installs get the rule here. The rule is only added while an allow
+-- rule of the policy still lists ViewAll, since the grant is acceptable only where Data Consumers can
+-- already view everything. Deny rules in other policies are not visible to this statement.
+UPDATE policy_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{rules}',
+    (json->'rules') || jsonb_build_object(
+        'name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule',
+        'description', 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.',
+        'resources', jsonb_build_array('all'),
+        'operations', jsonb_build_array('ExecuteSparqlQuery'),
+        'effect', 'allow'
+    )
+)
+WHERE json->>'name' = 'DataConsumerPolicy'
+  AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'))
+  AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('ViewAll')));
+
 -- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
 -- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
 -- version is reprocessed statement-by-statement against SERVER_MIGRATION_SQL_LOGS, and the
