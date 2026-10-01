@@ -504,7 +504,7 @@ test.describe(
 
       const sql = page
         .getByTestId('test-case-configuration-card')
-        .getByTestId('sql-expression-container');
+        .getByRole('region', { name: 'SQL Query' });
 
       await expect(sql).toContainText('SELECT o.id');
 
@@ -516,6 +516,18 @@ test.describe(
       // The block stops at 320px (max-h-80) and scrolls the rest of the query.
       expect(clientHeight).toBeLessThanOrEqual(320);
       expect(scrollHeight).toBeGreaterThan(clientHeight);
+
+      await test.step('A keyboard user can scroll to the end of the query', async () => {
+        await sql.focus();
+
+        await expect(sql).toBeFocused();
+
+        await page.keyboard.press('End');
+
+        await expect
+          .poll(() => sql.evaluate((node) => node.scrollTop))
+          .toBeGreaterThan(0);
+      });
     });
   }
 );

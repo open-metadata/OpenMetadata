@@ -25,6 +25,11 @@ import {
   toSqlLines,
 } from './TestCaseConfigurationCard.utils';
 
+const SQL_BLOCK_CLASS_NAME = [
+  'tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5',
+  'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring',
+].join(' ');
+
 /**
  * The prototype's read-only, line-numbered SQL block. Deliberately not
  * `SchemaEditor` — CodeMirror is a full editor whose gutter and theme look
@@ -35,10 +40,18 @@ import {
  * would otherwise stretch the rail thousands of pixels down the page.
  */
 function ConfigurationSql({ value }: Readonly<{ value: string }>) {
+  const { t } = useTranslation();
+
   return (
-    <div
-      className="tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5"
-      data-testid="sql-expression-container">
+    <section
+      aria-label={t('label.sql-query')}
+      className={SQL_BLOCK_CLASS_NAME}
+      data-testid="sql-expression-container"
+      // Safari does not make a scroll container keyboard-focusable, so the rest
+      // of a query past the cap would be out of keyboard reach. jsx-a11y
+      // documents this exception for scrollable code.
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+      tabIndex={0}>
       {toSqlLines(value).map((line) => (
         <div
           className="tw:flex tw:font-mono tw:text-xs tw:leading-[1.8]"
@@ -63,7 +76,7 @@ function ConfigurationSql({ value }: Readonly<{ value: string }>) {
           </span>
         </div>
       ))}
-    </div>
+    </section>
   );
 }
 
