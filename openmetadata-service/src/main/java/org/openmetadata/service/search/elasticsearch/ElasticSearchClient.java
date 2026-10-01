@@ -597,13 +597,13 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
-    return aggregationManager.getEntityTypeCounts(request, index);
+    return searchManager.getEntityTypeCounts(request, index, null);
   }
 
   @Override
   public Response getEntityTypeCounts(
       SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
-    return aggregationManager.getEntityTypeCounts(request, index, subjectContext);
+    return searchManager.getEntityTypeCounts(request, index, subjectContext);
   }
 
   @Override
