@@ -18,12 +18,12 @@ import pytest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Column, ColumnName, Table
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import LineageInformation
 from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.filterPattern import FilterPattern
-from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.mode.metadata import ModeDashboardDetails, ModeSource
+from metadata.ingestion.source.dashboard.mode.metadata import ModeSource
 
 MOCK_CONFIG = {
     "source": {
@@ -519,16 +519,51 @@ class TestModeColumnLineage:
         assert lineage.right.edge.fromEntity.id == _orders_table().id
         assert lineage.right.edge.lineageDetails.columnsLineage is None
 
+    @pytest.mark.parametrize(
+        "raw_query",
+        [
+            pytest.param(
+                "INSERT INTO staging.tmp_orders SELECT id AS order_id FROM analytics.orders", id="insert-select"
+            ),
+            pytest.param(
+                "CREATE TABLE tmp AS SELECT id AS order_id FROM analytics.orders; SELECT order_id FROM tmp",
+                id="ctas-then-select",
+            ),
+        ],
+    )
+    def test_write_statements_do_not_leak_their_target_columns(self, column_source, raw_query):
+        details = _details(column_source, [{**QUERY, "raw_query": raw_query}])
+        data_model_request = next(iter(column_source.yield_datamodel(details))).right
+        column_source.metadata.get_by_name = MagicMock(return_value=_data_model_with([]))
+        column_source.context.get().__dict__["dataModels"] = ["report-token.query-token"]
+
+        lineage = list(column_source.yield_dashboard_lineage_details(details))
+
+        assert data_model_request.columns == []
+        assert {res.right.edge.fromEntity.id.root for res in lineage} == {_orders_table().id.root}
+
+    def test_select_star_expands_through_the_db_service_prefix(self, column_source):
+        column_source.source_config.lineageInformation = LineageInformation(
+            dbServicePrefixes=["warehouse.analytics_db"]
+        )
+        column_source.data_sources["source-id"].pop("database")
+        star_query = {**QUERY, "raw_query": "SELECT * FROM analytics.orders"}
+
+        assert self._column_names(column_source, star_query) == ["id", "amount", "status"]
+        assert column_source.metadata.search_in_any_service.call_args.kwargs["fqn_search_string"].startswith(
+            "warehouse.analytics_db."
+        )
+
     def test_unparseable_sql_still_yields_data_model(self, column_source):
         broken = {**QUERY, "raw_query": "SELEC oops FROM"}
 
         assert self._column_names(column_source, broken) == []
 
 
-CREATOR_REPORT = {**REPORT, "_links": {**REPORT["_links"], "creator": {"href": "/api/jane"}}, "view_count": 42}
+CREATOR_REPORT = {**REPORT, "_links": {**REPORT["_links"], "creator": {"href": "/api/jane"}}}
 
 
-class TestModeOwnersAndUsage:
+class TestModeOwners:
     @pytest.fixture
     def owner_source(self, mode_source):
         mode_source.source_config.includeOwners = True
@@ -556,28 +591,9 @@ class TestModeOwnersAndUsage:
         assert owner_source.get_owner_ref(CREATOR_REPORT) is None
         owner_source.client.get_user_email.assert_not_called()
 
-    def _usage(self, source, summary) -> list[int]:
-        source.metadata = MagicMock()
-        source.metadata.get_by_name.return_value = Dashboard.model_construct(usageSummary=summary)
-        details = ModeDashboardDetails(report=CREATOR_REPORT, queries=[])
-        return [res.right.usage.count for res in source.yield_dashboard_usage(details)]
-
-    def test_first_usage_reports_lifetime_views(self, mode_source):
-        assert self._usage(mode_source, None) == [42]
-
-    def test_usage_reports_views_since_last_recorded_day(self, mode_source):
-        summary = UsageDetails(date="2020-01-01", dailyStats=UsageStats(count=40))
-
-        assert self._usage(mode_source, summary) == [2]
-
-    def test_usage_not_reported_twice_a_day(self, mode_source):
-        summary = UsageDetails(date=mode_source.today, dailyStats=UsageStats(count=42))
-
-        assert self._usage(mode_source, summary) == []
-
 
 class TestModeNewStagesNeverFailTheRun:
-    """Owners, usage and columns are additions: any failure must degrade to 'not ingested'."""
+    """Owners and columns are additions: any failure must degrade to 'not ingested'."""
 
     def test_report_without_creator_link_has_no_owner(self, mode_source):
         mode_source.source_config.includeOwners = True
@@ -590,37 +606,6 @@ class TestModeNewStagesNeverFailTheRun:
         mode_source.client.get_user_email.side_effect = RuntimeError("boom")
 
         assert mode_source.get_owner_ref(CREATOR_REPORT) is None
-
-    @pytest.mark.parametrize(
-        ("report", "dashboard", "summary"),
-        [
-            pytest.param({**CREATOR_REPORT, "view_count": None}, True, None, id="no-view-count"),
-            pytest.param(CREATOR_REPORT, False, None, id="dashboard-not-ingested"),
-            pytest.param(
-                CREATOR_REPORT,
-                True,
-                UsageDetails(date="2020-01-01", dailyStats=UsageStats(count=50)),
-                id="views-went-down",
-            ),
-        ],
-    )
-    def test_usage_is_skipped_when_it_cannot_be_computed(self, mode_source, report, dashboard, summary):
-        mode_source.metadata = MagicMock()
-        mode_source.metadata.get_by_name.return_value = (
-            Dashboard.model_construct(usageSummary=summary) if dashboard else None
-        )
-        details = ModeDashboardDetails(report=report, queries=[])
-
-        assert list(mode_source.yield_dashboard_usage(details)) == []
-
-    def test_usage_failure_is_reported_not_raised(self, mode_source):
-        mode_source.metadata = MagicMock()
-        mode_source.metadata.get_by_name.side_effect = RuntimeError("boom")
-
-        (result,) = list(mode_source.yield_dashboard_usage(ModeDashboardDetails(report=CREATOR_REPORT, queries=[])))
-
-        assert result.right is None
-        assert "boom" in result.left.error
 
     def test_column_failure_still_yields_data_model(self, mode_source):
         mode_source.metadata = MagicMock()

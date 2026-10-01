@@ -841,9 +841,6 @@
       "9d54ce617922c0caef90ee7f0befd7ec0221791e5a6eb35f629528a1430d689e": 1,
       "bea1e126af890389241341263c5ae02389279aeaca9a698a820c930fa3602187": 1
     },
-    "ingestion/src/metadata/ingestion/source/dashboard/mode/metadata.py": {
-      "841c499bd64e0114de2553ae16666b1e06c830ead3efbfd6601e2b4850e6ec64": 1
-    },
     "ingestion/src/metadata/ingestion/source/dashboard/powerbi/client.py": {
       "02e4467223bc88eae9a754420b0b73b867b5b57947031969c781fd5f79b5a4a1": 2,
       "08927946168dcdbeec30ac30eb5843bb37845328b659a6debb5b39f789a24bd1": 1,

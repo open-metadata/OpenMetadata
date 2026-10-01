@@ -48,7 +48,6 @@ LINKS = "_links"
 SHARE = "share"
 HREF = "href"
 CREATOR = "creator"
-VIEW_COUNT = "view_count"
 
 
 def _report_key(report: dict[str, Any]) -> str:
