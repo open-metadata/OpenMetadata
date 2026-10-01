@@ -46,28 +46,14 @@ final class OntologyMemoryDraftFactory {
 
   Optional<CreateOntologyChangeSet> create(
       final long jobId,
-      final Glossary glossary,
-      final Set<UUID> memoryIds,
-      final OntologyAiCompletionGateway.Completion<OntologyAiCompletionGateway.MemoryTermCandidate>
-          completion,
-      final Predicate<String> termExists) {
-    return create(
-        jobId,
-        new OntologyMemoryGlossarySelector.Selection(glossary, false, 1D, null, null),
-        memoryIds,
-        completion,
-        termExists);
-  }
-
-  Optional<CreateOntologyChangeSet> create(
-      final long jobId,
       final OntologyMemoryGlossarySelector.Selection selection,
       final Set<UUID> memoryIds,
       final OntologyAiCompletionGateway.Completion<OntologyAiCompletionGateway.MemoryTermCandidate>
           completion,
       final Predicate<String> termExists) {
     requireCompletion(completion);
-    if (completion.items().size() > memoryIds.size() * 2) {
+    if (completion.items().size()
+        > memoryIds.size() * OntologyMemoryDerivationService.MAX_TERMS_PER_MEMORY) {
       throw OntologyAiOutputValidator.invalid("memory derivation exceeded its term limit");
     }
     final Set<String> names = new HashSet<>();

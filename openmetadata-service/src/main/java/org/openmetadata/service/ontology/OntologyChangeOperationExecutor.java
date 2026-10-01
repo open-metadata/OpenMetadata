@@ -47,13 +47,6 @@ public final class OntologyChangeOperationExecutor {
   private final Clock clock;
 
   public OntologyChangeOperationExecutor(
-      final GlossaryTermRepository termRepository,
-      final OntologyAxiomRepository axiomRepository,
-      final Clock clock) {
-    this(null, termRepository, axiomRepository, clock);
-  }
-
-  public OntologyChangeOperationExecutor(
       final GlossaryRepository glossaryRepository,
       final GlossaryTermRepository termRepository,
       final OntologyAxiomRepository axiomRepository,
@@ -87,12 +80,14 @@ public final class OntologyChangeOperationExecutor {
   private OperationOutcome createGlossary(
       final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
     final Glossary glossary = JsonUtils.deepCopy(operation.getGlossary(), Glossary.class);
+    // createOrUpdate resolves by name including deleted rows, so an existing namesake would be
+    // silently updated instead of created.
     final var existing =
         glossaryRepository.getByNameOrNull(
             null,
             glossary.getFullyQualifiedName(),
             glossaryRepository.getFields(""),
-            Include.NON_DELETED,
+            Include.ALL,
             false);
     if (existing.isPresent()) {
       throw new BadRequestException("Glossary already exists: " + glossary.getFullyQualifiedName());
@@ -113,7 +108,29 @@ public final class OntologyChangeOperationExecutor {
       term.setSourceMemoryIds(operation.getSourceMemoryIds());
     }
     termRepository.prepareInternal(term, isUpdate);
+    if (!isUpdate) {
+      requireNewTerm(term);
+    }
     return outcome(termRepository.createOrUpdate(uriInfo, term, user).getEntity());
+  }
+
+  // A draft is checked for duplicates when it is written, but another draft or a steward can claim
+  // the name before it is applied. createOrUpdate would then overwrite that term instead of
+  // failing.
+  private void requireNewTerm(final GlossaryTerm term) {
+    final boolean exists =
+        termRepository
+            .getByNameOrNull(
+                null,
+                term.getFullyQualifiedName(),
+                termRepository.getFields(""),
+                Include.ALL,
+                false)
+            .isPresent();
+    if (exists) {
+      throw new BadRequestException(
+          "Glossary term already exists: " + term.getFullyQualifiedName());
+    }
   }
 
   private OperationOutcome deleteTerm(final String user, final OntologyChangeOperation operation) {

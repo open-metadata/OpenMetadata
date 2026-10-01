@@ -19,8 +19,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -156,8 +159,12 @@ public class OntologyChangeSetIT {
     assertFalse(proposalStatus.getQueued());
     assertEquals(
         List.of(changeSet.getId()),
-        proposalStatus.getProposals().stream().map(ref -> ref.getId()).toList());
-    assertEquals(proposedTerm.getName(), proposalStatus.getProposals().getFirst().getDescription());
+        proposalStatus.getProposals().stream()
+            .map(proposal -> proposal.getChangeSet().getId())
+            .toList());
+    assertEquals(
+        List.of(proposedTerm.getName()), proposalStatus.getProposals().getFirst().getTerms());
+    assertFalse(proposalStatus.getEnabled());
 
     assertTrue(
         listOrEmpty(memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities())
@@ -219,6 +226,208 @@ public class OntologyChangeSetIT {
     assertFalse(
         listOrEmpty(unchanged.getAttributes()).stream()
             .anyMatch(value -> value.getId().equals(attribute.getId())));
+  }
+
+  @Test
+  void discardsADraftWhosePlannedGlossaryWasCreatedElsewhere(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String glossaryName = ns.prefix("plannedGlossary");
+    OntologyChangeSet changeSet =
+        createNamedChangeSet(
+            client,
+            ns.prefix("plannedGlossaryDraft"),
+            glossaryName,
+            List.of(createGlossaryOperation(glossaryName)));
+    ns.trackRoot(ONTOLOGY_CHANGE_SET, changeSet);
+    Glossary claimed = GlossaryTestFactory.createWithName(ns, "plannedGlossary");
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("plannedEditor"));
+
+    OntologyChangeSet failed =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+    OntologyChangeSet discarded =
+        client
+            .ontologyChangeSets()
+            .discard(changeSet.getId(), new OntologyChangeSetCommand().withLease(lease));
+
+    assertEquals(OntologyChangeSetState.APPLY_FAILED, failed.getState());
+    assertEquals(OntologyChangeSetState.DISCARDED, discarded.getState());
+    assertEquals(claimed.getId(), client.glossaries().getByName(glossaryName).getId());
+  }
+
+  @Test
+  void applyFailsInsteadOfOverwritingATermThatAlreadyExists(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm existing = createTerm(client, glossary, ns.prefix("claimedTerm"));
+    GlossaryTerm duplicate =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName(existing.getName())
+            .withDescription("A proposal drafted before the name was taken")
+            .withGlossary(glossary.getEntityReference())
+            .withVersion(0.1);
+    OntologyChangeSet changeSet =
+        createChangeSet(
+            client,
+            glossary,
+            new OntologyChangeOperation()
+                .withId(UUID.randomUUID())
+                .withOperationType(OntologyChangeOperationType.CREATE_TERM)
+                .withTerm(duplicate)
+                .withState(OntologyChangeOperationState.ACTIVE),
+            ns);
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("duplicateEditor"));
+
+    OntologyChangeSet failed =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+
+    assertEquals(OntologyChangeSetState.APPLY_FAILED, failed.getState());
+    assertEquals(
+        existing.getDescription(),
+        client.glossaryTerms().get(existing.getId().toString()).getDescription());
+  }
+
+  @Test
+  void appliesADraftWhoseSourceMemoryWasDeleted(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
+    ContextMemory memory = memories.create(memoryRequest(ns.prefix("deletedSourceMemory")));
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    UUID termId = UUID.randomUUID();
+    OntologyChangeSet changeSet =
+        createChangeSet(client, glossary, termFromMemory(glossary, termId, memory, ns), ns);
+    memories.delete(memory.getId().toString(), Map.of("hardDelete", "true"));
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("orphanEditor"));
+
+    OntologyChangeSet applied =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+
+    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+    assertEquals(termId, client.glossaryTerms().get(termId.toString()).getId());
+  }
+
+  @Test
+  void listsOnlyMemoryDraftsInTheRequestedStates(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
+    ContextMemory memory =
+        ns.trackRoot("contextMemory", memories.create(memoryRequest(ns.prefix("listedMemory"))));
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    OntologyChangeSet memoryDraft =
+        trackedNamedChangeSet(
+            client,
+            ns,
+            "memoryDraft",
+            glossary,
+            List.of(termFromMemory(glossary, UUID.randomUUID(), memory, ns)));
+    OntologyChangeSet manualDraft =
+        trackedNamedChangeSet(client, ns, "manualDraft", glossary, List.of());
+    OntologyChangeSet submittedMemoryDraft =
+        trackedNamedChangeSet(
+            client,
+            ns,
+            "submittedMemoryDraft",
+            glossary,
+            List.of(termFromMemory(glossary, UUID.randomUUID(), memory, ns)));
+    OntologyEditLeaseToken lease =
+        acquire(client, submittedMemoryDraft, ns.prefix("submittedEditor"));
+    client
+        .ontologyChangeSets()
+        .submit(submittedMemoryDraft.getId(), new OntologyChangeSetCommand().withLease(lease));
+
+    Set<UUID> drafts = listedIds(client, "memorySourced=true&state=DRAFT,SUBMITTED");
+    Set<UUID> submitted = listedIds(client, "memorySourced=true&state=SUBMITTED");
+
+    assertTrue(drafts.contains(memoryDraft.getId()));
+    assertTrue(drafts.contains(submittedMemoryDraft.getId()));
+    assertFalse(drafts.contains(manualDraft.getId()));
+    assertTrue(submitted.contains(submittedMemoryDraft.getId()));
+    assertFalse(submitted.contains(memoryDraft.getId()));
+  }
+
+  private static Set<UUID> listedIds(OpenMetadataClient client, String query) {
+    JsonNode page =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET, "/v1/ontologyChangeSets?limit=1000&" + query, null, JsonNode.class);
+    Set<UUID> ids = new HashSet<>();
+    page.path("data").forEach(changeSet -> ids.add(UUID.fromString(changeSet.path("id").asText())));
+    return ids;
+  }
+
+  private static CreateContextMemory memoryRequest(String name) {
+    return new CreateContextMemory()
+        .withName(name)
+        .withDescription("Memory behind an ontology draft")
+        .withQuestion("What is an active subscriber?")
+        .withAnswer("A customer with a paid subscription this month.");
+  }
+
+  private static OntologyChangeOperation termFromMemory(
+      Glossary glossary, UUID termId, ContextMemory memory, TestNamespace ns) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(OntologyChangeOperationType.CREATE_TERM)
+        .withTerm(
+            new GlossaryTerm()
+                .withId(termId)
+                .withName(ns.prefix("memoryTerm") + "_" + termId.toString().substring(0, 8))
+                .withDescription("A customer with a paid subscription this month")
+                .withGlossary(glossary.getEntityReference())
+                .withVersion(0.1))
+        .withSourceMemoryIds(Set.of(memory.getId()))
+        .withState(OntologyChangeOperationState.ACTIVE);
+  }
+
+  private static OntologyChangeOperation createGlossaryOperation(String glossaryName) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(OntologyChangeOperationType.CREATE_GLOSSARY)
+        .withGlossary(
+            new Glossary()
+                .withId(UUID.randomUUID())
+                .withName(glossaryName)
+                .withFullyQualifiedName(glossaryName)
+                .withDisplayName("Planned glossary")
+                .withDescription("A glossary a memory draft plans to create")
+                .withVersion(0.1))
+        .withState(OntologyChangeOperationState.ACTIVE);
+  }
+
+  private static OntologyChangeSet trackedNamedChangeSet(
+      OpenMetadataClient client,
+      TestNamespace ns,
+      String name,
+      Glossary glossary,
+      List<OntologyChangeOperation> operations) {
+    return ns.trackRoot(
+        ONTOLOGY_CHANGE_SET,
+        createNamedChangeSet(
+            client, ns.prefix(name), glossary.getFullyQualifiedName(), operations));
+  }
+
+  private static OntologyChangeSet createNamedChangeSet(
+      OpenMetadataClient client,
+      String name,
+      String glossaryFqn,
+      List<OntologyChangeOperation> operations) {
+    return client
+        .ontologyChangeSets()
+        .create(
+            new CreateOntologyChangeSet()
+                .withName(name)
+                .withDisplayName("Ontology draft")
+                .withDescription("Ontology draft under review")
+                .withGlossaries(Set.of(glossaryFqn))
+                .withOperations(operations)
+                .withUndoCursor(operations.size()));
   }
 
   private static GlossaryTerm createTerm(

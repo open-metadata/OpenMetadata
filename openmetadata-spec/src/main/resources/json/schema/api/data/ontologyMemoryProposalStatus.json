@@ -5,16 +5,65 @@
   "description": "Active ontology drafts and queued derivation work for a context memory.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.OntologyMemoryProposalStatus",
+  "definitions": {
+    "proposal": {
+      "description": "An open Studio draft derived from the memory.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.OntologyMemoryProposal",
+      "properties": {
+        "changeSet": {
+          "description": "The Studio draft awaiting review.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "terms": {
+          "description": "Display names of the glossaries and terms the draft proposes from this memory.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["changeSet", "terms"],
+      "additionalProperties": false
+    },
+    "jobOutcome": {
+      "description": "Outcome of the most recent finished derivation job that included the memory.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.OntologyMemoryDerivationOutcome",
+      "properties": {
+        "result": {
+          "type": "string",
+          "javaType": "org.openmetadata.schema.api.data.OntologyMemoryDerivationResult",
+          "enum": ["PROPOSED", "NO_NEW_TERMS", "FAILED"]
+        },
+        "message": {
+          "description": "Failure reason when the job failed.",
+          "type": "string"
+        },
+        "completedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["result"],
+      "additionalProperties": false
+    }
+  },
   "properties": {
+    "enabled": {
+      "description": "Whether this deployment can derive ontology drafts from memories.",
+      "type": "boolean"
+    },
     "proposals": {
       "description": "Open Studio drafts derived from this memory.",
-      "$ref": "../../type/entityReferenceList.json"
+      "type": "array",
+      "items": { "$ref": "#/definitions/proposal" }
     },
     "queued": {
       "description": "Whether a derivation job for this memory is pending or running.",
       "type": "boolean"
+    },
+    "lastJob": {
+      "$ref": "#/definitions/jobOutcome"
     }
   },
-  "required": ["proposals", "queued"],
+  "required": ["enabled", "proposals", "queued"],
   "additionalProperties": false
 }

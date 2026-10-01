@@ -65,7 +65,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
-import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfEntityDiffService;
 import org.openmetadata.service.rdf.RdfEntityTypeValidator;
@@ -302,10 +302,7 @@ public class RdfResource {
     this.federationGuard = new SparqlFederationGuard(config.getRdfConfiguration());
     this.configuredBaseUri = rdfBaseUri(config);
     this.entityDiffService = new RdfEntityDiffService(configuredBaseUri);
-    this.aiEnabled =
-        config.getRdfConfiguration() != null
-            && Boolean.TRUE.equals(config.getRdfConfiguration().getAiEnabled())
-            && LLMClientHolder.isEnabled();
+    this.aiEnabled = OntologyAiAvailability.isEnabled(config.getRdfConfiguration());
   }
 
   private static String rdfBaseUri(final OpenMetadataApplicationConfig config) {

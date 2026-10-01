@@ -70,17 +70,22 @@
       "description": "Published context memories that support this AI suggestion.",
       "type": "array",
       "items": { "$ref": "basic.json#/definitions/uuid" },
-      "uniqueItems": true
+      "uniqueItems": true,
+      "maxItems": 20
     },
     "confidence": {
+      "description": "Model confidence in this AI suggestion, from 0 to 1.",
       "type": "number",
       "minimum": 0,
       "maximum": 1
     },
     "rationale": {
-      "type": "string"
+      "description": "Model explanation of the evidence behind this AI suggestion.",
+      "type": "string",
+      "maxLength": 2000
     },
     "modelId": {
+      "description": "Identifier of the model that produced this AI suggestion.",
       "type": "string"
     },
     "state": {

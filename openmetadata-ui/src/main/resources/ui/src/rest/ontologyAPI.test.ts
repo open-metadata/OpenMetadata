@@ -13,16 +13,19 @@
 
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { OntologyChangeSetState } from '../generated/entity/data/ontologyChangeSet';
 import APIClient from './axiosClient';
 import {
   generateOntologyDomainDraft,
   generateOntologySparql,
   getMemoryOntologyProposalStatus,
   getOntologyBulkTemplate,
+  getOntologyChangeSet,
   getRdfEntityDiff,
   installOntologyPack,
   listInferenceRules,
   listOntologyBulkJobs,
+  listOntologyChangeSets,
   listOntologyPacks,
   listRelationshipTypes,
   materializeInferenceRules,
@@ -63,12 +66,41 @@ describe('ontologyAPI', () => {
   });
 
   it('reads the proposal status for a memory', async () => {
-    const status = { proposals: [], queued: true };
+    const status = { enabled: true, proposals: [], queued: true };
     mockedApiClient.get.mockResolvedValue({ data: status });
 
     expect(await getMemoryOntologyProposalStatus('memory-id')).toEqual(status);
     expect(mockedApiClient.get).toHaveBeenCalledWith(
       '/ontology/ai/memories/memory-id/proposals'
+    );
+  });
+
+  it('lists memory drafts across several states in one request', async () => {
+    mockedApiClient.get.mockResolvedValue({ data: { data: [], paging: {} } });
+
+    await listOntologyChangeSets({
+      memorySourced: true,
+      state: [OntologyChangeSetState.Draft, OntologyChangeSetState.Submitted],
+    });
+
+    expect(mockedApiClient.get).toHaveBeenCalledWith('/ontologyChangeSets', {
+      params: {
+        memorySourced: true,
+        state: [OntologyChangeSetState.Draft, OntologyChangeSetState.Submitted],
+      },
+    });
+  });
+
+  it('reads one change set with the requested fields', async () => {
+    const changeSet = { id: 'draft-id' };
+    mockedApiClient.get.mockResolvedValue({ data: changeSet });
+
+    expect(await getOntologyChangeSet('draft-id', 'operations')).toEqual(
+      changeSet
+    );
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/ontologyChangeSets/draft-id',
+      { params: { fields: 'operations' } }
     );
   });
 

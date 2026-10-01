@@ -16,6 +16,7 @@ package org.openmetadata.service.jobs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -24,9 +25,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
+import java.util.Optional;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
 
 class JobDAOTest {
   private static final String ONTOLOGY_BULK_FILTER = "'ONTOLOGY_BULK'";
@@ -44,6 +47,75 @@ class JobDAOTest {
     assertTrue(update.value().contains(RUNNING_FILTER));
     assertTrue(update.value().contains(STALENESS_FILTER));
     assertEquals(2, method.getParameterCount());
+  }
+
+  @Test
+  void staleWorkerRecoveryReapsMemoryDerivationJobs() throws NoSuchMethodException {
+    final SqlUpdate update =
+        JobDAO.class
+            .getMethod("markStaleRunningJobsFailed", long.class, long.class)
+            .getAnnotation(SqlUpdate.class);
+
+    assertTrue(
+        update
+            .value()
+            .contains("'" + BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION.name() + "'"));
+  }
+
+  @Test
+  void memoryDerivationJobsTargetTheirRegisteredHandler() {
+    assertEquals(
+        OntologyMemoryDerivationJobHandler.HANDLER_NAME, JobDAO.ONTOLOGY_MEMORY_DERIVATION_HANDLER);
+  }
+
+  @Test
+  void memoryBatchAppendsToAnOpenPendingJob() {
+    JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
+    when(jobDao.lockMemoryForOntologyQueue("memory-id")).thenReturn("memory-id");
+    when(jobDao.lockOpenOntologyMemoryBatch(
+            "contextFile:file-id",
+            JobDAO.ONTOLOGY_MEMORY_BATCH_LIMIT,
+            JobDAO.ONTOLOGY_MEMORY_BATCH_APPEND_MARGIN_MS))
+        .thenReturn(7L);
+    when(jobDao.appendToOntologyMemoryBatch(7L, "memory-id")).thenReturn(1);
+
+    assertEquals(
+        Optional.of(7L),
+        jobDao.enqueueOntologyMemoryDerivationBatch(
+            "memory-id", "contextFile:file-id", "{}", "admin", 100L));
+    verify(jobDao, never()).insertJobInternal(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void memoryBatchStartsANewDelayedJobWhenNoneIsOpen() {
+    JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
+    when(jobDao.lockMemoryForOntologyQueue("memory-id")).thenReturn("memory-id");
+    when(jobDao.insertJobInternal(
+            BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION.name(),
+            JobDAO.ONTOLOGY_MEMORY_DERIVATION_HANDLER,
+            "{}",
+            "admin",
+            100L))
+        .thenReturn(8L);
+
+    assertEquals(
+        Optional.of(8L),
+        jobDao.enqueueOntologyMemoryDerivationBatch(
+            "memory-id", "contextFile:file-id", "{}", "admin", 100L));
+  }
+
+  @Test
+  void memoryBatchSkipsAMemoryAlreadyInFlight() {
+    JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
+    when(jobDao.lockMemoryForOntologyQueue("memory-id")).thenReturn("memory-id");
+    when(jobDao.countInFlightOntologyMemoryJobs("memory-id")).thenReturn(1);
+
+    assertTrue(
+        jobDao
+            .enqueueOntologyMemoryDerivationBatch(
+                "memory-id", "contextFile:file-id", "{}", "admin", 100L)
+            .isEmpty());
+    verify(jobDao, never()).insertJobInternal(any(), any(), any(), any(), any());
   }
 
   @Test

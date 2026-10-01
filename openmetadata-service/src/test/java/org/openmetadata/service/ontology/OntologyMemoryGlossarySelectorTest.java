@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.OntologyAiProviderException;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.search.SearchRepository;
@@ -104,8 +105,7 @@ class OntologyMemoryGlossarySelectorTest {
 
   @Test
   void proposesNewGlossaryWhenNoCandidateFits() {
-    when(repository.getByNameOrNull(
-            isNull(), eq("Sales"), isNull(), eq(Include.NON_DELETED), eq(false)))
+    when(repository.getByNameOrNull(isNull(), eq("Sales"), isNull(), eq(Include.ALL), eq(false)))
         .thenReturn(Optional.empty());
 
     final var selection = selector.choose(completion(null, 0.8D), List.of(existing));
@@ -117,8 +117,7 @@ class OntologyMemoryGlossarySelectorTest {
 
   @Test
   void proposesNewGlossaryWhenExistingMatchIsWeak() {
-    when(repository.getByNameOrNull(
-            isNull(), eq("Sales"), isNull(), eq(Include.NON_DELETED), eq(false)))
+    when(repository.getByNameOrNull(isNull(), eq("Sales"), isNull(), eq(Include.ALL), eq(false)))
         .thenReturn(Optional.empty());
 
     final var selection = selector.choose(completion(existing.getId(), 0.5D), List.of(existing));
@@ -128,10 +127,113 @@ class OntologyMemoryGlossarySelectorTest {
   }
 
   @Test
+  void rejectsProposedNameOwnedByADeletedGlossary() {
+    final Glossary deleted =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("Sales")
+            .withFullyQualifiedName("Sales")
+            .withDeleted(true);
+    when(repository.getByNameOrNull(isNull(), eq("Sales"), isNull(), eq(Include.ALL), eq(false)))
+        .thenReturn(Optional.of(deleted));
+
+    assertThrows(
+        OntologyAiProviderException.class,
+        () -> selector.choose(completion(null, 0.8D), List.of(existing)));
+  }
+
+  @Test
+  void queryKeepsAcronymsAndNonAsciiWordsAndSkipsBlankSummaries() {
+    final String acronym =
+        OntologyMemoryGlossarySelector.query(
+            List.of(memory("What is ARR?", "Annual recurring revenue.", "")));
+    final String spanish =
+        OntologyMemoryGlossarySelector.query(
+            List.of(memory("¿Qué es un cliente activo?", "Compra cada mes.", null)));
+
+    assertEquals("arr OR annual OR recurring OR revenue", acronym);
+    assertTrue(spanish.contains("qué"));
+    assertTrue(spanish.contains("cliente"));
+    assertTrue(spanish.contains("compra"));
+  }
+
+  @Test
+  void queryCoversEveryMemoryInABatch() {
+    final String query =
+        OntologyMemoryGlossarySelector.query(
+            List.of(
+                memory("Customer churn rate definitions and thresholds", "Churn", null),
+                memory("Lead scoring", "Marketing qualified lead", null)));
+
+    assertTrue(query.contains("churn"));
+    assertTrue(query.contains("lead"));
+    assertTrue(query.contains("marketing"));
+  }
+
+  @Test
+  void staleSearchHitDoesNotDiscardOtherCandidates() throws IOException {
+    final UUID staleId = UUID.randomUUID();
+    when(searchRepository.getIndexOrAliasName("glossary_search_index"))
+        .thenReturn("glossary_search_index");
+    when(searchRepository.search(any(SearchRequest.class), isNull()))
+        .thenReturn(
+            Response.ok(
+                    "{\"hits\":{\"hits\":[{\"_source\":{\"id\":\""
+                        + staleId
+                        + "\"}},{\"_source\":{\"id\":\""
+                        + existing.getId()
+                        + "\"}}]}}")
+                .build());
+    when(repository.get(isNull(), eq(staleId), isNull()))
+        .thenThrow(EntityNotFoundException.byId(staleId.toString()));
+    when(repository.get(isNull(), eq(existing.getId()), isNull())).thenReturn(existing);
+    when(repository.listAfter(isNull(), isNull(), any(), eq(50), isNull()))
+        .thenReturn(new ResultList<>(List.of()));
+    when(gateway.matchGlossary(any())).thenReturn(completion(existing.getId(), 0.85D));
+
+    selector.select(List.of(memory("What is a customer?", "A buyer", null)), List.of());
+
+    final ArgumentCaptor<OntologyAiCompletionGateway.GlossaryMatchPrompt> prompt =
+        ArgumentCaptor.forClass(OntologyAiCompletionGateway.GlossaryMatchPrompt.class);
+    verify(gateway).matchGlossary(prompt.capture());
+    assertEquals(
+        List.of(existing.getId()),
+        prompt.getValue().glossaries().stream()
+            .map(OntologyAiCompletionGateway.GlossaryContext::id)
+            .toList());
+  }
+
+  @Test
+  void truncatesLongGlossaryDescriptionsInThePrompt() {
+    final Glossary verbose =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("Verbose")
+            .withFullyQualifiedName("Verbose")
+            .withDescription("x".repeat(5_000));
+    when(repository.listAfter(isNull(), isNull(), any(), eq(50), isNull()))
+        .thenReturn(new ResultList<>(List.of(verbose)));
+    when(gateway.matchGlossary(any())).thenReturn(completion(verbose.getId(), 0.85D));
+
+    selector.select(List.of(memory("What is a customer?", "A buyer", null)), List.of());
+
+    final ArgumentCaptor<OntologyAiCompletionGateway.GlossaryMatchPrompt> prompt =
+        ArgumentCaptor.forClass(OntologyAiCompletionGateway.GlossaryMatchPrompt.class);
+    verify(gateway).matchGlossary(prompt.capture());
+    assertEquals(1_000, prompt.getValue().glossaries().getFirst().description().length());
+  }
+
+  @Test
   void rejectsInventedExistingGlossaryIdentifier() {
     assertThrows(
         OntologyAiProviderException.class,
         () -> selector.choose(completion(UUID.randomUUID(), 0.9D), List.of(existing)));
+  }
+
+  private static OntologyAiCompletionGateway.MemoryContext memory(
+      final String question, final String answer, final String summary) {
+    return new OntologyAiCompletionGateway.MemoryContext(
+        UUID.randomUUID(), question, answer, summary);
   }
 
   private static OntologyAiCompletionGateway.Completion<

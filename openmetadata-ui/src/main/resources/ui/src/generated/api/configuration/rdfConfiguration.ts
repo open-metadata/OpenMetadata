@@ -20,6 +20,11 @@ export interface RDFConfiguration {
      */
     aiEnabled?: boolean;
     /**
+     * Deprecated alias of aiEnabled, accepted so existing configuration files keep loading.
+     * Either flag enables AI-assisted Ontology flows.
+     */
+    askCollateEnabled?: boolean;
+    /**
      * Base URI for RDF resources
      */
     baseUri?: string;

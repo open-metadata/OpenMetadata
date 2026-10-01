@@ -199,11 +199,24 @@ export const createOntologyAxiom = async (request: CreateOntologyAxiom) => {
 };
 
 export const listOntologyChangeSets = async (
-  params?: ListParams & { state?: OntologyChangeSetState }
+  params?: ListParams & {
+    // Several states are sent comma-separated, which the server accepts.
+    state?: OntologyChangeSetState | OntologyChangeSetState[];
+    memorySourced?: boolean;
+  }
 ) => {
   const response = await APIClient.get<PagingResponse<OntologyChangeSet[]>>(
     CHANGE_SETS_PATH,
     { params }
+  );
+
+  return response.data;
+};
+
+export const getOntologyChangeSet = async (id: string, fields?: string) => {
+  const response = await APIClient.get<OntologyChangeSet>(
+    `${CHANGE_SETS_PATH}/${id}`,
+    { params: fields ? { fields } : undefined }
   );
 
   return response.data;

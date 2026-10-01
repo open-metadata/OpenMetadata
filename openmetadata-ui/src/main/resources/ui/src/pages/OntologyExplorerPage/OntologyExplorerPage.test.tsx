@@ -16,6 +16,13 @@ import { ReactNode } from 'react';
 import { Glossary } from '../../generated/entity/data/glossary';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
+let mockSearchParams = new URLSearchParams();
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useSearchParams: () => [mockSearchParams, jest.fn()],
+}));
+
 interface ExplorerMockProps {
   conceptDraftId?: string;
   defaultConceptGlossaryId?: string;
@@ -500,7 +507,7 @@ describe('OntologyExplorerPage', () => {
   });
 
   it('opens a linked draft directly in Studio review', () => {
-    window.history.pushState({}, '', '/governance/ontology?draft=draft-16');
+    mockSearchParams = new URLSearchParams('draft=draft-16');
 
     render(<OntologyExplorerPage />);
 
@@ -510,7 +517,7 @@ describe('OntologyExplorerPage', () => {
     );
     expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
 
-    window.history.pushState({}, '', '/');
+    mockSearchParams = new URLSearchParams();
   });
 
   it('does not expose an AI affordance when the effective flag is disabled', () => {

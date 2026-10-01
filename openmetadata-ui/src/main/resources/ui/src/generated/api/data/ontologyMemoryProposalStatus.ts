@@ -15,9 +15,14 @@
  */
 export interface OntologyMemoryProposalStatus {
     /**
+     * Whether this deployment can derive ontology drafts from memories.
+     */
+    enabled:  boolean;
+    lastJob?: JobOutcome;
+    /**
      * Open Studio drafts derived from this memory.
      */
-    proposals: EntityReference[];
+    proposals: Proposal[];
     /**
      * Whether a derivation job for this memory is pending or running.
      */
@@ -25,12 +30,39 @@ export interface OntologyMemoryProposalStatus {
 }
 
 /**
- * Open Studio drafts derived from this memory.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
+ * Outcome of the most recent finished derivation job that included the memory.
+ */
+export interface JobOutcome {
+    completedAt?: number;
+    /**
+     * Failure reason when the job failed.
+     */
+    message?: string;
+    result:   Result;
+}
+
+export enum Result {
+    Failed = "FAILED",
+    NoNewTerms = "NO_NEW_TERMS",
+    Proposed = "PROPOSED",
+}
+
+/**
+ * An open Studio draft derived from the memory.
+ */
+export interface Proposal {
+    /**
+     * The Studio draft awaiting review.
+     */
+    changeSet: EntityReference;
+    /**
+     * Display names of the glossaries and terms the draft proposes from this memory.
+     */
+    terms: string[];
+}
+
+/**
+ * The Studio draft awaiting review.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For

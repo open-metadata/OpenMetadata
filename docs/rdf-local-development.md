@@ -235,8 +235,12 @@ rdf:
 | `LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED` | Allow memory-derived ontology draft jobs when RDF AI and LLM completion are enabled | `false` |
 
 Memory-derived glossary drafts require `RDF_AI_ENABLED=true`, `LLM_ENABLED=true`, and
-`LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED=true`. Published memories are submitted through
-`POST /api/v1/ontology/ai/memories/jobs`; this setting does not enqueue jobs automatically.
+`LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED=true`. With all three on, creating or publishing an Entity or
+Public memory queues a derivation job automatically; memories extracted from the same file or page
+share one job, which starts about 30 seconds after the first of them. A proposal can also be
+requested through `POST /api/v1/ontology/ai/memories/jobs`; Private and Shared memories need their
+owner to request it. `RDF_ASK_COLLATE_ENABLED` is still read as a deprecated alias of
+`RDF_AI_ENABLED`.
 
 ### Docker Compose Configuration
 

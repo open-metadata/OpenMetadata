@@ -46,13 +46,22 @@ export interface OntologyChangeOperation {
     /**
      * Version used for optimistic concurrency. Omitted for create operations.
      */
-    baseVersion?:  number;
-    confidence?:   number;
-    glossary?:     Glossary;
-    id:            string;
-    mapping?:      ConceptMapping;
+    baseVersion?: number;
+    /**
+     * Model confidence in this AI suggestion, from 0 to 1.
+     */
+    confidence?: number;
+    glossary?:   Glossary;
+    id:          string;
+    mapping?:    ConceptMapping;
+    /**
+     * Identifier of the model that produced this AI suggestion.
+     */
     modelId?:      string;
     operationType: OperationType;
+    /**
+     * Model explanation of the evidence behind this AI suggestion.
+     */
     rationale?:    string;
     relationship?: OntologyRelationship;
     /**

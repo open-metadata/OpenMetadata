@@ -1160,17 +1160,38 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     storeSourceMemoryRelationships(entity);
   }
 
+  // Provenance must never block a term write: a source memory deleted after the draft was made is
+  // skipped rather than failing the apply (or a later bulk rewrite) of an otherwise valid term.
   private void storeSourceMemoryRelationships(GlossaryTerm entity) {
     for (UUID memoryId :
         entity.getSourceMemoryIds() == null ? Set.<UUID>of() : entity.getSourceMemoryIds()) {
-      Entity.getEntityReferenceById(Entity.CONTEXT_MEMORY, memoryId, Include.NON_DELETED);
-      addRelationship(
-          entity.getId(),
-          memoryId,
-          Entity.GLOSSARY_TERM,
-          Entity.CONTEXT_MEMORY,
-          Relationship.DERIVED_FROM);
+      if (isKnownMemory(memoryId)) {
+        addRelationship(
+            entity.getId(),
+            memoryId,
+            Entity.GLOSSARY_TERM,
+            Entity.CONTEXT_MEMORY,
+            Relationship.DERIVED_FROM);
+      }
     }
+  }
+
+  // A client edit may only add memories that exist; ids already stored are kept as they are.
+  private static void requireKnownMemories(Set<UUID> original, Set<UUID> updated) {
+    for (UUID memoryId : updated == null ? Set.<UUID>of() : updated) {
+      if ((original == null || !original.contains(memoryId)) && !isKnownMemory(memoryId)) {
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(Entity.CONTEXT_MEMORY, memoryId));
+      }
+    }
+  }
+
+  private static boolean isKnownMemory(UUID memoryId) {
+    boolean isKnown = ContextMemoryRepository.memoryExists(memoryId);
+    if (!isKnown) {
+      LOG.debug("Skipping provenance to missing context memory {}", memoryId);
+    }
+    return isKnown;
   }
 
   private void storeRealizations(GlossaryTerm entity) {
@@ -2813,6 +2834,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         updated.setSourceMemoryIds(original.getSourceMemoryIds());
       }
       if (!Objects.equals(original.getSourceMemoryIds(), updated.getSourceMemoryIds())) {
+        requireKnownMemories(original.getSourceMemoryIds(), updated.getSourceMemoryIds());
         deleteFrom(
             updated.getId(),
             Entity.GLOSSARY_TERM,

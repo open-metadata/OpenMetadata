@@ -24,6 +24,7 @@ import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { useOntologyAiCapability } from '../../components/OntologyExplorer/hooks/useOntologyAiCapability';
 import {
   OntologyEditLeaseState,
@@ -185,8 +186,15 @@ function computeChangeSetPermissions(
       ResourceEntity.GLOSSARY,
       permissions
     );
+  const canDiscard =
+    Boolean(isAdminUser) ||
+    checkPermission(
+      Operation.EditAll,
+      ResourceEntity.ONTOLOGY_CHANGE_SET,
+      permissions
+    );
 
-  return { canApply, canSubmit };
+  return { canApply, canDiscard, canSubmit };
 }
 
 function computeModeTabs(
@@ -390,8 +398,17 @@ function resolveQuerySurfaceChange(id: string): QuerySurface | undefined {
     : undefined;
 }
 
-const initialStudioMode = (): StudioMode =>
-  new URLSearchParams(window.location.search).has('draft') ? 'review' : 'view';
+const DRAFT_SEARCH_PARAM = 'draft';
+
+// A memory modal links straight to its draft, which opens Studio in review mode.
+function useLinkedDraftId(): string | undefined {
+  const [searchParams] = useSearchParams();
+
+  return searchParams.get(DRAFT_SEARCH_PARAM) ?? undefined;
+}
+
+const studioModeFor = (linkedDraftId?: string): StudioMode =>
+  linkedDraftId ? 'review' : 'view';
 
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
@@ -404,10 +421,10 @@ const OntologyExplorerPage: React.FC = () => {
     isRdfEnabled,
     isLoading: isCapabilityLoading,
   } = useOntologyAiCapability();
-  const initialDraftId = new URLSearchParams(window.location.search).get(
-    'draft'
+  const initialDraftId = useLinkedDraftId();
+  const [mode, setMode] = useState<StudioMode>(() =>
+    studioModeFor(initialDraftId)
   );
-  const [mode, setMode] = useState<StudioMode>(initialStudioMode);
   const [viewSurface, setViewSurface] = useState<ViewSurface>('graph');
   const [editSurface, setEditSurface] = useState<EditSurface>('graph');
   const [querySurface, setQuerySurface] = useState<QuerySurface>('console');
@@ -803,8 +820,9 @@ const OntologyExplorerPage: React.FC = () => {
       return (
         <OntologyMemoryReviewPanel
           canApply={changeSetPermissions.canApply}
+          canDiscard={changeSetPermissions.canDiscard}
           canSubmit={changeSetPermissions.canSubmit}
-          initialDraftId={initialDraftId ?? undefined}
+          initialDraftId={initialDraftId}
           onApplied={() => setExplorerRevision((revision) => revision + 1)}
         />
       );

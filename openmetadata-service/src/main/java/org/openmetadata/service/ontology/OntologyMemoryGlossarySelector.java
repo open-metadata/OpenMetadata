@@ -14,10 +14,8 @@
 package org.openmetadata.service.ontology;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -25,12 +23,14 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchRepository;
@@ -41,13 +41,20 @@ final class OntologyMemoryGlossarySelector {
   private static final int MAX_CANDIDATES = 50;
   private static final int MAX_SEARCH_CANDIDATES = 40;
   private static final int MAX_RELEVANT_TERMS = 5;
-  private static final int MAX_QUERY_WORDS = 12;
+  private static final int MAX_GLOSSARY_DESCRIPTION_CHARS = 1_000;
+  private static final int MAX_QUERY_WORDS = 32;
+  private static final int MAX_QUERY_WORDS_PER_MEMORY = 8;
+  // Three characters keeps the acronyms (ARR, NPS, SLA) that glossary-worthy memories often define.
+  private static final int MIN_QUERY_WORD_LENGTH = 3;
+  private static final Pattern QUERY_WORD_SEPARATOR = Pattern.compile("[^\\p{L}\\p{N}]+");
   private static final double MIN_MATCH_CONFIDENCE = 0.7D;
   private static final Pattern NAME = Pattern.compile("[A-Za-z][A-Za-z0-9_-]{0,127}");
   private static final Set<String> QUERY_STOP_WORDS =
       Set.of(
-          "what", "when", "where", "which", "this", "that", "with", "from", "have", "does", "about",
-          "should");
+          "about", "all", "and", "any", "are", "can", "does", "for", "from", "has", "have", "how",
+          "into", "its", "not", "our", "should", "than", "that", "the", "their", "them", "then",
+          "there", "they", "this", "was", "were", "what", "when", "where", "which", "who", "why",
+          "with", "you", "your");
 
   private final GlossaryRepository repository;
   private final SearchRepository searchRepository;
@@ -75,7 +82,7 @@ final class OntologyMemoryGlossarySelector {
                         new OntologyAiCompletionGateway.GlossaryContext(
                             glossary.getId(),
                             glossary.getName(),
-                            glossary.getDescription(),
+                            truncate(glossary.getDescription()),
                             relevantTerms(glossary, existingTerms)))
                 .toList());
     final var completion = gateway.matchGlossary(prompt);
@@ -115,19 +122,24 @@ final class OntologyMemoryGlossarySelector {
           existing, false, match.confidence(), match.rationale(), completion.modelId());
     }
     final Glossary proposed = proposedGlossary(match);
+    // Include deleted glossaries: a soft-deleted namesake still owns the name, so planning to
+    // create it would only fail when a steward applies the draft.
     final var named =
         repository.getByNameOrNull(
             null,
             proposed.getName(),
             repository.getFields("ontologyConfiguration"),
-            Include.NON_DELETED,
+            Include.ALL,
             false);
-    if (named.isPresent() && isEditable(named.get())) {
+    if (named.isPresent()
+        && !Boolean.TRUE.equals(named.get().getDeleted())
+        && isEditable(named.get())) {
       return new Selection(
           named.get(), false, match.confidence(), match.rationale(), completion.modelId());
     }
     if (named.isPresent()) {
-      throw new BadRequestException("Proposed glossary name belongs to a read-only glossary");
+      throw OntologyAiOutputValidator.invalid(
+          "proposed glossary name belongs to a read-only or deleted glossary");
     }
     return new Selection(
         proposed, true, match.confidence(), match.rationale(), completion.modelId());
@@ -188,22 +200,43 @@ final class OntologyMemoryGlossarySelector {
       }
     }
     return ids.stream()
-        .map(id -> repository.get(null, id, repository.getFields("ontologyConfiguration")))
-        .filter(OntologyMemoryGlossarySelector::isEditable)
+        .map(this::glossaryOrNull)
+        .filter(glossary -> glossary != null && isEditable(glossary))
         .toList();
+  }
+
+  // The index can briefly lag a delete; one stale hit must not discard every other candidate.
+  private Glossary glossaryOrNull(final UUID id) {
+    try {
+      return repository.get(null, id, repository.getFields("ontologyConfiguration"));
+    } catch (EntityNotFoundException exception) {
+      return null;
+    }
   }
 
   static String query(final List<OntologyAiCompletionGateway.MemoryContext> memories) {
     return memories.stream()
-        .map(memory -> memory.summary() == null ? memory.question() : memory.summary())
-        .flatMap(text -> Arrays.stream(text.split("[^A-Za-z0-9]+")))
-        .map(word -> word.toLowerCase(Locale.ROOT))
-        .filter(word -> word.length() >= 4)
-        .filter(word -> !QUERY_STOP_WORDS.contains(word))
+        .flatMap(memory -> queryWords(memory).limit(MAX_QUERY_WORDS_PER_MEMORY))
         .distinct()
         .limit(MAX_QUERY_WORDS)
         .reduce((left, right) -> left + " OR " + right)
         .orElse("");
+  }
+
+  private static Stream<String> queryWords(final OntologyAiCompletionGateway.MemoryContext memory) {
+    return Stream.of(memory.summary(), memory.question(), memory.answer())
+        .filter(text -> text != null && !text.isBlank())
+        .flatMap(QUERY_WORD_SEPARATOR::splitAsStream)
+        .map(word -> word.toLowerCase(Locale.ROOT))
+        .filter(word -> word.codePointCount(0, word.length()) >= MIN_QUERY_WORD_LENGTH)
+        .filter(word -> !QUERY_STOP_WORDS.contains(word))
+        .distinct();
+  }
+
+  private static String truncate(final String description) {
+    return description == null || description.length() <= MAX_GLOSSARY_DESCRIPTION_CHARS
+        ? description
+        : description.substring(0, MAX_GLOSSARY_DESCRIPTION_CHARS);
   }
 
   private static boolean isEditable(final Glossary glossary) {
@@ -233,7 +266,7 @@ final class OntologyMemoryGlossarySelector {
         || match.newGlossaryDescription() == null
         || match.newGlossaryDescription().isBlank()
         || match.newGlossaryDescription().length() > 4_000) {
-      throw new BadRequestException("AI did not propose a valid new glossary");
+      throw OntologyAiOutputValidator.invalid("no valid new glossary was proposed");
     }
     return new Glossary()
         .withId(UUID.randomUUID())

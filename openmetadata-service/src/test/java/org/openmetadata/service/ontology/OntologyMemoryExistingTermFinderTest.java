@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
@@ -69,6 +70,21 @@ class OntologyMemoryExistingTermFinderTest {
     when(searchRepository.search(any(SearchRequest.class), isNull()))
         .thenReturn(Response.ok("{}").build());
     assertThrows(OntologyAiProviderException.class, () -> finder.find(List.of(memory())));
+  }
+
+  @Test
+  void treatsAMemoryWithoutSearchableWordsAsHavingNoExistingTerms() {
+    final var memory = new OntologyAiCompletionGateway.MemoryContext(memoryId, "AI?", "AI.", "");
+
+    assertTrue(finder.find(List.of(memory)).isEmpty());
+    verifyNoInteractions(searchRepository);
+  }
+
+  @Test
+  void refusesToGuessWhenSearchIsUnavailable() {
+    assertThrows(
+        OntologyAiProviderException.class,
+        () -> new OntologyMemoryExistingTermFinder(null).find(List.of(memory())));
   }
 
   private OntologyAiCompletionGateway.MemoryContext memory() {

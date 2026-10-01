@@ -18,6 +18,7 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jobs.JobDAO;
 
@@ -40,6 +41,46 @@ class OntologyMemoryDerivationQueueTest {
     OntologyMemoryDerivationJobHandler.Args payload =
         JsonUtils.readValue(args.getValue(), OntologyMemoryDerivationJobHandler.Args.class);
     assertEquals(List.of(memoryId), payload.memoryIds());
+  }
+
+  @Test
+  void batchesMemoriesExtractedFromOneSourceBehindADelay() {
+    UUID memoryId = UUID.randomUUID();
+    UUID fileId = UUID.randomUUID();
+    ContextMemory memory =
+        memory(memoryId, MemoryVisibility.ENTITY)
+            .withSourceEntity(new EntityReference().withId(fileId).withType("contextFile"));
+    OntologyMemoryDerivationQueue queue =
+        new OntologyMemoryDerivationQueue(jobDao, () -> true, () -> 1_000L);
+
+    queue.enqueue(memory, "admin");
+
+    ArgumentCaptor<String> args = ArgumentCaptor.forClass(String.class);
+    verify(jobDao)
+        .enqueueOntologyMemoryDerivationBatch(
+            eq(memoryId.toString()),
+            eq("contextFile:" + fileId),
+            args.capture(),
+            eq("admin"),
+            eq(1_000L + OntologyMemoryDerivationQueue.BATCH_WINDOW.toMillis()));
+    OntologyMemoryDerivationJobHandler.Args payload =
+        JsonUtils.readValue(args.getValue(), OntologyMemoryDerivationJobHandler.Args.class);
+    assertEquals("contextFile:" + fileId, payload.batchKey());
+    assertEquals(List.of(memoryId), payload.memoryIds());
+  }
+
+  @Test
+  void neverChecksTheGateForUnpublishedMemories() {
+    ContextMemory memory = memory(UUID.randomUUID(), MemoryVisibility.PRIVATE);
+
+    new OntologyMemoryDerivationQueue(
+            jobDao,
+            () -> {
+              throw new AssertionError("gate must not be consulted for unpublished memories");
+            })
+        .enqueue(memory, "admin");
+
+    verifyNoInteractions(jobDao);
   }
 
   @Test

@@ -135,6 +135,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getFolderCondition());
     conditions.add(getGlossaryIdCondition(tableName));
     conditions.add(getOntologyChangeSetStateCondition(tableName));
+    conditions.add(getMemorySourcedChangeSetCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -149,12 +150,36 @@ public class ListFilter extends Filter<ListFilter> {
     return condition;
   }
 
+  /** Matches any of the comma-separated states, each bound as its own parameter. */
   private String getOntologyChangeSetStateCondition(String tableName) {
     String state = queryParams.get("state");
     String condition = "";
     if (!nullOrEmpty(state) && tableMatches(tableName, ONTOLOGY_CHANGE_SET_TABLE)) {
-      queryParams.put("ontologyChangeSetStateParam", state);
-      condition = qualifyColumn(tableName, "state") + " = :ontologyChangeSetStateParam";
+      String[] states = state.split(",");
+      List<String> placeholders = new ArrayList<>(states.length);
+      for (int index = 0; index < states.length; index++) {
+        String param = "ontologyChangeSetStateParam" + index;
+        queryParams.put(param, states[index]);
+        placeholders.add(":" + param);
+      }
+      condition =
+          qualifyColumn(tableName, "state") + " IN (" + String.join(", ", placeholders) + ")";
+    }
+    return condition;
+  }
+
+  /** Keeps only Studio drafts proposed from context memories (changeSet --DERIVED_FROM--> memory). */
+  private String getMemorySourcedChangeSetCondition(String tableName) {
+    String condition = "";
+    if (Boolean.parseBoolean(queryParams.get("memorySourced"))
+        && tableMatches(tableName, ONTOLOGY_CHANGE_SET_TABLE)) {
+      condition =
+          String.format(
+              "%s IN (SELECT entity_relationship.fromId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromEntity = 'ontologyChangeSet' "
+                  + "AND entity_relationship.toEntity = 'contextMemory' "
+                  + "AND entity_relationship.relation = %d)",
+              qualifyColumn(tableName, "id"), Relationship.DERIVED_FROM.ordinal());
     }
     return condition;
   }

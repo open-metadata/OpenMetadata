@@ -85,7 +85,7 @@ class OntologyChangeOperationExecutorTest {
             .withFullyQualifiedName("Sales")
             .withDescription("Sales concepts");
     when(glossaryRepository.getByNameOrNull(
-            isNull(), eq("Sales"), isNull(), eq(Include.NON_DELETED), eq(false)))
+            isNull(), eq("Sales"), isNull(), eq(Include.ALL), eq(false)))
         .thenReturn(Optional.empty());
     when(glossaryRepository.createOrUpdate(eq(uriInfo), any(Glossary.class), eq(USER)))
         .thenAnswer(
@@ -119,7 +119,7 @@ class OntologyChangeOperationExecutorTest {
             .withFullyQualifiedName("Sales")
             .withDescription("Sales concepts");
     when(glossaryRepository.getByNameOrNull(
-            isNull(), eq("Sales"), isNull(), eq(Include.NON_DELETED), eq(false)))
+            isNull(), eq("Sales"), isNull(), eq(Include.ALL), eq(false)))
         .thenReturn(Optional.of(glossary));
     final OntologyChangeOperation operation =
         new OntologyChangeOperation()
@@ -143,6 +143,19 @@ class OntologyChangeOperationExecutorTest {
     executor.execute(uriInfo, USER, operation);
 
     assertEquals(Set.of(memoryId), capturePersistedTerm().getSourceMemoryIds());
+  }
+
+  @Test
+  void createTermNeverOverwritesATermThatClaimedTheNameAfterDrafting() {
+    final GlossaryTerm proposed = term(UUID.randomUUID());
+    when(termRepository.getByNameOrNull(
+            isNull(), eq("glossary.term1"), isNull(), eq(Include.ALL), eq(false)))
+        .thenReturn(Optional.of(term(UUID.randomUUID())));
+    final OntologyChangeOperation operation =
+        operation(OntologyChangeOperationType.CREATE_TERM, null).withTerm(proposed);
+
+    assertThrows(BadRequestException.class, () -> executor.execute(uriInfo, USER, operation));
+    verify(termRepository, never()).createOrUpdate(any(), any(), any());
   }
 
   @Test

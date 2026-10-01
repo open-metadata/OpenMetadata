@@ -37,9 +37,12 @@ final class OntologyMemoryExistingTermFinder {
 
   List<OntologyAiCompletionGateway.TermContext> find(
       final List<OntologyAiCompletionGateway.MemoryContext> memories) {
-    final String query = OntologyMemoryGlossarySelector.query(memories);
-    if (query.isBlank() || searchRepository == null) {
+    if (searchRepository == null) {
       throw new OntologyAiProviderException("Existing glossary terms could not be checked");
+    }
+    final String query = OntologyMemoryGlossarySelector.query(memories);
+    if (query.isBlank()) {
+      return List.of();
     }
     try {
       return parse(searchRepository.search(request(query), null).getEntity());

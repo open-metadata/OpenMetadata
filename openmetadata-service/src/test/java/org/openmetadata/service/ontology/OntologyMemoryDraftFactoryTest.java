@@ -39,7 +39,8 @@ class OntologyMemoryDraftFactoryTest {
   void createsReviewableOperationWithMemoryAndModelProvenance() {
     final CreateOntologyChangeSet draft =
         factory
-            .create(42, glossary, Set.of(memoryId), completion(candidate("customer")), fqn -> false)
+            .create(
+                42, existing(), Set.of(memoryId), completion(candidate("customer")), fqn -> false)
             .orElseThrow();
 
     assertEquals("memory-glossary-42", draft.getName());
@@ -85,11 +86,12 @@ class OntologyMemoryDraftFactoryTest {
   void skipsInvalidNamesAndExistingTermsWithoutCreatingAnEmptyDraft() {
     assertTrue(
         factory
-            .create(42, glossary, Set.of(memoryId), completion(candidate(":::")), fqn -> false)
+            .create(42, existing(), Set.of(memoryId), completion(candidate(":::")), fqn -> false)
             .isEmpty());
     assertTrue(
         factory
-            .create(42, glossary, Set.of(memoryId), completion(candidate("customer")), fqn -> true)
+            .create(
+                42, existing(), Set.of(memoryId), completion(candidate("customer")), fqn -> true)
             .isEmpty());
   }
 
@@ -99,7 +101,7 @@ class OntologyMemoryDraftFactoryTest {
         factory
             .create(
                 42,
-                glossary,
+                existing(),
                 Set.of(memoryId),
                 completion(candidate("Inactive Customer")),
                 fqn -> false)
@@ -111,7 +113,7 @@ class OntologyMemoryDraftFactoryTest {
         factory
             .create(
                 43,
-                glossary,
+                existing(),
                 Set.of(memoryId),
                 completion(candidate("Inactive Customer")),
                 fqn -> fqn.equals("business.inactive_customer"))
@@ -124,7 +126,7 @@ class OntologyMemoryDraftFactoryTest {
         factory
             .create(
                 42,
-                glossary,
+                existing(),
                 Set.of(memoryId),
                 completion(candidate("business_inactive_customer")),
                 fqn -> false)
@@ -143,7 +145,7 @@ class OntologyMemoryDraftFactoryTest {
 
     assertTrue(
         factory
-            .create(42, glossary, Set.of(memoryId), completion(unrelated), fqn -> false)
+            .create(42, existing(), Set.of(memoryId), completion(unrelated), fqn -> false)
             .isEmpty());
   }
 
@@ -153,7 +155,7 @@ class OntologyMemoryDraftFactoryTest {
         factory
             .create(
                 42,
-                glossary,
+                existing(),
                 Set.of(memoryId),
                 new OntologyAiCompletionGateway.Completion<>("test-model", List.of()),
                 fqn -> false)
@@ -163,7 +165,7 @@ class OntologyMemoryDraftFactoryTest {
             memoryId, "customer", "Customer", "A buyer", 0.79D, "Possible concept");
     assertTrue(
         factory
-            .create(42, glossary, Set.of(memoryId), completion(uncertain), fqn -> false)
+            .create(42, existing(), Set.of(memoryId), completion(uncertain), fqn -> false)
             .isEmpty());
   }
 
@@ -175,5 +177,9 @@ class OntologyMemoryDraftFactoryTest {
   private OntologyAiCompletionGateway.Completion<OntologyAiCompletionGateway.MemoryTermCandidate>
       completion(final OntologyAiCompletionGateway.MemoryTermCandidate candidate) {
     return new OntologyAiCompletionGateway.Completion<>("test-model", List.of(candidate));
+  }
+
+  private OntologyMemoryGlossarySelector.Selection existing() {
+    return new OntologyMemoryGlossarySelector.Selection(glossary, false, 1D, null, null);
   }
 }

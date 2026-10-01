@@ -19,24 +19,75 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.OntologyDomainDraftRequest;
 import org.openmetadata.schema.api.data.OntologyMappingSuggestionRequest;
+import org.openmetadata.schema.api.data.OntologyMemoryDerivationRequest;
+import org.openmetadata.schema.api.data.OntologyMemoryProposalStatus;
 import org.openmetadata.schema.api.data.OntologyNaturalLanguageQueryRequest;
 import org.openmetadata.schema.api.data.OntologyRelationshipSuggestionRequest;
 import org.openmetadata.schema.api.rdf.RdfStatus;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.services.context.ContextMemoryService;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class OntologyAiResourceIT {
+  @AfterEach
+  void cleanup(final TestNamespace namespace) {
+    NamespaceCleanup.deleteRoots(namespace.drainTrackedRoots());
+  }
+
+  @Test
+  void memoryDerivationStaysOffWithoutTheOntologyAiFlag(final TestNamespace namespace) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final ContextMemory memory =
+        namespace.trackRoot(
+            "contextMemory",
+            new ContextMemoryService(client.getHttpClient())
+                .create(
+                    new CreateContextMemory()
+                        .withName(namespace.prefix("gatedMemory"))
+                        .withDescription("Memory for a disabled derivation")
+                        .withQuestion("What is churn?")
+                        .withAnswer("Customers who cancel every subscription.")));
+    final OntologyMemoryDerivationRequest request =
+        new OntologyMemoryDerivationRequest().withMemoryIds(Set.of(memory.getId()));
+
+    assertNotFound(
+        () ->
+            client
+                .getHttpClient()
+                .execute(
+                    HttpMethod.POST,
+                    "/v1/ontology/ai/memories/jobs",
+                    request,
+                    BackgroundJob.class));
+    final OntologyMemoryProposalStatus status =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/ontology/ai/memories/" + memory.getId() + "/proposals",
+                null,
+                OntologyMemoryProposalStatus.class);
+    assertFalse(status.getEnabled());
+    assertFalse(status.getQueued());
+  }
+
   @Test
   void defaultDisabledCapabilityHidesEveryAiRoute(TestNamespace namespace) {
     final String glossary = namespace.prefix("AiDisabled");

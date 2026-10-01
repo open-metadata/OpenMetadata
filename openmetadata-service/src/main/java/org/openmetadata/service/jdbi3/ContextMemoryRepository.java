@@ -36,7 +36,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
@@ -114,14 +114,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   protected void postUpdate(ContextMemory previous, ContextMemory updated) {
     super.postUpdate(previous, updated);
     if (OntologyMemoryDerivationQueue.hasNewPublishedContent(previous, updated)
+        && OntologyAiAvailability.isMemoryDerivationEnabled()
         && getDerivedEntities(updated).isEmpty()) {
       ontologyQueue().enqueue(updated, updated.getUpdatedBy());
     }
   }
 
+  /** Whether the memory row exists, soft-deleted or not; provenance may point at either. */
+  static boolean memoryExists(UUID memoryId) {
+    EntityDAO<?> dao = Entity.getEntityRepository(Entity.CONTEXT_MEMORY).getDao();
+    return dao.exists(dao.getTableName(), memoryId);
+  }
+
   private OntologyMemoryDerivationQueue ontologyQueue() {
     return new OntologyMemoryDerivationQueue(
-        Entity.getJobDAO(), LLMClientHolder::isOntologyMemoryDerivationEnabled);
+        Entity.getJobDAO(), OntologyAiAvailability::isMemoryDerivationEnabled);
   }
 
   @Override

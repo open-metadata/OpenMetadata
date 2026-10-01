@@ -12,27 +12,72 @@
  */
 
 import { Alert, Button, Typography } from '@openmetadata/ui-core-components';
+import { useQueries } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
+import { TFunction } from 'i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
 import {
   OntologyChangeOperation,
   OntologyChangeSet,
   OntologyChangeSetState,
   OperationType,
 } from '../../generated/entity/data/ontologyChangeSet';
+import { getContextMemoryById } from '../../rest/contextMemoryAPI';
 import {
   applyOntologyChangeSet,
+  discardOntologyChangeSet,
+  getOntologyChangeSet,
   listOntologyChangeSets,
   submitOntologyChangeSet,
 } from '../../rest/ontologyAPI';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useOntologyEditLease } from './hooks/useOntologyEditLease';
 
 interface OntologyMemoryReviewPanelProps {
   canApply: boolean;
+  canDiscard: boolean;
   canSubmit: boolean;
   initialDraftId?: string;
   onApplied: () => void;
+}
+
+type DraftAction = 'submit' | 'apply' | 'discard';
+
+const CHANGE_SET_FIELDS = 'operations';
+const PAGE_SIZE = 50;
+const REVIEWABLE_STATES = [
+  OntologyChangeSetState.Draft,
+  OntologyChangeSetState.Submitted,
+  OntologyChangeSetState.ApplyFailed,
+];
+const STATE_LABEL_KEYS: Partial<Record<OntologyChangeSetState, string>> = {
+  [OntologyChangeSetState.Draft]: 'label.draft',
+  [OntologyChangeSetState.Submitted]: 'label.in-review',
+  [OntologyChangeSetState.ApplyFailed]: 'label.failed',
+};
+const LINK_CLASS_NAME = 'tw:text-link tw:hover:underline';
+const SOURCE_MEMORY_QUERY_KEY = 'ontologyDraftSourceMemory';
+const SOURCE_MEMORY_STALE_TIME_MS = 60_000;
+
+function stateLabel(state: OntologyChangeSetState, t: TFunction): string {
+  const key = STATE_LABEL_KEYS[state];
+
+  return key ? t(key) : state;
+}
+
+function operationTypeLabel(type: OperationType, t: TFunction): string {
+  switch (type) {
+    case OperationType.CreateGlossary:
+      return t('label.new-entity', { entity: t('label.glossary') });
+    case OperationType.CreateTerm:
+      return t('label.new-entity', { entity: t('label.glossary-term') });
+    default:
+      return type;
+  }
 }
 
 function isMemoryProposal(changeSet: OntologyChangeSet): boolean {
@@ -42,11 +87,17 @@ function isMemoryProposal(changeSet: OntologyChangeSet): boolean {
 }
 
 function isReviewable(changeSet: OntologyChangeSet): boolean {
-  return (
-    changeSet.state === OntologyChangeSetState.Draft ||
-    changeSet.state === OntologyChangeSetState.Submitted ||
-    changeSet.state === OntologyChangeSetState.ApplyFailed
-  );
+  return REVIEWABLE_STATES.includes(changeSet.state);
+}
+
+function sourceMemoryIds(changeSet: OntologyChangeSet): string[] {
+  return [
+    ...new Set(
+      changeSet.operations.flatMap(
+        (operation) => operation.sourceMemoryIds ?? []
+      )
+    ),
+  ];
 }
 
 function operationName(operation: OntologyChangeOperation): string {
@@ -55,6 +106,40 @@ function operationName(operation: OntologyChangeOperation): string {
   }
 
   return operation.term?.displayName || operation.term?.name || '';
+}
+
+function changeSetName(changeSet: OntologyChangeSet): string {
+  return changeSet.displayName || changeSet.name;
+}
+
+// The deep-linked draft is fetched alongside the list, so it opens even when it falls outside
+// the first page.
+async function loadMemoryDrafts(
+  initialDraftId?: string
+): Promise<OntologyChangeSet[]> {
+  const [linked, page] = await Promise.all([
+    initialDraftId
+      ? getOntologyChangeSet(initialDraftId, CHANGE_SET_FIELDS).catch(
+          () => undefined
+        )
+      : Promise.resolve(undefined),
+    listOntologyChangeSets({
+      fields: CHANGE_SET_FIELDS,
+      limit: PAGE_SIZE,
+      memorySourced: true,
+      state: REVIEWABLE_STATES,
+    }),
+  ]);
+  const drafts = [...(linked ? [linked] : []), ...page.data];
+
+  return drafts
+    .filter(
+      (changeSet, index, all) =>
+        isMemoryProposal(changeSet) &&
+        isReviewable(changeSet) &&
+        all.findIndex((candidate) => candidate.id === changeSet.id) === index
+    )
+    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 }
 
 function DraftList({
@@ -66,6 +151,8 @@ function DraftList({
   selectedId?: string;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <ul className="tw:flex tw:flex-col tw:gap-2">
       {changeSets.map((changeSet) => (
@@ -79,14 +166,14 @@ function DraftList({
             onPress={() => onSelect(changeSet.id)}>
             <span className="tw:flex tw:flex-col tw:gap-1">
               <span className="tw:font-semibold">
-                {changeSet.displayName || changeSet.name}
+                {changeSetName(changeSet)}
               </span>
               <span className="tw:text-xs tw:text-tertiary">
                 {changeSet.glossaries
                   .map((glossary) => glossary.displayName || glossary.name)
                   .join(', ')}
                 {' · '}
-                {changeSet.state}
+                {stateLabel(changeSet.state, t)}
               </span>
             </span>
           </Button>
@@ -107,7 +194,7 @@ function OperationCard({ operation }: { operation: OntologyChangeOperation }) {
         {operationName(operation)}
       </Typography>
       <Typography as="p" className="tw:text-tertiary" size="text-xs">
-        {operation.operationType}
+        {operationTypeLabel(operation.operationType, t)}
       </Typography>
       {description ? (
         <Typography as="p" className="tw:mt-2" size="text-sm">
@@ -124,31 +211,66 @@ function OperationCard({ operation }: { operation: OntologyChangeOperation }) {
           {t('label.confidence')}: {Math.round(operation.confidence * 100)}%
         </Typography>
       ) : null}
-      {operation.sourceMemoryIds?.length ? (
-        <Typography as="p" className="tw:mt-2" size="text-xs">
-          {t('label.memory')}: {operation.sourceMemoryIds.join(', ')}
-        </Typography>
-      ) : null}
     </li>
+  );
+}
+
+// Memories the reviewer cannot open are counted rather than listed, so their names never leak.
+function SourceMemoryLinks({ memoryIds }: { memoryIds: string[] }) {
+  const { t } = useTranslation();
+  const results = useQueries({
+    queries: memoryIds.map((memoryId) => ({
+      queryKey: [SOURCE_MEMORY_QUERY_KEY, memoryId],
+      queryFn: () => getContextMemoryById(memoryId),
+      retry: false,
+      staleTime: SOURCE_MEMORY_STALE_TIME_MS,
+    })),
+  });
+  const memories = results.flatMap((result) =>
+    result.data ? [result.data] : []
+  );
+  const hiddenCount = results.filter((result) => result.isError).length;
+
+  if (memoryIds.length === 0) {
+    return null;
+  }
+
+  return (
+    <Typography as="p" data-testid="ontology-memory-sources" size="text-sm">
+      {t('label.derived-from')}:{' '}
+      {memories.map((memory, index) => (
+        <span key={memory.id}>
+          {index > 0 ? ', ' : null}
+          <Link
+            className={LINK_CLASS_NAME}
+            to={`${ROUTES.CONTEXT_CENTER_MEMORIES}?memory=${encodeURIComponent(
+              memory.name
+            )}`}>
+            {memory.title || getEntityName(memory)}
+          </Link>
+        </span>
+      ))}
+      {hiddenCount > 0 ? ` +${hiddenCount}` : null}
+    </Typography>
   );
 }
 
 function DraftDetail({
   changeSet,
   canApply,
+  canDiscard,
   canSubmit,
   isLeaseOwned,
   isSaving,
-  onApply,
-  onSubmit,
+  onAction,
 }: {
   changeSet: OntologyChangeSet;
   canApply: boolean;
+  canDiscard: boolean;
   canSubmit: boolean;
   isLeaseOwned: boolean;
   isSaving: boolean;
-  onApply: () => void;
-  onSubmit: () => void;
+  onAction: (action: DraftAction) => void;
 }) {
   const { t } = useTranslation();
   const showSubmit =
@@ -157,6 +279,7 @@ function DraftDetail({
     canApply &&
     (changeSet.state === OntologyChangeSetState.Submitted ||
       changeSet.state === OntologyChangeSetState.ApplyFailed);
+  const isActionDisabled = !isLeaseOwned || isSaving;
   const applyError = changeSet.applicationResult?.results
     .map((result) => result.message)
     .filter(Boolean)
@@ -167,14 +290,14 @@ function DraftDetail({
       <div className="tw:flex tw:items-start tw:justify-between tw:gap-4">
         <div>
           <Typography as="h2" size="text-lg" weight="semibold">
-            {changeSet.displayName || changeSet.name}
+            {changeSetName(changeSet)}
           </Typography>
           <Typography as="p" className="tw:text-tertiary" size="text-sm">
             {changeSet.description}
           </Typography>
         </div>
         <span className="tw:text-sm tw:font-semibold tw:text-brand-secondary">
-          {changeSet.state}
+          {stateLabel(changeSet.state, t)}
         </span>
       </div>
 
@@ -189,6 +312,8 @@ function DraftDetail({
         </Typography>
       </div>
 
+      <SourceMemoryLinks memoryIds={sourceMemoryIds(changeSet)} />
+
       <ul className="tw:flex tw:flex-col tw:gap-3">
         {changeSet.operations.map((operation) => (
           <OperationCard key={operation.id} operation={operation} />
@@ -198,13 +323,22 @@ function DraftDetail({
       {applyError ? <Alert title={applyError} variant="error" /> : null}
 
       <div className="tw:flex tw:justify-end tw:gap-2">
+        {canDiscard ? (
+          <Button
+            color="secondary-destructive"
+            data-testid="ontology-memory-discard"
+            isDisabled={isActionDisabled}
+            onPress={() => onAction('discard')}>
+            {t('label.discard')}
+          </Button>
+        ) : null}
         {showSubmit ? (
           <Button
             color="secondary"
             data-testid="ontology-memory-submit"
-            isDisabled={!isLeaseOwned || isSaving}
+            isDisabled={isActionDisabled}
             isLoading={isSaving}
-            onPress={onSubmit}>
+            onPress={() => onAction('submit')}>
             {t('label.submit')}
           </Button>
         ) : null}
@@ -212,9 +346,9 @@ function DraftDetail({
           <Button
             color="primary"
             data-testid="ontology-memory-apply"
-            isDisabled={!isLeaseOwned || isSaving}
+            isDisabled={isActionDisabled}
             isLoading={isSaving}
-            onPress={onApply}>
+            onPress={() => onAction('apply')}>
             {t('label.apply')}
           </Button>
         ) : null}
@@ -225,6 +359,7 @@ function DraftDetail({
 
 const OntologyMemoryReviewPanel = ({
   canApply,
+  canDiscard,
   canSubmit,
   initialDraftId,
   onApplied,
@@ -240,7 +375,7 @@ const OntologyMemoryReviewPanel = ({
     changeSets.find((changeSet) => changeSet.id === selectedId) ??
     changeSets[0];
   const lease = useOntologyEditLease({
-    isActive: Boolean(selected && (canSubmit || canApply)),
+    isActive: Boolean(selected && (canSubmit || canApply || canDiscard)),
     resourceId: selected?.id,
     resourceType: 'ontologyChangeSet',
   });
@@ -248,87 +383,85 @@ const OntologyMemoryReviewPanel = ({
   const loadChangeSets = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params = { fields: 'operations', limit: 100 };
-      const responses = await Promise.all([
-        listOntologyChangeSets({
-          ...params,
-          state: OntologyChangeSetState.Draft,
-        }),
-        listOntologyChangeSets({
-          ...params,
-          state: OntologyChangeSetState.Submitted,
-        }),
-        listOntologyChangeSets({
-          ...params,
-          state: OntologyChangeSetState.ApplyFailed,
-        }),
-      ]);
-      const proposals = responses
-        .flatMap((response) => response.data)
-        .filter(
-          (changeSet, index, all) =>
-            isMemoryProposal(changeSet) &&
-            isReviewable(changeSet) &&
-            all.findIndex((candidate) => candidate.id === changeSet.id) ===
-              index
-        )
-        .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+      const proposals = await loadMemoryDrafts(initialDraftId);
       setChangeSets(proposals);
       setSelectedId((current) =>
         proposals.some((proposal) => proposal.id === current)
           ? current
           : proposals[0]?.id
       );
-    } catch {
-      showErrorToast(t('server.unexpected-error'));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [t]);
+  }, [initialDraftId]);
 
   useEffect(() => {
     void loadChangeSets();
   }, [loadChangeSets]);
 
-  const handleAction = async (action: 'submit' | 'apply') => {
+  const runAction = (
+    action: DraftAction,
+    changeSetId: string,
+    request: { lease: { sessionId: string; version: number } }
+  ) => {
+    switch (action) {
+      case 'submit':
+        return submitOntologyChangeSet(changeSetId, request);
+      case 'discard':
+        return discardOntologyChangeSet(changeSetId, request);
+      default:
+        return applyOntologyChangeSet(changeSetId, request);
+    }
+  };
+
+  const showOutcome = (action: DraftAction, updated: OntologyChangeSet) => {
+    if (updated.state === OntologyChangeSetState.ApplyFailed) {
+      showErrorToast(
+        updated.applicationResult?.results
+          .map((result) => result.message)
+          .filter(Boolean)
+          .join('; ') || t('server.unexpected-error')
+      );
+    } else if (action === 'apply') {
+      showSuccessToast(t('label.ontology-applied'));
+    } else if (action === 'discard') {
+      showSuccessToast(t('message.draft-discarded'));
+    } else {
+      showSuccessToast(
+        t('server.entity-updated-success', { entity: changeSetName(updated) })
+      );
+    }
+  };
+
+  const handleAction = async (action: DraftAction) => {
     if (!selected || !lease.isOwned || !lease.lock) {
       return;
     }
 
     setIsSaving(true);
-    const request = {
-      lease: {
-        sessionId: lease.lock.sessionId,
-        version: lease.lock.version,
-      },
-    };
     try {
-      const updated =
-        action === 'submit'
-          ? await submitOntologyChangeSet(selected.id, request)
-          : await applyOntologyChangeSet(selected.id, request);
-      if (updated.state === OntologyChangeSetState.Applied) {
-        setChangeSets((current) =>
-          current.filter((changeSet) => changeSet.id !== selected.id)
-        );
+      const updated = await runAction(action, selected.id, {
+        lease: { sessionId: lease.lock.sessionId, version: lease.lock.version },
+      });
+      const isClosed = !isReviewable(updated);
+      setChangeSets((current) =>
+        isClosed
+          ? current.filter((changeSet) => changeSet.id !== selected.id)
+          : current.map((changeSet) =>
+              changeSet.id === selected.id ? updated : changeSet
+            )
+      );
+      if (isClosed) {
         setSelectedId(undefined);
+      }
+      if (updated.state === OntologyChangeSetState.Applied) {
         onApplied();
-      } else {
-        setChangeSets((current) =>
-          current.map((changeSet) =>
-            changeSet.id === selected.id ? updated : changeSet
-          )
-        );
       }
-      if (updated.state === OntologyChangeSetState.ApplyFailed) {
-        showErrorToast(t('server.unexpected-error'));
-      } else {
-        showSuccessToast(
-          action === 'submit' ? t('label.submit') : t('label.ontology-applied')
-        );
-      }
-    } catch {
-      showErrorToast(t('server.unexpected-error'));
+      showOutcome(action, updated);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     } finally {
       setIsSaving(false);
     }
@@ -374,12 +507,12 @@ const OntologyMemoryReviewPanel = ({
             {selected ? (
               <DraftDetail
                 canApply={canApply}
+                canDiscard={canDiscard}
                 canSubmit={canSubmit}
                 changeSet={selected}
                 isLeaseOwned={lease.isOwned}
                 isSaving={isSaving}
-                onApply={() => void handleAction('apply')}
-                onSubmit={() => void handleAction('submit')}
+                onAction={(action) => void handleAction(action)}
               />
             ) : null}
           </div>
