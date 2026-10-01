@@ -15,14 +15,11 @@ Validator for column value rule library SQL expression
 
 from typing import Dict  # noqa: UP035
 
-from jinja2 import StrictUndefined, TemplateSyntaxError, UndefinedError
-from jinja2.exceptions import SecurityError
-from jinja2.sandbox import SandboxedEnvironment
-
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.models import (
     RuleLibrarySqlExpressionRuntimeParameters,
 )
+from metadata.data_quality.validations.utils import render_sql_expression
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -89,19 +86,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
         }
         params.update(self._get_user_params())
 
-        try:
-            # The expression is user-authored, so render it sandboxed: a plain Template
-            # lets it reach Python internals and run code on the ingestion worker.
-            template = SandboxedEnvironment(undefined=StrictUndefined).from_string(sql_template.root)
-            return template.render(**params)
-        except TemplateSyntaxError as e:
-            raise ValueError(f"Invalid Jinja2 syntax in SQL expression: {e.message}") from e
-        except SecurityError as e:
-            raise ValueError(f"Unsafe operation in SQL expression: {e}") from e
-        except UndefinedError as e:
-            raise ValueError(
-                f"Undefined variable in SQL expression: {e.message}. Available parameters: {list(params.keys())}"
-            ) from e
+        return render_sql_expression(sql_template.root, params)
 
     def _run_results(self, sql_expression: str) -> int:
         raise NotImplementedError
