@@ -198,6 +198,14 @@ test.describe('resolveParents', () => {
       '/api/v1/services/messagingServices',
     ]);
     expect(second.parents.service?.name).not.toBe(first.parents.service?.name);
+
+    // Both roots stay recorded: the replaced chain's service may still exist.
+    const recorded = JSON.parse(readFileSync(runtimeFile, 'utf-8'));
+    for (const { parents } of [first, second]) {
+      expect(
+        recorded[`messaging:${parents.service?.fullyQualifiedName}`]
+      ).toBeDefined();
+    }
   });
 
   test('concurrent callers on a stale chain rebuild it once', async () => {
@@ -225,7 +233,8 @@ test.describe('resolveParents', () => {
     const recorded = JSON.parse(readFileSync(runtimeFile, 'utf-8'));
 
     expect(
-      recorded[`messaging:${key}`].parents.service.fullyQualifiedName
+      recorded[`messaging:${parents.service?.fullyQualifiedName}`].parents
+        .service.fullyQualifiedName
     ).toBe(parents.service?.fullyQualifiedName);
   });
 

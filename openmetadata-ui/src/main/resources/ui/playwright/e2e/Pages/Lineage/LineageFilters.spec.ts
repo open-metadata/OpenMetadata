@@ -777,9 +777,9 @@ test.describe('Lineage Filters', () => {
   });
 
   test.describe('Verify lineage Database service related filters', () => {
-    // The 2 column-level edges root → depth1 are now created once per
-    // shard in seedLineageAndSharedInfra (entity-data.setup.ts), so this
-    // describe no longer needs its own beforeAll.
+    // The column-level edge root → depth1 is created once per shard in
+    // seedLineageAndSharedInfra (entity-data.setup.ts), so this describe
+    // no longer needs its own beforeAll.
 
     test('Verify lineage database filter selection', async ({ page }) => {
       await page.locator('[aria-label="Filters"]').click();

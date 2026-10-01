@@ -69,8 +69,9 @@ export async function seedLineageAndSharedInfra(
     );
   }
 
-  // Two column-level edges from root → depth1 for the DB-service sub-describe
-  // ("Verify lineage Database service related filters" in LineageFilters).
+  // A column-level edge root → depth1 for the DB-service sub-describe
+  // ("Verify lineage Database service related filters" in LineageFilters),
+  // whose column filter selects root's first column.
   const rootFirstColumnFqn =
     (root.entityResponseData.columns?.[0]?.fullyQualifiedName as
       | string
@@ -96,10 +97,6 @@ export async function seedLineageAndSharedInfra(
         type: getEntityTypeSearchIndexMapping(depth1.type),
       },
       [
-        {
-          fromColumns: [rootFirstColumnFqn],
-          toColumn: depth1FirstColumnFqn,
-        },
         {
           fromColumns: [rootFirstColumnFqn],
           toColumn: depth1FirstColumnFqn,

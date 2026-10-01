@@ -119,7 +119,7 @@ export class SharedInfra {
       const parents = await pending;
       if (this.slots.get(id)?.parents !== parents) {
         this.slots.set(id, { kind, parents });
-        this.recordBuilt(id, { kind, parents });
+        this.recordBuilt({ kind, parents });
       }
 
       return parents;
@@ -157,8 +157,16 @@ export class SharedInfra {
     return false;
   }
 
-  private static recordBuilt(id: string, slot: PersistedSlot) {
-    this.builtHere.set(id, slot);
+  /**
+   * Keyed by the chain's root service, not its slot: a rebuild replaces the
+   * slot, but the old chain's service can still be alive (only its deepest
+   * level was deleted), so its teardown record must survive too.
+   */
+  private static recordBuilt(slot: PersistedSlot) {
+    this.builtHere.set(
+      `${slot.kind}:${slot.parents.service?.fullyQualifiedName}`,
+      slot
+    );
     fs.mkdirSync(outputDir(), { recursive: true });
     fs.writeFileSync(
       runtimeFilePath(),
