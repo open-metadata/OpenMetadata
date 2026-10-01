@@ -81,11 +81,17 @@ public class ContextMemorySearchVisibility {
    * returns {@code null} so the caller can apply the org-wide fallback.
    */
   public OMQueryBuilder buildVisibilityFilter(SubjectContext subjectContext) {
+    return buildVisibilityFilter(subjectContext, List.of(ContextMemoryStatus.ACTIVE));
+  }
+
+  /** Status-aware visibility is used only by the authenticated Context Center list endpoint. */
+  public OMQueryBuilder buildVisibilityFilter(
+      SubjectContext subjectContext, List<ContextMemoryStatus> statuses) {
     OMQueryBuilder filter = null;
     if (isVisibilityEnforced(subjectContext)) {
-      filter = buildFilter(subjectContext.user());
+      filter = scopeMemoriesTo(buildVisibleToUserClause(subjectContext.user()), statuses);
     } else if (isSubjectResolvable(subjectContext)) {
-      filter = scopeMemoriesTo(null);
+      filter = scopeMemoriesTo(null, statuses);
     }
     return filter;
   }
@@ -140,12 +146,13 @@ public class ContextMemorySearchVisibility {
     return isSubjectResolvable(subjectContext) && !subjectContext.isAdmin();
   }
 
-  private OMQueryBuilder buildFilter(User user) {
-    return scopeMemoriesTo(buildVisibleToUserClause(user));
-  }
-
   /** Applies the Active constraint and optional visibility clause only to context memories. */
   private OMQueryBuilder scopeMemoriesTo(OMQueryBuilder memoryClause) {
+    return scopeMemoriesTo(memoryClause, List.of(ContextMemoryStatus.ACTIVE));
+  }
+
+  private OMQueryBuilder scopeMemoriesTo(
+      OMQueryBuilder memoryClause, List<ContextMemoryStatus> statuses) {
     OMQueryBuilder nonMemory =
         queryBuilderFactory
             .boolQuery()
@@ -157,8 +164,12 @@ public class ContextMemorySearchVisibility {
       clauses.add(memoryClause);
     }
     clauses.add(
-        queryBuilderFactory.termQuery(
-            ContextMemoryIndex.FIELD_STATUS, ContextMemoryStatus.ACTIVE.value()));
+        statuses.size() == 1
+            ? queryBuilderFactory.termQuery(
+                ContextMemoryIndex.FIELD_STATUS, statuses.getFirst().value())
+            : queryBuilderFactory.termsQuery(
+                ContextMemoryIndex.FIELD_STATUS,
+                statuses.stream().map(ContextMemoryStatus::value).toList()));
     OMQueryBuilder memoryVisible = queryBuilderFactory.boolQuery().must(clauses);
     return queryBuilderFactory.boolQuery().should(List.of(nonMemory, memoryVisible));
   }

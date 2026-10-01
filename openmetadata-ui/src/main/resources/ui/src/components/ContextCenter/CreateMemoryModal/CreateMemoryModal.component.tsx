@@ -70,8 +70,8 @@ import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverC
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { ROUTES } from '../../../constants/constants';
 import {
-  MEMORY_TYPE_OPTIONS,
   MEMORY_STATUS_LABEL_KEYS,
+  MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -953,7 +953,7 @@ const canProposeFromMemory = (
   if (!isViewOnly || isProposalUnavailable(proposalQueued, proposalStatus)) {
     return false;
   }
-  if (memory.status && memory.status !== MemoryStatus.Active) {
+  if (memory.status !== MemoryStatus.Active) {
     return false;
   }
 

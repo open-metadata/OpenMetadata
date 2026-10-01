@@ -130,6 +130,32 @@ class ContextMemorySearchVisibilityTest {
   }
 
   @Test
+  void statusAwareListingRetainsVisibilityAndLimitsStatuses() {
+    OMQueryBuilder filter =
+        new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
+            .buildVisibilityFilter(
+                nonAdminSubject(),
+                List.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.INVALIDATED));
+    DocumentContext json =
+        JsonPath.parse(serializeElasticQuery(((ElasticQueryBuilder) filter).build()));
+
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[?(@.terms['status'])]",
+        "the status-aware list restricts results to the selected statuses");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.should[?(@.nested.query.term['owners.id'].value=='"
+            + USER_ID
+            + "')]",
+        "retired memories keep the owner visibility constraint");
+    String query = serializeElasticQuery(((ElasticQueryBuilder) filter).build());
+    assertTrue(query.contains("Active"));
+    assertTrue(query.contains("Invalidated"));
+    assertFalse(query.contains("Superseded"));
+  }
+
+  @Test
   void sharedWithIdsBranchIsGatedByVisibilityShared() {
     // ContextMemoryVisibility.isInSharedWithList is consulted ONLY when visibility==Shared, so the
     // sharedWithIds match must be ANDed with visibility=Shared. A bare sharedWithIds clause would

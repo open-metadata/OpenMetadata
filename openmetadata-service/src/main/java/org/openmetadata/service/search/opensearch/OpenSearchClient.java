@@ -45,6 +45,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.PageHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.AggregationRequest;
@@ -394,6 +395,21 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     return searchManager.listWithOffset(
         filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
+  }
+
+  @Override
+  public SearchResultListMapper listContextMemoriesWithStatuses(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    return searchManager.listContextMemoriesWithStatuses(
+        filter, limit, offset, index, searchSortFilter, q, subjectContext, statuses);
   }
 
   @Override

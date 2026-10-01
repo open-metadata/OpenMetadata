@@ -41,6 +41,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
@@ -180,14 +181,49 @@ public class ContextMemoryAnchorIT {
   void theOwnerKeepsTheirAnchoredMemory(TestNamespace ns) {
     Table anchor = ShortStackFactory.table(ns);
     User owner = createUser(ns, denyTableView(ns), null);
+    String query = "owneranchor" + UUID.randomUUID().toString().substring(0, 8);
     ContextMemory owned =
         adminMemories()
             .create(
                 entityMemory(ns, "owned")
+                    .withQuestion(query)
                     .withPrimaryEntity(ref(Entity.TABLE, anchor.getId()))
                     .withOwners(List.of(ref(Entity.USER, owner.getId()))));
+    ContextMemoryService ownerMemories = memoriesAs(owner);
+    ContextMemoryService anchorViewer = memoriesAs(createUser(ns, null, null));
+    ListParams params = new ListParams().setLimit(100).addQueryParam("q", query);
+    ListParams invalidatedParams =
+        new ListParams()
+            .setLimit(100)
+            .addQueryParam("q", query)
+            .addQueryParam("statuses", "Invalidated");
 
-    assertEquals(owned.getId(), memoriesAs(owner).get(owned.getId().toString()).getId());
+    assertEquals(owned.getId(), ownerMemories.get(owned.getId().toString()).getId());
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertTrue(ids(ownerMemories.list(params)).contains(owned.getId()));
+              assertTrue(ids(adminMemories().list(params)).contains(owned.getId()));
+            });
+
+    adminMemories()
+        .patch(
+            owned.getId().toString(),
+            JsonUtils.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/status\",\"value\":\"Invalidated\"}]"));
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertFalse(ids(ownerMemories.list(params)).contains(owned.getId()));
+              assertFalse(ids(adminMemories().list(params)).contains(owned.getId()));
+              assertTrue(ids(ownerMemories.list(invalidatedParams)).contains(owned.getId()));
+              assertTrue(ids(adminMemories().list(invalidatedParams)).contains(owned.getId()));
+              assertFalse(ids(anchorViewer.list(invalidatedParams)).contains(owned.getId()));
+            });
   }
 
   @Test

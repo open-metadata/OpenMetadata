@@ -16,7 +16,6 @@ export type MemoryFilterTab =
   | ''
   | 'all'
   | 'created-by-me'
-  | 'history'
   | 'pinned'
   | 'needs-review';
 

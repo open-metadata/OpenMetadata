@@ -52,6 +52,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -68,6 +69,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -166,6 +168,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Sort order: asc or desc") @QueryParam("sortOrder") String sortOrder,
       @Parameter(description = "Offset for search-backed pagination") @Min(0) @QueryParam("offset")
           Integer offset,
+      @Parameter(description = "Comma-separated lifecycle statuses for the Context Center list")
+          @QueryParam("statuses")
+          String statuses,
       @Parameter(
               description =
                   "Only return knowledge pills extracted from the context file with this id",
@@ -185,6 +190,27 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @QueryParam("primaryEntityId")
           UUID primaryEntityId)
       throws IOException {
+    if (statuses != null) {
+      return listMemoriesFromSearch(
+          uriInfo,
+          securityContext,
+          fieldsParam,
+          q,
+          assets,
+          author,
+          pinned,
+          sortBy,
+          sortOrder,
+          limitParam,
+          offset == null ? 0 : offset,
+          before,
+          after,
+          include,
+          sourceFileId,
+          sourceEntityId,
+          primaryEntityId,
+          parseStatuses(statuses));
+    }
     if (hasSearchBackedListParams(q, assets, author, pinned, sortBy, offset)) {
       return listMemoriesFromSearch(
           uriInfo,
@@ -203,7 +229,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           include,
           sourceFileId,
           sourceEntityId,
-          primaryEntityId);
+          primaryEntityId,
+          null);
     }
 
     ListFilter filter = new ListFilter(include);
@@ -252,7 +279,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       Include include,
       UUID sourceFileId,
       UUID sourceEntityId,
-      UUID primaryEntityId)
+      UUID primaryEntityId,
+      List<ContextMemoryStatus> statuses)
       throws IOException {
     validateSearchBackedListParams(before, after, sourceFileId, sourceEntityId, primaryEntityId);
     SearchListFilter searchListFilter =
@@ -267,17 +295,51 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     // would break offset pagination — it truncates a page below the requested limit and drops the
     // engine's paging metadata (total count, cursors), so a client paging by offset silently stops
     // short of the real result set.
-    return listInternalFromSearch(
+    if (statuses == null) {
+      return listInternalFromSearch(
+          uriInfo,
+          securityContext,
+          fields,
+          searchListFilter,
+          limit,
+          offset,
+          searchSortFilter,
+          q,
+          null,
+          getAuthRequestsForListOps());
+    }
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
+    return addPermissions(
         uriInfo,
         securityContext,
-        fields,
-        searchListFilter,
-        limit,
-        offset,
-        searchSortFilter,
-        q,
-        null,
-        getAuthRequestsForListOps());
+        repository.listContextMemoriesWithStatuses(
+            uriInfo,
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            securityContext,
+            statuses));
+  }
+
+  private static List<ContextMemoryStatus> parseStatuses(String statuses) {
+    List<ContextMemoryStatus> parsed = new ArrayList<>();
+    for (String value : statuses.split(",", -1)) {
+      try {
+        ContextMemoryStatus status = ContextMemoryStatus.fromValue(value.trim());
+        if (!parsed.contains(status)) {
+          parsed.add(status);
+        }
+      } catch (IllegalArgumentException ex) {
+        throw new BadRequestException("Invalid memory status: " + value);
+      }
+    }
+    if (parsed.isEmpty()) {
+      throw new BadRequestException("At least one memory status is required");
+    }
+    return parsed;
   }
 
   private static boolean hasSearchBackedListParams(

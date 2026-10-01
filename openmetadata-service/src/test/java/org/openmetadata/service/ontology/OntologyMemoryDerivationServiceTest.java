@@ -106,8 +106,14 @@ class OntologyMemoryDerivationServiceTest {
     assertEquals(List.of(memory), service.loadMemories(List.of(id), "bob"));
 
     memory.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
-    memory.setStatus(ContextMemoryStatus.ARCHIVED);
-    assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(id), "alice"));
+    for (ContextMemoryStatus status :
+        List.of(
+            ContextMemoryStatus.ARCHIVED,
+            ContextMemoryStatus.SUPERSEDED,
+            ContextMemoryStatus.INVALIDATED)) {
+      memory.setStatus(status);
+      assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(id), "alice"));
+    }
   }
 
   @Test

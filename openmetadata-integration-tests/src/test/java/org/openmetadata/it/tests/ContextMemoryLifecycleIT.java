@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.service.Entity;
 
@@ -108,6 +109,8 @@ public class ContextMemoryLifecycleIT {
     assertThrows(
         InvalidRequestException.class,
         () -> admin().patch(idOf(memory), supersede(userId, Entity.USER, "not a memory")));
+    assertEquals(ContextMemoryStatus.ACTIVE, admin().get(idOf(memory)).getStatus());
+    assertNull(admin().get(idOf(memory)).getSupersededBy());
   }
 
   @Test
@@ -174,6 +177,53 @@ public class ContextMemoryLifecycleIT {
     ContextMemory memory = admin().create(memory(ns, "default-active"));
 
     assertEquals(ContextMemoryStatus.ACTIVE, memory.getStatus());
+  }
+
+  @Test
+  void statusSelectionCombinesWithSearchAndAuthorWithoutChangingOrdinarySearch(TestNamespace ns) {
+    String query = "statusfilter" + UUID.randomUUID().toString().substring(0, 8);
+    ContextMemory active =
+        admin()
+            .create(
+                memory(ns, "status-active")
+                    .withQuestion(query)
+                    .withOwners(List.of(SharedEntities.get().USER1_REF)));
+    ContextMemory invalidated =
+        admin()
+            .create(
+                memory(ns, "status-invalidated")
+                    .withQuestion(query)
+                    .withOwners(List.of(SharedEntities.get().USER1_REF)));
+    admin().patch(idOf(invalidated), status(ContextMemoryStatus.INVALIDATED));
+    admin().create(memory(ns, "other-author").withQuestion(query));
+
+    ListParams ordinary = new ListParams().setLimit(20).addFilter("q", query);
+    ListParams filtered =
+        new ListParams()
+            .setLimit(20)
+            .addFilter("q", query)
+            .addFilter("author", SharedEntities.get().USER1_REF.getId().toString())
+            .addFilter("statuses", "Active,Invalidated");
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertTrue(
+                  admin().list(ordinary).getData().stream()
+                      .anyMatch(m -> m.getId().equals(active.getId())));
+              assertFalse(
+                  admin().list(ordinary).getData().stream()
+                      .anyMatch(m -> m.getId().equals(invalidated.getId())));
+              assertEquals(
+                  Set.of(active.getId(), invalidated.getId()),
+                  admin().list(filtered).getData().stream()
+                      .map(ContextMemory::getId)
+                      .collect(Collectors.toSet()));
+            });
+    assertThrows(
+        InvalidRequestException.class,
+        () -> admin().list(new ListParams().addFilter("statuses", "Active,Unknown")));
   }
 
   @Test
@@ -257,6 +307,10 @@ public class ContextMemoryLifecycleIT {
 
     assertTrue(supersedeError.getMessage().contains("readable, non-deleted"));
     assertTrue(disputeError.getMessage().contains("readable, non-deleted"));
+    ContextMemory unchanged = admin().get(idOf(editable));
+    assertEquals(ContextMemoryStatus.ACTIVE, unchanged.getStatus());
+    assertNull(unchanged.getSupersededBy());
+    assertTrue(listOrEmpty(unchanged.getDisputes()).isEmpty());
   }
 
   /** Two PATCHes by one user inside the session merge; the merge must not replay Active→Draft. */

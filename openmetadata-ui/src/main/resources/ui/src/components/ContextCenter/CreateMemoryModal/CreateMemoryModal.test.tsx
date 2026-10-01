@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -437,6 +443,7 @@ describe('CreateMemoryModal', () => {
     const memory = {
       id: 'memory-id',
       name: 'inactive-customer',
+      status: MemoryStatus.Active,
       owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
       shareConfig: { visibility: 'Shared' },
       derivedEntities: [],
@@ -549,6 +556,48 @@ describe('CreateMemoryModal', () => {
     expect(
       await screen.findByRole('button', { name: 'label.propose-term' })
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    MemoryStatus.Draft,
+    MemoryStatus.Archived,
+    MemoryStatus.Superseded,
+    MemoryStatus.Invalidated,
+    undefined,
+  ])('hides proposal action for status %s', async (status) => {
+    const memory = {
+      id: 'memory-id',
+      name: 'retired-memory',
+      status,
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Entity' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      proposals: [],
+      queued: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          isAdminUser
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(getMemoryOntologyProposalStatus).toHaveBeenCalledWith('memory-id')
+    );
+    await act(async () => Promise.resolve());
+
+    expect(
+      screen.queryByRole('button', { name: 'label.propose-term' })
+    ).not.toBeInTheDocument();
   });
 
   it('keeps proposal action unavailable while derivation is queued', async () => {

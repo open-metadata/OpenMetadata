@@ -120,6 +120,7 @@ import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
@@ -4252,6 +4253,27 @@ public class SearchRepository {
         q,
         queryString,
         subjectContext);
+  }
+
+  public SearchResultListMapper listContextMemoriesWithStatuses(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q,
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(Entity.CONTEXT_MEMORY);
+    return searchClient.listContextMemoriesWithStatuses(
+        filter.getCondition(Entity.CONTEXT_MEMORY),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        searchSortFilter,
+        q,
+        subjectContext,
+        statuses);
   }
 
   public SearchResultListMapper listWithDeepPagination(
