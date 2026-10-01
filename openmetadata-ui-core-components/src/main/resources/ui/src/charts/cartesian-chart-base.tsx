@@ -117,9 +117,14 @@ export const CartesianChartBase = <T extends object>({
 
     return {
       click: (event: ECElementEvent) => {
-        const isAxisLabel =
+        // An axis with triggerEvent also reports clicks on its title
+        // (targetType 'axisName'); only a label click names a category.
+        const isAxisClick =
           event.componentType === 'xAxis' || event.componentType === 'yAxis';
-        const datum = isAxisLabel ? undefined : data[event.dataIndex];
+        const isAxisLabel =
+          isAxisClick &&
+          (event as { targetType?: string }).targetType === 'axisLabel';
+        const datum = isAxisClick ? undefined : data[event.dataIndex];
         if (isAxisLabel) {
           onCategoryClick?.(String(event.value), event);
         }

@@ -218,6 +218,26 @@ describe('BarChart', () => {
       expect.anything()
     );
   });
+  it('ignores a click on the axis title', () => {
+    const onCategoryClick = vi.fn();
+    render(
+      <BarChart
+        ariaLabel="Runs"
+        data={rows}
+        layout="horizontal"
+        series={series}
+        xKey="day"
+        onCategoryClick={onCategoryClick}
+      />
+    );
+    clickHost({
+      componentType: 'yAxis',
+      targetType: 'axisName',
+    } as unknown as Partial<ECElementEvent>);
+
+    expect(onCategoryClick).not.toHaveBeenCalled();
+  });
+
   it('reports a category label click, and still maps bar clicks to rows', () => {
     const onCategoryClick = vi.fn();
     const onPointClick = vi.fn();
@@ -234,8 +254,9 @@ describe('BarChart', () => {
     );
     clickHost({
       componentType: 'yAxis',
+      targetType: 'axisLabel',
       value: 'Tue',
-    } as Partial<ECElementEvent>);
+    } as unknown as Partial<ECElementEvent>);
     clickHost({ componentType: 'series', dataIndex: 0, seriesId: 'passed' });
 
     expect(onCategoryClick).toHaveBeenCalledWith('Tue', expect.anything());
