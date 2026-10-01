@@ -37,7 +37,8 @@ public final class OntologyChangeSetValidator {
       throw new BadRequestException(
           "Ontology change set undoCursor must be between 0 and " + operations.size());
     }
-    validateOperations(operations, cursor, plannedTermIds(operations));
+    final String evidenceFingerprint = validateDiscoveryContext(changeSet);
+    validateOperations(operations, cursor, plannedTermIds(operations), evidenceFingerprint);
     changeSet.setOperations(operations);
     changeSet.setUndoCursor(cursor);
   }
@@ -45,12 +46,14 @@ public final class OntologyChangeSetValidator {
   private static void validateOperations(
       final List<OntologyChangeOperation> operations,
       final int cursor,
-      final Set<UUID> plannedTermIds) {
+      final Set<UUID> plannedTermIds,
+      final String evidenceFingerprint) {
     final Set<UUID> operationIds = new HashSet<>();
     final Set<UUID> availablePlannedTerms = new HashSet<>();
     for (int index = 0; index < operations.size(); index++) {
       final OntologyChangeOperation operation = operations.get(index);
-      validateOperation(operation, operationIds, plannedTermIds, availablePlannedTerms);
+      validateOperation(
+          operation, operationIds, plannedTermIds, availablePlannedTerms, evidenceFingerprint);
       operation.setState(
           index < cursor
               ? OntologyChangeOperationState.ACTIVE
@@ -63,18 +66,42 @@ public final class OntologyChangeSetValidator {
       final OntologyChangeOperation operation,
       final Set<UUID> operationIds,
       final Set<UUID> plannedTermIds,
-      final Set<UUID> availablePlannedTerms) {
+      final Set<UUID> availablePlannedTerms,
+      final String evidenceFingerprint) {
     if (operation == null || operation.getId() == null || !operationIds.add(operation.getId())) {
       throw new BadRequestException("Every ontology operation requires a unique id");
     }
     if (operation.getOperationType() == null) {
       throw invalid(operation, "operationType is required");
     }
+    if (evidenceFingerprint != null
+        && !evidenceFingerprint.equals(operation.getEvidenceFingerprint())) {
+      throw invalid(operation, "evidenceFingerprint must match the immutable discovery context");
+    }
     final PayloadKind expectedPayload = payloadKind(operation.getOperationType());
     validatePayload(operation, expectedPayload);
     validateOptimisticGuard(operation, plannedTermIds);
     validateTargetConsistency(operation);
     validatePlannedReferences(operation, plannedTermIds, availablePlannedTerms);
+  }
+
+  private static String validateDiscoveryContext(final OntologyChangeSet changeSet) {
+    if (changeSet.getDiscoveryContext() == null) {
+      return null;
+    }
+    final List<org.openmetadata.schema.type.EntityReference> glossaries =
+        listOrEmpty(changeSet.getGlossaries());
+    if (glossaries.size() != 1) {
+      throw new BadRequestException(
+          "An automated ontology discovery draft must target exactly one glossary");
+    }
+    final org.openmetadata.schema.type.EntityReference glossary = glossaries.getFirst();
+    final String targetOntology =
+        glossary.getFullyQualifiedName() == null
+            ? glossary.getName()
+            : glossary.getFullyQualifiedName();
+    OntologyDiscoveryFingerprint.requireMatch(targetOntology, changeSet.getDiscoveryContext());
+    return changeSet.getDiscoveryContext().getEvidenceFingerprint();
   }
 
   private static Set<UUID> plannedTermIds(final List<OntologyChangeOperation> operations) {
@@ -121,6 +148,8 @@ public final class OntologyChangeSetValidator {
     count += operation.getAttribute() == null ? 0 : 1;
     count += operation.getMapping() == null ? 0 : 1;
     count += operation.getAxiom() == null ? 0 : 1;
+    count += operation.getAssetBinding() == null ? 0 : 1;
+    count += operation.getRelationshipType() == null ? 0 : 1;
     return count;
   }
 
@@ -134,6 +163,8 @@ public final class OntologyChangeSetValidator {
           case ATTRIBUTE -> operation.getAttribute() != null;
           case MAPPING -> operation.getMapping() != null;
           case AXIOM -> operation.getAxiom() != null;
+          case ASSET_BINDING -> operation.getAssetBinding() != null;
+          case RELATIONSHIP_TYPE -> operation.getRelationshipType() != null;
         };
     return isPresent;
   }
@@ -142,6 +173,7 @@ public final class OntologyChangeSetValidator {
       final OntologyChangeOperation operation, final Set<UUID> plannedTermIds) {
     final boolean isCreate =
         operation.getOperationType() == OntologyChangeOperationType.CREATE_TERM
+            || operation.getOperationType() == OntologyChangeOperationType.CREATE_RELATIONSHIP_TYPE
             || (operation.getOperationType() == OntologyChangeOperationType.UPSERT_AXIOM
                 && operation.getTargetId() == null);
     final boolean targetsPlannedTerm =
@@ -213,6 +245,17 @@ public final class OntologyChangeSetValidator {
       case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> requireTarget(
           operation, operation.getRelationship().getFromTerm().getId(), "relationship source");
       case UPSERT_AXIOM -> validateAxiomTarget(operation);
+      case CREATE_RELATIONSHIP_TYPE -> requireEntityId(
+          operation, operation.getRelationshipType().getId(), "relationship type");
+      case BIND_ASSET, UNBIND_ASSET -> {
+        requireEntityId(operation, operation.getTargetId(), "asset binding target term");
+        requireEntityId(
+            operation,
+            operation.getAssetBinding().getAsset() == null
+                ? null
+                : operation.getAssetBinding().getAsset().getId(),
+            "asset binding asset");
+      }
       case DELETE_TERM,
           UPSERT_ATTRIBUTE,
           DELETE_ATTRIBUTE,
@@ -254,6 +297,8 @@ public final class OntologyChangeSetValidator {
           case UPSERT_ATTRIBUTE, DELETE_ATTRIBUTE -> PayloadKind.ATTRIBUTE;
           case UPSERT_MAPPING, DELETE_MAPPING -> PayloadKind.MAPPING;
           case UPSERT_AXIOM -> PayloadKind.AXIOM;
+          case BIND_ASSET, UNBIND_ASSET -> PayloadKind.ASSET_BINDING;
+          case CREATE_RELATIONSHIP_TYPE -> PayloadKind.RELATIONSHIP_TYPE;
         };
     return payloadKind;
   }
@@ -270,6 +315,8 @@ public final class OntologyChangeSetValidator {
     RELATIONSHIP,
     ATTRIBUTE,
     MAPPING,
-    AXIOM
+    AXIOM,
+    ASSET_BINDING,
+    RELATIONSHIP_TYPE
   }
 }

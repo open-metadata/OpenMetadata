@@ -17,9 +17,16 @@ import { PipelineType } from '../../../generated/entity/services/ingestionPipeli
 import { Agent } from '../AgentsPage.interface';
 import AgentGroup from './AgentGroup.component';
 
-jest.mock('./AgentCard.component', () =>
-  jest.fn().mockImplementation(() => <p>AgentCard</p>)
-);
+const mockAgentCard = jest.fn();
+
+jest.mock('./AgentCard.component', () => ({
+  __esModule: true,
+  default: (props: { additionalAction?: React.ReactNode }) => {
+    mockAgentCard(props);
+
+    return <p>AgentCard</p>;
+  },
+}));
 
 jest.mock('./AgentCardSkeleton.component', () =>
   jest.fn().mockImplementation(() => <p>AgentCardSkeleton</p>)
@@ -130,6 +137,18 @@ describe('AgentGroup', () => {
     expect(
       screen.queryByTestId('agent-group-empty-placeholder')
     ).not.toBeInTheDocument();
+  });
+
+  it('should pass the per-agent additional action to its card', () => {
+    const action = <button>Review</button>;
+    const renderAdditionalAction = jest.fn().mockReturnValue(action);
+
+    renderGroup([baseAgent], undefined, { renderAdditionalAction });
+
+    expect(renderAdditionalAction).toHaveBeenCalledWith(baseAgent);
+    expect(mockAgentCard).toHaveBeenCalledWith(
+      expect.objectContaining({ additionalAction: action })
+    );
   });
 
   it('should render the empty placeholder inside the group when there are no agents', () => {

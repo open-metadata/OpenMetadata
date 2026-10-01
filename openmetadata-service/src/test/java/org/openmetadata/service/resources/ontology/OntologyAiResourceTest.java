@@ -26,6 +26,8 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.OntologyDiscoveryEvidence;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.ontology.OntologyAiCatalog;
 import org.openmetadata.service.ontology.OntologyAiCompletionGateway;
@@ -72,8 +74,19 @@ class OntologyAiResourceTest {
     }
 
     @Override
+    public Table table(final String fullyQualifiedName) {
+      throw new AssertionError("Disabled routes must not access the ontology catalog");
+    }
+
+    @Override
     public RelationshipType relationshipType(final UUID id) {
       throw new AssertionError("Disabled routes must not access the ontology catalog");
+    }
+
+    @Override
+    public void validateDiscoveryEvidence(
+        final OntologyDiscoveryEvidence evidence, final String expectedServiceFullyQualifiedName) {
+      throw new AssertionError("Disabled routes must not access ontology evidence");
     }
   }
 

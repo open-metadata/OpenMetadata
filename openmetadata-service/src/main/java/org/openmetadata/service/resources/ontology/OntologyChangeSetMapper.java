@@ -36,6 +36,7 @@ public final class OntologyChangeSetMapper
         .withState(OntologyChangeSetState.DRAFT)
         .withOperations(request.getOperations())
         .withUndoCursor(request.getOperations() == null ? 0 : request.getOperations().size())
+        .withDiscoveryContext(request.getDiscoveryContext())
         .withProvider(request.getProvider());
   }
 }

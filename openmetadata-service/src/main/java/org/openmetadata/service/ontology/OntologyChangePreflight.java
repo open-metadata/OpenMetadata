@@ -73,12 +73,17 @@ public final class OntologyChangePreflight {
           UPSERT_ATTRIBUTE,
           DELETE_ATTRIBUTE,
           UPSERT_MAPPING,
-          DELETE_MAPPING -> requireTermInScope(
+          DELETE_MAPPING,
+          BIND_ASSET,
+          UNBIND_ASSET -> requireTermInScope(
           operation, operation.getTargetId(), scope, plannedTerms);
       case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> validateRelationshipScope(
           operation, scope, plannedTerms);
       case UPSERT_AXIOM -> validateAxiomScope(operation, scope);
       case DELETE_AXIOM -> requireAxiomInScope(operation, scope);
+      case CREATE_RELATIONSHIP_TYPE -> {
+        // Relationship types are global. Authorization is checked separately by the resource.
+      }
     }
   }
 
@@ -200,6 +205,7 @@ public final class OntologyChangePreflight {
     final OperationTarget target =
         switch (operation.getOperationType()) {
           case CREATE_TERM -> null;
+          case CREATE_RELATIONSHIP_TYPE -> null;
           case UPSERT_AXIOM -> operation.getTargetId() == null
               ? null
               : new OperationTarget(Entity.ONTOLOGY_AXIOM, operation.getTargetId());

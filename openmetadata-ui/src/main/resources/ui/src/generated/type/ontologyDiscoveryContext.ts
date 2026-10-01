@@ -11,31 +11,6 @@
  *  limitations under the License.
  */
 /**
- * Generate a reviewable ontology Draft without applying any entity mutation.
- */
-export interface OntologyDomainDraftRequest {
-    changeSetName: string;
-    description:   string;
-    /**
-     * Optional service-discovery provenance. The server adds the actual model identifier and
-     * generation time to the persisted draft.
-     */
-    discoveryContext?: OntologyDiscoveryContext;
-    displayName:       string;
-    domainDescription: string;
-    glossary:          string;
-    maxConcepts:       number;
-    /**
-     * Already-extracted structured proposal. When present, the server compiles it without
-     * asking another model to reinterpret it. Requires discoveryContext.
-     */
-    proposal?: OntologyDiscoveryProposal;
-}
-
-/**
- * Optional service-discovery provenance. The server adds the actual model identifier and
- * generation time to the persisted draft.
- *
  * Immutable provenance and deduplication context for an automated ontology draft.
  */
 export interface OntologyDiscoveryContext {
@@ -112,81 +87,4 @@ export enum VerificationStatus {
     Partial = "partial",
     Succeeded = "succeeded",
     Unavailable = "unavailable",
-}
-
-/**
- * Already-extracted structured proposal. When present, the server compiles it without
- * asking another model to reinterpret it. Requires discoveryContext.
- *
- * Structured discovery output compiled deterministically into review-only operations.
- */
-export interface OntologyDiscoveryProposal {
-    classes:        Concept[];
-    relationships?: Relationship[];
-}
-
-export interface Concept {
-    baseVersion?:    number;
-    description:     string;
-    displayName?:    string;
-    evidenceFqns:    string[];
-    existingTermId?: string;
-    key:             string;
-    name:            string;
-    parentKey?:      string;
-    properties?:     Property[];
-    tableBindings?:  Binding[];
-}
-
-export interface Property {
-    dataType:       DataType;
-    description?:   string;
-    enumValues?:    string[];
-    evidenceFqns:   string[];
-    isIdentifier:   boolean;
-    name:           string;
-    sourceColumns?: OntologySourceColumn[];
-    unit?:          string;
-}
-
-/**
- * Supported value type for an ontology attribute.
- */
-export enum DataType {
-    Boolean = "BOOLEAN",
-    Date = "DATE",
-    Decimal = "DECIMAL",
-    Enum = "ENUM",
-    Integer = "INTEGER",
-    String = "STRING",
-}
-
-/**
- * Catalog column realizing an ontology property. Contains identities, never sample values.
- */
-export interface OntologySourceColumn {
-    columnFqn: string;
-    tableFqn:  string;
-}
-
-export interface Binding {
-    role:     RealizationRole;
-    tableFqn: string;
-}
-
-/**
- * Role the asset plays in realizing the concept. At most one asset may be the primary store
- * of a concept.
- */
-export enum RealizationRole {
-    Derived = "DERIVED",
-    PrimaryStore = "PRIMARY_STORE",
-    Replica = "REPLICA",
-}
-
-export interface Relationship {
-    evidenceFqns:       string[];
-    fromKey:            string;
-    relationshipTypeId: string;
-    toKey:              string;
 }

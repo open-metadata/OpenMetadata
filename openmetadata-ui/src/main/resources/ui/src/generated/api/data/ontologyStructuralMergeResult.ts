@@ -77,12 +77,15 @@ export interface RelationshipOperation {
 
 export enum OperationType {
     AddRelationship = "ADD_RELATIONSHIP",
+    BindAsset = "BIND_ASSET",
+    CreateRelationshipType = "CREATE_RELATIONSHIP_TYPE",
     CreateTerm = "CREATE_TERM",
     DeleteAttribute = "DELETE_ATTRIBUTE",
     DeleteAxiom = "DELETE_AXIOM",
     DeleteMapping = "DELETE_MAPPING",
     DeleteRelationship = "DELETE_RELATIONSHIP",
     DeleteTerm = "DELETE_TERM",
+    UnbindAsset = "UNBIND_ASSET",
     UpdateRelationship = "UPDATE_RELATIONSHIP",
     UpdateTerm = "UPDATE_TERM",
     UpsertAttribute = "UPSERT_ATTRIBUTE",
