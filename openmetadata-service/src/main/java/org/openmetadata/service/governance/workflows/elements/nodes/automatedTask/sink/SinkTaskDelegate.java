@@ -220,10 +220,10 @@ public class SinkTaskDelegate implements JavaDelegate {
    * <p>Each sub-batch holds as many entities as {@link SinkProvider#nextBatchSize} asks for. The
    * next sub-batch is fetched by a small pool while the current one is written, so at most two
    * sub-batches are in memory at once. No new sub-batch is written after {@link
-   * #MAX_CONSECUTIVE_FAILED_SUB_BATCHES} sub-batches in a row wrote nothing; the entities left,
-   * fetched or not, are reported as failed. The same happens, checked before each sub-batch, once
-   * an administrator asked the workflow instance to stop. {@link SinkProvider#finishBatch} runs
-   * last, whatever was skipped, so a provider can write what it held back.
+   * #MAX_CONSECUTIVE_FAILED_SUB_BATCHES} sub-batches in a row failed every entity; the entities
+   * left, fetched or not, are reported as failed. The same happens, checked before each sub-batch,
+   * once an administrator asked the workflow instance to stop. {@link SinkProvider#finishBatch}
+   * runs last, whatever was skipped, so a provider can write what it held back.
    */
   private SinkRun executeBatchMode(
       SinkContext context,
@@ -278,9 +278,19 @@ public class SinkTaskDelegate implements JavaDelegate {
         entities.isEmpty()
             ? SinkResult.builder().success(true).build()
             : sinkProvider.writeBatch(context, entities);
-    boolean writeFailed =
-        !entities.isEmpty() && !written.isSuccess() && written.getSyncedCount() == 0;
+    boolean writeFailed = !entities.isEmpty() && madeNoProgress(written, entities.size());
     return new SubBatchOutcome(written, subBatch.fetchErrors(), writeFailed);
+  }
+
+  /**
+   * Whether a sub-batch failed every entity it was given. A provider that holds entities back for
+   * {@link SinkProvider#finishBatch} reports them neither synced nor failed, so a sub-batch with
+   * any entity synced or held back made progress even when {@code success} is false.
+   */
+  private static boolean madeNoProgress(SinkResult written, int entityCount) {
+    return !written.isSuccess()
+        && written.getSyncedCount() == 0
+        && written.getFailedCount() >= entityCount;
   }
 
   private static EntityInterface loadEntity(String entityLinkStr) {
@@ -318,7 +328,7 @@ public class SinkTaskDelegate implements JavaDelegate {
   /** Result of a sink run; {@code stopRequested} means an administrator stopped it part-way. */
   private record SinkRun(SinkResult result, boolean stopRequested) {}
 
-  /** Result of one sub-batch; {@code writeFailed} means the provider wrote none of its entities. */
+  /** Result of one sub-batch; {@code writeFailed} means the provider failed all of its entities. */
   private record SubBatchOutcome(
       SinkResult written, List<SinkResult.SinkError> fetchErrors, boolean writeFailed) {}
 

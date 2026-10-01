@@ -1,6 +1,7 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.RETURNS_SELF;
@@ -44,7 +45,7 @@ class WorkflowTaskCloserTest {
     givenUserTasks(
         Map.of("approve-1", open.getId(), "approve-2", inProgress.getId(), "review", open.getId()));
 
-    closer.closeOpenTasks(PROCESS_ID, CLOSED_BY, COMMENT);
+    closer.closeTasks(closer.findTaskIds(List.of(PROCESS_ID)), CLOSED_BY, COMMENT);
 
     verify(taskQuery).processInstanceId(PROCESS_ID);
     verify(taskRepository, times(1)).closeTask(open, CLOSED_BY, COMMENT);
@@ -57,7 +58,7 @@ class WorkflowTaskCloserTest {
     UUID missingTaskId = UUID.randomUUID();
     givenUserTasks(Map.of("approve", completed.getId(), "review", missingTaskId));
 
-    closer.closeOpenTasks(PROCESS_ID, CLOSED_BY, COMMENT);
+    closer.closeTasks(closer.findTaskIds(List.of(PROCESS_ID)), CLOSED_BY, COMMENT);
 
     verify(taskRepository, never()).closeTask(any(), anyString(), anyString());
   }
@@ -70,16 +71,29 @@ class WorkflowTaskCloserTest {
     when(taskRepository.closeTask(broken, CLOSED_BY, COMMENT))
         .thenThrow(new IllegalStateException("user not found"));
 
-    assertDoesNotThrow(() -> closer.closeOpenTasks(PROCESS_ID, CLOSED_BY, COMMENT));
+    assertDoesNotThrow(
+        () -> closer.closeTasks(closer.findTaskIds(List.of(PROCESS_ID)), CLOSED_BY, COMMENT));
 
     verify(taskRepository).closeTask(healthy, CLOSED_BY, COMMENT);
+  }
+
+  @Test
+  void findingTheTaskIdsClosesNothing() {
+    Task open = storedTask(TaskEntityStatus.Open);
+    givenUserTasks(Map.of("approve", open.getId()));
+
+    List<UUID> taskIds = closer.findTaskIds(List.of(PROCESS_ID, "other-process"));
+
+    assertEquals(List.of(open.getId()), taskIds);
+    verify(taskRepository, never()).closeTask(any(), anyString(), anyString());
   }
 
   @Test
   void aFailedLookupDoesNotBlockTheCaller() {
     when(taskQuery.list()).thenThrow(new IllegalStateException("engine is closed"));
 
-    assertDoesNotThrow(() -> closer.closeOpenTasks(PROCESS_ID, CLOSED_BY, COMMENT));
+    assertDoesNotThrow(
+        () -> closer.closeTasks(closer.findTaskIds(List.of(PROCESS_ID)), CLOSED_BY, COMMENT));
 
     verify(taskRepository, never()).closeTask(any(), anyString(), anyString());
   }

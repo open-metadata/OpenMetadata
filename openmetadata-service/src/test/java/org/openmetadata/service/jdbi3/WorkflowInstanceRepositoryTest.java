@@ -1,9 +1,11 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -26,6 +28,8 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance.WorkflowStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.WorkflowDocStoreDAOs.WorkflowInstanceTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository.StopRequest;
 
@@ -39,6 +43,7 @@ class WorkflowInstanceRepositoryTest {
   private final WorkflowInstanceStateRepository stateRepository =
       mock(WorkflowInstanceStateRepository.class);
   private final AtomicReference<String> storedJson = new AtomicReference<>();
+  private final AtomicReference<Runnable> beforeNextReadReturns = new AtomicReference<>();
 
   private MockedStatic<Entity> entity;
   private WorkflowInstanceRepository repository;
@@ -53,7 +58,16 @@ class WorkflowInstanceRepositoryTest {
         .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE))
         .thenReturn(stateRepository);
     when(stateRepository.listAllStatesForInstance(workflowInstanceId)).thenReturn(List.of());
-    when(timeSeriesDao.getById(workflowInstanceId)).thenAnswer(invocation -> storedJson.get());
+    when(timeSeriesDao.getById(workflowInstanceId))
+        .thenAnswer(
+            invocation -> {
+              String json = storedJson.get();
+              Runnable interleaved = beforeNextReadReturns.getAndSet(null);
+              if (interleaved != null) {
+                interleaved.run();
+              }
+              return json;
+            });
     doAnswer(
             invocation -> {
               storedJson.set(invocation.getArgument(0));
@@ -61,7 +75,58 @@ class WorkflowInstanceRepositoryTest {
             })
         .when(timeSeriesDao)
         .update(anyString(), any(UUID.class));
+    givenPartialUpdatesWithSqlSemantics();
     repository = new WorkflowInstanceRepository();
+  }
+
+  /**
+   * The partial updates as their SQL behaves: each sets only its own paths on the stored document,
+   * and the stop request only while the stored status is RUNNING.
+   */
+  private void givenPartialUpdatesWithSqlSemantics() {
+    when(timeSeriesDao.requestStop(anyString(), anyString(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              Map<String, Object> document = storedDocument();
+              boolean isRunning = invocation.getArgument(2).equals(document.get("status"));
+              if (isRunning) {
+                Map<String, Object> variables =
+                    document.get("variables") instanceof Map<?, ?> stored
+                        ? new HashMap<>(JsonUtils.convertValue(stored, Map.class))
+                        : new HashMap<>();
+                variables.put(
+                    WorkflowInstanceRepository.STOP_REQUEST_VARIABLE_KEY,
+                    JsonUtils.readValue(invocation.getArgument(1), Map.class));
+                document.put("variables", variables);
+                storedJson.set(JsonUtils.pojoToJson(document));
+              }
+              return isRunning ? 1 : 0;
+            });
+    when(timeSeriesDao.recordEnd(anyString(), anyString(), anyLong()))
+        .thenAnswer(
+            invocation -> setStoredFields(invocation.getArgument(1), invocation.getArgument(2)));
+    when(timeSeriesDao.recordEndWithException(anyString(), anyString(), anyLong(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              setStoredFields(invocation.getArgument(1), invocation.getArgument(2));
+              Map<String, Object> document = storedDocument();
+              document.put("exception", invocation.getArgument(3));
+              storedJson.set(JsonUtils.pojoToJson(document));
+              return 1;
+            });
+  }
+
+  private int setStoredFields(String status, long endedAt) {
+    Map<String, Object> document = storedDocument();
+    document.put("status", status);
+    document.put("endedAt", endedAt);
+    storedJson.set(JsonUtils.pojoToJson(document));
+    return 1;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> storedDocument() {
+    return new HashMap<>(JsonUtils.readValue(storedJson.get(), Map.class));
   }
 
   @AfterEach
@@ -84,6 +149,73 @@ class WorkflowInstanceRepositoryTest {
     assertEquals("kept", ended.getVariables().get("existing"));
     assertEquals(Optional.of(stopRequest), repository.findStopRequest(workflowInstanceId));
     verify(stateRepository).markRunningStatesAsFailed(workflowInstanceId, STOP_REASON);
+  }
+
+  @Test
+  void aStopRequestedBetweenTheEndListenersReadAndWriteKeepsBothTheMarkerAndTheEnd() {
+    storeRunningInstance();
+    StopRequest stopRequest = new StopRequest(true, STOP_REASON, "admin", 1L);
+    AtomicReference<Boolean> isStopRecorded = new AtomicReference<>();
+    beforeNextReadReturns.set(
+        () -> isStopRecorded.set(repository.requestStop(workflowInstanceId, stopRequest)));
+
+    repository.updateWorkflowInstance(workflowInstanceId, 42L, Map.of());
+
+    assertTrue(isStopRecorded.get(), "the instance was still RUNNING when the stop landed");
+    WorkflowInstance ended = storedInstance();
+    assertEquals(WorkflowStatus.FINISHED, ended.getStatus(), "the end is not reverted to RUNNING");
+    assertEquals(42L, ended.getEndedAt());
+    assertEquals("kept", ended.getVariables().get("existing"));
+    assertEquals(Optional.of(stopRequest), repository.findStopRequest(workflowInstanceId));
+    verify(timeSeriesDao, never()).update(anyString(), any(UUID.class));
+  }
+
+  @Test
+  void aStopRequestedAfterTheEndIsNotRecorded() {
+    storeRunningInstance();
+    repository.updateWorkflowInstance(workflowInstanceId, 42L, Map.of());
+
+    boolean isStopRecorded =
+        repository.requestStop(workflowInstanceId, new StopRequest(true, STOP_REASON, "admin", 1L));
+
+    assertFalse(isStopRecorded);
+    assertEquals(WorkflowStatus.FINISHED, storedInstance().getStatus());
+    assertEquals(Optional.empty(), repository.findStopRequest(workflowInstanceId));
+  }
+
+  @Test
+  void aStopRequestOnAnInstanceWithoutVariablesCreatesThem() {
+    storedJson.set(
+        JsonUtils.pojoToJson(
+            new WorkflowInstance().withId(workflowInstanceId).withStatus(WorkflowStatus.RUNNING)));
+
+    assertTrue(
+        repository.requestStop(
+            workflowInstanceId, new StopRequest(true, STOP_REASON, "admin", 1L)));
+
+    assertTrue(repository.findStopRequest(workflowInstanceId).isPresent());
+  }
+
+  @Test
+  void anExceptionVariableRecordsTheExceptionAndAnEndWithoutOneKeepsTheStoredException() {
+    storeRunningInstance();
+    repository.updateWorkflowInstance(
+        workflowInstanceId,
+        42L,
+        Map.of(
+            WorkflowVariableHandler.getNamespacedVariableName(
+                Workflow.GLOBAL_NAMESPACE, Workflow.EXCEPTION_VARIABLE),
+            "sink exploded"));
+
+    assertEquals(WorkflowStatus.EXCEPTION, storedInstance().getStatus());
+    assertEquals("sink exploded", storedInstance().getException());
+
+    repository.markInstanceAsSuperseded(workflowInstanceId, "newer run");
+    repository.updateWorkflowInstance(workflowInstanceId, 43L, Map.of());
+
+    assertEquals(WorkflowStatus.SUPERSEDED, storedInstance().getStatus());
+    assertEquals("sink exploded", storedInstance().getException());
+    assertEquals(43L, storedInstance().getEndedAt());
   }
 
   @Test

@@ -14,15 +14,23 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.WorkflowDocStoreDAOs.WorkflowInstanceTimeSeriesDAO;
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
 
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
+  private final WorkflowInstanceTimeSeriesDAO instanceDao;
+
   public WorkflowInstanceRepository() {
+    this(Entity.getCollectionDAO().workflowInstanceTimeSeriesDAO());
+  }
+
+  private WorkflowInstanceRepository(WorkflowInstanceTimeSeriesDAO instanceDao) {
     super(
         WorkflowInstanceResource.COLLECTION_PATH,
-        Entity.getCollectionDAO().workflowInstanceTimeSeriesDAO(),
+        instanceDao,
         WorkflowInstance.class,
         Entity.WORKFLOW_INSTANCE);
+    this.instanceDao = instanceDao;
   }
 
   public WorkflowInstance createNewRecord(WorkflowInstance recordEntity, String recordFQN) {
@@ -51,36 +59,46 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         workflowDefinitionName);
   }
 
+  /**
+   * Records the end of an instance's process. The status is decided from the row as it is now, and
+   * only status, endedAt and exception are written, so a stop request recorded after this read
+   * stays on the instance instead of being overwritten by the whole document read here.
+   */
   public void updateWorkflowInstance(
       UUID workflowInstanceId, Long endedAt, Map<String, Object> variables) {
     WorkflowInstance workflowInstance =
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
-    workflowInstance.setEndedAt(endedAt);
+    recordEnd(workflowInstanceId, endStateOf(workflowInstance, variables), endedAt);
+  }
 
-    // Preserve a terminal SUPERSEDED status set upstream by the supersede path, and the FAILURE an
-    // administrator's stop request stands for: the process-end execution listener also lands here
-    // and would otherwise recompute the status to FINISHED.
+  /** How an instance ended; a {@code null} exception leaves the stored one as it is. */
+  record EndState(WorkflowInstance.WorkflowStatus status, String exception) {}
+
+  /**
+   * Preserves a terminal SUPERSEDED status set upstream by the supersede path, and the FAILURE an
+   * administrator's stop request stands for: the process-end execution listener also lands here and
+   * would otherwise recompute the status to FINISHED.
+   */
+  private EndState endStateOf(WorkflowInstance workflowInstance, Map<String, Object> variables) {
+    EndState endState = new EndState(WorkflowInstance.WorkflowStatus.SUPERSEDED, null);
     if (workflowInstance.getStatus() != WorkflowInstance.WorkflowStatus.SUPERSEDED) {
-      stopRequestOf(workflowInstance)
-          .ifPresentOrElse(
-              stopRequest -> applyStopRequest(workflowInstance, stopRequest),
-              () -> applyFinalStatus(workflowInstance, variables));
+      endState =
+          stopRequestOf(workflowInstance)
+              .map(stopRequest -> stoppedEndState(workflowInstance.getId(), stopRequest))
+              .orElseGet(() -> finalEndState(workflowInstance.getId(), variables));
     }
-
-    getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstance), workflowInstanceId);
+    return endState;
   }
 
-  private void applyStopRequest(WorkflowInstance workflowInstance, StopRequest stopRequest) {
+  private EndState stoppedEndState(UUID workflowInstanceId, StopRequest stopRequest) {
     workflowInstanceStateRepository()
-        .markRunningStatesAsFailed(workflowInstance.getId(), stopRequest.reason());
-    workflowInstance
-        .withStatus(WorkflowInstance.WorkflowStatus.FAILURE)
-        .withException(stopRequest.reason());
+        .markRunningStatesAsFailed(workflowInstanceId, stopRequest.reason());
+    return new EndState(WorkflowInstance.WorkflowStatus.FAILURE, stopRequest.reason());
   }
 
-  private void applyFinalStatus(WorkflowInstance workflowInstance, Map<String, Object> variables) {
+  private EndState finalEndState(UUID workflowInstanceId, Map<String, Object> variables) {
     List<WorkflowInstanceState> states =
-        workflowInstanceStateRepository().listAllStatesForInstance(workflowInstance.getId());
+        workflowInstanceStateRepository().listAllStatesForInstance(workflowInstanceId);
 
     boolean hasFailedStage =
         states.stream()
@@ -95,16 +113,22 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
             ? WorkflowInstance.WorkflowStatus.FAILURE
             : WorkflowInstance.WorkflowStatus.FINISHED;
 
-    workflowInstance.setStatus(workflowStatus);
+    String exception =
+        (String)
+            variables.getOrDefault(
+                getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE), null);
+    return exception == null
+        ? new EndState(workflowStatus, null)
+        : new EndState(WorkflowInstance.WorkflowStatus.EXCEPTION, exception);
+  }
 
-    Optional<String> oException =
-        Optional.ofNullable(
-            (String)
-                variables.getOrDefault(
-                    getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE), null));
-    if (oException.isPresent()) {
-      workflowInstance.setException(oException.get());
-      workflowInstance.setStatus(WorkflowInstance.WorkflowStatus.EXCEPTION);
+  private void recordEnd(UUID workflowInstanceId, EndState endState, long endedAt) {
+    String id = workflowInstanceId.toString();
+    String status = endState.status().value();
+    if (endState.exception() == null) {
+      instanceDao.recordEnd(id, status, endedAt);
+    } else {
+      instanceDao.recordEndWithException(id, status, endedAt, endState.exception());
     }
   }
 
@@ -116,21 +140,18 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
   /**
    * Records that an administrator asked a running workflow instance to stop. The instance stays
    * RUNNING; a batch sink and the periodic-batch fetch loop read the request between batches, and
-   * the process-end update then records the instance as FAILURE with the request's reason.
+   * the process-end update then records the instance as FAILURE with the request's reason. Only the
+   * stop request is written, and only while the instance is RUNNING, so an end recorded
+   * concurrently is neither overwritten nor reverted to RUNNING.
+   *
+   * @return {@code false} when the instance is no longer RUNNING, so nothing was recorded
    */
-  public void requestStop(UUID workflowInstanceId, StopRequest stopRequest) {
-    WorkflowInstance workflowInstance =
-        JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
-
-    Map<String, Object> variables = workflowInstance.getVariables();
-    if (variables == null) {
-      variables = new HashMap<>();
-    }
-    variables.put(STOP_REQUEST_VARIABLE_KEY, stopRequest);
-
-    getTimeSeriesDao()
-        .update(
-            JsonUtils.pojoToJson(workflowInstance.withVariables(variables)), workflowInstanceId);
+  public boolean requestStop(UUID workflowInstanceId, StopRequest stopRequest) {
+    return instanceDao.requestStop(
+            workflowInstanceId.toString(),
+            JsonUtils.pojoToJson(stopRequest),
+            WorkflowInstance.WorkflowStatus.RUNNING.value())
+        > 0;
   }
 
   /** The stop request recorded on the workflow instance, read from the database. */
@@ -146,21 +167,12 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         .filter(StopRequest::requested);
   }
 
-  /**
-   * Marks a workflow instance as FAILED with the given reason.
-   * Preserves audit trail instead of deleting the instance.
-   */
+  /** Marks a workflow instance as FAILED with the given reason, keeping its audit trail. */
   public void markInstanceAsFailed(UUID workflowInstanceId, String reason) {
-    WorkflowInstance workflowInstance =
-        JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
-
-    WorkflowInstance updatedInstance =
-        workflowInstance
-            .withStatus(WorkflowInstance.WorkflowStatus.FAILURE)
-            .withException(reason)
-            .withEndedAt(System.currentTimeMillis());
-
-    getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);
+    recordEnd(
+        workflowInstanceId,
+        new EndState(WorkflowInstance.WorkflowStatus.FAILURE, reason),
+        System.currentTimeMillis());
   }
 
   /** Marks a workflow instance as SUPERSEDED when a newer run replaces it. */

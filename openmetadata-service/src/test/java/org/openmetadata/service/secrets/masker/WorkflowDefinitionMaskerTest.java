@@ -15,8 +15,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkConfig;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.GitSinkConfig;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.SigningKey;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.WebhookSinkConfig;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityHistory;
@@ -26,6 +28,9 @@ import org.openmetadata.service.exception.BadRequestException;
 
 class WorkflowDefinitionMaskerTest {
   private static final String GIT_TOKEN = "ghp_rawGitToken123";
+  private static final String SIGNING_KEY =
+      "-----BEGIN PGP PRIVATE KEY BLOCK-----\nrawKeyMaterial\n-----END PGP PRIVATE KEY BLOCK-----";
+  private static final String SIGNING_PASSPHRASE = "rawSigningPassphrase";
   private static final String WEBHOOK_TOKEN = "rawBearerToken456";
   private static final String WEBHOOK_PASSWORD = "rawBasicPassword789";
   private static final String GIT_NODE = "gitSink";
@@ -35,7 +40,8 @@ class WorkflowDefinitionMaskerTest {
   @Test
   void passwordPointersAreDerivedFromTheSinkConfigSchemas() {
     assertEquals(
-        pointers("/credentials/token"), Set.copyOf(WorkflowDefinitionMasker.GIT_SECRET_POINTERS));
+        pointers("/credentials/token", "/signingKey/privateKey", "/signingKey/passphrase"),
+        Set.copyOf(WorkflowDefinitionMasker.GIT_SECRET_POINTERS));
     assertEquals(
         pointers("/authentication/token", "/authentication/password", "/authentication/apiKey"),
         Set.copyOf(WorkflowDefinitionMasker.WEBHOOK_SECRET_POINTERS));
@@ -163,6 +169,51 @@ class WorkflowDefinitionMaskerTest {
 
     assertDoesNotThrow(() -> WorkflowDefinitionMasker.requireNoMaskedSecrets(incoming));
     assertEquals(GIT_TOKEN, gitToken(incoming));
+  }
+
+  @Test
+  void signingKeyAndPassphraseAreMaskedAndTheStoredOnesKeptWhenTheMaskIsSentBack() {
+    WorkflowDefinition stored = definitionWithSigningKey(SIGNING_KEY, SIGNING_PASSPHRASE);
+
+    WorkflowDefinition masked = WorkflowDefinitionMasker.mask(stored);
+    String maskedJson = JsonUtils.pojoToJson(masked);
+
+    assertFalse(maskedJson.contains("rawKeyMaterial"));
+    assertFalse(maskedJson.contains(SIGNING_PASSPHRASE));
+    assertEquals(PASSWORD_MASK, gitConfig(masked).getSigningKey().getPrivateKey());
+    assertEquals(PASSWORD_MASK, gitConfig(masked).getSigningKey().getPassphrase());
+    assertEquals(Boolean.TRUE, gitConfig(masked).getAllowUnsignedFastPush());
+
+    WorkflowDefinitionMasker.restoreMaskedSecrets(stored, masked);
+
+    assertDoesNotThrow(() -> WorkflowDefinitionMasker.requireNoMaskedSecrets(masked));
+    assertEquals(SIGNING_KEY, gitConfig(masked).getSigningKey().getPrivateKey());
+    assertEquals(SIGNING_PASSPHRASE, gitConfig(masked).getSigningKey().getPassphrase());
+    assertEquals(GIT_TOKEN, gitToken(masked));
+  }
+
+  @Test
+  void aSigningKeySentWithTheMaskForANewNodeIsRejected() {
+    WorkflowDefinition created = definitionWithSigningKey(PASSWORD_MASK, SIGNING_PASSPHRASE);
+
+    BadRequestException rejected =
+        assertThrows(
+            BadRequestException.class,
+            () -> WorkflowDefinitionMasker.requireNoMaskedSecrets(created));
+
+    assertTrue(rejected.getMessage().contains("/signingKey/privateKey"), rejected.getMessage());
+  }
+
+  private static WorkflowDefinition definitionWithSigningKey(String privateKey, String passphrase) {
+    WorkflowDefinition definition = definitionWithSinks(GIT_TOKEN);
+    GitSinkConfig config =
+        gitConfig(definition)
+            .withAllowUnsignedFastPush(true)
+            .withSigningKey(new SigningKey().withPrivateKey(privateKey).withPassphrase(passphrase));
+    sinkNode(definition, GIT_NODE)
+        .getConfig()
+        .setSinkConfig(JsonUtils.convertValue(config, SinkConfig.class));
+    return definition;
   }
 
   private static WorkflowDefinition definitionWithSinks(String gitToken) {

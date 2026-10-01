@@ -420,6 +420,48 @@ class SinkTaskDelegateTest {
   }
 
   @Test
+  void subBatchesThatStageAllButOneEntityDoNotStopTheBatch() {
+    AtomicInteger calls = new AtomicInteger();
+    List<Integer> staged = new ArrayList<>();
+    SinkProvider staging =
+        new TestSinkProvider() {
+          @Override
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+            calls.incrementAndGet();
+            staged.add(entities.size() - 1);
+            return SinkResult.builder()
+                .success(false)
+                .syncedCount(0)
+                .failedCount(1)
+                .errors(
+                    List.of(
+                        SinkResult.SinkError.builder()
+                            .entityFqn(entities.getFirst().getFullyQualifiedName())
+                            .errorMessage("path collision")
+                            .build()))
+                .build();
+          }
+
+          @Override
+          public SinkResult finishBatch(SinkContext context) {
+            return SinkResult.builder()
+                .success(true)
+                .syncedCount(staged.stream().mapToInt(Integer::intValue).sum())
+                .build();
+          }
+        };
+
+    runBatch(staging, 1000, "300");
+
+    assertEquals(10, calls.get());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(990));
+    verify(execution).setVariable(eq("process_failedCount"), eq(10));
+    ArgumentCaptor<Object> syncResult = ArgumentCaptor.forClass(Object.class);
+    verify(execution).setVariable(eq("process_syncResult"), syncResult.capture());
+    assertFalse(((String) syncResult.getValue()).contains("Not synced"));
+  }
+
+  @Test
   void storedSyncResultIsBoundedAndHasNoStackTraces() {
     runBatch(scripted(entities -> failedWrite(entities)), 1000, "300");
 

@@ -52,8 +52,13 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
  * request stops it at its next batch boundary; should the delete instead have to wait for rows
  * that job holds, the process is left running once the database gives up the wait.
  *
- * <p>The OpenMetadata tasks still open for the process tree's user tasks are cancelled before the
- * delete, which removes the Flowable tasks that link to them.
+ * <p>The OpenMetadata tasks still open for the process tree's user tasks are looked up before the
+ * delete, which removes the Flowable tasks that link to them, and cancelled once the delete
+ * succeeded; a process left running keeps its tasks open.
+ *
+ * <p>A stop request is recorded only on a RUNNING instance. When neither the delete nor the stop
+ * request is possible, because the instance has already ended while a job of its process is still
+ * executing, the termination is refused.
  */
 @Slf4j
 public class WorkflowInstanceTerminator {
@@ -129,15 +134,12 @@ public class WorkflowInstanceTerminator {
     List<String> rootIds = findRootProcessInstanceIds(workflowInstanceId);
     requireTerminable(workflowInstance, rootIds);
     List<String> processTreeIds = collectProcessTree(rootIds, this::findChildProcessInstanceIds);
-    requestStop(request);
-    boolean isDeleted = false;
-    if (countJobsLockedByThisServer(processTreeIds) == 0) {
-      isDeleted = deleteProcessTree(request, rootIds, processTreeIds);
-    }
+    boolean isStopRecorded = requestStop(request);
+    boolean isDeleted =
+        countJobsLockedByThisServer(processTreeIds) == 0
+            && deleteProcessTree(request, rootIds, processTreeIds);
     if (!isDeleted) {
-      LOG.info(
-          "[WorkflowTerminate] Workflow instance {} has a job executing; stop requested",
-          workflowInstanceId);
+      requireStopRecorded(workflowInstanceId, isStopRecorded);
     }
     return new TerminationOutcome(
         workflowInstanceRepository.getByIdOrNotFound(workflowInstanceId), !isDeleted);
@@ -146,10 +148,10 @@ public class WorkflowInstanceTerminator {
   /** Deletes the process tree; {@code false} when a job executing now holds rows it needs. */
   private boolean deleteProcessTree(
       TerminationRequest request, List<String> rootIds, List<String> processTreeIds) {
-    processTreeIds.forEach(
-        id -> taskCloser.closeOpenTasks(id, request.requestedBy(), request.auditMessage()));
+    List<UUID> openTaskIds = taskCloser.findTaskIds(processTreeIds);
     boolean isDeleted = rootIds.stream().allMatch(this::deleteRootProcessInstance);
     if (isDeleted) {
+      taskCloser.closeTasks(openTaskIds, request.requestedBy(), request.auditMessage());
       markTerminated(request.workflowInstanceId(), request.auditMessage());
       LOG.info(
           "[WorkflowTerminate] Workflow instance {} terminated; deleted process instances {}",
@@ -159,11 +161,26 @@ public class WorkflowInstanceTerminator {
     return isDeleted;
   }
 
-  private void requestStop(TerminationRequest request) {
-    workflowInstanceRepository.requestStop(
+  /** {@code false} when the instance is no longer RUNNING, so no stop request was recorded. */
+  private boolean requestStop(TerminationRequest request) {
+    return workflowInstanceRepository.requestStop(
         request.workflowInstanceId(),
         new StopRequest(
             true, request.auditMessage(), request.requestedBy(), System.currentTimeMillis()));
+  }
+
+  /** A process left running must have a stop request to end it; otherwise nothing was done. */
+  private void requireStopRecorded(UUID workflowInstanceId, boolean isStopRecorded) {
+    if (!isStopRecorded) {
+      throw new WorkflowInstanceConflictException(
+          "Workflow instance %s is already %s and a job of its process is executing now; try again once it completes"
+              .formatted(
+                  workflowInstanceId,
+                  workflowInstanceRepository.getByIdOrNotFound(workflowInstanceId).getStatus()));
+    }
+    LOG.info(
+        "[WorkflowTerminate] Workflow instance {} has a job executing; stop requested",
+        workflowInstanceId);
   }
 
   /** Breadth-first walk from the roots through call-activity children; roots come first. */

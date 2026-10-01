@@ -169,7 +169,9 @@ public class WorkflowInstanceResource
         @ApiResponse(responseCode = "404", description = "Workflow Instance for `id` not found"),
         @ApiResponse(
             responseCode = "409",
-            description = "The instance has already ended and has no running process")
+            description =
+                "The instance has already ended, and has no running process or one whose job "
+                    + "is executing now")
       })
   public Response terminate(
       @Context SecurityContext securityContext,

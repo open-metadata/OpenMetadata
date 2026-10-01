@@ -66,6 +66,7 @@ class WorkflowInstanceTerminatorTest {
   private final AtomicReference<StopRequest> recordedStopRequest = new AtomicReference<>();
   private Map<String, List<String>> childIdsBySuperId = Map.of();
   private Map<String, Long> jobsLockedHereByProcessInstanceId = Map.of();
+  private boolean isStopRecordable = true;
 
   private WorkflowInstanceTerminator terminator;
 
@@ -113,8 +114,10 @@ class WorkflowInstanceTerminatorTest {
         .markRunningStatesAsFailed(any(UUID.class), anyString());
     doAnswer(
             invocation -> {
-              recordedStopRequest.set(invocation.getArgument(1));
-              return null;
+              if (isStopRecordable) {
+                recordedStopRequest.set(invocation.getArgument(1));
+              }
+              return isStopRecordable;
             })
         .when(instanceRepository)
         .requestStop(any(UUID.class), any(StopRequest.class));
@@ -188,7 +191,7 @@ class WorkflowInstanceTerminatorTest {
     assertEquals(WorkflowStatus.RUNNING, outcome.workflowInstance().getStatus());
     assertEquals(List.of(ROOT_ID, CHILD_ID, GRANDCHILD_ID), runningProcessInstanceIds);
     verify(runtimeService, never()).deleteProcessInstance(anyString(), anyString());
-    verify(taskCloser, never()).closeOpenTasks(anyString(), anyString(), anyString());
+    verify(taskCloser, never()).closeTasks(any(), anyString(), anyString());
     verify(instanceRepository, never()).markInstanceAsFailed(any(UUID.class), anyString());
     StopRequest stopRequest = recordedStopRequest.get();
     assertTrue(stopRequest.requested());
@@ -245,21 +248,37 @@ class WorkflowInstanceTerminatorTest {
     assertTrue(outcome.stopRequested());
     assertEquals(WorkflowStatus.RUNNING, storedInstance.get().getStatus());
     assertEquals("Terminated by admin", recordedStopRequest.get().reason());
+    verify(taskCloser, never()).closeTasks(any(), anyString(), anyString());
   }
 
   @Test
-  void openTasksOfEveryProcessInTheTreeAreClosedBeforeTheRootIsDeleted() {
+  void openTasksOfTheTreeAreLookedUpBeforeTheDeleteAndClosedOnlyAfterIt() {
     givenRunningTree();
+    List<UUID> openTaskIds = List.of(UUID.randomUUID(), UUID.randomUUID());
+    when(taskCloser.findTaskIds(List.of(ROOT_ID, CHILD_ID, GRANDCHILD_ID))).thenReturn(openTaskIds);
 
-    terminator.terminate(request("pod died"));
+    TerminationOutcome outcome = terminator.terminate(request("pod died"));
 
+    assertFalse(outcome.stopRequested());
     InOrder order = inOrder(taskCloser, runtimeService);
-    for (String processInstanceId : List.of(ROOT_ID, CHILD_ID, GRANDCHILD_ID)) {
-      order
-          .verify(taskCloser)
-          .closeOpenTasks(processInstanceId, "admin", "Terminated by admin: pod died");
-    }
+    order.verify(taskCloser).findTaskIds(List.of(ROOT_ID, CHILD_ID, GRANDCHILD_ID));
     order.verify(runtimeService).deleteProcessInstance(ROOT_ID, Workflow.TERMINATED_BY_ADMIN);
+    order.verify(taskCloser).closeTasks(openTaskIds, "admin", "Terminated by admin: pod died");
+  }
+
+  @Test
+  void anInstanceThatEndedWhileItsJobStillRunsIsRefusedWithoutClosingAnything() {
+    givenRunningTree();
+    storedInstance.set(instance(WorkflowStatus.FINISHED));
+    jobsLockedHereByProcessInstanceId = Map.of(CHILD_ID, 1L);
+    isStopRecordable = false;
+
+    assertThrows(
+        WorkflowInstanceConflictException.class, () -> terminator.terminate(request("late")));
+
+    assertEquals(WorkflowStatus.FINISHED, storedInstance.get().getStatus());
+    verify(runtimeService, never()).deleteProcessInstance(anyString(), anyString());
+    verify(taskCloser, never()).closeTasks(any(), anyString(), anyString());
   }
 
   @Test
@@ -282,6 +301,7 @@ class WorkflowInstanceTerminatorTest {
     assertEquals(WorkflowStatus.RUNNING, outcome.workflowInstance().getStatus());
     assertEquals("Terminated by admin: stuck", recordedStopRequest.get().reason());
     verify(instanceRepository, never()).markInstanceAsFailed(any(UUID.class), anyString());
+    verify(taskCloser, never()).closeTasks(any(), anyString(), anyString());
   }
 
   @Test
