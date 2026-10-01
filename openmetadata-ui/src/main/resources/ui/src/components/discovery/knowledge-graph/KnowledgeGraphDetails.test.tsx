@@ -74,7 +74,7 @@ it('pages and searches all loaded columns without declaring uninspected columns 
   );
 
   expect(within(grid).getByText('column_299')).toBeVisible();
-  expect(within(grid).getByText('label.kg-unknown')).toBeVisible();
+  expect(within(grid).getByText('label.kg-not-explored')).toBeVisible();
   expect(within(grid).queryByText('label.kg-unmapped')).not.toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: /label.kg-show-more/ })
@@ -109,17 +109,22 @@ it('lists the gaps first, names what is missing and links to the asset to fix it
   const grid = screen.getByRole('grid');
 
   expect(within(grid).getByText('customers')).toBeVisible();
+  // Mapped assets ('orders') are hidden from the Gaps tab per the designer's
+  // review — they are not a gap and belong in Columns.
   expect(within(grid).queryByText('orders')).not.toBeInTheDocument();
   expect(within(grid).getByText('svc.db.sales · label.table')).toBeVisible();
-  expect(within(grid).getByText('label.kg-no-glossary-term')).toBeVisible();
+  expect(within(grid).getByText('label.kg-missing-glossary-term')).toBeVisible();
   expect(
     within(grid).getByRole('link', { name: 'label.kg-map-glossary-term' })
   ).toHaveAttribute('href', '/test/entity/path');
-
-  await userEvent.click(screen.getByRole('button', { name: /label.all/ }));
-
-  expect(within(grid).getByText('orders')).toBeVisible();
-  expect(within(grid).getByText('label.kg-mapped')).toBeVisible();
+  // The chip row surfaces only Unmapped + Not explored; there is no All or
+  // Mapped chip on the Gaps tab anymore.
+  expect(
+    screen.queryByRole('button', { name: /label.all/ })
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: /label.kg-mapped/ })
+  ).not.toBeInTheDocument();
 });
 
 it('shows actual property types and distinguishes functional declarations from unspecified cardinality', () => {
