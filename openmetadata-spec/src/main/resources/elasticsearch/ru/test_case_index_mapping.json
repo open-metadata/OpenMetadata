@@ -3,6 +3,10 @@
     "index": {},
     "analysis": {
       "tokenizer": {
+        "om_ngram_search_tokenizer": {
+          "type": "pattern",
+          "pattern": "[^\\p{L}\\p{Nd}]+"
+        },
         "edge_ngram_tokenizer": {
           "type": "edge_ngram",
           "min_gram": 3,
@@ -35,6 +39,16 @@
         }
       },
       "analyzer": {
+        "om_ngram_search": {
+          "type": "custom",
+          "tokenizer": "om_ngram_search_tokenizer",
+          "filter": [
+            "lowercase",
+            "asciifolding",
+            "om_ngram_search_min",
+            "om_ngram_search_max"
+          ]
+        },
         "om_analyzer": {
           "tokenizer": "standard",
           "filter": [
@@ -74,6 +88,14 @@
         }
       },
       "filter": {
+        "om_ngram_search_min": {
+          "type": "length",
+          "min": 3
+        },
+        "om_ngram_search_max": {
+          "type": "truncate",
+          "length": 20
+        },
         "word_delimiter_filter": {
           "type": "word_delimiter",
           "preserve_original": true
@@ -157,7 +179,8 @@
           },
           "ngram": {
             "type": "text",
-            "analyzer": "om_ngram"
+            "analyzer": "om_ngram",
+            "search_analyzer": "om_ngram_search"
           },
           "compound": {
             "type": "text",
@@ -192,7 +215,8 @@
           },
           "ngram": {
             "type": "text",
-            "analyzer": "om_ngram"
+            "analyzer": "om_ngram",
+            "search_analyzer": "om_ngram_search"
           },
           "compound": {
             "type": "text",

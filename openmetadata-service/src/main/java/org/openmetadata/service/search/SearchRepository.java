@@ -157,6 +157,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
+import org.openmetadata.service.search.fitness.SearchRestProbe;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
@@ -1255,7 +1256,11 @@ public class SearchRepository {
     try {
       String indexMappingContent = readIndexMapping(indexMapping);
       if (indexExists(indexMapping)) {
-        searchClient.updateIndex(indexMapping, indexMappingContent);
+        JsonNode liveSettings =
+            new SearchRestProbe(searchClient)
+                .get("/" + indexMapping.getIndexName(clusterAlias) + "/_settings");
+        searchClient.updateIndex(
+            indexMapping, LiveMappingUpdates.forLiveIndex(indexMappingContent, liveSettings));
       } else {
         searchClient.createIndex(indexMapping, indexMappingContent);
       }

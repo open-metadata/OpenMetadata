@@ -20,6 +20,7 @@ import jakarta.json.JsonObject;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -459,6 +460,9 @@ class SearchUtilsTest {
         "kochi__expected_vessels__portcall_v1 | 0", // 5 sub-tokens
         "scraped/kochi/expected_vessels/parsed/portcall/v1 | 0",
         "foo-bar.baz_qux | 0", // 4 sub-tokens via mixed separators
+        // one token, but its letter/digit runs make more word parts than a fuzzy stage can afford
+        "exactec2274b037459fc6 | 1", // 6 word parts
+        "hkkah4uuhb8f6za1ug3l | 0", // 11 word parts
       })
   void getFuzzinessReturnsExpected(String query, String expected) {
     assertEquals(expected, SearchUtils.getFuzziness(query));
@@ -499,6 +503,7 @@ class SearchUtilsTest {
         "lhr__incoming_flights | 1",
         "kochi__expected_vessels__portcall_v1 | 1",
         "scraped/kochi/expected_vessels/parsed/portcall/v1 | 1",
+        "hkkah4uuhb8f6za1ug3l | 1",
       })
   void getMaxExpansionsReturnsExpected(String query, int expected) {
     assertEquals(expected, SearchUtils.getMaxExpansions(query));
@@ -530,7 +535,9 @@ class SearchUtilsTest {
         "my.customer.table",
         "lhr__incoming_flights",
         "kochi__expected_vessels__portcall_v1",
-        "foo-bar.baz/qux"
+        "foo-bar.baz/qux",
+        "LhrIncomingFlightsArrivalsScheduleV1",
+        "hkkah4uuhb8f6za1ug3l"
       })
   void fuzzinessAndMaxExpansionsAgreeOnBoundary(String query) {
     boolean fuzzyOff = "0".equals(SearchUtils.getFuzziness(query));
@@ -993,5 +1000,47 @@ class SearchUtilsTest {
     List<String> keys = new ArrayList<>();
     buckets.forEach(b -> keys.add(b.get("key").asText()));
     return keys;
+  }
+
+  @Test
+  void capAnalyzedWordPartsLeavesNormalQueriesAlone() {
+    String query = "monthly revenue by region for the sales team";
+    assertSame(query, SearchUtils.capAnalyzedWordParts(query));
+  }
+
+  @Test
+  void capAnalyzedWordPartsKeepsTheFirstWordParts() {
+    String sentence = String.join(" ", Collections.nCopies(30, "orders"));
+    assertEquals(
+        String.join(" ", Collections.nCopies(24, "orders")),
+        SearchUtils.capAnalyzedWordParts(sentence));
+    assertEquals(
+        "hkkah4uuhb8f6za1ug3ljq3e1heaqe8tu760pq0z9a9",
+        SearchUtils.capAnalyzedWordParts(
+            "hkkah4uuhb8f6za1ug3ljq3e1heaqe8tu760pq0z9a9l50v9cq4m9et3fqb2w7o4egnvhl462luxm6th8kc"));
+    assertEquals(24, SearchUtils.capAnalyzedWordParts("顧客注文履歴".repeat(5)).length());
+  }
+
+  @Test
+  void capLongTokenRunsLeavesNormalQueriesAlone() {
+    String query = "customer orders exactec2274b037459fc6 v_location_category";
+    assertSame(query, SearchUtils.capLongTokenRuns(query));
+  }
+
+  @Test
+  void capLongTokenRunsTruncatesOnlyTheLongRun() {
+    String longRun = "a1".repeat(150);
+    String capped = SearchUtils.capLongTokenRuns("orders " + longRun + " revenue");
+    assertEquals(
+        "orders " + longRun.substring(0, SearchUtils.MAX_ANALYZED_TOKEN_RUN) + " revenue", capped);
+  }
+
+  @Test
+  void capLongTokenRunsKeepsQuotedAndFieldValues() {
+    String longRun = "b2".repeat(150);
+    String quoted = "\"" + longRun + "\" orders";
+    String field = "fullyQualifiedName:" + longRun + " orders";
+    assertSame(quoted, SearchUtils.capLongTokenRuns(quoted));
+    assertSame(field, SearchUtils.capLongTokenRuns(field));
   }
 }

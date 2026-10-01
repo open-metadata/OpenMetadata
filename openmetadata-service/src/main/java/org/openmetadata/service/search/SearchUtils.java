@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.UPSTREAM_ENTITY_RELATIONSHIP_FIELD;
@@ -38,6 +39,8 @@ import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirectio
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
@@ -732,14 +735,6 @@ public final class SearchUtils {
     };
   }
 
-  /** Indexes whose free text is searched by the data-asset builder over the configured fields. */
-  public static boolean usesDataAssetSearchBuilder(String indexName) {
-    return isDataAssetIndex(indexName)
-        || isColumnIndex(indexName)
-        || SearchClient.GLOBAL_SEARCH_ALIAS.equals(indexName)
-        || SearchClient.DATA_ASSET_SEARCH_ALIAS.equals(indexName);
-  }
-
   public static boolean isServiceIndex(String indexName) {
     return switch (indexName) {
       case "api_service_search_index",
@@ -766,6 +761,30 @@ public final class SearchUtils {
           "driveService" -> true;
       default -> false;
     };
+  }
+
+  /** The Search Settings entry for an index, falling back to the default configuration. */
+  public static AssetTypeConfiguration assetTypeConfig(String indexName, SearchSettings settings) {
+    String assetType = mapEntityTypesToIndexNames(indexName);
+    return settings.getAssetTypeConfigurations().stream()
+        .filter(config -> config.getAssetType().equals(assetType))
+        .findFirst()
+        .orElse(settings.getDefaultConfiguration());
+  }
+
+  /**
+   * The fields /search/query searches for an index. Used to bound free text that reaches a
+   * query_string, which would otherwise search every field in the mapping.
+   */
+  public static List<String> configuredSearchFields(String indexName) {
+    SearchSettings settings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    String index = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
+    List<FieldBoost> fields = assetTypeConfig(index, settings).getSearchFields();
+    if (nullOrEmpty(fields)) {
+      fields = settings.getDefaultConfiguration().getSearchFields();
+    }
+    return listOrEmpty(fields).stream().map(FieldBoost::getField).toList();
   }
 
   public static String mapEntityTypesToIndexNames(String indexName) {
@@ -807,6 +826,60 @@ public final class SearchUtils {
     };
   }
 
+  /** Longest run of letters and digits that analyzed search stages look at. */
+  public static final int MAX_ANALYZED_TOKEN_RUN = 128;
+
+  /**
+   * Truncates runs of letters and digits longer than {@link #MAX_ANALYZED_TOKEN_RUN}, outside
+   * quotes and {@code field:value} values. The word delimiter splits such a run at every switch
+   * between letters and digits, so a long random token alone can exceed the cluster's
+   * max_clause_count. Exact-match stages keep the original text.
+   */
+  public static String capLongTokenRuns(String query) {
+    if (query == null || query.length() <= MAX_ANALYZED_TOKEN_RUN) {
+      return query;
+    }
+    StringBuilder capped = new StringBuilder(query.length());
+    boolean quoted = false;
+    boolean fieldValue = false;
+    int run = 0;
+    for (int i = 0; i < query.length(); i++) {
+      char c = query.charAt(i);
+      boolean escaped = i > 0 && query.charAt(i - 1) == '\\';
+      if (c == '"' && !escaped) {
+        quoted = !quoted;
+      }
+      boolean startsValue = c == ':' && !escaped;
+      fieldValue = !quoted && (startsValue || (fieldValue && !Character.isWhitespace(c)));
+      run = Character.isLetterOrDigit(c) ? run + 1 : 0;
+      if (quoted || fieldValue || run <= MAX_ANALYZED_TOKEN_RUN) {
+        capped.append(c);
+      }
+    }
+    return capped.length() == query.length() ? query : capped.toString();
+  }
+
+  /** Most word parts the analyzed stages of a plain-text search look at. */
+  public static final int MAX_ANALYZED_WORD_PARTS = 24;
+
+  /**
+   * Keeps the first {@link #MAX_ANALYZED_WORD_PARTS} word parts of plain-text search input. An
+   * analyzed stage costs about one clause per word part and field, so this bounds the clause count
+   * of the query however long the input is.
+   */
+  public static String capAnalyzedWordParts(String query) {
+    if (query == null || query.length() <= MAX_ANALYZED_WORD_PARTS) {
+      return query;
+    }
+    int parts = 0;
+    for (int i = 0; i < query.length(); i++) {
+      if (startsWordPart(query, i) && ++parts > MAX_ANALYZED_WORD_PARTS) {
+        return query.substring(0, i).strip();
+      }
+    }
+    return query;
+  }
+
   /**
    * Count alphanumeric sub-tokens in the query. Mirrors how the {@code om_ngram} analyzer splits
    * input on non-alphanumeric characters ({@code token_chars: [letter, digit]}), so it reflects
@@ -825,28 +898,77 @@ public final class SearchUtils {
     return count;
   }
 
+  /** Most word parts a query may have and still get a fuzzy stage. */
+  private static final int MAX_FUZZY_WORD_PARTS = 8;
+
+  /**
+   * Counts the word parts {@code om_analyzer} makes from the query: its word delimiter splits at
+   * every character that is not a letter or digit, at letter/digit switches and at case changes,
+   * and the standard tokenizer makes each ideograph its own token. A fuzzy stage expands each part
+   * into up to max_expansions terms per field.
+   */
+  private static int wordPartCount(String query) {
+    int parts = 0;
+    for (int i = 0; i < query.length(); i++) {
+      if (startsWordPart(query, i)) {
+        parts++;
+      }
+    }
+    return parts;
+  }
+
+  private static boolean keepsFuzzyStageBounded(String query) {
+    return analyzedSubTokenCount(query) <= 2 && wordPartCount(query) <= MAX_FUZZY_WORD_PARTS;
+  }
+
+  private static boolean startsWordPart(String text, int i) {
+    char current = text.charAt(i);
+    if (!Character.isLetterOrDigit(current)) {
+      return false;
+    }
+    if (i == 0 || isIdeograph(current)) {
+      return true;
+    }
+    char previous = text.charAt(i - 1);
+    boolean acronymEnds =
+        i + 1 < text.length()
+            && Character.isUpperCase(previous)
+            && Character.isUpperCase(current)
+            && Character.isLowerCase(text.charAt(i + 1));
+    return !Character.isLetterOrDigit(previous)
+        || isIdeograph(previous)
+        || Character.isDigit(previous) != Character.isDigit(current)
+        || (Character.isLowerCase(previous) && Character.isUpperCase(current))
+        || acronymEnds;
+  }
+
+  private static boolean isIdeograph(char c) {
+    Character.UnicodeScript script = Character.UnicodeScript.of(c);
+    return script == Character.UnicodeScript.HAN || script == Character.UnicodeScript.HIRAGANA;
+  }
+
   /**
    * Get fuzziness for a fuzzy multi_match over analyzed fields (including {@code *.ngram}).
-   * Disable fuzziness once the query analyzes into more than 2 sub-tokens — at that point the
-   * ngram path generates enough analyzed ngram terms that fuzzy rewriting blows past Lucene's
+   * Disable fuzziness once the query analyzes into more than 2 sub-tokens, or into more than
+   * {@link #MAX_FUZZY_WORD_PARTS} word parts — past either, fuzzy rewriting blows past Lucene's
    * bool-clause cap ({@code indices.query.bool.max_clause_count}, 1024 default).
    */
   public static String getFuzziness(String query) {
     if (query == null || query.isBlank()) {
       return FUZZINESS_ENABLED;
     }
-    return analyzedSubTokenCount(query) > 2 ? FUZZINESS_DISABLED : FUZZINESS_ENABLED;
+    return keepsFuzzyStageBounded(query) ? FUZZINESS_ENABLED : FUZZINESS_DISABLED;
   }
 
   /**
-   * Get max_expansions for a fuzzy multi_match. Drop to 1 once the query analyzes into more
-   * than 2 sub-tokens so the fuzzy rewrite stays bounded.
+   * Get max_expansions for a fuzzy multi_match. Drop to 1 whenever {@link #getFuzziness} disables
+   * fuzziness, so the fuzzy rewrite stays bounded.
    */
   public static int getMaxExpansions(String query) {
     if (query == null || query.isBlank()) {
       return 10;
     }
-    return analyzedSubTokenCount(query) > 2 ? 1 : 10;
+    return keepsFuzzyStageBounded(query) ? 10 : 1;
   }
 
   /**

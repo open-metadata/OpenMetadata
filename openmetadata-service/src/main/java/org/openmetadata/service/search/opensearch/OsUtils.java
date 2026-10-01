@@ -30,6 +30,7 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
@@ -151,7 +152,13 @@ public class OsUtils {
           String queryToProcess = parseJsonQuery(queryFilter);
           filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
         } else {
-          filterQuery = Query.of(q -> q.queryString(qs -> qs.query(queryFilter)));
+          filterQuery =
+              Query.of(
+                  q ->
+                      q.queryString(
+                          qs ->
+                              qs.query(queryFilter)
+                                  .fields(SearchUtils.configuredSearchFields(index))));
         }
         searchRequestBuilder.query(q -> q.bool(b -> b.must(baseQuery).filter(filterQuery)));
       } catch (Exception ex) {
@@ -292,7 +299,7 @@ public class OsUtils {
     }
 
     // Apply query filter
-    buildSearchSourceFilter(queryFilter, searchRequestBuilder);
+    buildSearchSourceFilter(queryFilter, indexAlias, searchRequestBuilder);
 
     return searchRequestBuilder.build();
   }
@@ -497,7 +504,7 @@ public class OsUtils {
     }
 
     // Apply query filter
-    buildSearchSourceFilter(queryFilter, searchRequestBuilder);
+    buildSearchSourceFilter(queryFilter, indexAlias, searchRequestBuilder);
 
     return searchRequestBuilder.build();
   }
@@ -523,7 +530,7 @@ public class OsUtils {
             .size(10000);
 
     // Apply query filter
-    buildSearchSourceFilter(queryFilter, searchRequestBuilder);
+    buildSearchSourceFilter(queryFilter, index, searchRequestBuilder);
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
@@ -551,7 +558,7 @@ public class OsUtils {
   }
 
   private static void buildSearchSourceFilter(
-      String queryFilter, SearchRequest.Builder searchRequestBuilder) {
+      String queryFilter, String index, SearchRequest.Builder searchRequestBuilder) {
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
       try {
         Query filterQuery;
@@ -559,7 +566,13 @@ public class OsUtils {
           String queryToProcess = parseJsonQuery(queryFilter);
           filterQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
         } else {
-          filterQuery = Query.of(q -> q.queryString(qs -> qs.query(queryFilter)));
+          filterQuery =
+              Query.of(
+                  q ->
+                      q.queryString(
+                          qs ->
+                              qs.query(queryFilter)
+                                  .fields(SearchUtils.configuredSearchFields(index))));
         }
         searchRequestBuilder.postFilter(filterQuery);
       } catch (Exception ex) {

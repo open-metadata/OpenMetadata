@@ -47,6 +47,8 @@ class IndexAnalyzerMappingTest {
   private static final String STEMMER = "om_stemmer";
   private static final String PLURAL_STEMMER = "om_plural_stemmer";
   private static final String ASCII_FOLDING = "asciifolding";
+  private static final String NGRAM = "om_ngram";
+  private static final String NGRAM_SEARCH = "om_ngram_search";
 
   @BeforeAll
   static void loadMappings() throws IOException {
@@ -254,6 +256,44 @@ class IndexAnalyzerMappingTest {
   }
 
   @Test
+  void ngramFieldsAreQueriedWithoutGrams() {
+    // Analyzing the query with the n-gram analyzer cuts each word into every 3 to 20 character
+    // piece (189 terms for a 21-character word) on every n-gram field, which exceeds OpenSearch's
+    // default max_clause_count. The search-time twin keeps a word as one term, truncated to the
+    // longest gram so it still matches. jp and zh keep query-time grams: theirs are 1 to 3
+    // characters and text without spaces needs them.
+    List<String> offenders = new ArrayList<>();
+    for (String language : List.of(ENGLISH, "ru")) {
+      forEachMapping(
+          language,
+          (name, mapping) -> {
+            JsonNode analysis = mapping.path("settings").path("analysis");
+            String gramTokenizer = analysis.path("analyzer").path(NGRAM).path("tokenizer").asText();
+            int maxGram = analysis.path("tokenizer").path(gramTokenizer).path("max_gram").asInt();
+            List<JsonNode> ngramFields =
+                mapping.path("mappings").findParents("analyzer").stream()
+                    .filter(field -> NGRAM.equals(field.path("analyzer").asText()))
+                    .toList();
+            if (ngramFields.isEmpty()) {
+              return;
+            }
+            String where = language + "/" + name;
+            if (!analysis.path("analyzer").has(NGRAM_SEARCH)) {
+              offenders.add(where + " does not define " + NGRAM_SEARCH);
+            } else if (analysis.path("filter").path("om_ngram_search_max").path("length").asInt()
+                != maxGram) {
+              offenders.add(where + " truncates to a length other than max_gram " + maxGram);
+            }
+            ngramFields.stream()
+                .filter(field -> !NGRAM_SEARCH.equals(field.path("search_analyzer").asText()))
+                .forEach(field -> offenders.add(where + " has an n-gram field without the twin"));
+          });
+    }
+    assertTrue(
+        offenders.isEmpty(), "n-gram fields analysed with grams at query time: " + offenders);
+  }
+
+  @Test
   void englishMappingsAreActuallyCovered() {
     // The assertions above pass vacuously if the loader stops resolving mappings.
     List<String> seen = new ArrayList<>();
@@ -269,6 +309,16 @@ class IndexAnalyzerMappingTest {
 
   private void forEachEnglishAnalysisBlock(AnalysisVisitor visitor) {
     forEachAnalysisBlock(ENGLISH, visitor);
+  }
+
+  private void forEachMapping(String language, AnalysisVisitor visitor) {
+    for (Map.Entry<String, IndexMapping> entry :
+        IndexMappingLoader.getInstance().getIndexMapping().entrySet()) {
+      JsonNode mapping = readMapping("/" + entry.getValue().getIndexMappingFile(language));
+      if (mapping != null) {
+        visitor.accept(entry.getKey(), mapping);
+      }
+    }
   }
 
   private void forEachAnalysisBlock(String language, AnalysisVisitor visitor) {

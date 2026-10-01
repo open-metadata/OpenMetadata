@@ -22,6 +22,12 @@ public final class SearchClusterFitnessRules {
   private SearchClusterFitnessRules() {}
 
   /**
+   * OpenSearch's default {@code indices.query.bool.max_clause_count}. OpenMetadata keeps every
+   * text query within it, so a lower value can fail searches with too_many_nested_clauses.
+   */
+  public static final int MIN_MAX_CLAUSE_COUNT = 1024;
+
+  /**
    * Average bytes per document above which an index is considered "heavy" (likely contains large
    * descriptions, sampleData, or deeply nested arrays). Elastic recommends keeping documents under
    * ~100KB for healthy indexing and search latency; we warn earlier to give a buffer.

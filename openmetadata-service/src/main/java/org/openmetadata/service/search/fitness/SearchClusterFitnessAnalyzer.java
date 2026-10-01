@@ -120,6 +120,7 @@ public class SearchClusterFitnessAnalyzer {
     checkHeapAndCpu(signals, s.nodeFootprints, inaccessible);
     checkThreadPoolPressure(signals, s.nodeFootprints, inaccessible);
     checkCircuitBreakers(signals, s.nodeFootprints, inaccessible);
+    checkMaxClauseCount(signals, report, s.clusterSettings);
   }
 
   private void finalizeReport(SearchClusterFitnessReport report, ClusterSnapshot s) {
@@ -785,6 +786,47 @@ public class SearchClusterFitnessAnalyzer {
                 "Once shards/(nodes×max_shards_per_node) approaches 1, new indices cannot be created.")
             .recommendation(recommendation)
             .build());
+  }
+
+  private void checkMaxClauseCount(
+      List<FitnessSignal> signals, SearchClusterFitnessReport report, JsonNode clusterSettings) {
+    Integer maxClauses =
+        clusterSettings == null
+            ? null
+            : readSettingInt(clusterSettings, "indices.query.bool.max_clause_count");
+    if (maxClauses == null || !enforcesClauseLimit(report)) {
+      return;
+    }
+    boolean belowFloor = maxClauses < SearchClusterFitnessRules.MIN_MAX_CLAUSE_COUNT;
+    signals.add(
+        FitnessSignal.builder()
+            .name("search.max_clause_count")
+            .severity(belowFloor ? FitnessSeverity.WARN : FitnessSeverity.PASS)
+            .observed(String.valueOf(maxClauses))
+            .threshold("warn<" + SearchClusterFitnessRules.MIN_MAX_CLAUSE_COUNT)
+            .thresholdRationale(
+                "OpenMetadata keeps every text query within the default limit of 1024 clauses; "
+                    + "a lower limit fails searches with too_many_nested_clauses.")
+            .recommendation(
+                belowFloor
+                    ? "Set indices.query.bool.max_clause_count to at least "
+                        + SearchClusterFitnessRules.MIN_MAX_CLAUSE_COUNT
+                        + "."
+                    : null)
+            .build());
+  }
+
+  /** Elasticsearch 8 and later size the clause limit from the heap and ignore the setting. */
+  private static boolean enforcesClauseLimit(SearchClusterFitnessReport report) {
+    boolean elasticsearch = "elasticsearch".equalsIgnoreCase(report.getSearchDistribution());
+    return !elasticsearch || majorVersion(report.getSearchVersion()) < 8;
+  }
+
+  private static int majorVersion(String version) {
+    String major = version == null ? "" : version.split("\\.")[0];
+    return major.chars().allMatch(Character::isDigit) && !major.isEmpty()
+        ? Integer.parseInt(major)
+        : Integer.MAX_VALUE;
   }
 
   private void checkShardsPerHeapGb(

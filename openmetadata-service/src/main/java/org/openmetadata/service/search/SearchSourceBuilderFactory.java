@@ -4,7 +4,6 @@ import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
-import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexNames;
 
 import java.util.List;
 import java.util.Map;
@@ -177,11 +176,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   default AssetTypeConfiguration findAssetTypeConfig(
       String indexName, SearchSettings searchSettings) {
-    String assetType = mapEntityTypesToIndexNames(indexName);
-    return searchSettings.getAssetTypeConfigurations().stream()
-        .filter(config -> config.getAssetType().equals(assetType))
-        .findFirst()
-        .orElse(searchSettings.getDefaultConfiguration());
+    return SearchUtils.assetTypeConfig(indexName, searchSettings);
   }
 
   /**

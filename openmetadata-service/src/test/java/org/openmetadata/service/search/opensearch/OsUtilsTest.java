@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -29,8 +30,13 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import os.org.opensearch.client.json.JsonData;
@@ -364,7 +370,10 @@ class OsUtilsTest {
 
   @Test
   void testGetSearchRequestForLineageUsesDownstreamAggregationField() {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<SettingsCache> settings = stubSearchSettings()) {
+      when(searchRepository.getIndexNameWithoutAlias(anyString()))
+          .thenAnswer(a -> a.getArgument(0));
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
       when(searchRepository.getIndexOrAliasName("lineage_search")).thenReturn("resolved.lineage");
 
@@ -387,6 +396,7 @@ class OsUtilsTest {
           getLineageDirectionAggregationField(LineageDirection.DOWNSTREAM),
           request.aggregations().get("lineageAgg").terms().field());
       assertNotNull(request.postFilter());
+      assertEquals(List.of("name", "description"), request.postFilter().queryString().fields());
     }
   }
 
@@ -558,7 +568,10 @@ class OsUtilsTest {
 
   @Test
   void testSearchEntitiesUsesResolvedAliasAndPostFilter() throws Exception {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<SettingsCache> settings = stubSearchSettings()) {
+      when(searchRepository.getIndexNameWithoutAlias(anyString()))
+          .thenAnswer(a -> a.getArgument(0));
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
       when(searchRepository.getIndexOrAliasName("table_search")).thenReturn("resolved.table");
       ArgumentCaptor<SearchRequest> requestCaptor = ArgumentCaptor.forClass(SearchRequest.class);
@@ -572,6 +585,7 @@ class OsUtilsTest {
       assertTrue(request.index().contains("resolved.table"));
       assertEquals(10000, request.size());
       assertNotNull(request.postFilter());
+      assertEquals(List.of("name", "description"), request.postFilter().queryString().fields());
     }
   }
 
@@ -856,5 +870,24 @@ class OsUtilsTest {
     assertEquals("flat_object", extension.path("type").asText());
     assertFalse(extension.has("ignore_above"), "flat_object must not carry ignore_above");
     assertFalse(extension.has("depth_limit"), "flat_object must not carry depth_limit");
+  }
+
+  /** Search settings whose default configuration searches name and description. */
+  private static MockedStatic<SettingsCache> stubSearchSettings() {
+    MockedStatic<SettingsCache> settings = mockStatic(SettingsCache.class);
+    SearchSettings searchSettings =
+        new SearchSettings()
+            .withAssetTypeConfigurations(List.of())
+            .withDefaultConfiguration(
+                new AssetTypeConfiguration()
+                    .withAssetType("dataAsset")
+                    .withSearchFields(
+                        List.of(
+                            new FieldBoost().withField("name"),
+                            new FieldBoost().withField("description"))));
+    settings
+        .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+        .thenReturn(searchSettings);
+    return settings;
   }
 }

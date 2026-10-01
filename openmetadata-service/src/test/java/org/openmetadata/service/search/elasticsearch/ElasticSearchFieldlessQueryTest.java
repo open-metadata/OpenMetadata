@@ -180,11 +180,11 @@ class ElasticSearchFieldlessQueryTest {
   }
 
   @Test
-  void aggregateTextOnOtherIndexesIsUnchanged() throws Exception {
+  void aggregateTextOnOtherIndexesSearchesConfiguredFieldsAndKeepsFieldFilters() throws Exception {
     aggregate("test_case_result_search_index", "testCaseStatus:Failed");
-    JsonNode queryString = json(sent.getLast()).findValue("query_string");
-    assertEquals("testCaseStatus:Failed", queryString.path("query").asText());
-    assertFalse(queryString.has("fields"));
+    JsonNode json = json(sent.getLast());
+    assertEveryQueryStringHasFields(json);
+    assertTrue(json.toString().contains("testCaseStatus:Failed"), "field filter lost: " + json);
   }
 
   private void aggregate(String index, String query) throws Exception {

@@ -15,6 +15,10 @@
         }
       },
       "tokenizer": {
+        "om_ngram_search_tokenizer": {
+          "type": "pattern",
+          "pattern": "[^\\p{L}\\p{Nd}]+"
+        },
         "om_ngram_tokenizer": {
           "type": "ngram",
           "min_gram": 3,
@@ -26,6 +30,16 @@
         }
       },
       "analyzer": {
+        "om_ngram_search": {
+          "type": "custom",
+          "tokenizer": "om_ngram_search_tokenizer",
+          "filter": [
+            "lowercase",
+            "asciifolding",
+            "om_ngram_search_min",
+            "om_ngram_search_max"
+          ]
+        },
         "om_analyzer": {
           "tokenizer": "letter",
           "filter": [
@@ -46,6 +60,14 @@
         }
       },
       "filter": {
+        "om_ngram_search_min": {
+          "type": "length",
+          "min": 3
+        },
+        "om_ngram_search_max": {
+          "type": "truncate",
+          "length": 10
+        },
         "om_stemmer": {
           "type": "stemmer",
           "name": "english"
@@ -91,7 +113,8 @@
           },
           "ngram": {
             "type": "text",
-            "analyzer": "om_ngram"
+            "analyzer": "om_ngram",
+            "search_analyzer": "om_ngram_search"
           },
           "actualCase": {
             "type": "keyword",

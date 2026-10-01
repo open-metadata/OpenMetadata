@@ -33,6 +33,7 @@ import org.openmetadata.service.search.HighlightFieldClassifier;
 import org.openmetadata.service.search.LuceneQuerySyntax;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
@@ -246,6 +247,7 @@ public class OpenSearchSourceBuilderFactory
 
   public Query buildSearchQueryBuilderV2(
       String query, Map<String, Float> fields, boolean freeText) {
+    query = SearchUtils.capLongTokenRuns(query);
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
             .filter(entry -> isFuzzyField(entry.getKey()))
@@ -283,11 +285,30 @@ public class OpenSearchSourceBuilderFactory
             String.valueOf(DEFAULT_TIE_BREAKER),
             "0");
 
-    return OpenSearchQueryBuilder.boolQuery()
-        .should(fuzzyQuery)
-        .should(nonFuzzyQuery)
-        .minimumShouldMatch(1)
-        .build();
+    return textBranches(fuzzyFields, fuzzyQuery, nonFuzzyFields, nonFuzzyQuery).build();
+  }
+
+  /**
+   * ORs the fuzzy and exact text branches, leaving out a branch with no fields: a text query with an
+   * empty field list searches every field in the mapping. With no fields at all nothing matches.
+   */
+  private static OpenSearchQueryBuilder.BoolQueryBuilder textBranches(
+      Map<String, Float> fuzzyFields,
+      Query fuzzyQuery,
+      Map<String, Float> nonFuzzyFields,
+      Query nonFuzzyQuery) {
+    OpenSearchQueryBuilder.BoolQueryBuilder bool =
+        OpenSearchQueryBuilder.boolQuery().minimumShouldMatch(1);
+    if (!fuzzyFields.isEmpty()) {
+      bool.should(fuzzyQuery);
+    }
+    if (!nonFuzzyFields.isEmpty()) {
+      bool.should(nonFuzzyQuery);
+    }
+    if (fuzzyFields.isEmpty() && nonFuzzyFields.isEmpty()) {
+      bool.mustNot(OpenSearchQueryBuilder.matchAllQuery());
+    }
+    return bool;
   }
 
   public OpenSearchRequestBuilder searchBuilderV2(
@@ -502,6 +523,7 @@ public class OpenSearchSourceBuilderFactory
   }
 
   private Query buildComplexQueryV2(String query, AssetTypeConfiguration assetConfig) {
+    query = SearchUtils.capLongTokenRuns(query);
     Map<String, Float> allFields = extractAllFields(assetConfig);
 
     Query queryStringBuilder =
@@ -990,6 +1012,7 @@ public class OpenSearchSourceBuilderFactory
   }
 
   private Query buildComplexSyntaxQueryV2(String query, AssetTypeConfiguration assetConfig) {
+    query = SearchUtils.capLongTokenRuns(query);
     Map<String, Float> fuzzyFields = new HashMap<>();
     Map<String, Float> nonFuzzyFields = new HashMap<>();
 
@@ -1015,10 +1038,7 @@ public class OpenSearchSourceBuilderFactory
             String.valueOf(DEFAULT_TIE_BREAKER),
             "0");
 
-    return OpenSearchQueryBuilder.boolQuery()
-        .should(fuzzyQuery)
-        .should(nonFuzzyQuery)
-        .minimumShouldMatch(1)
+    return textBranches(fuzzyFields, fuzzyQuery, nonFuzzyFields, nonFuzzyQuery)
         .must(OpenSearchQueryBuilder.matchAllQuery())
         .build();
   }
@@ -1153,6 +1173,7 @@ public class OpenSearchSourceBuilderFactory
    * nothing at all.
    */
   private Query buildPrefixRankingStageQueryV2(String query, RankingStage stage) {
+    query = SearchUtils.capAnalyzedWordParts(query);
     OpenSearchQueryBuilder.BoolQueryBuilder prefixQuery = OpenSearchQueryBuilder.boolQuery();
     for (String field : stage.getFields()) {
       prefixQuery.should(
@@ -1168,6 +1189,7 @@ public class OpenSearchSourceBuilderFactory
   }
 
   private Query buildPhraseRankingStageQueryV2(String query, RankingStage stage) {
+    query = SearchUtils.capAnalyzedWordParts(query);
     OpenSearchQueryBuilder.BoolQueryBuilder phraseQuery = OpenSearchQueryBuilder.boolQuery();
     float weight = SearchRankingHelper.stageWeight(stage);
     for (String field : stage.getFields()) {
@@ -1181,6 +1203,7 @@ public class OpenSearchSourceBuilderFactory
 
   private Query buildTokenCoverageRankingStageQueryV2(
       String query, RankingStage stage, AssetTypeConfiguration assetConfig) {
+    query = SearchUtils.capAnalyzedWordParts(query);
     List<String> terms = SearchRankingHelper.queryTerms(query);
     if (terms.isEmpty()) {
       return null;
@@ -1208,6 +1231,7 @@ public class OpenSearchSourceBuilderFactory
 
   private Query buildTextRankingStageQueryV2(
       String query, RankingStage stage, AssetTypeConfiguration assetConfig, String fuzziness) {
+    query = SearchUtils.capAnalyzedWordParts(query);
     Map<String, Float> fields = SearchRankingHelper.stageFieldWeights(stage, assetConfig);
     Query textQuery =
         OpenSearchQueryBuilder.multiMatchQuery(
@@ -1245,6 +1269,7 @@ public class OpenSearchSourceBuilderFactory
       OpenSearchQueryBuilder.BoolQueryBuilder combinedQuery,
       String query,
       AssetTypeConfiguration assetConfig) {
+    query = SearchUtils.capAnalyzedWordParts(query);
     for (CustomPropertySearchFields.Spec spec : CustomPropertySearchFields.from(assetConfig)) {
       combinedQuery.should(customPropertyNestedQueryV2(query, spec));
     }
@@ -1313,9 +1338,10 @@ public class OpenSearchSourceBuilderFactory
 
   private void addPhraseMatchQueriesV2(
       OpenSearchQueryBuilder.BoolQueryBuilder combinedQuery,
-      String query,
+      String rawQuery,
       Map<String, Float> fields,
       float multiplier) {
+    final String query = SearchUtils.capAnalyzedWordParts(rawQuery);
     if (!fields.isEmpty()) {
       OpenSearchQueryBuilder.BoolQueryBuilder phraseMatchQuery = OpenSearchQueryBuilder.boolQuery();
       fields.forEach(
@@ -1333,9 +1359,10 @@ public class OpenSearchSourceBuilderFactory
 
   private void addFuzzyMatchQueriesV2(
       OpenSearchQueryBuilder.BoolQueryBuilder combinedQuery,
-      String query,
+      String rawQuery,
       Map<String, Float> fields,
       float multiplier) {
+    final String query = SearchUtils.capAnalyzedWordParts(rawQuery);
     if (!fields.isEmpty()) {
       List<String> fieldList = new ArrayList<>();
       fields.forEach(
@@ -1373,6 +1400,7 @@ public class OpenSearchSourceBuilderFactory
       OpenSearchQueryBuilder.BoolQueryBuilder combinedQuery,
       String query,
       Map<String, Float> standardFields) {
+    query = SearchUtils.capAnalyzedWordParts(query);
     if (!standardFields.isEmpty()) {
       Map<String, Float> fuzzyFields =
           standardFields.entrySet().stream()

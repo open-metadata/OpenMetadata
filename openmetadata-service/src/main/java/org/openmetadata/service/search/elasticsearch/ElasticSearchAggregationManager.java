@@ -126,16 +126,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
   }
 
   /**
-   * A bare query_string searches every field in the mapping, which on large data-asset mappings can
-   * exceed the cluster's max_clause_count, so data-asset text goes through the configured fields
-   * instead. {@code *} and other indexes keep the bare query_string.
+   * A bare query_string searches every field in the mapping and can exceed the cluster's
+   * max_clause_count, so text goes through the configured fields instead. {@code *} keeps the bare
+   * query_string, which the engine runs as match_all.
    */
   private static Query plainTextQuery(String index, String text) {
-    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
-    if (!MATCH_ALL_TEXT.equals(text.trim()) && SearchUtils.usesDataAssetSearchBuilder(indexName)) {
-      return configuredFieldsQuery(index, text);
+    if (MATCH_ALL_TEXT.equals(text.trim())) {
+      return Query.of(q -> q.queryString(qs -> qs.query(text)));
     }
-    return Query.of(q -> q.queryString(qs -> qs.query(text)));
+    return configuredFieldsQuery(index, text);
   }
 
   private static Query configuredFieldsQuery(String index, String text) {
