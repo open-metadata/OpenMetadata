@@ -9,7 +9,7 @@ Shared UI component library for OpenMetadata, built on UntitledUI design system 
 - **Build tool**: Vite (library mode) with `vite-plugin-dts` for type declarations
 - **Styling**: Tailwind CSS v4 with `tw:` prefix to avoid conflicts with the main app's Less/Ant Design styles
 - **Component foundation**: `react-aria-components` (NOT Ant Design)
-- **Icons**: `@untitledui/icons`
+- **Icons**: in-package generated icon set (see [`ICONS.md`](src/main/resources/ui/ICONS.md))
 
 ## Development Commands
 
@@ -195,7 +195,6 @@ Dark mode uses a custom variant: `@custom-variant dark (&:where(.dark-mode, .dar
 These are externalized in the build and must be provided by the consuming app:
 
 - `react`, `react-dom`, `react/jsx-runtime`
-- `@untitledui/icons`
 - `react-aria`, `react-aria-components`, `react-stately`
 - `react-hook-form`
 - `tailwind-merge`
