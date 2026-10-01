@@ -49,15 +49,36 @@ const stopAnd = (handler?: () => void) => (e: MouseEvent) => {
 };
 
 /**
- * The title doubles as the banner's click target — a real `<button>` so the
- * whole surface doesn't have to fake one with `role` + `tabIndex`.
+ * `w-full` overrides the `w-max` the generated tooltip trigger carries by
+ * default; without it the title sizes to its untruncated content and never
+ * ellipsizes. The focus ring replaces the one the browser drew on the
+ * `<button>` this wrapper stands in for.
+ */
+// Kept as whole literals so Tailwind still sees each class.
+const TITLE_TRIGGER_CLASS = [
+  'tw:flex tw:w-full tw:min-w-0 tw:cursor-pointer tw:items-center',
+  'tw:rounded-xs tw:text-left',
+  'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand',
+].join(' ');
+
+/**
+ * The trigger `Typography` generates for `ellipsis.tooltip` is a `<button>`, and
+ * the UA centres button text — Tailwind's preflight resets a button's font and
+ * colour but not its `text-align`. Wherever that trigger ends up wider than its
+ * text (any stretched flex item), the label drifts to the middle. Applied to the
+ * host, since the trigger itself takes no class from here.
+ */
+const ELLIPSIS_HOST_CLASS = 'tw:block tw:min-w-0 tw:[&>button]:text-start';
+
+/**
+ * A plain title carries its own overflow tooltip through `ellipsis.tooltip`,
+ * the same way every other truncated label in the app does.
  *
- * The tooltip is applied here rather than through Typography's own
- * `ellipsis.tooltip`: Typography renders that tooltip *inside* this button, and
- * because its trigger is not natively focusable, Tooltip wraps it in an
- * AriaButton — a button inside a button, which is invalid and rendered the
- * title off-centre from the rest of the row. Wrapping from outside gives
- * Tooltip a focusable child, so it uses this button as the trigger directly.
+ * When the title is also the banner's click target it cannot: Typography's
+ * tooltip trigger is itself an AriaButton, so putting it inside a `<button>`
+ * nests one button in another. `Tooltip` is given the click handler instead and
+ * generates that single button — `onTriggerPress` is the documented way to make
+ * the trigger the click target — while the text stays a bare Typography.
  */
 const AnnouncementTitle = ({
   className,
@@ -70,36 +91,35 @@ const AnnouncementTitle = ({
   onClick?: () => void;
   title: string;
 }) => {
-  const text = (
-    <Typography
-      ellipsis
-      as="span"
-      className={className}
-      size={size}
-      weight="semibold">
-      {title}
-    </Typography>
-  );
-
   if (!onClick) {
     return (
-      <Tooltip
-        title={title}
-        triggerClassName="tw:block tw:min-w-0 tw:cursor-[inherit] tw:text-left">
-        {text}
-      </Tooltip>
+      <span className={ELLIPSIS_HOST_CLASS}>
+        <Typography
+          as="span"
+          className={className}
+          ellipsis={{ tooltip: title }}
+          size={size}
+          weight="semibold">
+          {title}
+        </Typography>
+      </span>
     );
   }
 
   return (
-    <Tooltip title={title}>
-      <button
-        className="tw:flex tw:min-w-0 tw:cursor-pointer tw:items-center tw:border-none tw:bg-transparent tw:p-0 tw:text-left"
+    <Tooltip
+      title={title}
+      triggerClassName={TITLE_TRIGGER_CLASS}
+      onTriggerPress={onClick}>
+      <Typography
+        ellipsis
+        as="span"
+        className={className}
         data-testid="announcement-title-btn"
-        type="button"
-        onClick={onClick}>
-        {text}
-      </button>
+        size={size}
+        weight="semibold">
+        {title}
+      </Typography>
     </Tooltip>
   );
 };
@@ -144,17 +164,15 @@ const AnnouncementFooter = ({
       {showEntity && entityFQN && (
         <>
           <span className="tw:text-placeholder_subtle">&middot;</span>
-          <Tooltip
-            title={entityFQN}
-            triggerClassName="tw:block tw:min-w-0 tw:cursor-[inherit] tw:text-left">
+          <span className={ELLIPSIS_HOST_CLASS}>
             <Typography
-              ellipsis
               as="span"
               className="tw:text-secondary"
+              ellipsis={{ tooltip: entityFQN }}
               size="text-xs">
               {entityFQN}
             </Typography>
-          </Tooltip>
+          </span>
         </>
       )}
     </Box>
@@ -216,6 +234,11 @@ interface AnnouncementBodyProps {
   onClick?: () => void;
 }
 
+/**
+ * `bg-primary` overrides the badge's own `50` fill: the banner behind it is
+ * already tinted in the same family, so the badge would otherwise dissolve into
+ * it. Only the fill is replaced — the label and edge stay the type's colour.
+ */
 const TypeBadge = ({
   badgeColor,
   label,
@@ -247,11 +270,12 @@ const CollapsedBody = ({
   <>
     {typeChip}
     <TypeBadge badgeColor={badgeColor} label={label} />
-    {/* Typography's ellipsis tooltip wraps the title in a `w-full min-w-0`
-        trigger, which would make it a second flexible item and split the row
-        with the description. Bounding it here keeps the title at its natural
-        width — capped, so a very long one still truncates rather than pushing
-        the description out. */}
+    {/* An ellipsis tooltip puts a `w-full min-w-0` trigger around its text, so
+        the title would otherwise become a second flexible item and split the
+        row evenly with the description. These two spans size the row instead:
+        the title to its natural width, capped so a very long one truncates
+        rather than pushing the description out, and the description to
+        whatever is left. */}
     <span className="tw:min-w-0 tw:max-w-[50%] tw:shrink-0">
       <AnnouncementTitle
         className={titleClassName}
@@ -260,18 +284,16 @@ const CollapsedBody = ({
       />
     </span>
     {hasDescription && (
-      <Tooltip
-        title={plainDescription}
-        triggerClassName="tw:block tw:w-auto tw:min-w-0 tw:flex-1 tw:cursor-[inherit] tw:text-left">
+      <span className={classNames('tw:flex-1', ELLIPSIS_HOST_CLASS)}>
         <Typography
-          ellipsis
           as="span"
           className="tw:text-secondary"
           data-testid="announcement-description"
+          ellipsis={{ tooltip: plainDescription }}
           size="text-sm">
           {plainDescription}
         </Typography>
-      </Tooltip>
+      </span>
     )}
   </>
 );
@@ -489,15 +511,20 @@ const AnnouncementBanner = ({
   };
 
   return (
-    <div
+    // A labelled region, not `role="status"`: a live region re-announces its
+    // whole contents on every change, and this one holds buttons and steps
+    // through a carousel — so a screen reader would read the entire banner
+    // again on each arrow press and each expand. The announcement is already on
+    // the page when it loads; there is nothing to interrupt the user about.
+    <section
+      aria-label={`${t('label.announcement')}: ${shared.title}`}
       className={classNames(
         'tw:rounded-[10px] tw:outline-1 tw:-outline-offset-1',
         surface.surface,
         BANNER_PADDING[layout],
         className
       )}
-      data-testid={testId}
-      role="status">
+      data-testid={testId}>
       <BannerBody
         actions={actions}
         announcement={announcement}
@@ -505,7 +532,7 @@ const AnnouncementBanner = ({
         plainDescription={plainDescription}
         shared={shared}
       />
-    </div>
+    </section>
   );
 };
 

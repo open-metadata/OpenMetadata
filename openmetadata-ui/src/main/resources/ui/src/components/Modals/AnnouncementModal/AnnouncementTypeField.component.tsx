@@ -14,7 +14,8 @@
 import {
   BadgeWithDot,
   BadgeWithIcon,
-  Box,
+  RadioButton,
+  RadioGroup,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +25,7 @@ import {
 } from '../../../generated/entity/feed/announcement';
 import {
   ANNOUNCEMENT_COLORS,
+  ANNOUNCEMENT_COLOR_LABEL_KEYS,
   ANNOUNCEMENT_SURFACE_CLASSES,
   ANNOUNCEMENT_TYPE_CONFIG,
   ANNOUNCEMENT_TYPE_ORDER,
@@ -45,6 +47,12 @@ interface AnnouncementColorSelectProps {
 const CHIP_CLASS = 'tw:cursor-pointer';
 const SELECTED_CHIP_CLASS = 'tw:bg-tertiary tw:text-primary';
 
+/**
+ * One of five mutually exclusive types, so a radio group rather than a row of
+ * `aria-pressed` buttons: the group is one tab stop with arrow keys between the
+ * options, and a screen reader reads "3 of 5" instead of five separate toggles.
+ * The radio circle itself is hidden — the chip is the control's whole visual.
+ */
 export const AnnouncementTypeSelect = ({
   value,
   onChange,
@@ -52,49 +60,51 @@ export const AnnouncementTypeSelect = ({
   const { t } = useTranslation();
 
   return (
-    <Box
-      className="tw:flex-wrap tw:gap-2"
-      data-testid="announcement-type-select">
+    <RadioGroup
+      aria-label={t('label.announcement-type')}
+      className="tw:flex-row tw:flex-wrap tw:gap-2"
+      data-testid="announcement-type-select"
+      value={value ?? null}
+      onChange={(next) => onChange(next as AnnouncementType)}>
       {ANNOUNCEMENT_TYPE_ORDER.map((type) => {
         const { icon, labelKey } = ANNOUNCEMENT_TYPE_CONFIG[type];
-        const isSelected = value === type;
         const className = classNames(
           CHIP_CLASS,
-          isSelected && SELECTED_CHIP_CLASS
+          value === type && SELECTED_CHIP_CLASS
         );
 
         return (
-          <button
-            aria-pressed={isSelected}
-            className="tw:cursor-pointer tw:rounded-md tw:border-none tw:bg-transparent tw:p-0"
+          <RadioButton
             data-testid={`announcement-type-${type}`}
+            indicatorClassName="tw:hidden"
             key={type}
-            type="button"
-            onClick={() => onChange(type)}>
-            {/* Custom has no fixed icon of its own to preview — its colour is
-                still to be picked — so it takes a dot, as the frame draws it. */}
-            {type === AnnouncementType.Custom ? (
-              <BadgeWithDot
-                className={className}
-                color="gray"
-                size="sm"
-                type="modern">
-                {t(labelKey)}
-              </BadgeWithDot>
-            ) : (
-              <BadgeWithIcon
-                className={className}
-                color="gray"
-                iconLeading={icon}
-                size="sm"
-                type="modern">
-                {t(labelKey)}
-              </BadgeWithIcon>
-            )}
-          </button>
+            label={
+              /* Custom has no fixed icon of its own to preview — its colour is
+                 still to be picked — so it takes a dot, as the frame draws it. */
+              type === AnnouncementType.Custom ? (
+                <BadgeWithDot
+                  className={className}
+                  color="gray"
+                  size="sm"
+                  type="modern">
+                  {t(labelKey)}
+                </BadgeWithDot>
+              ) : (
+                <BadgeWithIcon
+                  className={className}
+                  color="gray"
+                  iconLeading={icon}
+                  size="sm"
+                  type="modern">
+                  {t(labelKey)}
+                </BadgeWithIcon>
+              )
+            }
+            value={type}
+          />
         );
       })}
-    </Box>
+    </RadioGroup>
   );
 };
 
@@ -107,33 +117,37 @@ const getColorOptions = (value?: AnnouncementColor): AnnouncementColor[] =>
     ? CUSTOM_ANNOUNCEMENT_COLORS
     : [...CUSTOM_ANNOUNCEMENT_COLORS, value];
 
+/**
+ * Also a radio group, but here the radio indicator *is* the swatch: the family's
+ * `500` step fills it through `bg-current`, and the selected state's white centre
+ * dot and brand edge come from `RadioButtonBase` rather than being drawn again.
+ */
 export const AnnouncementColorSelect = ({
   value,
   onChange,
-}: AnnouncementColorSelectProps) => (
-  <Box
-    align="center"
-    className="tw:min-h-10 tw:flex-wrap tw:gap-2"
-    data-testid="announcement-color-select">
-    {getColorOptions(value).map((color) => (
-      <button
-        aria-label={color}
-        aria-pressed={value === color}
-        className={classNames(
-          'tw:size-6 tw:cursor-pointer tw:rounded-full tw:border-none tw:p-0.5',
-          // The ring marks the selection, and keyboard focus when unselected —
-          // a bare `outline-none` here left focus with no visible indicator.
-          value === color
-            ? 'tw:outline-2 tw:-outline-offset-1 tw:outline-brand'
-            : 'tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-1 tw:focus-visible:outline-brand',
-          ANNOUNCEMENT_SURFACE_CLASSES[ANNOUNCEMENT_COLORS[color]].icon
-        )}
-        data-testid={`announcement-color-${color}`}
-        key={color}
-        type="button"
-        onClick={() => onChange(color)}>
-        <span className="tw:block tw:size-full tw:rounded-full tw:bg-current" />
-      </button>
-    ))}
-  </Box>
-);
+}: AnnouncementColorSelectProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <RadioGroup
+      aria-label={t('label.color')}
+      className="tw:min-h-10 tw:flex-row tw:flex-wrap tw:items-center tw:gap-2"
+      data-testid="announcement-color-select"
+      value={value ?? null}
+      onChange={(next) => onChange(next as AnnouncementColor)}>
+      {getColorOptions(value).map((color) => (
+        <RadioButton
+          aria-label={t(ANNOUNCEMENT_COLOR_LABEL_KEYS[color])}
+          className="tw:cursor-pointer"
+          data-testid={`announcement-color-${color}`}
+          indicatorClassName={classNames(
+            'tw:size-6 tw:min-h-6 tw:min-w-6 tw:bg-current',
+            ANNOUNCEMENT_SURFACE_CLASSES[ANNOUNCEMENT_COLORS[color]].icon
+          )}
+          key={color}
+          value={color}
+        />
+      ))}
+    </RadioGroup>
+  );
+};

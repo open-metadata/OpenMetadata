@@ -185,16 +185,45 @@ describe('AnnouncementBanner', () => {
     expect(chip.parentElement?.contains(title)).toBe(false);
   });
 
-  it('should not nest the title button inside the tooltip trigger button', () => {
+  it('should give the clickable title exactly one button', () => {
     renderBanner({ onClick: jest.fn() });
 
-    const titleButton = screen.getByTestId('announcement-title-btn');
+    const trigger = screen
+      .getByTestId('announcement-title-btn')
+      .closest('button');
 
-    // Typography's own ellipsis tooltip wraps a non-focusable node in an
-    // AriaButton; applied inside this button it produced button-in-button,
-    // which is invalid and threw the row's vertical alignment out.
-    expect(titleButton.querySelector('button')).toBeNull();
-    expect(titleButton.closest('button')).toBe(titleButton);
+    // Tooltip generates the focusable trigger itself — it wraps even a native
+    // `<button>` child in an AriaButton, so rendering our own around the text
+    // produced button-in-button, which is invalid and threw the row's vertical
+    // alignment out.
+    expect(trigger).not.toBeNull();
+    expect(trigger?.querySelector('button')).toBeNull();
+    expect(trigger?.parentElement?.closest('button')).toBeNull();
+  });
+
+  it('should let the clickable title truncate rather than size to its text', () => {
+    renderBanner({ onClick: jest.fn() });
+
+    // The generated trigger defaults to `w-max`, which sizes it to the
+    // untruncated title and leaves the ellipsis with nothing to clip.
+    const trigger = screen
+      .getByTestId('announcement-title-btn')
+      .closest('button');
+
+    expect(trigger).toHaveClass('tw:w-full');
+    expect(trigger).not.toHaveClass('tw:w-max');
+  });
+
+  it('should keep the ellipsis tooltip trigger left-aligned', () => {
+    renderBanner();
+
+    // The trigger Typography generates is a `<button>`; preflight leaves the UA
+    // `text-align: center` in place, so a stretched trigger centres its label.
+    const host = screen
+      .getByTestId('announcement-description')
+      .closest('button')?.parentElement;
+
+    expect(host).toHaveClass('tw:[&>button]:text-start');
   });
 
   it('should put the badge beside the title on the landing banner', () => {

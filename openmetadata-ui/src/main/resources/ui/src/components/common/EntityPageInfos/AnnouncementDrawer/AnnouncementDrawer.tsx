@@ -12,15 +12,17 @@
  */
 
 import {
-  Badge,
   Box,
   Button,
+  FeaturedIcon,
   SlideoutMenu,
+  Tabs,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Announcement02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -109,7 +111,14 @@ const AnnouncementDrawer: FC<Props> = ({
 
   const title = (
     <Box align="start" className="tw:w-full tw:gap-3" data-testid="title">
-      <Announcement02 className="tw:mt-0.5 tw:size-5 tw:shrink-0 tw:text-fg-brand-primary" />
+      {/* The same framed icon the add/edit dialog puts in its header, so the
+          two headers read as one component. */}
+      <FeaturedIcon
+        color="gray"
+        icon={Announcement02}
+        size="md"
+        theme="modern"
+      />
       <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
         <Typography
           as="span"
@@ -164,48 +173,45 @@ const AnnouncementDrawer: FC<Props> = ({
       </SlideoutMenu.Header>
 
       <SlideoutMenu.Content className="tw:gap-4 tw:pb-6">
-        {/* Badges in toggle buttons, the same shape the announcement type
-            chips use: `Badge` already carries the frame's colours — `modern`
-            is the grey resting pill, and `color`/`brand` is exactly the
-            blue-50 fill, blue-700 label and blue-200 edge of the selected one.
+        {/* A real tab list, not toggle buttons: these switch which
+            announcements the body below shows, which is what `role="tab"`
+            means, and core's `Tabs` brings the arrow-key navigation and
+            roving tab stop with it. `button-brand` already carries the frame's
+            selected colours — brand fill, brand label — so only the pill shape
+            and the edge are added per item, with the resting grey fill and the
+            darker resting label. The edge is a `border` rather than an
+            `outline` because a `Tab` reserves its outline for the focus ring.
             Test ids are keyed on the status value, not the label, since
             `Expired` is shown as "In-Active". */}
-        <Box
-          className="tw:flex-wrap tw:gap-4"
-          data-testid="announcement-status-tabs">
-          {[ALL_TAB, ...STATUS_TABS].map((status) => {
-            const isSelected = activeTab === status;
-
-            return (
-              <button
-                aria-pressed={isSelected}
-                className="tw:cursor-pointer tw:rounded-lg tw:border-none tw:bg-transparent tw:p-0"
+        <Tabs
+          className="tw:w-auto"
+          data-testid="announcement-status-tabs"
+          selectedKey={activeTab}
+          onSelectionChange={(key) => setActiveTab(String(key))}>
+          <Tabs.List className="tw:flex-wrap tw:gap-2" size="sm">
+            {[ALL_TAB, ...STATUS_TABS].map((status) => (
+              <Tabs.Item
+                className={({ isHovered, isSelected }) =>
+                  classNames('tw:rounded-lg tw:border', {
+                    'tw:border-brand-subtle': isSelected || isHovered,
+                    'tw:border-secondary tw:bg-secondary tw:text-secondary':
+                      !isSelected && !isHovered,
+                  })
+                }
                 data-testid={`announcement-status-${status}`}
-                key={status}
-                type="button"
-                onClick={() => setActiveTab(status)}>
-                <Badge
-                  size="lg"
-                  {...(isSelected
-                    ? ({ type: 'color', color: 'brand' } as const)
-                    : // `modern` rests on `bg-surface`, which is white; the
-                      // frame gives the unselected pills a grey fill.
-                      ({
-                        type: 'modern',
-                        className: 'tw:bg-secondary',
-                      } as const))}>
-                  {status === ALL_TAB
-                    ? t('label.all')
-                    : t(
-                        ANNOUNCEMENT_STATUS_LABEL_KEYS[
-                          status as AnnouncementStatus
-                        ]
-                      )}
-                </Badge>
-              </button>
-            );
-          })}
-        </Box>
+                id={status}
+                key={status}>
+                {status === ALL_TAB
+                  ? t('label.all')
+                  : t(
+                      ANNOUNCEMENT_STATUS_LABEL_KEYS[
+                        status as AnnouncementStatus
+                      ]
+                    )}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+        </Tabs>
 
         <AnnouncementThreadBody
           deleteAnnouncementHandler={deletePostHandler}

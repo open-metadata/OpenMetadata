@@ -17,13 +17,12 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Calendar } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, pick } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ANNOUNCEMENT_STATUS_CLASSES,
+  ANNOUNCEMENT_STATUS_COLORS,
   ANNOUNCEMENT_STATUS_LABEL_KEYS,
   ANNOUNCEMENT_SURFACE_CLASSES,
   getAnnouncementStatus,
@@ -116,6 +115,9 @@ const AnnouncementFeedCardBody = ({
             icon={TypeIcon}
             surface={ANNOUNCEMENT_SURFACE_CLASSES[color]}
           />
+          {/* The card behind this badge is already tinted in the same family,
+              so the badge's own `50` fill would disappear into it. `bg-primary`
+              lifts it back off the surface; the text and edge stay the type's. */}
           <Badge
             className="tw:bg-primary!"
             color={color}
@@ -126,18 +128,16 @@ const AnnouncementFeedCardBody = ({
           </Badge>
         </Box>
 
-        <Typography
-          as="span"
-          className={classNames(
-            'tw:absolute tw:-top-2.5 tw:right-4 tw:rounded-md tw:px-2 tw:py-0.5',
-            'tw:outline-1 tw:-outline-offset-1',
-            ANNOUNCEMENT_STATUS_CLASSES[status]
-          )}
+        {/* Far enough in to clear the actions menu below it — the frame hangs
+            the pill off the corner, not against it. */}
+        <Badge
+          className="tw:absolute tw:-top-2.5 tw:right-10"
+          color={ANNOUNCEMENT_STATUS_COLORS[status]}
           data-testid="announcement-status"
-          size="text-xs"
-          weight="medium">
+          size="sm"
+          type="color">
           {t(ANNOUNCEMENT_STATUS_LABEL_KEYS[status])}
-        </Typography>
+        </Badge>
 
         <Box align="center" className="tw:shrink-0 tw:gap-1">
           {dropdownItems.length > 0 && (
