@@ -1992,7 +1992,9 @@ jobs:
           path: |
             openmetadata-ui/src/main/resources/ui/playwright/output/results.json
             openmetadata-ui/src/main/resources/ui/playwright/output/ci-status.json
-          retention-days: 1
+          # Queue runs keep 3 days: playwright-flaky-daily-report.yml reads failed
+          # tests from these, and its window reaches back up to ~49h.
+          retention-days: ${{ github.event_name == 'merge_group' && 3 || 1 }}
           if-no-files-found: ignore
 
       # The retry uploads to a DIFFERENT name (`-retry` suffix). Reusing the
@@ -2016,7 +2018,9 @@ jobs:
           path: |
             openmetadata-ui/src/main/resources/ui/playwright/output/results.json
             openmetadata-ui/src/main/resources/ui/playwright/output/ci-status.json
-          retention-days: 1
+          # Queue runs keep 3 days: playwright-flaky-daily-report.yml reads failed
+          # tests from these, and its window reaches back up to ~49h.
+          retention-days: ${{ github.event_name == 'merge_group' && 3 || 1 }}
           if-no-files-found: ignore
 
       - name: Collect failure diagnostics

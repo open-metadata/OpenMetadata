@@ -130,7 +130,7 @@ def test_slack_text_ranks_by_distinct_prs(tmp_path, monkeypatch):
     text = slack["initial_comment"]
     assert "6 merge-queue runs (3 passed, 3 failed) for 4 PRs" in text
     assert "1 failed test · 4 flaky tests · 1 failed run with no failing test" in text
-    assert "1 run could not be read" in text
+    assert "1 run could not be fully read" in text
     # Glossary hit 3 runs but only 2 PRs: the re-queue does not triple it.
     glossary = "Features/CustomizeDetailPage.spec.ts:10 › Glossary Term tabs"
     assert (
@@ -287,3 +287,92 @@ def test_results_json_gives_failed_tests_with_the_final_error_and_flaky_tests():
     failed, flaky = report_script.results_tests(results)
     assert failed == {("A.spec.ts", "breaks"): (3, "Error: last")}
     assert flaky == {("A.spec.ts", "wobbles"): 9}
+
+
+def test_results_prefer_the_retry_upload_and_ignore_other_attempts():
+    artifacts = [
+        {"id": 1, "name": "playwright-results-json-chromium-01-a2"},
+        {"id": 2, "name": "playwright-results-json-chromium-01-a2-retry"},
+        {"id": 3, "name": "playwright-results-json-chromium-02-a2"},
+        {"id": 4, "name": "playwright-results-json-chromium-03-a1"},
+        {"id": 5, "name": "playwright-blob-chromium-01-a2"},
+    ]
+    assert sorted(a["id"] for a in report_script.pick_results(artifacts, 2)) == [2, 3]
+    retry_first = [artifacts[1], artifacts[0]]
+    assert [a["id"] for a in report_script.pick_results(retry_first, 2)] == [2]
+
+
+def test_expired_results_make_the_run_unreadable_not_test_free():
+    expired = [
+        {"id": 1, "name": "playwright-results-json-chromium-01-a1", "expired": True}
+    ]
+    with pytest.raises(mq.ApiError, match="expired"):
+        report_script.pick_results(expired, 1)
+
+
+def test_oversized_results_json_is_not_inflated(monkeypatch):
+    import io
+    import zipfile
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("results.json", "{" + " " * 2048 + "}")
+    monkeypatch.setattr(report_script, "MAX_RESULTS_BYTES", 1024)
+    monkeypatch.setattr(
+        mq,
+        "paginated_items",
+        lambda *a: [{"id": 1, "name": "playwright-results-json-c-a1"}],
+    )
+    monkeypatch.setattr(report_script, "download_zip", lambda *a: buffer.getvalue())
+    with pytest.raises(mq.ApiError, match="Oversized"):
+        report_script.read_failures("o", "r", {"id": 9, "run_attempt": 1}, "t")
+
+
+def test_a_failed_failure_read_keeps_the_flaky_data(monkeypatch):
+    monkeypatch.setattr(report_script, "read_flaky", lambda r, t: {FILTERS: 1})
+
+    def broken(*a):
+        raise mq.ApiError("artifact API down")
+
+    monkeypatch.setattr(report_script, "read_failures", broken)
+    record = report_script.collect(
+        "o", "r", run(1, "2026-09-30T06:00:00Z", 1, "failure"), "t"
+    )
+    assert record["flaky"] == {FILTERS: 1} and record["failed"] is None
+
+
+def test_default_window_ends_an_hour_before_the_last_full_hour(tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+
+    seen = {}
+    monkeypatch.setenv("GH_TOKEN", "token")
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.setattr(
+        mq, "utcnow", lambda: datetime(2026, 10, 2, 3, 37, tzinfo=timezone.utc)
+    )
+    monkeypatch.setattr(
+        report_script,
+        "list_runs",
+        lambda o, r, start, end, t: seen.update(start=start, end=end) or [],
+    )
+    report_script.main(
+        ["--owner", "o", "--repo", "r", "--channel", "C1", "--out-dir", str(tmp_path)]
+    )
+    assert seen["end"] == datetime(2026, 10, 2, 2, 0, tzinfo=timezone.utc)
+    assert seen["start"] == datetime(2026, 10, 1, 2, 0, tzinfo=timezone.utc)
+
+
+def test_repeated_error_shows_its_count_and_unparsed_names_render_raw(
+    tmp_path, monkeypatch
+):
+    failed = {DESTINATION: (478, "TimeoutError: add-header-button-1")}
+    runs = [
+        run(1, "2026-09-30T06:00:00Z", 1, "failure", failed=failed),
+        run(2, "2026-09-30T07:00:00Z", 2, "failure", failed=failed),
+        run(3, "2026-09-30T08:00:00Z", 3, flaky=[("garbled annotation line", "")]),
+    ]
+    build(tmp_path, monkeypatch, runs)
+    page = (tmp_path / PAGE).read_text()
+    assert "TimeoutError: add-header-button-1 ×2</li>" in page
+    assert "<span class=title>garbled annotation line</span>" in page
+    assert "garbled annotation line:0" not in page

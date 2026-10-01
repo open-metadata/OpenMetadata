@@ -53,7 +53,16 @@ MAX_ERRORS_SHOWN = 3
 # one download per failed shard. The cap keeps a run far inside GITHUB_TOKEN's
 # hourly budget on any plan.
 MAX_WINDOW_HOURS = 48
-# Every job of a run in one query. ponytail: 50 annotations per job, and the usual
+# Only completed runs are listed, so a window ending "now" would drop a run still
+# in progress, and the next window starts after it: that run would never be
+# reported. Ending the default window an hour before the last full hour leaves
+# runs (~35 min) time to finish and makes daily windows line up exactly.
+SETTLE = timedelta(hours=1)
+MAX_RESULTS_BYTES = 64 * 1024 * 1024
+RESULTS_RE = re.compile(
+    r"^playwright-results-json-(?P<shard>.+)-a(?P<attempt>\d+)(?P<retry>-retry)?$"
+)
+# Every job of a run in one query. Limit: 50 annotations per job, and the usual
 # two are runner notices; a shard with more than that loses the rest.
 ANNOTATIONS_QUERY = """query($id: ID!) { node(id: $id) { ... on CheckSuite {
   checkRuns(first: 100) { nodes { annotations(first: 50) { nodes { title message } } } }
@@ -67,7 +76,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--since", default="", help="UTC ISO date or time; default 24h before --until"
     )
-    parser.add_argument("--until", default="", help="UTC ISO date or time; default now")
+    parser.add_argument(
+        "--until",
+        default="",
+        help="UTC ISO date or time; default the last full hour minus 1h",
+    )
     parser.add_argument("--channel", required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     return parser.parse_args(argv)
@@ -178,31 +191,44 @@ def results_tests(results: dict) -> tuple[dict, dict]:
     return failed, flaky
 
 
+def pick_results(artifacts: list[dict], attempt: int) -> list[dict]:
+    """One results artifact per failed shard of `attempt`. A shard re-uploads under
+    `-retry` when its first upload may be incomplete, so the retry wins, as in
+    render_playwright_summary.cjs."""
+    picked: dict[str, dict] = {}
+    for artifact in artifacts:
+        match = RESULTS_RE.match(artifact["name"])
+        if not match or int(match["attempt"]) != attempt:
+            continue
+        if match["retry"] or match["shard"] not in picked:
+            picked[match["shard"]] = artifact
+    if any(artifact.get("expired") for artifact in picked.values()):
+        # Reporting the run as "no failing test" would be wrong; it is unreadable.
+        raise mq.ApiError("failed-shard results have expired")
+    return list(picked.values())
+
+
 def read_failures(owner: str, repo: str, run: dict, token: str) -> tuple[dict, dict]:
     """Failed and flaky tests from the failed shards of the run's latest attempt."""
-    attempt = re.compile(rf"-a{run.get('run_attempt', 1)}(?!\d)")
     artifacts = mq.paginated_items(
         f"/repos/{owner}/{repo}/actions/runs/{run['id']}/artifacts", "artifacts", token
     )
     failed, flaky = {}, {}
-    for artifact in artifacts:
-        name = artifact["name"]
-        if (
-            artifact.get("expired")
-            or not name.startswith(RESULTS_ARTIFACT)
-            or not attempt.search(name)
-        ):
-            continue
+    for artifact in pick_results(artifacts, run.get("run_attempt", 1)):
         with zipfile.ZipFile(
             io.BytesIO(download_zip(owner, repo, artifact, token))
         ) as archive:
-            for member in archive.namelist():
-                if member.endswith("results.json"):
-                    shard_failed, shard_flaky = results_tests(
-                        json.loads(archive.read(member))
-                    )
-                    failed.update(shard_failed)
-                    flaky.update(shard_flaky)
+            for member in archive.infolist():
+                if not member.filename.endswith("results.json"):
+                    continue
+                # The archive is shaped by PR code, so cap what is inflated.
+                if member.file_size > MAX_RESULTS_BYTES:
+                    raise mq.ApiError(f"Oversized results.json in {artifact['name']}")
+                shard_failed, shard_flaky = results_tests(
+                    json.loads(archive.read(member))
+                )
+                failed.update(shard_failed)
+                flaky.update(shard_flaky)
     return failed, flaky
 
 
@@ -268,18 +294,23 @@ def collect(owner: str, repo: str, run: dict, token: str) -> dict:
         "failed": {},
         "broken": [],
     }
+    # The two sources fail independently; one failing must not erase the other.
     try:
         record["flaky"] = read_flaky(run, token)
-        if record["conclusion"] == "failure":
+    except READ_ERRORS as exc:
+        print(f"::warning::Run {run['id']} retry passes: {exc}")
+    if record["conclusion"] == "failure":
+        try:
             failed, flaky = read_failures(owner, repo, run, token)
             record["failed"] = failed
-            # A shard that failed before writing its annotation still reports its flakes here.
-            record["flaky"] = {**flaky, **record["flaky"]}
+            if record["flaky"] is not None:
+                # A shard that failed before writing its annotation still reports its flakes here.
+                record["flaky"] = {**flaky, **record["flaky"]}
             if not failed:
                 record["broken"] = failed_jobs(owner, repo, run, token)
-    except READ_ERRORS as exc:
-        print(f"::warning::Run {run['id']}: {exc}")
-        record["flaky"] = None
+        except READ_ERRORS as exc:
+            print(f"::warning::Run {run['id']} failed tests: {exc}")
+            record["failed"] = None
     return record
 
 
@@ -330,7 +361,7 @@ def aggregate(records: list[dict]) -> dict[str, Any]:
     for run in window:
         for key, line in (run["flaky"] or {}).items():
             tally(flaky, key, line, run)
-        for key, (line, error) in run["failed"].items():
+        for key, (line, error) in (run["failed"] or {}).items():
             tally(failed, key, line, run, error)
     flaky_tests = ranked(flaky)
     specs: dict[str, dict] = {}
@@ -353,7 +384,9 @@ def aggregate(records: list[dict]) -> dict[str, Any]:
         "passed": conclusions["success"],
         "failedRuns": conclusions["failure"],
         "other": len(window) - conclusions["success"] - conclusions["failure"],
-        "unreadable": sum(run["flaky"] is None for run in window),
+        "unreadable": sum(
+            run["flaky"] is None or run["failed"] is None for run in window
+        ),
         "prs": len({pr for run in window for pr in run["prs"]}),
     }
 
@@ -411,7 +444,8 @@ def headline(report: dict) -> list[str]:
     ]
     if report["unreadable"]:
         lines.append(
-            f"{plural(report['unreadable'], 'run')} could not be read and are not counted"
+            f"{plural(report['unreadable'], 'run')} could not be fully read, so some of "
+            "their failed or flaky tests may be missing from the lists"
         )
     return lines
 
@@ -551,8 +585,14 @@ def runs_table(test: dict, failed: bool, repo_url: str) -> str:
 
 
 def test_entry(test: dict, failed: bool, repo_url: str) -> str:
+    # An annotation line that did not parse as `file:line › title` is shown raw.
+    name = (
+        f"<span class=file>{e(test['file'])}:{test['line']}</span><span class=title>{e(test['title'])}</span>"
+        if test["title"]
+        else f"<span class=title>{e(test['file'])}</span>"
+    )
     errors = "".join(
-        f"<li>{e(error)}{f' ×{count}' if len(test['errors']) > 1 else ''}</li>"
+        f"<li>{e(error)}{f' ×{count}' if count > 1 else ''}</li>"
         for error, count in test["errors"].most_common()
     )
     squares = "".join(
@@ -571,7 +611,7 @@ def test_entry(test: dict, failed: bool, repo_url: str) -> str:
             )
     return (
         f"<details class={'failed' if failed else 'flaky'}><summary><span class=count>{test['runs']}</span>"
-        f"<span class=name><span class=file>{e(test['file'])}:{test['line']}</span><span class=title>{e(test['title'])}</span></span>"
+        f"<span class=name>{name}</span>"
         f"<span class=meta>{''.join(pills)}</span></summary>"
         f"<div class=body>{f'<ul class=errors>{errors}</ul>' if errors else ''}{runs_table(test, failed, repo_url)}</div></details>"
     )
@@ -770,7 +810,9 @@ def slack_text(report: dict, title: str) -> str:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     token = mq.env_token()
-    until = parse_when(args.until, mq.utcnow())
+    until = parse_when(
+        args.until, mq.utcnow().replace(minute=0, second=0, microsecond=0) - SETTLE
+    )
     since = parse_when(args.since, until - timedelta(hours=24))
     if since >= until:
         raise SystemExit("--since must be before --until")

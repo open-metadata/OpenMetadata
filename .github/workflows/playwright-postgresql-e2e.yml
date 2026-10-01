@@ -225,8 +225,9 @@ jobs:
           payload-file-path: ${{ runner.temp }}/queue-slack.json
 
       # Queue flakes and failures go to #pw-health once a day
-      # (playwright-flaky-daily-report.yml), read from the shards' "Retry pass in
-      # merge queue" annotations, instead of one Slack post per queue run.
+      # (playwright-flaky-daily-report.yml) instead of one Slack post per queue
+      # run: flakes from the shards' "Retry pass in merge queue" annotations,
+      # failed tests from the failed shards' playwright-results-json-* artifacts.
 
       # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
       # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we

@@ -278,6 +278,17 @@ def test_merge_queue_flakes_are_left_to_the_daily_report():
     assert "::warning title=Retry pass in merge queue::" in shard_warning
     report = workflow("playwright-flaky-daily-report.yml")["permissions"]
     assert report == {"actions": "read", "checks": "read", "contents": "read"}
+    post = next(
+        s
+        for s in workflow("playwright-flaky-daily-report.yml")["jobs"]["report"][
+            "steps"
+        ]
+        if s["name"].startswith("Post to Slack")
+    )
+    # An absent input compares equal to false, so the schedule is named explicitly.
+    assert (
+        post["if"] == "${{ github.event_name == 'schedule' || inputs.post_to_slack }}"
+    )
 
 
 def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):

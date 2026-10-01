@@ -27,15 +27,15 @@ on:
   workflow_dispatch:
     inputs:
       since:
-        description: Window start, UTC ISO (2026-09-30 or 2026-09-30T06:00). Empty means 24h before `until`. Max window 48h.
+        description: "Window start, UTC ISO (2026-09-30 or 2026-09-30T06:00). Empty means 24h before `until`. Max window 48h."
         type: string
         default: ""
       until:
-        description: Window end, UTC ISO. Empty means now.
+        description: "Window end, UTC ISO. Empty means the last full hour, minus one hour, so runs in the window have finished."
         type: string
         default: ""
       post_to_slack:
-        description: Post the report to #pw-health. Off = scan only (job summary + HTML artifact).
+        description: "Post the report to #pw-health. Off = scan only (job summary + HTML artifact)."
         type: boolean
         default: true
 
@@ -90,8 +90,9 @@ jobs:
           retention-days: 14
 
       - name: Post to Slack (pw-health)
-        # Scheduled runs have no inputs, so `inputs.post_to_slack` is empty and they post.
-        if: ${{ inputs.post_to_slack != false }}
+        # Scheduled runs have no inputs, and an empty input compares equal to
+        # false (both coerce to 0), so the schedule has to be named explicitly.
+        if: ${{ github.event_name == 'schedule' || inputs.post_to_slack }}
         uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
           method: files.uploadV2
