@@ -85,6 +85,25 @@ describe('useGlossaryTreeData', () => {
       );
     });
 
+    // Swallowed, a failed later page reads as the end of the listing and the
+    // tree drops its cursor, stranding every glossary after it.
+    it('lets a failed later page reject instead of ending the listing', async () => {
+      const { result } = renderHook(() => useGlossaryTreeData());
+      mockGetGlossariesList.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        result.current({ after: 'glossary-cursor-1' })
+      ).rejects.toThrow('boom');
+    });
+
+    // The first page has no cursor to lose, so it still degrades to empty.
+    it('still swallows a failed first page', async () => {
+      const { result } = renderHook(() => useGlossaryTreeData());
+      mockGetGlossariesList.mockRejectedValue(new Error('boom'));
+
+      await expect(result.current({})).resolves.toMatchObject({ nodes: [] });
+    });
+
     // Search matches names against the loaded listing, so page two has to stay
     // searchable alongside page one.
     it('keeps earlier pages searchable after loading more', async () => {

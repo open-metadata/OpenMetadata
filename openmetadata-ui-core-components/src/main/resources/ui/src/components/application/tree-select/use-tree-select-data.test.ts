@@ -207,4 +207,73 @@ describe('useTreeSelectData', () => {
 
     expect(fetchData).toHaveBeenCalledTimes(1);
   });
+
+  // A swallowed failure would read as "no more pages" and hide the row.
+  it('keeps the root cursor when an append page rejects', async () => {
+    const fetchData = vi
+      .fn()
+      .mockImplementationOnce(async () => ({
+        nodes: [child('g1')],
+        hasMore: true,
+        total: 2,
+        nextCursor: 'root-cursor-1',
+      }))
+      .mockImplementationOnce(async () => {
+        throw new Error('boom');
+      });
+
+    const { result } = renderHook(() =>
+      useTreeSelectData({ fetchData, onFetchError: () => undefined })
+    );
+
+    await waitFor(() => expect(result.current.hasMoreRoot).toBe(true));
+    await act(() => result.current.loadMoreRoot());
+
+    expect(result.current.hasMoreRoot).toBe(true);
+    expect(result.current.treeData.map(({ id }) => id)).toEqual(['g1']);
+  });
+
+  // One shared controller let a load-more cancel an expand, and the reverse.
+  it('does not let a root append and a branch load cancel each other', async () => {
+    const signals: Record<string, AbortSignal | undefined> = {};
+    const fetchData = vi
+      .fn()
+      .mockImplementation(
+        async ({
+          parentId,
+          after,
+          signal,
+        }: {
+          parentId?: string;
+          after?: string;
+          signal?: AbortSignal;
+        }) => {
+          signals[parentId ? 'branch' : after ? 'append' : 'root'] = signal;
+
+          if (parentId) {
+            return { nodes: [child('c1')] };
+          }
+
+          return after
+            ? { nodes: [child('g2')], hasMore: false }
+            : {
+                nodes: [{ id: 'g1', label: 'g1', value: 'g1', isLeaf: false }],
+                hasMore: true,
+                nextCursor: 'root-cursor-1',
+              };
+        }
+      );
+
+    const { result } = renderHook(() => useTreeSelectData({ fetchData }));
+
+    await waitFor(() => expect(result.current.treeData).toHaveLength(1));
+    await act(async () => {
+      const branch = result.current.loadChildren('g1');
+      const append = result.current.loadMoreRoot();
+      await Promise.all([branch, append]);
+    });
+
+    expect(signals.branch?.aborted).toBe(false);
+    expect(signals.append?.aborted).toBe(false);
+  });
 });

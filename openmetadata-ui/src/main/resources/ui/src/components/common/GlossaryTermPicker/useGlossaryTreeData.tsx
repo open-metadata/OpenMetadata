@@ -210,7 +210,9 @@ export const useGlossaryTreeData = (
 
         return await fetchGlossaries(pageSize, after, signal);
       } catch (error) {
-        if (axios.isCancel(error)) {
+        // `after` pages follow the same rule as a branch page: swallowed, an
+        // empty one reads as the end of the listing and drops the cursor.
+        if (axios.isCancel(error) || after) {
           throw error;
         }
         showErrorToast(error as AxiosError);

@@ -131,7 +131,9 @@ export const useTreeSelectData = <T = unknown>({
     rootPage: {},
   });
 
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // One controller per scope — the root listing and each branch load
+  // independently, so a load-more must not cancel an expand, or vice versa.
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const loadingNodesRef = useRef<Set<string>>(new Set());
   const cachedDataRef = useRef<Map<string, BranchPage<T>>>(new Map());
   // Read inside stable callbacks, so `loadMoreChildren` never needs the tree.
@@ -145,9 +147,17 @@ export const useTreeSelectData = <T = unknown>({
 
   const fetchTreeData = useCallback(
     async (params: TreeSelectDataFetcherParams, append = false) => {
-      abortControllerRef.current?.abort();
+      const scope = params.parentId ?? ROOT_CACHE_KEY;
+      // A fresh root or search replaces the whole tree, so every in-flight
+      // branch becomes irrelevant; everything else cancels only its own scope.
+      if (!params.parentId && !append) {
+        abortControllersRef.current.forEach((inFlight) => inFlight.abort());
+        abortControllersRef.current.clear();
+      } else {
+        abortControllersRef.current.get(scope)?.abort();
+      }
       const controller = new AbortController();
-      abortControllerRef.current = controller;
+      abortControllersRef.current.set(scope, controller);
 
       if (params.parentId) {
         loadingNodesRef.current = new Set(loadingNodesRef.current).add(
@@ -170,6 +180,10 @@ export const useTreeSelectData = <T = unknown>({
           pageSize,
           signal: controller.signal,
         });
+
+        if (abortControllersRef.current.get(scope) === controller) {
+          abortControllersRef.current.delete(scope);
+        }
 
         if (controller.signal.aborted) {
           if (params.parentId) {
@@ -237,6 +251,10 @@ export const useTreeSelectData = <T = unknown>({
           };
         });
       } catch (error) {
+        if (abortControllersRef.current.get(scope) === controller) {
+          abortControllersRef.current.delete(scope);
+        }
+
         if (controller.signal.aborted) {
           if (params.parentId) {
             const nextLoadingNodes = new Set(loadingNodesRef.current);
@@ -287,7 +305,8 @@ export const useTreeSelectData = <T = unknown>({
     }
 
     return () => {
-      abortControllerRef.current?.abort();
+      abortControllersRef.current.forEach((inFlight) => inFlight.abort());
+      abortControllersRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, enabled]);
