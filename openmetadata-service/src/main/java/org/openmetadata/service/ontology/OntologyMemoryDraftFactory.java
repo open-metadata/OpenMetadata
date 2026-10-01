@@ -17,8 +17,10 @@ import static org.openmetadata.service.ontology.OntologyAiOutputValidator.requir
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -56,21 +58,16 @@ final class OntologyMemoryDraftFactory {
         > memoryIds.size() * OntologyMemoryDerivationService.MAX_TERMS_PER_MEMORY) {
       throw OntologyAiOutputValidator.invalid("memory derivation exceeded its term limit");
     }
-    final Set<String> names = new HashSet<>();
-    final List<OntologyChangeOperation> operations = new ArrayList<>();
+    final Map<String, OntologyChangeOperation> operationsByName = new LinkedHashMap<>();
+    final CandidateContext context =
+        new CandidateContext(selection.glossary(), memoryIds, completion.modelId(), termExists);
     for (final OntologyAiCompletionGateway.MemoryTermCandidate candidate : completion.items()) {
-      addCandidate(
-          candidate,
-          selection.glossary(),
-          memoryIds,
-          completion.modelId(),
-          termExists,
-          names,
-          operations);
+      addCandidate(candidate, context, operationsByName);
     }
-    if (operations.isEmpty()) {
+    if (operationsByName.isEmpty()) {
       return Optional.empty();
     }
+    final List<OntologyChangeOperation> operations = new ArrayList<>(operationsByName.values());
     if (selection.create()) {
       operations.addFirst(createGlossaryOperation(selection, memoryIds));
     }
@@ -106,20 +103,23 @@ final class OntologyMemoryDraftFactory {
 
   private static void addCandidate(
       final OntologyAiCompletionGateway.MemoryTermCandidate candidate,
-      final Glossary glossary,
-      final Set<UUID> memoryIds,
-      final String modelId,
-      final Predicate<String> termExists,
-      final Set<String> names,
-      final List<OntologyChangeOperation> operations) {
-    final String invalidReason = invalidReason(candidate, memoryIds);
+      final CandidateContext context,
+      final Map<String, OntologyChangeOperation> operationsByName) {
+    final String invalidReason = invalidReason(candidate, context.memoryIds());
     if (invalidReason != null) {
       LOG.warn("Skipping glossary suggestion from memory derivation: {}", invalidReason);
       return;
     }
-    final String name = localName(candidate.name(), glossary.getName());
-    final String fqn = FullyQualifiedName.add(glossary.getFullyQualifiedName(), name);
-    if (!names.add(fqn) || termExists.test(fqn)) {
+    final String name = localName(candidate.name(), context.glossary().getName());
+    final String fqn = FullyQualifiedName.add(context.glossary().getFullyQualifiedName(), name);
+    final OntologyChangeOperation existing = operationsByName.get(fqn);
+    if (existing != null) {
+      final Set<UUID> sources = new HashSet<>(existing.getSourceMemoryIds());
+      sources.add(candidate.sourceMemoryId());
+      existing.setSourceMemoryIds(Set.copyOf(sources));
+      return;
+    }
+    if (context.termExists().test(fqn)) {
       return;
     }
     final GlossaryTerm term =
@@ -129,11 +129,12 @@ final class OntologyMemoryDraftFactory {
             .withDisplayName(candidate.displayName())
             .withDescription(candidate.description())
             .withFullyQualifiedName(fqn)
-            .withGlossary(glossary.getEntityReference())
+            .withGlossary(context.glossary().getEntityReference())
             .withVersion(INITIAL_VERSION)
             .withEntityStatus(EntityStatus.DRAFT)
             .withProvider(ProviderType.USER);
-    operations.add(
+    operationsByName.put(
+        fqn,
         new OntologyChangeOperation()
             .withId(UUID.randomUUID())
             .withOperationType(OntologyChangeOperationType.CREATE_TERM)
@@ -142,8 +143,11 @@ final class OntologyMemoryDraftFactory {
             .withSourceMemoryIds(Set.of(candidate.sourceMemoryId()))
             .withConfidence(candidate.confidence())
             .withRationale(candidate.rationale())
-            .withModelId(modelId));
+            .withModelId(context.modelId()));
   }
+
+  private record CandidateContext(
+      Glossary glossary, Set<UUID> memoryIds, String modelId, Predicate<String> termExists) {}
 
   private static String invalidReason(
       final OntologyAiCompletionGateway.MemoryTermCandidate candidate, final Set<UUID> memoryIds) {

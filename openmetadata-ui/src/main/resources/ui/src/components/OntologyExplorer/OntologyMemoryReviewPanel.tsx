@@ -112,26 +112,13 @@ function changeSetName(changeSet: OntologyChangeSet): string {
   return changeSet.displayName || changeSet.name;
 }
 
-// The deep-linked draft is fetched alongside the list, so it opens even when it falls outside
-// the first page.
-async function loadMemoryDrafts(
-  initialDraftId?: string
-): Promise<OntologyChangeSet[]> {
-  const [linked, page] = await Promise.all([
-    initialDraftId
-      ? getOntologyChangeSet(initialDraftId, CHANGE_SET_FIELDS).catch(
-          () => undefined
-        )
-      : Promise.resolve(undefined),
-    listOntologyChangeSets({
-      fields: CHANGE_SET_FIELDS,
-      limit: PAGE_SIZE,
-      memorySourced: true,
-      state: REVIEWABLE_STATES,
-    }),
-  ]);
-  const drafts = [...(linked ? [linked] : []), ...page.data];
+function selectedDraft(changeSets: OntologyChangeSet[], selectedId?: string) {
+  return (
+    changeSets.find((changeSet) => changeSet.id === selectedId) ?? changeSets[0]
+  );
+}
 
+function reviewableDrafts(drafts: OntologyChangeSet[]): OntologyChangeSet[] {
   return drafts
     .filter(
       (changeSet, index, all) =>
@@ -140,6 +127,32 @@ async function loadMemoryDrafts(
         all.findIndex((candidate) => candidate.id === changeSet.id) === index
     )
     .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+}
+
+// The deep-linked draft is fetched alongside the first page so it remains reachable.
+async function loadMemoryDrafts(
+  initialDraftId?: string,
+  after?: string
+): Promise<{ drafts: OntologyChangeSet[]; after?: string }> {
+  const [linked, page] = await Promise.all([
+    initialDraftId && !after
+      ? getOntologyChangeSet(initialDraftId, CHANGE_SET_FIELDS).catch(
+          () => undefined
+        )
+      : Promise.resolve(undefined),
+    listOntologyChangeSets({
+      ...(after ? { after } : {}),
+      fields: CHANGE_SET_FIELDS,
+      limit: PAGE_SIZE,
+      memorySourced: true,
+      state: REVIEWABLE_STATES,
+    }),
+  ]);
+
+  return {
+    after: page.paging.after,
+    drafts: reviewableDrafts([...(linked ? [linked] : []), ...page.data]),
+  };
 }
 
 function DraftList({
@@ -370,10 +383,10 @@ const OntologyMemoryReviewPanel = ({
     initialDraftId
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const selected =
-    changeSets.find((changeSet) => changeSet.id === selectedId) ??
-    changeSets[0];
+  const [nextCursor, setNextCursor] = useState<string>();
+  const selected = selectedDraft(changeSets, selectedId);
   const lease = useOntologyEditLease({
     isActive: Boolean(selected && (canSubmit || canApply || canDiscard)),
     resourceId: selected?.id,
@@ -383,12 +396,13 @@ const OntologyMemoryReviewPanel = ({
   const loadChangeSets = useCallback(async () => {
     setIsLoading(true);
     try {
-      const proposals = await loadMemoryDrafts(initialDraftId);
-      setChangeSets(proposals);
+      const page = await loadMemoryDrafts(initialDraftId);
+      setChangeSets(page.drafts);
+      setNextCursor(page.after);
       setSelectedId((current) =>
-        proposals.some((proposal) => proposal.id === current)
+        page.drafts.some((proposal) => proposal.id === current)
           ? current
-          : proposals[0]?.id
+          : page.drafts[0]?.id
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -400,6 +414,24 @@ const OntologyMemoryReviewPanel = ({
   useEffect(() => {
     void loadChangeSets();
   }, [loadChangeSets]);
+
+  const loadMore = async () => {
+    if (!nextCursor || isLoadingMore) {
+      return;
+    }
+    setIsLoadingMore(true);
+    try {
+      const page = await loadMemoryDrafts(undefined, nextCursor);
+      setChangeSets((current) =>
+        reviewableDrafts([...current, ...page.drafts])
+      );
+      setNextCursor(page.after);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   const runAction = (
     action: DraftAction,
@@ -516,6 +548,16 @@ const OntologyMemoryReviewPanel = ({
               />
             ) : null}
           </div>
+        ) : null}
+        {nextCursor ? (
+          <Button
+            color="secondary"
+            data-testid="ontology-memory-load-more"
+            isDisabled={isLoading || isLoadingMore}
+            isLoading={isLoadingMore}
+            onPress={() => void loadMore()}>
+            {t('label.load-more')}
+          </Button>
         ) : null}
       </div>
     </div>

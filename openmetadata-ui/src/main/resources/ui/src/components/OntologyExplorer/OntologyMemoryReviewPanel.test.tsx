@@ -191,6 +191,54 @@ describe('OntologyMemoryReviewPanel', () => {
     expect(mockGetChangeSet).toHaveBeenCalledWith('draft-16', 'operations');
   });
 
+  it('loads older reviewable drafts using the server cursor', async () => {
+    const older = {
+      ...draft,
+      id: 'draft-15',
+      name: 'memory-glossary-15',
+      displayName: 'memory-glossary-15',
+      updatedAt: 5,
+    };
+    mockList
+      .mockResolvedValueOnce({
+        data: [draft],
+        paging: { after: 'older-cursor', total: 2 },
+      })
+      .mockResolvedValueOnce({ data: [older], paging: { total: 2 } });
+
+    renderPanel(
+      <OntologyMemoryReviewPanel
+        canApply
+        canDiscard
+        canSubmit
+        onApplied={jest.fn()}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('ontology-memory-load-more'));
+
+    expect(
+      await screen.findByTestId('ontology-memory-draft-draft-15')
+    ).toBeInTheDocument();
+    expect(mockList).toHaveBeenNthCalledWith(2, {
+      after: 'older-cursor',
+      fields: 'operations',
+      limit: 50,
+      memorySourced: true,
+      state: [
+        OntologyChangeSetState.Draft,
+        OntologyChangeSetState.Submitted,
+        OntologyChangeSetState.ApplyFailed,
+      ],
+    });
+    expect(
+      screen.getByTestId('ontology-memory-draft-draft-16')
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.queryByTestId('ontology-memory-load-more')
+    ).not.toBeInTheDocument();
+  });
+
   it('discards a draft so its memory can be proposed again', async () => {
     mockDiscard.mockResolvedValue({
       ...draft,

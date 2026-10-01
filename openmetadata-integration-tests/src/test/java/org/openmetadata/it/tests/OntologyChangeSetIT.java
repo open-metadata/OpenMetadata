@@ -260,6 +260,51 @@ public class OntologyChangeSetIT {
   }
 
   @Test
+  void applyingAnUndoneGlossaryCreationDoesNotLinkAMissingGlossary(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String glossaryName = ns.prefix("undoneGlossary");
+    OntologyChangeSet changeSet =
+        ns.trackRoot(
+            ONTOLOGY_CHANGE_SET,
+            createNamedChangeSet(
+                client,
+                ns.prefix("undoneGlossaryDraft"),
+                glossaryName,
+                List.of(createGlossaryOperation(glossaryName))));
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("undoEditor"));
+
+    OntologyChangeSet undone =
+        client
+            .ontologyChangeSets()
+            .undo(changeSet.getId(), new OntologyChangeSetCommand().withLease(lease));
+    OntologyChangeSet applied =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+    int glossaryLinks =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery(
+                            "SELECT COUNT(*) FROM entity_relationship "
+                                + "WHERE fromId = :glossaryId AND toId = :changeSetId "
+                                + "AND fromEntity = 'glossary' AND toEntity = 'ontologyChangeSet'")
+                        .bind(
+                            "glossaryId",
+                            changeSet.getOperations().getFirst().getGlossary().getId().toString())
+                        .bind("changeSetId", changeSet.getId().toString())
+                        .mapTo(Integer.class)
+                        .one());
+
+    assertEquals(0, undone.getUndoCursor());
+    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+    assertEquals(0, applied.getApplicationResult().getOperationsApplied());
+    assertEquals(0, glossaryLinks);
+    assertThrows(OpenMetadataException.class, () -> client.glossaries().getByName(glossaryName));
+  }
+
+  @Test
   void applyFailsInsteadOfOverwritingATermThatAlreadyExists(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Glossary glossary = GlossaryTestFactory.createSimple(ns);

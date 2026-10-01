@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyChangeApplicationResult;
 import org.openmetadata.schema.type.OntologyChangeOperation;
+import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -200,9 +201,10 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
   }
 
   private void storePlannedGlossaryRelationships(final OntologyChangeSet changeSet) {
-    for (final EntityReference glossary : changeSet.getGlossaries()) {
-      if (plannedGlossary(changeSet, glossary.getId()) != null) {
-        storeGlossaryRelationship(changeSet, glossary);
+    for (final OntologyChangeOperation operation :
+        changeSet.getOperations().subList(0, changeSet.getUndoCursor())) {
+      if (operation.getOperationType() == OntologyChangeOperationType.CREATE_GLOSSARY) {
+        storeGlossaryRelationship(changeSet, operation.getGlossary().getEntityReference());
       }
     }
   }

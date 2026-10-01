@@ -121,6 +121,31 @@ class OntologyMemoryDraftFactoryTest {
   }
 
   @Test
+  void mergesSourceMemoriesForDuplicateTermCandidates() {
+    final UUID secondMemoryId = UUID.randomUUID();
+    final var secondCandidate =
+        new OntologyAiCompletionGateway.MemoryTermCandidate(
+            secondMemoryId,
+            "Inactive Customer",
+            "Inactive Customer",
+            "A buyer",
+            0.9D,
+            "Grounded in another memory");
+    final var completion =
+        new OntologyAiCompletionGateway.Completion<>(
+            "test-model", List.of(candidate("inactive_customer"), secondCandidate));
+
+    final CreateOntologyChangeSet draft =
+        factory
+            .create(42, existing(), Set.of(memoryId, secondMemoryId), completion, fqn -> false)
+            .orElseThrow();
+
+    assertEquals(1, draft.getOperations().size());
+    assertEquals(
+        Set.of(memoryId, secondMemoryId), draft.getOperations().getFirst().getSourceMemoryIds());
+  }
+
+  @Test
   void removesRedundantGlossaryPrefixFromLocalTermName() {
     final CreateOntologyChangeSet draft =
         factory
