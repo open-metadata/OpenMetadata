@@ -8981,6 +8981,7 @@ all = [
     { name = "sqlalchemy" },
     { name = "sqlalchemy-bigquery" },
     { name = "sqlalchemy-cockroachdb" },
+    { name = "sqlalchemy-dremio" },
     { name = "sqlalchemy-exasol" },
     { name = "sqlalchemy-hana", version = "4.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sqlalchemy-hana", version = "5.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -9147,6 +9148,7 @@ all-dev-env = [
     { name = "sqlalchemy" },
     { name = "sqlalchemy-bigquery" },
     { name = "sqlalchemy-cockroachdb" },
+    { name = "sqlalchemy-dremio" },
     { name = "sqlalchemy-exasol" },
     { name = "sqlalchemy-hana", version = "4.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sqlalchemy-hana", version = "5.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -9359,6 +9361,9 @@ domo = [
 ]
 doris = [
     { name = "pydoris" },
+]
+dremio = [
+    { name = "sqlalchemy-dremio" },
 ]
 druid = [
     { name = "pydruid" },
@@ -9826,6 +9831,7 @@ slim = [
     { name = "sqlalchemy" },
     { name = "sqlalchemy-bigquery" },
     { name = "sqlalchemy-cockroachdb" },
+    { name = "sqlalchemy-dremio" },
     { name = "sqlalchemy-exasol" },
     { name = "sqlalchemy-hana", version = "4.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "sqlalchemy-hana", version = "5.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -9960,6 +9966,7 @@ test = [
     { name = "spacy" },
     { name = "sqlalchemy-bigquery" },
     { name = "sqlalchemy-cockroachdb" },
+    { name = "sqlalchemy-dremio" },
     { name = "sqlalchemy-exasol" },
     { name = "sqlalchemy-pgspider" },
     { name = "sqlalchemy-pytds" },
@@ -10988,6 +10995,11 @@ requires-dist = [
     { name = "sqlalchemy-cockroachdb", marker = "extra == 'cockroach'", specifier = "~=2.0" },
     { name = "sqlalchemy-cockroachdb", marker = "extra == 'slim'", specifier = "~=2.0" },
     { name = "sqlalchemy-cockroachdb", marker = "extra == 'test'", specifier = "~=2.0" },
+    { name = "sqlalchemy-dremio", marker = "extra == 'all'", specifier = "~=3.0.4" },
+    { name = "sqlalchemy-dremio", marker = "extra == 'all-dev-env'", specifier = "~=3.0.4" },
+    { name = "sqlalchemy-dremio", marker = "extra == 'dremio'", specifier = "~=3.0.4" },
+    { name = "sqlalchemy-dremio", marker = "extra == 'slim'", specifier = "~=3.0.4" },
+    { name = "sqlalchemy-dremio", marker = "extra == 'test'", specifier = "~=3.0.4" },
     { name = "sqlalchemy-exasol", marker = "extra == 'all'", specifier = ">=7.1.1,<8" },
     { name = "sqlalchemy-exasol", marker = "extra == 'all-dev-env'", specifier = ">=7.1.1,<8" },
     { name = "sqlalchemy-exasol", marker = "extra == 'e2e-test'", specifier = ">=7.1.1,<8" },
@@ -11095,7 +11107,7 @@ requires-dist = [
     { name = "werkzeug", marker = "extra == 'airflow'", specifier = ">=3.0.6" },
     { name = "werkzeug", marker = "extra == 'playwright'", specifier = ">=3.0.6" },
 ]
-provides-extras = ["dev", "test", "test-unit", "e2e-test", "exasol-test", "data-insight", "airflow", "amundsen", "athena", "atlas", "azuresql", "azure-sso", "backup", "googledrive", "bigquery", "bigtable", "clickhouse", "clickzetta", "dagster", "dbt", "db2", "db2-ibmi", "databend", "databricks", "datalake-azure", "datalake-gcs", "datalake-s3", "s3", "gcs", "domo", "doris", "starrocks", "druid", "dynamodb", "elasticsearch", "opensearch", "exasol", "glue", "great-expectations", "greenplum", "cockroach", "hive", "iomete", "impala", "kafka", "kafkaconnect", "kinesis", "nats", "pubsub", "looker", "mlflow", "mongo", "cassandra", "couchbase", "mssql", "mssql-odbc", "mysql", "neo4j", "nifi", "openlineage", "oracle", "pgspider", "pinotdb", "postgres", "powerbi", "prefect", "qliksense", "presto", "pymssql", "questdb", "quicksight", "redash", "redpanda", "redshift", "sagemaker", "salesforce", "data360", "data360pipeline", "sample-data", "sap-hana", "sas", "sftp", "singlestore", "sklearn", "snowflake", "ssrs", "superset", "tableau", "tableaupipeline", "teradata", "trino", "vertica", "pandas", "pyarrow", "pii-processor", "presidio-analyzer", "all-dev-env", "all", "playwright", "slim", "docs"]
+provides-extras = ["dev", "test", "test-unit", "e2e-test", "exasol-test", "data-insight", "airflow", "amundsen", "athena", "atlas", "azuresql", "azure-sso", "backup", "googledrive", "bigquery", "bigtable", "clickhouse", "clickzetta", "dagster", "dbt", "db2", "db2-ibmi", "databend", "databricks", "datalake-azure", "datalake-gcs", "datalake-s3", "s3", "gcs", "domo", "doris", "dremio", "starrocks", "druid", "dynamodb", "elasticsearch", "opensearch", "exasol", "glue", "great-expectations", "greenplum", "cockroach", "hive", "iomete", "impala", "kafka", "kafkaconnect", "kinesis", "nats", "pubsub", "looker", "mlflow", "mongo", "cassandra", "couchbase", "mssql", "mssql-odbc", "mysql", "neo4j", "nifi", "openlineage", "oracle", "pgspider", "pinotdb", "postgres", "powerbi", "prefect", "qliksense", "presto", "pymssql", "questdb", "quicksight", "redash", "redpanda", "redshift", "sagemaker", "salesforce", "data360", "data360pipeline", "sample-data", "sap-hana", "sas", "sftp", "singlestore", "sklearn", "snowflake", "ssrs", "superset", "tableau", "tableaupipeline", "teradata", "trino", "vertica", "pandas", "pyarrow", "pii-processor", "presidio-analyzer", "all-dev-env", "all", "playwright", "slim", "docs"]
 
 [package.metadata.requires-dev]
 bootstrap = [
@@ -15729,6 +15741,17 @@ sdist = { url = "https://files.pythonhosted.org/packages/c0/46/1462dd4734c58e04b
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f2/f1/e08ec3fc57b6f890e8f6eb16734c4865626635f4863cc2fe7d259699ce7b/sqlalchemy_cockroachdb-2.0.4-py3-none-any.whl", hash = "sha256:0804306a733a1fe09b2d496eadf8bf35d878862b6138e69175136fa2ca0ce5d0", size = 22726, upload-time = "2026-04-23T18:12:26.936Z" },
 ]
+
+[[package]]
+name = "sqlalchemy-dremio"
+version = "3.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyarrow", version = "25.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pyarrow", version = "26.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "sqlalchemy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5c/6d/5f88c84e5c4c616c6c25b3ab44e91487272baaa8c701365ccec09267c916/sqlalchemy_dremio-3.0.4.tar.gz", hash = "sha256:346048c611c42bfd15ced3219100f0f334efbf203729d28eb0ededce892b2f12", size = 16133, upload-time = "2024-06-19T07:20:14.777Z" }
 
 [[package]]
 name = "sqlalchemy-exasol"
