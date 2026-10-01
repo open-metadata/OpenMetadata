@@ -347,3 +347,48 @@ class TestResolvedConnection:
             parameterValues=[*parameter_values, TestCaseParameterValue(name="keyColumns", value=json.dumps(["name"]))],
         )
         assert "%2A%2A%2A" in str(setter.get_parameters(test_case).table1.serviceUrl)
+
+    def test_service_without_a_stored_connection_uses_the_resolved_one(
+        self, setter: TableDiffParamsSetter, metadata: OpenMetadata, service1: DatabaseService, table1: Table, service2
+    ) -> None:
+        unstored = service1.model_copy(update={"connection": None})
+        services = {table1.service.id: unstored, service2.id: service2}
+        metadata.get_by_id.side_effect = lambda entity, entity_id, **kwargs: services.get(entity_id, service2)
+        test_case = TestCase.model_construct(
+            parameterValues=[
+                TestCaseParameterValue(name="table2", value="TestService2.test_db.test_schema.table2"),
+                TestCaseParameterValue(name="keyColumns", value=json.dumps(["name"])),
+            ],
+        )
+        assert ":secret@" in str(setter.get_parameters(test_case).table1.serviceUrl)
+
+    def test_same_service_diff_reads_key_pair_from_the_resolved_connection(
+        self, metadata: OpenMetadata, sampler: SamplerInterface, table1: Table, table2: Table
+    ) -> None:
+        resolved = SnowflakeConnection(
+            account="account",
+            username="username",
+            warehouse="warehouse",
+            privateKey="resolved-key",
+            snowflakePrivatekeyPassphrase="resolved-passphrase",
+        )
+        same_service_table2 = table2.model_copy(update={"service": table1.service})
+        metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: same_service_table2
+        setter = TableDiffParamsSetter(
+            ometa_client=metadata,
+            service_connection_config=resolved,
+            sampler=sampler,
+            table_entity=table1,
+            service_url_getter=lambda param_setter, service: "snowflake://username@account/test_db",
+        )
+        test_case = TestCase.model_construct(
+            parameterValues=[
+                TestCaseParameterValue(name="table2", value="TestService1.test_db.test_schema.table2"),
+                TestCaseParameterValue(name="keyColumns", value=json.dumps(["name"])),
+                TestCaseParameterValue(name="table2.keyColumns", value=json.dumps(["table_id"])),
+            ],
+        )
+        params = setter.get_parameters(test_case)
+        for table in (params.table1, params.table2):
+            assert table.privateKey.get_secret_value() == "resolved-key"
+            assert table.passPhrase.get_secret_value() == "resolved-passphrase"

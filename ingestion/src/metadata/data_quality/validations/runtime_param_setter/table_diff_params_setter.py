@@ -88,9 +88,11 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         if self.table_entity.service is None:
             raise ValueError("Table service must be set")
         service1_id = require_entity_reference_id(self.table_entity.service, "Table service")
-        service1 = cast(
-            "DatabaseService",
-            self.ometa_client.get_by_id(DatabaseService, service1_id, nullable=False),
+        service1 = self._with_resolved_connection(
+            cast(
+                "DatabaseService",
+                self.ometa_client.get_by_id(DatabaseService, service1_id, nullable=False),
+            )
         )
 
         table2_fqn = self.get_parameter(test_case, "table2")
@@ -101,15 +103,18 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         if table2.service is None:
             raise ValueError("Table2 service must be set")
         service2_id = require_entity_reference_id(table2.service, "Table2 service")
-        service2 = cast(
-            "DatabaseService",
-            self.ometa_client.get_by_id(DatabaseService, service2_id, nullable=False),
-        )
+        if table2.service == self.table_entity.service:
+            service2 = service1
+        else:
+            service2 = cast(
+                "DatabaseService",
+                self.ometa_client.get_by_id(DatabaseService, service2_id, nullable=False),
+            )
 
         table1_param_setter = self.get_param_setter(service1)
         table2_param_setter = self.get_param_setter(service2)
 
-        service1_url = self.get_service_url(table1_param_setter, self._with_resolved_connection(service1))
+        service1_url = self.get_service_url(table1_param_setter, service1)
 
         if table2.service == self.table_entity.service:
             service2_url = self.get_parameter(test_case, "service2Url") or service1_url
