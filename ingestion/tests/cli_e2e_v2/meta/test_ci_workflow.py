@@ -49,6 +49,11 @@ def _run_workflow(tmp_path, connector, pytest_exit=0):
     for step in job["steps"]:
         if "run" not in step:
             continue
+        condition = step.get("if")
+        if condition is not None:
+            assert condition in ("matrix.connector == 'bigquery'", "matrix.connector != 'bigquery'")
+            if (connector == "bigquery") != (condition == "matrix.connector == 'bigquery'"):
+                continue
         result = subprocess.run(
             ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", render(step["run"])],
             cwd=tmp_path,
@@ -58,7 +63,7 @@ def _run_workflow(tmp_path, connector, pytest_exit=0):
             timeout=10,
             check=False,
         )
-        if result.returncode or step.get("id") == "e2e-v2-test":
+        if result.returncode or step.get("id") in ("e2e-v2-test", "e2e-v2-bigquery-test"):
             return result
     raise AssertionError("Workflow did not execute its E2E test step")
 
@@ -92,7 +97,10 @@ def test_ci_defaults_to_all_connectors_and_limits_bigquery_secrets():
     assert json.loads(default) == ["mysql", "postgres", "bigquery"]
     assert f"'{default}'" in job["strategy"]["matrix"]["connector"]
 
-    test_step = next(step for step in job["steps"] if step.get("id") == "e2e-v2-test")
+    regular_step = next(step for step in job["steps"] if step.get("id") == "e2e-v2-test")
+    bigquery_step = next(step for step in job["steps"] if step.get("id") == "e2e-v2-bigquery-test")
+    assert regular_step["if"] == "matrix.connector != 'bigquery'"
+    assert bigquery_step["if"] == "matrix.connector == 'bigquery'"
     for key, secret in {
         "E2E_BQ_PROJECT_ID": "TEST_BQ_PROJECT_ID",
         "E2E_BQ_PROJECT_ID2": "TEST_BQ_PROJECT_ID2",
@@ -101,7 +109,8 @@ def test_ci_defaults_to_all_connectors_and_limits_bigquery_secrets():
         "E2E_BQ_CLIENT_EMAIL": "TEST_BQ_CLIENT_EMAIL",
     }.items():
         assert key not in job["env"]
-        assert test_step["env"][key] == (f"${{{{ matrix.connector == 'bigquery' && secrets.{secret} || '' }}}}")
+        assert key not in regular_step["env"]
+        assert bigquery_step["env"][key] == f"${{{{ secrets.{secret} }}}}"
 
 
 @pytest.mark.parametrize(

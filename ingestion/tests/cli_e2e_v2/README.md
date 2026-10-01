@@ -166,6 +166,8 @@ v1 → v2 mapping:
 | view lineage, 2 column edges | `lineage.view` |
 | `tableDiff` data-quality test | `dq.table-diff` |
 
+The v2 partition contract now checks the inferred three-day window with rows clearly inside and outside it.
+
 Added beyond v1: `procedure.code`, `fk.relationships`, `ingest.repeat`, `sample.values.native`,
 `sample.values.replacement`. v1's lineage run enabled query-log lineage but asserted only view
 lineage; query-log lineage and policy-tag taxonomies stay out of scope, as for MySQL.

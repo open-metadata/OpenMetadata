@@ -74,25 +74,39 @@ jobs:
 
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test
+        if: matrix.connector != 'bigquery'
         env:
           # The bundled server uses these admin credentials to mint a JWT.
-          # BigQuery secrets resolve only for its matrix job.
           OM_ADMIN_EMAIL: admin@open-metadata.org
           OM_ADMIN_PASSWORD: admin
-          E2E_BQ_PROJECT_ID: ${{ matrix.connector == 'bigquery' && secrets.TEST_BQ_PROJECT_ID || '' }}
-          E2E_BQ_PROJECT_ID2: ${{ matrix.connector == 'bigquery' && secrets.TEST_BQ_PROJECT_ID2 || '' }}
-          E2E_BQ_PRIVATE_KEY: ${{ matrix.connector == 'bigquery' && secrets.TEST_BQ_PRIVATE_KEY_E2E || '' }}
-          E2E_BQ_PRIVATE_KEY_ID: ${{ matrix.connector == 'bigquery' && secrets.TEST_BQ_PRIVATE_KEY_ID || '' }}
-          E2E_BQ_CLIENT_EMAIL: ${{ matrix.connector == 'bigquery' && secrets.TEST_BQ_CLIENT_EMAIL || '' }}
         run: |
           source env/bin/activate
           cd ingestion
           mkdir -p junit
-          pytest_args=(-v --e2e-contract-check)
-          if [[ "$E2E_CONNECTOR" == bigquery ]]; then
-            pytest_args+=(-n 6)
-          fi
-          pytest "${pytest_args[@]}" \
+          pytest -v \
+            --e2e-contract-check \
+            --junitxml="junit/test-results-v2-${E2E_CONNECTOR}.xml" \
+            "tests/cli_e2e_v2/${E2E_CONNECTOR}"
+        shell: bash
+
+      - name: Run BigQuery CLI E2E v2 tests
+        id: e2e-v2-bigquery-test
+        if: matrix.connector == 'bigquery'
+        env:
+          OM_ADMIN_EMAIL: admin@open-metadata.org
+          OM_ADMIN_PASSWORD: admin
+          E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          E2E_BQ_PROJECT_ID2: ${{ secrets.TEST_BQ_PROJECT_ID2 }}
+          E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
+          E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+          E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
+        run: |
+          source env/bin/activate
+          cd ingestion
+          mkdir -p junit
+          pytest -v \
+            --e2e-contract-check \
+            -n 6 \
             --junitxml="junit/test-results-v2-${E2E_CONNECTOR}.xml" \
             "tests/cli_e2e_v2/${E2E_CONNECTOR}"
         shell: bash
