@@ -92,7 +92,7 @@ const test = base.extend<{
   },
   glossaryTermUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await glossaryTermUser.login(page);
+    await glossaryTermUser.signIn(page);
     await use(page);
     await page.close();
   },
