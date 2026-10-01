@@ -61,7 +61,10 @@ export type AreaChartColorScheme = {
 export interface CustomAreaChartProps {
   data: CustomAreaChartData[];
   name: string;
+  /** Accessible name and series label, e.g. the card title. Translated by the caller. */
+  ariaLabel: string;
   height?: number;
   valueFormatter?: (value: number) => string;
-  colorScheme?: AreaChartColorScheme;
+  /** Colour that carries meaning. Defaults to `info` (brand blue). */
+  status?: ChartStatus;
 }

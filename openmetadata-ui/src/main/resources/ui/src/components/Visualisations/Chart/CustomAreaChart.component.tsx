@@ -10,106 +10,72 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Divider, Typography } from 'antd';
-import { useMemo } from 'react';
 import {
-  Area,
   AreaChart,
-  ResponsiveContainer,
-  Tooltip,
-  TooltipProps,
-} from 'recharts';
-import { DQ_CHART_BLUE_COLOR } from '../../../constants/Color.constants';
+  type ChartOption,
+  type ChartSeries,
+  type ChartTooltipProps,
+} from '@openmetadata/ui-core-components/charts';
+import { useMemo } from 'react';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { CustomAreaChartProps } from './Chart.interface';
-import './chart.less';
 
-interface CustomTooltipProps extends TooltipProps<string, number | string> {
-  valueFormatter?: CustomAreaChartProps['valueFormatter'];
-}
-
-const CustomTooltip = ({
-  active,
-  payload = [],
-  valueFormatter,
-}: CustomTooltipProps) => {
-  if (active && payload && payload.length) {
-    const payloadData = payload[0].payload;
-
-    return (
-      <Card className="custom-tooltip-area-chart">
-        <div className="flex-center gap-2">
-          <Typography.Text className="font-medium text-md">
-            {valueFormatter
-              ? valueFormatter(payloadData['count'])
-              : payloadData['count']}
-          </Typography.Text>
-          <Divider type="vertical" />
-          <Typography.Text className="text-xs">
-            {formatDate(payloadData.timestamp)}
-          </Typography.Text>
-        </div>
-      </Card>
-    );
-  }
-
-  return null;
+const HIDDEN = { show: false };
+// A sparkline: the plot fills the card, as the axis-less recharts chart did.
+const SPARKLINE_OPTION: ChartOption = {
+  grid: { left: 0, right: 0, top: 5, bottom: 5 },
 };
 
 const CustomAreaChart = ({
   data,
   name,
+  ariaLabel,
   height,
-  colorScheme,
+  status = 'info',
   valueFormatter,
 }: CustomAreaChartProps) => {
-  const gradientId = `${name}-splitColor`;
+  // The tooltip header is the x value, so the hidden x axis is a readable date.
+  const rows = useMemo(
+    () =>
+      data.map((point) => ({ ...point, date: formatDate(point.timestamp) })),
+    [data]
+  );
 
-  const gradientArea = useMemo(() => {
-    const startColor =
-      colorScheme?.strokeColor ??
-      colorScheme?.gradientStartColor ??
-      DQ_CHART_BLUE_COLOR;
-    const endColor = colorScheme?.gradientEndColor ?? startColor;
+  const series = useMemo<ChartSeries[]>(
+    () => [
+      {
+        key: 'count',
+        name: ariaLabel,
+        status,
+        seriesOption: { connectNulls: true },
+      },
+    ],
+    [ariaLabel, status]
+  );
 
-    return (
-      <defs>
-        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={startColor} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={endColor} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-    );
-  }, [colorScheme, gradientId]);
+  const tooltip = useMemo<ChartTooltipProps | undefined>(
+    () =>
+      valueFormatter
+        ? { valueFormatter: (value) => valueFormatter(Number(value)) }
+        : undefined,
+    [valueFormatter]
+  );
 
   return (
-    <ResponsiveContainer
-      className="w-full"
-      height={height ?? 150}
-      id={`${name}-area-chart`}>
+    <div className="w-full" id={`${name}-area-chart`}>
       <AreaChart
-        data={data}
-        margin={{
-          top: 5,
-          right: 0,
-          left: 0,
-          bottom: 5,
-        }}>
-        <Tooltip content={<CustomTooltip valueFormatter={valueFormatter} />} />
-
-        {gradientArea}
-        <Area
-          connectNulls
-          dataKey="count"
-          dot={false}
-          fill={`url(#${gradientId})`}
-          isAnimationActive={false}
-          stroke={colorScheme?.strokeColor ?? DQ_CHART_BLUE_COLOR}
-          strokeWidth={2}
-          type="monotone"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+        ariaLabel={ariaLabel}
+        data={rows}
+        height={height ?? 150}
+        legend={HIDDEN}
+        option={SPARKLINE_OPTION}
+        series={series}
+        tooltip={tooltip}
+        xAxis={HIDDEN}
+        xKey="date"
+        yAxis={HIDDEN}
+      />
+    </div>
   );
 };
 

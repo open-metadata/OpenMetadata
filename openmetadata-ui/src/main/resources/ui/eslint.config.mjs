@@ -472,7 +472,6 @@ export default [
       'src/components/Database/Profiler/TestSummary/TestSummaryGraph.tsx',
       'src/components/MyData/Widgets/KPIWidget/KPIWidget.component.tsx',
       'src/components/Visualisations/Chart/CardinalityDistributionChart.component.tsx',
-      'src/components/Visualisations/Chart/CustomAreaChart.component.tsx',
       'src/components/Visualisations/Chart/CustomBarChart.tsx',
       'src/components/Visualisations/Chart/DataDistributionHistogram.component.tsx',
       'src/components/Visualisations/Chart/OperationDateBarChart.tsx',
