@@ -55,14 +55,19 @@ import {
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
 
+/**
+ * Waits until no loader is left in `scope`: the whole page, or a widget's
+ * locator (a popover, a dropdown) when only that widget's data matters.
+ * Counting instead of `locator.waitFor()` keeps it non-strict, so several
+ * loaders mounted at once (e.g. the lineage section and a picker) never throw.
+ */
 export const waitForAllLoadersToDisappear = async (
-  page: Page,
+  scope: Page | Locator,
   dataTestId = 'loader',
   timeout = 30000
 ) => {
-  const loaders = page.locator(`[data-testid="${dataTestId}"]`);
+  const loaders = scope.locator(`[data-testid="${dataTestId}"]`);
 
-  // Wait for the loader elements count to become 0
   await expect(loaders).toHaveCount(0, { timeout });
 };
 

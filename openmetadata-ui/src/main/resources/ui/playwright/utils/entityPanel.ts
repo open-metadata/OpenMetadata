@@ -251,10 +251,7 @@ export async function navigateToExploreAndSelectTable(
   const summaryPanel = page.getByTestId('entity-summary-panel-container');
   await summaryPanel.waitFor({ state: 'visible' });
 
-  // Wait for the loader elements count to become 0
-  await expect(summaryPanel.getByTestId('loader')).toHaveCount(0, {
-    timeout: 30000,
-  });
+  await waitForAllLoadersToDisappear(summaryPanel);
 }
 
 export const waitForPatchResponse = async (page: Page) => {

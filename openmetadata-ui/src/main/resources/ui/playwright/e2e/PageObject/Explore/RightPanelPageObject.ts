@@ -131,8 +131,6 @@ export class RightPanelPageObject {
   private readonly panelEditTier: Locator;
   private readonly panelAddDomain: Locator;
   private readonly panelEditDataProducts: Locator;
-  private readonly panelLoaders: Locator;
-  private readonly pageLoader: Locator;
 
   // Data asset configurations aligned with EntityRightPanelVerticalNav (hasSchemaTab, hasLineageTab, data quality for Table only, hasCustomPropertiesTab)
   private static readonly DATA_ASSET_CONFIGS: Record<string, DataAssetConfig> =
@@ -395,10 +393,6 @@ export class RightPanelPageObject {
     this.panelAddDomain = this.getSummaryPanel().getByTestId('add-domain');
     this.panelEditDataProducts =
       this.getSummaryPanel().getByTestId('edit-data-products');
-    this.panelLoaders = this.getSummaryPanel().locator(
-      '[data-testid="loader"]'
-    );
-    this.pageLoader = this.page.locator('[data-testid="loader"]');
 
     // Set entity configuration if provided
     if (entity) {
@@ -946,7 +940,11 @@ export class RightPanelPageObject {
     await this.getSummaryPanel().waitFor({ state: 'visible', timeout });
 
     // Step 2: Wait for all loaders within the panel to disappear
-    await expect(this.panelLoaders).toHaveCount(0, { timeout });
+    await waitForAllLoadersToDisappear(
+      this.getSummaryPanel(),
+      'loader',
+      timeout
+    );
 
     // Step 3: Wait for any remaining loaders on the page (fallback)
     await this.waitForLoadersToDisappear(timeout);
@@ -961,7 +959,7 @@ export class RightPanelPageObject {
   async navigateToTab(tabName: string) {
     const tab = this.getTabLocator(tabName);
     await tab.click();
-    await expect(this.pageLoader).toHaveCount(0, { timeout: 10000 });
+    await waitForAllLoadersToDisappear(this.page, 'loader', 10_000);
   }
 
   /**
