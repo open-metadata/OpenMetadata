@@ -303,3 +303,15 @@ WHERE name IN (
 UPDATE user_entity
 SET json = jsonb_set(json, '{email}', to_jsonb(lower(json ->> 'email')))
 WHERE json ->> 'email' <> lower(json ->> 'email');
+
+-- Microsoft Fabric service principals now choose a client secret or a certificate under
+-- authType. Services saved before keep their client secret as the client secret option.
+UPDATE dbservice_entity
+SET json = jsonb_set(
+    json #- '{connection,config,clientSecret}',
+    '{connection,config,authType}',
+    jsonb_build_object('clientSecret', json #> '{connection,config,clientSecret}'),
+    true
+)
+WHERE serviceType = 'MicrosoftFabric'
+  AND jsonb_exists(json -> 'connection' -> 'config', 'clientSecret');

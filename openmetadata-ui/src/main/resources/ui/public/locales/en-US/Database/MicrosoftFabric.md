@@ -14,12 +14,9 @@ OpenMetadata uses Service Principal authentication to connect to Microsoft Fabri
    - Provide a name for your application and click `Register`
    - Copy the `Application (client) ID` and `Directory (tenant) ID` for later use
 
-2. **Create a Client Secret:**
-   - In your registered app, go to `Certificates & secrets`
-   - Click `New client secret`
-   - Provide a description and choose expiration period
-   - Click `Add` and copy the secret **value** (not the secret ID)
-   - **Important:** Save this value immediately as it won't be shown again
+2. **Create a credential for the application**, either a client secret or a certificate:
+   - **Client secret:** in your registered app, go to `Certificates & secrets` > `Client secrets` > `New client secret`, choose an expiration period, click `Add`, and copy the secret **value** (not the secret ID). The value is shown only once.
+   - **Certificate:** go to `Certificates & secrets` > `Certificates` > `Upload certificate` and upload the public certificate (`.cer`, `.crt` or `.pem`). Keep its private key, it is entered in the connection and never uploaded to Microsoft Entra ID. A certificate avoids long-lived shared secrets: only a signed assertion leaves the ingestion runner.
 
 3. **Grant Permissions to Fabric Workspace:**
    - Navigate to your Fabric workspace in <a href="https://app.fabric.microsoft.com" target="_blank">Microsoft Fabric</a>
@@ -32,9 +29,9 @@ OpenMetadata uses Service Principal authentication to connect to Microsoft Fabri
      - **Contributor** - Read access (minimum for metadata extraction)
      - **Viewer** - Read-only access
 
-4. **Enable Fabric API Access:**
-   - The application needs access to Fabric API scope: `https://api.fabric.microsoft.com/.default`
-   - This is automatically requested by OpenMetadata during authentication
+4. **Allow service principals in Fabric:**
+   - A Fabric administrator must enable `Service principals can call Fabric public APIs` in `Tenant settings` > `Developer settings`, for the entire organization or a security group that contains the application.
+   - No API permission or admin consent is needed on the application. The connector requests an access token for the SQL endpoint (`https://database.windows.net/.default`) and refreshes it before it expires.
 
 ### Database Permissions
 
@@ -106,17 +103,6 @@ To get this:
 $$
 
 $$section
-### Client Secret $(id="clientSecret")
-Azure Active Directory Application Client Secret.
-
-To get this:
-1. In your registered app, go to `Certificates & secrets`
-2. Click `New client secret`
-3. Copy the **Value** (not the Secret ID)
-4. **Important:** This value is shown only once, save it immediately
-$$
-
-$$section
 ### Tenant ID $(id="tenantId")
 Azure Active Directory Tenant ID.
 
@@ -125,6 +111,57 @@ To get this:
 2. Go to `Azure Active Directory` > `App registrations`
 3. Select your registered application
 4. Copy the `Directory (tenant) ID` from the Overview page
+$$
+
+$$section
+### Authentication Type $(id="authType")
+Credential the service principal uses to obtain Microsoft Entra ID access tokens for the Fabric SQL endpoint.
+
+- **Client Secret**: a client secret of the application.
+- **Certificate**: an X.509 certificate registered on the application, with its private key.
+$$
+
+$$section
+### Client Secret $(id="clientSecret")
+Client secret of the application.
+
+To get this:
+1. In your registered app, go to `Certificates & secrets` > `Client secrets`
+2. Click `New client secret`
+3. Copy the **Value** (not the Secret ID)
+4. **Important:** This value is shown only once, save it immediately
+$$
+
+$$section
+### Certificate $(id="certificate")
+PEM-encoded X.509 certificate uploaded to the application's `Certificates & secrets` > `Certificates` page. The PEM may also contain the issuing certificate chain after the certificate.
+
+The certificate must be within its validity period. Test connection reports an expired or not yet valid certificate, a certificate that does not match the private key, and a certificate that is not registered on the application.
+
+To create a self-signed certificate and its private key:
+```
+openssl req -x509 -newkey rsa:2048 -sha256 -days 365 -keyout private-key.pem -out certificate.pem -subj "/CN=fabric-ingestion"
+```
+
+To extract the certificate from a `.pfx` or `.p12` file:
+```
+openssl pkcs12 -in certificate.pfx -clcerts -nokeys -out certificate.pem
+```
+$$
+
+$$section
+### Private Key $(id="privateKey")
+PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file that holds both the private key and the certificate can be supplied in both fields.
+
+To extract the private key from a `.pfx` or `.p12` file, protected by a new passphrase that goes into `Private Key Passphrase`:
+```
+openssl pkcs12 -in certificate.pfx -nocerts -out private-key.pem
+```
+$$
+
+$$section
+### Private Key Passphrase $(id="privateKeyPassphrase")
+Passphrase of an encrypted private key. Leave it empty when the private key is not encrypted.
 $$
 
 $$section

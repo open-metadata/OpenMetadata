@@ -329,3 +329,14 @@ WHERE name IN (
 UPDATE user_entity
 SET json = JSON_SET(json, '$.email', LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email'))))
 WHERE BINARY JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')) <> LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')));
+
+-- Microsoft Fabric service principals now choose a client secret or a certificate under
+-- authType. Services saved before keep their client secret as the client secret option.
+UPDATE dbservice_entity
+SET json = JSON_SET(
+    JSON_REMOVE(json, '$.connection.config.clientSecret'),
+    '$.connection.config.authType',
+    JSON_OBJECT('clientSecret', JSON_EXTRACT(json, '$.connection.config.clientSecret'))
+)
+WHERE serviceType = 'MicrosoftFabric'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.connection.config.clientSecret');

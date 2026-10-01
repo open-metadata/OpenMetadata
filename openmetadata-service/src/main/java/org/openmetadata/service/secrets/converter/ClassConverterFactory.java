@@ -60,6 +60,7 @@ import org.openmetadata.schema.services.connections.database.GreenplumConnection
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.InformixConnection;
 import org.openmetadata.schema.services.connections.database.MicrosoftAccessConnection;
+import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MongoDBConnection;
 import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MyDbConnection;
@@ -81,6 +82,8 @@ import org.openmetadata.schema.services.connections.database.databricks.Databric
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
+import org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication;
+import org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
@@ -198,6 +201,13 @@ public final class ClassConverterFactory {
               new NestedConfigClassConverter(
                   MicrosoftAccessConnection.class,
                   Map.of("connection", List.of(S3Connection.class)))),
+          Map.entry(
+              MicrosoftFabricConnection.class,
+              new NestedConfigClassConverter(
+                  MicrosoftFabricConnection.class,
+                  Map.of(
+                      "authType",
+                      List.of(ClientSecretAuthentication.class, CertificateAuthentication.class)))),
           Map.entry(
               MongoDBConnection.class,
               new NestedConfigClassConverter(
