@@ -4695,6 +4695,7 @@
     "ontology-relation-subtype": "{{from}}은(는) {{to}}의 일종",
     "ontology-relationships-feature-description": "\"관련됨\", \"~의 일부\"와 같은 의미로 용어를 연결하거나 \"~에서 계산됨\"과 같은 사용자 지정 유형을 만드세요.",
     "ontology-studio-edit-coming-soon": "관계 시각 편집 기능이 곧 제공됩니다. 지금은 온톨로지 그래프를 탐색하거나 SPARQL 쿼리를 실행하세요.",
+    "ontology-studio-subtitle": "용어집 용어를 뒷받침하는 비즈니스 온톨로지를 탐색하고 작성하고 쿼리하세요.",
     "ontology-tree-description": "선택한 용어집의 개념을 계층별로 정리합니다. 격리된 용어와 다중 계층 용어가 표시됩니다.",
     "ontology-unlocks-feature-description": "어떤 용어든 상위 항목, 구성 요소, 종속성까지 따라가 보세요. 단편적인 정의가 아니라 전체 맥락을 얻을 수 있습니다.",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

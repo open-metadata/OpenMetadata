@@ -4695,6 +4695,7 @@
     "ontology-relation-subtype": "{{from}} is een {{to}}",
     "ontology-relationships-feature-description": "Koppel termen met betekenis: \"Gerelateerd aan\", \"Onderdeel van\" of je eigen typen zoals \"berekend uit\".",
     "ontology-studio-edit-coming-soon": "Visueel relaties bewerken komt binnenkort. Verken voorlopig de ontologiegrafiek of voer SPARQL-query's uit.",
+    "ontology-studio-subtitle": "Verken, maak en bevraag de bedrijfsontologie achter uw woordenlijsttermen.",
     "ontology-tree-description": "Concepten uit de geselecteerde woordenlijsten, geordend op hiërarchie. Geïsoleerde en polyhiërarchische termen zijn gemarkeerd.",
     "ontology-unlocks-feature-description": "Volg elke term tot aan de bovenliggende termen, onderdelen en afhankelijkheden: volledige context, geen losse definitie.",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

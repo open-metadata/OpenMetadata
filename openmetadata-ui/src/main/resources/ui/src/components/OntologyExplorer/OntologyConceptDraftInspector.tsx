@@ -71,6 +71,13 @@ const OntologyConceptDraftInspector = ({
   const [attributes, setAttributes] = useState<OntologyAttribute[]>([]);
   const [iriError, setIriError] = useState<string>();
   const [isCreating, setIsCreating] = useState(false);
+  // A pristine draft must not open shouting "required" at every field — the
+  // asterisks already say so. Each field reports once the user has left it.
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const markTouched = (field: string) =>
+    setTouched((previous) =>
+      previous[field] ? previous : { ...previous, [field]: true }
+    );
   const glossaryItems = useMemo<SelectItemType[]>(
     () =>
       glossaries.map((glossary) => ({
@@ -87,17 +94,19 @@ const OntologyConceptDraftInspector = ({
   const nameLabel = t('label.name');
   const descriptionLabel = t('label.description');
   let glossaryHint: string | undefined;
-  if (!glossaryId) {
+  if (!glossaryId && touched.glossary) {
     glossaryHint = t('label.field-required', { field: glossaryLabel });
-  } else if (!isLeaseOwned) {
+  } else if (glossaryId && !isLeaseOwned) {
     glossaryHint = t('label.loading');
   }
-  const nameHint = name.trim()
-    ? undefined
-    : t('label.field-required', { field: nameLabel });
-  const descriptionHint = description.trim()
-    ? undefined
-    : t('label.field-required', { field: descriptionLabel });
+  const nameHint =
+    touched.name && !name.trim()
+      ? t('label.field-required', { field: nameLabel })
+      : undefined;
+  const descriptionHint =
+    touched.description && !description.trim()
+      ? t('label.field-required', { field: descriptionLabel })
+      : undefined;
   const isComplete = Boolean(
     selectedGlossary && name.trim() && description.trim() && isLeaseOwned
   );
@@ -175,13 +184,18 @@ const OntologyConceptDraftInspector = ({
               aria-label={glossaryLabel}
               data-testid="ontology-draft-glossary-field"
               hint={glossaryHint}
-              isInvalid={!glossaryId}
+              isInvalid={Boolean(touched.glossary) && !glossaryId}
               items={glossaryItems}
               label={glossaryLabel}
               placeholder={t('label.select-entity', {
                 entity: glossaryLabel,
               })}
               value={glossaryId || null}
+              onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                  markTouched('glossary');
+                }
+              }}
               onChange={(key) => {
                 const nextGlossaryId = String(key ?? '');
                 const glossary = glossaries.find(
@@ -204,6 +218,7 @@ const OntologyConceptDraftInspector = ({
               isInvalid={Boolean(nameHint)}
               label={nameLabel}
               value={name}
+              onBlur={() => markTouched('name')}
               onChange={(value) => {
                 setName(value);
                 const label = getDraftLabel(value, displayName, node.label);
@@ -228,6 +243,7 @@ const OntologyConceptDraftInspector = ({
               label={descriptionLabel}
               rows={4}
               value={description}
+              onBlur={() => markTouched('description')}
               onChange={(value) => {
                 setDescription(value);
                 onChange({ description: value });

@@ -93,9 +93,9 @@ const SearchInputIcon = ({ className }: { className?: string }) => (
   <Search aria-hidden="true" className={className} />
 );
 const DEFAULT_GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-surface tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
 const STUDIO_GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-surface tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
@@ -136,7 +136,7 @@ function OntologyOnboardingEmptyState() {
 
   return (
     <div
-      className="tw:absolute tw:inset-0 tw:z-3 tw:overflow-hidden tw:rounded-lg tw:bg-primary"
+      className="tw:absolute tw:inset-0 tw:z-3 tw:overflow-hidden tw:rounded-lg tw:bg-surface"
       data-testid="ontology-graph-onboarding">
       <EmptyPlaceholder
         description={t('message.ontology-empty-description')}
@@ -188,7 +188,7 @@ function FilteredGraphEmptyState({
 
   return (
     <div
-      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-surface"
       data-testid={testId}>
       <EmptyPlaceholder
         description={description}
@@ -205,7 +205,7 @@ function SearchGraphEmptyState() {
 
   return (
     <div
-      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-surface"
       data-testid="ontology-graph-search-empty">
       <EmptyPlaceholder
         description={t('message.check-spelling-or-try-shorter-term')}
@@ -292,7 +292,7 @@ function NoTermsGraphEmptyState() {
 
   return (
     <div
-      className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:items-center tw:justify-center tw:bg-primary"
+      className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:items-center tw:justify-center tw:bg-surface"
       data-testid="ontology-graph-empty">
       <EmptyPlaceholder
         description={t('message.no-glossary-terms-found')}
@@ -325,6 +325,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   onRelationTypesChange,
   onSelectedNodeChange,
   onRequestEdit,
+  searchValue,
+  onSearchChange,
+  onExplorationModeChange,
 }) => {
   const { t } = useTranslation();
   const contextData = useGenericContext<GlossaryTerm>();
@@ -386,7 +389,16 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     onLoadingChange,
   });
 
-  const [searchInput, setSearchInput] = useState(filters.searchQuery);
+  const [ownSearchInput, setOwnSearchInput] = useState(filters.searchQuery);
+  // Controlled when the host supplies both halves; otherwise this component
+  // owns the value and renders the field itself.
+  const isSearchControlled =
+    searchValue !== undefined && onSearchChange !== undefined;
+  const searchInput = searchValue ?? ownSearchInput;
+  const setSearchInput = useCallback(
+    (value: string) => (onSearchChange ?? setOwnSearchInput)(value),
+    [onSearchChange]
+  );
   const [selectedEdge, setSelectedEdge] = useState<MergedEdge | null>(null);
   const [isSavingRelation, setIsSavingRelation] = useState(false);
   const [localConceptNode, setLocalConceptNode] = useState<OntologyNode | null>(
@@ -724,6 +736,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     },
     [handleRefresh, t]
   );
+
+  useEffect(() => {
+    onExplorationModeChange?.(explorationMode);
+  }, [explorationMode, onExplorationModeChange]);
 
   const handleExplorationModeSelection = useCallback(
     (key: Key) => {
@@ -1110,7 +1126,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const renderGlobalScopeToolbar = () => (
     <>
-      {explorationMode === 'model' ? (
+      {explorationMode === 'model' && !isSearchControlled ? (
         <Input
           aria-label={t('label.find-concept')}
           icon={SearchInputIcon}

@@ -52,7 +52,7 @@ test.describe('Ontology Studio', () => {
     await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
     await expect(page.getByTestId('heading')).toHaveText('Ontology Studio');
     await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     await expect(page.getByTestId('submode-tab-graph')).toHaveAttribute(
@@ -89,7 +89,7 @@ test.describe('Ontology Studio', () => {
     const zoomBefore = await readGraphZoom(page);
     await expect(
       page.getByTestId('ontology-glossary-menu-trigger')
-    ).toHaveAttribute('data-selected-glossary-id', '');
+    ).toContainText('All glossaries');
 
     // Once loaded, mode changes must work even when the catalog cannot be fetched again.
     await page.route('**/api/v1/glossaries?*', (route) =>
@@ -101,7 +101,7 @@ test.describe('Ontology Studio', () => {
       await expect(graph).toBeVisible();
       await page.getByTestId('mode-tab-query').click();
       await expect(page.getByTestId('mode-tab-query')).toHaveAttribute(
-        'aria-pressed',
+        'aria-selected',
         'true'
       );
       await expect(graph).not.toBeVisible();
@@ -181,7 +181,7 @@ test.describe('Ontology Studio', () => {
 
     try {
       await expect(page.getByTestId('mode-tab-edit')).toHaveAttribute(
-        'aria-pressed',
+        'aria-selected',
         'true'
       );
       await expect(
@@ -263,10 +263,7 @@ test.describe('Ontology Studio', () => {
     await expect(searchInput).toHaveValue(PageData.term1.data.name);
     await expect(
       page.getByTestId('ontology-glossary-menu-trigger')
-    ).toHaveAttribute(
-      'data-selected-glossary-id',
-      PageData.glossary.responseData.id
-    );
+    ).toContainText(PageData.glossary.responseData.displayName);
     expect(await readGraphEdges(page)).toEqual(edgesBefore);
 
     await searchInput.clear();

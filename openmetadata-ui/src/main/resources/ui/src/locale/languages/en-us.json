@@ -4695,6 +4695,7 @@
     "ontology-relation-subtype": "{{from}} is a {{to}}",
     "ontology-relationships-feature-description": "Link terms with meaning \"Related To,\" \"Part Of,\" or your own types like \"calculated from.\"",
     "ontology-studio-edit-coming-soon": "Visual relationship authoring is coming soon. For now, explore the ontology graph or run SPARQL queries.",
+    "ontology-studio-subtitle": "Explore, author, and query the business ontology behind your glossary terms.",
     "ontology-tree-description": "Concepts across the selected glossaries, organized by hierarchy. Isolated and polyhierarchic terms are flagged.",
     "ontology-unlocks-feature-description": "Follow any term to its parents, parts, and dependencies — full context, not a lone definition.",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

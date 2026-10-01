@@ -41,6 +41,15 @@ export interface OntologyExplorerProps {
   onGraphDataChange?: (graphData: OntologyGraphData) => void;
   onRelationTypesChange?: (relationTypes: RelationshipType[]) => void;
   onSelectedNodeChange?: (node: OntologyNode | null) => void;
+  /**
+   * Controlled concept search. When supplied the host owns the value and
+   * renders the field itself (the Studio puts it in the surface toolbar), so
+   * this component skips its own graph overlay input.
+   */
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
+  /** Reports Model/Data switches so a host toolbar can follow the surface. */
+  onExplorationModeChange?: (mode: ExplorationMode) => void;
   conceptDraftId?: string;
   defaultConceptGlossaryId?: string;
   onConceptCreated?: (concept: GlossaryTerm) => void;

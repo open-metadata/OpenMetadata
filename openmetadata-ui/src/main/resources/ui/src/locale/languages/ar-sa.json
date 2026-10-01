@@ -4695,6 +4695,7 @@
     "ontology-relation-subtype": "{{from}} هو {{to}}",
     "ontology-relationships-feature-description": "اربط المصطلحات بمعنى: «مرتبط بـ» أو «جزء من» أو أنواعك الخاصة مثل «محسوب من».",
     "ontology-studio-edit-coming-soon": "تأليف العلاقات المرئي قادم قريبًا. في الوقت الحالي، استكشف رسم الأنطولوجيا البياني أو نفّذ استعلامات SPARQL.",
+    "ontology-studio-subtitle": "استكشف الأنطولوجيا التجارية الكامنة خلف مصطلحات المسرد وقم بتأليفها والاستعلام عنها.",
     "ontology-tree-description": "مفاهيم من المسارد المحددة، مرتبة حسب التسلسل الهرمي. تُميّز المصطلحات المعزولة ومتعددة التسلسل الهرمي.",
     "ontology-unlocks-feature-description": "تتبّع أي مصطلح حتى أصوله وأجزائه وتبعياته — سياق كامل، وليس تعريفًا منعزلًا.",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

@@ -4695,6 +4695,7 @@
     "ontology-relation-subtype": "{{from}} är en {{to}}",
     "ontology-relationships-feature-description": "Länka termer med betydelse: \"Relaterad till\", \"Del av\" eller egna typer som \"beräknad från\".",
     "ontology-studio-edit-coming-soon": "Visuell redigering av relationer kommer snart. Utforska tills vidare ontologigrafen eller kör SPARQL-frågor.",
+    "ontology-studio-subtitle": "Utforska, skapa och fråga affärsontologin bakom dina ordlistetermer.",
     "ontology-tree-description": "Begrepp i de valda ordlistorna, ordnade efter hierarki. Isolerade och polyhierarkiska termer är markerade.",
     "ontology-unlocks-feature-description": "Följ vilken term som helst till dess överordnade, delar och beroenden – full kontext, inte en ensam definition.",
     "openmetadata-docs-description": "Fullständig installationsguide, nödvändiga behörigheter och alla stödda fält.",

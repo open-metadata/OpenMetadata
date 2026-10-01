@@ -4695,6 +4695,7 @@
     "ontology-relation-subtype": "{{from}} 是一种 {{to}}",
     "ontology-relationships-feature-description": "用含义关联术语：“相关于”“属于”，或您自定义的类型，例如“计算自”。",
     "ontology-studio-edit-coming-soon": "关系可视化编辑即将推出。目前，您可以浏览本体图谱或运行 SPARQL 查询。",
+    "ontology-studio-subtitle": "探索、编辑和查询术语表术语背后的业务本体。",
     "ontology-tree-description": "按层次结构组织所选术语表中的概念，并标记孤立术语和多重层次术语。",
     "ontology-unlocks-feature-description": "沿着任意术语追溯其父级、组成部分和依赖关系——获得完整的上下文，而非孤立的定义。",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

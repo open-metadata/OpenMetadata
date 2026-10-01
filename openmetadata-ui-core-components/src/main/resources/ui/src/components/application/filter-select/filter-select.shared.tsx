@@ -51,7 +51,9 @@ export const DropdownSearchField = ({
   wrapperRef,
   onChange,
 }: DropdownSearchFieldProps) => (
-  <div className="tw:px-3 tw:pt-3 tw:pb-2" ref={wrapperRef}>
+  // Same horizontal gutter as Dropdown.Item (tw:px-1.5), so the field
+  // and the option rows below it share one left/right edge.
+  <div className="tw:px-1.5 tw:pt-3 tw:pb-2" ref={wrapperRef}>
     <Input
       icon={SearchInputIcon}
       inputDataTestId={inputDataTestId}

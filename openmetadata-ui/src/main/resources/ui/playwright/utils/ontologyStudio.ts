@@ -36,10 +36,6 @@ export async function applyGlossaryFilter(page: Page, glossaryId: string) {
     await glossaryOption.scrollIntoViewIfNeeded();
     await glossaryOption.click();
     await expect(studioGlossaryMenu).toHaveAttribute('aria-expanded', 'false');
-    await expect(studioGlossaryMenu).toHaveAttribute(
-      'data-selected-glossary-id',
-      glossaryId
-    );
 
     return;
   }
@@ -96,7 +92,7 @@ export async function releaseOntologyEditLease(
     .catch(() => undefined);
   await page.getByTestId('mode-tab-view').click();
   await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
-    'aria-pressed',
+    'aria-selected',
     'true'
   );
   await expect(
