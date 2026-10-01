@@ -18,7 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ArrowUpRight,
-  SearchLg,
+  Search,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -207,7 +207,7 @@ export const CustomPropertiesRightPanel = ({
       <Input
         aria-label={searchLabel}
         className="tw:w-full"
-        icon={SearchLg}
+        icon={Search}
         inputDataTestId="custom-properties-widget-search"
         placeholder={searchLabel}
         size="sm"
@@ -253,7 +253,7 @@ export const CustomPropertiesRightPanel = ({
               className="tw:p-1"
               color="tertiary"
               data-testid="custom-properties-widget-search-button"
-              icon={SearchLg}
+              icon={Search}
               size="xs"
               tooltip={searchLabel}
               onClick={() => setIsSearchOpen(true)}

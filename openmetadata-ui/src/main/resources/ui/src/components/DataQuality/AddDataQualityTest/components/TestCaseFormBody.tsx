@@ -24,7 +24,7 @@ import {
   useFieldDoc,
   useFieldDocRegistry,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@untitledui/icons';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { debounce, snakeCase } from 'lodash';

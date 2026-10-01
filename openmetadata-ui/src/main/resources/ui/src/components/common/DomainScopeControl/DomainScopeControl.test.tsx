@@ -66,7 +66,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <div data-testid="chevron-down" />,
-  Domain: () => <div data-testid="domain-icon" />,
+  Globe01: () => <div data-testid="domain-icon" />,
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({

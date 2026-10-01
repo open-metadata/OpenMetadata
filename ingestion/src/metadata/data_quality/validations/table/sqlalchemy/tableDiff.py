@@ -32,7 +32,7 @@ from sqlalchemy import literal, select
 from sqlalchemy.engine import make_url
 
 from metadata.data_quality.validations import utils
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator, error_details
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -237,6 +237,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,
                 result=str(e),
+                errorDetails=error_details(e),
             )
             return result  # noqa: RET504
         except DataDiffMismatchingKeyTypesError as e:
@@ -252,6 +253,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,
                 result=str(e),
+                errorDetails=error_details(e),
             )
             return result  # noqa: RET504
         except Exception as e:
@@ -260,6 +262,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,
                 result=f"ERROR: Unexpected error while running the table diff test: {str(e)}",  # noqa: RUF010
+                errorDetails=error_details(e),
             )
             logger.debug(result.result)
             return result

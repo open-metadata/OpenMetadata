@@ -13,6 +13,6 @@
     "jscodeshift": "0.15.2"
   },
   "resolutions": {
-    "brace-expansion": "1.1.18"
+    "brace-expansion": "1.1.21"
   }
 }
