@@ -719,7 +719,7 @@ const OntologyExplorerPage: React.FC = () => {
 
   function renderModeTabsBar() {
     return (
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:justify-center">
+      <div className="tw:flex tw:min-w-max tw:flex-1 tw:justify-center">
         <div className="tw:flex tw:gap-[3px] tw:rounded-[10px] tw:border tw:border-secondary tw:bg-tertiary tw:p-[3px]">
           {modeTabs.map((tab) => (
             <Button
