@@ -144,6 +144,9 @@ const KnowledgeGraphGroupInspector = ({
         </InspectorSection>
       </Box>
       <Box className="kg-inspector-actions" gap={2}>
+        <Button color="secondary" size="md" onPress={onViewRelationships}>
+          {t('label.kg-view-in-list')}
+        </Button>
         <Button
           aria-expanded={Boolean(presentation?.expanded)}
           color="primary"
@@ -152,9 +155,6 @@ const KnowledgeGraphGroupInspector = ({
           {presentation?.expanded
             ? t('label.kg-collapse-bundle')
             : t('label.kg-expand-all-in-graph', { count: expandCount })}
-        </Button>
-        <Button color="secondary" size="md" onPress={onViewRelationships}>
-          {t('label.kg-view-in-list')}
         </Button>
       </Box>
     </>
