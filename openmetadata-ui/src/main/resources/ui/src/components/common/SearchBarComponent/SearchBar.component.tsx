@@ -12,7 +12,7 @@
  */
 
 import { Input } from '@openmetadata/ui-core-components';
-import { SearchMd } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
@@ -109,7 +109,7 @@ const Searchbar = ({
       {label !== '' && <span>{label}</span>}
       <Input
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        icon={SearchMd as any}
+        icon={Search as any}
         inputClassName={inputClassName}
         inputDataTestId={searchBarDataTestId ?? 'searchbar'}
         placeholder={placeholder}

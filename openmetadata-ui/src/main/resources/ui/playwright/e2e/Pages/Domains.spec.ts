@@ -47,6 +47,7 @@ import {
   visitGlossaryPage,
   waitForAntdPopupToSettle,
 } from '../../utils/common';
+import { getCustomPropertyEditButton } from '../../utils/customProperty';
 import {
   addAssetsToDataProduct,
   addAssetsToDomain,
@@ -1370,12 +1371,15 @@ test.describe('Domains', () => {
 
       await page.reload();
       await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('all-domains-selector').click();
+      await page
+        .getByTestId('domain-dropdown-search')
+        .waitFor({ state: 'visible' });
+      await page.getByTestId('tree-node-All Domains').click();
 
-      await page.getByTestId('domain-dropdown').click();
-
-      await expect(page.getByTestId('all-domains-selector')).toHaveClass(
-        /selected-node/
+      // Picking "All Domains" clears the active scope back to the default,
+      // which the navbar trigger reflects as the "All Domains" label.
+      await expect(page.getByTestId('domain-dropdown')).toContainText(
+        'All Domains'
       );
     } finally {
       await domain.delete(apiContext);
@@ -1495,7 +1499,7 @@ test.describe('Domains', () => {
         );
         await expect(propertyCard).toBeVisible();
 
-        const editIcon = propertyCard.getByTestId('edit-icon');
+        const editIcon = getCustomPropertyEditButton(propertyCard);
         await expect(editIcon).toBeVisible();
         await editIcon.click();
 

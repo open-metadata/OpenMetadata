@@ -71,6 +71,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ODPSConverter;
@@ -1824,6 +1825,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   private DataProduct buildDataProductFromODPS(
       ODPSDataProduct odps, String languageCode, String domainFqn) {
     DataProduct dp = ODPSConverter.fromODPS(odps, languageCode);
+    // ODPS carries one flat `tags` list, so the converter can't tell a glossary
+    // term from a classification tag. Resolve each FQN to its real source here
+    // (e.g. a glossary-term FQN becomes a GLOSSARY label instead of failing as a
+    // missing classification tag).
+    TagLabelUtil.resolveTagSourcesByFqn(dp.getTags());
     // ODPSConverter builds a bare entity with no id; a create insert needs one
     // (the standard create path assigns it via EntityMapper.copy). The
     // merge/replace paths overwrite this with the existing product's id.

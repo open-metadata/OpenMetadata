@@ -380,52 +380,6 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await applyGlossaryPicker(page);
 };
 
-export const editDomain = async (page: Page, domainName: string) => {
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-  const domainsSection = summaryPanel.locator('.domains-section');
-
-  await domainsSection
-    .locator('[data-testid="add-domain"]')
-    .scrollIntoViewIfNeeded();
-  await page.getByTestId('add-domain').waitFor({
-    state: 'visible',
-  });
-  await page.locator('[data-testid="add-domain"]').click();
-  const tree = page.getByTestId('domain-selectable-tree');
-
-  await tree.waitFor({ state: 'visible' });
-
-  const searchDomainPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`)
-  );
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domainName);
-
-  const searchDomainResponse = await searchDomainPromise;
-  expect(searchDomainResponse.status()).toBe(200);
-
-  const tagSelector = page
-    .getByTestId('domain-selectable-tree')
-    .getByText(domainName);
-  await tagSelector.waitFor({ state: 'visible' });
-
-  const patchReqPromise = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await tagSelector.click();
-
-  const patchResponse = await patchReqPromise;
-  expect(patchResponse.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
-};
-
 export const verifyDeletedEntityNotVisible = async (
   page: Page,
   entityName: string,
@@ -570,40 +524,6 @@ export const removeOwnerFromPanel = async (
   }
 
   const updateButton = page.getByTestId('selectable-list-update-btn');
-  if (await updateButton.isVisible()) {
-    await updateButton.click();
-  }
-
-  await patchPromise;
-};
-
-export const removeDomainFromPanel = async (page: Page, domainName: string) => {
-  await page.getByTestId('add-domain').waitFor({
-    state: 'visible',
-  });
-
-  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
-  await page.getByTestId('add-domain').click({ force: true });
-
-  const domainTree = page.getByTestId('domain-selectable-tree');
-  await domainTree.waitFor({ state: 'visible' });
-
-  const searchDomainPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`)
-  );
-
-  await domainTree.getByTestId('searchbar').fill(domainName);
-
-  await searchDomainPromise;
-
-  const domainItem = domainTree.getByText(domainName);
-  const patchPromise = waitForPatchResponse(page);
-
-  await domainItem.click();
-
-  const updateButton = page.getByRole('button', { name: 'Update' });
   if (await updateButton.isVisible()) {
     await updateButton.click();
   }

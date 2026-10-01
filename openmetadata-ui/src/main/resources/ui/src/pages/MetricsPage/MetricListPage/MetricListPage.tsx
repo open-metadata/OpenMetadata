@@ -32,11 +32,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  keepPreviousData,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
-import {
   BarChart03,
   ChevronDown,
   ChevronRight,
@@ -50,13 +45,18 @@ import {
   Package,
   Plus,
   Rows03,
-  SearchLg,
+  Search,
   Settings01,
   Trash01,
   UploadCloud01,
   User01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
@@ -65,6 +65,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import DomainTags from '../../../components/common/DomainTags/DomainTags';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
@@ -222,8 +223,20 @@ const getDepthClassName = (depth: number) => {
 };
 
 // AI padding standard: 16px under the header band (core PageLayout gives 8px).
+// Column flex so the list card can claim the leftover height for placeholders.
 const getContentClassName = (isAiMode: boolean) =>
-  isAiMode ? 'tw:pt-4' : undefined;
+  classNames('tw:flex tw:flex-col tw:min-h-0', { 'tw:pt-4': isAiMode });
+const getIsPlaceholderState = ({
+  hasError,
+  isMetricsPending,
+  isSearchPending,
+  rowCount,
+}: {
+  hasError: boolean;
+  isMetricsPending: boolean;
+  isSearchPending: boolean;
+  rowCount: number;
+}) => hasError || (!isMetricsPending && !isSearchPending && rowCount === 0);
 
 const MetricListPage = () => {
   const { t } = useTranslation();
@@ -853,13 +866,10 @@ const MetricListPage = () => {
       )}
       {visibleColumns.includes('domains') && (
         <Table.Cell>
-          {renderTagBadges(
-            (metric.domains ?? []).map((domain) => ({
-              tagFQN: domain.fullyQualifiedName ?? domain.id,
-              name:
-                domain.displayName ?? domain.name ?? domain.fullyQualifiedName,
-              source: TagSource.Classification,
-            }))
+          {metric.domains?.length ? (
+            <DomainTags domains={metric.domains} maxVisible={2} />
+          ) : (
+            <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
           )}
         </Table.Cell>
       )}
@@ -1111,7 +1121,7 @@ const MetricListPage = () => {
     const isUnfiltered = !searchText && !statusFilter;
 
     return (
-      <Box className="tw:min-h-96 tw:p-4" justify="center">
+      <Box className="tw:flex-1 tw:min-h-0 tw:p-4" justify="center">
         <EmptyPlaceholder
           actions={
             isUnfiltered && permission.Create
@@ -1169,7 +1179,7 @@ const MetricListPage = () => {
   };
 
   const renderError = () => (
-    <Box className="tw:min-h-80 tw:p-6" justify="center">
+    <Box className="tw:flex-1 tw:min-h-0 tw:p-6" justify="center">
       <Card data-testid="metric-list-error" size="sm">
         <Card.Content>
           <Box align="center" direction="col" gap={3}>
@@ -1242,7 +1252,7 @@ const MetricListPage = () => {
         <Input
           className="tw:w-full tw:sm:max-w-84"
           data-testid="metric-search"
-          icon={SearchLg}
+          icon={Search}
           placeholder={t('label.search-entity', {
             entity: t('label.metric-plural'),
           })}
@@ -1486,6 +1496,13 @@ const MetricListPage = () => {
     </Box>
   );
 
+  const isPlaceholderState = getIsPlaceholderState({
+    hasError: Boolean(listingError),
+    isMetricsPending,
+    isSearchPending: isSearchTextPending,
+    rowCount: rows.length,
+  });
+
   const renderListingContent = () => {
     if (listingError) {
       return renderError();
@@ -1501,7 +1518,11 @@ const MetricListPage = () => {
   };
 
   const renderListCard = () => (
-    <Card size="sm">
+    <Card
+      className={classNames({
+        'tw:flex tw:flex-col tw:flex-1 tw:min-h-0': isPlaceholderState,
+      })}
+      size="sm">
       {renderToolbar()}
       <span aria-live="polite" className="tw:sr-only">
         {isMetricsBusy || isSearchTextPending

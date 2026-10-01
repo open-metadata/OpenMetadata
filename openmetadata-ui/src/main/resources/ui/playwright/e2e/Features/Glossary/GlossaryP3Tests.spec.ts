@@ -16,12 +16,19 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
   createNewPage,
-  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { selectActiveGlossary } from '../../../utils/glossary';
+import {
+  createGlossaryFromForm,
+  fillGlossaryTermForm,
+  openAddGlossaryTermForm,
+  saveGlossaryFormExpectingError,
+  saveGlossaryTermForm,
+  updateReferenceInGlossaryTermForm,
+} from '../../../utils/glossaryForm';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
@@ -51,22 +58,10 @@ test.describe('Glossary P3 Tests', () => {
       try {
         await sidebarClick(page, SidebarItem.GLOSSARY);
 
-        await page.click('[data-testid="add-glossary"]');
-        await page.getByTestId('form-heading').waitFor();
-
-        await page.fill('[data-testid="name"]', name);
-        await fillDescriptionBox(page, `Glossary with ${label}`);
-
-        const [response] = await Promise.all([
-          page.waitForResponse(
-            (res) =>
-              res.url().endsWith('/api/v1/glossaries') &&
-              res.request().method() === 'POST'
-          ),
-          // A stale navigation toast can overlap this centered button. Keyboard
-          // activation exercises the same form submission without a pointer race.
-          page.getByTestId('save-glossary').press('Enter'),
-        ]);
+        const response = await createGlossaryFromForm(page, {
+          name,
+          description: `Glossary with ${label}`,
+        });
         glossary.responseData = await response.json();
         expect(response.ok()).toBe(true);
 
@@ -743,30 +738,25 @@ test.describe('Glossary P3 Tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.getByTestId('add-new-tag-button-header').click();
-      await page.getByTestId('name').waitFor();
+      const termForm = await openAddGlossaryTermForm(page);
 
-      await page.fill('[data-testid="name"]', 'TestTerm');
-      await fillDescriptionBox(page, 'Test description');
+      await fillGlossaryTermForm(page, termForm, {
+        name: 'TestTerm',
+        description: 'Test description',
+        references: [{ name: 'BBC', endpoint: 'www.bbc.co.uk' }],
+      });
 
-      const addReferenceBtn = page.getByTestId('add-reference');
-      await addReferenceBtn.click();
+      await saveGlossaryFormExpectingError(
+        page,
+        'glossaryTerm',
+        'URL must start with http:// or https://'
+      );
 
-      await page.locator('#name-0').fill('BBC');
-      await page.locator('#url-0').fill('www.bbc.co.uk');
+      await updateReferenceInGlossaryTermForm(termForm, 0, {
+        endpoint: 'https://www.bbc.co.uk',
+      });
 
-      await page.getByTestId('save-glossary-term').click();
-
-      await expect(
-        page.getByText('URL must start with http:// or https://')
-      ).toBeVisible();
-
-      await page.locator('#url-0').clear();
-      await page.locator('#url-0').fill('https://www.bbc.co.uk');
-
-      const saveResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.getByTestId('save-glossary-term').click();
-      await saveResponse;
+      await saveGlossaryTermForm(page, 'create');
 
       await expect(
         page.getByTestId('entity-header-display-name')

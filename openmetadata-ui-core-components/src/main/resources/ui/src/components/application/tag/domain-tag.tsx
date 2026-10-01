@@ -12,7 +12,8 @@
  */
 import { cx } from '@/utils/cx';
 import { CSSProperties, FC, MouseEvent } from 'react';
-import { Domain } from '../../../icons/Domain';
+import { Globe01 } from '../../../icons/Globe01';
+import { Inherit } from '../../../icons/Inherit';
 import { Badge, BadgeWithButton } from '../../base/badges/badges';
 import { TagChipContent } from './tag-chip-content';
 import {
@@ -23,14 +24,15 @@ import {
 import { EntityTagProps } from './tag.types';
 
 /**
- * Domain tag — shadowed badge with NO background, 1px border on 3 sides,
+ * Globe01 tag — shadowed badge with NO background, 1px border on 3 sides,
  * and a prominent 4px left accent at full colour opacity.
- * Default icon: Domain. Color defaults to DEFAULT_TAG_COLOR. Tint colors (border/
+ * Default icon: Globe01. Color defaults to DEFAULT_TAG_COLOR. Tint colors (border/
  * left-accent/text/close-icon) are computed in CSS via color-mix() off the
  * --tag-color custom property — see styles/globals.css.
  */
 export const DomainTag: FC<EntityTagProps> = ({
   label,
+  labelNode,
   color,
   icon,
   size = 'sm',
@@ -41,15 +43,32 @@ export const DomainTag: FC<EntityTagProps> = ({
   className,
   tooltip,
   closeButtonTestId,
+  inherited,
+  inheritedLabel,
   ...otherProps
 }) => {
   const resolvedColor = color ?? DEFAULT_TAG_COLOR;
   const tagColorStyle = { '--tag-color': resolvedColor } as CSSProperties;
 
+  const inheritedGlyph = inherited ? (
+    <span
+      aria-hidden={inheritedLabel ? undefined : true}
+      aria-label={inheritedLabel}
+      className="tw:inline-flex tw:shrink-0 tw:items-center"
+      data-testid="domain-inherited-icon"
+      role={inheritedLabel ? 'img' : undefined}>
+      <Inherit
+        className="tag-color-text"
+        height={ICON_PX[size]}
+        width={ICON_PX[size]}
+      />
+    </span>
+  ) : undefined;
+
   const content = (
     <TagChipContent
       defaultIcon={
-        <Domain
+        <Globe01
           className="tag-color-text"
           height={ICON_PX[size]}
           width={ICON_PX[size]}
@@ -60,7 +79,10 @@ export const DomainTag: FC<EntityTagProps> = ({
       iconTestId="domain-icon"
       label={label}
       labelClassName={cx('tag-color-text')}
+      labelContent={labelNode}
+      labelTestId="domain-link"
       maxWidth={maxWidth}
+      trailing={inheritedGlyph}
     />
   );
 

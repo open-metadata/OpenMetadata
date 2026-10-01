@@ -12,7 +12,7 @@
  */
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
-import { Edit, GlossaryTerm } from '../icons';
+import { Edit01, GlossaryTerm } from '../icons';
 import { ButtonUtility } from '../components/base/buttons/button-utility';
 import { Card } from '../components/base/card/card';
 import { GlossaryTag } from '../components/application/tag/glossary-tag';
@@ -252,7 +252,7 @@ export const WidgetEditPopover: StoryObj = {
                 renderTrigger={({ toggle }) => (
                   <ButtonUtility
                     color="tertiary"
-                    icon={Edit}
+                    icon={Edit01}
                     size="xs"
                     tooltip="Edit Glossary Terms"
                     onClick={toggle}
@@ -309,6 +309,38 @@ export const MutuallyExclusive: StoryObj = {
         <p style={{ fontSize: 12, marginTop: 12, color: '#667085' }}>
           Finance &amp; Customer use checkboxes (multi-select). PII uses radio
           buttons (mutually exclusive — only one term can be selected).
+        </p>
+      </div>
+    );
+  },
+};
+
+// The consumer owns the translated create-row label and the create flow itself
+// (e.g. a modal); TreeSelect only surfaces the trigger and the search term.
+export const WithCreate: StoryObj = {
+  render: () => {
+    const [value, setValue] = useState<TreeSelectNode[]>([]);
+    const [lastCreate, setLastCreate] = useState<string | null>(null);
+
+    return (
+      <div style={{ width: 360 }}>
+        <FilterSelect.Tree
+          bordered
+          lazyLoad
+          multiple
+          searchable
+          createLabel="Add new domain"
+          fetchData={fetchGlossaryTerms}
+          label="Domain"
+          triggerVariant="button"
+          value={value}
+          onChange={(next) => setValue(Array.isArray(next) ? next : [])}
+          onCreate={(searchTerm) => setLastCreate(searchTerm)}
+        />
+        <p style={{ fontSize: 12, marginTop: 12, color: '#667085' }}>
+          {lastCreate === null
+            ? 'Open the dropdown and click “Add new domain”.'
+            : `Create requested with search term: "${lastCreate}"`}
         </p>
       </div>
     );
