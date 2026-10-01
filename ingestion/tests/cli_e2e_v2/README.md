@@ -193,7 +193,8 @@ Snowflake cannot run in a container, so `snowflake/` owns one fresh schema per t
 comment `owner=cli-e2e-v2`, zero Time Travel retention) in the configured database and drops it with
 `CASCADE` on success and failure. Every workflow sets the connection `database` and carries an anchored
 `schemaFilterPattern` for the owned schemas, because the database also holds unowned schemas. The
-invocation helper rejects a schema filter without explicit includes. Missing credentials are errors, not skips.
+invocation helper rejects a schema filter that includes anything beyond the owned schemas' anchored
+patterns. Missing credentials are errors, not skips.
 
 ```bash
 export E2E_SNOWFLAKE_ACCOUNT=... E2E_SNOWFLAKE_USERNAME=... E2E_SNOWFLAKE_WAREHOUSE=... E2E_SNOWFLAKE_DATABASE=...
@@ -208,7 +209,9 @@ key as `E2E_SNOWFLAKE_CLI_PRIVATE_KEY` because the CLI expands `${VARS}` before 
 account without MFA, `E2E_SNOWFLAKE_AUTH=password` reads `E2E_SNOWFLAKE_PASSWORD` instead. Every test logs
 in several times, so never point this suite at a password account that prompts for MFA. The role needs
 `CREATE SCHEMA` on the database, usage on the warehouse (dynamic tables refresh on it), and
-`IMPORTED PRIVILEGES` on the `SNOWFLAKE` database. One identity seeds and ingests.
+`IMPORTED PRIVILEGES` on the `SNOWFLAKE` database. One identity seeds and ingests. The workflow connection
+pins `GEOGRAPHY_OUTPUT_FORMAT=GeoJSON` through `connectionArguments.session_parameters`, so the sampled
+values do not depend on the account's configured format.
 
 ### ACCOUNT_USAGE shim
 
@@ -260,10 +263,13 @@ column metrics only.
 
 Fixed while migrating, each found by a strict assertion here: Snowflake tag classifications are created
 mutually exclusive (a table that sets its own value no longer also shows the schema's inherited value),
-`VARIANT`, `OBJECT` and `ARRAY` samples persist as JSON instead of the driver's JSON text (also through a
-profile query), and `tableDiff` resolves the table's service from the workflow's connection instead of the
-server's copy, whose secrets a non-bot token reads masked.
+`VARIANT`, `OBJECT` and `ARRAY` samples persist as JSON instead of the driver's JSON text, samples taken
+through a profile query convert through the table column types (binary values were stored as their Python
+repr), and `tableDiff` resolves the table's service from the workflow's connection instead of the server's
+copy, whose secrets a non-bot token reads masked.
 
-Remove the v1 Snowflake test and its `py-cli-e2e-tests.yml` matrix entry only after this suite has passed
-for the agreed stability window. Enabling it in `py-cli-e2e-tests-v2.yml` needs the `snowflake` allowlist
-entry and the existing `TEST_SNOWFLAKE_*` secrets mapped to the variables above for that job only.
+The manually dispatched v2 workflow runs Snowflake with four workers and passes the v1 job's existing
+`TEST_SNOWFLAKE_*` secrets (key pair, database and warehouse) only to its Snowflake matrix job. The v1
+test drops and recreates that database for every test, so do not dispatch the v2 Snowflake job while the
+nightly v1 run (00:00 UTC) or a manual v1 run is in progress. Remove the v1 Snowflake test and its
+`py-cli-e2e-tests.yml` matrix entry only after this suite has passed for the agreed stability window.
