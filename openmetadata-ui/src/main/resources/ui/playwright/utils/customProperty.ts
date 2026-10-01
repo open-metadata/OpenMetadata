@@ -176,14 +176,20 @@ export const closeEditModalListbox = (editModal: Locator) =>
   editModal.getByRole('heading', { includeHidden: true }).click();
 
 const clearAssetSelection = async (scope: Page | Locator) => {
-  const removeButtons = scope
+  const chips = scope
     .getByTestId('asset-select-list')
-    .getByTestId('autocomplete-selected-item')
-    .getByRole('button');
+    .getByTestId('autocomplete-selected-item');
 
-  while ((await removeButtons.count()) > 0) {
-    await removeButtons.first().click();
+  for (const label of await chips.allInnerTexts()) {
+    const escaped = label.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    await chips
+      .filter({ hasText: new RegExp(`^${escaped}$`) })
+      .getByRole('button')
+      .click();
   }
+
+  await expect(chips).toHaveCount(0);
 };
 
 /**
