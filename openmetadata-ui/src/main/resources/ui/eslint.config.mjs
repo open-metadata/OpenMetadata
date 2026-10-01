@@ -464,15 +464,12 @@ export default [
       'src/components/DataInsight/DataInsightChartCard.tsx',
       'src/components/DataInsight/KPIChart.tsx',
       'src/components/DataInsight/PageViewsByEntitiesChart.tsx',
-      'src/components/Database/Profiler/TestSummary/TestSummaryGraph.test.tsx',
-      'src/components/Database/Profiler/TestSummary/TestSummaryGraph.tsx',
       'src/components/MyData/Widgets/KPIWidget/KPIWidget.component.tsx',
       'src/constants/DataContract.constants.ts',
       'src/constants/DataInsight.constants.ts',
       'src/interface/data-insight.interface.ts',
       'src/utils/ChartUtils.tsx',
       'src/utils/DataInsightChartUtils.tsx',
-      'src/utils/DataQuality/TestSummaryGraphUtils.ts',
     ],
     rules: {
       '@typescript-eslint/no-restricted-imports': [

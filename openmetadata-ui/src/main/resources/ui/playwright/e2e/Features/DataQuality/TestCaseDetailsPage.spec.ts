@@ -511,14 +511,16 @@ test.describe(
 
       const chart = page.getByTestId('graph-container');
       // The aborted run sits on the value line itself, told apart by status.
+      // The runs are listed in a screen-reader-only list beside the SVG, so
+      // they are attached but never visible.
       const abortedPoint = chart.locator(
         '[data-testid="test-summary-point-value"][data-status="Aborted"]'
       );
 
       await test.step('The expectation line carries the asserted value', async () => {
-        await expect(chart.locator('.recharts-reference-line text')).toHaveText(
-          'Expected 10,000'
-        );
+        await expect(
+          chart.locator('svg text', { hasText: 'Expected 10,000' })
+        ).toBeVisible();
       });
 
       await test.step('A run that produced no value is still plotted', async () => {
@@ -526,24 +528,27 @@ test.describe(
       });
 
       await test.step('A single series draws no legend', async () => {
-        await expect(chart.locator('.recharts-legend-item')).toHaveCount(0);
+        await expect(
+          chart.locator('svg text', { hasText: /^value$/ })
+        ).toHaveCount(0);
       });
 
-      await test.step('Clicking a run moves the selection guide', async () => {
-        const guides = chart.locator('.recharts-reference-line line');
-        const before = await guides.evaluateAll((lines) =>
-          lines.map((line) => line.getAttribute('x1')).join(',')
-        );
+      await test.step('Selecting a run moves the selection to it', async () => {
+        const card = page.getByTestId('run-details-card');
 
-        await abortedPoint.click();
+        // The card opens on the newest run, which succeeded.
+        await expect(card).toHaveAttribute('data-status', 'Success');
 
-        await expect
-          .poll(async () =>
-            guides.evaluateAll((lines) =>
-              lines.map((line) => line.getAttribute('x1')).join(',')
-            )
-          )
-          .not.toBe(before);
+        // The newest run is the last of five; the aborted one is two before.
+        // Focus alone may not count as :focus-visible, so End starts the
+        // keyboard navigation, then Enter selects the run it rests on.
+        await chart.getByRole('group', { name: 'Test Case Results' }).focus();
+        await page.keyboard.press('End');
+        await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('Enter');
+
+        await expect(card).toHaveAttribute('data-status', 'Aborted');
       });
     });
   }
