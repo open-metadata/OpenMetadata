@@ -311,7 +311,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
     const attachedCount = await assetCard.count();
     for (let i = 0; i < attachedCount; i++) {
-      await assetCard.nth(i).locator('input[type="checkbox"]').check();
+      await assetCard.nth(i).getByTestId('asset-checkbox').check();
     }
 
     const removeRes = page.waitForResponse('**/assets/remove');

@@ -183,16 +183,16 @@ test.describe(
 
       await test.step('All matching assets is selected by default', async () => {
         await expect(
-          getExportModalContent(page).locator('input[value="all"]')
+          getExportModalContent(page).getByRole('radio', { name: 'All assets' })
         ).toBeChecked();
       });
 
       await test.step('Selecting the tab-scope card checks the visible radio', async () => {
         const modalContent = getExportModalContent(page);
 
-        await modalContent.locator('input[value="visible"]').click();
+        await modalContent.getByTestId('export-scope-visible-card').click();
         await expect(
-          modalContent.locator('input[value="visible"]')
+          modalContent.getByRole('radio', { name: 'Visible results' })
         ).toBeChecked();
       });
 
@@ -228,7 +228,7 @@ test.describe(
 
       const modalContent = getExportModalContent(page);
 
-      await modalContent.locator('input[value="visible"]').click();
+      await modalContent.getByTestId('export-scope-visible-card').click();
 
       const expectedCount =
         await test.step('Read displayed count from Visible Results card', () =>
@@ -358,7 +358,7 @@ test.describe(
       await openExportScopeModal(page);
 
       const modalContent = getExportModalContent(page);
-      await modalContent.locator('input[value="visible"]').click();
+      await modalContent.getByTestId('export-scope-visible-card').click();
 
       const visibleExportCount =
         await test.step('Read filtered visible count from the export modal', () =>
@@ -409,9 +409,9 @@ test.describe(
 
       const modalContent = getExportModalContent(page);
 
-      await modalContent.locator('input[value="visible"]').click();
+      await modalContent.getByTestId('export-scope-visible-card').click();
       await expect(
-        modalContent.locator('input[value="visible"]')
+        modalContent.getByRole('radio', { name: 'Visible results' })
       ).toBeChecked();
 
       const expectedCount =
