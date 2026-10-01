@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,11 +33,15 @@ import {
 import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { SynonymBadge } from '../../GlossaryTermBadges/GlossaryTermBadges';
+import GlossaryTermSynonymsEditor from './GlossaryTermSynonymsEditor';
+
+const MAX_VISIBLE_SYNONYMS = 6;
 
 const GlossaryTermSynonyms = () => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [saving, setSaving] = useState<boolean>(false);
+  const [isListExpanded, setIsListExpanded] = useState(false);
   const {
     data: glossaryTerm,
     onUpdate: onGlossaryTermUpdate,
@@ -54,12 +58,35 @@ const GlossaryTermSynonyms = () => {
     [permissions]
   );
 
+  const savedSynonyms = useMemo(
+    () => (glossaryTerm.synonyms ?? []).filter((synonym) => !isEmpty(synonym)),
+    [glossaryTerm.synonyms]
+  );
+  const hiddenSynonymCount = synonyms.length - MAX_VISIBLE_SYNONYMS;
+
   const getSynonyms = () =>
     !canEditAll || !isEmpty(synonyms) ? (
-      <div className="tw:flex tw:flex-wrap tw:gap-1">
-        {synonyms.map((synonym) => (
+      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-1">
+        {(isListExpanded
+          ? synonyms
+          : synonyms.slice(0, MAX_VISIBLE_SYNONYMS)
+        ).map((synonym) => (
           <SynonymBadge key={synonym} synonym={synonym} />
         ))}
+
+        {hiddenSynonymCount > 0 && (
+          <Button
+            color="link-color"
+            data-testid="synonyms-show-more-btn"
+            size="xs"
+            onClick={() => setIsListExpanded((expanded) => !expanded)}>
+            {isListExpanded
+              ? t('label.show-less')
+              : t('label.plus-count-more', {
+                  count: hiddenSynonymCount,
+                })}
+          </Button>
+        )}
 
         {!canEditAll && synonyms.length === 0 && (
           <div>{NO_DATA_PLACEHOLDER}</div>
@@ -133,7 +160,7 @@ const GlossaryTermSynonyms = () => {
   }, [glossaryTerm, isVersionView, getSynonyms]);
 
   const handleCancel = () => {
-    setSynonyms(glossaryTerm.synonyms || []);
+    setSynonyms(savedSynonyms);
     setIsViewMode(true);
   };
 
@@ -186,6 +213,7 @@ const GlossaryTermSynonyms = () => {
 
   return (
     <WidgetCard
+      contentClassName={classNames({ 'tw:p-0': !isViewMode })}
       dataTestId="synonyms-container"
       headerExtra={headerExtra}
       isExpandDisabled={isExpandDisabled}
@@ -193,38 +221,14 @@ const GlossaryTermSynonyms = () => {
       {isViewMode ? (
         getSynonymsContainer()
       ) : (
-        <>
-          <Space className="justify-end w-full m-b-xs" size={8}>
-            <Button
-              className="w-6 p-x-05"
-              data-testid="cancel-synonym-btn"
-              icon={<CloseOutlined size={12} />}
-              size="small"
-              onClick={handleCancel}
-            />
-            <Button
-              className="w-6 p-x-05"
-              data-testid="save-synonym-btn"
-              icon={<CheckOutlined size={12} />}
-              loading={saving}
-              size="small"
-              type="primary"
-              onClick={handleSynonymsSave}
-            />
-          </Space>
-
-          <Select
-            className="glossary-select w-full"
-            id="synonyms-select"
-            mode="tags"
-            open={false}
-            placeholder={t('label.add-entity', {
-              entity: t('label.synonym-plural'),
-            })}
-            value={synonyms}
-            onChange={(value) => setSynonyms(value)}
-          />
-        </>
+        <GlossaryTermSynonymsEditor
+          isSaving={saving}
+          savedSynonyms={savedSynonyms}
+          synonyms={synonyms}
+          onCancel={handleCancel}
+          onChange={setSynonyms}
+          onSave={handleSynonymsSave}
+        />
       )}
     </WidgetCard>
   );
