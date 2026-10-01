@@ -529,13 +529,11 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 
         constraint_name = self.normalize_name(row[0])
         local_column = self.normalize_name(row[2])
-        # Match the case get_table_names reports, which returns dictionary names
-        # verbatim. Normalising here produced a referred_table that never matched the
-        # Table entity's FQN, so common_db_source's exact get_by_name lookup missed and
-        # every Oracle foreign key was silently discarded. denormalize_name is the
-        # inverse of normalize_name and is rebound to identity under
-        # preserveIdentifierCase, so both modes stay consistent.
-        remote_table = self.denormalize_name(self.normalize_name(row[3]))
+        # Report the dictionary name verbatim, exactly as get_table_names does, so
+        # referred_table always matches the Table entity's FQN. Normalising here produced
+        # a name that never matched, so common_db_source's exact get_by_name lookup
+        # missed and every Oracle foreign key was silently discarded.
+        remote_table = row[3]
         remote_column = self.normalize_name(row[4])
         remote_owner = self.normalize_name(row[5])
 

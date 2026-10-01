@@ -25,23 +25,25 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.dialects.oracle.base import OracleDialect
 
+
 # (constraint_name, constraint_type, local_column, remote_table, remote_column,
 #  remote_owner, position, ...) as ORACLE_CONSTRAINTS returns them.
-FK_ROWS = [
-    (
-        "FK_TRANSACTIONS_CUSTOMERS",
-        "R",
-        "CUSTOMER_ID",
-        "CUSTOMERS",
-        "ID",
-        "E2E_SCHEMA",
-        1,
-        1,
-        None,
-        "NO ACTION",
-        None,
-    ),
-]
+def _fk_rows(remote_table: str):
+    return [
+        (
+            "FK_TRANSACTIONS_CUSTOMERS",
+            "R",
+            "CUSTOMER_ID",
+            remote_table,
+            "ID",
+            "E2E_SCHEMA",
+            1,
+            1,
+            None,
+            "NO ACTION",
+            None,
+        ),
+    ]
 
 
 def _dialect(*, preserve_identifier_case: bool) -> OracleDialect:
@@ -79,7 +81,7 @@ def test_referred_table_matches_get_table_names_case(preserve_identifier_case, e
     """
     dialect = _dialect(preserve_identifier_case=preserve_identifier_case)
 
-    keys = dialect.get_foreign_keys(_connection(FK_ROWS), "transactions", schema="e2e_schema")
+    keys = dialect.get_foreign_keys(_connection(_fk_rows("CUSTOMERS")), "transactions", schema="e2e_schema")
 
     assert len(keys) == 1, f"expected one foreign key, got {keys!r}"
     # get_table_names returns row[0] verbatim, so the entity is created as CUSTOMERS.
@@ -87,3 +89,23 @@ def test_referred_table_matches_get_table_names_case(preserve_identifier_case, e
     local, referred = expected_columns
     assert keys[0]["constrained_columns"] == [local]
     assert keys[0]["referred_columns"] == [referred]
+
+
+@pytest.mark.parametrize(
+    "stored_name",
+    ["CUSTOMERS", "customers", "MixedCase"],
+    ids=["unquoted-upper", "quoted-lower", "quoted-mixed"],
+)
+def test_referred_table_is_reported_verbatim(stored_name):
+    """Whatever the dictionary holds is what referred_table reports.
+
+    A table created with a quoted lowercase name is stored lowercase, and
+    get_table_names returns it unchanged, so the FK must not fold its case either
+    way. Passing the value through verbatim keeps that true without depending on
+    normalize_name/denormalize_name round-tripping.
+    """
+    dialect = _dialect(preserve_identifier_case=False)
+
+    keys = dialect.get_foreign_keys(_connection(_fk_rows(stored_name)), "transactions", schema="e2e_schema")
+
+    assert keys[0]["referred_table"] == stored_name
