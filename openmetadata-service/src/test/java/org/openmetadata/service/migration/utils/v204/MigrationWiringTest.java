@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.migration.utils.v203;
+package org.openmetadata.service.migration.utils.v204;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,11 +31,11 @@ import org.openmetadata.service.migration.utils.MigrationFile;
  * MigrationFile resolves a version directory to its Migration class by package-name convention and
  * falls back to the no-op default when the class is absent, so a mismatch between the SQL directory
  * name and the Java package silently skips the whole data migration with no error. Pin the wiring
- * for 2.0.3 instead of finding out on an upgrade.
+ * for 2.0.4 instead of finding out on an upgrade.
  */
 class MigrationWiringTest {
 
-  private static final String VERSION = "2.0.3";
+  private static final String VERSION = "2.0.4";
 
   private static final Path MIGRATIONS_ROOT =
       Paths.get("..", "bootstrap", "sql", "migrations", "native");
@@ -48,7 +48,7 @@ class MigrationWiringTest {
 
   @ParameterizedTest
   @EnumSource(ConnectionType.class)
-  void theVersionDirectoryResolvesToTheV203MigrationClass(ConnectionType connectionType) {
+  void theVersionDirectoryResolvesToTheV204MigrationClass(ConnectionType connectionType) {
     MigrationFile file =
         new MigrationFile(
             versionDir(),
@@ -57,12 +57,12 @@ class MigrationWiringTest {
             mock(OpenMetadataApplicationConfig.class),
             false);
 
-    assertEquals("v203", file.getVersionPackageName());
+    assertEquals("v204", file.getVersionPackageName());
     String dbPackage = connectionType == ConnectionType.MYSQL ? "mysql" : "postgres";
     assertEquals(
-        "org.openmetadata.service.migration." + dbPackage + ".v203.Migration",
+        "org.openmetadata.service.migration." + dbPackage + ".v204.Migration",
         file.getMigrationProcessClassName(),
-        "2.0.3 fell back to the default no-op migration class; the data migration would not run");
+        "2.0.4 fell back to the default no-op migration class; the data migration would not run");
   }
 
   @Test
