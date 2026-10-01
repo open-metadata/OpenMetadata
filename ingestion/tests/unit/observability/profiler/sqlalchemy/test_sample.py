@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
@@ -34,6 +35,7 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
 from metadata.sampler.models import (
@@ -592,6 +594,36 @@ class SampleTest(TestCase):
             assert sampler.fetch_sample_data().rows == [[1, "not a number"]]
         finally:
             QueriedAmount.__table__.drop(bind=self.engine)
+
+    def test_enum_samples_keep_values_the_column_type_does_not_list(self, sampler_mock):
+        """An ENUM column maps to an Enum type that lists no values, so its lookup must not reject sampled values."""
+
+        class QueriedEnum(Base):
+            __tablename__ = "queried_enum"
+            id = Column(Integer, primary_key=True)
+            kind = build_orm_col(
+                1,
+                EntityColumn(name=ColumnName("kind"), dataType=DataType.ENUM),
+                DatabaseServiceType.Mysql,
+            )
+
+        QueriedEnum.__table__.create(bind=self.engine)
+        try:
+            self.session.add(QueriedEnum(id=1, kind="gold"))
+            self.session.commit()
+            samples = []
+            for sample_query in (None, "SELECT id, upper(kind) AS kind FROM queried_enum"):
+                with patch.object(SQASampler, "build_table_orm", return_value=QueriedEnum):
+                    sampler = SQASampler(
+                        service_connection_config=self.sqlite_conn,
+                        ometa_client=None,
+                        entity=None,
+                        config=DatabaseSamplerConfig(sample_query=sample_query),
+                    )
+                samples.append(sampler.fetch_sample_data().rows)
+            assert samples == [[[1, "gold"]], [[1, "GOLD"]]]
+        finally:
+            QueriedEnum.__table__.drop(bind=self.engine)
 
     @classmethod
     def tearDownClass(cls) -> None:
