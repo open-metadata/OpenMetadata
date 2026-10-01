@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { GitMerge, X } from '@openmetadata/ui-core-components/icons';
 import {
   ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { GitMerge, X } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';

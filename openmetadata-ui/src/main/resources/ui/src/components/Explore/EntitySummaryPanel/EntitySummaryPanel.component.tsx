@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { XClose } from '@openmetadata/ui-core-components/icons';
 import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation as FastJsonPatchOperation } from 'fast-json-patch';
