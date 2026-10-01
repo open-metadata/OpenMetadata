@@ -40,6 +40,7 @@ import java.util.stream.IntStream;
 import org.apache.jena.query.QueryFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.rdf.AgentSparqlBinding;
 import org.openmetadata.schema.api.rdf.AgentSparqlCompletenessReason;
 import org.openmetadata.schema.api.rdf.AgentSparqlCompletenessStatus;
@@ -128,6 +129,39 @@ class AgentSparqlServiceTest {
     assertEquals(
         AgentSparqlCompletenessStatus.COMPLETE,
         response.getMetadata().getCompleteness().getStatus());
+  }
+
+  @Test
+  void resultCarriesTheCompletenessEmbeddedInItsBody() {
+    returnRows(1_001);
+
+    AgentSparqlResult result = readyService().execute("user", SELECT_ALL);
+
+    assertEquals(AgentSparqlCompletenessStatus.TRUNCATED, result.completeness().getStatus());
+    assertEquals(AgentSparqlCompletenessReason.SERVER_ROW_LIMIT, result.completeness().getReason());
+  }
+
+  @Test
+  void theSharedFactoryWiresTheRepositoryReadinessAndGuardTogether() {
+    returnRows(2);
+    when(repository.getConfig()).thenReturn(new RdfConfiguration());
+    AgentSparqlService wired =
+        AgentSparqlService.forRepository(() -> repository, () -> RdfProjectionState.READY);
+
+    AgentSparqlResult result = wired.execute("user", SELECT_ALL + " LIMIT 5");
+
+    assertEquals(2, result.rowCount());
+    assertEquals(AgentSparqlCompletenessStatus.COMPLETE, result.completeness().getStatus());
+  }
+
+  @Test
+  void theSharedFactoryHonoursTheReadinessSupplierItIsGiven() {
+    when(repository.getConfig()).thenReturn(new RdfConfiguration());
+    AgentSparqlService wired =
+        AgentSparqlService.forRepository(() -> repository, () -> RdfProjectionState.REBUILDING);
+
+    assertCode(AgentSparqlErrorCode.PROJECTION_NOT_READY, () -> wired.execute("user", SELECT_ALL));
+    verify(repository, never()).executeSparqlQueryDirect(anyString(), anyString());
   }
 
   @Test
