@@ -206,7 +206,7 @@ it('reports missing mappings only within a complete returned neighborhood', () =
   expect(coverage.get('c0')).toBe('mapped');
   expect(coverage.get('c2')).toBe('unmapped');
   expect(getMappingCoverage({ ...graph, truncated: true }).get('c2')).toBe(
-    'unknown'
+    'not-explored'
   );
   expect(
     getMappingCoverage({
