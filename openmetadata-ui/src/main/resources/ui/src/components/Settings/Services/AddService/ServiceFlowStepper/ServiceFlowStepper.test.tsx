@@ -13,7 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import ServiceFlowStepper from './ServiceFlowStepper';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Check: () => <span data-testid="check-icon" />,
 }));
 

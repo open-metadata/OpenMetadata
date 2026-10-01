@@ -79,10 +79,6 @@
       "@type": "@id",
       "@container": "@set"
     },
-    "votes": {
-      "@id": "om:hasVotes",
-      "@type": "@id"
-    },
     "lifeCycle": {
       "@id": "om:hasLifeCycle",
       "@type": "@id"
@@ -96,10 +92,6 @@
       "@id": "om:hasCustomProperty",
       "@type": "@id",
       "@container": "@set"
-    },
-    "changeDescription": {
-      "@id": "om:hasChangeDescription",
-      "@type": "@id"
     },
     "owners": {
       "@id": "om:hasOwner",
@@ -130,61 +122,6 @@
     "labelType": "om:labelType",
     "tagState": "om:tagState",
     "tagSource": "om:tagSource",
-
-    "ChangeDescription": "om:ChangeDescription",
-    "previousVersion": {
-      "@id": "om:previousVersion",
-      "@type": "xsd:decimal"
-    },
-    "fieldsAdded": {
-      "@id": "om:fieldsAdded",
-      "@type": "@id",
-      "@container": "@set"
-    },
-    "fieldsUpdated": {
-      "@id": "om:fieldsUpdated",
-      "@type": "@id",
-      "@container": "@set"
-    },
-    "fieldsDeleted": {
-      "@id": "om:fieldsDeleted",
-      "@type": "@id",
-      "@container": "@set"
-    },
-
-    "FieldChange": "om:FieldChange",
-    "fieldName": {
-      "@id": "om:fieldName",
-      "@type": "xsd:string"
-    },
-    "oldValue": {
-      "@id": "om:oldValue",
-      "@type": "xsd:string"
-    },
-    "newValue": {
-      "@id": "om:newValue",
-      "@type": "xsd:string"
-    },
-
-    "Votes": "om:Votes",
-    "upVotes": {
-      "@id": "om:upVotes",
-      "@type": "xsd:integer"
-    },
-    "downVotes": {
-      "@id": "om:downVotes",
-      "@type": "xsd:integer"
-    },
-    "upVoters": {
-      "@id": "om:upVoters",
-      "@type": "@id",
-      "@container": "@set"
-    },
-    "downVoters": {
-      "@id": "om:downVoters",
-      "@type": "@id",
-      "@container": "@set"
-    },
 
     "LifeCycle": "om:LifeCycle",
     "created": {

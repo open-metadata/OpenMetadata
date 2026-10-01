@@ -15,7 +15,7 @@ import {
   EmptyPlaceholder,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
-import { Code01 } from '@untitledui/icons';
+import { Code01 } from '@openmetadata/ui-core-components/icons';
 import { Typography } from 'antd';
 import { startCase } from 'lodash';
 import {

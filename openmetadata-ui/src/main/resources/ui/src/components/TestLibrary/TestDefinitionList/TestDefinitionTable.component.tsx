@@ -17,7 +17,7 @@ import {
   Skeleton,
   Table,
 } from '@openmetadata/ui-core-components';
-import { FileShield02 } from '@untitledui/icons';
+import { FileShield02 } from '@openmetadata/ui-core-components/icons';
 import { Button, Space, Switch, Tooltip, Typography } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';

@@ -24,8 +24,12 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Eye } from '@openmetadata/ui-core-components/icons';
-import { Check, ChevronRight, Share07 } from '@untitledui/icons';
+import {
+  Check,
+  ChevronRight,
+  Eye,
+  Share07,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
