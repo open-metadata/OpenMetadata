@@ -26,7 +26,11 @@ import { ALERT_DESCRIPTION } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TableClass } from '../support/entity/TableClass';
-import { chooseSelectOption, redirectToHomePage, toastNotification } from './common';
+import {
+  chooseSelectOption,
+  redirectToHomePage,
+  toastNotification,
+} from './common';
 import { selectDropdownOption } from './destination';
 import { getEntityDisplayName, waitForAllLoadersToDisappear } from './entity';
 
