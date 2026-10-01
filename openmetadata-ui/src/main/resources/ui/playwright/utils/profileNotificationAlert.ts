@@ -27,7 +27,7 @@ import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage, toastNotification } from './common';
-import { selectDropdownOption } from './destination';
+import { selectComboBoxOption, selectDropdownOption } from './destination';
 import { getEntityDisplayName, waitForAllLoadersToDisappear } from './entity';
 
 // ─── CoreUI Select helper ─────────────────────────────────────────────────────
@@ -376,45 +376,6 @@ const fillAndVerify = async (input: Locator, value: string) => {
 };
 
 /**
- * Select a destination category, retrying until the category-specific config
- * field mounts. The AI form keys destination rows by index and threads the form
- * value through render-time closures, so a category write remounts the still-open
- * react-aria combobox — at automation speed the option click can hit a torn-down
- * dropdown. Retrying open → filter → click until the confirm field appears makes
- * the selection deterministic.
- */
-const selectDestinationCategory = async ({
-  page,
-  destinationNumber,
-  category,
-  confirmTestId,
-}: {
-  page: Page;
-  destinationNumber: number;
-  category: string;
-  confirmTestId: string;
-}) => {
-  const combo = page
-    .getByTestId(`destination-category-select-${destinationNumber}`)
-    .getByRole('combobox');
-
-  await expect(async () => {
-    await combo.click();
-    await combo.fill('');
-    await combo.press('ArrowDown');
-
-    const option = page.getByRole('option', { exact: true, name: category });
-    await expect(option).toBeVisible({ timeout: 2_000 });
-    await option.click();
-
-    // The type-specific field only mounts once the category actually commits.
-    await expect(page.getByTestId(confirmTestId)).toBeVisible({
-      timeout: 2_000,
-    });
-  }).toPass({ timeout: 15_000 });
-};
-
-/**
  * Add an internal destination in the profile notification form.
  * Waits for the conditional type-select to mount after category selection.
  */
@@ -429,11 +390,10 @@ export const addInternalDestinationProfile = async ({
   category: string;
   type: string;
 }) => {
-  await selectDestinationCategory({
+  await selectComboBoxOption({
     page,
-    destinationNumber,
-    category,
-    confirmTestId: `destination-type-select-${destinationNumber}`,
+    testId: `destination-category-select-${destinationNumber}`,
+    optionName: category,
   });
 
   await selectDropdownOption({
@@ -468,15 +428,10 @@ export const addExternalDestinationProfile = async ({
     queryParams?: Array<{ key: string; value: string }>;
   };
 }) => {
-  const confirmTestId =
-    category === 'Email'
-      ? `email-input-${destinationNumber}`
-      : `endpoint-input-${destinationNumber}`;
-  await selectDestinationCategory({
+  await selectComboBoxOption({
     page,
-    destinationNumber,
-    category,
-    confirmTestId,
+    testId: `destination-category-select-${destinationNumber}`,
+    optionName: category,
   });
 
   if (category === 'Email') {
