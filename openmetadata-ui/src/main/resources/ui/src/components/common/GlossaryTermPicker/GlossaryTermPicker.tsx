@@ -18,6 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_EXTRA_LARGE } from '../../../constants/constants';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import Fqn from '../../../utils/Fqn';
@@ -82,7 +83,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   selectGlossaries = false,
 }) => {
   const { t } = useTranslation();
-  const fetchGlossaryTree = useGlossaryTreeData(selectGlossaries, multiple);
+  const fetchGlossaryTree = useGlossaryTreeData(selectGlossaries);
 
   const excluded = useMemo(() => new Set(excludeFqns ?? []), [excludeFqns]);
 
@@ -151,8 +152,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   const keepAllNodes = useCallback(() => true, []);
 
   return (
+    // No cascade: a term is applied on its own; a parent is a container.
     <TreeSelect
-      cascadeSelection
       lazyLoad
       searchable
       // eslint-disable-next-line jsx-a11y/no-autofocus -- opt-in, for a picker opened without a click
@@ -172,6 +173,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       label={label}
       multiple={multiple}
       offset={offset}
+      // One page per branch; the rest arrives behind "Show N more".
+      pageSize={PAGE_SIZE_EXTRA_LARGE}
       placeholder={
         placeholder ??
         t('label.select-field', { field: t('label.glossary-term-plural') })

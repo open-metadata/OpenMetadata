@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { TreeSelectNode } from './tree-select.types';
 import { useTreeSelectData } from './use-tree-select-data';
@@ -18,6 +18,40 @@ import { useTreeSelectData } from './use-tree-select-data';
 const nodes: TreeSelectNode[] = [
   { id: 'a', label: 'a', value: 'a', isLeaf: true },
 ];
+
+const child = (id: string): TreeSelectNode => ({
+  id,
+  label: id,
+  value: id,
+  isLeaf: true,
+});
+
+/** A branch whose children arrive in two pages of one. */
+const renderPagedBranch = () => {
+  const root: TreeSelectNode[] = [
+    { id: 'root', label: 'root', value: 'root', isLeaf: false },
+  ];
+  const fetchData = vi
+    .fn()
+    .mockImplementation(
+      async ({ parentId, after }: { parentId?: string; after?: string }) => {
+        if (!parentId) {
+          return { nodes: root };
+        }
+
+        return after
+          ? { nodes: [child('c2')], hasMore: false, total: 2 }
+          : {
+              nodes: [child('c1')],
+              hasMore: true,
+              total: 2,
+              nextCursor: 'cursor-1',
+            };
+      }
+    );
+
+  return { fetchData, ...renderHook(() => useTreeSelectData({ fetchData })) };
+};
 
 const renderData = (enabled?: boolean) => {
   const fetchData = vi.fn().mockResolvedValue({ nodes });
@@ -57,5 +91,46 @@ describe('useTreeSelectData', () => {
     expect(fetchData).toHaveBeenCalledWith(
       expect.objectContaining({ searchTerm: '' })
     );
+  });
+
+  it('records what a truncated branch needs to ask for its next page', async () => {
+    const { result } = renderPagedBranch();
+
+    await waitFor(() => expect(result.current.treeData).toHaveLength(1));
+    await act(() => result.current.loadChildren('root'));
+
+    expect(result.current.treeData[0]).toMatchObject({
+      hasMoreChildren: true,
+      childrenTotal: 2,
+      childrenCursor: 'cursor-1',
+    });
+    expect(result.current.treeData[0].children).toHaveLength(1);
+  });
+
+  it('appends the next page rather than replacing the branch', async () => {
+    const { fetchData, result } = renderPagedBranch();
+
+    await waitFor(() => expect(result.current.treeData).toHaveLength(1));
+    await act(() => result.current.loadChildren('root'));
+    await act(() => result.current.loadMoreChildren('root'));
+
+    expect(fetchData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ parentId: 'root', after: 'cursor-1' })
+    );
+    expect(result.current.treeData[0].children?.map(({ id }) => id)).toEqual([
+      'c1',
+      'c2',
+    ]);
+    expect(result.current.treeData[0].hasMoreChildren).toBe(false);
+  });
+
+  it('ignores a load-more on a branch that has everything', async () => {
+    const { fetchData, result } = renderPagedBranch();
+
+    await waitFor(() => expect(result.current.treeData).toHaveLength(1));
+    await act(() => result.current.loadMoreChildren('root'));
+
+    // Root fetch only — an unloaded branch has no cursor to resume from.
+    expect(fetchData).toHaveBeenCalledTimes(1);
   });
 });
