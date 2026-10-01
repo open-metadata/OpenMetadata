@@ -200,6 +200,62 @@ const lineSeries = <T extends object>(
   ) as LineSeriesOption['data'],
 });
 
+export const BAND_SERIES_SUFFIXES = ['__band-base', '__band'] as const;
+const BAND_OPACITY = 0.12;
+
+const bandRange = (raw: unknown): [number | null, number | null] =>
+  Array.isArray(raw) && raw.length === 2
+    ? [toNumberOrNull(raw[0]), toNumberOrNull(raw[1])]
+    : [null, null];
+
+/**
+ * A band is two stacked lines: a transparent one up to `low`, and a filled
+ * one of height `high - low` on top of it.
+ */
+const bandSeries = <T extends object>(
+  ctx: SeriesContext<T>,
+  series: ChartSeries,
+  color: string
+): LineSeriesOption[] => {
+  const at = (datum: T, y: number | null) =>
+    ctx.isTime ? [(datum as Datum)[ctx.input.xKey], y] : y;
+  const ranges = ctx.input.data.map((datum) =>
+    bandRange((datum as Datum)[series.key])
+  );
+  const common: LineSeriesOption = {
+    type: 'line',
+    name: series.name,
+    stack: `${series.key}${BAND_SERIES_SUFFIXES[1]}`,
+    silent: true,
+    smooth: false,
+    showSymbol: false,
+    connectNulls: true,
+    lineStyle: { opacity: 0 },
+    tooltip: { show: false },
+    [ctx.horizontal ? 'xAxisIndex' : 'yAxisIndex']: series.yAxisIndex ?? 0,
+  };
+
+  return [
+    {
+      ...common,
+      id: `${series.key}${BAND_SERIES_SUFFIXES[0]}`,
+      data: ctx.input.data.map((datum, i) =>
+        at(datum, ranges[i][0])
+      ) as LineSeriesOption['data'],
+    },
+    {
+      ...common,
+      id: `${series.key}${BAND_SERIES_SUFFIXES[1]}`,
+      areaStyle: { color, opacity: BAND_OPACITY },
+      data: ctx.input.data.map((datum, i) => {
+        const [low, high] = ranges[i];
+
+        return at(datum, low === null || high === null ? null : high - low);
+      }) as LineSeriesOption['data'],
+    },
+  ];
+};
+
 const buildSeries = <T extends object>(
   ctx: SeriesContext<T>,
   series: ChartSeries,
@@ -335,19 +391,30 @@ export const buildCartesianOption = <T extends object>(
   const isTime = input.xAxis?.type === 'time';
   const horizontal = input.layout === 'horizontal';
   const ctx: SeriesContext<T> = { input, theme, isTime, horizontal, composed };
-  const built = input.series.map((series, index) =>
+  const isBand = (s: ChartSeries) => composed && s.type === 'band';
+  const bands = input.series.filter(isBand);
+  const plain = input.series.filter((s) => !isBand(s));
+  const built = plain.map((series, index) =>
     buildSeries(
       ctx,
       series,
       index,
-      composed ? series.type ?? defaultType : defaultType
+      composed ? (series.type as ChartSeriesType) ?? defaultType : defaultType
+    )
+  );
+  const bandOptions = bands.flatMap((band) =>
+    bandSeries(
+      ctx,
+      band,
+      band.color ?? chartColor(theme.palette, 0, band.status)
     )
   );
   const series = [
+    ...bandOptions,
     ...(composed ? linesLast(built) : built),
     ...referenceSeries(input, theme),
   ];
-  const names = input.series.map((s) => s.name);
+  const names = plain.map((s) => s.name);
   const legend = legendConfig(names, theme, input.legend);
   const visiblePoints = input.zoomVisiblePoints ?? DATAZOOM_THRESHOLD;
   const hasZoom =

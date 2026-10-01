@@ -88,7 +88,12 @@ export type ChartOption = ComposeOption<
   | VisualMapComponentOption
 >;
 
-export type ChartSeriesType = 'line' | 'area' | 'bar';
+/**
+ * `band` (`ComposedChart` only) reads `datum[key]` as `[low, high]` and fills
+ * the range between them, under every other series. It takes no palette
+ * colour and is left out of the legend.
+ */
+export type ChartSeriesType = 'line' | 'area' | 'bar' | 'band';
 
 /** How one point of a line or area series is drawn. */
 export interface ChartPointStyle {

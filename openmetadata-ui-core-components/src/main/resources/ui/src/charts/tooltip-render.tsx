@@ -15,7 +15,7 @@
 import type { TooltipComponentFormatterCallbackParams } from 'echarts';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { REFERENCE_SERIES_ID } from './options/cartesian';
+import { BAND_SERIES_SUFFIXES, REFERENCE_SERIES_ID } from './options/cartesian';
 import { PIE_TRACK_SERIES_ID } from './options/pie';
 import type { ChartTooltipItem, ChartTooltipProps } from './types';
 
@@ -46,6 +46,10 @@ interface FormatterParam {
 // Helper series that are drawn but are not data.
 const HIDDEN_SERIES = new Set([REFERENCE_SERIES_ID, PIE_TRACK_SERIES_ID]);
 
+const isHelperSeries = (seriesId: string) =>
+  HIDDEN_SERIES.has(seriesId) ||
+  BAND_SERIES_SUFFIXES.some((suffix) => seriesId.endsWith(suffix));
+
 // Time-axis points are [x, y]; the value is the last entry.
 const itemValue = (value: unknown): number | string | null => {
   const last = Array.isArray(value) ? value[value.length - 1] : value;
@@ -71,7 +75,7 @@ export const toTooltipItems = (
 ): ChartTooltipItem[] =>
   (Array.isArray(params) ? params : [params])
     .map((param) => param as FormatterParam)
-    .filter((param) => !HIDDEN_SERIES.has(String(param.seriesId)))
+    .filter((param) => !isHelperSeries(String(param.seriesId)))
     .map(toItem);
 
 /**

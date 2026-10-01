@@ -826,4 +826,40 @@ describe('buildComposedOption', () => {
     expect(seriesOf(option)[0].areaStyle).toBeDefined();
     expect(seriesOf(option)[1].areaStyle).toBeUndefined();
   });
+
+  it('draws a band as a stacked transparent base and a filled span', () => {
+    const option = buildComposedOption(
+      {
+        data: [
+          { day: 'Mon', range: [2, 6], value: 4 },
+          { day: 'Tue', range: undefined, value: 5 },
+          { day: 'Wed', range: [3, 8], value: 7 },
+        ],
+        xKey: 'day',
+        ariaLabel: 'Runs',
+        series: [
+          { key: 'range', name: 'Range', type: 'band', status: 'success' },
+          { key: 'value', name: 'Value', type: 'line' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [baseSeries, span, line] = seriesOf(option) as Array<
+      LineSeriesOption & { areaStyle?: { color?: string; opacity?: number } }
+    >;
+
+    expect(baseSeries.id).toBe('range__band-base');
+    expect(baseSeries.data).toEqual([2, null, 3]);
+    expect(span.id).toBe('range__band');
+    expect(span.data).toEqual([4, null, 5]);
+    expect(span.stack).toBe(baseSeries.stack);
+    expect(span.connectNulls).toBe(true);
+    expect(span.areaStyle).toEqual({
+      color: LIGHT_CHART_PALETTE.status.success,
+      opacity: 0.12,
+    });
+    expect(line.id).toBe('value');
+    expect(line.itemStyle).toEqual({ color: LIGHT_CHART_PALETTE.series[0] });
+    expect((option.legend as LegendComponentOption).data).toEqual(['Value']);
+  });
 });

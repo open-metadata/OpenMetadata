@@ -62,6 +62,24 @@ describe('toTooltipItems', () => {
     ]);
   });
 
+  it('skips the helper series of a range band', () => {
+    const params = [
+      { seriesId: 'range__band-base', seriesName: 'Range', value: 2 },
+      { seriesId: 'range__band', seriesName: 'Range', value: 4 },
+      {
+        seriesId: 'value',
+        seriesName: 'Value',
+        value: 4,
+        color: '#333333',
+        dataIndex: 0,
+      },
+    ] as unknown as TooltipComponentFormatterCallbackParams;
+
+    expect(toTooltipItems(params).map((item) => item.seriesKey)).toEqual([
+      'value',
+    ]);
+  });
+
   it('keys a pie slice by its name and skips the track ring', () => {
     const slice = {
       componentSubType: 'pie',

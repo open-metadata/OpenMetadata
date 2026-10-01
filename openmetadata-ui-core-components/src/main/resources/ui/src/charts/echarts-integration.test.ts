@@ -456,3 +456,41 @@ describe('category value axis on a real chart', () => {
     expect(categories).toEqual(['apac', 'eu']);
   });
 });
+
+describe('band series on a real chart', () => {
+  it('fills up to the high value and keeps the line on top', () => {
+    const chart = mount(
+      buildComposedOption(
+        {
+          data: [
+            { day: 'Mon', range: [2, 6], value: 4 },
+            { day: 'Tue', range: [3, 8], value: 7 },
+          ],
+          xKey: 'day',
+          ariaLabel: 'Runs',
+          series: [
+            { key: 'range', name: 'Range', type: 'band' },
+            { key: 'value', name: 'Value', type: 'line' },
+          ],
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    type SeriesData = {
+      getCalculationInfo: (key: string) => string;
+      get: (dim: string, index: number) => number;
+    };
+    const model = (
+      chart as unknown as {
+        getModel: () => {
+          getSeriesByIndex: (i: number) => { getData: () => SeriesData };
+        };
+      }
+    ).getModel();
+    const span = model.getSeriesByIndex(1).getData();
+    const stacked = span.getCalculationInfo('stackResultDimension');
+
+    expect(span.get(stacked, 0)).toBe(6);
+    expect(span.get(stacked, 1)).toBe(8);
+  });
+});
