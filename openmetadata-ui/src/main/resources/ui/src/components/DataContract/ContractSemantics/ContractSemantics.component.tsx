@@ -32,13 +32,14 @@ const ContractSemantics: React.FC<{
 }> = ({ semantics, latestContractResults, contractStatus }) => {
   const { t } = useTranslation();
 
-  const getSemanticIconPerLastExecution = (semanticName: string) => {
-    if (!latestContractResults) {
+  const getSemanticIconPerLastExecution = (semantic: SemanticsRule) => {
+    // A disabled rule is skipped by validation, so the last run did not pass it
+    if (!latestContractResults || !semantic.enabled) {
       return DefaultIcon;
     }
     const isRuleFailed =
       latestContractResults?.semanticsValidation?.failedRules?.find(
-        (rule) => rule.ruleName === semanticName
+        (rule) => rule.ruleName === semantic.name
       );
 
     if (isRuleFailed) {
@@ -65,9 +66,9 @@ const ContractSemantics: React.FC<{
             <div className="rule-item" key={item.rule}>
               <Icon
                 className={classNames('rule-icon', {
-                  'rule-icon-default': !latestContractResults,
+                  'rule-icon-default': !latestContractResults || !item.enabled,
                 })}
-                component={getSemanticIconPerLastExecution(item.name)}
+                component={getSemanticIconPerLastExecution(item)}
               />
               <div className="rule-item-content">
                 <div className="d-flex items-center gap-1">

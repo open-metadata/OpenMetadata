@@ -26,19 +26,17 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  ArrowRight,
+  ChevronRight,
   NoFilterFunnel,
   NoSearch,
   PendingChanges,
+  Search,
+  Table as TableIcon,
   TotalOccurrences,
   TotalUniqueColumn,
-} from '@openmetadata/ui-core-components/icons';
-import {
-  ArrowRight,
-  ChevronRight,
-  SearchLg,
-  Table as TableIcon,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, some } from 'lodash';
 import React, {
@@ -2727,7 +2725,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               <div className="tw:shrink-0">
                 <Input
                   className="tw:max-w-86"
-                  icon={SearchLg}
+                  icon={Search}
                   placeholder={t('label.search-columns')}
                   value={searchInputValue}
                   onChange={(value) => {

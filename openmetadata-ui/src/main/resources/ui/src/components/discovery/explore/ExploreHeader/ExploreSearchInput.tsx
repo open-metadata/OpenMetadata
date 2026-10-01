@@ -19,8 +19,8 @@ import {
   SelectPopover,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { isAppleDevice } from '@react-aria/utils';
-import { SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
 import type { FormEvent, ReactNode, RefObject } from 'react';
 import { lazy, Suspense } from 'react';
@@ -242,7 +242,7 @@ export const ExploreSearchInput = ({
             className={INPUT_FIELD_CONTAINER_CLASS}
             data-testid="explore-search-input"
             fontSize="xs"
-            icon={SearchMd}
+            icon={Search}
             iconClassName="tw:size-4 tw:text-brand-600"
             inputClassName={INPUT_CLASS}
             placeholder={placeholderText}

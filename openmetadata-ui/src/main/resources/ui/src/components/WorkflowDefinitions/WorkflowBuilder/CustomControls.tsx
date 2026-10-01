@@ -18,10 +18,13 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  GitBranch01,
+  Maximize01,
+  Minus,
+  Plus,
   WorkflowRedo,
   WorkflowUndo,
 } from '@openmetadata/ui-core-components/icons';
-import { GitBranch01, Maximize01, Minus, Plus } from '@untitledui/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useReactFlow } from 'reactflow';

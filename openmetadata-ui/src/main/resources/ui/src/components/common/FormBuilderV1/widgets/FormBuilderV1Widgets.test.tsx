@@ -20,7 +20,7 @@ import CoreRadioWidget from './CoreRadioWidget';
 import CoreSelectWidget from './CoreSelectWidget';
 import CoreTextAreaWidget from './CoreTextAreaWidget';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Eye: () => <span>eye-icon</span>,
   EyeOff: () => <span>eye-off-icon</span>,
   UploadCloud01: () => <span>upload-icon</span>,

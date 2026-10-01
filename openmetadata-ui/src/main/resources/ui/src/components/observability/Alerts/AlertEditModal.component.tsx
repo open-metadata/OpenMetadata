@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AlertTriangle } from '@untitledui/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
