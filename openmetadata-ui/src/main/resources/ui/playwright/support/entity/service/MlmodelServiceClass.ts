@@ -23,8 +23,9 @@ import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
+import type { ParentNode, ParentSnapshot } from '../ParentChain';
 
-export class MlmodelServiceClass extends EntityClass {
+export class MlmodelServiceClass extends EntityClass implements ParentNode {
   entity = {
     name: `pw-ml-model-service-${uuid()}`,
     serviceType: 'Mlflow',
@@ -39,6 +40,7 @@ export class MlmodelServiceClass extends EntityClass {
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
+  readonly parentLevel = 'service' as const;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.MlModelService);
@@ -92,6 +94,24 @@ export class MlmodelServiceClass extends EntityClass {
       },
       false
     );
+  }
+
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  forget() {
+    this.entityResponseData = {} as ResponseDataType;
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return { service: this.entityResponseData };
+  }
+
+  rootDeletePath() {
+    return `/api/v1/services/mlmodelServices/name/${encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    )}`;
   }
 
   async delete(apiContext: APIRequestContext) {

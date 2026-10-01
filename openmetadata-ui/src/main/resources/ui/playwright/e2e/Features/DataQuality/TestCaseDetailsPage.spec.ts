@@ -452,6 +452,95 @@ test.describe(
 );
 
 test.describe(
+  'Test Case Details Page - Configuration card',
+  { tag: ['@Observability'] },
+  () => {
+    let sqlTable: TableClass;
+    let sqlTestCaseFqn: string;
+
+    // Custom SQL tests run far past the mock's three lines; the block has to
+    // hold a query of any length without stretching the rail.
+    const longSql = [
+      'SELECT o.id',
+      'FROM orders AS o',
+      'WHERE 1 = 1',
+      ...Array.from(
+        { length: 117 },
+        (_, index) => `  AND o.id <> ${index + 1}`
+      ),
+    ].join('\n');
+
+    test.beforeAll(
+      'Create a custom SQL test with a 120-line query',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        sqlTable = new TableClass();
+        await sqlTable.create(apiContext);
+        const testCase = await sqlTable.createTestCase(apiContext, {
+          testDefinition: 'tableCustomSQLQuery',
+          parameterValues: [
+            { name: 'sqlExpression', value: longSql },
+            { name: 'strategy', value: 'ROWS' },
+          ],
+        });
+        sqlTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await sqlTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('keeps a long SQL query inside a scrolling block', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, sqlTestCaseFqn);
+
+      const sql = page
+        .getByTestId('test-case-configuration-card')
+        .getByRole('region', { name: 'SQL Query' });
+
+      await expect(sql).toContainText('SELECT o.id');
+
+      // The block stops at 320px (max-h-80) and scrolls the rest of the query.
+      await expect
+        .poll(() => sql.evaluate((node) => node.clientHeight))
+        .toBeLessThanOrEqual(320);
+      await expect
+        .poll(() =>
+          sql.evaluate((node) => node.scrollHeight - node.clientHeight)
+        )
+        .toBeGreaterThan(0);
+
+      await test.step('A keyboard user can scroll to the end of the query', async () => {
+        await sql.focus();
+
+        await expect(sql).toBeFocused();
+
+        // Pressed on the locator, so the key reaches the block even if
+        // something else took focus in between.
+        await sql.press('End');
+
+        // Keyboard scrolling animates, so wait for the block to reach its end.
+        await expect
+          .poll(() =>
+            sql.evaluate(
+              (node) => node.scrollHeight - node.clientHeight - node.scrollTop
+            )
+          )
+          .toBeLessThanOrEqual(1);
+      });
+    });
+  }
+);
+
+test.describe(
   'Test Case Details Page - Result history chart',
   { tag: ['@Observability'] },
   () => {

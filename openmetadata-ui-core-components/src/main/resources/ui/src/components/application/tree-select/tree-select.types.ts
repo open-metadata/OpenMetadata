@@ -32,6 +32,10 @@ export interface TreeSelectNode<T = unknown> {
   count?: number;
   /** Set when the loaded children are a truncated page, not the whole branch. */
   hasMoreChildren?: boolean;
+  /** Direct-child total; with `children.length` it gives the "N remaining" count. */
+  childrenTotal?: number;
+  /** Cursor for this branch's next page, echoed back as `after`. */
+  childrenCursor?: string;
   /**
    * When true, children of this node are mutually exclusive (radio buttons)
    * and this node itself will not render a selection control.
@@ -44,6 +48,10 @@ export interface TreeSelectDataFetcherParams {
   searchTerm?: string;
   parentId?: string;
   pageSize?: number;
+  /** Cursor from the previous page; set only when loading more of a branch. */
+  after?: string;
+  /** Every descendant in one response; a cascade cannot select a page. */
+  loadAll?: boolean;
   signal?: AbortSignal;
 }
 
@@ -51,6 +59,8 @@ export interface TreeSelectDataResponse<T = unknown> {
   nodes: TreeSelectNode<T>[];
   hasMore?: boolean;
   total?: number;
+  /** Cursor for the next page; required for `hasMore` to be actionable. */
+  nextCursor?: string;
 }
 
 export type TreeSelectDataFetcher<T = unknown> = (
