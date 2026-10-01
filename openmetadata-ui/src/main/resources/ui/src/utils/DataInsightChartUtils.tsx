@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import {
+  chartColor,
+  type ChartPalette,
+  type ChartSeries,
+  type ChartTooltipRenderProps,
+} from '@openmetadata/ui-core-components/charts';
 import { Card, Typography } from 'antd';
 import { isEmpty, startCase, uniqBy } from 'lodash';
 import {
@@ -38,6 +44,10 @@ import {
   getEntryFormattedValue,
   getRandomHexColor,
 } from './DataInsightPureUtils';
+import {
+  chartTooltipRows,
+  DQTooltipContent,
+} from './DataQuality/CustomDQTooltip.component';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 
 export const renderLegend = (
@@ -220,3 +230,75 @@ export const renderDataInsightLineChart = (
     </LineChart>
   );
 };
+
+export const dataInsightColor = (
+  palette: ChartPalette,
+  keys: string[],
+  key: string
+) => chartColor(palette, Math.max(keys.indexOf(key), 0));
+
+export interface DataInsightLineSeriesInput {
+  /** Every series, in colour order (rank). Colours follow this order. */
+  keys: string[];
+  palette: ChartPalette;
+  /** Toggled in the side panel; empty shows every key. */
+  activeKeys?: string[];
+  /** Hovered in the side panel; '' or undefined highlights none. */
+  hoverKey?: string;
+  /** Keys left after a search; undefined keeps all. Does not change colours. */
+  visibleKeys?: string[];
+}
+
+// Same rule the recharts charts used: with keys toggled, only those (and the
+// hovered one) are drawn.
+const isShown = (key: string, activeKeys: string[], hoverKey: string) =>
+  activeKeys.length === 0 || key === hoverKey || activeKeys.includes(key);
+
+export const getDataInsightLineSeries = ({
+  keys,
+  palette,
+  activeKeys = [],
+  hoverKey = '',
+  visibleKeys,
+}: DataInsightLineSeriesInput): ChartSeries[] =>
+  keys.flatMap((key, index) =>
+    isShown(key, activeKeys, hoverKey) &&
+    (visibleKeys === undefined || visibleKeys.includes(key))
+      ? [
+          {
+            key,
+            name: key,
+            color: chartColor(palette, index),
+            seriesOption:
+              hoverKey && key !== hoverKey
+                ? { lineStyle: { opacity: HOVER_CHART_OPACITY } }
+                : undefined,
+          },
+        ]
+      : []
+  );
+
+export interface DataInsightTooltipOptions<T> {
+  /** Field of the row holding the epoch millis shown as the header. */
+  timeKey: keyof T & string;
+  isPercentage?: boolean;
+  valueFormatter?: DataInsightChartTooltipProps['valueFormatter'];
+  className?: string;
+}
+
+export const getDataInsightTooltip = <T extends object>({
+  timeKey,
+  isPercentage,
+  valueFormatter,
+  className,
+}: DataInsightTooltipOptions<T>): ChartTooltipRenderProps<T> => ({
+  render: (items, row) => (
+    <DQTooltipContent
+      className={className}
+      header={formatDate(Number(row?.[timeKey] ?? 0))}
+      isPercentage={isPercentage}
+      rows={chartTooltipRows(items)}
+      valueFormatter={valueFormatter}
+    />
+  ),
+});

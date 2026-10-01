@@ -12,6 +12,7 @@
  */
 
 import type { ChartTooltipItem } from '@openmetadata/ui-core-components/charts';
+import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { ReactNode } from 'react';
 import { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
@@ -30,6 +31,7 @@ export interface DQTooltipContentProps {
   transformLabel?: boolean;
   isPercentage?: boolean;
   valueFormatter?: DataInsightChartTooltipProps['valueFormatter'];
+  className?: string;
 }
 
 /**
@@ -42,8 +44,13 @@ export const DQTooltipContent = ({
   transformLabel = true,
   isPercentage,
   valueFormatter,
+  className,
 }: DQTooltipContentProps) => (
-  <div className="tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:shadow-md tw:p-2.5">
+  <div
+    className={classNames(
+      'tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:shadow-md tw:p-2.5',
+      className
+    )}>
     <p className="tw:m-0 tw:text-primary tw:font-medium tw:text-xs">{header}</p>
     <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
     <div className="tw:flex tw:flex-col tw:gap-1">
