@@ -13,7 +13,10 @@
 
 import { LIGHT_CHART_PALETTE } from '@openmetadata/ui-core-components/charts';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { HOVER_CHART_OPACITY } from '../constants/constants';
+import {
+  DEFAULT_CHART_OPACITY,
+  HOVER_CHART_OPACITY,
+} from '../constants/constants';
 import {
   CustomTooltip,
   dataInsightColor,
@@ -153,7 +156,7 @@ describe('getDataInsightLineSeries', () => {
 
     expect(series.map((s) => s.seriesOption)).toEqual([
       { lineStyle: { opacity: HOVER_CHART_OPACITY } },
-      undefined,
+      { lineStyle: { opacity: DEFAULT_CHART_OPACITY } },
       { lineStyle: { opacity: HOVER_CHART_OPACITY } },
     ]);
   });

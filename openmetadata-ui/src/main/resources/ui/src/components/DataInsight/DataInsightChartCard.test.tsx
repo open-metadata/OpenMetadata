@@ -16,7 +16,10 @@ import {
 } from '@openmetadata/ui-core-components/charts';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { HOVER_CHART_OPACITY } from '../../constants/constants';
+import {
+  DEFAULT_CHART_OPACITY,
+  HOVER_CHART_OPACITY,
+} from '../../constants/constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { DataInsightChartCard } from './DataInsightChartCard';
 
@@ -131,6 +134,24 @@ describe('DataInsightChartCard', () => {
     expect(lastLineProps().series[0].seriesOption).toEqual({
       lineStyle: { opacity: HOVER_CHART_OPACITY },
     });
+    expect(lastLineProps().series[1].seriesOption).toEqual({
+      lineStyle: { opacity: DEFAULT_CHART_OPACITY },
+    });
+  });
+
+  it('restores every line to full opacity when the hover ends', async () => {
+    await renderCard();
+    const row = screen.getByTestId('summary-Topic')
+      .parentElement as HTMLElement;
+    fireEvent.mouseEnter(row);
+    fireEvent.mouseLeave(row);
+
+    expect(
+      lastLineProps().series.map((s: ChartSeries) => s.seriesOption)
+    ).toEqual([
+      { lineStyle: { opacity: DEFAULT_CHART_OPACITY } },
+      { lineStyle: { opacity: DEFAULT_CHART_OPACITY } },
+    ]);
   });
 
   it('keeps colours when a search hides entities', async () => {

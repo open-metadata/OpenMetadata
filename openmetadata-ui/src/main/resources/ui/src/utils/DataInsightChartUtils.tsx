@@ -20,7 +20,11 @@ import {
 import { Typography } from '@openmetadata/ui-core-components';
 import { Card } from 'antd';
 import { startCase, uniqBy } from 'lodash';
-import { GRAYED_OUT_COLOR, HOVER_CHART_OPACITY } from '../constants/constants';
+import {
+  DEFAULT_CHART_OPACITY,
+  GRAYED_OUT_COLOR,
+  HOVER_CHART_OPACITY,
+} from '../constants/constants';
 import {
   DataInsightChartTooltipProps,
   DataInsightLegendProps,
@@ -202,10 +206,16 @@ export const getDataInsightLineSeries = ({
             key,
             name: key,
             color: chartColor(palette, index),
-            seriesOption:
-              hoverKey && key !== hoverKey
-                ? { lineStyle: { opacity: HOVER_CHART_OPACITY } }
-                : undefined,
+            // Always sent: ECharts deep-merges a series that keeps its id, so an
+            // omitted opacity would leave the previous dimmed value in place.
+            seriesOption: {
+              lineStyle: {
+                opacity:
+                  hoverKey && key !== hoverKey
+                    ? HOVER_CHART_OPACITY
+                    : DEFAULT_CHART_OPACITY,
+              },
+            },
           },
         ]
       : []
