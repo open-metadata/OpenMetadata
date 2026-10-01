@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AxiosResponse } from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import axiosClient from '../../../rest';
+import { getLoggedInUser } from '../../../rest/userAPI';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import AuthProvider, { useAuthProvider } from './AuthProvider';
+import { OidcUser } from './AuthProvider.interface';
 
 const localStorageMock = {
   getItem: jest.fn(),
@@ -60,6 +63,15 @@ jest.mock('../../../rest/settingConfigAPI', () => ({
   getAppConfiguration: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ defaultAppMode: null })),
+}));
+
+jest.mock('../../../rest/DocStoreAPI', () => ({
+  getDocumentByFQN: jest.fn().mockRejectedValue(new Error('no persona doc')),
+}));
+
+jest.mock('../../../utils/UserDataUtils', () => ({
+  ...jest.requireActual('../../../utils/UserDataUtils'),
+  checkIfUpdateRequired: jest.fn((user) => Promise.resolve(user)),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -855,5 +867,96 @@ describe('AuthProvider visibility handler', () => {
     await fireTabVisible();
 
     expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Sign-in routing', () => {
+  const useCustomLocationMock = jest.requireMock(
+    '../../../hooks/useCustomLocation/useCustomLocation'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ) as any;
+  const useApplicationStoreMock = jest.requireMock(
+    '../../../hooks/useApplicationStore'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ).useApplicationStore as any;
+  const defaultStoreImplementation =
+    useApplicationStoreMock.getMockImplementation();
+
+  const LoginTrigger = () => {
+    const { handleSuccessfulLogin } = useAuthProvider();
+
+    return (
+      <button
+        data-testid="login"
+        onClick={() =>
+          handleSuccessfulLogin({
+            profile: { email: 'aaron@example.com', name: 'aaron' },
+          } as OidcUser)
+        }>
+        Login
+      </button>
+    );
+  };
+
+  const renderProvider = () =>
+    render(
+      <AuthProvider childComponentType={LoginTrigger}>
+        <LoginTrigger />
+      </AuthProvider>
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // A real zustand store hands back the same references every render; the
+    // default mock builds new ones, which would re-create
+    // `handleSuccessfulLogin` on each render and hide a stale closure.
+    const stableStore = {
+      ...defaultStoreImplementation(),
+      jwtPrincipalClaims: [],
+      jwtPrincipalClaimsMapping: [],
+    };
+    useApplicationStoreMock.mockImplementation(() => stableStore);
+    (getLoggedInUser as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      name: 'aaron',
+      defaultPersona: {
+        id: 'persona-1',
+        fullyQualifiedName: 'analytics',
+        type: 'persona',
+      },
+    });
+  });
+
+  afterEach(() => {
+    (getLoggedInUser as jest.Mock).mockImplementation(() => Promise.resolve());
+    useApplicationStoreMock.mockImplementation(defaultStoreImplementation);
+    useCustomLocationMock.mockImplementation(() => ({ pathname: 'pathname' }));
+  });
+
+  it('routes to / after an in-app logout (regression: stale pathname in handleSuccessfulLogin)', async () => {
+    // The app was loaded on a protected page...
+    useCustomLocationMock.mockImplementation(() => ({ pathname: '/explore' }));
+    const { rerender } = renderProvider();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // ...then an in-app logout routed to the sign-in page without a reload.
+    useCustomLocationMock.mockImplementation(() => ({ pathname: '/signin' }));
+
+    await act(async () => {
+      rerender(
+        <AuthProvider childComponentType={LoginTrigger}>
+          <LoginTrigger />
+        </AuthProvider>
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() => expect(useNavigate()).toHaveBeenCalledWith('/'));
   });
 });

@@ -34,8 +34,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
+import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { PageViewMode } from '../../generated/type/personaPreferences';
+import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -63,7 +66,7 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import ViewToggle from '../common/ViewToggle/ViewToggle';
 import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
@@ -156,7 +159,9 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const dataProductColumns: ColumnDef[] = useMemo(
@@ -324,7 +329,7 @@ const DataProductListPage = ({
       );
     }
 
-    if (view === ViewMode.Table) {
+    if (view === PageViewMode.Table) {
       return (
         <>
           <EntityListingTable
