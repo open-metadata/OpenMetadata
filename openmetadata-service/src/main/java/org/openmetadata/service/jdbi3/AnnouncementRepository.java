@@ -44,6 +44,9 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
 
   public static final String COLLECTION_PATH = "/v1/announcements";
 
+  /** Mirrors {@code maxLength} on {@code customTypeName} in announcement.json. */
+  private static final int MAX_CUSTOM_TYPE_NAME_LENGTH = 64;
+
   public AnnouncementRepository() {
     super(
         COLLECTION_PATH,
@@ -103,7 +106,8 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
   /**
    * `color` and `customTypeName` only mean anything on a {@code Custom} announcement. The form
    * enforces that, but API, MCP and script callers do not go through the form, so without this the
-   * server would store a colour the UI never reads or a Custom announcement with no label.
+   * server would store a colour the UI never reads, or a Custom announcement with no label and no
+   * colour that falls back to the UI's pink default — a colour its author never chose.
    */
   private void validateTypeFields(Announcement announcement) {
     if (announcement.getType() != AnnouncementType.Custom) {
@@ -112,12 +116,34 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       return;
     }
 
-    if (nullOrEmpty(announcement.getCustomTypeName())
-        || announcement.getCustomTypeName().isBlank()) {
+    if (announcement.getColor() == null) {
+      throw new IllegalArgumentException("color is required when the announcement type is Custom");
+    }
+    announcement.setCustomTypeName(validCustomTypeName(announcement.getCustomTypeName()));
+  }
+
+  /**
+   * The schema's {@code minLength}/{@code maxLength} only run on {@code @Valid CreateAnnouncement},
+   * so they cover create and PUT alone — PATCH binds the patched JSON straight to the POJO with no
+   * bean validation, and a 200-character name sent that way was stored as it arrived. Checking here
+   * covers all three paths at once.
+   *
+   * <p>Length is measured after trimming, which is the value actually stored; the schema measures
+   * the value as sent. A name that is only over the limit because of surrounding whitespace is
+   * therefore accepted here and rejected by the schema on create — the stricter of the two wins,
+   * and neither can store an over-length name.
+   */
+  private String validCustomTypeName(String customTypeName) {
+    String trimmed = nullOrEmpty(customTypeName) ? "" : customTypeName.trim();
+    if (trimmed.isEmpty()) {
       throw new IllegalArgumentException(
           "customTypeName is required when the announcement type is Custom");
     }
-    announcement.setCustomTypeName(announcement.getCustomTypeName().trim());
+    if (trimmed.length() > MAX_CUSTOM_TYPE_NAME_LENGTH) {
+      throw new IllegalArgumentException(
+          "customTypeName cannot be longer than " + MAX_CUSTOM_TYPE_NAME_LENGTH + " characters");
+    }
+    return trimmed;
   }
 
   @Override

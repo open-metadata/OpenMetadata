@@ -35,6 +35,8 @@ import org.openmetadata.schema.type.AnnouncementColor;
 import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.AnnouncementType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
@@ -471,7 +473,81 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
             .withStartTime(now)
             .withEndTime(now + 86400000L);
 
-    assertThrows(Exception.class, () -> createEntity(request));
+    // InvalidRequestException is the SDK's 400 and only its 400 — a 500 surfaces as ApiException,
+    // so this pins the rejection to a bad request rather than any failure at all.
+    assertThrows(InvalidRequestException.class, () -> createEntity(request));
+  }
+
+  /**
+   * The form marks colour required for Custom, but API, MCP and script callers do not go through
+   * the form. Without the server check a Custom announcement arrives with no colour and renders in
+   * the UI's pink fallback, which reads as a colour its author chose.
+   */
+  @Test
+  void testCustomAnnouncementRequiresItsColour(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    CreateAnnouncement request =
+        new CreateAnnouncement()
+            .withName(ns.prefix("custom-no-colour"))
+            .withDescription("Custom with no colour")
+            .withType(AnnouncementType.Custom)
+            .withCustomTypeName("Release")
+            .withStartTime(now)
+            .withEndTime(now + 86400000L);
+
+    assertThrows(InvalidRequestException.class, () -> createEntity(request));
+  }
+
+  /**
+   * {@code maxLength: 64} rides on {@code @Valid CreateAnnouncement}, so it runs on create and PUT
+   * only. PATCH binds the patched JSON straight to the POJO with no bean validation, which let an
+   * over-length name through until the repository checked it itself.
+   */
+  @Test
+  void testPatchCannotExceedCustomTypeNameLength(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    Announcement created =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("custom-long-name-patch"))
+                .withDescription("Custom announcement")
+                .withType(AnnouncementType.Custom)
+                .withColor(AnnouncementColor.Pink)
+                .withCustomTypeName("Release")
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+
+    created.setCustomTypeName("x".repeat(200));
+
+    // Asserted on the cause, not the thrown type: unlike create, the SDK's update() wraps every
+    // failure in a bare OpenMetadataException, so the typed 400 only survives underneath it.
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class, () -> patchEntity(created.getId().toString(), created));
+    InvalidRequestException rejected =
+        assertInstanceOf(InvalidRequestException.class, error.getCause());
+    assertTrue(rejected.getMessage().contains("64"));
+    assertEquals("Release", getEntity(created.getId().toString()).getCustomTypeName());
+  }
+
+  /** 64 characters exactly is the limit, not one past it. */
+  @Test
+  void testCustomTypeNameAtTheLengthLimitIsAccepted(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    String name = "x".repeat(64);
+    Announcement created =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("custom-limit-name"))
+                .withDescription("Custom announcement")
+                .withType(AnnouncementType.Custom)
+                .withColor(AnnouncementColor.Pink)
+                .withCustomTypeName(name)
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+
+    assertEquals(name, created.getCustomTypeName());
+    assertEquals(name, getEntity(created.getId().toString()).getCustomTypeName());
   }
 
   /** Colour and name are Custom-only, so the server drops them rather than storing dead data. */
