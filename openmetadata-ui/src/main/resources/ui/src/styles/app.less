@@ -921,7 +921,8 @@ a[href].link-text-grey,
 // fonts.less at 0,1,1) aren't caught by the base-specificity `:where(.dark-mode) a`.
 // Retint them in dark at a higher specificity that wins regardless of load order.
 .dark-mode a.ant-typography,
-.dark-mode .ant-typography a {
+.dark-mode .ant-typography a,
+.dark-mode .prose-typography a {
   color: var(--om-color-link);
 }
 
@@ -1091,7 +1092,8 @@ a[href].link-text-grey,
     flex-wrap: wrap;
 
     &:hover {
-      .ant-typography {
+      .ant-typography,
+      > * {
         color: @primary-color;
       }
     }
@@ -1140,9 +1142,7 @@ a[href].link-text-grey,
   .policies-list-table,
   .roles-list-table,
   .list-table,
-  .kpi-table,
-  .custom-properties-card,
-  .entity-custom-properties-table {
+  .kpi-table {
     margin-right: var(--om-space-64);
   }
 }

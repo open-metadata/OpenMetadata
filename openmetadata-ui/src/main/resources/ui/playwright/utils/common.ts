@@ -319,8 +319,11 @@ export const redirectToHomePage = async (
 };
 
 export const redirectToExplorePage = async (page: Page) => {
-  await page.goto('/explore');
-  await page.waitForURL('**/explore');
+  // `load` (the default) also waits for every image, font and stylesheet; on a
+  // slow runner that alone can exceed the navigation timeout. Callers depend
+  // only on the DOM and the loader wait below.
+  await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL('**/explore', { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -512,9 +515,9 @@ export const toastNotification = async (
     .filter({ hasText: message })
     .first();
 
-  await toast.waitFor({ state: 'visible', timeout });
-
-  await expect(toast.getByTestId('alert-icon')).toBeVisible();
+  // Toasts auto-dismiss; assert only the text-filtered toast being visible, not its internal
+  // icon, to avoid the icon detaching between the filter resolving and the check.
+  await expect(toast).toBeVisible({ timeout });
 };
 
 /**
@@ -642,207 +645,6 @@ export const visitOwnProfilePage = async (page: Page) => {
   await page.getByRole('link', { name: 'View Profile' }).click();
   await userResponse;
   await clickOutside(page);
-};
-
-export const assignDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  checkSelectedDomain = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-
-  await searchDomain;
-
-  // Wait for the tag element to be visible and ensure page is still valid
-  const tagSelector = page.getByTestId(
-    `tree-node-${domain.fullyQualifiedName}`
-  );
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page.getByTestId('update-btn').click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  if (checkSelectedDomain) {
-    const hasMultipleDomains = await page
-      .getByTestId('show-all-domains')
-      .isVisible();
-    if (hasMultipleDomains) {
-      await expect(page.getByTestId('show-all-domains')).toBeVisible();
-    } else {
-      await expect(
-        page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-      ).toContainText(domain.displayName);
-    }
-  }
-};
-
-export const assignSingleSelectDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-
-  await searchDomain;
-
-  // Wait for the tag element to be visible and ensure page is still valid
-  const tagSelector = page.getByTestId(
-    `tree-node-${domain.fullyQualifiedName}`
-  );
-  await tagSelector.waitFor({ state: 'visible' });
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await tagSelector.click();
-
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  // Selecting commits and closes the picker; wait for it to fully detach so a
-  // subsequent reopen (e.g. removeSingleSelectDomain) does not race the close.
-  await page
-    .getByTestId('domain-selectable-tree-search')
-    .waitFor({ state: 'detached' });
-
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).toContainText(domain.displayName);
-};
-
-export const updateDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  await page.getByTestId('domain-selectable-tree-search').clear();
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-  await searchDomain;
-
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page.getByTestId('update-btn').click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  // The header layout shows one chip plus a "+ N More" toggle; expanding it
-  // reveals the newly added domain chip inline.
-  const showMore = page.getByTestId('show-all-domains');
-  await expect(showMore).toBeVisible();
-  await showMore.click();
-
-  await expect(
-    page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`)
-  ).toBeVisible();
-};
-
-export const removeDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  showDashPlaceholder = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-  await searchDomain;
-
-  const tagSelector = page.getByTestId(
-    `tree-node-${domain.fullyQualifiedName}`
-  );
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page.getByTestId('update-btn').click();
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  await expect(page.getByTestId('no-domain-text')).toContainText(
-    showDashPlaceholder ? '--' : 'No Domains'
-  );
-};
-
-export const removeSingleSelectDomain = async (
-  page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  showDashPlaceholder = true
-) => {
-  await page.getByTestId('add-domain').click();
-  await waitForAllLoadersToDisappear(page);
-
-  await page.getByTestId('domain-selectable-tree-search').clear();
-
-  const searchDomain = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(domain.name))
-  );
-  await page.getByTestId('domain-selectable-tree-search').fill(domain.name);
-  await searchDomain;
-
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
-
-  await patchReq;
-  await waitForAllLoadersToDisappear(page);
-
-  // Deselecting commits and closes the picker; wait for it to fully detach so a
-  // subsequent reopen does not race the close animation.
-  await page
-    .getByTestId('domain-selectable-tree-search')
-    .waitFor({ state: 'detached' });
-
-  await expect(page.getByTestId('no-domain-text')).toContainText(
-    showDashPlaceholder ? '--' : 'No Domains'
-  );
 };
 
 export const assignDataProduct = async (

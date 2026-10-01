@@ -95,19 +95,19 @@ const test = base.extend<{
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataStewardPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataStewardUser.login(page);
+    await dataStewardUser.signIn(page);
     await use(page);
     await page.close();
   },
   viewOnlyPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await viewOnlyUser.login(page);
+    await viewOnlyUser.signIn(page);
     await use(page);
     await page.close();
   },

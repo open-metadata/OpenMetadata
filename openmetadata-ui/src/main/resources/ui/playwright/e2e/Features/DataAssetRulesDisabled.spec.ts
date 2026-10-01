@@ -49,13 +49,13 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
-  assignDomain,
   descriptionBoxReadOnly,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { addAssetsToDataProduct, assignDomainWidget } from '../../utils/domain';
+import { addAssetsToDataProduct } from '../../utils/domain';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -247,8 +247,8 @@ test.describe(
           ).toBeVisible();
         }
 
-        await assignDomain(page, domain.responseData);
-        await assignDomain(page, domain2.responseData, false);
+        await setDomain(page, domain.responseData);
+        await setDomain(page, domain2.responseData, { verify: 'none' });
 
         await expect(page.getByTestId('show-all-domains')).toBeVisible();
 
@@ -312,7 +312,10 @@ test.describe(
     test('Database service', async ({ page, browser }) => {
       test.slow(true);
 
-      const table = new TableClass();
+      // Bulk-edit-import runs at the service level with recursive=false and
+      // asserts passed/processed counts — a shared service would contain
+      // other workers' databases and break the count.
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -450,7 +453,10 @@ test.describe(
     test('Database', async ({ page, browser }) => {
       test.slow(true);
 
-      const table = new TableClass();
+      // Navigates the service page and picks the database row by name — a
+      // shared databaseService listing contains other workers' databases
+      // and hides the target row under pagination.
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -599,7 +605,9 @@ test.describe(
     test('Database Schema', async ({ page, browser }) => {
       test.slow(true);
 
-      const table = new TableClass();
+      // Navigates service → database → schema; the shared listing pollutes
+      // every hop with other workers' rows.
+      const table = new TableClass({ service: new DatabaseServiceClass() });
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
@@ -801,10 +809,12 @@ test.describe(
         });
 
         // Assign first domain (multi-select mode)
-        await assignDomainWidget(page, testDomain1.responseData, true);
+        await setDomain(page, testDomain1.responseData);
 
         // Assign second domain (should ADD to first, not replace)
-        await assignDomainWidget(page, testDomain2.responseData, true, true);
+        await setDomain(page, testDomain2.responseData, {
+          trigger: 'edit-domain',
+        });
 
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links
@@ -888,7 +898,7 @@ test.describe(
       await crossTable.visitEntityPage(page);
 
       // Asset belongs to assetDomain only.
-      await assignDomain(page, assetDomain.responseData);
+      await setDomain(page, assetDomain.responseData);
 
       // The Data Product from productDomain can be assigned even though the
       // asset is in assetDomain, because the domain validation rule is disabled

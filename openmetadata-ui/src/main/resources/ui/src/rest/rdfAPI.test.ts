@@ -60,7 +60,7 @@ describe('rdfAPI SPARQL routing', () => {
 
   it('loads the effective RDF and Ontology AI capability status', async () => {
     const status = {
-      askCollateEnabled: true,
+      aiEnabled: true,
       baseUri: 'https://open-metadata.org/',
       enabled: true,
       inference: {

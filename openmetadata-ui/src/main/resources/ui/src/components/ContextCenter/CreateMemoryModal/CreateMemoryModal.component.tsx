@@ -43,7 +43,7 @@ import {
   Plus,
   Share07,
   X,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { ConfigProvider } from 'antd';
 import { AxiosError } from 'axios';
 import {
@@ -73,7 +73,9 @@ import {
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ContextMemory,
@@ -81,6 +83,8 @@ import {
   ShareVisibility,
   TagLabel,
 } from '../../../generated/entity/context/contextMemory';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { useMemoryOntologyProposals } from '../../../hooks/discovery/context-center/useMemoryOntologyProposals';
 import { queryClient } from '../../../queryClient';
 import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -88,10 +92,13 @@ import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
+import MemoryDerivedOntology from '../../discovery/context-center/MemoryDerivedOntology/MemoryDerivedOntology';
+import { canProposeFromMemory } from '../../discovery/context-center/MemoryDerivedOntology/MemoryDerivedOntology.utils';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
 import {
   CreateMemoryModalProps,
@@ -119,7 +126,7 @@ const DEFAULT_FORM_VALUES: MemoryFormValues = {
   title: '',
   memory: '',
   memoryType: null,
-  visibility: ShareVisibility.Shared,
+  visibility: ShareVisibility.Private,
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -686,7 +693,7 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
   handleTagSave,
   t,
 }) => (
-  <div>
+  <div data-testid="memory-metadata-section">
     <Typography className="tw:text-tertiary" size="text-xs" weight="semibold">
       {t('label.metadata')}
     </Typography>
@@ -792,6 +799,19 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       false,
     [memoryToEdit, currentUserName]
   );
+
+  const ontologyProposals = useMemoryOntologyProposals(
+    memoryToEdit?.id,
+    isOpen
+  );
+  const { permissions } = usePermissionProvider();
+  const canCreateOntologyDrafts =
+    Boolean(isAdminUser) ||
+    checkPermission(
+      Operation.Create,
+      ResourceEntity.ONTOLOGY_CHANGE_SET,
+      permissions
+    );
 
   const { showEditButton, showSubmitButton } = useMemo(() => {
     const canEditMemory = (isOwner || isAdminUser) && canEdit;
@@ -1134,6 +1154,26 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       showTagForm={showTagForm}
                       t={t}
                     />
+
+                    {memoryToEdit && (
+                      <MemoryDerivedOntology
+                        canPropose={canProposeFromMemory(
+                          memoryToEdit,
+                          ontologyProposals.status,
+                          {
+                            isOwner,
+                            canCreateDrafts: canCreateOntologyDrafts,
+                            isViewOnly,
+                          }
+                        )}
+                        isProposing={ontologyProposals.isProposing}
+                        memory={memoryToEdit}
+                        proposeError={ontologyProposals.proposeError}
+                        status={ontologyProposals.status}
+                        onNavigate={handleClose}
+                        onPropose={ontologyProposals.propose}
+                      />
+                    )}
                   </div>
 
                   {/* Sticky footer */}

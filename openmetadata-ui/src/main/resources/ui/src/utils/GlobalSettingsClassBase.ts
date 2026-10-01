@@ -239,7 +239,7 @@ class GlobalSettingsClassBase {
             icon: MlModelIcon,
           },
           {
-            label: t('label.storage-plural'),
+            label: t('label.storage'),
             description: t('message.page-sub-header-for-storages'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.STORAGE_SERVICE,
@@ -249,7 +249,7 @@ class GlobalSettingsClassBase {
             icon: StorageIcon,
           },
           {
-            label: t('label.search'),
+            label: t('label.search-engine-plural'),
             description: t('message.page-sub-header-for-search'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.SEARCH_SERVICE,
@@ -259,7 +259,7 @@ class GlobalSettingsClassBase {
             icon: SearchIconV1,
           },
           {
-            label: t('label.metadata'),
+            label: t('label.catalog-plural'),
             description: t('message.page-sub-header-for-metadata'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.METADATA_SERVICE,

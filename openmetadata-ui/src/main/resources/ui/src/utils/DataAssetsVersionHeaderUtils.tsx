@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Divider, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Divider, Space } from 'antd';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
@@ -33,7 +34,7 @@ import {
 import { getEntityName } from './EntityNameUtils';
 import { getEntityVersionByField } from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
-import { stringToHTML } from './StringUtils';
+import { stringToHTML } from './RichTextStringUtils';
 
 export const VersionExtraInfoLink = ({
   value,
@@ -45,9 +46,11 @@ export const VersionExtraInfoLink = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <div className="d-flex items-center text-xs">
-      <Typography.Link href={href} style={{ fontSize: '12px' }}>
-        {stringToHTML(value)}
-      </Typography.Link>
+      <Typography>
+        <a href={href} style={{ fontSize: '12px' }}>
+          {stringToHTML(value)}
+        </a>
+      </Typography>
     </div>
   </>
 );
@@ -64,15 +67,15 @@ export const VersionExtraInfoLabel = ({
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
     <Space align="center" data-testid={dataTestId}>
-      <Typography.Text className="self-center text-xs whitespace-nowrap">
+      <Typography className="self-center text-xs whitespace-nowrap">
         {!isEmpty(label) && (
           <span className="text-grey-muted">{`${label}: `}</span>
         )}
-      </Typography.Text>
+      </Typography>
 
-      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
+      <Typography className="self-center text-xs whitespace-nowrap font-medium">
         {stringToHTML(value)}
-      </Typography.Text>
+      </Typography>
     </Space>
   </>
 );
@@ -103,11 +106,11 @@ export const getExtraInfoSourceUrl = (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
           <div className="d-flex items-center text-xs">
-            <Typography.Link
-              href={pipelineDetails.sourceUrl}
-              style={{ fontSize: '12px' }}>
-              {getEntityName(pipelineDetails)}{' '}
-            </Typography.Link>
+            <Typography>
+              <a href={pipelineDetails.sourceUrl} style={{ fontSize: '12px' }}>
+                {getEntityName(pipelineDetails)}{' '}
+              </a>
+            </Typography>
             <Icon
               className="m-l-xss"
               component={IconExternalLink}

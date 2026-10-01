@@ -12,18 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import {
-  Avatar,
-  Button,
-  Col,
-  Modal,
-  Row,
-  Space,
-  Switch,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Avatar, Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -115,6 +105,7 @@ import './teams.less';
 import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
 import { UserTab } from './UserTab/UserTab.component';
+
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>
@@ -658,11 +649,11 @@ const TeamDetailsV1 = ({
                   name={
                     <Row>
                       <Col span={21}>
-                        <Typography.Text
+                        <Typography
                           className="font-medium"
                           data-testid="open-group-label">
                           {t('label.public-team')}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
 
                       <Col span={3}>
@@ -721,12 +712,12 @@ const TeamDetailsV1 = ({
         className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph style={{ marginBottom: '0' }}>
+        <Typography as="p" style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
             entity: t('label.team'),
           })}
-        </Typography.Paragraph>
-        <Typography.Paragraph>
+        </Typography>
+        <Typography as="p">
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={
@@ -741,7 +732,7 @@ const TeamDetailsV1 = ({
               doc: t('label.doc-plural-lowercase'),
             }}
           />
-        </Typography.Paragraph>
+        </Typography>
         <Tooltip placement="top" title={addTeamButtonTitle}>
           <Button
             ghost
@@ -1380,12 +1371,12 @@ const TeamDetailsV1 = ({
               );
               setSelectedEntity(undefined);
             }}>
-            <Typography.Text>
+            <Typography>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
                 parent: getEntityName(currentTeam),
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         )}
       </Box>

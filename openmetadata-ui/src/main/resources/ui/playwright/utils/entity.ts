@@ -54,6 +54,7 @@ import {
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
+import { clickUntilVisible } from './waitHelpers';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -82,6 +83,35 @@ export const waitForWidgetsToRender = async (page: Page, timeout = 30000) => {
   await expect(
     page.locator('[data-testid="entity-detail-widget-skeleton"]')
   ).toHaveCount(0, { timeout });
+};
+
+/**
+ * Await a navigation's own "get by name" call and assert it actually returned
+ * the entity.
+ *
+ * `waitForResponse` resolves on *any* response, 404 and 500 included, so used
+ * bare it synchronises on "the server said something" rather than on "the page
+ * has what the test needs". A missing or unauthorised entity then satisfies the
+ * wait, the test walks on to the "<Entity> instance for <fqn> not found"
+ * placeholder, and the next click waits out the entire test timeout — surfacing
+ * as a bare `Test timeout of 60000ms exceeded` with no location, three
+ * interactions away from the request that actually failed.
+ *
+ * Use this wherever a helper navigates somewhere and the rest of the test
+ * assumes the destination loaded.
+ */
+export const expectNavigationResponseOk = async (
+  responsePromise: Promise<Response>,
+  what: string
+): Promise<Response> => {
+  const response = await responsePromise;
+
+  expect(
+    response.status(),
+    `${what}: ${response.url()} returned ${response.status()} — the entity is missing, deleted, or not visible to this user`
+  ).toBe(200);
+
+  return response;
 };
 
 export const visitEntityPage = async (data: {
@@ -175,7 +205,11 @@ export const visitEntityPageByFqn = async (data: {
   await page.goto(`/${routeSegment}/${encodedFqn}`, {
     waitUntil: 'domcontentloaded',
   });
-  await entityDetailsResponse;
+  await expectNavigationResponseOk(
+    entityDetailsResponse,
+    `visit ${endpoint} ${fqn}`
+  );
+
   await waitForAllLoadersToDisappear(page);
   await waitForWidgetsToRender(page);
 };
@@ -465,6 +499,19 @@ export const removeOwner = async ({
     .waitFor({ state: 'hidden' });
 };
 
+export const openOwnerPicker = async (page: Page, trigger: Locator) => {
+  // The trigger can be clicked while the page is still mounting its widgets
+  // (lazy chunks, grid re-layout), which remounts the picker and throws the
+  // open state away, so the popover never renders. Re-click until it does.
+  await expect(async () => {
+    await trigger.click();
+
+    await expect(page.getByTestId('select-owner-tabs')).toBeVisible({
+      timeout: 5000,
+    });
+  }).toPass({ timeout: 30000, intervals: [500, 1000, 2000] });
+};
+
 export const addMultiOwner = async (data: {
   page: Page;
   ownerNames: string | string[];
@@ -488,9 +535,10 @@ export const addMultiOwner = async (data: {
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
 
-  await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
-
-  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
+  await openOwnerPicker(
+    page,
+    page.locator(`[data-testid="${activatorBtnDataTestId}"]`)
+  );
 
   await page
     .getByTestId('select-owner-tabs')
@@ -645,8 +693,15 @@ export const assignTier = async (
   // Close the tier popover
   await clickOutside(page);
 
-  // Verify the tier was updated
-  await expect(page.getByTestId('Tier')).toContainText(tier);
+  // Verify the tier was updated. The PATCH returns 200 but React Query's
+  // entity-detail cache invalidation can lag under merge-queue load — the
+  // `Tier` chip re-renders from the refetched entity, not from the PATCH
+  // response. A retry-pass on Entity.spec (run 34324900183 chromium-23)
+  // saw 18 resolutions to the previous value across the 15 s default,
+  // then passed on retry #1. 30 s covers the observed p99.
+  await expect(page.getByTestId('Tier')).toContainText(tier, {
+    timeout: 30_000,
+  });
 };
 
 export const removeTier = async (page: Page, endpoint: string) => {
@@ -893,9 +948,8 @@ export const updateDescriptionForChildren = async (
   }
 };
 
-// Opens the ClassificationTagPicker popover with retry logic to handle the
-// race condition where the outside-click handler closes the popover before
-// the search input becomes visible (mirrors openGlossaryPicker in glossaryPicker.ts).
+// Opens the ClassificationTagPicker; the outside-click handler can close the
+// popover before the search input shows, so the open is retried.
 export const openClassificationTagPicker = async (
   page: Page,
   trigger: Locator
@@ -903,19 +957,11 @@ export const openClassificationTagPicker = async (
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
 
-  const searchInput = page.getByTestId('classification-tag-picker-search');
-
-  // On CI the first click routinely lands without opening the popover, and
-  // one force-click retry was the only margin left. Keep clicking until the
-  // input shows, but only while it is hidden, so a retry can never toggle an
-  // already-open popover shut.
-  let attempt = 0;
-  await expect(async () => {
-    if (!(await searchInput.isVisible())) {
-      await trigger.click({ force: attempt++ > 0, timeout: 5_000 });
-    }
-    await expect(searchInput).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 30_000 });
+  await clickUntilVisible(
+    trigger,
+    page.getByTestId('classification-tag-picker-search'),
+    { force: 'onRetry' }
+  );
 };
 
 export const assignTag = async (
@@ -1196,13 +1242,14 @@ export const openColumnDetailPanel = async ({
       )
     : null;
 
+  let clickTarget: Locator;
+
   if (entityType === 'MlModel') {
-    const columnName = page
+    clickTarget = page
       .locator(`[${rowSelector}="${columnId}"]`)
       .getByTestId(columnNameTestId)
       .first();
-    await columnName.waitFor({ state: 'visible' });
-    await columnName.click();
+    await clickTarget.waitFor({ state: 'visible' });
   } else {
     const row = page.locator(`[${rowSelector}="${columnId}"]`).first();
     await row.waitFor({ state: 'visible' });
@@ -1213,20 +1260,29 @@ export const openColumnDetailPanel = async ({
 
     const columnNameElement = nameCell.getByTestId(columnNameTestId);
 
-    if ((await columnNameElement.count()) > 0) {
-      await columnNameElement.click({ force: false });
-    } else {
-      await nameCell.click({ force: false });
-    }
+    clickTarget =
+      (await columnNameElement.count()) > 0 ? columnNameElement : nameCell;
   }
-  await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+  const panelContainer = page.locator('.column-detail-panel');
+
+  // Rows keep reflowing for about a second after first paint: nested rows
+  // auto-expand in an effect and description previews clamp once measured.
+  // On a slow runner the row moves between mousedown and mouseup, so the
+  // browser fires `click` on a common ancestor and the cell handler never
+  // runs. Re-click until the panel opens, but only while it is closed: once
+  // the drawer is up its mask covers the row and a click would close it.
+  await expect(async () => {
+    if (!(await panelContainer.isVisible())) {
+      await clickTarget.click({ timeout: 5_000 });
+    }
+    await expect(panelContainer).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
 
   if (apiResponsePromise) {
     const apiResponse = await apiResponsePromise;
     expect(apiResponse.status()).toBe(200);
   }
-
-  const panelContainer = page.locator('.column-detail-panel');
 
   // Wait for the panel content to be loaded
   await expect(panelContainer.getByTestId('entity-link')).toBeVisible();

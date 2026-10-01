@@ -12,18 +12,19 @@
  */
 
 import {
-  render,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
+  within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { Table } from '../../../generated/entity/data/table';
 import { Team } from '../../../generated/entity/teams/team';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { CustomPropertyTable } from './CustomPropertyTable';
-import { PropertyValue } from './PropertyValue';
 
 const mockCustomProperties = [
   {
@@ -43,10 +44,6 @@ const mockCustomProperties = [
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
-}));
-
-jest.mock('./PropertyValue', () => ({
-  PropertyValue: jest.fn().mockReturnValue(<div>PropertyValue</div>),
 }));
 
 jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
@@ -106,40 +103,20 @@ const mockProp = {
   entityType: EntityType.TABLE,
   hasEditAccess: true,
   hasPermission: true,
-  entityDetails: {
-    id: '0e84330a',
-    name: 'cypr081639',
-    fullyQualifiedName: 'cy-da-1705598081639',
-    tags: [],
-    version: 0.1,
-    updatedAt: 1705,
-    updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/databases/',
-    service: {
-      id: '420df68ba',
-      type: 'databaseService',
-      name: 'cy-da348',
-      fullyQualifiedName: 'cy3348',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/services/dat83b567868ba',
-    },
-    serviceType: 'Mysql',
-    default: false,
-    deleted: false,
-    columns: [],
-    votes: {
-      upVotes: 0,
-      downVotes: 0,
-      upVoters: [],
-      downVoters: [],
-    },
-  } as Table,
 };
 
 describe('Test CustomProperty Table Component', () => {
+  beforeEach(() => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: {},
+      onUpdate: jest.fn(),
+      filterWidgets: jest.fn(),
+    });
+  });
+
   it("Should render permission placeholder if doesn't have permission", async () => {
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable
           {...mockProp}
           entityType={EntityType.TABLE}
@@ -156,17 +133,71 @@ describe('Test CustomProperty Table Component', () => {
 
   it('Should render table component', async () => {
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
     const table = await screen.findByTestId('custom-properties-card');
 
     expect(table).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('custom-property-xName-card')
+    ).toBeInTheDocument();
+  });
 
-    const propertyValue = await screen.findByText('PropertyValue');
+  it('Should render read-only property rows in version view', async () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: { extension: { xName: 'Data Platform' } },
+      onUpdate: jest.fn(),
+      filterWidgets: jest.fn(),
+    });
 
-    expect(propertyValue).toBeInTheDocument();
+    await act(async () => {
+      renderWithQueryClient(
+        <CustomPropertyTable
+          {...mockProp}
+          isVersionView
+          entityType={EntityType.TABLE}
+        />
+      );
+    });
+
+    const row = await screen.findByTestId('custom-property-xName-row');
+
+    expect(within(row).getByTestId('property-value')).toHaveTextContent(
+      'Data Platform'
+    );
+    expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('add-value-button')).not.toBeInTheDocument();
+  });
+
+  it('Should save an edited value as the merged entity extension', async () => {
+    const onUpdate = jest.fn().mockResolvedValue(undefined);
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: { id: 'table-id', extension: { other: 'kept' } },
+      onUpdate,
+      filterWidgets: jest.fn(),
+    });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    await act(async () => {
+      renderWithQueryClient(
+        <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+      );
+    });
+
+    await user.click(await screen.findByTestId('add-value-button'));
+    await user.type(screen.getByTestId('value-input'), 'Data Platform{Enter}');
+
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(
+        {
+          id: 'table-id',
+          extension: { other: 'kept', xName: 'Data Platform' },
+        },
+        'extension'
+      )
+    );
   });
 
   it('Should render no data placeholder if custom properties list is empty', async () => {
@@ -174,7 +205,7 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: [] })
     );
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
@@ -190,7 +221,7 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: [] })
     );
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable
           {...mockProp}
           isRenderedInRightPanel
@@ -204,7 +235,9 @@ describe('Test CustomProperty Table Component', () => {
 
   it('Loader should be shown while loading the custom properties', async () => {
     (getTypeByFQN as jest.Mock).mockResolvedValueOnce(Promise.resolve({}));
-    render(<CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />);
+    renderWithQueryClient(
+      <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
+    );
 
     // To check if loader was rendered when the loading state was true and then removed after loading is false
     await waitForElementToBeRemoved(() =>
@@ -223,14 +256,14 @@ describe('Test CustomProperty Table Component', () => {
       Promise.resolve({ customProperties: mockCustomProperties })
     );
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
 
-    const tableRowValue = await screen.findByText('PropertyValue');
-
-    expect(tableRowValue).toBeInTheDocument();
+    expect(await screen.findByTestId('property-name')).toHaveTextContent(
+      'xName'
+    );
   });
 });
 
@@ -259,7 +292,7 @@ describe('Test CustomProperty Table entity source', () => {
     props: Partial<Parameters<typeof CustomPropertyTable>[0]> = {}
   ) => {
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <CustomPropertyTable
           hasEditAccess
           hasPermission
@@ -273,33 +306,40 @@ describe('Test CustomProperty Table entity source', () => {
   it('reads the entity from the entityDetails prop when one is given', async () => {
     await renderWithProps({ entityDetails: teamFromProp });
 
-    expect(
-      (PropertyValue as unknown as jest.Mock).mock.calls[0][0].extension
-    ).toEqual({ xName: 'from-prop' });
+    expect(await screen.findByTestId('property-value')).toHaveTextContent(
+      'from-prop'
+    );
   });
 
   it('falls back to the generic context when no entityDetails prop is given', async () => {
     await renderWithProps();
 
-    expect(
-      (PropertyValue as unknown as jest.Mock).mock.calls[0][0].extension
-    ).toEqual({ xName: 'from-context' });
+    expect(await screen.findByTestId('property-value')).toHaveTextContent(
+      'from-context'
+    );
   });
 
   it('sends extension edits to onEntityUpdate instead of the context handler', async () => {
-    const onEntityUpdate = jest.fn();
-    await renderWithProps({ entityDetails: teamFromProp, onEntityUpdate });
-
-    const { onExtensionUpdate } = (PropertyValue as unknown as jest.Mock).mock
-      .calls[0][0];
-    await act(async () => {
-      await onExtensionUpdate({ xName: 'edited' });
+    const onEntityUpdate = jest.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await renderWithProps({
+      entityDetails: { ...teamFromProp, extension: { other: 'kept' } } as Team,
+      onEntityUpdate,
     });
 
-    expect(onEntityUpdate).toHaveBeenCalledWith(
-      { ...teamFromProp, extension: { xName: 'edited' } },
-      'extension'
+    await user.click(await screen.findByTestId('add-value-button'));
+    await user.type(screen.getByTestId('value-input'), 'edited{Enter}');
+
+    await waitFor(() =>
+      expect(onEntityUpdate).toHaveBeenCalledWith(
+        {
+          ...teamFromProp,
+          extension: { other: 'kept', xName: 'edited' },
+        },
+        'extension'
+      )
     );
+
     expect(contextOnUpdate).not.toHaveBeenCalled();
   });
 

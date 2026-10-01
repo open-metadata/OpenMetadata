@@ -31,7 +31,10 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
 import { UserClass } from '../support/user/UserClass';
 import { clickOutside, redirectToHomePage } from './common';
-import { addCustomPropertiesForEntity } from './customProperty';
+import {
+  addCustomPropertiesForEntity,
+  getCustomPropertyEditButton,
+} from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
 
@@ -283,27 +286,16 @@ export const testCommonOperations = async (
   }
 
   // Check custom properties
-  const customPropertiesLocator = testUserPage.locator(
-    '[data-testid="custom_properties"]'
-  );
+  const customPropertiesLocator = testUserPage.getByTestId('custom_properties');
   if (await customPropertiesLocator.isVisible()) {
     await customPropertiesLocator.click();
+    const visibleEditButtons = getCustomPropertyEditButton(
+      testUserPage.getByTestId('custom-properties-card')
+    ).filter({ visible: true });
     if (effect === 'allow') {
-      await expect(
-        testUserPage
-          .locator('[data-testid="custom-properties-card"]')
-          .first()
-          .getByTestId('edit-icon')
-          .first()
-      ).toBeVisible();
+      await expect(visibleEditButtons).not.toHaveCount(0);
     } else {
-      await expect(
-        testUserPage
-          .locator('[data-testid="custom-properties-card"]')
-          .first()
-          .getByTestId('edit-icon')
-          .first()
-      ).not.toBeVisible();
+      await expect(visibleEditButtons).toHaveCount(0);
     }
   }
 };
@@ -725,7 +717,7 @@ export const createCustomPropertyForEntity = async (
   adminUser: UserClass
 ) => {
   const page = await browser.newPage();
-  await adminUser.login(page);
+  await adminUser.signIn(page);
 
   // Map entity types to their correct API types (same as used in working tests)
   const entityTypeMapping: Record<string, string> = {
