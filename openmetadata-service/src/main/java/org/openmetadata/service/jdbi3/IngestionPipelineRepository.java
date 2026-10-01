@@ -27,10 +27,12 @@ import jakarta.ws.rs.sse.SseEventSink;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -1037,12 +1039,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
     List<PipelineStatus> pipelineStatusList =
         dropStaleQueuedStatuses(JsonUtils.readObjects(jsonResults, PipelineStatus.class));
-    List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
-    if (pipelineServiceClient != null) {
-      allPipelineStatusList.addAll(
-          pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline));
-    }
-    allPipelineStatusList.addAll(pipelineStatusList);
+    List<PipelineStatus> liveStatusList =
+        pipelineServiceClient != null
+            ? pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline)
+            : List.of();
+    List<PipelineStatus> allPipelineStatusList =
+        mergeLiveStatuses(liveStatusList, pipelineStatusList);
     allPipelineStatusList.sort(
         Comparator.comparing(
             PipelineStatus::getTimestamp, Comparator.nullsLast(Comparator.reverseOrder())));
@@ -1112,6 +1114,49 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           runId,
           e.getMessage());
     }
+  }
+
+  /**
+   * Merges the statuses the orchestrator reports live with the stored ones, keeping one entry per
+   * runId. The orchestrator can report a run the worker has already written (the queued run the
+   * server recorded at trigger time, or a terminal state it observed before the worker could), and
+   * listing both shows the same run twice. A live terminal entry replaces a stored row that is still
+   * in flight; otherwise the stored row wins, since it is at least as far along and carries the
+   * worker's details. Entries without a runId cannot be matched and are kept as they are.
+   */
+  static List<PipelineStatus> mergeLiveStatuses(
+      List<PipelineStatus> liveStatuses, List<PipelineStatus> storedStatuses) {
+    Map<String, PipelineStatus> storedByRunId = new HashMap<>();
+    for (PipelineStatus stored : storedStatuses) {
+      if (stored.getRunId() != null) {
+        storedByRunId.put(stored.getRunId(), stored);
+      }
+    }
+    Set<String> overriddenRunIds = new HashSet<>();
+    List<PipelineStatus> merged = new ArrayList<>();
+    for (PipelineStatus live : liveStatuses) {
+      PipelineStatus stored = live.getRunId() != null ? storedByRunId.get(live.getRunId()) : null;
+      if (stored != null) {
+        if (!isTerminal(live) || isTerminal(stored)) {
+          continue;
+        }
+        overriddenRunIds.add(live.getRunId());
+      }
+      merged.add(live);
+    }
+    for (PipelineStatus stored : storedStatuses) {
+      if (stored.getRunId() == null || !overriddenRunIds.contains(stored.getRunId())) {
+        merged.add(stored);
+      }
+    }
+    return merged;
+  }
+
+  private static boolean isTerminal(PipelineStatus pipelineStatus) {
+    PipelineStatusType state = pipelineStatus.getPipelineState();
+    return state != null
+        && state != PipelineStatusType.QUEUED
+        && state != PipelineStatusType.RUNNING;
   }
 
   private List<PipelineStatus> dropStaleQueuedStatuses(List<PipelineStatus> pipelineStatusList) {
