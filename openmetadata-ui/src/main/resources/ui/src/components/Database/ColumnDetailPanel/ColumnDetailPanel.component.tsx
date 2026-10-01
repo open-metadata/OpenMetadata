@@ -17,7 +17,7 @@ import {
   ChevronRight,
   ChevronUp,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

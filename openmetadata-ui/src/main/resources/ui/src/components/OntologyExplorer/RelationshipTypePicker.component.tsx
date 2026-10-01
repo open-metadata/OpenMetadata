@@ -12,7 +12,11 @@
  */
 
 import { Button, ButtonUtility, Input } from '@openmetadata/ui-core-components';
-import { ArrowRight, SearchMd, XClose } from '@untitledui/icons';
+import {
+  ArrowRight,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -40,7 +44,7 @@ const PALETTE_CLASSES: Record<PaletteKey, string> = {
 };
 
 const SearchInputIcon = ({ className }: { className?: string }) => (
-  <SearchMd aria-hidden="true" className={className} />
+  <Search aria-hidden="true" className={className} />
 );
 
 const renderGroup = (

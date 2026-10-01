@@ -17,7 +17,7 @@ import {
   TableCard,
   Tabs,
 } from '@openmetadata/ui-core-components';
-import { Expand } from '@openmetadata/ui-core-components/icons';
+import { Plus as Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

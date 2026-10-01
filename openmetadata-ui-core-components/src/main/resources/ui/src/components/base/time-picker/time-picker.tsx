@@ -1,5 +1,5 @@
 import { Time } from '@internationalized/date';
-import { Clock } from '@untitledui/icons';
+import { Clock } from '../../../icons';
 import type { Ref } from 'react';
 import type {
   TimeFieldProps as AriaTimeFieldProps,

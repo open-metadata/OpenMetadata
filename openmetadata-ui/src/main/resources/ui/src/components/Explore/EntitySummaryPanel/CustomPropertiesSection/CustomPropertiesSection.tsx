@@ -17,7 +17,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@openmetadata/ui-core-components/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
@@ -174,7 +174,7 @@ const CustomPropertiesSection = ({
       gap={3}>
       <Input
         aria-label={searchLabel}
-        icon={SearchLg}
+        icon={Search}
         inputDataTestId="searchbar"
         placeholder={searchLabel}
         size="sm"

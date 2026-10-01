@@ -12,7 +12,7 @@
  */
 
 import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria';
 import { useTranslation } from 'react-i18next';

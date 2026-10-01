@@ -18,7 +18,7 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlertTriangle, Copy01 } from '@untitledui/icons';
+import { AlertTriangle, Copy01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
