@@ -10,32 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
-import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
-import { FC, Fragment, useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { FC, Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { CUSTOM_PROPERTIES_ICON_MAP } from '../../../constants/CustomProperty.constants';
 import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
-import { getEntityName } from '../../../utils/EntityNameUtils';
-import { columnSorter } from '../../../utils/EntitySortUtils';
-import { descriptionTableObject } from '../../../utils/TableColumn.util';
+import { CustomPropertyChanges } from '../../../rest/metadataTypeAPI';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ColumnsType } from '../../common/Table/Table.interface';
-import Table from '../../common/Table/TableV2';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
-import './custom-property-table.less';
+import CustomPropertiesListTable from './CustomPropertiesListTable';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
-import EditCustomPropertyModal, {
-  FormData,
-} from './EditCustomPropertyModal/EditCustomPropertyModal';
+import EditCustomPropertyModal from './EditCustomPropertyModal/EditCustomPropertyModal';
 
 export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
@@ -49,7 +35,6 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   const [selectedProperty, setSelectedProperty] = useState<CustomProperty>(
     {} as CustomProperty
   );
-
   const [operation, setOperation] = useState<OPERATION>(OPERATION.NO_OPERATION);
 
   const resetSelectedProperty = () => {
@@ -65,28 +50,20 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     }
   }, [isButtonLoading]);
 
-  const handlePropertyUpdate = async (data: FormData) => {
-    const config = data.customPropertyConfig;
-    const isEnumType = selectedProperty.propertyType.name === 'enum';
-
-    await onUpdateProperty(selectedProperty.name, {
-      description: data.description,
-      displayName: data.displayName,
-      ...(config
-        ? {
-            customPropertyConfig: {
-              config: isEnumType
-                ? {
-                    multiSelect: Boolean(data?.multiSelect),
-                    values: config,
-                  }
-                : (config as string[]),
-            },
-          }
-        : {}),
-    });
+  const handlePropertyUpdate = async (changes: CustomPropertyChanges) => {
+    await onUpdateProperty(selectedProperty.name, changes);
     resetSelectedProperty();
   };
+
+  const handleEdit = useCallback((property: CustomProperty) => {
+    setSelectedProperty(property);
+    setOperation(OPERATION.UPDATE);
+  }, []);
+
+  const handleDelete = useCallback((property: CustomProperty) => {
+    setSelectedProperty(property);
+    setOperation(OPERATION.DELETE);
+  }, []);
 
   const deleteCheck = useMemo(
     () => !isEmpty(selectedProperty) && operation === OPERATION.DELETE,
@@ -97,181 +74,27 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     [selectedProperty, operation]
   );
 
-  const tableColumn: ColumnsType<CustomProperty> = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        render: (_, record) => getEntityName(record),
-        sorter: columnSorter,
-      },
-      {
-        title: t('label.type'),
-        dataIndex: 'propertyType',
-        key: 'propertyType',
-        render: (propertyType: CustomProperty['propertyType']) => {
-          const Icon =
-            CUSTOM_PROPERTIES_ICON_MAP[
-              propertyType.name as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
-            ];
-
-          return (
-            <div className="d-flex gap-2 custom-property-type-chip items-center">
-              {Icon && <Icon width={20} />}
-              <span>
-                {startCase(getEntityName(propertyType).replace(/-cp/g, ''))}
-              </span>
-            </div>
-          );
-        },
-      },
-      {
-        title: t('label.config'),
-        dataIndex: 'customPropertyConfig',
-        key: 'customPropertyConfig',
-        render: (data: CustomProperty['customPropertyConfig'], record) => {
-          if (isUndefined(data)) {
-            return <span>--</span>;
-          }
-
-          const config = data.config;
-
-          // If config is an array and not empty
-          if (isArray(config) && !isEmpty(config)) {
-            return (
-              <Typography
-                className="tw:text-primary"
-                data-testid={`${record.name}-config`}>
-                {JSON.stringify(config ?? [])}
-              </Typography>
-            );
-          }
-
-          // If config is an object, then it is a enum config
-          if (!isString(config) && !isArray(config)) {
-            if (config?.columns) {
-              return (
-                <div
-                  className="w-full d-flex gap-2 flex-column"
-                  data-testid="table-config">
-                  <Typography className="tw:text-primary">
-                    <span className="font-medium">{`${t(
-                      'label.column-plural'
-                    )}:`}</span>
-                    <ul className="m-b-0">
-                      {config.columns.map((column) => (
-                        <li key={column}>{column}</li>
-                      ))}
-                    </ul>
-                  </Typography>
-                </div>
-              );
-            }
-
-            return (
-              <div
-                className="w-full d-flex gap-2 flex-column"
-                data-testid="enum-config">
-                <Typography className="tw:text-primary">
-                  {JSON.stringify(config?.values ?? [])}
-                </Typography>
-                <Typography className="tw:text-primary">
-                  {t('label.multi-select')}:{' '}
-                  {config?.multiSelect ? t('label.yes') : t('label.no')}
-                </Typography>
-              </div>
-            );
-          }
-
-          // else it is a string
-          return <Typography className="tw:text-primary">{config}</Typography>;
-        },
-      },
-      ...descriptionTableObject<CustomProperty>({ width: 300 }),
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 80,
-        fixed: 'right',
-        render: (_, record) => (
-          <Space align="center" size={14}>
-            <Tooltip
-              title={
-                hasAccess
-                  ? t('label.edit-entity', {
-                      entity: t('label.property'),
-                    })
-                  : t(NO_PERMISSION_FOR_ACTION)
-              }>
-              <Button
-                className="cursor-pointer p-0"
-                data-testid="edit-button"
-                disabled={!hasAccess}
-                size="small"
-                type="text"
-                onClick={() => {
-                  setSelectedProperty(record);
-                  setOperation(OPERATION.UPDATE);
-                }}>
-                <IconEdit name={t('label.edit')} width={16} />
-              </Button>
-            </Tooltip>
-            <Tooltip
-              title={
-                hasAccess
-                  ? t('label.delete-entity', {
-                      entity: t('label.property'),
-                    })
-                  : t(NO_PERMISSION_FOR_ACTION)
-              }>
-              <Button
-                className="cursor-pointer p-0"
-                data-testid="delete-button"
-                disabled={!hasAccess}
-                size="small"
-                type="text"
-                onClick={() => {
-                  setSelectedProperty(record);
-                  setOperation(OPERATION.DELETE);
-                }}>
-                <IconDelete name={t('label.delete')} width={16} />
-              </Button>
-            </Tooltip>
-          </Space>
-        ),
-      },
-    ],
-    [hasAccess, t]
-  );
-
   return (
     <Fragment>
-      <Table
-        columns={tableColumn}
-        containerClassName="entity-custom-properties-table"
-        data-testid="entity-custom-properties-table"
-        dataSource={customProperties}
-        loading={isLoading}
-        locale={{
-          emptyText: (
-            <ErrorPlaceHolder
-              className="mt-xs border-none"
-              doc={ADD_CUSTOM_PROPERTIES_DOCS}
-              heading={t('label.property')}
-              permission={hasAccess}
-              permissionValue={t('label.create-entity', {
-                entity: t('label.custom-property'),
-              })}
-              type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            />
-          ),
-        }}
-        pagination={false}
-        rowKey="name"
-        scroll={TABLE_SCROLL_VALUE}
-        size="small"
+      <CustomPropertiesListTable
+        canDelete={hasAccess}
+        canEdit={hasAccess}
+        customProperties={customProperties}
+        emptyText={
+          <ErrorPlaceHolder
+            className="mt-xs border-none"
+            doc={ADD_CUSTOM_PROPERTIES_DOCS}
+            heading={t('label.property')}
+            permission={hasAccess}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.custom-property'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          />
+        }
+        isLoading={isLoading}
+        onDelete={handleDelete}
+        onEdit={handleEdit}
       />
       <ConfirmationModal
         bodyText={t('message.are-you-sure-delete-property', {
@@ -290,7 +113,6 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
       {updateCheck && (
         <EditCustomPropertyModal
           customProperty={selectedProperty}
-          visible={updateCheck}
           onCancel={resetSelectedProperty}
           onSave={handlePropertyUpdate}
         />

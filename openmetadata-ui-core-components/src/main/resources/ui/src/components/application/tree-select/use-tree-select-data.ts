@@ -18,12 +18,23 @@ import type {
   TreeSelectNode,
 } from './tree-select.types';
 
+// Keyed by node id, so the root listing needs one no node can collide with.
+const ROOT_CACHE_KEY = '\u0000root';
+
+/** A branch's loaded children plus what it takes to ask for the next page. */
+interface BranchPage<T> {
+  nodes: TreeSelectNode<T>[];
+  hasMore?: boolean;
+  total?: number;
+  cursor?: string;
+}
+
 interface TreeSelectDataState<T> {
   data: TreeSelectNode<T>[];
   loading: boolean;
   error: string | null;
   loadingNodes: Set<string>;
-  cachedData: Map<string, TreeSelectNode<T>[]>;
+  cachedData: Map<string, BranchPage<T>>;
 }
 
 interface UseTreeSelectDataOptions<T> {
@@ -41,38 +52,57 @@ interface UseTreeSelectDataReturn<T> {
   error: string | null;
   loadingNodes: Set<string>;
   loadChildren: (parentId: string) => Promise<void>;
+  loadMoreChildren: (parentId: string) => Promise<void>;
 }
 
 const insertChildrenIntoTree = <T>(
   nodes: TreeSelectNode<T>[],
   parentId: string,
-  children: TreeSelectNode<T>[],
-  hasMore?: boolean
+  page: BranchPage<T>,
+  append = false
 ): TreeSelectNode<T>[] =>
   nodes.map((node) => {
     if (node.id === parentId) {
+      const children = append
+        ? [...(node.children ?? []), ...page.nodes]
+        : page.nodes;
+
       // An empty result must not make it a leaf, or it loses its chevron.
       return {
         ...node,
         children,
-        hasMoreChildren: hasMore === true,
+        hasMoreChildren: page.hasMore === true,
+        childrenTotal: page.total,
+        childrenCursor: page.cursor,
         isLeaf: children.length > 0 ? false : node.isLeaf,
       };
     }
     if (node.children) {
       return {
         ...node,
-        children: insertChildrenIntoTree(
-          node.children,
-          parentId,
-          children,
-          hasMore
-        ),
+        children: insertChildrenIntoTree(node.children, parentId, page, append),
       };
     }
 
     return node;
   });
+
+const findNode = <T>(
+  nodes: TreeSelectNode<T>[],
+  id: string
+): TreeSelectNode<T> | undefined => {
+  for (const node of nodes) {
+    if (node.id === id) {
+      return node;
+    }
+    const found = node.children && findNode(node.children, id);
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
 
 export const useTreeSelectData = <T = unknown>({
   fetchData,
@@ -91,10 +121,13 @@ export const useTreeSelectData = <T = unknown>({
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const loadingNodesRef = useRef<Set<string>>(new Set());
-  const cachedDataRef = useRef<Map<string, TreeSelectNode<T>[]>>(new Map());
+  const cachedDataRef = useRef<Map<string, BranchPage<T>>>(new Map());
+  // Read inside stable callbacks, so `loadMoreChildren` never needs the tree.
+  const dataRef = useRef<TreeSelectNode<T>[]>([]);
+  dataRef.current = state.data;
 
   const fetchTreeData = useCallback(
-    async (params: TreeSelectDataFetcherParams) => {
+    async (params: TreeSelectDataFetcherParams, append = false) => {
       abortControllerRef.current?.abort();
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -136,19 +169,32 @@ export const useTreeSelectData = <T = unknown>({
           let nextCachedData = cachedDataRef.current;
 
           if (params.parentId) {
+            const previous = cachedDataRef.current.get(params.parentId);
+            const page: BranchPage<T> = {
+              nodes:
+                append && previous
+                  ? [...previous.nodes, ...response.nodes]
+                  : response.nodes,
+              hasMore: response.hasMore,
+              total: response.total,
+              cursor: response.nextCursor,
+            };
+
             nextCachedData = new Map(cachedDataRef.current);
-            nextCachedData.set(params.parentId, response.nodes);
+            nextCachedData.set(params.parentId, page);
             nextData = insertChildrenIntoTree(
               prev.data,
               params.parentId,
-              response.nodes,
-              response.hasMore
+              { ...page, nodes: response.nodes },
+              append
             );
             nextLoadingNodes.delete(params.parentId);
           } else {
             nextData = response.nodes;
             if (!params.searchTerm) {
-              nextCachedData = new Map([['root', response.nodes]]);
+              nextCachedData = new Map([
+                [ROOT_CACHE_KEY, { nodes: response.nodes }],
+              ]);
             }
           }
 
@@ -237,11 +283,25 @@ export const useTreeSelectData = <T = unknown>({
     [fetchTreeData]
   );
 
+  // The next page of an already-loaded branch, appended to what it has.
+  const loadMoreChildren = useCallback(
+    async (parentId: string) => {
+      const node = findNode(dataRef.current, parentId);
+      if (!node?.hasMoreChildren || loadingNodesRef.current.has(parentId)) {
+        return;
+      }
+
+      await fetchTreeData({ parentId, after: node.childrenCursor }, true);
+    },
+    [fetchTreeData]
+  );
+
   return {
     treeData: state.data,
     loading: state.loading,
     error: state.error,
     loadingNodes: state.loadingNodes,
     loadChildren,
+    loadMoreChildren,
   };
 };

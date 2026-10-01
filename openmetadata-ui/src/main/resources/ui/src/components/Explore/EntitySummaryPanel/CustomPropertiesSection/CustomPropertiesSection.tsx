@@ -11,18 +11,24 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { useMemo, useState } from 'react';
+import {
+  Box,
+  Input,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Search } from '@openmetadata/ui-core-components/icons';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
+import { buildUpdatedExtension } from '../../../../utils/CustomProperty.utils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
-import { PropertyValue } from '../../../common/CustomPropertyTable/PropertyValue';
+import { CustomPropertyListItem } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertyListItem';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
-import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { ExtensionDataProps } from '../../../Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import { CustomPropertiesSectionProps } from './CustomPropertiesSection.interface';
 import './CustomPropertiesSection.less';
@@ -39,8 +45,14 @@ const CustomPropertiesSection = ({
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState<string>('');
 
-  const customProperties = entityTypeDetail?.customProperties || [];
-  const extensionData = (entityData?.extension || {}) as ExtensionDataProps;
+  const customProperties = useMemo(
+    () => entityTypeDetail?.customProperties ?? [],
+    [entityTypeDetail?.customProperties]
+  );
+  const extensionData = useMemo(
+    () => (entityData?.extension ?? {}) as ExtensionDataProps,
+    [entityData?.extension]
+  );
 
   const filteredProperties = useMemo(() => {
     if (!searchText) {
@@ -62,10 +74,27 @@ const CustomPropertiesSection = ({
     });
   }, [customProperties, searchText]);
 
+  const handleValueSave = useCallback(
+    (property: CustomProperty, value: unknown) =>
+      onExtensionUpdate(
+        buildUpdatedExtension(
+          extensionData,
+          property.name,
+          property.propertyType.name ?? '',
+          value
+        )
+      ),
+    [extensionData, onExtensionUpdate]
+  );
+
   const emptyState = useMemo(() => {
     if (searchText) {
       return (
-        <Typography as="p" className="text-center p-sm" color="secondary">
+        <Typography
+          as="p"
+          className="tw:p-2 tw:text-center tw:text-tertiary"
+          data-testid="no-matching-custom-properties"
+          size="text-sm">
           {t('message.no-entity-found-for-name', {
             entity: t('label.custom-property-plural'),
             name: searchText,
@@ -134,32 +163,42 @@ const CustomPropertiesSection = ({
     return emptyState;
   }
 
+  const searchLabel = t('label.search-for-type', {
+    type: t('label.custom-property'),
+  });
+
   return (
-    <div className="entity-summary-panel-tab-content custom-properties-section-container">
-      <div className="p-x-md p-t-sm">
-        <SearchBarComponent
-          placeholder={t('label.search-for-type', {
-            type: t('label.custom-property'),
-          })}
-          searchValue={searchText}
-          onSearch={setSearchText}
-        />
-      </div>
-      <div className="custom-properties-list p-x-md">
-        {filteredProperties.length > 0
-          ? filteredProperties.map((property: CustomProperty) => (
-              <PropertyValue
-                isRenderedInRightPanel
-                extension={extensionData}
-                hasEditPermissions={hasEditPermissions}
-                key={property.name}
-                property={property}
-                onExtensionUpdate={onExtensionUpdate}
-              />
-            ))
-          : emptyState}
-      </div>
-    </div>
+    <Box
+      className="entity-summary-panel-tab-content custom-properties-section-container tw:p-4"
+      direction="col"
+      gap={3}>
+      <Input
+        aria-label={searchLabel}
+        icon={Search}
+        inputDataTestId="searchbar"
+        placeholder={searchLabel}
+        size="sm"
+        value={searchText}
+        onChange={setSearchText}
+      />
+      {filteredProperties.length > 0 ? (
+        <ul
+          className="tw:m-0 tw:list-none tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-0"
+          data-testid="custom-properties-list">
+          {filteredProperties.map((property: CustomProperty) => (
+            <CustomPropertyListItem
+              hasEditPermissions={hasEditPermissions}
+              key={property.name}
+              property={property}
+              value={extensionData[property.name]}
+              onValueSave={handleValueSave}
+            />
+          ))}
+        </ul>
+      ) : (
+        emptyState
+      )}
+    </Box>
   );
 };
 

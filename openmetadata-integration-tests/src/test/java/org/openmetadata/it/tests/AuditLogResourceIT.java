@@ -13,6 +13,7 @@
 
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -20,16 +21,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1989,37 +2005,39 @@ public class AuditLogResourceIT {
   // ==================== Service Name Extraction Tests ====================
   // These tests verify the extractServiceName logic in AuditLogRepository
 
-  @Test
-  void test_serviceName_extractedFromEntityFQN() throws Exception {
-    // Verify serviceName is correctly extracted from entity FQN
-    // For "sample_data.ecommerce_db.shopify.raw_product_catalog", serviceName should be
-    // "sample_data"
-    OpenMetadataClient client = SdkClients.adminClient();
+  @ParameterizedTest
+  @ValueSource(strings = {"sample_data", "prod.db", "prod.us.east.db"})
+  @ExtendWith(TestNamespaceExtension.class)
+  void test_serviceName_extractedFromEntityFQN(String serviceName, TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName(ns.prefix(serviceName), ns);
+    final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    final Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
 
-    Map<String, String> params = new HashMap<>();
-    params.put("entityType", "table");
-    params.put("limit", "10");
+    final JsonNode entry = waitForTableCreatedAuditLog(client, table);
+    assertEquals(table.getFullyQualifiedName(), entry.path("entityFQN").asText());
+    assertEquals(service.getFullyQualifiedName(), entry.path("serviceName").asText());
+  }
 
-    String response = executeGet(client, AUDIT_LOGS_PATH, params);
-    assertNotNull(response);
-
-    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
-    java.util.List<Map<String, Object>> data =
-        (java.util.List<Map<String, Object>>) result.get("data");
-
-    for (Map<String, Object> entry : data) {
-      String entityFqn = (String) entry.get("entityFQN");
-      String serviceName = (String) entry.get("serviceName");
-
-      if (entityFqn != null && entityFqn.contains(".")) {
-        // Service name should be the first part of the FQN
-        String expectedServiceName = entityFqn.split("\\.")[0];
-        assertEquals(
-            expectedServiceName,
-            serviceName,
-            "serviceName should be first part of entityFQN: " + entityFqn);
-      }
-    }
+  private JsonNode waitForTableCreatedAuditLog(OpenMetadataClient client, Table table) {
+    final Map<String, String> params =
+        Map.of(
+            "entityType",
+            Entity.TABLE,
+            "entityFQN",
+            table.getFullyQualifiedName(),
+            "eventType",
+            EventType.ENTITY_CREATED.value(),
+            "limit",
+            "1");
+    return await("creation audit entry for " + table.getFullyQualifiedName())
+        .atMost(Duration.ofMillis(AUDIT_LOG_TIMEOUT_MS))
+        .pollInterval(Duration.ofMillis(AUDIT_LOG_POLL_INTERVAL_MS))
+        .until(
+            () -> MAPPER.readTree(executeGet(client, AUDIT_LOGS_PATH, params)).path("data"),
+            data -> data.isArray() && data.size() == 1)
+        .get(0);
   }
 
   @Test

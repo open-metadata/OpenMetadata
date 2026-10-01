@@ -7,6 +7,7 @@
     "close": "Pechar",
     "close-navigation-menu": "Pechar menú de navegación",
     "copy-link": "Copiar ligazón",
+    "count-remaining": "{{count}} restantes",
     "count-selected": "{{count}} seleccionados",
     "current-page": "Páxina actual",
     "date-range-picker": "Selector de intervalo de datas",
@@ -36,6 +37,7 @@
     "select-date": "Seleccionar data",
     "select-dates": "Seleccionar datas",
     "select-only-one-row": "Seleccionar unha fila",
+    "show-count-more": "Amosar {{count}} máis",
     "show-hidden-breadcrumbs": "Amosar migas de pan ocultas",
     "today": "Hoxe",
     "tree-select": "Selección de árbore"
