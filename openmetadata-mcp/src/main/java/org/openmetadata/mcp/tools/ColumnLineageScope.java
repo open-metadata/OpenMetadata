@@ -41,10 +41,16 @@ final class ColumnLineageScope {
 
   /**
    * Columns, nested struct children and schema fields all carry their own {@code fullyQualifiedName}
-   * in the entity JSON, so one search covers tables, data models, topics and containers alike.
+   * in the entity JSON, so one search covers every entity type. A read that carries no child FQN at
+   * all - a container's columns live under {@code dataModel}, which a plain read leaves out - cannot
+   * disprove the column, so only the FQN-prefix check applies there.
    */
   static String requireColumnExists(EntityInterface entity, String columnFqn) {
-    if (!JsonUtils.valueToTree(entity).findValuesAsText(FQN_FIELD).contains(columnFqn)) {
+    List<String> fqns = JsonUtils.valueToTree(entity).findValuesAsText(FQN_FIELD);
+    boolean readCarriesChildren =
+        fqns.stream()
+            .anyMatch(fqn -> FullyQualifiedName.isParent(fqn, entity.getFullyQualifiedName()));
+    if (readCarriesChildren && !fqns.contains(columnFqn)) {
       throw new IllegalArgumentException(
           String.format(
               "Column '%s' is not a column of '%s'", columnFqn, entity.getFullyQualifiedName()));
@@ -90,10 +96,12 @@ final class ColumnLineageScope {
       List<Edge> edges, List<Edge> kept, UUID rootId, Direction direction) {
     Set<UUID> reachedTables = new HashSet<>(Set.of(rootId));
     kept.forEach(edge -> reachedTables.add(direction.far(edge)));
+    // distinct(): the repository adds a node's edges again for every path that reaches it.
     return (int)
         listOrEmpty(edges).stream()
             .filter(edge -> mappingsOf(edge).isEmpty())
             .filter(edge -> reachedTables.contains(direction.near(edge)))
+            .distinct()
             .count();
   }
 

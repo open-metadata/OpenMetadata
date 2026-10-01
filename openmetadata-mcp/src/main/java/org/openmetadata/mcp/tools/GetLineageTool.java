@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.PageCursor;
+import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
@@ -58,9 +59,9 @@ public class GetLineageTool implements McpTool {
   private static final String PARAM_INCLUDE_COLUMN_LINEAGE = "includeColumnLineage";
   private static final String PARAM_INCLUDE_SQL = "includeSql";
   private static final String PARAM_COLUMN = "column";
-  private static final String PARAM_CURSOR = "cursor";
   private static final String COLUMN_UNMAPPED_EDGES_KEY = "columnUnmappedEdges";
   private static final String OVERSIZED_EDGES_KEY = "oversizedEdges";
+  private static final int MAX_NAMED_OVERSIZED_EDGES = 10;
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   record SlimEdge(
@@ -155,7 +156,7 @@ public class GetLineageTool implements McpTool {
     Map<String, Object> result =
         enforceSizeBudget(
             toSlim(filtered.lineage(), options, pipelineVisible),
-            pageStart(McpParams.getString(params, PARAM_CURSOR, null)));
+            VectorPagingContract.cursorOffsetOrDefault(params, 0));
     if (column != null) {
       annotateUnmappedEdges(result, unmappedEdges);
     }
@@ -174,7 +175,7 @@ public class GetLineageTool implements McpTool {
           String.format(
               "%d lineage edge(s) out of tables this column reaches have no column-level mappings,"
                   + " so whether the column flows through them is unknown; they were left out."
-                  + " Call without 'column' to see them.",
+                  + " Call without 'column' to see the ones you can view.",
               unmappedEdges));
     }
   }
@@ -459,7 +460,7 @@ public class GetLineageTool implements McpTool {
                 slim.root(), slim.rootId(), slim.rootType(), page.upstream(), page.downstream()));
     result.put("totalEdges", page.total());
     result.put("returnedEdges", page.returned());
-    result.put("edgesTruncated", page.hasMore());
+    result.put("edgesTruncated", page.isIncomplete());
     if (page.hasMore()) {
       annotateNextPage(result, slim, page);
     }
@@ -469,16 +470,21 @@ public class GetLineageTool implements McpTool {
     return result;
   }
 
+  /** Names only the first few: the list of skipped edges is itself unbounded. */
   private static void annotateOversizedEdges(Map<String, Object> result, List<SlimEdge> edges) {
     List<String> named =
-        edges.stream().map(edge -> edge.fromFQN() + " -> " + edge.toFQN()).toList();
+        edges.stream()
+            .limit(MAX_NAMED_OVERSIZED_EDGES)
+            .map(edge -> edge.fromFQN() + " -> " + edge.toFQN())
+            .toList();
     result.put(OVERSIZED_EDGES_KEY, named);
     appendMessage(
         result,
         String.format(
-            "%d edge(s) were too large for any response and were skipped, listed in"
-                + " '%s'. This is usually their SQL; call without includeSql to see them.",
-            named.size(), OVERSIZED_EDGES_KEY));
+            "%d edge(s) were too large for any response and were skipped; up to %d are named in"
+                + " '%s'. Their size is usually SQL (includeSql) or a very long column-mapping"
+                + " list (includeColumnLineage); without those they can be returned.",
+            edges.size(), MAX_NAMED_OVERSIZED_EDGES, OVERSIZED_EDGES_KEY));
   }
 
   private static void annotateNextPage(
@@ -496,14 +502,6 @@ public class GetLineageTool implements McpTool {
             "Graph clipped to fit the response budget: edges %d-%d of %d returned. Call again with"
                 + " the same arguments and cursor=nextCursor for the next page.",
             page.start() + 1, page.nextFrom(), page.total()));
-  }
-
-  /** A missing or unreadable cursor starts at the first edge rather than failing the call. */
-  static int pageStart(String cursor) {
-    return PageCursor.decode(cursor)
-        .filter(PageCursor.Cursor::isOffset)
-        .map(PageCursor.Cursor::offset)
-        .orElse(0);
   }
 
   /**

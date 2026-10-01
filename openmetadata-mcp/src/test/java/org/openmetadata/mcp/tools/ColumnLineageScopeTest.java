@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
@@ -194,6 +195,32 @@ class ColumnLineageScopeTest {
     int unmapped = ColumnLineageScope.narrow(lineage, ORDERS_ID);
 
     assertEquals(2, unmapped, "STAGING->MART and ORDERS->UNRELATED; RAW is never reached");
+  }
+
+  /** The repository adds a node's edges again for every path that reaches it; count each once. */
+  @Test
+  void countsAnUnmappedEdgeOnceWhenTheRepositoryRepeatsIt() {
+    Edge unmapped = edge(STAGING, MART);
+    EntityLineage lineage =
+        lineage(
+            List.of(STAGING, MART),
+            List.of(),
+            List.of(edge(ORDERS, STAGING, mapping(STG_REF, ORDERS_ID)), unmapped, unmapped));
+
+    assertEquals(1, ColumnLineageScope.narrow(lineage, ORDERS_ID));
+  }
+
+  /**
+   * Not every entity read carries its columns - a container's live under dataModel, which the read
+   * leaves out - so an entity with no child FQNs at all cannot disprove the column.
+   */
+  @Test
+  void acceptsAColumnWhenTheEntityReadCarriesNoChildFqns() {
+    Container container = new Container().withFullyQualifiedName("s3.bucket.orders");
+
+    assertEquals(
+        "s3.bucket.orders.id",
+        ColumnLineageScope.requireColumnExists(container, "s3.bucket.orders.id"));
   }
 
   @Test

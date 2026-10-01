@@ -29,10 +29,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 final class LineageEdgePager {
 
   /**
-   * Room kept for the markers added after a page is cut (counts, cursor, notes), so a page holding
-   * one very large edge still lands under the dispatch cap.
+   * Room kept for the markers added after a page is cut (counts, cursor, notes, the named oversized
+   * edges), so a page that measures just under the cap still lands under it once they are added.
    */
-  private static final int ANNOTATION_HEADROOM_CHARS = 2_000;
+  private static final int ANNOTATION_HEADROOM_CHARS = 5_000;
+
+  private static final int PAGE_CHARS_LIMIT =
+      McpResponseTrim.MAX_RESPONSE_CHARS - ANNOTATION_HEADROOM_CHARS;
 
   /**
    * The edges one page holds per direction, the index of its first edge, where the next page
@@ -47,6 +50,11 @@ final class LineageEdgePager {
       List<SlimEdge> oversized) {
     boolean hasMore() {
       return nextFrom < total;
+    }
+
+    /** Edges remain to page to, or some were skipped and will never be returned. */
+    boolean isIncomplete() {
+      return hasMore() || !oversized.isEmpty();
     }
 
     int returned() {
@@ -87,17 +95,18 @@ final class LineageEdgePager {
    */
   private static boolean isTooLargeForAnyResponse(SlimLineage slim, DirectedEdge edge) {
     return McpResponseTrim.serializedLength(JsonUtils.getMap(withEdges(slim, List.of(edge))))
-        > McpResponseTrim.MAX_RESPONSE_CHARS - ANNOTATION_HEADROOM_CHARS;
+        > PAGE_CHARS_LIMIT;
   }
 
   /**
-   * The whole window when it fits under the dispatch cap (the common case, returned unchanged);
-   * otherwise as many leading edges as fit the item budget, which is never zero while any remain.
+   * The whole window when it fits under the cap less the marker headroom (the common case, returned
+   * unchanged); otherwise as many leading edges as fit the item budget, which is never zero while
+   * any remain.
    */
   private static int fittingCount(SlimLineage slim, List<DirectedEdge> window) {
     int count = window.size();
     if (McpResponseTrim.serializedLength(JsonUtils.getMap(withEdges(slim, window)))
-        > McpResponseTrim.MAX_RESPONSE_CHARS) {
+        > PAGE_CHARS_LIMIT) {
       long overhead =
           McpResponseTrim.serializedLength(JsonUtils.getMap(withEdges(slim, List.of())));
       long available = Math.max(0, ResponseBudget.defaultBudgetChars() - overhead);

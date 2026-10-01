@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.mcp.tools.GetLineageTool.SlimLineage;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.PageCursor;
+import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -589,9 +590,92 @@ class GetLineageToolTest {
 
   @Test
   void aMissingOrUnreadableCursorStartsAtTheFirstEdge() {
-    assertEquals(0, GetLineageTool.pageStart(null));
-    assertEquals(0, GetLineageTool.pageStart("not-a-cursor"));
-    assertEquals(144, GetLineageTool.pageStart(PageCursor.encodeOffset(144)));
+    assertEquals(0, VectorPagingContract.cursorOffsetOrDefault(Map.of(), 0));
+    assertEquals(
+        0, VectorPagingContract.cursorOffsetOrDefault(Map.of("cursor", "not-a-cursor"), 0));
+    assertEquals(
+        144,
+        VectorPagingContract.cursorOffsetOrDefault(
+            Map.of("cursor", PageCursor.encodeOffset(144)), 0));
+  }
+
+  /**
+   * The "whole page fits" check has to leave the same room for markers as the oversized-edge check:
+   * a page at 99K plus totals, notes and hiddenNodes crosses the cap, and the dispatch floor then
+   * swaps it for a stub with no cursor.
+   */
+  @Test
+  void aPageWithinTheMarkerHeadroomOfTheCapIsClipped() {
+    EntityReference root = ref("orders", "db.public.orders");
+    EntityReference first = ref("first", "db.mart.a_first");
+    EntityReference second = ref("second", "db.mart.b_second");
+    String nearHalfCap = "SELECT " + "x".repeat(McpResponseTrim.MAX_RESPONSE_CHARS / 2 - 1_000);
+    EntityLineage lineage =
+        new EntityLineage()
+            .withEntity(root)
+            .withNodes(List.of(first, second))
+            .withUpstreamEdges(List.of())
+            .withDownstreamEdges(
+                List.of(
+                    edgeWithSql(root, first, nearHalfCap), edgeWithSql(root, second, nearHalfCap)));
+
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(
+            GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, true)), 0);
+
+    assertEquals(
+        1, response.get("returnedEdges"), "two edges this close to the cap need two pages");
+    assertEquals(Boolean.TRUE, response.get(McpResponseTrim.HAS_MORE_KEY));
+  }
+
+  /** Skipped edges were not returned, so the graph is incomplete even when nothing follows them. */
+  @Test
+  void skippingAnOversizedLastEdgeStillMarksTheGraphIncomplete() {
+    EntityReference root = ref("orders", "db.public.orders");
+    EntityReference huge = ref("huge", "db.mart.b_huge");
+    String hugeSql = "SELECT " + "x".repeat(McpResponseTrim.MAX_RESPONSE_CHARS + 10_000);
+    EntityLineage lineage =
+        new EntityLineage()
+            .withEntity(root)
+            .withNodes(List.of(huge))
+            .withUpstreamEdges(List.of())
+            .withDownstreamEdges(List.of(edgeWithSql(root, huge, hugeSql)));
+
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(
+            GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, true)), 0);
+
+    assertEquals(0, response.get("returnedEdges"));
+    assertEquals(Boolean.TRUE, response.get("edgesTruncated"));
+    assertNull(response.get(McpResponseTrim.NEXT_CURSOR_KEY), "nothing is left to page to");
+  }
+
+  /** Naming every skipped edge is itself unbounded; past a few names, a count says the rest. */
+  @Test
+  void onlyTheFirstFewOversizedEdgesAreNamed() {
+    EntityReference root = ref("orders", "db.public.orders");
+    String hugeSql = "SELECT " + "x".repeat(McpResponseTrim.MAX_RESPONSE_CHARS + 10_000);
+    List<EntityReference> nodes = new ArrayList<>();
+    List<Edge> edges = new ArrayList<>();
+    for (int i = 0; i < 12; i++) {
+      EntityReference huge = ref("huge_" + i, "db.mart.huge_" + i);
+      nodes.add(huge);
+      edges.add(edgeWithSql(root, huge, hugeSql));
+    }
+    EntityLineage lineage =
+        new EntityLineage()
+            .withEntity(root)
+            .withNodes(nodes)
+            .withUpstreamEdges(List.of())
+            .withDownstreamEdges(edges);
+
+    Map<String, Object> response =
+        GetLineageTool.enforceSizeBudget(
+            GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, true)), 0);
+
+    assertEquals(10, listOf(response.get("oversizedEdges")).size());
+    assertTrue(((String) response.get(McpResponseTrim.MESSAGE_KEY)).contains("12 edge(s)"));
+    assertTrue(JsonUtils.pojoToJson(response).length() < McpResponseTrim.MAX_RESPONSE_CHARS);
   }
 
   /**
