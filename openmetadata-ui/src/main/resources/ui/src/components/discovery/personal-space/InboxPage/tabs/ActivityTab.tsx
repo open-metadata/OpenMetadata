@@ -225,11 +225,13 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   return (
     <Box className="tw:flex tw:h-full tw:min-h-0" direction="col">
-      {/* Lifts with a shadow once the feed scrolls under it. */}
+      {/* Lifts with a shadow once the feed scrolls under it. The negative
+          margin cancels the panel's gutter so the shadow spans edge to edge,
+          and shadow-md's negative spread keeps it under the bar only. */}
       <div
         className={classNames(
-          'tw:relative tw:z-10 tw:py-3 tw:transition-shadow',
-          isScrolled && 'tw:shadow-sm'
+          'tw:relative tw:z-10 tw:-mx-3 tw:px-3 tw:py-3 tw:transition-shadow',
+          isScrolled && 'tw:shadow-md'
         )}>
         <div className="tw:mx-auto tw:w-full tw:max-w-220">
           <ActivityToolbar
