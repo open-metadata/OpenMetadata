@@ -12,8 +12,11 @@
 
 import traceback
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, cast
+
+import sqlparse
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -27,7 +30,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.modeConnection import (
     ModeConnection,
 )
@@ -44,11 +47,19 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     SqlQuery,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.dashboard.dashboard_service import (
+    DashboardServiceSource,
+    DashboardUsage,
+)
 from metadata.ingestion.source.dashboard.mode import client
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
@@ -60,6 +71,17 @@ logger = ingestion_logger()
 
 ModeRecord = dict[str, Any]
 
+# Wrapping a SELECT as an INSERT gives sqllineage a target table, so it reports output columns.
+COLUMN_LINEAGE_TARGET = "mode_query_output"
+
+
+def _is_single_select(raw_query: str) -> bool:
+    try:
+        statements = [statement for statement in sqlparse.parse(raw_query) if str(statement).strip()]
+        return len(statements) == 1 and statements[0].get_type() == "SELECT"
+    except Exception:  # pylint: disable=broad-except
+        return False
+
 
 @dataclass(frozen=True)
 class ModeDashboardDetails:
@@ -67,6 +89,7 @@ class ModeDashboardDetails:
 
     report: ModeRecord
     queries: list[ModeRecord]
+    query_parsers: dict[str, LineageParser] = field(default_factory=dict, compare=False)
 
 
 class ModeSource(DashboardServiceSource):
@@ -82,6 +105,7 @@ class ModeSource(DashboardServiceSource):
         super().__init__(config, metadata)
         self.workspace_name = config.serviceConnection.root.config.workspaceName  # pyright: ignore[reportAttributeAccessIssue]
         self.filter_query_param = config.serviceConnection.root.config.filterQueryParam  # pyright: ignore[reportAttributeAccessIssue]
+        self.today = datetime.now().strftime("%Y-%m-%d")
         self.data_sources = cast(
             "dict[str, ModeRecord]",
             self.client.get_all_data_sources(self.workspace_name) or {},
@@ -178,6 +202,79 @@ class ModeSource(DashboardServiceSource):
         yield Either(left=None, right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
 
+    def get_owner_ref(self, dashboard_details: ModeRecord) -> EntityReferenceList | None:
+        """Owner is the report creator, matched to an OpenMetadata user by email."""
+        if not self.source_config.includeOwners:
+            return None
+        try:
+            creator_href = dashboard_details.get(client.LINKS, {}).get(client.CREATOR, {}).get(client.HREF)
+            if not creator_href:
+                logger.debug("Mode report [%s] has no creator link", dashboard_details.get(client.TOKEN))
+                return None
+            # The link is `/api/{username}`
+            username = str(creator_href).rstrip("/").rsplit("/", 1)[-1]
+            email = self.client.get_user_email(username)
+            owners = self.metadata.get_reference_by_email(email) if email else None
+            if not owners:
+                logger.debug("No OpenMetadata user matches Mode creator [%s] with email [%s]", username, email)
+            return owners  # noqa: TRY300
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not fetch owner of Mode report [%s]: %s", dashboard_details.get(client.TOKEN), exc)
+        return None
+
+    def yield_dashboard_usage(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, dashboard_details: ModeDashboardDetails
+    ) -> Iterable[Either[DashboardUsage]]:
+        """
+        Mode's `view_count` is the report's lifetime total, while OpenMetadata stores views per day,
+        so report the difference against the last recorded day (same approach as Looker and Tableau).
+        """
+        if not self.source_config.includeUsage:
+            return
+        report = dashboard_details.report
+        current_views = report.get(client.VIEW_COUNT)
+        if current_views is None:
+            logger.debug("Mode report [%s] has no view_count", report.get(client.TOKEN))
+            return
+        try:
+            dashboard_fqn = cast(
+                "str",
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Dashboard,
+                    service_name=self._dashboard_service_name(),
+                    dashboard_name=cast("str", report[client.TOKEN]),
+                ),
+            )
+            dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn, fields=["usageSummary"])
+            if not dashboard:
+                logger.debug("Dashboard [%s] not found, skipping usage", dashboard_fqn)
+                return
+            summary = dashboard.usageSummary
+            if summary and str(summary.date.root) == self.today and summary.dailyStats.count:
+                logger.debug("Usage already reported today for [%s]", dashboard_fqn)
+                return
+            new_views = int(current_views) - (summary.dailyStats.count if summary else 0)
+            if new_views < 0:
+                logger.warning("Negative usage difference [%s] for [%s], skipping", new_views, dashboard_fqn)
+                return
+            yield Either(
+                left=None,
+                right=DashboardUsage(
+                    dashboard=dashboard,
+                    usage=UsageRequest(date=self.today, count=new_views),
+                ),
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=f"{report.get(client.TOKEN)} Usage",
+                    error=f"Error yielding Mode report usage: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
     def yield_datamodel(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, dashboard_details: ModeDashboardDetails
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -221,7 +318,7 @@ class ModeSource(DashboardServiceSource):
                         f"{client.QUERIES}/{query_token}"
                     ),
                     sql=SqlQuery(raw_query) if raw_query else None,
-                    columns=[],
+                    columns=self._get_query_columns(dashboard_details, query),
                 )
                 yield Either(left=None, right=datamodel_request)
                 self.register_record_datamodel(datamodel_request=datamodel_request)
@@ -239,114 +336,94 @@ class ModeSource(DashboardServiceSource):
     def _data_model_name(report_token: str, query_token: str) -> str:
         return f"{report_token}.{query_token}"
 
-    # pylint: disable=too-many-locals
+    def _get_query_parser(self, dashboard_details: ModeDashboardDetails, query: ModeRecord) -> LineageParser | None:
+        """Parse a query once per report for the data model and every lineage db service prefix."""
+        raw_query = cast("str | None", query.get("raw_query"))
+        query_token = cast("str | None", query.get(client.TOKEN))
+        if not raw_query or not query_token:
+            return None
+        if query_token not in dashboard_details.query_parsers:
+            dashboard_details.query_parsers[query_token] = self._parse_query(raw_query, query_token)
+        return dashboard_details.query_parsers[query_token]
+
+    def _parse_query(self, raw_query: str, query_token: str) -> LineageParser:
+        """
+        Only a single SELECT is wrapped as an INSERT: its source tables are then the same as the
+        plain parse's, so table lineage is unchanged. Anything else (multi-statement, SET, SHOW)
+        keeps the plain parse and simply gets no columns.
+        """
+        parser_type = self.get_query_parser_type()
+        if _is_single_select(raw_query):
+            parser = LineageParser(f"INSERT INTO {COLUMN_LINEAGE_TARGET} {raw_query}", parser_type=parser_type)
+            if parser.source_tables:  # pyright: ignore[reportGeneralTypeIssues]
+                return parser
+            logger.debug("Mode query [%s] found no tables once wrapped, parsing it as is", query_token)
+        return LineageParser(raw_query, parser_type=parser_type)
+
+    def _get_query_columns(self, dashboard_details: ModeDashboardDetails, query: ModeRecord) -> list[Column]:
+        """Output columns of the query SQL; `SELECT *` expands to the columns of the source table."""
+        try:
+            parser = self._get_query_parser(dashboard_details, query)
+            if not parser:
+                return []
+            column_names: dict[str, None] = {}
+            for path in parser.column_lineage:  # pyright: ignore[reportGeneralTypeIssues]
+                source, target = path[0], path[-1]
+                if target.raw_name != "*":
+                    column_names[target.raw_name] = None
+                    continue
+                for table in self._search_source_tables(str(source.parent), self._connection_database(query), None):
+                    column_names.update(dict.fromkeys(model_str(column.name) for column in table.columns or []))
+            logger.debug("Mode query [%s] columns: %s", query.get(client.TOKEN), list(column_names))
+            return [Column(name=ColumnName(name), displayName=name, dataType=DataType.UNKNOWN) for name in column_names]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not extract columns of Mode query [%s]: %s", query.get(client.TOKEN), exc)
+        return []
+
+    def _connection_database(self, query: ModeRecord) -> str | None:
+        data_source = self.data_sources.get(cast("str", query.get("data_source_id")))
+        return cast("str | None", data_source.get(client.DATABASE)) if data_source else None
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: ModeDashboardDetails,
         db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
-        (
-            prefix_service_name,
-            prefix_database_name,
-            prefix_schema_name,
-            prefix_table_name,
-        ) = self.parse_db_service_prefix(db_service_prefix)
-
         try:
             for query in dashboard_details.queries:
                 data_source_id = cast("str | None", query.get("data_source_id"))
-                if not data_source_id:
-                    continue
-                data_source = self.data_sources.get(data_source_id)
-                if not data_source:
+                if not data_source_id or not self.data_sources.get(data_source_id):
                     continue
 
                 raw_query = cast("str | None", query.get("raw_query"))
                 if not raw_query:
                     continue
 
-                connection_database_name = cast("str | None", data_source.get(client.DATABASE))
-
-                lineage_parser = LineageParser(
-                    raw_query,
-                    parser_type=self.get_query_parser_type(),
-                )
-                query_hash = lineage_parser.query_hash
+                lineage_parser = self._get_query_parser(dashboard_details, query)
+                if not lineage_parser:
+                    continue
                 to_entity = self._resolve_lineage_target(
                     dashboard_details=dashboard_details,
                     query=query,
                 )
                 if not to_entity:
                     continue
-                for table in lineage_parser.source_tables:
-                    table_details = fqn.split_table_name(str(table))
-                    # A `database.schema.table` reference carries its own database. Only fall back
-                    # to the data source's connection database when the query left it unqualified.
-                    database_name = table_details.get("database") or connection_database_name
-                    database_schema_name = self.check_database_schema_name(table_details.get("database_schema"))
-                    table_name = table_details.get("table")
-                    if not table_name:
-                        continue
-
-                    if (
-                        prefix_database_name
-                        and database_name
-                        and prefix_database_name.lower() != str(database_name).lower()
-                    ):
-                        logger.debug(
-                            "[%s] Database %s does not match prefix %s",
-                            query_hash,
-                            database_name,
-                            prefix_database_name,
-                        )
-                        continue
-
-                    search_database_name = prefix_database_name or database_name
-                    if not search_database_name:
-                        logger.warning(
-                            "[%s] Skipping Mode table %s because neither the query nor its data source "
-                            "provides a database name",
-                            query_hash,
-                            table_name,
-                        )
-                        continue
-
-                    if prefix_table_name and table_name and prefix_table_name.lower() != str(table_name).lower():
-                        logger.debug(
-                            "[%s] Table %s does not match prefix %s", query_hash, table_name, prefix_table_name
-                        )
-                        continue
-
-                    if (
-                        prefix_schema_name
-                        and database_schema_name
-                        and prefix_schema_name.lower() != str(database_schema_name).lower()
-                    ):
-                        logger.debug(
-                            f"[{query_hash}] Schema {database_schema_name} does not match prefix {prefix_schema_name}"
-                        )
-                        continue
-
-                    fqn_search_string = build_es_fqn_search_string(
-                        database_name=search_database_name,
-                        schema_name=prefix_schema_name or database_schema_name,
-                        service_name=prefix_service_name or "*",
-                        table_name=prefix_table_name or table_name,
+                for table in lineage_parser.source_tables:  # pyright: ignore[reportGeneralTypeIssues]
+                    from_entities = self._search_source_tables(
+                        str(table),
+                        self._connection_database(query),
+                        db_service_prefix,
+                        query_hash=lineage_parser.query_hash,
                     )
-                    from_entities = cast(
-                        "list[Table] | None",
-                        self.metadata.search_in_any_service(
-                            entity_type=Table,
-                            fqn_search_string=fqn_search_string,
-                            fetch_multiple_entities=True,
-                        ),
-                    )
-
-                    for from_entity in from_entities or []:
+                    for from_entity in from_entities:
                         lineage = self._get_add_lineage_request(
                             to_entity=to_entity,
                             from_entity=from_entity,
+                            column_lineage=self._get_query_column_lineage(
+                                lineage_parser, str(table), from_entity, to_entity
+                            ),  # pyright: ignore[reportArgumentType]
                             sql=raw_query,
                         )
                         if lineage:
@@ -355,11 +432,133 @@ class ModeSource(DashboardServiceSource):
             yield Either(
                 left=StackTraceError(
                     name="Lineage",
-                    error=f"Error to yield dashboard lineage details for service name [{prefix_service_name}]: {exc}",
+                    error=f"Error to yield dashboard lineage details for service prefix [{db_service_prefix}]: {exc}",
                     stackTrace=traceback.format_exc(),
                 ),
                 right=None,
             )
+
+    def _search_source_tables(
+        self,
+        table: str,
+        connection_database_name: str | None,
+        db_service_prefix: str | None,
+        query_hash: str | None = None,
+    ) -> list[Table]:
+        """Find the OpenMetadata tables a query's table reference points to, honouring the db service prefix."""
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+        table_details = fqn.split_table_name(table)
+        # A `database.schema.table` reference carries its own database. Only fall back
+        # to the data source's connection database when the query left it unqualified.
+        database_name = table_details.get("database") or connection_database_name
+        database_schema_name = self.check_database_schema_name(table_details.get("database_schema"))
+        table_name = table_details.get("table")
+        if not table_name:
+            return []
+
+        if prefix_database_name and database_name and prefix_database_name.lower() != str(database_name).lower():
+            logger.debug(
+                "[%s] Database %s does not match prefix %s",
+                query_hash,
+                database_name,
+                prefix_database_name,
+            )
+            return []
+
+        search_database_name = prefix_database_name or database_name
+        if not search_database_name:
+            logger.warning(
+                "[%s] Skipping Mode table %s because neither the query nor its data source provides a database name",
+                query_hash,
+                table_name,
+            )
+            return []
+
+        if prefix_table_name and prefix_table_name.lower() != str(table_name).lower():
+            logger.debug("[%s] Table %s does not match prefix %s", query_hash, table_name, prefix_table_name)
+            return []
+
+        if (
+            prefix_schema_name
+            and database_schema_name
+            and prefix_schema_name.lower() != str(database_schema_name).lower()
+        ):
+            logger.debug(
+                "[%s] Schema %s does not match prefix %s", query_hash, database_schema_name, prefix_schema_name
+            )
+            return []
+
+        fqn_search_string = build_es_fqn_search_string(
+            database_name=search_database_name,
+            schema_name=prefix_schema_name or database_schema_name,
+            service_name=prefix_service_name or "*",
+            table_name=prefix_table_name or table_name,
+        )
+        return (
+            cast(
+                "list[Table] | None",
+                self.metadata.search_in_any_service(
+                    entity_type=Table,
+                    fqn_search_string=fqn_search_string,
+                    fetch_multiple_entities=True,
+                ),
+            )
+            or []
+        )
+
+    def _get_query_column_lineage(
+        self,
+        parser: LineageParser,
+        table: str,
+        from_entity: Table,
+        to_entity: DashboardDataModel | Dashboard,
+    ) -> list[ColumnLineage] | None:
+        """Map the query's output columns back to the columns of one of its source tables."""
+        try:
+            if not isinstance(to_entity, DashboardDataModel) or not to_entity.columns:
+                return None
+            from_names_by_target: dict[str, list[str]] = {}
+            for path in parser.column_lineage:  # pyright: ignore[reportGeneralTypeIssues]
+                source, target = path[0], path[-1]
+                if str(source.parent) != table:
+                    continue
+                if source.raw_name == "*":
+                    pairs = [(model_str(column.name), model_str(column.name)) for column in from_entity.columns or []]
+                else:
+                    pairs = [(source.raw_name, target.raw_name)]
+                for from_name, to_name in pairs:
+                    from_names_by_target.setdefault(to_name, []).append(from_name)
+
+            column_lineage = []
+            for to_name, from_names in from_names_by_target.items():
+                to_column = self._get_data_model_column_fqn(data_model_entity=to_entity, column=to_name)
+                from_columns = [
+                    FullyQualifiedEntityName(column_fqn)
+                    for from_name in from_names
+                    if (column_fqn := get_column_fqn(table_entity=from_entity, column=from_name))
+                ]
+                if to_column and from_columns:
+                    column_lineage.append(
+                        ColumnLineage(fromColumns=from_columns, toColumn=FullyQualifiedEntityName(to_column))
+                    )
+                else:
+                    logger.debug(
+                        "Unresolved Mode column lineage %s -> %s (from [%s] to [%s])",
+                        from_names,
+                        to_name,
+                        model_str(from_entity.fullyQualifiedName),
+                        model_str(to_entity.fullyQualifiedName),
+                    )
+            return column_lineage or None  # noqa: TRY300
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not build Mode column lineage for table [%s]: %s", table, exc)
+        return None
 
     def _resolve_lineage_target(
         self,
