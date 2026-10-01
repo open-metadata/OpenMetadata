@@ -56,11 +56,13 @@ import { Task } from '../../../../generated/entity/tasks/task';
 import {
   formatInboxDateTime,
   getActivityBuckets,
+  getActivityChange,
   getActivityEventLabel,
   getFeedSortTimestamp,
   getFeedTimestamp,
   groupByRelativeDay,
   isTaskOpen,
+  pairFieldChanges,
   toggleActivityReaction,
   toggleConversationReaction,
 } from './inbox.utils';
@@ -115,10 +117,11 @@ describe('inbox.utils', () => {
       ).toBe('label.updated-lowercase label.description label.for-lowercase');
     });
 
-    it('labels TagsUpdated as "added tags to"', () => {
+    // One tags event can add, remove or both, so the verb stays neutral.
+    it('labels TagsUpdated as "updated tags for"', () => {
       expect(
         getActivityEventLabel(activity(ActivityEventType.TagsUpdated), t)
-      ).toBe('label.added-lowercase label.tag-plural label.to-lowercase');
+      ).toBe('label.updated-lowercase label.tag-plural label.for-lowercase');
     });
 
     it('uses the field name for a generic EntityUpdated', () => {
@@ -372,6 +375,107 @@ describe('inbox.utils', () => {
       );
 
       expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('getActivityChange', () => {
+    const event = (
+      eventType: ActivityEventType,
+      oldValue?: string,
+      newValue?: string
+    ) => ({ eventType, oldValue, newValue } as ActivityEvent);
+
+    it('names added tags by their FQN', () => {
+      expect(
+        getActivityChange(
+          event(
+            ActivityEventType.TagsUpdated,
+            undefined,
+            JSON.stringify([{ tagFQN: 'PII.Sensitive' }])
+          )
+        )
+      ).toEqual({
+        labelKey: 'label.tag-plural',
+        before: [],
+        after: ['PII.Sensitive'],
+        isText: false,
+      });
+    });
+
+    it('names owners on both sides of a paired swap', () => {
+      expect(
+        getActivityChange(
+          event(
+            ActivityEventType.OwnerUpdated,
+            JSON.stringify([{ name: 'ram', displayName: 'Ram' }]),
+            JSON.stringify([{ name: 'platform' }])
+          )
+        )
+      ).toMatchObject({ before: ['Ram'], after: ['platform'] });
+    });
+
+    it('keeps a description as plain text', () => {
+      expect(
+        getActivityChange(
+          event(ActivityEventType.DescriptionUpdated, 'Old', '<p>New</p>')
+        )
+      ).toEqual({
+        labelKey: 'label.description',
+        before: ['Old'],
+        after: ['New'],
+        isText: true,
+      });
+    });
+
+    // The server truncates each side at 1000 characters.
+    it('gives up on a value cut off mid-JSON', () => {
+      expect(
+        getActivityChange(
+          event(ActivityEventType.TagsUpdated, undefined, '[{"tagFQN":"PI')
+        )
+      ).toBeUndefined();
+    });
+
+    it('has nothing to show for an event without a change panel', () => {
+      expect(
+        getActivityChange(event(ActivityEventType.EntityCreated))
+      ).toBeUndefined();
+    });
+  });
+
+  describe('pairFieldChanges', () => {
+    const change = (
+      id: string,
+      values: Partial<ActivityEvent>
+    ): ActivityEvent =>
+      ({
+        id,
+        entity: { id: 't1' },
+        fieldName: 'owners',
+        timestamp: 1,
+        ...values,
+      } as ActivityEvent);
+
+    it('folds a removal into the addition from the same edit', () => {
+      const removal = change('r', { oldValue: '[ram]' });
+      const addition = change('a', { newValue: '[team]' });
+
+      expect(pairFieldChanges([removal, addition])).toEqual([
+        { ...addition, oldValue: '[ram]' },
+      ]);
+    });
+
+    it('leaves changes from different edits apart', () => {
+      const removal = change('r', { oldValue: '[ram]' });
+      const later = change('a', { newValue: '[team]', timestamp: 2 });
+
+      expect(pairFieldChanges([removal, later])).toEqual([removal, later]);
+    });
+
+    it('leaves events without a field alone', () => {
+      const created = change('c', { fieldName: undefined, newValue: 'x' });
+
+      expect(pairFieldChanges([created])).toEqual([created]);
     });
   });
 });

@@ -12,6 +12,7 @@
  */
 
 import { TFunction } from 'i18next';
+import { castArray, compact } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType } from 'Models';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
@@ -26,7 +27,9 @@ import {
   TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 import { InboxDateRange } from '../../../../interface/inbox.interface';
 import {
   addActivityReaction,
@@ -36,6 +39,7 @@ import {
   addConversationReaction,
   removeConversationReaction,
 } from '../../../../rest/conversationsAPI';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
   formatDateTimeLong,
   getCurrentMillis,
@@ -45,6 +49,7 @@ import {
   getRelativeTime,
   getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 // e.g. "Jun 05, 2026, 03:01 PM" — no timezone offset.
@@ -95,12 +100,13 @@ export const getActivityEventLabel = (
     [ActivityEventType.ColumnDescriptionUpdated]: `${updated} ${t(
       'label.description'
     )} ${forPrep}`,
-    [ActivityEventType.TagsUpdated]: `${t('label.added-lowercase')} ${t(
+    // A tags event can add, remove or both, so the verb stays neutral.
+    [ActivityEventType.TagsUpdated]: `${updated} ${t(
       'label.tag-plural'
-    )} ${t('label.to-lowercase')}`,
-    [ActivityEventType.ColumnTagsUpdated]: `${t('label.added-lowercase')} ${t(
+    )} ${forPrep}`,
+    [ActivityEventType.ColumnTagsUpdated]: `${updated} ${t(
       'label.tag-plural'
-    )} ${t('label.to-lowercase')}`,
+    )} ${forPrep}`,
     [ActivityEventType.OwnerUpdated]: `${updated} ${t(
       'label.owner'
     )} ${forPrep}`,
@@ -127,6 +133,102 @@ export const getActivityEventLabel = (
   return activity.fieldName
     ? `${updated} ${activity.fieldName} ${forPrep}`
     : `${updated} ${onPrep}`;
+};
+
+/** What an activity changed, as display values for the card's change panel. */
+export interface ActivityChange {
+  labelKey: string;
+  before: string[];
+  after: string[];
+  // Descriptions are prose, not a set of chips.
+  isText: boolean;
+}
+
+const CHANGE_LABEL_KEY: Partial<Record<ActivityEventType, string>> = {
+  [ActivityEventType.TagsUpdated]: 'label.tag-plural',
+  [ActivityEventType.ColumnTagsUpdated]: 'label.tag-plural',
+  [ActivityEventType.OwnerUpdated]: 'label.owner-plural',
+  [ActivityEventType.DomainUpdated]: 'label.domain-plural',
+  [ActivityEventType.DescriptionUpdated]: 'label.description',
+  [ActivityEventType.ColumnDescriptionUpdated]: 'label.description',
+};
+
+const DESCRIPTION_EVENTS = new Set([
+  ActivityEventType.DescriptionUpdated,
+  ActivityEventType.ColumnDescriptionUpdated,
+]);
+
+// Tags carry a tagFQN; owners and domains are entity references.
+const getChangeValueName = (value: TagLabel | EntityReference): string =>
+  'tagFQN' in value ? value.tagFQN : getEntityName(value);
+
+// The server stores each side as JSON truncated at 1000 characters, so a long
+// list may not parse; undefined lets the card fall back to the summary.
+const parseChangeValues = (value?: string): string[] | undefined => {
+  if (!value) {
+    return [];
+  }
+  try {
+    return castArray(JSON.parse(value)).map(getChangeValueName);
+  } catch {
+    return undefined;
+  }
+};
+
+export const getActivityChange = (
+  activity: ActivityEvent
+): ActivityChange | undefined => {
+  const labelKey = CHANGE_LABEL_KEY[activity.eventType];
+  if (!labelKey) {
+    return undefined;
+  }
+  const isText = DESCRIPTION_EVENTS.has(activity.eventType);
+  const parse = isText
+    ? (value?: string) => compact([getTextFromHtmlString(value)])
+    : parseChangeValues;
+  const before = parse(activity.oldValue);
+  const after = parse(activity.newValue);
+  const hasChange = Boolean(before?.length || after?.length);
+
+  return before && after && hasChange
+    ? { labelKey, before, after, isText }
+    : undefined;
+};
+
+/**
+ * One edit that both removes and adds values on a list field (swapping an
+ * owner, replacing a tag) is stored as two events, a removal and an addition,
+ * sharing the entity, field and timestamp. Fold each removal into its addition
+ * so the card reads Before → After. The addition keeps its id, so replies and
+ * reactions left on the removal event are not shown.
+ */
+export const pairFieldChanges = (
+  activities: ActivityEvent[]
+): ActivityEvent[] => {
+  const changeKey = ({ entity, fieldName, timestamp }: ActivityEvent) =>
+    fieldName ? `${entity.id}|${fieldName}|${timestamp}` : undefined;
+  const removals = new Map<string, ActivityEvent>();
+  activities.forEach((activity) => {
+    const key = changeKey(activity);
+    if (key && activity.oldValue && !activity.newValue) {
+      removals.set(key, activity);
+    }
+  });
+  const paired = new Set<ActivityEvent>();
+  const folded = activities.map((activity) => {
+    const key = changeKey(activity);
+    const removal =
+      key && activity.newValue && !activity.oldValue
+        ? removals.get(key)
+        : undefined;
+    if (removal) {
+      paired.add(removal);
+    }
+
+    return removal ? { ...activity, oldValue: removal.oldValue } : activity;
+  });
+
+  return folded.filter((activity) => !paired.has(activity));
 };
 
 // Activity feed scope: "all" shows every conversation; "me" restricts to

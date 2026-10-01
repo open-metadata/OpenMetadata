@@ -108,11 +108,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     activityContent = emptyPlaceholder;
   } else {
     activityContent = (
-      <Box
-        className="inbox-activity-timeline tw:relative"
-        direction="col"
-        gap={2}>
-        <span className="tw:pointer-events-none tw:absolute tw:-top-5 tw:bottom-2 tw:left-[23px] tw:z-[2] tw:w-px tw:bg-utility-gray-blue-100" />
+      <Box direction="col" gap={3}>
         {visibleItems.map((item) => {
           const itemId = item.activity?.id ?? item.feed?.id;
 

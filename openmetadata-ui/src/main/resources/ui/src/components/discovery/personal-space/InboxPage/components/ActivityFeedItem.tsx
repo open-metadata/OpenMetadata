@@ -12,38 +12,58 @@
  */
 
 import {
-  Badge,
   BadgeWithIcon,
   Box,
-  Card,
+  Tooltip,
+  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { MessageDotsCircle } from '@untitledui/icons';
+import {
+  Edit05,
+  File02,
+  Globe01,
+  MessageDotsCircle,
+  Plus,
+  RefreshCcw01,
+  Tag01,
+  Trash01,
+  UserCheck01,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import Reactions from '../../../../../components/ActivityFeed/Reactions/Reactions';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ReactionOperation } from '../../../../../enums/reactions.enum';
-import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
+import {
+  ActivityEvent,
+  ActivityEventType,
+} from '../../../../../generated/entity/activity/activityEvent';
 import { Conversation } from '../../../../../generated/entity/feed/conversation';
+import { EntityReference } from '../../../../../generated/type/entityReference';
 import { Reaction, ReactionType } from '../../../../../generated/type/reaction';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../../../hooks/user-profile/useUserProfile';
+import { formatDateTime } from '../../../../../utils/date-time/DateTimeUtils';
+import EntityLink from '../../../../../utils/EntityLink';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import {
   formatActivityTime,
+  getActivityChange,
   getActivityEventLabel,
   toggleActivityReaction,
   toggleConversationReaction,
 } from '../inbox.utils';
 import './activity-feed-item.less';
+import ActivityChangePanel from './ActivityChangePanel';
 
 export interface ActivityFeedItemSelection {
   activity?: ActivityEvent;
@@ -111,6 +131,76 @@ const getEventEntity = (
   };
 };
 
+interface ActivityKind {
+  icon: typeof Tag01;
+  className: string;
+}
+
+const TAGS_KIND = { icon: Tag01, className: 'tw:bg-utility-purple-600' };
+const DESCRIPTION_KIND = { icon: File02, className: 'tw:bg-utility-blue-600' };
+const DELETED_KIND = { icon: Trash01, className: 'tw:bg-utility-error-600' };
+const DEFAULT_KIND = { icon: Edit05, className: 'tw:bg-utility-gray-600' };
+const CONVERSATION_KIND = {
+  icon: MessageDotsCircle,
+  className: 'tw:bg-utility-gray-600',
+};
+
+// The badge on the actor's avatar that says what kind of change this is.
+const ACTIVITY_KIND: Partial<Record<ActivityEventType, ActivityKind>> = {
+  [ActivityEventType.TagsUpdated]: TAGS_KIND,
+  [ActivityEventType.ColumnTagsUpdated]: TAGS_KIND,
+  [ActivityEventType.DescriptionUpdated]: DESCRIPTION_KIND,
+  [ActivityEventType.ColumnDescriptionUpdated]: DESCRIPTION_KIND,
+  [ActivityEventType.OwnerUpdated]: {
+    icon: UserCheck01,
+    className: 'tw:bg-utility-indigo-600',
+  },
+  [ActivityEventType.DomainUpdated]: {
+    icon: Globe01,
+    className: 'tw:bg-utility-blue-light-600',
+  },
+  [ActivityEventType.EntityCreated]: {
+    icon: Plus,
+    className: 'tw:bg-utility-success-600',
+  },
+  [ActivityEventType.EntityRestored]: {
+    icon: RefreshCcw01,
+    className: 'tw:bg-utility-success-600',
+  },
+  [ActivityEventType.EntityDeleted]: DELETED_KIND,
+  [ActivityEventType.EntitySoftDeleted]: DELETED_KIND,
+};
+
+const getActivityKind = (activity?: ActivityEvent): ActivityKind =>
+  activity
+    ? ACTIVITY_KIND[activity.eventType] ?? DEFAULT_KIND
+    : CONVERSATION_KIND;
+
+/**
+ * Where the asset line points. A column-level change reads "table.column" and
+ * links to the column; anything else names and links to the entity itself.
+ */
+const getEntityTarget = (
+  entity: EntityReference | undefined,
+  entityName: string | undefined,
+  about: string | undefined
+) => {
+  const isColumn = about ? EntityLink.split(about)[2] === 'columns' : false;
+  const fqn =
+    isColumn && about
+      ? EntityLink.getEntityColumnFqn(about)
+      : entity?.fullyQualifiedName;
+
+  return {
+    parent: isColumn ? `${entityName}.` : '',
+    leaf: isColumn && about ? EntityLink.getTableColumnName(about) : entityName,
+    path:
+      entity?.type && fqn
+        ? entityUtilClassBase.getEntityLink(entity.type, fqn)
+        : undefined,
+  };
+};
+
 const getEventTimestamp = (
   isActivity: boolean,
   activity?: ActivityEvent,
@@ -150,6 +240,13 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const { entity, entityName } = getEventEntity(isActivity, activity, feed);
   const timestamp = getEventTimestamp(isActivity, activity, feed);
   const commentCount = feed?.replyCount ?? 0;
+  const { icon: KindIcon, className: kindClassName } =
+    getActivityKind(activity);
+  const target = getEntityTarget(entity, entityName, activity?.about);
+  const change = useMemo(
+    () => (activity ? getActivityChange(activity) : undefined),
+    [activity]
+  );
 
   const message = useMemo(
     () =>
@@ -192,81 +289,105 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
   return (
     <Box
-      className={`tw:group tw:relative tw:cursor-pointer tw:rounded-xl tw:px-2 tw:py-3 tw:transition ${
-        isActive ? 'tw:bg-utility-brand-50' : 'tw:hover:bg-utility-gray-blue-50'
-      }`}
+      className={classNames(
+        'tw:cursor-pointer tw:rounded-xl tw:border tw:bg-primary tw:px-5 tw:py-4 tw:shadow-xs tw:transition-colors',
+        isActive
+          ? 'tw:border-brand'
+          : 'tw:border-secondary tw:hover:border-primary'
+      )}
       data-testid="activity-feed-item"
       direction="col"
-      gap={2}
+      gap={3}
       role="button"
       tabIndex={0}
       onClick={handleActivate}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        // Keys pressed on the asset link or a reaction are theirs, not the card's.
+        if (
+          e.target === e.currentTarget &&
+          (e.key === 'Enter' || e.key === ' ')
+        ) {
           e.preventDefault();
           handleActivate();
         }
       }}>
-      <Box align="center" className="tw:justify-between tw:gap-2">
-        <Box
-          align="center"
-          className="tw:relative tw:z-[3] tw:flex-wrap"
-          gap={2}>
+      <Box gap={3}>
+        <span className="tw:relative tw:h-10 tw:shrink-0">
           <ProfilePicture
             displayName={authorName}
             name={actorName}
-            width="28"
+            width="40"
           />
-          <Typography
-            className="tw:text-primary-900"
-            size="text-sm"
-            weight="medium">
-            {authorName}
-          </Typography>
-          <Typography className="tw:text-primary-900" size="text-sm">
-            {actionLabel}
-          </Typography>
-          {entityName && (
-            <Badge className="tw:shrink-0 tw:gap-1" size="sm" type="modern">
+          <span
+            className={classNames(
+              'tw:absolute tw:-right-1 tw:-bottom-1 tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:text-white tw:outline-2 tw:outline-bg-primary',
+              kindClassName
+            )}
+            data-testid="activity-kind-badge">
+            <KindIcon className="tw:size-3" />
+          </span>
+        </span>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <Box align="center" gap={2}>
+            <Typography
+              className="tw:min-w-0 tw:flex-1 tw:text-tertiary"
+              size="text-md">
+              <span className="tw:font-semibold tw:text-primary">
+                {authorName}
+              </span>{' '}
+              {actionLabel}
+            </Typography>
+            <Tooltip title={formatDateTime(timestamp)}>
+              <TooltipTrigger className="tw:shrink-0 tw:whitespace-nowrap tw:text-sm tw:text-quaternary">
+                {formatActivityTime(timestamp)}
+              </TooltipTrigger>
+            </Tooltip>
+          </Box>
+          {target.leaf && (
+            <Box align="center" className="tw:min-w-0 tw:gap-1.5">
               {entity?.type && (
-                <span className="tw:flex tw:items-center tw:gap-2">
-                  <span className="tw:flex tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4">
-                    {searchClassBase.getEntityIcon(entity.type)}
-                  </span>
+                <span className="tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4">
+                  {searchClassBase.getEntityIcon(entity.type)}
                 </span>
               )}
               <Typography
-                className="tw:text-secondary"
-                size="text-xs"
-                weight="semibold">
-                {entityName}
+                className="tw:truncate tw:text-quaternary"
+                size="text-sm"
+                weight="medium">
+                {target.parent}
+                {target.path ? (
+                  <Link
+                    className="tw:font-semibold tw:text-primary tw:underline tw:decoration-border-primary tw:underline-offset-3 tw:hover:text-brand-secondary"
+                    data-testid="activity-entity-link"
+                    to={target.path}
+                    onClick={(e) => e.stopPropagation()}>
+                    {target.leaf}
+                  </Link>
+                ) : (
+                  <span className="tw:font-semibold tw:text-primary">
+                    {target.leaf}
+                  </span>
+                )}
               </Typography>
-            </Badge>
+            </Box>
           )}
         </Box>
-        <Typography
-          className="tw:text-text-secondary tw:whitespace-nowrap"
-          size="text-sm">
-          {formatActivityTime(timestamp)}
-        </Typography>
       </Box>
 
-      <Card
-        className={classNames(
-          'tw:ml-10 tw:bg-utility-gray-blue-50 tw:border-utility-gray-blue-100 tw:border-[0.6px] tw:px-4 tw:py-3 tw:transition-colors tw:group-hover:bg-white',
-          {
-            'tw:bg-active': isActive,
-          }
-        )}>
-        <RichTextEditorPreviewerV1
-          className="inbox-feed-message tw:text-sm"
-          markdown={message}
-        />
-      </Card>
+      <Box className="tw:ml-13" direction="col">
+        {change ? (
+          <ActivityChangePanel change={change} />
+        ) : (
+          <RichTextEditorPreviewerV1
+            className="inbox-feed-message tw:text-sm"
+            markdown={message}
+          />
+        )}
+      </Box>
 
       <Box
         align="center"
-        className="inbox-feed-actions tw:ml-10 tw:gap-2"
+        className="inbox-feed-actions tw:ml-13 tw:gap-2"
         onClick={(e) => e.stopPropagation()}>
         <Reactions
           key={reactions

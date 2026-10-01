@@ -26,6 +26,7 @@ import {
   getFeedSortTimestamp,
   InboxDateRange,
   InboxScope,
+  pairFieldChanges,
 } from './inbox.utils';
 
 export const INBOX_ACTIVITY_QUERY_KEY = 'inbox-activity';
@@ -123,7 +124,9 @@ export const useInboxActivity = (
 
   const items: InboxActivityItem[] = useMemo(() => {
     const merged: InboxActivityItem[] = [
-      ...(data?.activities ?? []).map((activity) => ({ activity })),
+      ...pairFieldChanges(data?.activities ?? []).map((activity) => ({
+        activity,
+      })),
       ...(data?.threads ?? []).map((feed) => ({ feed })),
     ];
     // Sort merges newest-first by last activity (updatedAt-first for

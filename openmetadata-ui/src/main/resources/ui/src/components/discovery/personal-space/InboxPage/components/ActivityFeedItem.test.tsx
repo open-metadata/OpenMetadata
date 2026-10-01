@@ -23,13 +23,36 @@ import { ReactNode } from 'react';
 const mockToggle = jest.fn();
 const mockToggleConversation = jest.fn();
 const mockShowErrorToast = jest.fn();
+const mockGetActivityChange = jest.fn();
 
 jest.mock('../inbox.utils', () => ({
   formatActivityTime: () => '12 min ago',
+  getActivityChange: (...args: unknown[]) => mockGetActivityChange(...args),
   getActivityEventLabel: () => 'updated description for',
   toggleActivityReaction: (...args: unknown[]) => mockToggle(...args),
   toggleConversationReaction: (...args: unknown[]) =>
     mockToggleConversation(...args),
+}));
+
+// Exercised by its own suite; here it only shows which change it was given.
+jest.mock('./ActivityChangePanel', () => ({
+  __esModule: true,
+  default: ({ change }: { change: { labelKey: string } }) => (
+    <div data-testid="activity-change-panel">{change.labelKey}</div>
+  ),
+}));
+
+jest.mock('utils/EntityUtilClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityLink: (type: string, fqn: string) => `/${type}/${fqn}`,
+  },
+}));
+
+jest.mock('react-router-dom', () => ({
+  Link: ({ children, to }: { children?: ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 
 jest.mock('utils/ToastUtils', () => ({
@@ -92,6 +115,7 @@ jest.mock('utils/date-time/DateTimeUtils', () => ({
   getStartOfDayInMillis: (ts: number) => ts,
   getEndOfDayInMillis: (ts: number) => ts,
   getCurrentMillis: () => 0,
+  formatDateTime: () => 'Jun 05, 2026, 03:01 PM',
 }));
 
 jest.mock('utils/EntityNameUtils', () => ({
@@ -121,13 +145,26 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
-  Card: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Tooltip: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children?: ReactNode }) => (
+    <span>{children}</span>
+  ),
   Typography: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({ MessageDotsCircle: () => <span /> }));
+jest.mock('@untitledui/icons', () => ({
+  Edit05: () => <span />,
+  File02: () => <span />,
+  Globe01: () => <span />,
+  MessageDotsCircle: () => <span />,
+  Plus: () => <span />,
+  RefreshCcw01: () => <span />,
+  Tag01: () => <span />,
+  Trash01: () => <span />,
+  UserCheck01: () => <span />,
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -142,7 +179,12 @@ const baseActivity = {
   actor: { id: 'a', name: 'alice', displayName: 'Alice', type: 'user' },
   summary: 'Updated style',
   reactions: [],
-  entity: { type: 'table', name: 'dim', displayName: 'dim_address' },
+  entity: {
+    type: 'table',
+    name: 'dim',
+    displayName: 'dim_address',
+    fullyQualifiedName: 'svc.db.sch.dim',
+  },
 } as unknown as ActivityEvent;
 
 const baseFeed = {
@@ -166,6 +208,60 @@ describe('ActivityFeedItem', () => {
     expect(screen.getByText('Updated style')).toBeInTheDocument();
     // Change-event activities are read-only — no comment affordance.
     expect(screen.queryByText('label.comment-plural')).not.toBeInTheDocument();
+  });
+
+  it('shows what changed in place of the summary when the change parses', () => {
+    mockGetActivityChange.mockReturnValueOnce({
+      labelKey: 'label.tag-plural',
+      before: [],
+      after: ['PII.Sensitive'],
+      isText: false,
+    });
+
+    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+
+    expect(screen.getByTestId('activity-change-panel')).toHaveTextContent(
+      'label.tag-plural'
+    );
+    expect(screen.queryByText('Updated style')).not.toBeInTheDocument();
+  });
+
+  it('links the asset line to the entity', () => {
+    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
+  });
+
+  it('names and links the column for a column-level change', () => {
+    render(
+      <ActivityFeedItem
+        activity={
+          {
+            ...baseActivity,
+            about: '<#E::table::svc.db.sch.dim::columns::email::tags>',
+          } as ActivityEvent
+        }
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('dim_address.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'email' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim.email'
+    );
+  });
+
+  it('leaves Enter on an inner control to that control', () => {
+    const onClick = jest.fn();
+    render(<ActivityFeedItem activity={baseActivity} onClick={onClick} />);
+
+    fireEvent.keyDown(screen.getByText('Alice'), { key: 'Enter' });
+
+    expect(onClick).not.toHaveBeenCalled();
   });
 
   it('fires onClick with the activity selection when the card is activated', () => {
