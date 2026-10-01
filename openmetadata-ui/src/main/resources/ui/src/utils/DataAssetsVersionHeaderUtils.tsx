@@ -33,7 +33,7 @@ import {
 import { getEntityName } from './EntityNameUtils';
 import { getEntityVersionByField } from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
-import { stringToHTML } from './StringUtils';
+import { stringToHTML } from './RichTextStringUtils';
 
 export const VersionExtraInfoLink = ({
   value,

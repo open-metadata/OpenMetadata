@@ -46,6 +46,11 @@ const hasDedicatedImportExportLane =
 const isPlannedShard = Boolean(shardPlan);
 const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
 const authDependencies = hasPreseededState ? [] : ['setup'];
+// SharedInfra + LineageDataClass seeding is folded into entity-data.setup.ts
+// (via seedLineageAndSharedInfra in lineage-data.helper.ts). No separate
+// lineage-data-setup project is needed; consolidating means the CI
+// fixture-builder step — which only runs entity-data-setup — captures every
+// JSON file test workers need.
 const entityDependencies = hasPreseededState
   ? []
   : ['setup', 'entity-data-setup'];
@@ -268,6 +273,10 @@ export default defineConfig({
       testMatch: '**/auth.setup.ts',
     },
     {
+      // Also seeds the Lineage graph (16 entities + 15 edges + 2 column
+      // edges) and SharedInfra parents — see the `seedLineageAndSharedInfra`
+      // helper. Consolidated here so the CI fixture cache (produced by this
+      // single seeding step) contains all three JSON files.
       name: 'entity-data-setup',
       testMatch: '**/entity-data.setup.ts',
       dependencies: ['setup'],

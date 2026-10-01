@@ -13,6 +13,8 @@
 import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
@@ -33,10 +35,12 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 // (ElasticSearchAggregationManager orders by _key ASC), so a name starting with
 // a digit guarantees these services land within that bucket regardless of how
 // many other `pw-*` services have accumulated.
-const table = new TableClass(undefined, undefined, {
-  name: `0-pw-database-service-${uuid()}`,
+const table = new TableClass({
+  service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
 });
-const dashboard = new DashboardClass(`0-pw-dashboard-service-${uuid()}`);
+const dashboard = new DashboardClass({
+  service: new DashboardServiceClass(`0-pw-dashboard-service-${uuid()}`),
+});
 
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.

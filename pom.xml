@@ -178,8 +178,15 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.5.36</logback-core.version>
-    <logback-classic.version>1.5.36</logback-classic.version>
+    <!-- CVE-2026-70410: unsafe reflection in AvaticaUtils#instantiatePlugin, fixed in 1.29.0.
+         Pulled transitively via calcite-core; 1.42.0 (latest) still declares 1.28.0. -->
+    <avatica.version>1.29.0</avatica.version>
+    <!-- 1.5.38 clears CVE-2026-13006 (code execution via Janino conditional config, fixed in 1.5.37).
+         Do not move to 1.6.x yet: it removed PatternLayout.DEFAULT_CONVERTER_MAP, which Dropwizard's
+         LogbackAccessRequestLayout (5.0.0 through 5.0.2) reads in its static initializer, so text
+         request logging fails with NoSuchFieldError. -->
+    <logback-core.version>1.5.38</logback-core.version>
+    <logback-classic.version>1.5.38</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
@@ -460,6 +467,11 @@
         <groupId>ch.qos.logback.access</groupId>
         <artifactId>logback-access-common</artifactId>
         <version>2.0.7</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.calcite.avatica</groupId>
+        <artifactId>avatica-core</artifactId>
+        <version>${avatica.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>

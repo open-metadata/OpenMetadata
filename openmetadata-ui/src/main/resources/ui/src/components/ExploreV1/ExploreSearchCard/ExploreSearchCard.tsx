@@ -47,8 +47,8 @@ import {
   highlightEntityNameAndDescription,
   renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stripMarkdown } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

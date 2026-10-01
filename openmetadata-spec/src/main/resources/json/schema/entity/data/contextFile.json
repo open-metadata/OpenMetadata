@@ -176,6 +176,11 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "shareConfig": {
+      "description": "Who can see this file, beyond its owners. Absent means the file follows ordinary policy, which is how every file added before this field behaved; Private restricts it to its owners and the principals it names. A file uploaded to a chat is created Private, because the person who attached it to a conversation did not thereby publish it.",
+      "$comment": "The same shape Context Memory uses, referenced rather than copied so one sharing vocabulary covers the whole Context Center and enforcement can read either entity the same way.",
+      "$ref": "../context/contextMemory.json#/definitions/shareConfig"
+    },
     "tags": {
       "description": "Tags associated with this file.",
       "type": "array",
