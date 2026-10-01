@@ -332,7 +332,8 @@ public interface JobDAO {
           "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
               + "progress, total, result, error, message, cancelRequested, completedAt FROM background_jobs"
               + " WHERE status = 'PENDING'"
-              + " AND (:includeMemoryJobs = true OR jobType <> 'CONTEXT_MEMORY_EXTRACTION')"
+              + " AND (:includeMemoryJobs = true OR jobType NOT IN "
+              + "('CONTEXT_MEMORY_EXTRACTION', 'ONTOLOGY_MEMORY_DERIVATION'))"
               + " AND COALESCE(runAt, 0) <= UNIX_TIMESTAMP(NOW(3)) * 1000"
               + " ORDER BY createdAt LIMIT 1",
       connectionType = MYSQL)
@@ -341,7 +342,8 @@ public interface JobDAO {
           "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
               + "progress, total, result, error, message, cancelRequested, completedAt FROM background_jobs"
               + " WHERE status = 'PENDING'"
-              + " AND (:includeMemoryJobs = true OR jobType <> 'CONTEXT_MEMORY_EXTRACTION')"
+              + " AND (:includeMemoryJobs = true OR jobType NOT IN "
+              + "('CONTEXT_MEMORY_EXTRACTION', 'ONTOLOGY_MEMORY_DERIVATION'))"
               + " AND COALESCE(runAt, 0) <= EXTRACT(EPOCH FROM NOW()) * 1000"
               + " ORDER BY createdAt LIMIT 1",
       connectionType = POSTGRES)

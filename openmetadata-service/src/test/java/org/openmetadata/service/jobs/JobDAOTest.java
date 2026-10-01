@@ -29,12 +29,28 @@ import java.util.Optional;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
 
 class JobDAOTest {
   private static final String ONTOLOGY_BULK_FILTER = "'ONTOLOGY_BULK'";
   private static final String RUNNING_FILTER = "status = 'RUNNING'";
   private static final String STALENESS_FILTER = "updatedAt < :staleBefore";
+
+  @Test
+  void pendingJobQueriesReserveWorkerCapacityForBothMemoryJobTypes() throws NoSuchMethodException {
+    final ConnectionAwareSqlQuery[] queries =
+        JobDAO.class
+            .getMethod("fetchPendingJobInternal", boolean.class)
+            .getAnnotationsByType(ConnectionAwareSqlQuery.class);
+
+    assertEquals(2, queries.length);
+    for (ConnectionAwareSqlQuery query : queries) {
+      assertTrue(query.value().contains(":includeMemoryJobs = true OR jobType NOT IN"));
+      assertTrue(query.value().contains("'CONTEXT_MEMORY_EXTRACTION'"));
+      assertTrue(query.value().contains("'ONTOLOGY_MEMORY_DERIVATION'"));
+    }
+  }
 
   @Test
   void staleWorkerRecoveryIsHeartbeatScopedAndIncludesOntologyJobs() throws NoSuchMethodException {

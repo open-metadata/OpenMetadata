@@ -209,7 +209,8 @@ public class GenericBackgroundWorker implements Managed {
   }
 
   private boolean isMemoryJob(BackgroundJob job) {
-    return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION;
+    return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION
+        || job.getJobType() == BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION;
   }
 
   private void processJob(BackgroundJob job) {
