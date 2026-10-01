@@ -70,6 +70,10 @@ interface PointNavigation {
 
 const NO_POINT = -1;
 
+// Keys that act on the active point; without one they stay with the browser,
+// so Space still scrolls the page after a mouse focus.
+const ACTIVE_POINT_KEYS = new Set(['Enter', ' ', 'Escape']);
+
 // A mouse click also focuses the chart; only keyboard focus starts navigation.
 // Browsers without :focus-visible throw, and the first arrow key still starts it.
 const isKeyboardFocus = (element: Element) => {
@@ -193,7 +197,7 @@ export const usePointNavigation = <T extends object>({
       };
       const handler = targets[event.key];
       const isActionable =
-        handler && (event.key !== 'Escape' || active !== NO_POINT);
+        handler && (active !== NO_POINT || !ACTIVE_POINT_KEYS.has(event.key));
       if (isActionable) {
         event.preventDefault();
         handler();

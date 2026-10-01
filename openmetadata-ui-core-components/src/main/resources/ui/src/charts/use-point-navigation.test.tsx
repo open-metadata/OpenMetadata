@@ -239,6 +239,19 @@ describe('usePointNavigation', () => {
     expect(chart.dispatchAction).not.toHaveBeenCalled();
   });
 
+  it('leaves Enter and Space to the browser while no point is active', () => {
+    const { onPointClick, props } = setup();
+    act(() => props().onFocus?.(mouseFocus));
+    const enter = key('Enter');
+    const space = key(' ');
+    act(() => props().onKeyDown?.(enter));
+    act(() => props().onKeyDown?.(space));
+
+    expect(enter.preventDefault).not.toHaveBeenCalled();
+    expect(space.preventDefault).not.toHaveBeenCalled();
+    expect(onPointClick).not.toHaveBeenCalled();
+  });
+
   it('is inactive again after Escape', () => {
     const { onPointLeave, props } = setup();
     act(() => props().onFocus?.(keyboardFocus));
