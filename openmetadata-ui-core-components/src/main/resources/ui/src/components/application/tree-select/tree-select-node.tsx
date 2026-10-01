@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@/components/base/buttons/button';
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Typography } from '@/components/foundations/typography';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { RefreshCw01 } from '../../../icons';
 import { Tree } from '../tree/tree';
@@ -33,6 +35,9 @@ export interface TreeSelectTreeItemContentProps<T> {
   onNodeClick: () => void;
 }
 
+// Tighter than the Tree default; every row shares it or they misalign.
+const ROW_GAP = 'tw:gap-2';
+
 export const TreeSelectEmptyItemContent = ({
   message,
   parentId,
@@ -40,7 +45,7 @@ export const TreeSelectEmptyItemContent = ({
   message: string;
   parentId: string;
 }) => (
-  <Tree.ItemContent indentPerLevel={28} maxIndentLevel={2}>
+  <Tree.ItemContent className={ROW_GAP} indentPerLevel={28} maxIndentLevel={2}>
     {() => (
       <div
         className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:py-0.5 tw:text-xs tw:text-tertiary"
@@ -51,6 +56,61 @@ export const TreeSelectEmptyItemContent = ({
     )}
   </Tree.ItemContent>
 );
+
+// The tail of a truncated branch, rendered only once a page has arrived.
+export const TreeSelectLoadMoreItemContent = ({
+  parentId,
+  nextCount,
+  remaining,
+  isLoading,
+  maxIndentLevel = 2,
+  showExpandIcon,
+  onLoadMore,
+}: {
+  parentId: string;
+  /** What one more click fetches. */
+  nextCount: number;
+  /** Everything still unloaded; absent when the source reports no total. */
+  remaining?: number;
+  isLoading: boolean;
+  maxIndentLevel?: number;
+  showExpandIcon?: boolean;
+  onLoadMore: () => void;
+}) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <Tree.ItemContent
+      className={ROW_GAP}
+      hasChildItems={false}
+      indentPerLevel={28}
+      maxIndentLevel={maxIndentLevel}
+      showExpandIcon={showExpandIcon}>
+      {() => (
+        <div
+          className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5"
+          data-testid={`tree-node-load-more-${parentId}`}>
+          <Button
+            showTextWhileLoading
+            color="link-color"
+            isLoading={isLoading}
+            size="sm"
+            onPress={onLoadMore}>
+            {t('label.show-count-more', { count: nextCount })}
+          </Button>
+          {remaining !== undefined && (
+            <Typography
+              className="not-prose tw:shrink-0 tw:text-tertiary tw:tabular-nums"
+              size="text-xs"
+              weight="regular">
+              {`· ${t('label.count-remaining', { count: remaining })}`}
+            </Typography>
+          )}
+        </div>
+      )}
+    </Tree.ItemContent>
+  );
+};
 
 export const TreeSelectTreeItemContent = <T,>({
   node,
@@ -74,7 +134,7 @@ export const TreeSelectTreeItemContent = <T,>({
 
   return (
     <Tree.ItemContent
-      className="tw:text-sm tw:font-normal tw:text-primary"
+      className={cx('tw:text-sm tw:font-normal tw:text-primary', ROW_GAP)}
       hasChildItems={hasChildItems}
       indentPerLevel={28}
       maxIndentLevel={maxIndentLevel}
