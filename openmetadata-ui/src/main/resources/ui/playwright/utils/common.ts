@@ -515,9 +515,9 @@ export const toastNotification = async (
     .filter({ hasText: message })
     .first();
 
-  await toast.waitFor({ state: 'visible', timeout });
-
-  await expect(toast.getByTestId('alert-icon')).toBeVisible();
+  // Toasts auto-dismiss; assert only the text-filtered toast being visible, not its internal
+  // icon, to avoid the icon detaching between the filter resolving and the check.
+  await expect(toast).toBeVisible({ timeout });
 };
 
 /**

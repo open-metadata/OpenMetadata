@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Divider, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -97,11 +97,11 @@ const KnowledgePageSummary = ({
               data-testid="quick-link-data"
               gutter={[0, 8]}>
               <Col span={24}>
-                <Typography.Text
+                <Typography
                   className="summary-panel-section-title"
                   data-testid="tags-header">
                   {t('label.link')}
-                </Typography.Text>
+                </Typography>
               </Col>
               <Col span={24}>
                 <Link

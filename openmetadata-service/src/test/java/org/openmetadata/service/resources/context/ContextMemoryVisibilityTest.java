@@ -122,6 +122,14 @@ class ContextMemoryVisibilityTest {
   }
 
   @Test
+  void testPublicMemory_visibleToEveryoneWithoutAsset() {
+    ContextMemory publicMemory = memoryOwnedBy(ALICE, MemoryVisibility.PUBLIC);
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(publicMemory, BOB, false));
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(publicMemory, "charlie", false));
+  }
+
+  @Test
   void testSharedMemory_visibleOnlyToListedPrincipals() {
     ContextMemory shared =
         memoryOwnedBy(ALICE, MemoryVisibility.SHARED)
