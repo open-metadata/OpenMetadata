@@ -1121,7 +1121,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * runId. The orchestrator can report a run the worker has already written (the queued run the
    * server recorded at trigger time, or a terminal state it observed before the worker could), and
    * listing both shows the same run twice. A live terminal entry replaces a stored row that is still
-   * in flight; otherwise the stored row wins, since it is at least as far along and carries the
+   * in flight, keeping the details only the stored row has (who triggered the run, when it
+   * started); otherwise the stored row wins, since it is at least as far along and carries the
    * worker's details. Entries without a runId cannot be matched and are kept as they are.
    */
   static List<PipelineStatus> mergeLiveStatuses(
@@ -1139,6 +1140,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       if (stored != null) {
         if (!isTerminal(live) || isTerminal(stored)) {
           continue;
+        }
+        keepRecordedTriggeredBy(live, stored);
+        if (live.getStartDate() == null) {
+          live.withStartDate(stored.getStartDate());
         }
         overriddenRunIds.add(live.getRunId());
       }

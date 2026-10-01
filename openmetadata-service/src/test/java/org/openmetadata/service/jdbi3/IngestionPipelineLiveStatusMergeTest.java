@@ -38,6 +38,20 @@ class IngestionPipelineLiveStatusMergeTest {
   }
 
   @Test
+  void liveTerminalEntryKeepsWhoTriggeredTheRunAndWhenItStarted() {
+    PipelineStatus stored =
+        status("run-1", PipelineStatusType.RUNNING).withTriggeredBy("alice").withStartDate(100L);
+    PipelineStatus live = status("run-1", PipelineStatusType.FAILED);
+
+    List<PipelineStatus> merged =
+        IngestionPipelineRepository.mergeLiveStatuses(List.of(live), List.of(stored));
+
+    assertEquals(List.of("run-1:failed"), describe(merged));
+    assertEquals("alice", merged.get(0).getTriggeredBy());
+    assertEquals(100L, merged.get(0).getStartDate());
+  }
+
+  @Test
   void storedTerminalRowIsKeptOverALiveTerminalEntry() {
     // The worker's own row carries step summaries the runner's bookkeeping entry lacks.
     List<PipelineStatus> merged =
