@@ -1162,6 +1162,17 @@ class VectorSearchQueryBuilderTest {
     assertTrue(rendered.contains(MemoryVisibility.PUBLIC.value()));
   }
 
+  @Test
+  void testPublicVisibilityAppliesOnlyToMemoryChunks() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(
+            new float[] {0.1f}, 10, Map.of(), 0.0, nonAdminSubject());
+    JsonNode branches = memoryVisibilityClause(MAPPER.readTree(query)).path("bool").path("should");
+
+    assertTrue(branches.get(1).toString().contains(MemoryVisibility.PUBLIC.value()));
+    assertFalse(branches.get(2).toString().contains(MemoryVisibility.PUBLIC.value()));
+  }
+
   /**
    * A KNN query spans an alias of many indices and OpenSearch 400s the whole request if any of them
    * does not map {@code owners} as nested, so the owner branch must set ignore_unmapped exactly as

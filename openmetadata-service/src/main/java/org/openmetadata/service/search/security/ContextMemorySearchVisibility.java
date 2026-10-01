@@ -145,7 +145,7 @@ public class ContextMemorySearchVisibility {
   }
 
   private OMQueryBuilder buildFilter(User user) {
-    return scopeGovernedTypes(buildVisibleToUserClause(user), buildVisibleFileClause(user));
+    return scopeGovernedTypes(buildVisibleToUserClause(user, true), buildVisibleFileClause(user));
   }
 
   /**
@@ -187,7 +187,7 @@ public class ContextMemorySearchVisibility {
   private OMQueryBuilder buildVisibleFileClause(User user) {
     return queryBuilderFactory
         .boolQuery()
-        .should(List.of(unstamped(), buildVisibleToUserClause(user)));
+        .should(List.of(unstamped(), buildVisibleToUserClause(user, false)));
   }
 
   private OMQueryBuilder unstamped() {
@@ -196,10 +196,12 @@ public class ContextMemorySearchVisibility {
         .mustNot(List.of(queryBuilderFactory.existsQuery(FIELD_VISIBILITY)));
   }
 
-  private OMQueryBuilder buildVisibleToUserClause(User user) {
+  private OMQueryBuilder buildVisibleToUserClause(User user, boolean allowPublic) {
     List<OMQueryBuilder> clauses = new ArrayList<>();
     clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
-    clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()));
+    if (allowPublic) {
+      clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()));
+    }
     clauses.add(
         queryBuilderFactory.nestedQuery(
             FIELD_OWNERS, queryBuilderFactory.termQuery(FIELD_OWNERS_ID, user.getId().toString())));

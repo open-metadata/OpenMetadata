@@ -179,7 +179,8 @@ public class ListFilter extends Filter<ListFilter> {
               "%s IN (SELECT entity_relationship.fromId FROM entity_relationship "
                   + "WHERE entity_relationship.fromEntity = 'ontologyChangeSet' "
                   + "AND entity_relationship.toEntity = 'contextMemory' "
-                  + "AND entity_relationship.relation = %d)",
+                  + "AND entity_relationship.relation = %d "
+                  + "AND entity_relationship.deleted = FALSE)",
               qualifyColumn(tableName, "id"), Relationship.DERIVED_FROM.ordinal());
     }
     return condition;
@@ -190,7 +191,8 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private static boolean tableMatches(String tableName, String expectedTable) {
-    return !nullOrEmpty(tableName) && tableName.contains(expectedTable);
+    // EntityDAO's default list and count paths omit the table name when building conditions.
+    return nullOrEmpty(tableName) || tableName.contains(expectedTable);
   }
 
   public ResourceContext getResourceContext(String entityType) {

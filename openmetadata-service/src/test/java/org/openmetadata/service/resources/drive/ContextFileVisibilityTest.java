@@ -65,6 +65,14 @@ class ContextFileVisibilityTest {
   }
 
   @Test
+  void publicFilesRemainRestrictedToTheirOwners() {
+    ContextFile file = fileOwnedBy(ALICE, MemoryVisibility.PUBLIC);
+
+    assertFalse(ContextFileVisibility.isVisibleToUser(file, BOB, false));
+    assertTrue(ContextFileVisibility.isVisibleToUser(file, ALICE, false));
+  }
+
+  @Test
   void onlyAnOwnerOrAnAdminMayRestrictAFile() {
     ContextFile open = fileOwnedBy(ALICE, null);
     ContextFile restricted = fileOwnedBy(ALICE, MemoryVisibility.PRIVATE);

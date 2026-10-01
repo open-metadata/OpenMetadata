@@ -172,6 +172,7 @@ public interface RdfInfraDAOs {
         "FROM ontology_change_set_entity cs JOIN entity_relationship er ON er.fromId = cs.id "
             + "WHERE er.toId = :memoryId AND er.fromEntity = 'ontologyChangeSet' "
             + "AND er.toEntity = 'contextMemory' AND er.relation = :relation "
+            + "AND er.deleted = FALSE "
             + "AND cs.state IN ('DRAFT', 'SUBMITTED', 'APPLY_FAILED') "
             + "AND (cs.deleted IS NULL OR cs.deleted = FALSE) "
             + "ORDER BY cs.updatedAt DESC LIMIT 100";

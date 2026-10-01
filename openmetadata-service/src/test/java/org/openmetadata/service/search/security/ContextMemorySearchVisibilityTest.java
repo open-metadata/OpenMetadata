@@ -143,6 +143,10 @@ class ContextMemorySearchVisibilityTest {
             + USER_ID
             + "')]",
         "owners see their own Private documents");
+    assertFieldDoesNotExist(
+        json,
+        "$.bool.should[2].bool.must[1].bool.should[1].bool.should[?(@.term['visibility'].value=='Public')]",
+        "Public files are not visible to non-owners through search");
   }
 
   @Test
@@ -328,6 +332,10 @@ class ContextMemorySearchVisibilityTest {
                 Entity.CONTEXT_FILE,
                 "visibility",
                 MemoryVisibility.PRIVATE.value())));
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType", Entity.CONTEXT_FILE, "visibility", MemoryVisibility.PUBLIC.value())));
   }
 
   private Map<String, Object> memoryDocument(MemoryVisibility visibility) {

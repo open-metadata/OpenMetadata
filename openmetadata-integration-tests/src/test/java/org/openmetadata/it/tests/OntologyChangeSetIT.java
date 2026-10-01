@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.OntologyChangeSetTestSupport;
@@ -62,6 +63,8 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 
 /** Integration coverage for durable drafts, undo/redo, edit leases, and atomic application. */
 @Execution(ExecutionMode.CONCURRENT)
@@ -349,6 +352,29 @@ public class OntologyChangeSetIT {
     assertFalse(drafts.contains(manualDraft.getId()));
     assertTrue(submitted.contains(submittedMemoryDraft.getId()));
     assertFalse(submitted.contains(memoryDraft.getId()));
+
+    int deletedEdges =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createUpdate(
+                            "UPDATE entity_relationship SET deleted = TRUE "
+                                + "WHERE fromId = :draftId AND toId = :memoryId "
+                                + "AND fromEntity = 'ontologyChangeSet' "
+                                + "AND toEntity = 'contextMemory'")
+                        .bind("draftId", memoryDraft.getId().toString())
+                        .bind("memoryId", memory.getId().toString())
+                        .execute());
+    assertEquals(1, deletedEdges);
+    assertFalse(
+        listedIds(client, "memorySourced=true&state=DRAFT,SUBMITTED")
+            .contains(memoryDraft.getId()));
+    OntologyChangeSetRepository repository =
+        (OntologyChangeSetRepository) Entity.getEntityRepository(Entity.ONTOLOGY_CHANGE_SET);
+    assertFalse(
+        repository.findOpenBySourceMemoryId(memory.getId()).stream()
+            .anyMatch(draft -> draft.getId().equals(memoryDraft.getId())));
   }
 
   private static Set<UUID> listedIds(OpenMetadataClient client, String query) {

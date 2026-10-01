@@ -10,6 +10,21 @@
 #  limitations under the License.
 
 version: "3.9"
+x-ontology-llm-environment: &ontology-llm-environment
+  LLM_ENABLED: ${LLM_ENABLED:-false}
+  LLM_PROVIDER: ${LLM_PROVIDER:-noop}
+  LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED: ${LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED:-false}
+  LLM_OPENAI_API_KEY: ${LLM_OPENAI_API_KEY:-""}
+  LLM_OPENAI_ENDPOINT: ${LLM_OPENAI_ENDPOINT:-""}
+  LLM_OPENAI_DEPLOYMENT: ${LLM_OPENAI_DEPLOYMENT:-""}
+  LLM_GOOGLE_API_KEY: ${LLM_GOOGLE_API_KEY:-""}
+  LLM_ANTHROPIC_API_KEY: ${LLM_ANTHROPIC_API_KEY:-""}
+  BEDROCK_AWS_IAM_AUTH_ENABLED: ${BEDROCK_AWS_IAM_AUTH_ENABLED:-true}
+  AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-""}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-""}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-""}
+  AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-""}
+
 volumes:
   ingestion-volume-dag-airflow:
   ingestion-volume-dags:
@@ -77,6 +92,7 @@ services:
     container_name: execute_migrate_all
     command: "./bootstrap/openmetadata-ops.sh -d migrate --force"
     environment:
+      <<: *ontology-llm-environment
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
@@ -322,6 +338,7 @@ services:
       dockerfile: docker/development/Dockerfile
     container_name: openmetadata_server
     environment:
+      <<: *ontology-llm-environment
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
