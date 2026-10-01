@@ -12,6 +12,7 @@
  */
 
 import { isNumber } from 'lodash';
+import { useMemo } from 'react';
 import { TestCaseChartDataType } from '../ProfilerDashboard/profilerDashboard.interface';
 
 type PlottedPoint = TestCaseChartDataType['data'][number];
@@ -30,21 +31,35 @@ const TestSummaryRunList = ({
   points,
   seriesLabels,
   getLabel,
-}: Readonly<TestSummaryRunListProps>) => (
-  <ul className="tw:sr-only" data-testid="test-summary-runs">
-    {points.flatMap((point) =>
-      seriesLabels
-        .filter((label) => isNumber(point[label]))
-        .map((label) => (
-          <li
-            data-status={point.status}
-            data-testid={`test-summary-point-${label}`}
-            key={`${String(point.name)}-${label}`}>
-            {getLabel(point)}
-          </li>
-        ))
-    )}
-  </ul>
-);
+}: Readonly<TestSummaryRunListProps>) => {
+  // Two runs can share a timestamp, so an entry's id also carries the run's
+  // place in the plotted list.
+  const entries = useMemo(
+    () =>
+      points.flatMap((point, position) =>
+        seriesLabels
+          .filter((label) => isNumber(point[label]))
+          .map((label) => ({
+            id: `${String(point.name)}-${label}-${position}`,
+            label,
+            point,
+          }))
+      ),
+    [points, seriesLabels]
+  );
+
+  return (
+    <ul className="tw:sr-only" data-testid="test-summary-runs">
+      {entries.map(({ id, label, point }) => (
+        <li
+          data-status={point.status}
+          data-testid={`test-summary-point-${label}`}
+          key={id}>
+          {getLabel(point)}
+        </li>
+      ))}
+    </ul>
+  );
+};
 
 export default TestSummaryRunList;

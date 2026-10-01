@@ -24,6 +24,7 @@ import { ComposedChart } from '@openmetadata/ui-core-components/charts';
 import { useQueries } from '@tanstack/react-query';
 import { isEmpty, isNumber, isUndefined } from 'lodash';
 import {
+  FocusEvent,
   RefObject,
   useCallback,
   useEffect,
@@ -76,6 +77,26 @@ const TOOLTIP_OFF = { show: false };
 const POINT_STATUS_HOLLOW = TestCaseStatus.Aborted;
 
 const hasArea = ({ height, width }: TooltipSize) => height > 0 && width > 0;
+
+// Room past the newest and oldest runs, so their dots and the selection halo
+// are not cut at the plot edge.
+const X_AXIS_EDGE_GAP: [string, string] = ['2%', '2%'];
+// Share of the data span left above and below the extremes, for the same
+// reason; a flat series gets a fixed step instead.
+const Y_AXIS_EDGE_SHARE = 0.04;
+const FLAT_SERIES_PADDING = 1;
+
+interface AxisExtent {
+  min: number;
+  max: number;
+}
+
+const yAxisPadding = ({ min, max }: AxisExtent) =>
+  max === min ? FLAT_SERIES_PADDING : (max - min) * Y_AXIS_EDGE_SHARE;
+const paddedYAxisMin = (extent: AxisExtent) =>
+  extent.min - yAxisPadding(extent);
+const paddedYAxisMax = (extent: AxisExtent) =>
+  extent.max + yAxisPadding(extent);
 
 interface ActiveTooltip {
   anchor: TooltipPosition;
@@ -206,6 +227,18 @@ function TestSummaryGraph({
     }, TOOLTIP_CLOSE_DELAY);
   }, [cancelTooltipClose]);
 
+  // Focus moving between the tooltip's own elements keeps it open; leaving it
+  // closes it like the pointer does.
+  const handleTooltipBlur = useCallback(
+    (event: FocusEvent<HTMLDivElement>) => {
+      const next = event.relatedTarget;
+      if (!(next instanceof Node && event.currentTarget.contains(next))) {
+        handleTooltipClose();
+      }
+    },
+    [handleTooltipClose]
+  );
+
   useEffect(() => cancelTooltipClose, [cancelTooltipClose]);
 
   const incidentIds = useMemo(
@@ -333,10 +366,11 @@ function TestSummaryGraph({
     const lines = seriesLabels.map<ChartSeries>((label) => ({
       key: label,
       name: label,
-      // One series reads as data and keeps the neutral wash under it; several
-      // need the palette to be told apart.
+      // One series reads as data and keeps a grey wash under it; several
+      // need the palette to be told apart. Muted, not neutral: neutral is a
+      // track colour, too pale for a line.
       type: isSingleSeries ? 'area' : 'line',
-      status: isSingleSeries ? 'neutral' : undefined,
+      status: isSingleSeries ? 'muted' : undefined,
       smooth: false,
       // A row this series holds no value for - a run that produced nothing,
       // or one placed on another series - draws no dot.
@@ -381,14 +415,15 @@ function TestSummaryGraph({
       formatter: (value) =>
         formatDateTimeLong(Number(value), DATE_TIME_12_HOUR_FORMAT),
       axisLabel: { rotate: 45 },
+      boundaryGap: X_AXIS_EDGE_GAP,
     }),
     []
   );
 
   const yAxis = useMemo<ChartYAxisProps>(
     () => ({
-      min: 'dataMin',
-      max: 'dataMax',
+      min: paddedYAxisMin,
+      max: paddedYAxisMax,
       formatter: (value) => formatYAxis(Number(value)),
     }),
     [formatYAxis]
@@ -462,11 +497,16 @@ function TestSummaryGraph({
         {activeTooltip && (
           // Placed by transform from the top-left corner, so the tooltip lays
           // out at its natural width wherever it sits and measures true.
+          // Tab from the chart lands on the incident link; the chart's blur
+          // must not close the tooltip from under the focus.
+          // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- only tracks focus inside the tooltip
           <div
             className="tw:absolute tw:top-0 tw:left-0 tw:z-10"
             style={{
               transform: `translate(${activeTooltip.position.x}px, ${activeTooltip.position.y}px)`,
-            }}>
+            }}
+            onBlur={handleTooltipBlur}
+            onFocus={cancelTooltipClose}>
             <TestSummaryTooltipContent
               activeTooltip={activeTooltip}
               boundaryRef={plotRef}

@@ -45,6 +45,7 @@ export const LIGHT_CHART_PALETTE = {
     failed: '#a00000',
     info: '#0000a0',
     neutral: '#a0a0a0',
+    muted: '#909090',
   },
   scale: ['#000010', '#0000ff'],
 };

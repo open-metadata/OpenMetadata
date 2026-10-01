@@ -99,6 +99,14 @@ const getSeries = (key: string) =>
 const getReferenceLine = (axis: ChartReferenceLine['axis']) =>
   getChartProps().referenceLines?.find((line) => line.axis === axis);
 
+type AxisExtent = { min: number; max: number };
+
+const getYAxisBounds = () =>
+  getChartProps().yAxis as unknown as {
+    min: (extent: AxisExtent) => number;
+    max: (extent: AxisExtent) => number;
+  };
+
 const hoverPoint = (x: number, y: number) => {
   const props = getChartProps();
   act(() => {
@@ -142,9 +150,8 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 jest.mock(
   '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component',
   () =>
-    jest
-      .fn()
-      .mockImplementation(({ onMouseEnter, onMouseLeave }) => (
+    jest.fn().mockImplementation(({ onMouseEnter, onMouseLeave }) => (
+      <>
         <button
           aria-label="tooltip"
           data-testid="test-summary-tooltip"
@@ -152,7 +159,11 @@ jest.mock(
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
         />
-      ))
+        <a data-testid="test-summary-incident-link" href="#incident">
+          incident
+        </a>
+      </>
+    ))
 );
 const mockSetShowAILearningBanner = jest.fn();
 const mockSetSelectedRunTimestamp = jest.fn();
@@ -280,15 +291,37 @@ describe('TestSummaryGraph', () => {
       />
     );
 
-    expect(getChartProps().yAxis).toMatchObject({
-      min: 'dataMin',
-      max: 'dataMax',
-    });
     expect(
       (getChartProps().yAxis as { formatter: (v: number) => string }).formatter(
         3600
       )
     ).toBe('3600ms');
+  });
+
+  // The newest run sits at the right edge and the extremes at the top and
+  // bottom; without padding their dots and the selection halo are clipped.
+  it('should pad the x axis so the edge runs are not clipped', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(getChartProps().xAxis?.boundaryGap).toEqual(['2%', '2%']);
+  });
+
+  it('should pad the y axis by a share of the data span', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const { min, max } = getYAxisBounds();
+
+    expect(min({ min: 100, max: 200 })).toBe(96);
+    expect(max({ min: 100, max: 200 })).toBe(204);
+  });
+
+  it('should pad a flat series so it is not drawn on the plot edge', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const { min, max } = getYAxisBounds();
+
+    expect(min({ min: 5, max: 5 })).toBe(4);
+    expect(max({ min: 5, max: 5 })).toBe(6);
   });
 
   it('should format the y axis as a number for other tests', () => {
@@ -427,6 +460,26 @@ describe('TestSummaryGraph', () => {
     ).toBe(false);
   });
 
+  it('should move the selected halo to the run the store holds', () => {
+    mockSelectedRunTimestamp = OLDER_RUN_TIMESTAMP;
+    render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
+
+    const { pointStyle } = getSeries('min');
+
+    expect(
+      pointStyle?.(
+        { name: OLDER_RUN_TIMESTAMP, status: TestCaseStatus.Success, min: 1 },
+        0
+      )?.selected
+    ).toBe(true);
+    expect(
+      pointStyle?.(
+        { name: NEWEST_RUN_TIMESTAMP, status: TestCaseStatus.Success, min: 1 },
+        1
+      )?.selected
+    ).toBe(false);
+  });
+
   it('should draw no dot where the series holds no value', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
@@ -438,14 +491,15 @@ describe('TestSummaryGraph', () => {
     ).toBeUndefined();
   });
 
-  it('should draw a single series as a neutral area', () => {
+  // Neutral is a track colour, too pale to read as a data line.
+  it('should draw a single series as a muted area', () => {
     render(
       <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
     );
 
     expect(getSeries('value')).toMatchObject({
       type: 'area',
-      status: 'neutral',
+      status: 'muted',
       smooth: false,
     });
   });
@@ -545,6 +599,30 @@ describe('TestSummaryGraph', () => {
     expect(screen.queryByTestId(TOOLTIP_TEST_ID)).not.toBeInTheDocument();
   });
 
+  // Tab from the chart lands on the incident link; the chart's blur must not
+  // close the tooltip from under the focus.
+  it('should keep the tooltip open while focus is inside it', () => {
+    jest.useFakeTimers();
+    render(<TestSummaryGraph {...mockProps} />);
+
+    hoverPoint(10, 20);
+    act(() => getChartProps().onPointLeave?.());
+    act(() => screen.getByTestId('test-summary-incident-link').focus());
+    act(() => screen.getByTestId(TOOLTIP_TEST_ID).focus());
+    act(() => {
+      jest.advanceTimersByTime(TOOLTIP_CLOSE_DELAY);
+    });
+
+    expect(screen.getByTestId(TOOLTIP_TEST_ID)).toBeInTheDocument();
+
+    act(() => screen.getByTestId(TOOLTIP_TEST_ID).blur());
+    act(() => {
+      jest.advanceTimersByTime(TOOLTIP_CLOSE_DELAY);
+    });
+
+    expect(screen.queryByTestId(TOOLTIP_TEST_ID)).not.toBeInTheDocument();
+  });
+
   it('should flip the tooltip when the chart edges would overflow', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
@@ -624,6 +702,24 @@ describe('TestSummaryGraph', () => {
 
     expect(screen.getAllByTestId('test-summary-point-min')).toHaveLength(1);
     expect(screen.getAllByTestId('test-summary-point-max')).toHaveLength(1);
+  });
+
+  it('should list runs that share a timestamp without a key collision', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseResults={[
+          mockProps.testCaseResults[0],
+          mockProps.testCaseResults[0],
+        ]}
+      />
+    );
+
+    expect(screen.getAllByTestId('test-summary-point-min')).toHaveLength(2);
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
   });
 
   it('should handle empty testCaseParameterValue', () => {
