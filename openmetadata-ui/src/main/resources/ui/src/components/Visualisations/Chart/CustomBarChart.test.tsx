@@ -39,11 +39,10 @@ const props: CustomBarChartProps = {
   tickFormatter: '%',
   chartCollection: {
     information: [
-      { title: 'Insert', dataKey: 'INSERT', color: 'var(--a)' },
+      { title: 'Insert', dataKey: 'INSERT' },
       {
         title: 'Delete',
         dataKey: 'DELETE',
-        color: 'var(--b)',
         status: 'warning',
       },
     ],

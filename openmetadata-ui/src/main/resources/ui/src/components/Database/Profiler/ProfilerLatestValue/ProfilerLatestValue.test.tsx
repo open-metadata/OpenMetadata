@@ -71,7 +71,6 @@ describe('ProfilerLatestValue component test', () => {
             title: 'Insert',
             dataKey: 'insert',
             latestValue: 1,
-            color: '#123456',
           },
           { title: 'Update', dataKey: 'update', latestValue: 2 },
           {
@@ -85,7 +84,6 @@ describe('ProfilerLatestValue component test', () => {
     );
     const titles = screen.getAllByTestId('title');
 
-    // The legacy `color` is ignored: the swatch matches the chart series.
     expect(titles[0]).toHaveStyle({
       borderLeft: `4px solid ${LIGHT_CHART_PALETTE.series[0]}`,
     });

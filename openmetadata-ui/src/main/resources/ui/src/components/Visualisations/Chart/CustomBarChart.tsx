@@ -43,8 +43,7 @@ const CustomBarChart = ({
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
 
-  // `info.color` is a CSS variable, which ECharts cannot paint; a series
-  // takes its `status` colour, else the next palette colour.
+  // A series takes its `status` colour, else the next palette colour.
   const series = useMemo<ChartSeries[]>(
     () =>
       information.map((info) => ({

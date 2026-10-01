@@ -30,11 +30,8 @@ export type MetricChartType = {
     title: string;
     dataKey: string;
     stackId?: string;
-    /** Unused by the charts, which take palette colours; removed with the last reader. */
-    color?: string;
     /** Chart colour that carries meaning, e.g. a delete; else the next palette colour. */
     status?: ChartStatus;
-    fill?: string;
     latestValue?: string | number;
     extra?: string;
   }[];
