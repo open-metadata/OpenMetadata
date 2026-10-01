@@ -14,7 +14,10 @@ import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { createNewPage, uuid } from '../../utils/common';
-import { getEncodedFqn } from '../../utils/entity';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { getAgentCard } from '../../utils/serviceIngestion';
 
 // use the admin user to login
@@ -170,9 +173,10 @@ test.describe('Service Agents visibility after a run is killed', () => {
         service.entityResponseData.fullyQualifiedName
       )}/agents/metadata`
     );
+    await waitForAllLoadersToDisappear(page);
     await page.getByTestId('data-assets-header').waitFor();
-    // The mocked list route resolves immediately here (isKilled is still false). toBeVisible()
-    // on the agent cards below retries until the list populates — no separate loader wait needed.
+    // The mocked list route resolves immediately here (isKilled is still false), and the loader
+    // wait above ensures the page has settled before the agent-card assertions run.
 
     const runningCard = getAgentCard(page, runningAgentName);
     const idleCard = getAgentCard(page, idleAgentName);
