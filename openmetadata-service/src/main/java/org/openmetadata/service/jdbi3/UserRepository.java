@@ -137,6 +137,8 @@ public class UserRepository extends EntityRepository<User> {
           .build();
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
+  private static final String PERSONAS_FIELD = "personas";
+  private static final String DEFAULT_PERSONA_FIELD = "defaultPersona";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
   static final String USER_PATCH_FIELDS =
@@ -167,8 +169,7 @@ public class UserRepository extends EntityRepository<User> {
     this.fieldFetchers.put("owns", this::fetchAndSetOwns);
     this.fieldFetchers.put("follows", this::fetchAndSetFollows);
     this.fieldFetchers.put("personas", this::fetchAndSetPersonas);
-    this.fieldFetchers.put("defaultPersona", this::fetchAndSetDefaultPersona);
-    this.fieldFetchers.put("inheritedPersonas", this::fetchAndSetInheritedPersonas);
+    this.fieldFetchers.put(DEFAULT_PERSONA_FIELD, this::fetchAndSetPersonaDefaults);
     this.fieldFetchers.put("domains", this::fetchAndSetDomains);
 
     if (searchRepository != null) {
@@ -713,6 +714,18 @@ public class UserRepository extends EntityRepository<User> {
     if (userDefaultPersona != null) {
       return userDefaultPersona;
     }
+    EntityReference teamDefaultPersona = getInheritedDefaultPersona(getInheritedPersonas(user));
+    return teamDefaultPersona != null ? teamDefaultPersona : getSystemDefaultPersonaReference();
+  }
+
+  private EntityReference getInheritedDefaultPersona(List<EntityReference> inheritedPersonas) {
+    // Multiple teams must resolve consistently regardless of relationship query ordering.
+    return listOrEmpty(inheritedPersonas).stream()
+        .min(EntityUtil.compareEntityReference)
+        .orElse(null);
+  }
+
+  private EntityReference getSystemDefaultPersonaReference() {
     PersonaRepository personaRepository =
         (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
     Persona systemDefault = personaRepository.getSystemDefaultPersona();
@@ -1264,8 +1277,17 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  private void fetchAndSetPersonaDefaults(List<User> users, Fields fields) {
+    if (nullOrEmpty(users)
+        || (!fields.contains(PERSONAS_FIELD) && !fields.contains(DEFAULT_PERSONA_FIELD))) {
+      return;
+    }
+    fetchAndSetInheritedPersonas(users);
+    fetchAndSetDefaultPersona(users, fields);
+  }
+
   private void fetchAndSetDefaultPersona(List<User> users, Fields fields) {
-    if (!fields.contains("defaultPersona") || users == null || users.isEmpty()) {
+    if (!fields.contains(DEFAULT_PERSONA_FIELD) || nullOrEmpty(users)) {
       return;
     }
 
@@ -1289,17 +1311,19 @@ public class UserRepository extends EntityRepository<User> {
       }
     }
 
+    EntityReference systemDefaultPersona = getSystemDefaultPersonaReference();
     for (User user : users) {
       EntityReference defaultPersonaRef = userToDefaultPersona.get(user.getId());
+      if (defaultPersonaRef == null) {
+        EntityReference teamDefaultPersona =
+            getInheritedDefaultPersona(user.getInheritedPersonas());
+        defaultPersonaRef = teamDefaultPersona != null ? teamDefaultPersona : systemDefaultPersona;
+      }
       user.setDefaultPersona(defaultPersonaRef);
     }
   }
 
-  private void fetchAndSetInheritedPersonas(List<User> users, Fields fields) {
-    if (!fields.contains("personas") || users == null || users.isEmpty()) {
-      return;
-    }
-
+  private void fetchAndSetInheritedPersonas(List<User> users) {
     // Step 1: Collect all team IDs across all users.
     // Use pre-loaded teams when available, batch-fetch only for users that need it.
     Map<UUID, List<UUID>> userToTeamIds = new HashMap<>();
@@ -1319,17 +1343,13 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     if (!usersNeedingTeamFetch.isEmpty()) {
-      List<CollectionDAO.EntityRelationshipObject> teamRecords =
-          daoCollection
-              .relationshipDAO()
-              .findFromBatch(usersNeedingTeamFetch, Relationship.HAS.ordinal(), Entity.TEAM, USER);
-
-      for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
-        UUID userId = UUID.fromString(record.getToId());
-        UUID teamId = UUID.fromString(record.getFromId());
-        userToTeamIds.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamId);
-        allTeamIds.add(teamId.toString());
-      }
+      batchFetchTeamsForUsers(usersNeedingTeamFetch)
+          .forEach(
+              (userId, teams) -> {
+                List<UUID> teamIds = teams.stream().map(EntityReference::getId).toList();
+                userToTeamIds.put(userId, teamIds);
+                teamIds.forEach(id -> allTeamIds.add(id.toString()));
+              });
     }
 
     if (allTeamIds.isEmpty()) {
