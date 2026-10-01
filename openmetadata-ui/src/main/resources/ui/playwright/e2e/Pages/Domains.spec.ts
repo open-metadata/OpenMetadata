@@ -47,6 +47,7 @@ import {
   visitGlossaryPage,
   waitForAntdPopupToSettle,
 } from '../../utils/common';
+import { getCustomPropertyEditButton } from '../../utils/customProperty';
 import {
   addAssetsToDataProduct,
   addAssetsToDomain,
@@ -114,7 +115,7 @@ const test = base.extend<{
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await setPage(page);
     await page.close();
   },
@@ -1498,7 +1499,7 @@ test.describe('Domains', () => {
         );
         await expect(propertyCard).toBeVisible();
 
-        const editIcon = propertyCard.getByTestId('edit-icon');
+        const editIcon = getCustomPropertyEditButton(propertyCard);
         await expect(editIcon).toBeVisible();
         await editIcon.click();
 

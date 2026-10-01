@@ -52,7 +52,7 @@ const test = base.extend<{
 }>({
   testCaseEditPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await testCaseEditUser.login(page);
+    await testCaseEditUser.signIn(page);
     await use(page);
     await page.close();
   },

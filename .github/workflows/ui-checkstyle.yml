@@ -525,6 +525,7 @@ jobs:
             openmetadata-ui/src/main/resources/ui/package.json
             openmetadata-ui/src/main/resources/ui/yarn.lock
             openmetadata-ui/src/main/resources/ui/vite.config.ts
+            openmetadata-ui/src/main/resources/ui/vite/**
             openmetadata-ui/src/main/resources/ui/index.html
             openmetadata-ui/src/main/resources/ui/scripts/check-bundle-chunks.mjs
             openmetadata-ui-core-components/src/main/resources/ui/src/**

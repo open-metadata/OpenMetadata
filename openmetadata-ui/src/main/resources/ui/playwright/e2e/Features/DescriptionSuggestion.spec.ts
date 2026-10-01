@@ -154,7 +154,7 @@ test.describe.serial(
       const requestedDescription =
         'Requested description added by the assignee';
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -172,7 +172,7 @@ test.describe.serial(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await table.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -207,7 +207,7 @@ test.describe.serial(
       const editedSuggestion =
         'Edited suggestion accepted for the nested table column';
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -228,7 +228,7 @@ test.describe.serial(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await table.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -271,7 +271,7 @@ test.describe.serial(
       const addedDescription =
         'Assignee-added description for the topic schema field';
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -291,7 +291,7 @@ test.describe.serial(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await topic.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -330,7 +330,7 @@ test.describe.serial(
       const addedDescription =
         'Assignee-added description for the api request schema field';
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -350,7 +350,7 @@ test.describe.serial(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await apiEndpoint.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -390,7 +390,7 @@ test.describe.serial(
       const editedSuggestion =
         'Edited suggestion accepted for the api response schema field';
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -411,7 +411,7 @@ test.describe.serial(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await apiEndpoint.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -449,7 +449,7 @@ test.describe.serial(
       const requestFieldPath = 'default.club_name';
       const originalDescription = '';
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -469,7 +469,7 @@ test.describe.serial(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await apiEndpoint.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -525,7 +525,7 @@ test.describe.serial(
         container.entityResponseData.dataModel?.columns?.[0].description
       );
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -546,7 +546,7 @@ test.describe.serial(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await container.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);

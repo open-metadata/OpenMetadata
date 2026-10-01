@@ -21,7 +21,7 @@ import {
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import ProfileSampleConfigField from './ProfileSampleConfigField';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Plus: () => null,
   Trash01: () => null,
 }));

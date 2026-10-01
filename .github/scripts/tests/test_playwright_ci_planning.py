@@ -193,6 +193,33 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
+def test_history_ignores_a_run_measured_on_a_degraded_runner(tmp_path, capsys):
+    # One run 1.5x slower across the board would set the p75 of every test
+    # and push chromium past its shard cap (run 36754924437).
+    planner = load_script("build_playwright_shards")
+    test_count = planner.MIN_SHARED_TESTS_FOR_SLOWDOWN
+    history_files = []
+    for index, duration in enumerate((1000, 1040, 980, 1500)):
+        history = tmp_path / f"history-{index}.json"
+        history.write_text(
+            json.dumps(
+                {
+                    "mode": "full",
+                    "tests": [
+                        {"id": f"test-{test}", "durationMs": duration}
+                        for test in range(test_count)
+                    ],
+                }
+            )
+        )
+        history_files.append(history)
+
+    weights, _ = planner.load_history(history_files)
+
+    assert weights["test-0"] == 1020
+    assert "history-3.json" in capsys.readouterr().err
+
+
 def test_checked_in_baseline_augments_downloaded_history(tmp_path):
     planner = load_script("build_playwright_shards")
     downloaded = tmp_path / "downloaded.json"

@@ -12,8 +12,8 @@
  */
 
 import { Button, HintText, Label } from '@openmetadata/ui-core-components';
+import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
-import { Copy01, XClose } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';

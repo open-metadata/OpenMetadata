@@ -16,7 +16,7 @@ import {
   TreeSelectDataResponse,
   TreeSelectNode,
 } from '@openmetadata/ui-core-components';
-import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
+import { Globe01 as DomainIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';

@@ -32,9 +32,8 @@ jest.mock('../../../rest/securityConfigAPI', () => ({
   testLoginValidateToken: jest.fn(),
 }));
 
-jest.mock('../../../utils/AuthProvider.util', () => ({
+jest.mock('./candidateUserManagerConfig', () => ({
   getCandidateUserManagerConfig: jest.fn(() => ({})),
-  SSO_TEST_LOGIN_STORE_PREFIX: 'omSsoTestLogin.',
 }));
 
 jest.mock('../../../utils/SwTokenStorageUtils', () => ({

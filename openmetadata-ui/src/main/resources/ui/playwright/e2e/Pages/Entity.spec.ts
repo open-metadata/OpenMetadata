@@ -30,6 +30,7 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -39,17 +40,14 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
-  removeSingleSelectDomain,
   resolveDescriptionBox,
   toastNotification,
   uuid,
-  verifyDomainPropagation,
 } from '../../utils/common';
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
@@ -70,7 +68,6 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
-import { visitServiceDetailsPage } from '../../utils/service';
 
 const entities = {
   'Api Endpoint': ApiEndpointClass,
@@ -102,13 +99,13 @@ const test = base.extend<{
 }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage({ storageState: undefined });
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage({ storageState: undefined });
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -135,7 +132,12 @@ test.afterAll('Cleanup shared entities', async () => {
 
 Object.entries(entities).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
-  const deleteEntity = new EntityClass();
+  // For tables, softDeleteEntity counts and clicks the deleted table in its
+  // schema's listing, so that table must be alone in its own schema.
+  const deleteEntity =
+    EntityClass === TableClass
+      ? new TableClass({ service: new DatabaseServiceClass() })
+      : new EntityClass();
   const entityName = entity.getType();
 
   test.describe(key, () => {
@@ -178,50 +180,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       );
     });
 
-    /**
-     * Tests domain propagation from service to entity
-     * @description Verifies that a domain assigned to a service propagates to its child entities,
-     * and that removing the domain from the service removes it from the entity
-     */
-    test('Domain Propagation', async ({ page }) => {
-      test.slow(true);
-      const serviceCategory = entity.serviceCategory;
-      if (serviceCategory && 'service' in entity) {
-        await visitServiceDetailsPage(
-          page,
-          {
-            name: entity.service.name,
-            type: serviceCategory,
-          },
-          false
-        );
-
-        await assignSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
-        await verifyDomainPropagation(
-          page,
-          EntityDataClass.domain1.responseData,
-          entity.entityResponseData?.['fullyQualifiedName'] ??
-            entity.entityResponseData?.['name'],
-          entity.exploreTabName
-        );
-
-        await visitServiceDetailsPage(
-          page,
-          {
-            name: entity.service.name,
-            type: serviceCategory,
-          },
-          false
-        );
-        await removeSingleSelectDomain(
-          page,
-          EntityDataClass.domain1.responseData
-        );
-      }
-    });
+    // Domain Propagation lives in EntityDomainPropagation.spec.ts: it mutates
+    // the parent service, and entities here share the shard's service.
 
     /**
      * Tests user ownership management on entities

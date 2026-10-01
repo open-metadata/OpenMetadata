@@ -57,6 +57,7 @@ import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
@@ -83,6 +84,7 @@ import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.ChildFieldPageReader;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -108,6 +110,7 @@ import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.BulkAssetsOperationResponse;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -1342,6 +1345,50 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String name, RelationIncludes relationIncludes, Fields fields) {
     Include include = relationIncludes == null ? Include.ALL : relationIncludes.getDefaultInclude();
     return new ResourceContext<>(entityType, null, name, include, fields, relationIncludes);
+  }
+
+  /**
+   * Authorizes VIEW_BASIC on a parent named by FQN and returns one page of its inline child
+   * collection: columns, schema fields, tasks or features depending on the entity type.
+   *
+   * <p>Shared here rather than copied into each resource because the body is identical for every
+   * type that has such a collection.
+   *
+   * <p>Authorization comes first and the parent is loaded afterwards, matching how the table
+   * columns endpoint has always ordered the two. The load asks for the registry's required fields
+   * rather than reusing the entity the resource context resolved: several repositories null out
+   * their inline child collection unless it was explicitly requested, so the context's copy can
+   * carry no children at all.
+   *
+   * <p>Only for entity types the child-field registry knows; calling it for any other type is a
+   * programming error and fails loudly.
+   */
+  protected ResultList<FieldInterface> getChildFieldPage(
+      SecurityContext securityContext,
+      String fqn,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, VIEW_BASIC),
+        getResourceContextByName(fqn, include));
+    ChildFieldResolver.ChildContainerSpec spec = ChildFieldResolver.specFor(entityType);
+    EntityInterface parent =
+        repository.getByName(
+            null, fqn, repository.getFields(spec.requiredFields()), include, false);
+    return new ChildFieldPageReader(repository, spec)
+        .read(
+            parent,
+            limit,
+            offset,
+            fieldsParam,
+            sortBy,
+            sortOrder,
+            ChildFieldPageReader.ChildPageEnricher.NONE);
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};

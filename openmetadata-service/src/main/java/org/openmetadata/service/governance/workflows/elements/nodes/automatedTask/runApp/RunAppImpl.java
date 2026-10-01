@@ -33,6 +33,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -147,7 +148,11 @@ public class RunAppImpl {
       try {
         ApplicationHandler.getInstance()
             .triggerApplicationOnDemand(
-                app, Entity.getCollectionDAO(), Entity.getSearchRepository(), config);
+                app,
+                Entity.getCollectionDAO(),
+                Entity.getSearchRepository(),
+                config,
+                WorkflowEventConsumer.GOVERNANCE_BOT);
         break;
       } catch (JsonParsingException | UnhandledServerException e) {
         if (e.getMessage().contains("Job is already running")) {

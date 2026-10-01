@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TreeSelectNode } from './tree-select.types';
 import { TreeSelect } from './tree-select';
@@ -139,5 +139,62 @@ describe('TreeSelect', () => {
     );
 
     await waitFor(() => expect(fetchData).toHaveBeenCalledTimes(1));
+  });
+
+  // The row carries the keyboard affordance: inside a react-aria Tree, arrow
+  // keys move between rows and never reach the button inside one.
+  it('loads the next page when the load-more row is activated', async () => {
+    const fetchData = vi
+      .fn()
+      .mockImplementation(
+        async ({ parentId, after }: { parentId?: string; after?: string }) => {
+          if (!parentId) {
+            return {
+              nodes: [{ id: 'a', label: 'Node A', value: 'a', isLeaf: false }],
+            };
+          }
+
+          return after
+            ? {
+                nodes: [
+                  { id: 'a.2', label: 'Second', value: 'a.2', isLeaf: true },
+                ],
+                hasMore: false,
+                total: 2,
+              }
+            : {
+                nodes: [
+                  { id: 'a.1', label: 'First', value: 'a.1', isLeaf: true },
+                ],
+                hasMore: true,
+                total: 2,
+                nextCursor: 'cursor-1',
+              };
+        }
+      );
+
+    render(
+      <TreeSelect
+        isOpen
+        lazyLoad
+        defaultExpandedKeys={['a']}
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    const row = await screen.findByTestId('tree-node-load-more-a');
+    const treeItem = row.closest('[role="row"], [role="treeitem"]');
+
+    expect(treeItem).not.toBeNull();
+
+    fireEvent.keyDown(treeItem as Element, { key: 'Enter' });
+    fireEvent.keyUp(treeItem as Element, { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(fetchData).toHaveBeenCalledWith(
+        expect.objectContaining({ parentId: 'a', after: 'cursor-1' })
+      )
+    );
   });
 });

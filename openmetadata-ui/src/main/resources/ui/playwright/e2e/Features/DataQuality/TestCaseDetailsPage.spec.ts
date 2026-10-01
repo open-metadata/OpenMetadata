@@ -452,6 +452,95 @@ test.describe(
 );
 
 test.describe(
+  'Test Case Details Page - Configuration card',
+  { tag: ['@Observability'] },
+  () => {
+    let sqlTable: TableClass;
+    let sqlTestCaseFqn: string;
+
+    // Custom SQL tests run far past the mock's three lines; the block has to
+    // hold a query of any length without stretching the rail.
+    const longSql = [
+      'SELECT o.id',
+      'FROM orders AS o',
+      'WHERE 1 = 1',
+      ...Array.from(
+        { length: 117 },
+        (_, index) => `  AND o.id <> ${index + 1}`
+      ),
+    ].join('\n');
+
+    test.beforeAll(
+      'Create a custom SQL test with a 120-line query',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        sqlTable = new TableClass();
+        await sqlTable.create(apiContext);
+        const testCase = await sqlTable.createTestCase(apiContext, {
+          testDefinition: 'tableCustomSQLQuery',
+          parameterValues: [
+            { name: 'sqlExpression', value: longSql },
+            { name: 'strategy', value: 'ROWS' },
+          ],
+        });
+        sqlTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await sqlTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('keeps a long SQL query inside a scrolling block', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, sqlTestCaseFqn);
+
+      const sql = page
+        .getByTestId('test-case-configuration-card')
+        .getByRole('region', { name: 'SQL Query' });
+
+      await expect(sql).toContainText('SELECT o.id');
+
+      // The block stops at 320px (max-h-80) and scrolls the rest of the query.
+      await expect
+        .poll(() => sql.evaluate((node) => node.clientHeight))
+        .toBeLessThanOrEqual(320);
+      await expect
+        .poll(() =>
+          sql.evaluate((node) => node.scrollHeight - node.clientHeight)
+        )
+        .toBeGreaterThan(0);
+
+      await test.step('A keyboard user can scroll to the end of the query', async () => {
+        await sql.focus();
+
+        await expect(sql).toBeFocused();
+
+        // Pressed on the locator, so the key reaches the block even if
+        // something else took focus in between.
+        await sql.press('End');
+
+        // Keyboard scrolling animates, so wait for the block to reach its end.
+        await expect
+          .poll(() =>
+            sql.evaluate(
+              (node) => node.scrollHeight - node.clientHeight - node.scrollTop
+            )
+          )
+          .toBeLessThanOrEqual(1);
+      });
+    });
+  }
+);
+
+test.describe(
   'Test Case Details Page - Result history chart',
   { tag: ['@Observability'] },
   () => {
@@ -653,6 +742,134 @@ test.describe(
         await expect(tile('aborted')).toHaveText('0');
         await expect(tile('success-rate')).toHaveText('66.7%');
       });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Run details card',
+  { tag: ['@Observability'] },
+  () => {
+    let detailsTable: TableClass;
+    let detailsTestCaseFqn: string;
+    let abortedTestCaseFqn: string;
+
+    test.beforeAll(
+      'Create a test case whose latest run failed',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        detailsTable = new TableClass();
+        await detailsTable.create(apiContext);
+        const testCase = await detailsTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        detailsTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        await detailsTable.addTestCaseResult(apiContext, detailsTestCaseFqn, {
+          duration: 2600,
+          result: 'Found rowCount=110 vs. the expected 10000',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '110' }],
+          timestamp: getCurrentMillis() - 60_000,
+        });
+
+        // A run that aborts before measuring sends no values; every run of
+        // this test case did, so the chart has no series of its own.
+        const abortedTestCase = await detailsTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        abortedTestCaseFqn = abortedTestCase.fullyQualifiedName as string;
+        for (const minutesAgo of [3, 1]) {
+          await detailsTable.addTestCaseResult(apiContext, abortedTestCaseFqn, {
+            duration: 30000,
+            errorDetails: {
+              errorType: 'QueryCanceled',
+              message: 'canceling statement due to statement timeout',
+              stackTrace: [
+                'Traceback (most recent call last):',
+                '  File "/ingestion/validator.py", line 42, in run',
+                '    rows = session.execute(query)',
+                'psycopg2.errors.QueryCanceled: canceling statement due to statement timeout',
+              ].join('\n'),
+            },
+            result: 'Error computing tableRowCountToEqual',
+            testCaseStatus: 'Aborted',
+            testResultValue: [],
+            timestamp: getCurrentMillis() - minutesAgo * 60_000,
+          });
+        }
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await detailsTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('shows the failed run against its expectation', async ({ page }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, detailsTestCaseFqn);
+
+      const card = page.getByTestId('run-details-card');
+
+      await expect(
+        card.getByRole('heading', { name: 'Run details' })
+      ).toBeVisible();
+      await expect(card).toHaveAttribute('data-status', 'Failed');
+      await expect(card.getByTestId('run-details-duration')).toHaveText('2.6s');
+      await expect(card.getByTestId('run-details-definition')).toHaveText(
+        'tableRowCountToEqual'
+      );
+      await expect(card.getByTestId('run-details-expected')).toHaveText(
+        '10,000'
+      );
+      await expect(card.getByTestId('run-details-found')).toHaveText('110');
+      await expect(card.getByTestId('run-details-difference')).toHaveText(
+        '-9,890 (-98.9%)'
+      );
+      await expect(card.getByTestId('run-details-comparison')).toBeVisible();
+    });
+
+    test('shows an aborted run as an execution error and still charts it', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, abortedTestCaseFqn);
+
+      const card = page.getByTestId('run-details-card');
+
+      await expect(card).toHaveAttribute('data-status', 'Aborted');
+      await expect(card.getByTestId('run-details-duration')).toHaveText(
+        '30.0s (timeout)'
+      );
+      await expect(card.getByTestId('run-details-found')).toHaveText('—');
+      await expect(card.getByTestId('run-details-comparison')).toHaveCount(0);
+      await expect(card.getByTestId('run-execution-error-type')).toHaveText(
+        'QueryCanceled'
+      );
+      await expect(card.getByTestId('run-execution-error-message')).toHaveText(
+        'canceling statement due to statement timeout'
+      );
+      await expect(
+        card.getByTestId('run-execution-error-traceback')
+      ).toContainText(
+        'psycopg2.errors.QueryCanceled: canceling statement due to statement timeout'
+      );
+
+      // Both aborted runs get a point on the chart despite recording no value.
+      await expect(
+        page
+          .getByTestId('graph-container')
+          .locator(
+            '[data-testid^="test-summary-point-"][data-status="Aborted"]'
+          )
+      ).toHaveCount(2);
     });
   }
 );
