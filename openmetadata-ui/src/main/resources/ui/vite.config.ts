@@ -22,7 +22,6 @@ import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { createChunkClassifier } from './vite/chunks';
 import {
-  barrelOptimizeUntitledIcons,
   htmlBasePathTransform,
   injectCriticalPreloads,
   noEnumOnlyChunks,
@@ -72,7 +71,6 @@ export default defineConfig(async ({ mode }) => {
       cspNonce: '${cspNonce}', // Placeholder replaced by Java backend at runtime
     },
     plugins: [
-      barrelOptimizeUntitledIcons(),
       isProductionBundle && !isPlaywrightBundle && noEnumOnlyChunks(),
       htmlBasePathTransform(),
       tailwindcss(),
@@ -149,7 +147,6 @@ export default defineConfig(async ({ mode }) => {
         'react-aria',
         'react-aria-components',
         'react-stately',
-        '@untitledui/icons',
         '@internationalized/date',
         '@react-aria/utils',
         '@react-stately/utils',

@@ -28,8 +28,8 @@ import {
   Edit03,
   Percent01,
   Tag01,
-  Variable,
-} from '@untitledui/icons';
+  Variable01 as Variable,
+} from '@openmetadata/ui-core-components/icons';
 import type { TFunction } from 'i18next';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';

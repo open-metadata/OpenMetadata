@@ -379,16 +379,6 @@ export const AuthProvider = ({
     navigate(ROUTES.SIGNIN);
   }, []);
 
-  const handledVerifiedUser = () => {
-    if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      // Route to `/` and let the (mode-specific) route tree render its
-      // own landing page. Rendering in place at `/` is provider-agnostic
-      // and lets non-default app modes (e.g. AskCollate's AI) own their
-      // own landing page without racing an early client-side redirect.
-      navigate(ROUTES.HOME);
-    }
-  };
-
   /**
    * Stores redirect URL for successful login
    */
@@ -413,11 +403,25 @@ export const AuthProvider = ({
   // `location` (from `useCustomLocation`), it isn't stripped of the
   // deploy-time base path, so it would mismatch what `isProtectedRoute` and
   // the post-login `navigate(urlPathname)` call both expect.
+  // `handledVerifiedUser` reads it for the same reason: the memoized
+  // `handleSuccessfulLogin` keeps the copy from the render it was created in,
+  // so after an in-app logout it would still see the page the user left.
   const pathnameRef = useRef(location.pathname);
 
   useEffect(() => {
     pathnameRef.current = location.pathname;
   }, [location.pathname]);
+
+  const handledVerifiedUser = () => {
+    if (!applicationRoutesClass.isProtectedRoute(pathnameRef.current)) {
+      // Route to `/` and let the (mode-specific) route tree render its
+      // own landing page. Rendering in place at `/` is provider-agnostic
+      // and lets non-default app modes (e.g. AskCollate's AI) own their
+      // own landing page without racing an early client-side redirect.
+      // PersonaLandingRedirect then sends `/` to the persona's landing page.
+      navigate(ROUTES.HOME);
+    }
+  };
 
   /**
    * Stores redirect URL for successful login

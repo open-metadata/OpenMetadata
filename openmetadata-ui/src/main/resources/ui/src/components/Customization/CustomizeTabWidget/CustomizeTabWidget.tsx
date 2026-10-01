@@ -32,6 +32,7 @@ import {
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
+import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import {
   getLayoutWithEmptyWidgetPlaceholder,
   getUniqueFilteredLayout,
@@ -46,9 +47,14 @@ import {
   getAddWidgetHandler,
   mergeGridLayout,
 } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
+import { getColumnLockedDragHandlers } from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { CustomPropertiesTabLayoutSection } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesTabLayoutSection';
+import { CustomPropertyLayoutItem } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.interface';
+import { parsePropertyLayout } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.utils';
 import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
+import { resolveWidgetKey } from '../../DataAssets/CommonWidgets/CommonWidgets.utils';
 
 const EmptyWidgetPlaceholder = withSuspenseFallback(
   lazy(
@@ -88,6 +94,10 @@ const AddDetailsPageWidgetModal = withSuspenseFallback(
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayout.ReactGridLayoutProps & { children?: React.ReactNode }
 >;
+
+// Side-panel widgets stay in their column and only reorder vertically.
+const COLUMN_LOCKED_DRAG_HANDLERS =
+  getColumnLockedDragHandlers(TAB_GRID_MAX_COLUMNS);
 
 export type CustomizeTabWidgetProps = WidgetCommonProps;
 
@@ -254,6 +264,65 @@ export const CustomizeTabWidget = () => {
     [tabLayouts]
   );
 
+  const handleWidgetConfigChange = (
+    widgetKey: string,
+    config: WidgetConfig['config'],
+    width?: number
+  ) => {
+    updateCurrentPage({
+      ...currentPage,
+      tabs: items.map((item) =>
+        item.id === activeKey
+          ? {
+              ...item,
+              layout: tabLayouts.map((widget) =>
+                widget.i === widgetKey
+                  ? { ...widget, config, w: width ?? widget.w }
+                  : widget
+              ),
+            }
+          : item
+      ),
+    } as Page);
+  };
+
+  const customPropertiesTabLayout = useMemo(
+    () =>
+      parsePropertyLayout(
+        tabLayouts.find((widget) =>
+          resolveWidgetKey(widget.i, [DetailPageWidgetKeys.CUSTOM_PROPERTIES])
+        )?.config?.propertyLayout
+      ),
+    [tabLayouts]
+  );
+
+  // The tab stores its arrangement as a single full-width Custom Properties
+  // layout item, so the persona document needs no new shape.
+  const handleCustomPropertiesTabLayoutChange = (
+    propertyLayout: CustomPropertyLayoutItem[]
+  ) => {
+    updateCurrentPage({
+      ...currentPage,
+      tabs: items.map((item) =>
+        item.id === EntityTabs.CUSTOM_PROPERTIES
+          ? {
+              ...item,
+              layout: [
+                {
+                  i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+                  x: 0,
+                  y: 0,
+                  w: TAB_GRID_MAX_COLUMNS,
+                  h: 1,
+                  config: { propertyLayout },
+                },
+              ],
+            }
+          : item
+      ),
+    } as Page);
+  };
+
   const leftPanelWidget = useMemo(() => {
     return tabLayouts.find((layout) =>
       layout.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
@@ -294,7 +363,9 @@ export const CustomizeTabWidget = () => {
           <GenericWidget
             isEditView
             handleRemoveWidget={handleRemoveWidget}
+            handleWidgetConfigChange={handleWidgetConfigChange}
             selectedGridSize={widget.w}
+            widgetConfig={widget}
             widgetKey={widget.i}
           />
         );
@@ -349,13 +420,15 @@ export const CustomizeTabWidget = () => {
     (
       newWidgetData: CommonWidgetType,
       placeholderWidgetKey: string,
-      widgetSize: number
+      widgetSize: number,
+      extraConfig?: WidgetConfig['config']
     ) => {
       const newLayout = getAddWidgetHandler(
         newWidgetData,
         placeholderWidgetKey,
         widgetSize,
-        currentPageType as PageType
+        currentPageType as PageType,
+        extraConfig
       )(tabLayouts);
 
       updateCurrentPage({
@@ -416,6 +489,11 @@ export const CustomizeTabWidget = () => {
             {items.map((item, index) => (
               <TabItem
                 index={index}
+                // The Custom Properties tab has no widgets but its card layout
+                // is arranged here.
+                isEditable={
+                  item.editable || item.id === EntityTabs.CUSTOM_PROPERTIES
+                }
                 item={item}
                 key={item.id}
                 moveTab={moveTab}
@@ -457,14 +535,16 @@ export const CustomizeTabWidget = () => {
           bodyStyle={{ padding: 0, paddingBottom: '20px' }}
           bordered={false}
           extra={
-            <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={handleOpenAddWidgetModal}>
-              {t('label.add-entity', {
-                entity: t('label.widget'),
-              })}
-            </Button>
+            activeKey === EntityTabs.CUSTOM_PROPERTIES ? undefined : (
+              <Button
+                icon={<PlusOutlined />}
+                type="primary"
+                onClick={handleOpenAddWidgetModal}>
+                {t('label.add-entity', {
+                  entity: t('label.widget'),
+                })}
+              </Button>
+            )
           }
           title={t('label.customize-entity-widget-plural', {
             entity: getEntityName(
@@ -477,23 +557,33 @@ export const CustomizeTabWidget = () => {
             - preventCollision={false}: Enables automatic widget repositioning on collision
             - useCSSTransforms: Uses CSS transforms for better performance during drag
           */}
-          <ReactGridLayout
-            useCSSTransforms
-            verticalCompact
-            className="grid-container"
-            cols={TAB_GRID_MAX_COLUMNS}
-            draggableHandle=".drag-widget-icon"
-            margin={[16, 16]}
-            preventCollision={false}
-            rowHeight={100}
-            onLayoutChange={handleLayoutUpdate}>
-            {widgets}
-          </ReactGridLayout>
+          {activeKey === EntityTabs.CUSTOM_PROPERTIES ? (
+            <CustomPropertiesTabLayoutSection
+              entityType={getEntityTypeFromPageType(currentPageType)}
+              propertyLayout={customPropertiesTabLayout}
+              onChange={handleCustomPropertiesTabLayoutChange}
+            />
+          ) : (
+            <ReactGridLayout
+              useCSSTransforms
+              verticalCompact
+              className="grid-container"
+              cols={TAB_GRID_MAX_COLUMNS}
+              draggableHandle=".drag-widget-icon"
+              margin={[16, 16]}
+              preventCollision={false}
+              rowHeight={100}
+              onLayoutChange={handleLayoutUpdate}
+              {...COLUMN_LOCKED_DRAG_HANDLERS}>
+              {widgets}
+            </ReactGridLayout>
+          )}
         </Card>
       </Col>
 
       {currentPageType && (
         <AddDetailsPageWidgetModal
+          entityType={getEntityTypeFromPageType(currentPageType)}
           handleAddWidget={handleMainPanelAddWidget}
           handleCloseAddWidgetModal={() => setIsWidgetModalOpen(false)}
           maxGridSizeSupport={TAB_GRID_MAX_COLUMNS}

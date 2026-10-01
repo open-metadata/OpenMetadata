@@ -656,3 +656,131 @@ test.describe(
     });
   }
 );
+
+test.describe(
+  'Test Case Details Page - Run details card',
+  { tag: ['@Observability'] },
+  () => {
+    let detailsTable: TableClass;
+    let detailsTestCaseFqn: string;
+    let abortedTestCaseFqn: string;
+
+    test.beforeAll(
+      'Create a test case whose latest run failed',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        detailsTable = new TableClass();
+        await detailsTable.create(apiContext);
+        const testCase = await detailsTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        detailsTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        await detailsTable.addTestCaseResult(apiContext, detailsTestCaseFqn, {
+          duration: 2600,
+          result: 'Found rowCount=110 vs. the expected 10000',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '110' }],
+          timestamp: getCurrentMillis() - 60_000,
+        });
+
+        // A run that aborts before measuring sends no values; every run of
+        // this test case did, so the chart has no series of its own.
+        const abortedTestCase = await detailsTable.createTestCase(apiContext, {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        });
+        abortedTestCaseFqn = abortedTestCase.fullyQualifiedName as string;
+        for (const minutesAgo of [3, 1]) {
+          await detailsTable.addTestCaseResult(apiContext, abortedTestCaseFqn, {
+            duration: 30000,
+            errorDetails: {
+              errorType: 'QueryCanceled',
+              message: 'canceling statement due to statement timeout',
+              stackTrace: [
+                'Traceback (most recent call last):',
+                '  File "/ingestion/validator.py", line 42, in run',
+                '    rows = session.execute(query)',
+                'psycopg2.errors.QueryCanceled: canceling statement due to statement timeout',
+              ].join('\n'),
+            },
+            result: 'Error computing tableRowCountToEqual',
+            testCaseStatus: 'Aborted',
+            testResultValue: [],
+            timestamp: getCurrentMillis() - minutesAgo * 60_000,
+          });
+        }
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await detailsTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('shows the failed run against its expectation', async ({ page }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, detailsTestCaseFqn);
+
+      const card = page.getByTestId('run-details-card');
+
+      await expect(
+        card.getByRole('heading', { name: 'Run details' })
+      ).toBeVisible();
+      await expect(card).toHaveAttribute('data-status', 'Failed');
+      await expect(card.getByTestId('run-details-duration')).toHaveText('2.6s');
+      await expect(card.getByTestId('run-details-definition')).toHaveText(
+        'tableRowCountToEqual'
+      );
+      await expect(card.getByTestId('run-details-expected')).toHaveText(
+        '10,000'
+      );
+      await expect(card.getByTestId('run-details-found')).toHaveText('110');
+      await expect(card.getByTestId('run-details-difference')).toHaveText(
+        '-9,890 (-98.9%)'
+      );
+      await expect(card.getByTestId('run-details-comparison')).toBeVisible();
+    });
+
+    test('shows an aborted run as an execution error and still charts it', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, abortedTestCaseFqn);
+
+      const card = page.getByTestId('run-details-card');
+
+      await expect(card).toHaveAttribute('data-status', 'Aborted');
+      await expect(card.getByTestId('run-details-duration')).toHaveText(
+        '30.0s (timeout)'
+      );
+      await expect(card.getByTestId('run-details-found')).toHaveText('—');
+      await expect(card.getByTestId('run-details-comparison')).toHaveCount(0);
+      await expect(card.getByTestId('run-execution-error-type')).toHaveText(
+        'QueryCanceled'
+      );
+      await expect(card.getByTestId('run-execution-error-message')).toHaveText(
+        'canceling statement due to statement timeout'
+      );
+      await expect(
+        card.getByTestId('run-execution-error-traceback')
+      ).toContainText(
+        'psycopg2.errors.QueryCanceled: canceling statement due to statement timeout'
+      );
+
+      // Both aborted runs get a point on the chart despite recording no value.
+      await expect(
+        page
+          .getByTestId('graph-container')
+          .locator(
+            '[data-testid^="test-summary-point-"][data-status="Aborted"]'
+          )
+      ).toHaveCount(2);
+    });
+  }
+);

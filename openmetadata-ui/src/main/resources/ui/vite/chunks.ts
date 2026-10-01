@@ -171,9 +171,6 @@ export const createChunkClassifier = ({
     ) {
       return 'vendor-untitled';
     }
-    if (normalizedId.includes('/node_modules/@untitledui/icons/')) {
-      return 'vendor-untitled-icons';
-    }
 
     // NOTE: earlier revisions grouped viz (@antv, three, reactflow, recharts,
     // elkjs, dagre), editors (@tiptap, prosemirror, codemirror, quill), and

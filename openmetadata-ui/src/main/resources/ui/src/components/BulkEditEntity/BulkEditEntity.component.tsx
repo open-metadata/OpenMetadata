@@ -16,10 +16,10 @@ import {
   Lock01,
   Plus,
   RefreshCcw01,
-  SearchLg,
+  Search,
   Trash01,
   XCircle,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, startCase } from 'lodash';
 import {
   Fragment,
@@ -86,7 +86,7 @@ const SELECT_ONLY_ON_CLICK_COLUMNS = new Set([
 ]);
 
 const BulkEditSearchIcon = ({ className }: { className?: string }) => (
-  <SearchLg aria-hidden="true" className={className} />
+  <Search aria-hidden="true" className={className} />
 );
 
 const getBulkEditRowName = (row?: Record<string, string>) =>
