@@ -25,6 +25,7 @@ import {
   getTestSummaryTooltipPosition,
   getThresholdReference,
   isSameTooltipPosition,
+  PLACED_KEYS_FIELD,
   prepareChartData,
   PrepareChartDataType,
 } from './TestSummaryGraphUtils';
@@ -488,9 +489,20 @@ describe('prepareChartData', () => {
           task: undefined,
         },
       ],
-      information: [],
+      // No run measured anything, so one series stands in for their points.
+      information: [{ label: 'value', color: '#7147E8' }],
       showAILearningBanner: true,
     });
+  });
+
+  it('should name no series when there are no runs', () => {
+    expect(
+      prepareChartData({
+        testCaseParameterValue: [],
+        testCaseResults: [],
+        tasks: [],
+      } as PrepareChartDataType).information
+    ).toEqual([]);
   });
 });
 
@@ -768,12 +780,16 @@ describe('applyStatusPlacements', () => {
     expect(applyStatusPlacements([point], series)).toEqual([point]);
   });
 
-  it('should place nothing when no run plotted a value and no line exists', () => {
+  it('should place runs on the zero line when no run plotted a value and no line exists', () => {
     const data = applyStatusPlacements(
-      [{ name: 1, status: TestCaseStatus.Aborted }],
+      [
+        { name: 1, status: TestCaseStatus.Aborted },
+        { name: 2, status: TestCaseStatus.Queued },
+      ],
       series
     );
 
-    expect(data[0]).toEqual({ name: 1, status: TestCaseStatus.Aborted });
+    expect(data.map((point) => point[series[0]])).toEqual([0, 0]);
+    expect(data[0][PLACED_KEYS_FIELD]).toEqual(series);
   });
 });

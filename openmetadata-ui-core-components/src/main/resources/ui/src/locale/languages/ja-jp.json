@@ -7,6 +7,7 @@
     "close": "閉じる",
     "close-navigation-menu": "ナビゲーションメニューを閉じる",
     "copy-link": "リンクをコピー",
+    "count-remaining": "残り {{count}} 件",
     "count-selected": "{{count}} 件選択済み",
     "current-page": "現在のページ",
     "date-range-picker": "日付範囲ピッカー",
@@ -33,8 +34,10 @@
     "remove-filter": "フィルターを削除",
     "search": "検索",
     "select-all": "すべて選択",
+    "select-date": "日付を選択",
     "select-dates": "日付を選択",
     "select-only-one-row": "1 行を選択",
+    "show-count-more": "さらに {{count}} 件表示",
     "show-hidden-breadcrumbs": "非表示のパンくずリストを表示",
     "today": "今日",
     "tree-select": "ツリー選択"

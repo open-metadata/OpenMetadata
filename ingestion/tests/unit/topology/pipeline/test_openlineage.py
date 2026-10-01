@@ -5,12 +5,14 @@ import json
 import time
 import unittest
 from functools import partial
+from itertools import chain, repeat
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID, uuid4
 
 import pytest
 from cachetools import LRUCache, TTLCache
+from confluent_kafka import KafkaError
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
@@ -21,6 +23,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     ConsumerOffsets,
     SecurityProtocol,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
+    Kafka as KafkaBrokerConfig,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
     ConsumerOffsets as ConsumerOffsets1,
@@ -229,6 +234,8 @@ class OpenLineageUnitTest(unittest.TestCase):
     def setup_mock_consumer_with_kafka_event(self, event):
         mock_msg = MagicMock()
         mock_msg.error.return_value = None
+        mock_msg.partition.return_value = 0
+        mock_msg.offset.return_value = 0
         mock_msg.value.return_value = json.dumps(event).encode()
         self.mock_consumer.poll.side_effect = [
             mock_msg,
@@ -3093,6 +3100,113 @@ class TestKinesisMultiShardPolling(unittest.TestCase):
         events = list(source._poll_kinesis(broker))
 
         assert len(events) == 2
+
+
+class TestKafkaOffsetCommit:
+    """Issue #29757: a Kafka message's offset is stored only once the event it
+    carries has been processed, and polling survives the consumer being evicted
+    from its group while a long event is processed."""
+
+    BROKER = KafkaBrokerConfig(
+        brokersUrl="broker:9092",
+        topicName="openlineage",
+        consumerGroupName="openlineage",
+        poolTimeout=0.1,
+        sessionTimeout=1,
+    )
+
+    @staticmethod
+    def _message(offset, job_name="job", partition=0, event_type="COMPLETE"):
+        message = MagicMock()
+        message.error.return_value = None
+        message.partition.return_value = partition
+        message.offset.return_value = offset
+        message.value.return_value = json.dumps(
+            {
+                "run": {"facets": {}},
+                "inputs": [],
+                "outputs": [],
+                "eventType": event_type,
+                "job": {"name": job_name, "namespace": "ns"},
+            }
+        ).encode()
+        return message
+
+    @staticmethod
+    def _error(code):
+        message = MagicMock()
+        message.error.return_value = KafkaError(code)
+        return message
+
+    @staticmethod
+    def _source(*poll_results, then=None):
+        """Source whose consumer returns ``poll_results`` and then ``then`` forever,
+        plus the (partition, offset) pairs it stores on the consumer."""
+        stored = []
+        consumer = MagicMock()
+        consumer.poll.side_effect = chain(poll_results, repeat(then))
+        consumer.store_offsets.side_effect = lambda message: stored.append((message.partition(), message.offset()))
+        source = object.__new__(OpenlineageSource)
+        source.client = consumer
+        return source, stored
+
+    def test_offset_is_stored_only_after_the_event_is_processed(self):
+        source, stored = self._source(self._message(0, "job_0"))
+        events = source._poll_kafka(self.BROKER)
+
+        assert next(events).job["name"] == "job_0"
+        # The topology is still writing this event's pipeline and lineage.
+        assert stored == []
+
+        assert list(events) == []
+        assert stored == [(0, 0)]
+
+    def test_filtered_and_unparseable_messages_are_stored(self):
+        unparseable = self._message(1)
+        unparseable.value.return_value = b"not json"
+        source, stored = self._source(self._message(0, event_type="FAIL"), unparseable)
+
+        assert list(source._poll_kafka(self.BROKER)) == []
+        assert stored == [(0, 0), (0, 1)]
+
+    def test_polling_continues_after_max_poll_interval_eviction(self):
+        source, _ = self._source(
+            self._message(0, "job_0"),
+            self._error(KafkaError._MAX_POLL_EXCEEDED),
+            self._message(1, "job_1"),
+        )
+
+        assert [event.job["name"] for event in source._poll_kafka(self.BROKER)] == ["job_0", "job_1"]
+
+    def test_event_redelivered_after_rejoin_is_not_processed_again(self):
+        # Evicted while job_1 was processed, the consumer drops the offset stored
+        # for it and, once it rejoins, resumes from the last committed offset.
+        source, stored = self._source(
+            self._message(0, "job_0"),
+            self._message(1, "job_1"),
+            self._error(KafkaError._MAX_POLL_EXCEEDED),
+            self._message(1, "job_1"),
+            self._message(2, "job_2"),
+        )
+
+        assert [event.job["name"] for event in source._poll_kafka(self.BROKER)] == ["job_0", "job_1", "job_2"]
+        assert stored == [(0, 0), (0, 1), (0, 1), (0, 2)]
+
+    def test_redelivery_check_is_per_partition(self):
+        source, _ = self._source(
+            self._message(5, "partition_0_job", partition=0),
+            self._message(0, "partition_1_job", partition=1),
+        )
+
+        assert [event.job["name"] for event in source._poll_kafka(self.BROKER)] == [
+            "partition_0_job",
+            "partition_1_job",
+        ]
+
+    def test_consumer_errors_end_the_session_after_the_inactivity_timeout(self):
+        source, _ = self._source(then=self._error(KafkaError._TRANSPORT))
+
+        assert list(source._poll_kafka(self.BROKER)) == []
 
 
 class TestTableResolutionAcrossSameTypeServices:

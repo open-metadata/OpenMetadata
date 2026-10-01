@@ -1208,46 +1208,60 @@ class OpenlineageSource(PipelineServiceSource):
             raise InvalidSourceException(f"Unsupported broker config type: {type(broker)}")
 
     def _poll_kafka(self, broker: KafkaBrokerConfig) -> Iterable[OpenLineageEvent]:
-        """Poll events from Kafka topic."""
+        """Poll events from Kafka topic.
+
+        A message's offset is stored only when the topology resumes this generator,
+        that is once the event it carries has been processed. The consumer commits
+        stored offsets in the background and on close, so a run that stops mid-event
+        reads that event again next time instead of losing it.
+        """
         try:
             consumer = self.client
             session_active = True
             empty_msg_cnt = 0
             pool_timeout = broker.poolTimeout
+            # Next unprocessed offset per partition. Nothing polls while the topology
+            # processes an event, so a long one outlasts max.poll.interval.ms and the
+            # consumer is evicted from its group. It drops the offset stored meanwhile
+            # and, once rejoined, hands back events this run already processed.
+            next_offsets: dict[int, int] = {}
             while session_active:
                 message = consumer.poll(timeout=pool_timeout)
-                if message is None:
-                    logger.debug("no new messages")
+                if message is None or message.error():
+                    if message is None:
+                        logger.debug("no new messages")
+                    else:
+                        logger.warning(f"Kafka consumer error: {message.error()}")
                     empty_msg_cnt += 1
                     if empty_msg_cnt * pool_timeout > broker.sessionTimeout:
-                        session_active = False
-                elif message.error():
-                    logger.warning(f"Kafka consumer error: {message.error()}")
-                    empty_msg_cnt += 1
-                    if empty_msg_cnt * pool_timeout > self.service_connection.sessionTimeout:
                         session_active = False
                 else:
                     logger.debug(f"new message {message.value()}")
                     empty_msg_cnt = 0
-                    try:
-                        _result = message_to_open_lineage_event(json.loads(message.value()))
-                        result = self._filter_event_by_types(
-                            _result,
-                            [EventType.COMPLETE, EventType.RUNNING, EventType.START],
-                        )
-                        if result:
-                            yield result
-                    except Exception as e:
-                        logger.warning(f"Failed to parse OpenLineage event from Kafka message: {e}")
-                        logger.debug(traceback.format_exc())
+                    partition, offset = message.partition(), message.offset()
+                    if offset < next_offsets.get(partition, 0):
+                        logger.debug("Skipping offset %s of partition %s, already processed", offset, partition)
+                    else:
+                        try:
+                            _result = message_to_open_lineage_event(json.loads(message.value()))
+                            result = self._filter_event_by_types(
+                                _result,
+                                [EventType.COMPLETE, EventType.RUNNING, EventType.START],
+                            )
+                            if result:
+                                yield result
+                        except Exception as e:
+                            logger.warning(f"Failed to parse OpenLineage event from Kafka message: {e}")
+                            logger.debug(traceback.format_exc())
+                        next_offsets[partition] = offset + 1
+                    consumer.store_offsets(message=message)
 
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")  # noqa: B904, RUF010
 
         finally:
-            # Close down consumer to commit final offsets.
-            # @todo address this
+            # Commits the offsets stored for processed events and leaves the group.
             consumer.close()
 
     def _poll_kinesis(self, broker: KinesisBrokerConfig) -> Iterable[OpenLineageEvent]:

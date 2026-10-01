@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
-import { PlusCircle, XCircle } from '@untitledui/icons';
+import { PlusCircle, XCircle } from '@openmetadata/ui-core-components/icons';
 import { isString } from 'lodash';
 import { useCallback, useState } from 'react';
 import type { Selection } from 'react-aria-components';

@@ -1089,19 +1089,26 @@ public class ConversationRepository {
   private Target resolveTarget(String about, Include include) {
     MessageParser.EntityLink link = MessageParser.EntityLink.parse(about);
     EntityReference reference = EntityUtil.validateEntityLink(link);
-    EntityInterface entity =
-        Entity.getEntity(
-            reference.getType(), reference.getId(), Entity.FIELD_DOMAINS, include, false);
+    EntityInterface entity = getWithDomains(reference.getType(), reference.getId(), include);
     return new Target(entity.getEntityReference(), emptyIfNull(entity.getDomains()));
+  }
+
+  /**
+   * Domain is the one entity type with no {@code domains} field of its own, so asking for it by
+   * name would 400 on every conversation scoped to a domain. Drop the field where it is unsupported
+   * instead.
+   */
+  private EntityInterface getWithDomains(String entityType, UUID id, Include include) {
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    return repository.get(
+        null, id, repository.getOnlySupportedFields(Entity.FIELD_DOMAINS), include, false);
   }
 
   private ActivityContext resolveActivityContext(UUID activityId) {
     ActivityEvent event = activityStreamRepository.getById(activityId);
     EntityReference eventTarget = event.getEntity();
     try {
-      EntityInterface target =
-          Entity.getEntity(
-              eventTarget.getType(), eventTarget.getId(), Entity.FIELD_DOMAINS, ALL, false);
+      EntityInterface target = getWithDomains(eventTarget.getType(), eventTarget.getId(), ALL);
       return new ActivityContext(
           event, new Target(target.getEntityReference(), emptyIfNull(target.getDomains())), true);
     } catch (EntityNotFoundException exception) {

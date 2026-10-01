@@ -59,7 +59,6 @@ import {
 import type { TestCaseResult } from '../../../../generated/tests/testCase';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { useChartColors } from '../../../../hooks/useChartColors';
-import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
 import {
@@ -78,6 +77,7 @@ import {
   DATE_TIME_12_HOUR_FORMAT,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { useTestCaseStore } from '../../../DataQuality/IncidentManager/useTestCase.store';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import {
   BOUND_AREA_OPACITY,
