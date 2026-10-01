@@ -55,6 +55,8 @@ import {
   useTreeSelectSelection,
 } from './use-tree-select-selection';
 
+/** Row id of a branch's load-more item; a real node is matched first. */
+const LOAD_MORE_SUFFIX = '__more';
 /** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
 const DROPDOWN_CHROME_WIDTH = 320;
 /** Matches react-aria's default overlay `containerPadding`. */
@@ -575,8 +577,8 @@ export const TreeSelect = <T = unknown,>({
 
       return (
         <Tree.Item
-          id={`${node.id}__more`}
-          key={`${node.id}__more`}
+          id={`${node.id}${LOAD_MORE_SUFFIX}`}
+          key={`${node.id}${LOAD_MORE_SUFFIX}`}
           textValue={t('label.show-count-more', { count: nextCount })}>
           <TreeSelectLoadMoreItemContent
             isLoading={loadingNodes.has(node.id)}
@@ -637,9 +639,9 @@ export const TreeSelect = <T = unknown,>({
                 }
               }}
             />
-            {node.children?.length ? (
+            {node.children?.length || node.hasMoreChildren ? (
               <Fragment key={`${node.id}__children`}>
-                {renderNodes(node.children, node)}
+                {renderNodes(node.children ?? [], node)}
                 {renderLoadMore(node)}
               </Fragment>
             ) : (
@@ -897,8 +899,15 @@ export const TreeSelect = <T = unknown,>({
             expandedKeys={filteredExpandedKeys}
             selectionMode="none"
             onAction={(key) => {
-              const node = findNode(treeData, String(key));
+              const id = String(key);
+              const node = findNode(treeData, id);
+              // Keyboard activation lands here too, so the load-more row needs
+              // to answer it — its button alone is not reachable by arrow keys.
               if (!node) {
+                if (id.endsWith(LOAD_MORE_SUFFIX)) {
+                  loadMoreChildren(id.slice(0, -LOAD_MORE_SUFFIX.length));
+                }
+
                 return;
               }
               if (!hasExclusiveChildren(node)) {

@@ -16,7 +16,7 @@ import {
   TreeSelectNode,
   TreeSelectProps,
 } from '@openmetadata/ui-core-components';
-import { FC, useCallback, useMemo } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_EXTRA_LARGE } from '../../../constants/constants';
 import { TagSource } from '../../../generated/entity/data/container';
@@ -87,6 +87,12 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
 
   const excluded = useMemo(() => new Set(excludeFqns ?? []), [excludeFqns]);
 
+  // Running per branch, because the tree keeps only the newest page's total.
+  const prunedPerBranch = useRef<Map<string, number>>(new Map());
+  useEffect(() => {
+    prunedPerBranch.current = new Map();
+  }, [excluded]);
+
   // Pruned on fetch, not via `filterNode`, which the tree applies to searches only.
   const fetchData = useCallback(
     async (
@@ -94,9 +100,22 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
     ): Promise<TreeSelectDataResponse<GlossaryPickerValue>> => {
       const response = await fetchGlossaryTree(params);
 
-      return excluded.size === 0
-        ? response
-        : { ...response, nodes: pruneNodes(response.nodes, excluded) };
+      if (excluded.size === 0) {
+        return response;
+      }
+
+      const nodes = pruneNodes(response.nodes, excluded);
+      if (!params.parentId || response.total === undefined) {
+        return { ...response, nodes };
+      }
+
+      // `total` counts what the server holds; the row counts what survives.
+      const pruned =
+        (params.after ? prunedPerBranch.current.get(params.parentId) ?? 0 : 0) +
+        (response.nodes.length - nodes.length);
+      prunedPerBranch.current.set(params.parentId, pruned);
+
+      return { ...response, nodes, total: response.total - pruned };
     },
     [fetchGlossaryTree, excluded]
   );

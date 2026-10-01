@@ -124,6 +124,31 @@ describe('useTreeSelectData', () => {
     expect(result.current.treeData[0].hasMoreChildren).toBe(false);
   });
 
+  // The consumer may prune a whole page (an exclude list), leaving the branch
+  // rendered empty while the server still has more to give.
+  it('keeps a branch resumable when a page arrives empty', async () => {
+    const fetchData = vi
+      .fn()
+      .mockImplementation(async ({ parentId }: { parentId?: string }) =>
+        parentId
+          ? { nodes: [], hasMore: true, total: 2, nextCursor: 'cursor-1' }
+          : {
+              nodes: [
+                { id: 'root', label: 'root', value: 'root', isLeaf: false },
+              ],
+            }
+      );
+    const { result } = renderHook(() => useTreeSelectData({ fetchData }));
+
+    await waitFor(() => expect(result.current.treeData).toHaveLength(1));
+    await act(() => result.current.loadChildren('root'));
+
+    expect(result.current.treeData[0]).toMatchObject({
+      hasMoreChildren: true,
+      childrenCursor: 'cursor-1',
+    });
+  });
+
   it('ignores a load-more on a branch that has everything', async () => {
     const { fetchData, result } = renderPagedBranch();
 
