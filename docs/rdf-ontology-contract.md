@@ -58,6 +58,68 @@ remove the legacy edge and repair old live PROV edges while preserving a valid
 reciprocal lineage edge. Graph exports normalize lineage predicates to match the
 exported source-to-output orientation.
 
+## Column lineage
+
+`RdfIndexApp` writes one node per column mapping, linked from the lineage details of its
+table edge. The projection writes the columns' fully qualified names as **plain string
+literals**, not IRIs (`RdfRepository.buildLineageModel`):
+
+```turtle
+<output> om:upstream <source> ; prov:wasDerivedFrom <source> .
+<source> om:downstream <output> ; om:hasLineageDetails <details> .
+<details> om:hasColumnLineage <details/columnLineage/col_0> .
+<details/columnLineage/col_0> a om:ColumnLineage ;
+    om:fromColumn "svc.db.schema.source.c1", "svc.db.schema.source.c2" ;
+    om:toColumn   "svc.db.schema.output.col" ;
+    om:transformFunction "..." .
+```
+
+One mapping can have several `om:fromColumn` values. Columns are separate resources, which is how a
+literal reaches its owning asset: `<asset> om:hasColumn <col>`, `<col> om:fullyQualifiedName "fqn"`,
+and nested columns hang off their parent with `om:hasChildColumn`. The ontology and the
+`ColumnLineageShape` SHACL shape still describe `om:fromColumn` and `om:toColumn` as column IRIs; the
+projection does not write them that way, so that shape does not match what is projected.
+Literal matching is exact: only an untyped plain literal equals `"fqn"`.
+
+### Traversal and paging
+
+All columns downstream of one column, with the asset that owns each, one page at a time:
+
+```sparql
+PREFIX om: <https://open-metadata.org/ontology/>
+SELECT DISTINCT ?column ?asset WHERE {
+  "svc.db.schema.table.col" (^om:fromColumn/om:toColumn)+ ?column .
+  ?c om:fullyQualifiedName ?column .
+  ?c (^om:hasChildColumn)*/^om:hasColumn ?asset
+} ORDER BY ?column ?asset LIMIT 250 OFFSET 0
+```
+
+Upstream swaps the path for `^om:toColumn/om:fromColumn`. Narrow the result with patterns on `?asset`,
+for example `?asset a om:Table`, `?asset om:belongsToService/om:fullyQualifiedName "svc"`,
+`?asset om:hasOwner/rdfs:label "growth"` or `?asset om:hasTier/om:tagFQN "Tier.Tier1"`. Page by
+raising `OFFSET` by `LIMIT` until a page returns fewer rows than `LIMIT`. A cycle terminates, and a
+column in a cycle reaches itself.
+
+- **Join direction.** Walk up from the bound column as above. The forward form
+  `?asset om:hasColumn/om:hasChildColumn* ?c` makes the query engine enumerate every node as a
+  zero-length start; it took about 6.6 s per page on the test graph against about 50 ms.
+- **Silent drops.** A mapping whose column is not a projected `om:Column` (for example because its
+  table is not in the graph) has no `om:fullyQualifiedName` to join and produces no row.
+- **Page size.** The MCP `sparql_query` tool caps its body at 80,000 bytes. A row of a column and an
+  asset IRI is about 205 bytes with realistic names, so 400 rows overflow and the tool publishes 250.
+  When a page comes back `truncated`, lower `LIMIT` and repeat the same `OFFSET`.
+- **Freshness.** Column mappings reach the graph only on an `RdfIndexApp` run. A live
+  `PUT /v1/lineage` projects the table edge but not its `LineageDetails`, so a new mapping appears
+  after the next reindex.
+
+Measured on a graph of 5,006 mappings (a six-hop chain, a fan-out of one column into 450, a rename hop,
+a multi-source mapping, a cycle, a dashboard data model hop and a nested column): the 2,705 columns
+downstream of the source column take 330 ms in memory, and 11 pages of 250 rows take 49 to 230 ms each
+(about 51 KB per page) through the MCP `sparql_query` tool against Fuseki.
+
+`om:hasChildColumn` is projected for nested table columns even though the ontology labels it
+`om:InferenceOnly`; the MCP description test lists it as a justified exception.
+
 ## Custom extension values
 
 Extension keys are values instead of dynamically minted `om:ext_*` predicates.
@@ -86,6 +148,11 @@ dataset. Query extensions using the fixed key/value vocabulary above. The rebuil
 uses the configured dataset strategy and durable live-write recovery process.
 
 ## Regression coverage
+
+`RdfColumnLineageTraversalTest` builds a graph of about 5,000 column mappings through the two
+production writers and checks the queries above against an oracle that walks the edge list in Java.
+`RdfMcpKnowledgeGraphIT` pages the same shape through MCP as a non-administrator against Fuseki, and
+projects one real lineage edge with a real reindex to show the synthetic shape matches real output.
 
 `RdfOntologyContractTest` projects populated fields from every entity JSON Schema,
 structured fixtures, every built-in relationship enum value, detailed lineage,

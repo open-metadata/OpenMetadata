@@ -419,9 +419,9 @@ Choices made while implementing that refine, but do not change, the decisions ab
 
 ## Amendment: MCP knowledge-graph tools (#34270)
 
-- **Status:** Proposed (2026-10-01). Written before implementation so the access and execution
-  decisions are reviewable on their own. Verification evidence is added at the end of this
-  section once the integration tests have run.
+- **Status:** Implemented on the #34270 branch (2026-10-01). The decisions were written before the
+  implementation so they could be reviewed on their own; the verification evidence is at the end of
+  this section.
 - **Issue:** [OpenMetadata #34270](https://github.com/open-metadata/OpenMetadata/issues/34270)
 
 ### A1. Scope
@@ -475,9 +475,11 @@ configuration.
   - one audit event per call, recorded through the same audit path as the agent endpoint;
   - the response carries the completeness status computed from the row probe (§5), so a client
     can tell a complete page from a truncated one.
-- The MCP response is additionally bounded to the MCP payload budget (about 80 KB). A bounded
+- The MCP response is additionally bounded to the MCP payload budget (80,000 bytes). A bounded
   response is flagged `truncated` with its full size; the caller lowers `LIMIT` and repeats the
-  same `OFFSET`. This is a transport limit, separate from the completeness status.
+  same `OFFSET`. This is a transport limit, separate from the completeness status. A row of a column
+  FQN and an asset IRI is about 205 bytes, so the published column-lineage query pages by 250 rows
+  (about 51 KB); 400 rows overflowed the budget in the integration test.
 - The other tools that read the graph (`entity_neighborhood`, `find_by_tag`) execute only inside
   the shared timeout and concurrency guard once non-admins can call them.
 - Agent-profile errors keep their stable code in the MCP error message and are mapped onto the
@@ -496,8 +498,12 @@ configuration.
   retryable states because a 5xx would append "retrying will not help", which is wrong for a
   rebuilding projection. The cost is that telemetry counts them under `RATE_LIMIT`; a distinct
   unavailable status and category would change the `McpToolCallUsage` schema and is left to a
-  follow-up if the split is needed. An MCP request on a deployment without RDF returns the
-  existing "RDF is not enabled" client error.
+  follow-up if the split is needed.
+- On a deployment without RDF the server withholds `sparql_query`, `entity_neighborhood`,
+  `find_by_tag` and `shacl_validate` from `tools/list` and refuses a direct call. That is existing
+  behavior, kept deliberately so clients are never offered a tool that cannot run, and this
+  amendment does not change it. `ontology_describe` stays offered; describing a `resource` there
+  answers with the existing 400 "RDF knowledge graph is not enabled" message.
 
 ### A4. Bots
 
@@ -536,14 +542,28 @@ them as IRIs, which is tracked as a separate follow-up.
 - Public tool descriptions carry data-model facts only (vocabulary, paging, the column-lineage
   query shape). Query-planning or routing strategy for AI agents does not belong in them.
 
-### A8. Evidence to add after implementation
+### A8. Evidence
 
-Filled in once the tests have run; the decisions above do not wait on it.
+Local runs on 2026-10-01 against Postgres, Elasticsearch and the supported Fuseki image
+(`-Ppostgres-rdf-tests`); nothing is waiting on CI.
 
-- Authorization matrix results across admin, granted, ungranted, `All`/`All`, granted-plus-deny,
-  and bot callers.
-- Paging timings for a graph of roughly 5,000 column-lineage nodes through MCP as a non-admin.
-- Which integration cases passed locally and which were confirmed only in CI.
+- **Authorization matrix** (`RdfMcpKnowledgeGraphIT`, 18 of 18): admin, an explicit grant and a bot
+  with a grant may call `sparql_query`, `entity_neighborhood` and `ontology_describe` with a
+  `resource`; an ungranted user, an `All`/`All` user, a grant plus a Deny and a bot without a grant
+  get 403. `shacl_validate` is 403 for a granted non-admin, and `ontology_describe` without a
+  `resource` needs no grant.
+- **Column lineage at scale**: 5,006 mappings in production shape (a six-hop chain, a fan-out of one
+  column into 450, a rename hop, a multi-source mapping, a cycle, a dashboard data model hop and a
+  nested column). A granted non-admin pages the query published in the tool description: 2,705
+  downstream columns over 11 pages of 250 rows equal an independent walk of the edge list exactly,
+  with no duplicates and no truncated page. Pages took 49 to 230 ms each and about 51 KB each. The
+  asset-type filter drops the data model hop, and upstream paging matches its oracle.
+- **Real projection**: one lineage edge with `columnsLineage`, added through the API and projected by
+  a real `RdfIndexApp` run, is found by the same query and resolves to the target table.
+- **Existing endpoint**: `AgentSparqlResourceIT` passes 19 of 19 with the shared service factory.
+- **Without RDF** (`McpRdfNotEnabledIT`, default lane, 4 of 4): the withheld tools are not offered,
+  a direct call is refused, and describing a resource answers "not enabled".
+- **Unit coverage**: line coverage of the changed classes is 89 to 100 percent.
 
 ## Review log
 
