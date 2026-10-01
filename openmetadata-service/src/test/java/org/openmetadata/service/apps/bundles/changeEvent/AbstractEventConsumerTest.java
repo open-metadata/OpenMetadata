@@ -717,15 +717,13 @@ class AbstractEventConsumerTest {
       Destination<ChangeEvent> usable = mockDestination(SubscriptionType.WEBHOOK, false);
       UUID unusableId = UUID.randomUUID();
       UUID usableId = UUID.randomUUID();
-      Map<UUID, Destination<ChangeEvent>> destinations = new LinkedHashMap<>();
-      if (unusableFirst) {
-        destinations.put(unusableId, unusable);
-      }
-      destinations.put(usableId, usable);
-      destinations.putIfAbsent(unusableId, unusable);
-      consumer.destinationMap = destinations;
+      consumer.destinationMap = Map.of(unusableId, unusable, usableId, usable);
       ChangeEvent event = createMockChangeEvent();
-      Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(unusableId, usableId));
+      // The channel is grouped in the order of the event's receivers.
+      Set<UUID> receivers =
+          new LinkedHashSet<>(
+              unusableFirst ? List.of(unusableId, usableId) : List.of(usableId, unusableId));
+      Map<ChangeEvent, Set<UUID>> events = Map.of(event, receivers);
 
       try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
         alertUtil
