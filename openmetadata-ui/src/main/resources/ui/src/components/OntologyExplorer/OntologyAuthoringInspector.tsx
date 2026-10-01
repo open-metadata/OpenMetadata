@@ -12,7 +12,7 @@
  */
 
 import { Badge, Button, Input } from '@openmetadata/ui-core-components';
-import { Edit, Search } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Search } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -513,7 +513,7 @@ const OntologyAuthoringInspector = ({
           )}
           color="tertiary"
           data-testid="ontology-concept-edit"
-          iconLeading={Edit}
+          iconLeading={Edit01}
           onClick={onRequestEdit}>
           {t('label.edit')}
         </Button>

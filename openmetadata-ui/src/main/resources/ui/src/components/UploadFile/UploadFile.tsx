@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { UploadCloud01 } from '@untitledui/icons';
+import { UploadCloud01 } from '@openmetadata/ui-core-components/icons';
 import { Space, Typography, UploadProps } from 'antd';
 import type { RcFile } from 'antd/lib/upload';
 import Dragger from 'antd/lib/upload/Dragger';

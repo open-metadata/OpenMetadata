@@ -16,7 +16,7 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock } from '@untitledui/icons';
+import { Clock } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';

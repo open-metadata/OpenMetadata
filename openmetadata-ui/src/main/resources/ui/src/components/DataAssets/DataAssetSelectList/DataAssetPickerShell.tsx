@@ -21,9 +21,9 @@ import {
 import {
   Check,
   CornerDownLeft,
-  SearchLg,
+  Search,
   SlashDivider,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ListBox as AriaListBox, Selection } from 'react-aria-components';
@@ -342,7 +342,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                 // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
                 autoFocus
                 className="tw:w-full"
-                icon={SearchLg}
+                icon={Search}
                 iconClassName="tw:size-3.5"
                 inputClassName="tw:text-xs tw:placeholder:text-xs"
                 placeholder={

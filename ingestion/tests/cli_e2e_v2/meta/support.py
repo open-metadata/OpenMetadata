@@ -129,7 +129,8 @@ def configure_child(pytester, monkeypatch, *, conftest="", probe=None, ini=""):
     """Configure an isolated pytest subprocess with the E2E plugin and no network."""
     root = Path(__file__).resolve().parents[4]
     monkeypatch.setenv("PYTHONPATH", os.pathsep.join((str(pytester.path), str(root), str(root / "ingestion/src"))))
-    pytester.makeini("[pytest]\naddopts = -p ingestion.tests.cli_e2e_v2.conftest\n" + ini)
+    # rerunfailures opens a localhost socket for xdist workers, which the network guard forbids.
+    pytester.makeini("[pytest]\naddopts = -p no:rerunfailures -p ingestion.tests.cli_e2e_v2.conftest\n" + ini)
     pytester.makepyfile(sitecustomize=NETWORK_GUARD)
     if probe is not None:
         pytester.makepyfile(probe=probe)

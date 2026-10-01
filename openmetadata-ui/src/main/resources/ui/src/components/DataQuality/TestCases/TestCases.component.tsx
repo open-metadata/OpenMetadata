@@ -12,7 +12,7 @@
  */
 import { RightOutlined } from '@ant-design/icons';
 import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
