@@ -197,9 +197,10 @@ const buildSeries = <T extends object>(
 };
 
 /**
- * The distinct values of the series on a category value axis, in order of
- * appearance. Given as the axis data, because an axis that collects its own
- * categories would collect a gap (`null`) as one more category.
+ * The distinct values of the series on a category value axis, sorted, so a
+ * min never sits above its max (ISO dates sort by time). Given as the axis
+ * data, because an axis that collects its own categories would collect a gap
+ * (`null`) as one more category.
  */
 const valueCategories = <T extends object>(
   input: CartesianBuildInput<T>,
@@ -214,14 +215,16 @@ const valueCategories = <T extends object>(
 
   const seen = new Set<string>();
 
-  return values.filter((value): value is string => {
-    const isNew = value !== null && !seen.has(value);
-    if (isNew) {
-      seen.add(value);
-    }
+  return values
+    .filter((value): value is string => {
+      const isNew = value !== null && !seen.has(value);
+      if (isNew) {
+        seen.add(value);
+      }
 
-    return isNew;
-  });
+      return isNew;
+    })
+    .sort();
 };
 
 const valueAxes = <T extends object>(

@@ -368,7 +368,7 @@ describe('pie on a real chart', () => {
 });
 
 describe('category value axis on a real chart', () => {
-  it('draws string values as categories in order of appearance', () => {
+  it('draws string values as categories', () => {
     const chart = mount(
       buildLineOption(
         {
@@ -389,6 +389,35 @@ describe('category value axis on a real chart', () => {
 
     expect(svg).toContain('apac');
     expect(svg).toContain('eu');
+  });
+
+  it('sorts the categories, so a min never sits above its max', () => {
+    const chart = mount(
+      buildLineOption(
+        {
+          data: [
+            { day: 'Mon', max: '2024-06-04', min: '2024-06-01' },
+            { day: 'Tue', max: '2024-06-02', min: '2020-01-01' },
+          ],
+          xKey: 'day',
+          ariaLabel: 'Range',
+          series: [
+            { key: 'max', name: 'Max' },
+            { key: 'min', name: 'Min' },
+          ],
+          yAxis: { type: 'category' },
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    const yAxis = (chart.getOption().yAxis as Array<{ data: string[] }>)[0];
+
+    expect(yAxis.data).toEqual([
+      '2020-01-01',
+      '2024-06-01',
+      '2024-06-02',
+      '2024-06-04',
+    ]);
   });
 
   it('adds no category for a series without values', () => {

@@ -131,9 +131,8 @@ export type ChartXAxisProps = ChartAxisProps<XAXisComponentOption> & {
 
 export type ChartYAxisProps = ChartAxisProps<YAXisComponentOption> & {
   /**
-   * `'category'` plots string values (e.g. the min / max of a text column);
-   * categories are collected from the data in order of appearance.
-   * Defaults to `'value'`.
+   * `'category'` plots string values (e.g. the min / max of a date column);
+   * the categories are the distinct values, sorted. Defaults to `'value'`.
    */
   type?: 'value' | 'category';
 };

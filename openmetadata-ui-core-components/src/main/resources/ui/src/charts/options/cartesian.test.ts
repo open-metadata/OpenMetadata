@@ -359,7 +359,7 @@ describe('buildLineOption', () => {
     expect(yAxesOf(option)[0].type).toBe('category');
     expect(
       (yAxesOf(option)[0] as YAXisComponentOption & { data: string[] }).data
-    ).toEqual(['apac', 'eu', '42']);
+    ).toEqual(['42', 'apac', 'eu']);
     expect(seriesOf(option)[0].data).toEqual(['apac', null, 'eu', '42']);
   });
 
