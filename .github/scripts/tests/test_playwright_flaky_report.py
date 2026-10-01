@@ -5,6 +5,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 SCRIPTS = Path(__file__).parents[1]
 
 
@@ -133,3 +135,17 @@ def test_untrusted_test_names_are_escaped(tmp_path, monkeypatch):
 def test_quiet_window_still_posts(tmp_path, monkeypatch):
     slack = build(tmp_path, monkeypatch, [run(9, "2026-09-30T06:00:00Z", 1, tests=[])])
     assert "No retry passes in the merge queue." in slack["initial_comment"]
+
+
+def test_window_over_48h_is_refused(monkeypatch):
+    monkeypatch.setenv("GH_TOKEN", "token")
+    monkeypatch.setattr(
+        report_script, "list_runs", lambda *a: pytest.fail("no API calls")
+    )
+    args = ["--owner", "o", "--repo", "r", "--channel", "C1", "--out-dir", "x"]
+    with pytest.raises(SystemExit, match="at most 48h"):
+        report_script.main(
+            args + ["--since", "2026-09-28T23:00", "--until", "2026-09-30T23:01"]
+        )
+    with pytest.raises(SystemExit, match="at most 24"):
+        report_script.main(args + ["--lookback-hours", "48"])

@@ -45,6 +45,10 @@ ARTIFACT = "playwright-mq-flaky"
 BASELINE_REF = "ci/playwright-timing"
 TEST_RE = re.compile(r"^(?P<file>.+?):(?P<line>\d+) › (?P<title>.+)$")
 TOP = 10
+# GITHUB_TOKEN allows 1,000 REST calls/hour per repo on non-Enterprise plans, and
+# each queue run costs ~2 (list + download) at ~150 runs/day. Window plus lookback
+# at these caps is ~72h, ~900 calls.
+MAX_WINDOW_HOURS = 48
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -55,7 +59,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--since", default="", help="UTC ISO date or time; default 24h before --until"
     )
     parser.add_argument("--until", default="", help="UTC ISO date or time; default now")
-    parser.add_argument("--lookback-hours", type=float, default=72)
+    parser.add_argument("--lookback-hours", type=float, default=24)
     parser.add_argument("--channel", required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     return parser.parse_args(argv)
@@ -468,6 +472,10 @@ def main(argv: list[str] | None = None) -> int:
     since = parse_when(args.since, until - timedelta(hours=24))
     if since >= until:
         raise SystemExit("--since must be before --until")
+    if until - since > timedelta(hours=MAX_WINDOW_HOURS):
+        raise SystemExit(f"The window may be at most {MAX_WINDOW_HOURS}h")
+    if args.lookback_hours > 24:
+        raise SystemExit("--lookback-hours may be at most 24")
     try:
         runs = list_runs(
             args.owner,
