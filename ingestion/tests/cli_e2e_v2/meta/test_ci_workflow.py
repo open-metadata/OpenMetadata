@@ -81,7 +81,7 @@ def _run_workflow(tmp_path, connector, pytest_exit=0):
     raise AssertionError("Workflow did not execute its E2E test step")
 
 
-@pytest.mark.parametrize("connector", ["mysql", "postgres", "bigquery", "snowflake"])
+@pytest.mark.parametrize("connector", ["mysql", "postgres", "bigquery", "oracle", "snowflake"])
 @pytest.mark.parametrize("pytest_exit", [0, 1, 5])
 def test_ci_runs_the_allowed_connector_and_preserves_pytest_exit(tmp_path, connector, pytest_exit):
     result = _run_workflow(tmp_path, connector, pytest_exit)
@@ -108,7 +108,7 @@ def test_ci_defaults_to_all_connectors_and_limits_each_connectors_secrets():
     job = workflow["jobs"]["py-cli-e2e-tests-v2"]
     dispatch = workflow.get("on", workflow.get(True))["workflow_dispatch"]
     default = dispatch["inputs"]["connectors"]["default"]
-    assert json.loads(default) == ["mysql", "postgres", "bigquery", "snowflake"]
+    assert json.loads(default) == ["mysql", "postgres", "bigquery", "oracle", "snowflake"]
     assert f"'{default}'" in job["strategy"]["matrix"]["connector"]
 
     steps = {step.get("id"): step for step in job["steps"]}

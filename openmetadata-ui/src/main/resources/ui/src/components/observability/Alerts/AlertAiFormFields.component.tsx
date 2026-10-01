@@ -198,12 +198,12 @@ function AlertAiFormFields({
       return;
     }
 
-    onChange({
-      ...(value as Parameters<NonNullable<typeof onChange>>[0]),
+    onChange((prev) => ({
+      ...prev,
       input: {},
       destinations: [],
       resources: nextSource ? [nextSource] : [],
-    });
+    }));
   };
 
   return (

@@ -1,18 +1,19 @@
 # CLI E2E v2
 
 Real source → `metadata` subprocess → real OpenMetadata sink/server → persisted SDK observations.
-MySQL is the reference connector. Postgres has a native v2 suite, and BigQuery is the first cloud-warehouse migration (see [BigQuery](#bigquery)). Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
+MySQL is the reference connector. Postgres has a native v2 suite, BigQuery is the first cloud-warehouse migration (see [BigQuery](#bigquery)), Oracle is the first source whose schemas are database users (see [Oracle](#oracle)), and Snowflake reads its lagging ACCOUNT_USAGE views through an owned real-time shim (see [Snowflake](#snowflake)). Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
 
 | Connector | Source ownership | v1 path it replaces |
 |---|---|---|
 | `mysql` | disposable testcontainers MySQL + restricted account, fresh schema per test | `cli_e2e/test_cli_mysql.py` |
 | `postgres` | disposable testcontainers Postgres + restricted account, fresh schema per test | `cli_e2e/test_cli_postgres.py` |
 | `bigquery` | fresh labelled dataset per test in two real GCP projects | `cli_e2e/test_cli_bigquery.py`, `cli_e2e/test_cli_bigquery_multiple_project.py` |
+| `oracle` | disposable testcontainers Oracle + restricted account, fresh schema (an Oracle user) per test | `cli_e2e/test_cli_oracle.py` |
 | `snowflake` | fresh schema per test in one real Snowflake database | `cli_e2e/test_cli_snowflake.py` |
 
 ## Run
 
-From the repository root, activate a development virtual environment with the ingestion package, connector dependencies, and pytest installed. MySQL and Postgres also require testcontainers and Docker for their disposable sources. Supply a running, compatible OpenMetadata server separately; the suite does not provision or stop that server.
+From the repository root, activate a development virtual environment with the ingestion package, connector dependencies, and pytest installed. MySQL, Postgres and Oracle also require testcontainers and Docker for their disposable sources. Supply a running, compatible OpenMetadata server separately; the suite does not provision or stop that server.
 
 ```bash
 source env/bin/activate
@@ -54,6 +55,7 @@ cli_e2e_v2/
   mysql/               owned source, context, expectations, checks, named feature tests
   postgres/            owned Postgres source, v1 migration inventory, named feature tests
   bigquery/            owned datasets in two GCP projects, same layout as mysql/ plus test_data_quality.py
+  oracle/              owned container and one Oracle user per test, same layout as mysql/
   snowflake/           owned schemas in one Snowflake database, bigquery/ layout plus test_features.py
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
@@ -186,6 +188,69 @@ Remove the v1 BigQuery tests and their `py-cli-e2e-tests.yml` matrix entries onl
 passed for the agreed stability window.
 The manually dispatched v2 workflow runs BigQuery with six workers and passes the existing test
 environment credentials only to its BigQuery matrix job.
+
+## Oracle
+
+`oracle/` boots a disposable Oracle via testcontainers (`gvenzl/oracle-free`, digest-pinned) and
+owns one schema per test. In Oracle a schema **is** a user, so each test runs `CREATE USER` and
+tears down with `DROP USER ... CASCADE`; a separate least-privilege account does the ingesting with
+`CREATE SESSION`, `SELECT_CATALOG_ROLE` and per-object `SELECT`. No credentials or ports to manage,
+so the `E2E_ORACLE_*` secrets v1 needed are gone.
+
+```bash
+docker compose -f docker/development/docker-compose.yml up -d
+python -m pytest ingestion/tests/cli_e2e_v2/oracle --e2e-contract-check -v
+```
+
+Every workflow carries an anchored `schemaFilterPattern` for the owned schemas. The connector reads
+the `DBA_` dictionary views, so an unscoped run would discover every schema in the instance, and
+unlike MySQL there is no connection-level scope to fall back on: `oracleConnectionType` takes a
+service name *or* a `databaseSchema`, never both.
+
+**Identifier case.** `expected.py` encodes what OM actually stores, which is not uniform:
+
+| Entity | Case |
+|---|---|
+| database | `default` — not the Oracle service name |
+| schema | lowercase |
+| tables, stored procedures | **UPPERCASE** — dictionary name, verbatim |
+| views, columns | lowercase — normalised on their own paths |
+
+That split is pre-existing and costs users nothing, so this suite encodes it rather than changing
+it; normalising table names would rename every existing Oracle table's FQN. Two consequences when
+writing tests here: hand-written DDL in `baseline.py` must leave the schema **unquoted** (quoting it
+looks for a lowercase user `CREATE USER` never created), and auto-classification filter patterns
+must match the stored case — the metadata pipeline matches `tableFilterPattern` case-insensitively
+but the classification path does not, so a lowercase pattern silently selects nothing.
+
+v1 → v2 mapping:
+
+| v1 behaviour | v2 contract |
+|---|---|
+| vanilla ingestion, no failures, ≥ N records | `catalog.metadata` (complete inventory, native types, keys, descriptions, view, procedures) |
+| schema include filter | `filter.schema.include-one` |
+| table include / exclude / mix filters (filtered-count floors) | `filter.table.include-one`, `filter.table.exclude-one`, `filter.table.mix` |
+| create table + profiler | `profile.metrics` |
+| auto-classification sample data | `sample.values.original`, `sample.values.replacement`, `classification.tags` |
+| deleted table marked deleted | `deletion.tables` |
+| view lineage | `lineage.view` |
+
+Added beyond v1: `procedure.code`, `fk.relationships`, `ingest.repeat`. v1 exercised none of them.
+
+v1 tests with no v2 counterpart exercise nothing: `test_usage` has an empty body,
+`test_schema_filter_excludes` is a bare `pass`, and `test_profiler_with_time_partition` and
+`test_data_quality` guard themselves off because Oracle defines no hook for them.
+
+`error.containment` is declared `unsupported` in the inventory with its reason: Oracle keeps
+dictionary metadata for invalid views, so the reference induction produces no ingestion error.
+Neither dropping a selected column nor dropping the base table makes a view fail reflection.
+
+Fixed while migrating, found by a strict assertion here: foreign keys were silently dropped because
+`get_foreign_keys` reported `referred_table` normalised while `get_table_names` returns the
+dictionary name verbatim, so the exact-FQN lookup never matched.
+
+Remove the v1 Oracle test and its `py-cli-e2e-tests.yml` matrix entry only after this suite has
+passed for the agreed stability window.
 
 ## Snowflake
 

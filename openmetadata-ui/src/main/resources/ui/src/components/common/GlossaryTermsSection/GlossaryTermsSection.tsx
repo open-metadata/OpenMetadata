@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GlossaryTag } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
+import { GlossaryTag, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -232,9 +231,9 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       className="glossary-terms-section"
       data-testid="KnowledgePanel.GlossaryTerms">
       <div className="glossary-terms-header">
-        <Typography.Text className="glossary-terms-title">
+        <Typography className="glossary-terms-title">
           {t('label.glossary-term-plural')}
-        </Typography.Text>
+        </Typography>
         {editButton}
       </div>
       <div className="glossary-terms-content" data-testid="glossary-container">
