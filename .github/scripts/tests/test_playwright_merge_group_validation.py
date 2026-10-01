@@ -242,17 +242,24 @@ def test_queue_retry_report_lists_only_retry_passes(tmp_path):
     assert result.stdout.count("::warning") == 1
 
 
-def test_merge_queue_flaky_tests_alert_pw_health_from_annotations():
+def test_merge_queue_flaky_tests_feed_the_daily_report_not_slack():
     steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
         "steps"
     ]
     build = next(s for s in steps if s.get("id") == "queue-flaky")
     assert "github.event_name == 'merge_group'" in build["if"]
-    assert "failure()" not in build["if"], "flakes are reported on green queue runs too"
-    assert "C0C008ZAK0V" in build["run"]  # #pw-health
+    assert "failure()" not in build["if"], "flakes are collected on green queue runs too"
     # Reads what the shards already emit instead of uploading reports.
     assert '"Retry pass in merge queue"' in build["run"]
     assert ".github/scripts" not in build["run"]
+    upload = next(s for s in steps if s.get("name") == "Upload merge-queue retry passes")
+    # playwright_flaky_report.py looks the artifact up by this exact name.
+    assert upload["with"]["name"] == "playwright-mq-flaky"
+    assert "steps.queue-flaky.outcome == 'success'" in upload["if"]
+    # #pw-health gets one daily report, not a post per queue run.
+    assert not any(
+        "C0C008ZAK0V" in str(s.get("run", "")) for s in steps if "queue" in s.get("name", "")
+    )
     shard_warning = next(
         s for s in shard_steps() if s.get("id") == "verify-shard-coverage"
     )["run"]
@@ -261,6 +268,23 @@ def test_merge_queue_flaky_tests_alert_pw_health_from_annotations():
         "permissions"
     ]
     assert permissions.get("checks") == "read"
+
+
+def test_queue_flaky_collector_writes_one_entry_per_test():
+    build = summary_step("Collect merge-queue retry passes")["run"]
+    jq_program = build[build.index("jq -Rn '") + len("jq -Rn '") :]
+    jq_program = jq_program[: jq_program.index("'")]
+    result = subprocess.run(
+        ["jq", "-Rn", jq_program],
+        input="A.spec.ts:1 › one\nB.spec.ts:2 › two\n",
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert json.loads(result.stdout) == {
+        "schemaVersion": 1,
+        "flaky": [{"test": "A.spec.ts:1 › one"}, {"test": "B.spec.ts:2 › two"}],
+    }
 
 
 def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
