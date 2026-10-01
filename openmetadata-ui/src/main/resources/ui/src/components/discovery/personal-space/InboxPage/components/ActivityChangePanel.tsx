@@ -12,7 +12,7 @@
  */
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
-import { ArrowRight } from '@untitledui/icons';
+import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ActivityChange } from '../inbox.utils';

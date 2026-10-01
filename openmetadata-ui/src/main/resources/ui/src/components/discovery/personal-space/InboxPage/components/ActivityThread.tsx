@@ -18,7 +18,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Trash01 } from '@untitledui/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useState } from 'react';

@@ -12,7 +12,11 @@
  */
 
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { Check, ChevronDown, ChevronUp } from '@untitledui/icons';
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
 
 // The design's toolbar triggers: 16px icons and 10/8px padding, so the

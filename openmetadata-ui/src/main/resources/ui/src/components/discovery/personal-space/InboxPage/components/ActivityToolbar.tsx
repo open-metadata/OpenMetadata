@@ -25,7 +25,7 @@ import {
   List,
   Table,
   Users01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

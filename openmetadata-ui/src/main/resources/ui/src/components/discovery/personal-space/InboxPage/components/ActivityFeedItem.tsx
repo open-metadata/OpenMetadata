@@ -22,13 +22,12 @@ import {
 import {
   ChevronDown,
   ChevronUp,
-  MessageCircle01,
   MessageDotsCircle,
   Plus,
   RefreshCcw01,
   ThumbsUp,
   Trash01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
@@ -481,7 +480,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
           <Button
             color="tertiary"
             data-testid="activity-reply"
-            iconLeading={MessageCircle01}
+            iconLeading={MessageDotsCircle}
             size="sm"
             onPress={() => openThread(true)}>
             {t('label.reply')}

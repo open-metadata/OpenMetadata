@@ -16,7 +16,10 @@ import {
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FilterFunnel01, Hourglass01 } from '@untitledui/icons';
+import {
+  FilterFunnel01,
+  Hourglass01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { groupBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';

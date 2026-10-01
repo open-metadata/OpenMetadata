@@ -17,7 +17,7 @@ import {
   ChevronRight,
   ChevronUp,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -760,7 +760,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             entityText: t('label.column-plural'),
           })}
           entityData={toEntityData(activeColumn)}
-          entityType={entityType}
           entityTypeDetail={entityTypeDetail}
           hasEditPermissions={hasEditPermission.customProperties}
           isEntityDataLoading={false}

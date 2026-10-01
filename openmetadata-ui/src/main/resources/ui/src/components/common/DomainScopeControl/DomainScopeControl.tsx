@@ -14,7 +14,7 @@
 import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
-  Domain as DomainIcon,
+  Globe01 as DomainIcon,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { lazy, useCallback, useMemo, useState } from 'react';

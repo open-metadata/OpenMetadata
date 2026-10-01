@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '../../../icons';
 import { isValidElement } from 'react';
 import { cx } from '@/utils/cx';
 import { Box } from '../../base/box/box';
@@ -198,7 +198,7 @@ export const PageHeader = ({
               className="tw:ml-auto tw:shrink-0"
               direction="row"
               gap={4}>
-              {search ? <Input icon={SearchLg} size="sm" {...search} /> : null}
+              {search ? <Input icon={Search} size="sm" {...search} /> : null}
               {actions}
             </Box>
           ) : null}

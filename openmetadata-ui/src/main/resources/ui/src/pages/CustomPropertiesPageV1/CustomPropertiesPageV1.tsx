@@ -12,7 +12,6 @@
  */
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
@@ -246,7 +245,7 @@ const CustomEntityDetailV1 = () => {
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <Card data-testid="entity-custom-fields">
+          <div data-testid="entity-custom-fields">
             <CustomPropertyTable
               customProperties={customProperties ?? []}
               hasAccess={editPermission}
@@ -255,7 +254,7 @@ const CustomEntityDetailV1 = () => {
               onDeleteProperty={handlePropertyDelete}
               onUpdateProperty={handlePropertyUpdate}
             />
-          </Card>
+          </div>
         ),
       },
       {

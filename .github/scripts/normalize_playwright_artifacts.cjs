@@ -52,7 +52,9 @@ function normalizeArtifacts(root, expectedHeadSha = '') {
   if (directories.length > 256) throw new Error('Too many result artifacts');
   const byShard = new Map();
   for (const directory of directories) {
-    const shard = directory.slice(prefix.length).replace(/-retry$/, '');
+    // Uploads are named <prefix><shard>-a<runAttempt>[-retry] so a re-run gets
+    // its own artifact; both suffixes are transport, not shard identity.
+    const shard = directory.slice(prefix.length).replace(/(?:-a\d+)?(?:-retry)?$/, '');
     const location = path.join(root, directory);
     const report = readEvidence(location, 'results.json');
     const status = readEvidence(location, 'ci-status.json');

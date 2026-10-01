@@ -20,7 +20,7 @@ import {
   Star01,
   Tag01,
   Users01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { TaskTypeBadge, TaskTypeIconKey } from '../taskDetail.types';

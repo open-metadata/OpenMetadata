@@ -16,7 +16,7 @@ import {
   AlertTriangle,
   CheckCircle,
   InfoCircle,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { get, isString } from 'lodash';
 import React from 'react';

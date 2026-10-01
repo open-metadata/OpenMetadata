@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Edit05, File02, Globe01, Tag01, UserCheck01 } from '@untitledui/icons';
+import {
+  Edit05,
+  File02,
+  Globe01,
+  Tag01,
+  UserCheck01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { ACTIVITY_TYPE_OTHER } from './inbox.utils';
 
