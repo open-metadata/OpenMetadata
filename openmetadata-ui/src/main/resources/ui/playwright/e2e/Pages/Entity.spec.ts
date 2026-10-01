@@ -1616,15 +1616,17 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           if (entity.type === 'Table') {
             await page.getByTestId('data-quality-tab').click();
 
-            await expect(page.getByTestId('data-quality-tab')).toHaveClass(
-              /ant-menu-item-selected/
+            await expect(page.getByTestId('data-quality-tab')).toHaveAttribute(
+              'aria-selected',
+              'true'
             );
           }
 
           await page.getByTestId('overview-tab').click();
 
-          await expect(page.getByTestId('overview-tab')).toHaveClass(
-            /ant-menu-item-selected/
+          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+            'aria-selected',
+            'true'
           );
 
           // Test column navigation with arrow buttons and verify nested column counting

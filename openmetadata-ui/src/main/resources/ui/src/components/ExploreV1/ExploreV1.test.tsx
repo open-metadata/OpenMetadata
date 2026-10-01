@@ -37,6 +37,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     hideFocusOutline,
     iconLeading,
     iconTrailing,
+    isDisabled,
+    isLoading: _isLoading,
     onClick,
     onPress,
     size,
@@ -46,6 +48,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     hideFocusOutline?: boolean;
     iconLeading?: import('react').ReactNode;
     iconTrailing?: import('react').ReactNode;
+    isDisabled?: boolean;
+    isLoading?: boolean;
     onClick?: () => void;
     onPress?: () => void;
     size?: string;
@@ -53,6 +57,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <button
       data-hide-focus-outline={hideFocusOutline}
       data-size={size}
+      disabled={isDisabled}
       type="button"
       onClick={onPress ?? onClick}
       {...rest}>
@@ -186,15 +191,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
     '@openmetadata/ui-core-components'
   );
 
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
   return {
     Alert,
     Badge,
     Box,
     Button,
     Card,
+    Dialog: actual.Dialog,
     Divider,
     Dropdown,
+    Modal: actual.Modal,
+    ModalOverlay: actual.ModalOverlay,
     PaginationCardWithControls,
+    RadioButton: actual.RadioButton,
+    RadioGroup: actual.RadioGroup,
+    Skeleton: actual.Skeleton,
     Tabs,
     Toggle,
     Typography,
@@ -309,54 +322,6 @@ jest.mock(
     })),
   })
 );
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Modal: jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        open,
-        onCancel,
-        onOk,
-        okButtonProps,
-        okText,
-        cancelText,
-        className,
-        'data-testid': dataTestId,
-      }: {
-        children?: React.ReactNode;
-        open?: boolean;
-        onCancel?: () => void;
-        onOk?: () => void;
-        okButtonProps?: { disabled?: boolean };
-        okText?: React.ReactNode;
-        cancelText?: React.ReactNode;
-        className?: string;
-        'data-testid'?: string;
-      }) =>
-        open ? (
-          <div className={className} data-testid={dataTestId} role="dialog">
-            {children}
-            <button type="button" onClick={onCancel}>
-              {cancelText}
-            </button>
-            <button
-              disabled={okButtonProps?.disabled}
-              type="button"
-              onClick={onOk}>
-              {okText}
-            </button>
-          </div>
-        ) : null
-    ),
-  Alert: jest
-    .fn()
-    .mockImplementation(({ message }: { message?: React.ReactNode }) => (
-      <span>{message ?? 'Index Not Found Alert'}</span>
-    )),
-}));
 
 jest.mock('../SearchedData/SearchedData', () =>
   jest.fn().mockReturnValue(<div>SearchedData</div>)
@@ -646,7 +611,7 @@ describe('ExploreV1', () => {
   it('should show the index not found alert, if get isElasticSearchIssue true in prop', () => {
     render(<ExploreV1 {...props} isElasticSearchIssue />, { wrapper: Wrapper });
 
-    expect(screen.getByText('Index Not Found Alert')).toBeInTheDocument();
+    expect(screen.getByText('server.indexing-error')).toBeInTheDocument();
 
     expect(screen.queryByText('SearchedData')).not.toBeInTheDocument();
   });

@@ -429,7 +429,7 @@ export const navigateToExploreAndSelectEntity = async ({
 };
 
 export const getExportModalContent = (page: Page) =>
-  page.getByTestId('export-scope-modal').locator('.ant-modal-content');
+  page.getByTestId('export-scope-modal');
 
 export const openExportScopeModal = async (page: Page) => {
   await page.getByRole('button', { name: 'Tools' }).click();

@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import type { Selection } from '@openmetadata/ui-core-components';
-import { Badge, Tree } from '@openmetadata/ui-core-components';
-import { Tooltip, Typography } from 'antd';
+import {
+  Badge,
+  Tooltip,
+  Tree,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { get, isEmpty, isString, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
@@ -79,9 +83,8 @@ const SERVICE_ICON_CLASS = 'service-icon w-4 h-4';
 const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
 const SERVICE_STYLE_TOP_HITS_SIZE = 1;
 
-// antd Tooltip on purpose: core Tooltip needs a focusable trigger (it wraps the
-// label in a button), and a button inside a tree row swallows the row press, so
-// clicking the label would no longer select the node.
+// Out of the tab order: a button trigger inside a tree row would swallow the
+// row press, so clicking the label would no longer select the node.
 const ExploreTreeTitle = ({
   node,
   isSelected,
@@ -93,15 +96,17 @@ const ExploreTreeTitle = ({
 
   return (
     <Tooltip
+      excludeTriggerFromTabOrder
       title={
-        <Typography.Text className="text-white">
+        <>
           {tooltipText}
           {node.type && (
             <span className="text-grey-400">{` (${node.type})`}</span>
           )}
-        </Typography.Text>
-      }>
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:justify-between tw:gap-2">
+        </>
+      }
+      triggerClassName="tw:flex tw:min-w-0 tw:flex-1">
+      <span className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:justify-between tw:gap-2">
         <span
           className="tw:min-w-0 tw:truncate"
           data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
@@ -116,7 +121,7 @@ const ExploreTreeTitle = ({
             {node.count}
           </Badge>
         )}
-      </div>
+      </span>
     </Tooltip>
   );
 };
@@ -875,15 +880,13 @@ const ExploreTree = ({
         className="h-min-80 d-flex flex-col justify-center border-none"
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph
-          className="font-medium"
-          style={{ marginBottom: '0' }}>
+        <Typography as="p" className="tw:m-0 tw:font-medium">
           {t('message.no-data-yet')}
-        </Typography.Paragraph>
-        <Typography.Paragraph style={{ marginBottom: '0' }}>
+        </Typography>
+        <Typography as="p" className="tw:m-0">
           {t('message.add-service-and-data-assets')}
-        </Typography.Paragraph>
-        <Typography.Paragraph>
+        </Typography>
+        <Typography as="p" className="tw:mt-0 tw:mb-[1em]">
           <Transi18next
             i18nKey="message.need-help-message"
             renderElement={
@@ -899,7 +902,7 @@ const ExploreTree = ({
               doc: t('message.see-how-to-get-started'),
             }}
           />
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }

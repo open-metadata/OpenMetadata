@@ -164,9 +164,9 @@ test.describe(
 
         const modalContent = getExportModalContent(page);
 
-        await expect(modalContent.locator('.ant-modal-title')).toContainText(
-          'Export'
-        );
+        await expect(
+          modalContent.getByTestId('export-scope-modal-title')
+        ).toContainText('Export');
         await expect(modalContent.getByText('Export Scope')).toBeVisible();
       });
 

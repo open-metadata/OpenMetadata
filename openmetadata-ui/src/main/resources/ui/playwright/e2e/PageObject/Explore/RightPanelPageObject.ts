@@ -773,13 +773,13 @@ export class RightPanelPageObject {
 
   /**
    * Get the locator for a tab by name (case-insensitive).
-   * Matches Ant Design Menu items (li.ant-menu-item) by visible label text.
+   * Matches the vertical nav tabs (role="tab") by visible label text.
    */
   getTabLocator(tabName: string): Locator {
     const normalized = tabName.trim();
     const pattern = new RegExp(normalized.replace(/\s+/g, '\\s*'), 'i');
     return this.getSummaryPanel()
-      .locator('li.ant-menu-item')
+      .getByRole('tab')
       .filter({ hasText: pattern })
       .first();
   }
