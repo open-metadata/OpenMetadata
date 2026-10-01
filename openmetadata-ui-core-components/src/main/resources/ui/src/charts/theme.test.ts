@@ -46,6 +46,13 @@ describe('chart themes', () => {
     });
   });
 
+  // The dark empty fill used to equal the dark surface (#22262f), so a pie
+  // track or a map region without data vanished into the card.
+  it('draws empty areas in a colour that stands out from the dark surface', () => {
+    expect(DARK_CHART_THEME.emptyFill).not.toBe(DARK_CHART_THEME.tooltipBg);
+    expect(DARK_CHART_THEME.emptyFill).toBe(DARK_CHART_THEME.grid);
+  });
+
   it('keeps the dark chrome colours', () => {
     expect(DARK_CHART_THEME).toEqual({
       isDark: true,
@@ -54,7 +61,7 @@ describe('chart themes', () => {
       axisTitle: '#cecfd2',
       xAxisTitle: '#cecfd2',
       grid: '#373a41',
-      emptyFill: '#22262f',
+      emptyFill: '#373a41',
       segmentBorder: '#0c0e12',
       tooltipBg: '#22262f',
       tooltipText: '#f7f7f7',

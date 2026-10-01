@@ -38,7 +38,8 @@ export const DARK_CHART_THEME: ChartTheme = {
   axisTitle: '#cecfd2',
   xAxisTitle: '#cecfd2',
   grid: '#373a41',
-  emptyFill: '#22262f',
+  // Not the dark surface colour, or empty pie tracks and map regions vanish.
+  emptyFill: '#373a41',
   segmentBorder: '#0c0e12',
   tooltipBg: '#22262f',
   tooltipText: '#f7f7f7',
