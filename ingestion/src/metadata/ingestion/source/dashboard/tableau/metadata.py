@@ -835,7 +835,10 @@ class TableauSource(DashboardServiceSource):
             metric_fields = metric_fields_parents_first(datasource)
             if not metric_fields:
                 continue
-            # A missing data model was filtered out or failed; its measures follow it.
+            # Measures follow their data model. Check the filter here: a model excluded now
+            # may still exist on the server from an earlier run.
+            if filter_by_datamodel(self.source_config.dataModelFilterPattern, datasource.name or datasource.id):
+                continue
             data_model_entity = self._get_datamodel(datasource)
             if not data_model_entity:
                 continue

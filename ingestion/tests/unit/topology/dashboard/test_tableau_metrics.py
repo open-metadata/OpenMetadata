@@ -249,13 +249,19 @@ def test_metrics_disabled_by_default(make_source):
     assert not [output for output in outputs if isinstance(output, (CreateMetricRequest, OMetaFQNLineageRequest))]
 
 
-def test_filtered_out_datasource_emits_no_metrics(make_source):
+def test_missing_data_model_emits_no_metrics(make_source):
     source = make_source()
     dashboard = TableauDashboard(id="wb-1", name="Sales Workbook", dataModels=[EMBEDDED])
     with patch.object(source, "_get_datamodel", return_value=None):
         outputs = [either.right for either in source.yield_datamodel_metrics(dashboard)]
 
     assert outputs == []
+
+
+def test_filtered_out_data_model_emits_no_metrics_even_if_it_exists_on_the_server(make_source):
+    outputs = _run_lineage_stage(make_source(dataModelFilterPattern={"excludes": ["^Superstore$"]}))
+
+    assert not [output for output in outputs if isinstance(output, CreateMetricRequest)]
 
 
 @pytest.mark.parametrize(
