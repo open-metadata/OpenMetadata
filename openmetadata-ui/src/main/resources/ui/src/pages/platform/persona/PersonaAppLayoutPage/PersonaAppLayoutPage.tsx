@@ -34,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { NavigationBlocker } from '../../../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizablePageHeader } from '../../../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../../../components/PageLayoutV1/PageLayoutV1';
+import { AI_APP_MODE } from '../../../../constants/appMode.constants';
 import {
   DEFAULT_LANDING_PAGE,
   DEFAULT_PAGE_VIEW_MODE,
@@ -47,6 +48,7 @@ import {
   DefaultViewModes,
   PageViewMode,
 } from '../../../../generated/type/personaPreferences';
+import { useAppRoutesRegistry } from '../../../../hooks/useAppRoutesRegistry';
 import {
   getPersonaPreferences,
   resolvePersonaLandingPage,
@@ -127,6 +129,21 @@ export const PersonaAppLayoutPage = ({
     personaDetails?.id
   );
 
+  // Core cannot render AI routes itself — a plugin registers them at boot. With
+  // no registration the resolver falls back to the default mode, so offering AI
+  // would save a preference that silently does nothing. A persona that already
+  // has AI persisted still shows it, otherwise the radio group would render
+  // with no selection and quietly reset the value on save.
+  const hasAiMode = useAppRoutesRegistry((state) =>
+    Boolean(state.routes[AI_APP_MODE])
+  );
+  const appModeOptions = APP_MODE_OPTIONS.filter(
+    (option) =>
+      option.value !== AppMode.AI ||
+      hasAiMode ||
+      persistedAppMode === AppMode.AI
+  );
+
   const [selectedMode, setSelectedMode] = useState<string>(persistedAppMode);
   const [landingPage, setLandingPage] = useState(persistedLandingPage);
   const [viewModes, setViewModes] = useState(persistedViewModes);
@@ -199,7 +216,7 @@ export const PersonaAppLayoutPage = ({
                 size="md"
                 value={selectedMode}
                 onChange={setSelectedMode}>
-                {APP_MODE_OPTIONS.map((option) => (
+                {appModeOptions.map((option) => (
                   <RadioButton
                     className={({ isSelected }) =>
                       classNames(

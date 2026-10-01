@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { AI_APP_MODE } from '../../../../constants/appMode.constants';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import {
@@ -20,6 +21,7 @@ import {
   PageViewMode,
   PersonaPreferences,
 } from '../../../../generated/type/personaPreferences';
+import { useAppRoutesRegistry } from '../../../../hooks/useAppRoutesRegistry';
 import { PersonaAppLayoutPage } from './PersonaAppLayoutPage';
 
 jest.mock('../../../../components/PageLayoutV1/PageLayoutV1', () => ({
@@ -88,6 +90,14 @@ const getRadio = (value: string) =>
     'radio'
   ) as HTMLInputElement;
 
+const queryRadio = (value: string) =>
+  screen.queryByTestId(`app-mode-option-${value}`);
+
+// The registry is a module-level zustand store, so a registration leaks into
+// every later test unless it is removed again.
+const registerAiRoutes = () =>
+  useAppRoutesRegistry.getState().registerRoutes(AI_APP_MODE, () => null);
+
 const getLandingPageTrigger = () =>
   within(screen.getByTestId('default-landing-page-select')).getByRole('button');
 
@@ -102,14 +112,29 @@ const openAddPageMenu = () =>
 describe('PersonaAppLayoutPage', () => {
   beforeEach(() => {
     seedDoc();
+    useAppRoutesRegistry.getState().unregisterRoutes(AI_APP_MODE);
   });
 
   describe('App Mode', () => {
-    it('renders No default, Classic and AI options', () => {
+    it('renders No default and Classic, hiding AI when no plugin registered it', () => {
       renderPage();
 
       expect(getRadio('null')).toBeInTheDocument();
       expect(getRadio(AppMode.Classic)).toBeInTheDocument();
+      expect(queryRadio(AppMode.AI)).not.toBeInTheDocument();
+    });
+
+    it('renders the AI option once a plugin registers AI routes', () => {
+      registerAiRoutes();
+      renderPage();
+
+      expect(getRadio(AppMode.AI)).toBeInTheDocument();
+    });
+
+    it('keeps the AI option visible when the persona already has it persisted', () => {
+      seedDoc({ appMode: AppMode.AI });
+      renderPage();
+
       expect(getRadio(AppMode.AI)).toBeInTheDocument();
     });
 
@@ -277,6 +302,7 @@ describe('PersonaAppLayoutPage', () => {
     });
 
     it('saves the selected app mode and keeps Home as unset', async () => {
+      registerAiRoutes();
       const onSave = renderPage();
 
       fireEvent.click(getRadio(AppMode.AI));
@@ -319,6 +345,7 @@ describe('PersonaAppLayoutPage', () => {
     });
 
     it('keeps the edits and re-enables save when saving fails', async () => {
+      registerAiRoutes();
       const onSave = renderPage(jest.fn().mockRejectedValue(new Error('500')));
 
       fireEvent.click(getRadio(AppMode.AI));
