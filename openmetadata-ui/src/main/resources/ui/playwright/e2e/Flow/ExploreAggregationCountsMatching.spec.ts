@@ -34,42 +34,42 @@ const ENTITY_TYPE_TO_TAB_TESTID: Record<string, string> = {
   metric: 'metrics-tab',
 };
 
-const SEARCH_URL_FRAGMENT = '/api/v1/search/query';
+const SEARCH_QUERY_PATH = '/api/v1/search/query';
+const ENTITY_TYPE_COUNTS_PATH = '/api/v1/search/entityTypeCounts';
 const SEARCH_QUERY = 'customers';
-const SEARCH_RESULT_SIZE = '15';
+// The tab results query is the only one that asks for trackTotalHits; the search-box
+// suggestion dropdown fires an index=dataAsset query with the same size/from, so the
+// predicate must not rely on size/from alone.
+const TAB_RESULT_SIZE = '15';
 
 const getSearchParams = (response: Response) =>
   new URL(response.url()).searchParams;
 
-const isSearchQueryResponse = (response: Response, index: string) => {
+const isSearchResponse = (response: Response, path: string) =>
+  new URL(response.url()).pathname === path &&
+  response.request().method() === 'GET' &&
+  getSearchParams(response).get('q') === SEARCH_QUERY;
+
+const isAggregationCountResponse = (response: Response) =>
+  isSearchResponse(response, ENTITY_TYPE_COUNTS_PATH);
+
+const isTabResultsResponse = (response: Response, index?: string) => {
   const searchParams = getSearchParams(response);
 
   return (
-    response.url().includes(SEARCH_URL_FRAGMENT) &&
-    response.request().method() === 'GET' &&
-    searchParams.get('q') === SEARCH_QUERY &&
-    searchParams.get('index') === index
-  );
-};
-
-const isTabSearchQueryResponse = (response: Response) => {
-  const searchParams = getSearchParams(response);
-  const index = searchParams.get('index') ?? '';
-
-  return (
-    isSearchQueryResponse(response, index) &&
-    searchParams.get('size') === SEARCH_RESULT_SIZE &&
+    isSearchResponse(response, SEARCH_QUERY_PATH) &&
+    (index === undefined || searchParams.get('index') === index) &&
+    searchParams.get('track_total_hits') === 'true' &&
+    searchParams.get('size') === TAB_RESULT_SIZE &&
     searchParams.get('from') === '0'
   );
 };
 
 async function runSearchValidation(page: Page): Promise<void> {
-  const apiCountResPromise = page.waitForResponse((response) =>
-    isSearchQueryResponse(response, 'dataAsset')
-  );
+  const apiCountResPromise = page.waitForResponse(isAggregationCountResponse);
 
-  const initialTabSearchResPromise = page.waitForResponse(
-    isTabSearchQueryResponse
+  const initialTabSearchResPromise = page.waitForResponse((response) =>
+    isTabResultsResponse(response)
   );
 
   await page.getByTestId('searchBox').fill(SEARCH_QUERY);
@@ -145,11 +145,8 @@ async function runSearchValidation(page: Page): Promise<void> {
       if (bucket.key === initialTabSearchIndex) {
         tabSearchBody = initialTabSearchBody;
       } else {
-        const tabSearchResPromise = page.waitForResponse(
-          (response) =>
-            isSearchQueryResponse(response, bucket.key) &&
-            getSearchParams(response).get('size') === SEARCH_RESULT_SIZE &&
-            getSearchParams(response).get('from') === '0'
+        const tabSearchResPromise = page.waitForResponse((response) =>
+          isTabResultsResponse(response, bucket.key)
         );
 
         await tabLocator.click();
