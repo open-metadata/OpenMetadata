@@ -27,6 +27,7 @@ import {
   getTaskResolutionNewValue,
   shouldRequireTaskResolutionValue,
 } from '../../../../utils/TaskFormSchemaUtils';
+import { TaskActionLabelOverrides } from './taskDetail.types';
 import { isApproveTransition, isRejectTransition } from './taskList.utils';
 
 // A task with no server transitions is only actionable in these states.
@@ -178,7 +179,11 @@ export const getTaskResolveActions = (
   labels: { approve: string; reject: string },
   schema?: TaskFormSchema
 ): TaskResolveAction[] => {
-  const transitions = task.availableTransitions ?? [];
+  // Closing a task leaves its workflow transitions on it, so a cancelled task
+  // would otherwise still offer Approve/Reject. (A Granted access request is
+  // closed too, but its Revoke is real, so only cancellation clears them.)
+  const transitions =
+    task.status === TaskStatus.Cancelled ? [] : task.availableTransitions ?? [];
 
   if (transitions.length > 0) {
     return transitions.map((transition) => ({
@@ -193,6 +198,25 @@ export const getTaskResolveActions = (
 
   return getLegacyActions(task, labels, schema);
 };
+
+/**
+ * A task type's own wording for its approve and reject buttons ("Assign
+ * owner", "Dismiss"). Workflow transitions arrive with the generic "Approve" /
+ * "Reject", so a type that names its actions more precisely wins; any action
+ * the type does not name keeps the server's label.
+ */
+export const applyActionLabels = (
+  actions: TaskResolveAction[],
+  overrides?: TaskActionLabelOverrides
+): TaskResolveAction[] =>
+  actions.map((action) => {
+    const label =
+      action.kind === 'approve' || action.kind === 'reject'
+        ? overrides?.[action.kind]
+        : undefined;
+
+    return label ? { ...action, label } : action;
+  });
 
 export interface TaskActionInput {
   // The workflow flagged requiresComment; the server 400s without one.
@@ -257,5 +281,45 @@ export const buildResolveBody = (
     ...(extras?.payload
       ? { payload: { ...(legacy.payload ?? {}), ...extras.payload } }
       : {}),
+  };
+};
+
+export interface TaskActionLayout {
+  /** The affirmative action, rendered as the header's filled button. */
+  primary?: TaskResolveAction;
+  /** The counterpart action, rendered as the header's outlined button. */
+  secondary?: TaskResolveAction;
+  /** Everything else, rendered in the header's overflow menu. */
+  overflow: TaskResolveAction[];
+}
+
+/**
+ * Splits a task's actions into the header's two buttons plus an overflow menu.
+ *
+ * Approve/reject take the two slots when present. A task that has neither —
+ * an incident resolving through `resolve`, a granted access request offering
+ * only `revoke` — promotes its first transitions instead, so its real action is
+ * never buried in the menu. A reassign only takes a slot once nothing else
+ * claims it.
+ */
+export const splitTaskActions = (
+  actions: TaskResolveAction[]
+): TaskActionLayout => {
+  const approve = actions.find((action) => action.kind === 'approve');
+  const reject = actions.find((action) => action.kind === 'reject');
+  const assignee = actions.find((action) => action.kind === 'assignee');
+  const others = actions.filter((action) => action.kind === 'other');
+
+  const primary = approve ?? others[0];
+  const secondary =
+    reject ?? (primary === others[0] ? others[1] : others[0]) ?? assignee;
+  const promoted = new Set(
+    [primary?.id, secondary?.id].filter(Boolean) as string[]
+  );
+
+  return {
+    primary,
+    secondary,
+    overflow: actions.filter((action) => !promoted.has(action.id)),
   };
 };

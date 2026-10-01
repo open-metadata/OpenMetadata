@@ -18,7 +18,7 @@ import {
   ROUTES,
 } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { TestCasePageTabs } from '../enums/TestCase.enum';
 import { TaskEntityStatus, type Task as TaskEntity } from '../rest/tasksAPI';
 import {
   getEntityDetailsPath,
@@ -93,6 +93,28 @@ export const getTaskDetailPathFromTask = (task: TaskEntity) => {
     EntityTabs.ACTIVITY_FEED,
     ActivityFeedTabs.TASKS
   );
+};
+
+/**
+ * Where a task's asset lives, for a task that may not name one: an incident
+ * carries no `about`, only the failing test case's FQN, which the caller
+ * derives from its description. Empty when neither is available.
+ *
+ * Routing knowledge stays here rather than in the inbox's components, which
+ * have no business importing a page's tab enum.
+ */
+export const getTaskAboutPath = (
+  task: TaskEntity,
+  incidentTestCaseFqn: string
+): string => {
+  if (task.about?.fullyQualifiedName) {
+    return getTaskDetailPathFromTask(task);
+  }
+
+  // A bare word is not an FQN, so it cannot address a test case page.
+  return incidentTestCaseFqn.includes('.')
+    ? getTestCaseDetailPagePath(incidentTestCaseFqn, TestCasePageTabs.ISSUES)
+    : '';
 };
 
 export const getTaskDisplayId = (taskId?: string) => {

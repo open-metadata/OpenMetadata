@@ -80,6 +80,23 @@ describe('useInboxCounts', () => {
     expect(mockListVisibleTasks).toHaveBeenCalled();
   });
 
+  // Matches the undated Triage queue and the sidebar bubble.
+  it('counts open tasks without the activity date window', async () => {
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(
+      () => useInboxCounts({ startTs: 1, endTs: 2 }),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockListVisibleTasks).toHaveBeenCalledWith({
+      limit: 1,
+      statusGroup: 'Open',
+    });
+    expect(mockListVisibleTasks.mock.calls[0][0]).not.toHaveProperty('startTs');
+  });
+
   it('falls back to zero when the activity request rejects', async () => {
     mockGetActivityEvents.mockRejectedValue(new Error('boom'));
     const { wrapper } = createWrapper();

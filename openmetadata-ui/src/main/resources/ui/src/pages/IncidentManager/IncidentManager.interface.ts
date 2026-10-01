@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
+import { TestCasePageTabs } from '../../enums/TestCase.enum';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 
-export enum TestCasePageTabs {
-  TEST_CASE_RESULTS = 'test-case-results',
-  DIMENSIONALITY = 'dimensionality',
-  SQL_QUERY = 'sql-query',
-  ISSUES = 'issues',
-}
+// Moved to `enums/TestCase.enum` so lower layers can name a tab without
+// importing this page; re-exported here for the modules that already do.
+export { TestCasePageTabs };
 export interface TestCaseIncidentStatusData {
   data: TestCaseResolutionStatus[];
   isLoading: boolean;

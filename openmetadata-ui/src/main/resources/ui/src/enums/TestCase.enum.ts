@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.add-glossary {
-  .form-item-horizontal {
-    margin-bottom: var(--om-space-8);
-  }
+
+/**
+ * Tabs of the test case detail page. Lives here rather than beside the page so
+ * the routing utilities that build these URLs — a lower layer — do not have to
+ * import a route-level module to name a tab.
+ */
+export enum TestCasePageTabs {
+  TEST_CASE_RESULTS = 'test-case-results',
+  DIMENSIONALITY = 'dimensionality',
+  SQL_QUERY = 'sql-query',
+  ISSUES = 'issues',
 }

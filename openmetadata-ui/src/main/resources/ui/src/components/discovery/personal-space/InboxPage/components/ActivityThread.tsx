@@ -147,7 +147,12 @@ const ReplyRow = ({
 
   return (
     <Box className="tw:group" data-testid="feed-reply-card" gap={3}>
-      <ProfilePicture displayName={authorName} name={authorLogin} width="28" />
+      <ProfilePicture
+        matchRingToFill
+        displayName={authorName}
+        name={authorLogin}
+        width="28"
+      />
       <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
         <Box align="center" gap={2}>
           <Typography size="text-sm" weight="semibold">

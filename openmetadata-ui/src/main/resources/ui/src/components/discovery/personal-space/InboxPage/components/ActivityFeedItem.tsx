@@ -356,6 +356,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
         <Box gap={3}>
           <span className="tw:relative tw:h-10 tw:shrink-0">
             <ProfilePicture
+              matchRingToFill
               displayName={authorName}
               name={actorName}
               width="40"
