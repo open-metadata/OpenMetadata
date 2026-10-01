@@ -12,7 +12,7 @@
  */
 
 import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AiFormModal } from '../../../components/common/atoms/drawer/AiFormModal';
@@ -99,12 +99,12 @@ function AlertEditModal({
     alert,
     containerEntities,
     extraFormButtons,
-    extraFormWidgets,
     filterResources,
     form,
     handleSave,
     inlineAlertDetails,
     isLoading,
+    loadingState,
     saving,
     shouldShowActionsSection,
     shouldShowFiltersSection,
@@ -208,11 +208,12 @@ function AlertEditModal({
             kind.hasTriggers && shouldShowActionsSection
           }
           shouldShowFiltersSection={shouldShowFiltersSection}
-          shouldShowTemplateSection={!isEmpty(extraFormWidgets)}
           showHint={showHint}
           supportedFilters={supportedFilters}
           supportedTriggers={supportedTriggers}
+          templateResourcePermission={templateResourcePermission}
           templates={templates}
+          templatesLoading={loadingState.templates}
           value={formData}
           onChange={setFormData}
           onSubmit={handleSave}

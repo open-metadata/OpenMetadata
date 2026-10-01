@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -83,12 +84,24 @@ public class TestCaseResolutionStatusRepository
   // Name the owner dimension gives the group of incidents whose test cases have no owner.
   public static final String NO_OWNER_GROUP_NAME = "No Owner";
 
+  /** Group-by field of the latest-status-per-test-case incident listings. */
+  public static final String LATEST_PER_TEST_CASE = "testCase.fullyQualifiedName.keyword";
+
+  // An incident's test case, and the asset that test case belongs to, never change.
+  private static final Set<String> TEST_CASE_INVARIANT_PARAMS =
+      Set.of("testCaseFqn", "originEntityFQN");
+
   public TestCaseResolutionStatusRepository() {
     super(
         TestCaseResolutionStatusResource.COLLECTION_PATH,
         Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao(),
         TestCaseResolutionStatus.class,
         Entity.TEST_CASE_RESOLUTION_STATUS);
+  }
+
+  @Override
+  protected Set<String> getGroupInvariantParams(String groupBy) {
+    return LATEST_PER_TEST_CASE.equals(groupBy) ? TEST_CASE_INVARIANT_PARAMS : Set.of();
   }
 
   // {@code testSuites} stays on the exclude list to scrub legacy docs written before the

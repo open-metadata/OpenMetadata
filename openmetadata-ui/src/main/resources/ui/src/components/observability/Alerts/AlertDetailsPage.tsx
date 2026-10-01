@@ -25,7 +25,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { Key, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -217,10 +217,11 @@ const AlertDetailsPage = ({
           filterResources={alertFormState.filterResources}
           mode="view"
           shouldShowActionsSection={kind.hasTriggers}
-          shouldShowTemplateSection={!isEmpty(alertFormState.extraFormWidgets)}
           supportedFilters={selectedAlertResource?.supportedFilters}
           supportedTriggers={selectedAlertResource?.supportedActions}
+          templateResourcePermission={alertFormState.templateResourcePermission}
           templates={alertFormState.templates}
+          templatesLoading={alertFormState.loadingState.templates}
           value={alertConfigValue}
         />
       );
@@ -231,8 +232,9 @@ const AlertDetailsPage = ({
     alertConfigValue,
     alertDetails,
     fqn,
-    alertFormState.extraFormWidgets,
     alertFormState.filterResources,
+    alertFormState.loadingState.templates,
+    alertFormState.templateResourcePermission,
     alertFormState.templates,
     kind.hasTriggers,
     selectedAlertResource?.supportedActions,
