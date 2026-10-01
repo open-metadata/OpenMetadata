@@ -62,7 +62,11 @@ const C = { red: (s) => `\x1b[31m${s}\x1b[0m`, green: (s) => `\x1b[32m${s}\x1b[0
 const SVG_DIR = 'openmetadata-ui/src/main/resources/ui/src/assets/svg';
 
 function newSvgFiles() {
-  const out = sh(`git diff ${diffArgs} --diff-filter=A --name-only -- '${SVG_DIR}/**/*.svg' '${SVG_DIR}/*.svg'`);
+  // `:(top)` anchors the pathspec to the repo root. Git resolves a bare
+  // pathspec relative to CWD, so without it this silently matches nothing when
+  // the script is run from the UI directory (as the header documents) and only
+  // worked from the pre-commit hook, which runs at the repo root.
+  const out = sh(`git diff ${diffArgs} --diff-filter=A --name-only -- ':(top)${SVG_DIR}/*.svg'`);
   return out.split('\n').map((s) => s.trim()).filter(Boolean);
 }
 
@@ -70,6 +74,14 @@ function newSvgFiles() {
 
 // Matches the module path of `import … from '…/assets/svg/….svg'`.
 const SVG_IMPORT_RE = /from\s+(['"])([^'"]*assets\/svg\/[^'"]*\.svg)\1/g;
+
+// Compare specifiers by the stable part from `assets/svg/` onward, not the raw
+// string — a file moved to a different folder depth rewrites `../assets/svg/x`
+// to `../../assets/svg/x`, which is the same asset and must not read as new.
+function svgKey(spec) {
+  const i = spec.indexOf('assets/svg/');
+  return i === -1 ? spec : spec.slice(i);
+}
 
 function parseSvgImports(content) {
   const paths = new Set();
@@ -147,9 +159,9 @@ function newSvgImports() {
     if (afterPaths.size === 0) {
       continue;
     }
-    const beforePaths = parseSvgImports(getBeforeContent(before));
+    const beforeKeys = new Set([...parseSvgImports(getBeforeContent(before))].map(svgKey));
     for (const p of afterPaths) {
-      if (!beforePaths.has(p)) {
+      if (!beforeKeys.has(svgKey(p))) {
         hits.push({ file: after, path: p });
       }
     }
@@ -188,4 +200,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { parseSvgImports, newSvgImports, newSvgFiles, main };
+module.exports = { parseSvgImports, svgKey, newSvgImports, newSvgFiles, main };
