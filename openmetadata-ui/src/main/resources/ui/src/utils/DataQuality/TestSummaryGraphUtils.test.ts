@@ -21,10 +21,12 @@ import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
   applyStatusPlacements,
   formatTestSummaryYAxis,
+  getStatusChartStatus,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
   getThresholdReference,
   isSameTooltipPosition,
+  isTestSummaryTooltipBoundary,
   PLACED_KEYS_FIELD,
   prepareChartData,
   PrepareChartDataType,
@@ -523,6 +525,33 @@ describe('getStatusDotColor', () => {
   // share a dot: one produced no result, the other has not run yet.
   it('should return BLUE_500 for Queued', () => {
     expect(getStatusDotColor(TestCaseStatus.Queued)).toBe(BLUE_500);
+  });
+});
+
+describe('getStatusChartStatus', () => {
+  it.each([
+    [TestCaseStatus.Success, 'success'],
+    [TestCaseStatus.Failed, 'failed'],
+    [TestCaseStatus.Queued, 'info'],
+    [TestCaseStatus.Aborted, 'warning'],
+    [undefined, 'warning'],
+  ])('should map %s to the %s chart status', (status, expected) => {
+    expect(getStatusChartStatus(status)).toBe(expected);
+  });
+});
+
+describe('isTestSummaryTooltipBoundary', () => {
+  it('should accept a box with every coordinate finite', () => {
+    expect(
+      isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10, height: 5 })
+    ).toBe(true);
+  });
+
+  it('should reject a box with a missing or non-finite coordinate', () => {
+    expect(isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10 })).toBe(false);
+    expect(
+      isTestSummaryTooltipBoundary({ x: 0, y: 0, width: 10, height: NaN })
+    ).toBe(false);
   });
 });
 
