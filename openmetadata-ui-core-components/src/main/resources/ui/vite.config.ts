@@ -92,6 +92,7 @@ export default defineConfig({
       external: [
         'react',
         'react-dom',
+        'react-dom/server',
         'react/jsx-runtime',
         'react-aria',
         'react-aria-components',

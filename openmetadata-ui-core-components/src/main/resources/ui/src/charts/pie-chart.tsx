@@ -16,6 +16,7 @@ import { useCallback, useMemo } from 'react';
 import { EChart } from './echart';
 import { buildPieOption, isPieEmpty } from './options/pie';
 import type { PieChartProps } from './props';
+import { withTooltipRender } from './tooltip-render';
 import type { ChartTheme } from './types';
 
 /** Pie chart; a donut when `innerRadius` is set. */
@@ -40,6 +41,11 @@ export const PieChart = ({
   className,
   'data-testid': dataTestId,
 }: PieChartProps) => {
+  const builtTooltip = useMemo(
+    () => withTooltipRender(tooltip, data),
+    [tooltip, data]
+  );
+
   const getOption = useCallback(
     (theme: ChartTheme) =>
       buildPieOption(
@@ -54,7 +60,7 @@ export const PieChart = ({
           clickable: Boolean(onSliceClick),
           showLabels,
           legend,
-          tooltip,
+          tooltip: builtTooltip,
           option,
         },
         theme
@@ -70,7 +76,7 @@ export const PieChart = ({
       onSliceClick,
       showLabels,
       legend,
-      tooltip,
+      builtTooltip,
       option,
     ]
   );

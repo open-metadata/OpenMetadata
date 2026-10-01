@@ -13,6 +13,7 @@
 
 import type { ECElementEvent } from 'echarts';
 import type { ReactNode } from 'react';
+import type { ChartTooltipRenderProps } from './tooltip-render';
 import type {
   CartesianBuildInput,
   ChartOption,
@@ -20,6 +21,7 @@ import type {
   GeoMapBuildInput,
   GeoMapDatum,
   PieBuildInput,
+  PieDatum,
 } from './types';
 
 /** Props every chart component shares, on top of its build input. */
@@ -53,8 +55,11 @@ export interface CartesianChartProps<T extends object>
       | 'showValueLabels'
       | 'radius'
       | 'categoryClickable'
+      | 'tooltip'
     >,
     ChartCommonProps {
+  /** `render` gives React content; see `ChartTooltipRenderProps`. */
+  tooltip?: ChartTooltipRenderProps<T>;
   onPointClick?: (datum: T, seriesKey: string, event: ECElementEvent) => void;
   /** A click on a category-axis label. Receives the category value. */
   onCategoryClick?: (category: string, event: ECElementEvent) => void;
@@ -67,7 +72,11 @@ export interface BarChartProps<T extends object>
       'layout' | 'getBarStatus' | 'showValueLabels' | 'radius'
     > {}
 
-export interface PieChartProps extends PieBuildInput, ChartCommonProps {
+export interface PieChartProps
+  extends Omit<PieBuildInput, 'tooltip'>,
+    ChartCommonProps {
+  /** `render` gives React content; see `ChartTooltipRenderProps`. */
+  tooltip?: ChartTooltipRenderProps<PieDatum>;
   /** Rendered in the middle of the chart, typically for a donut total. */
   centerLabel?: ReactNode;
   onSliceClick?: (

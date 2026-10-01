@@ -15,6 +15,7 @@ import type { ECElementEvent } from 'echarts';
 import { useCallback, useMemo } from 'react';
 import { EChart } from './echart';
 import type { BarChartProps } from './props';
+import { withTooltipRender } from './tooltip-render';
 import type { CartesianBuildInput, ChartOption, ChartTheme } from './types';
 
 type CartesianBuilder = <T extends object>(
@@ -58,6 +59,11 @@ export const CartesianChartBase = <T extends object>({
   className,
   'data-testid': dataTestId,
 }: CartesianChartBaseProps<T>) => {
+  const builtTooltip = useMemo(
+    () => withTooltipRender(tooltip, data),
+    [tooltip, data]
+  );
+
   const getOption = useCallback(
     (theme: ChartTheme) =>
       build(
@@ -68,7 +74,7 @@ export const CartesianChartBase = <T extends object>({
           ariaLabel,
           xAxis,
           yAxis,
-          tooltip,
+          tooltip: builtTooltip,
           legend,
           referenceLines,
           zoom,
@@ -90,7 +96,7 @@ export const CartesianChartBase = <T extends object>({
       ariaLabel,
       xAxis,
       yAxis,
-      tooltip,
+      builtTooltip,
       legend,
       referenceLines,
       zoom,

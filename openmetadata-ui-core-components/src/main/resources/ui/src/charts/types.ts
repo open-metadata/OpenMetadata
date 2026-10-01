@@ -137,6 +137,26 @@ export interface ChartTooltipProps {
   valueFormatter?: (value: number | string, seriesKey: string) => string;
   /** Replaces the whole tooltip body. */
   formatter?: (params: TooltipComponentFormatterCallbackParams) => string;
+  /**
+   * Drops ECharts' own tooltip box (padding, border, background, shadow), so
+   * content that brings its own card is not boxed twice. Set by
+   * `tooltip.render`.
+   */
+  bare?: boolean;
+}
+
+/** One series' value at the hovered point, as handed to `tooltip.render`. */
+export interface ChartTooltipItem {
+  /** `ChartSeries.key`; the slice name on a pie. */
+  seriesKey: string;
+  /** Legend label of the series, or the slice name. */
+  name: string;
+  /** `null` for a gap (missing value). */
+  value: number | string | null;
+  /** Resolved colour of the series or slice. */
+  color: string;
+  /** Index of the hovered row in the chart's `data`. */
+  dataIndex: number;
 }
 
 export interface ChartLegendProps {

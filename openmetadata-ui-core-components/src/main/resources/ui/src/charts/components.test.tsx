@@ -17,6 +17,7 @@ import type {
   ECElementEvent,
   LineSeriesOption,
   PieSeriesOption,
+  TooltipComponentOption,
 } from 'echarts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AreaChart } from './area-chart';
@@ -142,6 +143,28 @@ describe('LineChart', () => {
       'value',
       expect.anything()
     );
+  });
+
+  it('turns tooltip.render into a bare string formatter', () => {
+    render(
+      <LineChart
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        tooltip={{ render: (_items, datum) => <b>{datum?.day}</b> }}
+        xKey="day"
+      />
+    );
+    const tooltip = (lastHost().option as ChartOption)
+      .tooltip as TooltipComponentOption;
+    const formatter = tooltip.formatter as (params: unknown) => string;
+
+    expect(tooltip.padding).toBe(0);
+    expect(
+      formatter([
+        { seriesId: 'passed', seriesName: 'Passed', value: 3, dataIndex: 1 },
+      ])
+    ).toBe('<b>Tue</b>');
   });
 
   it('binds no click handler when onPointClick is not given', () => {

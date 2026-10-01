@@ -236,6 +236,20 @@ describe('buildLineOption', () => {
     expect(yAxesOf(plain)[0].triggerEvent).toBeUndefined();
   });
 
+  it('drops the ECharts tooltip box when the tooltip is bare', () => {
+    const tooltip = buildLineOption(
+      { ...base, tooltip: { bare: true } },
+      LIGHT_CHART_THEME
+    ).tooltip as TooltipComponentOption;
+
+    expect(tooltip).toMatchObject({
+      padding: 0,
+      borderWidth: 0,
+      backgroundColor: 'transparent',
+    });
+    expect(tooltip.extraCssText).toContain('box-shadow:none');
+  });
+
   it('hides dots and smooths lines unless the series says otherwise', () => {
     const option = buildLineOption(
       {

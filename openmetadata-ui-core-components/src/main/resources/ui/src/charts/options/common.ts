@@ -76,6 +76,11 @@ export const areaGradient = (color: string): LinearGradient => ({
   ],
 });
 
+const BARE_TOOLTIP: Pick<
+  TooltipComponentOption,
+  'padding' | 'borderWidth' | 'backgroundColor'
+> = { padding: 0, borderWidth: 0, backgroundColor: 'transparent' };
+
 export const tooltipConfig = (
   trigger: 'axis' | 'item',
   theme: ChartTheme,
@@ -88,8 +93,11 @@ export const tooltipConfig = (
   backgroundColor: theme.tooltipBg,
   borderColor: theme.tooltipBorder,
   textStyle: { color: theme.tooltipText },
-  extraCssText: `max-height:${TOOLTIP_MAX_HEIGHT}px;overflow:auto;`,
+  extraCssText: `max-height:${TOOLTIP_MAX_HEIGHT}px;overflow:auto;${
+    props.bare ? 'box-shadow:none;' : ''
+  }`,
   valueFormatter: (value) => formatTooltipValue(value),
+  ...(props.bare ? BARE_TOOLTIP : {}),
   ...(props.formatter ? { formatter: props.formatter } : {}),
 });
 

@@ -52,6 +52,11 @@ export { buildGeoMapOption, resolveGeoData } from './options/geo';
 export type { ResolvedGeoData } from './options/geo';
 export { mergeOption, REPLACE_MERGE_KEYS } from './options/merge';
 export { buildPieOption, isPieEmpty, PIE_TRACK_SERIES_ID } from './options/pie';
+export { toTooltipItems } from './tooltip-render';
+export type {
+  ChartTooltipRender,
+  ChartTooltipRenderProps,
+} from './tooltip-render';
 
 // Palette, theme, formatting
 export { formatTooltipValue, formatYAxisTick } from './format';
@@ -87,6 +92,7 @@ export type {
   ChartSeriesType,
   ChartStatus,
   ChartTheme,
+  ChartTooltipItem,
   ChartTooltipProps,
   ChartXAxisProps,
   ChartYAxisProps,
