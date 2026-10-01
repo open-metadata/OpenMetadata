@@ -226,16 +226,13 @@ jest.mock(
 const mockSetShowAILearningBanner = jest.fn();
 const mockSetSelectedRunTimestamp = jest.fn();
 let mockSelectedRunTimestamp: number | undefined;
-jest.mock(
-  '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
-  () => ({
-    useTestCaseStore: jest.fn().mockImplementation(() => ({
-      setShowAILearningBanner: mockSetShowAILearningBanner,
-      selectedRunTimestamp: mockSelectedRunTimestamp,
-      setSelectedRunTimestamp: mockSetSelectedRunTimestamp,
-    })),
-  })
-);
+jest.mock('../../../DataQuality/IncidentManager/useTestCase.store', () => ({
+  useTestCaseStore: jest.fn().mockImplementation(() => ({
+    setShowAILearningBanner: mockSetShowAILearningBanner,
+    selectedRunTimestamp: mockSelectedRunTimestamp,
+    setSelectedRunTimestamp: mockSetSelectedRunTimestamp,
+  })),
+}));
 
 describe('TestSummaryGraph', () => {
   beforeEach(() => {
