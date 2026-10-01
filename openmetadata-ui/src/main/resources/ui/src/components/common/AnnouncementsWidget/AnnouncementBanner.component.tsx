@@ -40,7 +40,6 @@ import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { AnnouncementBannerProps } from './AnnouncementBanner.interface';
-import AnnouncementTypeChip from './AnnouncementTypeChip.component';
 
 const stopAnd = (handler?: () => void) => (e: MouseEvent) => {
   e.stopPropagation();
@@ -502,11 +501,15 @@ const AnnouncementBanner = ({
   const isFull = variant === 'full';
   const layout = getBannerLayout(isFull, expanded);
 
+  // 16px beside the badge, 20px on the landing banner: it sits next to 12px
+  // label text, and anything larger outweighs the title it annotates.
   const typeChip = (
-    <AnnouncementTypeChip
-      icon={TypeIcon}
-      size={isFull ? 'lg' : 'sm'}
-      surface={surface}
+    <TypeIcon
+      className={classNames(
+        'tw:shrink-0',
+        isFull ? 'tw:size-5' : 'tw:size-4',
+        surface.icon
+      )}
     />
   );
 

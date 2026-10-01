@@ -17,6 +17,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Calendar } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, pick } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -30,7 +31,6 @@ import {
   getAnnouncementTypeLabel,
 } from '../../utils/AnnouncementsUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
-import AnnouncementTypeChip from '../common/AnnouncementsWidget/AnnouncementTypeChip.component';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -111,9 +111,11 @@ const AnnouncementFeedCardBody = ({
     <Box className="tw:gap-3" data-testid="main-message" direction="col">
       <Box align="center" className="tw:gap-2" justify="between">
         <Box align="center" className="tw:min-w-0 tw:gap-2">
-          <AnnouncementTypeChip
-            icon={TypeIcon}
-            surface={ANNOUNCEMENT_SURFACE_CLASSES[color]}
+          <TypeIcon
+            className={classNames(
+              'tw:size-4 tw:shrink-0',
+              ANNOUNCEMENT_SURFACE_CLASSES[color].icon
+            )}
           />
           {/* The card behind this badge is already tinted in the same family,
               so the badge's own `50` fill would disappear into it. `bg-primary`

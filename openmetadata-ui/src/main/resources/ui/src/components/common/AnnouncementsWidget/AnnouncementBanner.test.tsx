@@ -181,14 +181,14 @@ describe('AnnouncementBanner', () => {
   it('should not indent the expanded title past the type chip', () => {
     renderBanner({ expanded: true });
 
-    const chip = within(screen.getByTestId('announcement-banner')).getByTestId(
-      'announcement-type-icon'
+    const badge = within(screen.getByTestId('announcement-banner')).getByTestId(
+      'announcement-type-badge'
     );
     const title = screen.getByText('Pipeline maintenance');
 
-    // The chip sits in the header row; the title is its sibling's sibling, not a
-    // descendant of the column the chip opens — that nesting is what indented it.
-    expect(chip.parentElement?.contains(title)).toBe(false);
+    // The badge shares the header row with the type icon; the title is that
+    // row's sibling, not a descendant — that nesting is what indented it.
+    expect(badge.parentElement?.contains(title)).toBe(false);
   });
 
   it('should give the clickable title exactly one button', () => {
