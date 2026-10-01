@@ -32,7 +32,7 @@ import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { isImageUrl } from '../../utils/IconUtils';
 import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
-import { stringToHTML } from '../../utils/StringUtils';
+import { stringToHTML } from '../../utils/RichTextStringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
 import Loader from '../common/Loader/Loader';

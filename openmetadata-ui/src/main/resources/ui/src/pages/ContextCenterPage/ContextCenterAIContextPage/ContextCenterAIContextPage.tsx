@@ -36,7 +36,7 @@ import { getAllPersonas } from '../../../rest/PersonaAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getScopedRuleCount } from '../../../utils/PersonaAIContextUtils';
-import { stripMarkdown } from '../../../utils/StringUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const PERSONA_PAGE_SIZE = 50;
