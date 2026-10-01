@@ -497,6 +497,31 @@ PREPARE announcement_type_index_stmt FROM @announcement_type_index_ddl;
 EXECUTE announcement_type_index_stmt;
 DEALLOCATE PREPARE announcement_type_index_stmt;
 
+-- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
+-- that already exists, so existing installs get the rule here. The rule is only added while an allow
+-- rule of the policy still lists ViewAll, since the grant is acceptable only where Data Consumers can
+-- already view everything. Deny rules in other policies are not visible to this statement.
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule',
+        'description', 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.',
+        'resources', JSON_ARRAY('all'),
+        'operations', JSON_ARRAY('ExecuteSparqlQuery'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'), '$.rules')
+  AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('ViewAll')), '$.rules');
+
+-- Flowable schema upgrades run after this migration and inherit the database default. Existing
+-- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+
 -- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
 -- the result polls, the credentials) that can reach different servers, so its state lives here
 -- rather than in one server's memory. pending_state holds the candidate configuration with its
@@ -514,7 +539,3 @@ CREATE TABLE IF NOT EXISTS sso_test_login_session (
     INDEX idx_sso_test_login_session_admin (admin_principal, credentials_submitted_at),
     INDEX idx_sso_test_login_session_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Flowable schema upgrades run after this migration and inherit the database default. Existing
--- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
-ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
