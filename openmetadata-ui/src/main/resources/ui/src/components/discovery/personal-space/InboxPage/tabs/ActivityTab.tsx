@@ -247,8 +247,10 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
           />
         </div>
       </div>
+      {/* A gutter on both edges keeps the feed centred under the toolbar while
+          the scrollbar shows. */}
       <div
-        className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-1 tw:pb-4 tw:pr-1"
+        className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-5 tw:pb-4 tw:[scrollbar-gutter:stable_both-edges]"
         data-testid="inbox-activity-tab"
         ref={scrollRef}
         onScroll={onScroll}>

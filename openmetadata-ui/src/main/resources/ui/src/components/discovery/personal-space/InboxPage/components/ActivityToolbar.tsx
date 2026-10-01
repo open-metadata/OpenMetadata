@@ -124,7 +124,8 @@ const ActivityToolbar = ({
         className="tw:w-fit"
         selectedKey={filter}
         onSelectionChange={(key) => onFilterChange(key as ActivityFilter)}>
-        <Tabs.List size="sm" type="button-border">
+        {/* The design sets the tabs on the tertiary gray, a step darker. */}
+        <Tabs.List className="tw:bg-tertiary" size="sm" type="button-border">
           {Object.values(ActivityFilter).map((value) => (
             // The design's tighter tabs, so a count fits without wrapping.
             <Tabs.Item className="tw:gap-1.5 tw:px-2.25" id={value} key={value}>
