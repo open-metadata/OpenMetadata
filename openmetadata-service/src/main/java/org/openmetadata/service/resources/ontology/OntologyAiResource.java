@@ -341,7 +341,11 @@ public final class OntologyAiResource {
     final BackgroundJob job =
         Entity.getJobDAO()
             .fetchJobById(jobId)
-            .filter(found -> found.getJobType() == BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION)
+            .filter(
+                found ->
+                    found.getJobType() != null
+                        && JobDAO.ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE.equals(
+                            found.getJobType().name()))
             .orElseThrow(() -> new NotFoundException("Memory derivation job not found"));
     if (!job.getCreatedBy().equals(securityContext.getUserPrincipal().getName())) {
       throw new ForbiddenException("Memory derivation job belongs to another user");

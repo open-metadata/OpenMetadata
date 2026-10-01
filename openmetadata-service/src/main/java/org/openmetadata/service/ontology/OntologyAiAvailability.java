@@ -14,7 +14,9 @@
 package org.openmetadata.service.ontology;
 
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
+import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.LLMClientHolder;
 
 /**
@@ -23,6 +25,9 @@ import org.openmetadata.service.llm.LLMClientHolder;
  * only on the one a user clicks.
  */
 public final class OntologyAiAvailability {
+  private static final boolean MEMORY_DERIVATION_JOB_TYPE_SUPPORTED =
+      supportsMemoryDerivationJobType();
+
   private OntologyAiAvailability() {}
 
   public static boolean isEnabled(final RdfConfiguration rdfConfiguration) {
@@ -39,6 +44,18 @@ public final class OntologyAiAvailability {
   }
 
   static boolean isMemoryDerivationEnabled(final RdfConfiguration rdfConfiguration) {
-    return isEnabled(rdfConfiguration) && LLMClientHolder.isOntologyMemoryDerivationEnabled();
+    return isEnabled(rdfConfiguration)
+        && LLMClientHolder.isOntologyMemoryDerivationEnabled()
+        && MEMORY_DERIVATION_JOB_TYPE_SUPPORTED;
+  }
+
+  private static boolean supportsMemoryDerivationJobType() {
+    // Collate may load its own generated enum until its schema is synchronized.
+    for (final BackgroundJob.JobType jobType : BackgroundJob.JobType.values()) {
+      if (JobDAO.ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE.equals(jobType.name())) {
+        return true;
+      }
+    }
+    return false;
   }
 }

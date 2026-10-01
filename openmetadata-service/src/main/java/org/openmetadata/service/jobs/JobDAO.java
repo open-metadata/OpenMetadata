@@ -159,6 +159,7 @@ public interface JobDAO {
   int countInFlightOntologyMemoryJobs(@Bind("memoryId") String memoryId);
 
   String ONTOLOGY_MEMORY_DERIVATION_HANDLER = "OntologyMemoryDerivationJobHandler";
+  String ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE = "ONTOLOGY_MEMORY_DERIVATION";
   int ONTOLOGY_MEMORY_BATCH_LIMIT = 20;
   // A batch only grows while its start is still this far away, so no worker can have read it yet.
   long ONTOLOGY_MEMORY_BATCH_APPEND_MARGIN_MS = 5_000L;
@@ -174,7 +175,7 @@ public interface JobDAO {
     }
     return Optional.of(
         insertJobInternal(
-            BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION.name(),
+            ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE,
             ONTOLOGY_MEMORY_DERIVATION_HANDLER,
             jobArgs,
             createdBy,
@@ -198,7 +199,7 @@ public interface JobDAO {
     }
     return Optional.of(
         insertJobInternal(
-            BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION.name(),
+            ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE,
             ONTOLOGY_MEMORY_DERIVATION_HANDLER,
             jobArgs,
             createdBy,
