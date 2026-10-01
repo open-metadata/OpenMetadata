@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  EmptyPlaceholder,
-  Typography as CoreTypography,
-} from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Code01 } from '@openmetadata/ui-core-components/icons';
-import { Typography } from 'antd';
 import { startCase } from 'lodash';
 import {
   LogViewerModalProps,
@@ -46,9 +42,7 @@ const getPipelineExtraInfo = (
     case PipelineType.DataInsight:
       return (
         <>
-          <CoreTypography
-            className="w-max-500 tw:text-secondary"
-            size="text-xs">
+          <Typography className="w-max-500 tw:text-secondary" size="text-xs">
             <Transi18next
               i18nKey="message.data-insight-pipeline-description"
               renderElement={
@@ -64,15 +58,13 @@ const getPipelineExtraInfo = (
                 link: t('label.data-insight-ingestion'),
               }}
             />
-          </CoreTypography>
+          </Typography>
         </>
       );
     case PipelineType.ElasticSearchReindex:
       return (
         <>
-          <CoreTypography
-            className="w-max-500 tw:text-secondary"
-            size="text-xs">
+          <Typography className="w-max-500 tw:text-secondary" size="text-xs">
             <Transi18next
               i18nKey="message.elastic-search-re-index-pipeline-description"
               renderElement={
@@ -88,12 +80,12 @@ const getPipelineExtraInfo = (
                 link: t('label.search-index-ingestion'),
               }}
             />
-          </CoreTypography>
+          </Typography>
         </>
       );
     default:
       return (
-        <CoreTypography className="w-max-500 tw:text-secondary" size="text-xs">
+        <Typography className="w-max-500 tw:text-secondary" size="text-xs">
           <Transi18next
             i18nKey={
               isPlatFormDisabled
@@ -123,7 +115,7 @@ const getPipelineExtraInfo = (
               ),
             }}
           />
-        </CoreTypography>
+        </Typography>
       );
   }
 };
@@ -190,12 +182,12 @@ export const getSuccessMessage = (
       });
 
   return (
-    <Typography.Text>
-      <Typography.Text className="font-medium break-word">{`"${ingestionName}"`}</Typography.Text>
-      <Typography.Text>
+    <Typography>
+      <Typography className="font-medium break-word">{`"${ingestionName}"`}</Typography>
+      <Typography>
         {status === FormSubmitType.ADD ? createMessage : updateMessage}
-      </Typography.Text>
-    </Typography.Text>
+      </Typography>
+    </Typography>
   );
 };
 
