@@ -75,6 +75,17 @@ export const AnnouncementTypeSelect = ({
 
         return (
           <RadioButton
+            className={({ isFocusVisible }) =>
+              classNames(
+                // Core draws the focus ring on `RadioButtonBase`, the circular
+                // indicator — which this chip hides. Without moving the ring
+                // onto the chip, arrowing through the group gives no visible
+                // focus at all; the selection fill is the only cue.
+                'tw:rounded-md',
+                isFocusVisible &&
+                  'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring'
+              )
+            }
             data-testid={`announcement-type-${type}`}
             indicatorClassName="tw:hidden"
             key={type}

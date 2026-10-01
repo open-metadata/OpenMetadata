@@ -246,6 +246,26 @@ describe('AnnouncementForm', () => {
     ).toBeChecked();
   });
 
+  it('should show a focus ring on the chip, not on the hidden radio dot', () => {
+    render(<Harness onSubmit={jest.fn()} />);
+
+    const chip = screen.getByTestId(
+      `announcement-type-${AnnouncementType.Critical}`
+    );
+
+    // react-aria only treats focus as "visible" once it has seen a keyboard
+    // interaction, so the modality has to be established before focusing.
+    act(() => {
+      fireEvent.keyDown(document.body, { key: 'Tab' });
+      within(chip).getByRole('radio').focus();
+    });
+
+    // Core draws the ring on the circular indicator, which this chip hides —
+    // so it has to move to the chip itself or keyboard focus is invisible.
+    expect(chip).toHaveAttribute('data-focus-visible', 'true');
+    expect(chip).toHaveClass('tw:outline-focus-ring');
+  });
+
   it('should reject a Custom name made only of spaces', async () => {
     const onSubmit = jest.fn();
     render(<Harness onSubmit={onSubmit} />);
