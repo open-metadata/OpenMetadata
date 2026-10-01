@@ -13,7 +13,6 @@
 import traceback
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any, Optional, cast
 
 import sqlparse
@@ -49,17 +48,13 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.dashboard.dashboard_service import (
-    DashboardServiceSource,
-    DashboardUsage,
-)
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.mode import client
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
@@ -75,6 +70,18 @@ ModeRecord = dict[str, Any]
 COLUMN_LINEAGE_TARGET = "mode_query_output"
 
 
+def _output_column_paths(parser: LineageParser, query_token: str) -> list[tuple[str, str, str]]:
+    try:
+        return [
+            (str(path[0].parent), path[0].raw_name, path[-1].raw_name)
+            for path in parser.column_lineage  # pyright: ignore[reportGeneralTypeIssues]
+            if str(path[-1].parent).rsplit(".", 1)[-1] == COLUMN_LINEAGE_TARGET
+        ]
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.debug("Could not read the column lineage of Mode query [%s]: %s", query_token, exc)
+        return []
+
+
 def _is_single_select(raw_query: str) -> bool:
     try:
         statements = [statement for statement in sqlparse.parse(raw_query) if str(statement).strip()]
@@ -84,12 +91,23 @@ def _is_single_select(raw_query: str) -> bool:
 
 
 @dataclass(frozen=True)
+class ParsedModeQuery:
+    """What the column and lineage stages need from a parse, without keeping the parser's graph."""
+
+    query_hash: str
+    source_tables: list[str]
+    # (source table, source column, output column); only filled for a single SELECT
+    column_paths: list[tuple[str, str, str]]
+
+
+@dataclass(frozen=True)
 class ModeDashboardDetails:
     """Mode report and the queries fetched for it."""
 
     report: ModeRecord
     queries: list[ModeRecord]
-    query_parsers: dict[str, LineageParser] = field(default_factory=dict, compare=False)
+    # One entry per query of this report, dropped with the report once its stages are done
+    parsed_queries: dict[str, ParsedModeQuery] = field(default_factory=dict, compare=False)
 
 
 class ModeSource(DashboardServiceSource):
@@ -105,7 +123,6 @@ class ModeSource(DashboardServiceSource):
         super().__init__(config, metadata)
         self.workspace_name = config.serviceConnection.root.config.workspaceName  # pyright: ignore[reportAttributeAccessIssue]
         self.filter_query_param = config.serviceConnection.root.config.filterQueryParam  # pyright: ignore[reportAttributeAccessIssue]
-        self.today = datetime.now().strftime("%Y-%m-%d")
         self.data_sources = cast(
             "dict[str, ModeRecord]",
             self.client.get_all_data_sources(self.workspace_name) or {},
@@ -223,58 +240,6 @@ class ModeSource(DashboardServiceSource):
             logger.warning("Could not fetch owner of Mode report [%s]: %s", dashboard_details.get(client.TOKEN), exc)
         return None
 
-    def yield_dashboard_usage(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, dashboard_details: ModeDashboardDetails
-    ) -> Iterable[Either[DashboardUsage]]:
-        """
-        Mode's `view_count` is the report's lifetime total, while OpenMetadata stores views per day,
-        so report the difference against the last recorded day (same approach as Looker and Tableau).
-        """
-        if not self.source_config.includeUsage:
-            return
-        report = dashboard_details.report
-        current_views = report.get(client.VIEW_COUNT)
-        if current_views is None:
-            logger.debug("Mode report [%s] has no view_count", report.get(client.TOKEN))
-            return
-        try:
-            dashboard_fqn = cast(
-                "str",
-                fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Dashboard,
-                    service_name=self._dashboard_service_name(),
-                    dashboard_name=cast("str", report[client.TOKEN]),
-                ),
-            )
-            dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn, fields=["usageSummary"])
-            if not dashboard:
-                logger.debug("Dashboard [%s] not found, skipping usage", dashboard_fqn)
-                return
-            summary = dashboard.usageSummary
-            if summary and str(summary.date.root) == self.today and summary.dailyStats.count:
-                logger.debug("Usage already reported today for [%s]", dashboard_fqn)
-                return
-            new_views = int(current_views) - (summary.dailyStats.count if summary else 0)
-            if new_views < 0:
-                logger.warning("Negative usage difference [%s] for [%s], skipping", new_views, dashboard_fqn)
-                return
-            yield Either(
-                left=None,
-                right=DashboardUsage(
-                    dashboard=dashboard,
-                    usage=UsageRequest(date=self.today, count=new_views),
-                ),
-            )
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=f"{report.get(client.TOKEN)} Usage",
-                    error=f"Error yielding Mode report usage: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
-
     def yield_datamodel(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, dashboard_details: ModeDashboardDetails
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -336,44 +301,54 @@ class ModeSource(DashboardServiceSource):
     def _data_model_name(report_token: str, query_token: str) -> str:
         return f"{report_token}.{query_token}"
 
-    def _get_query_parser(self, dashboard_details: ModeDashboardDetails, query: ModeRecord) -> LineageParser | None:
+    def _get_parsed_query(self, dashboard_details: ModeDashboardDetails, query: ModeRecord) -> ParsedModeQuery | None:
         """Parse a query once per report for the data model and every lineage db service prefix."""
         raw_query = cast("str | None", query.get("raw_query"))
         query_token = cast("str | None", query.get(client.TOKEN))
         if not raw_query or not query_token:
             return None
-        if query_token not in dashboard_details.query_parsers:
-            dashboard_details.query_parsers[query_token] = self._parse_query(raw_query, query_token)
-        return dashboard_details.query_parsers[query_token]
+        if query_token not in dashboard_details.parsed_queries:
+            dashboard_details.parsed_queries[query_token] = self._parse_query(raw_query, query_token)
+        return dashboard_details.parsed_queries[query_token]
 
-    def _parse_query(self, raw_query: str, query_token: str) -> LineageParser:
+    def _parse_query(self, raw_query: str, query_token: str) -> ParsedModeQuery:
         """
         Only a single SELECT is wrapped as an INSERT: its source tables are then the same as the
-        plain parse's, so table lineage is unchanged. Anything else (multi-statement, SET, SHOW)
-        keeps the plain parse and simply gets no columns.
+        plain parse's, so table lineage is unchanged. Anything else (multi-statement, SET, SHOW,
+        INSERT ... SELECT, CTAS) keeps the plain parse and gets no columns, since the column
+        lineage of those statements describes their write target, not the query result.
         """
         parser_type = self.get_query_parser_type()
         if _is_single_select(raw_query):
             parser = LineageParser(f"INSERT INTO {COLUMN_LINEAGE_TARGET} {raw_query}", parser_type=parser_type)
-            if parser.source_tables:  # pyright: ignore[reportGeneralTypeIssues]
-                return parser
+            source_tables = [str(table) for table in parser.source_tables]  # pyright: ignore[reportGeneralTypeIssues]
+            if source_tables:
+                return ParsedModeQuery(parser.query_hash, source_tables, _output_column_paths(parser, query_token))
             logger.debug("Mode query [%s] found no tables once wrapped, parsing it as is", query_token)
-        return LineageParser(raw_query, parser_type=parser_type)
+        parser = LineageParser(raw_query, parser_type=parser_type)
+        return ParsedModeQuery(
+            parser.query_hash,
+            [str(table) for table in parser.source_tables],  # pyright: ignore[reportGeneralTypeIssues]
+            [],
+        )
 
     def _get_query_columns(self, dashboard_details: ModeDashboardDetails, query: ModeRecord) -> list[Column]:
         """Output columns of the query SQL; `SELECT *` expands to the columns of the source table."""
         try:
-            parser = self._get_query_parser(dashboard_details, query)
-            if not parser:
+            parsed = self._get_parsed_query(dashboard_details, query)
+            if not parsed:
                 return []
             column_names: dict[str, None] = {}
-            for path in parser.column_lineage:  # pyright: ignore[reportGeneralTypeIssues]
-                source, target = path[0], path[-1]
-                if target.raw_name != "*":
-                    column_names[target.raw_name] = None
+            for source_table, _, output_column in parsed.column_paths:
+                if output_column != "*":
+                    column_names[output_column] = None
                     continue
-                for table in self._search_source_tables(str(source.parent), self._connection_database(query), None):
-                    column_names.update(dict.fromkeys(model_str(column.name) for column in table.columns or []))
+                # Same prefixes as the lineage stage, so the columns match the tables lineage links to
+                for db_service_prefix in self.get_db_service_prefixes() or [None]:
+                    for table in self._search_source_tables(
+                        source_table, self._connection_database(query), db_service_prefix
+                    ):
+                        column_names.update(dict.fromkeys(model_str(column.name) for column in table.columns or []))
             logger.debug("Mode query [%s] columns: %s", query.get(client.TOKEN), list(column_names))
             return [Column(name=ColumnName(name), displayName=name, dataType=DataType.UNKNOWN) for name in column_names]
         except Exception as exc:
@@ -401,8 +376,8 @@ class ModeSource(DashboardServiceSource):
                 if not raw_query:
                     continue
 
-                lineage_parser = self._get_query_parser(dashboard_details, query)
-                if not lineage_parser:
+                parsed = self._get_parsed_query(dashboard_details, query)
+                if not parsed:
                     continue
                 to_entity = self._resolve_lineage_target(
                     dashboard_details=dashboard_details,
@@ -410,20 +385,18 @@ class ModeSource(DashboardServiceSource):
                 )
                 if not to_entity:
                     continue
-                for table in lineage_parser.source_tables:  # pyright: ignore[reportGeneralTypeIssues]
+                for table in parsed.source_tables:
                     from_entities = self._search_source_tables(
-                        str(table),
+                        table,
                         self._connection_database(query),
                         db_service_prefix,
-                        query_hash=lineage_parser.query_hash,
+                        query_hash=parsed.query_hash,
                     )
                     for from_entity in from_entities:
                         lineage = self._get_add_lineage_request(
                             to_entity=to_entity,
                             from_entity=from_entity,
-                            column_lineage=self._get_query_column_lineage(
-                                lineage_parser, str(table), from_entity, to_entity
-                            ),  # pyright: ignore[reportArgumentType]
+                            column_lineage=self._get_query_column_lineage(parsed, table, from_entity, to_entity),  # pyright: ignore[reportArgumentType]
                             sql=raw_query,
                         )
                         if lineage:
@@ -513,7 +486,7 @@ class ModeSource(DashboardServiceSource):
 
     def _get_query_column_lineage(
         self,
-        parser: LineageParser,
+        parsed: ParsedModeQuery,
         table: str,
         from_entity: Table,
         to_entity: DashboardDataModel | Dashboard,
@@ -523,14 +496,13 @@ class ModeSource(DashboardServiceSource):
             if not isinstance(to_entity, DashboardDataModel) or not to_entity.columns:
                 return None
             from_names_by_target: dict[str, list[str]] = {}
-            for path in parser.column_lineage:  # pyright: ignore[reportGeneralTypeIssues]
-                source, target = path[0], path[-1]
-                if str(source.parent) != table:
+            for source_table, source_column, output_column in parsed.column_paths:
+                if source_table != table:
                     continue
-                if source.raw_name == "*":
+                if source_column == "*":
                     pairs = [(model_str(column.name), model_str(column.name)) for column in from_entity.columns or []]
                 else:
-                    pairs = [(source.raw_name, target.raw_name)]
+                    pairs = [(source_column, output_column)]
                 for from_name, to_name in pairs:
                     from_names_by_target.setdefault(to_name, []).append(from_name)
 
