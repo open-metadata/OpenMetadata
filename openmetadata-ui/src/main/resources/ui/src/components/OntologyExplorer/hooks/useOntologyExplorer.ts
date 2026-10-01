@@ -296,6 +296,37 @@ async function resolveRelatedTerms(terms: GlossaryTerm[]): Promise<void> {
   }
 }
 
+const mergeIncomingGraphResults = (
+  prev: OntologyGraphData | null,
+  results: OntologyGraphData[]
+): OntologyGraphData => {
+  const base = prev ?? { nodes: [], edges: [] };
+  const existingNodeIds = new Set(base.nodes.map((n) => n.id));
+  const existingEdgeKeys = new Set(
+    base.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
+  );
+  const newNodes = [...base.nodes];
+  const newEdges = [...base.edges];
+
+  results.forEach((result) => {
+    result.nodes.forEach((n) => {
+      if (!existingNodeIds.has(n.id)) {
+        newNodes.push(n);
+        existingNodeIds.add(n.id);
+      }
+    });
+    result.edges.forEach((e) => {
+      const key = `${e.from}-${e.to}-${e.relationType}`;
+      if (!existingEdgeKeys.has(key)) {
+        newEdges.push(e);
+        existingEdgeKeys.add(key);
+      }
+    });
+  });
+
+  return { nodes: newNodes, edges: newEdges };
+};
+
 export function useOntologyExplorer({
   scope,
   entityId,
@@ -847,7 +878,11 @@ export function useOntologyExplorer({
   );
 
   const fetchAllGlossaryData = useCallback(
-    async (glossaryIdParam?: string, glossaryTermIdParam?: string) => {
+    async (
+      glossaryIdParam?: string,
+      glossaryTermIdParam?: string,
+      filteredGlossaryIds: string[] = []
+    ) => {
       setLoading(true);
       try {
         const [glossaryResult, metricsResponse] = await Promise.all([
@@ -884,11 +919,24 @@ export function useOntologyExplorer({
         } else {
           setDataSource('database');
           const terms = await loadNextTermPage(allGlossaries);
-          data = buildGraphFromAllTermsCb(terms, allGlossaries);
+          // A global reload must also refetch the glossaries the filter
+          // selected: the first term page stops at ONTOLOGY_TERMS_PAGE_SIZE,
+          // so the filter prunes it to an empty graph when the selection sits
+          // past that page.
+          data = mergeIncomingGraphResults(
+            buildGraphFromAllTermsCb(terms, allGlossaries),
+            await Promise.all(
+              filteredGlossaryIds.map((id) =>
+                fetchGraphDataFromDatabase(id, allGlossaries)
+              )
+            )
+          );
         }
 
         const mergedData = mergeMetricsIntoGraph(data, metricsResponse, t);
-        filterFetchedGlossariesRef.current = new Set();
+        filterFetchedGlossariesRef.current = new Set(
+          glossaryIdParam ? [] : filteredGlossaryIds
+        );
         setAssetGraphData(null);
         setTermAssetCounts({});
         setFetchError(false);
@@ -951,33 +999,7 @@ export function useOntologyExplorer({
   }, [filters.glossaryIds, scope, entityId, fetchTermAssetCounts]);
 
   const mergeGraphResults = useCallback((results: OntologyGraphData[]) => {
-    setGraphData((prev) => {
-      const base = prev ?? { nodes: [], edges: [] };
-      const existingNodeIds = new Set(base.nodes.map((n) => n.id));
-      const existingEdgeKeys = new Set(
-        base.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
-      );
-      const newNodes = [...base.nodes];
-      const newEdges = [...base.edges];
-
-      results.forEach((result) => {
-        result.nodes.forEach((n) => {
-          if (!existingNodeIds.has(n.id)) {
-            newNodes.push(n);
-            existingNodeIds.add(n.id);
-          }
-        });
-        result.edges.forEach((e) => {
-          const key = `${e.from}-${e.to}-${e.relationType}`;
-          if (!existingEdgeKeys.has(key)) {
-            newEdges.push(e);
-            existingEdgeKeys.add(key);
-          }
-        });
-      });
-
-      return { nodes: newNodes, edges: newEdges };
-    });
+    setGraphData((prev) => mergeIncomingGraphResults(prev, results));
   }, []);
 
   const loadMissingFilteredGlossaries = useCallback(
@@ -1299,7 +1321,11 @@ export function useOntologyExplorer({
       return;
     }
     if (scope === 'global') {
-      fetchAllGlossaryData();
+      fetchAllGlossaryData(
+        undefined,
+        undefined,
+        withoutOntologyAutocompleteAll(filters.glossaryIds)
+      );
     } else if (scope === 'glossary' && glossaryId) {
       fetchAllGlossaryData(glossaryId);
     } else if (scope === 'term') {
@@ -1311,6 +1337,7 @@ export function useOntologyExplorer({
     glossaryId,
     termGlossaryId,
     entityId,
+    filters.glossaryIds,
     fetchAllGlossaryData,
     loadAssetsForDataMode,
   ]);
