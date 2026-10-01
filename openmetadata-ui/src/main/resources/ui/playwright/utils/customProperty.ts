@@ -175,6 +175,17 @@ export const openCustomPropertyEditModal = async (
 export const closeEditModalListbox = (editModal: Locator) =>
   editModal.getByRole('heading', { includeHidden: true }).click();
 
+const clearAssetSelection = async (scope: Page | Locator) => {
+  const removeButtons = scope
+    .getByTestId('asset-select-list')
+    .getByTestId('autocomplete-selected-item')
+    .getByRole('button');
+
+  while ((await removeButtons.count()) > 0) {
+    await removeButtons.first().click();
+  }
+};
+
 /**
  * Enters `value` in the edit modal's editor for `propertyType` and saves.
  * Shared by every surface that edits through the modal: the Custom
@@ -280,6 +291,8 @@ export const fillCustomPropertyEditModal = async (data: {
 
     case 'entityReference':
     case 'entityReferenceList': {
+      // Single-select hides its input while a value is picked.
+      await clearAssetSelection(editModal);
       const refValues = value.split(',');
 
       for (const val of refValues) {

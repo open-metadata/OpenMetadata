@@ -852,7 +852,7 @@
       "count": 8
     },
     "playwright/no-wait-for-selector": {
-      "count": 7
+      "count": 5
     }
   },
   "playwright/utils/activityAPI.ts": {
@@ -900,7 +900,7 @@
   },
   "playwright/utils/customProperty.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 3
     }
   },
   "playwright/utils/customPropertyAdvancedSearchUtils.ts": {
