@@ -220,14 +220,31 @@ export interface OntologyChangeOperation {
     /**
      * Version used for optimistic concurrency. Omitted for create operations.
      */
-    baseVersion?:  number;
-    id:            string;
-    mapping?:      ConceptMapping;
+    baseVersion?: number;
+    /**
+     * Model confidence in this AI suggestion, from 0 to 1.
+     */
+    confidence?: number;
+    glossary?:   Glossary;
+    id:          string;
+    mapping?:    ConceptMapping;
+    /**
+     * Identifier of the model that produced this AI suggestion.
+     */
+    modelId?:      string;
     operationType: OperationType;
+    /**
+     * Model explanation of the evidence behind this AI suggestion.
+     */
+    rationale?:    string;
     relationship?: OntologyRelationship;
-    state:         OperationState;
-    targetId?:     string;
-    term?:         GlossaryTerm;
+    /**
+     * Published context memories that support this AI suggestion.
+     */
+    sourceMemoryIds?: string[];
+    state:            OperationState;
+    targetId?:        string;
+    term?:            GlossaryTerm;
 }
 
 /**
@@ -337,6 +354,8 @@ export enum AxiomType {
 /**
  * Status of an entity. It is used for governance and is applied to all the entities in the
  * catalog.
+ *
+ * Status of the Glossary.
  *
  * Approval status of the glossary term.
  *
@@ -456,6 +475,438 @@ export enum ProviderType {
 }
 
 /**
+ * This schema defines the Glossary entity. A Glossary is collection of hierarchical
+ * GlossaryTerms.
+ */
+export interface Glossary {
+    /**
+     * Change that lead to this version of the entity.
+     */
+    changeDescription?: ChangeDescription;
+    /**
+     * Reference to the data contract for this entity.
+     */
+    dataContract?: EntityReference;
+    /**
+     * List of data products this entity is part of.
+     */
+    dataProducts?: EntityReference[];
+    /**
+     * When `true` indicates the entity has been soft deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Description of the glossary.
+     */
+    description: string;
+    /**
+     * System glossary can't be deleted. Use this flag to disable them.
+     */
+    disabled?: boolean;
+    /**
+     * Display Name that identifies this glossary.
+     */
+    displayName?: string;
+    /**
+     * Domains the Glossary belongs to.
+     */
+    domains?: EntityReference[];
+    /**
+     * Status of the Glossary.
+     */
+    entityStatus?: EntityStatus;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
+     * FullyQualifiedName same as name.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the resource corresponding to this entity.
+     */
+    href?: string;
+    /**
+     * Unique identifier of a glossary instance.
+     */
+    id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Glossary terms that are direct children in this glossary are mutually exclusive. When
+     * mutually exclusive is `true` only one term can be used to label an entity. When mutually
+     * exclusive is `false`, multiple terms from this group can be used to label an entity.
+     */
+    mutuallyExclusive?: boolean;
+    /**
+     * Name of the glossary
+     */
+    name: string;
+    /**
+     * Namespace prefix to IRI mappings for terms imported from an external ontology. Used to
+     * render CURIEs and preserve identity when re-exporting the glossary as RDF/OWL.
+     */
+    namespaces?: Namespace[];
+    /**
+     * Ontology modeling, layering, import, and IRI settings inherited by glossary terms.
+     */
+    ontologyConfiguration?: OntologyConfiguration;
+    /**
+     * Owners of this glossary.
+     */
+    owners?:   EntityReference[];
+    provider?: ProviderType;
+    /**
+     * User references of the reviewers for this glossary.
+     */
+    reviewers?: EntityReference[];
+    /**
+     * Tags for this glossary.
+     */
+    tags?: TagLabel[];
+    /**
+     * Total number of terms in the glossary. This includes all the children in the hierarchy.
+     */
+    termCount?: number;
+    /**
+     * Last update time corresponding to the new version of the entity in Unix epoch time
+     * milliseconds.
+     */
+    updatedAt?: number;
+    /**
+     * User who made the update.
+     */
+    updatedBy?: string;
+    /**
+     * Count of how many times terms from this glossary are used.
+     */
+    usageCount?: number;
+    /**
+     * Metadata version of the entity.
+     */
+    version?: number;
+    /**
+     * Votes on the entity.
+     */
+    votes?: Votes;
+}
+
+export interface Namespace {
+    /**
+     * Full namespace IRI the prefix expands to (e.g., `http://example.com/ontology/hcp#`).
+     */
+    namespace?: string;
+    /**
+     * Short prefix for the namespace (e.g., `hcp`).
+     */
+    prefix?: string;
+}
+
+/**
+ * Ontology modeling, layering, import, and IRI settings inherited by glossary terms.
+ *
+ * Ontology modeling and namespace settings inherited by every term in a glossary.
+ */
+export interface OntologyConfiguration {
+    /**
+     * Absolute base IRI used when minting governed concepts.
+     */
+    baseIri?: string;
+    /**
+     * Ontology models this model depends on. Dependencies must point to the same or a more
+     * foundational layer.
+     */
+    imports?: EntityReference[];
+    /**
+     * Verified ontology library packs installed into this model, keyed by stable pack ID.
+     */
+    installedPacks: OntologyPackInstallation[];
+    /**
+     * IRI suffix pattern. Supported placeholders are {glossary}, {term}, and {uuid}.
+     */
+    iriMintingPattern: string;
+    layer:             Layer;
+    /**
+     * Prefix registry used for display, authoring, import, and export.
+     */
+    prefixes: Prefix[];
+    /**
+     * Whether the model is an installed reference model that cannot be edited directly.
+     */
+    readOnly: boolean;
+}
+
+/**
+ * Durable provenance and version state for an installed ontology library pack.
+ */
+export interface OntologyPackInstallation {
+    installedAt: number;
+    installedBy: string;
+    license:     string;
+    licenseUrl:  string;
+    modules:     OntologyPackModuleInstallation[];
+    packId:      string;
+    sourceUrl:   string;
+    version:     string;
+}
+
+/**
+ * Verified ontology pack module recorded as installation provenance.
+ */
+export interface OntologyPackModuleInstallation {
+    moduleId: string;
+    sha256:   string;
+}
+
+/**
+ * Governance layer of an ontology model.
+ */
+export enum Layer {
+    L1 = "L1",
+    L2 = "L2",
+    L3 = "L3",
+}
+
+/**
+ * A compact IRI prefix and its absolute namespace.
+ */
+export interface Prefix {
+    namespace: string;
+    prefix:    string;
+}
+
+/**
+ * This schema defines the type for labeling an entity with a Tag.
+ */
+export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelType;
+    /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  TagState;
+    style?: Style;
+    tagFQN: string;
+}
+
+/**
+ * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+ * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+ * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+ * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+ * used to determine the tag label.
+ */
+export enum LabelType {
+    Automated = "Automated",
+    Derived = "Derived",
+    Generated = "Generated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
+ * Additional metadata associated with this tag label, such as recognizer information for
+ * automatically applied tags.
+ *
+ * Additional metadata associated with a tag label, including information about how the tag
+ * was applied.
+ */
+export interface TagLabelMetadata {
+    /**
+     * Epoch time in milliseconds when the certification tag expires
+     */
+    expiryDate?: number;
+    /**
+     * Metadata about the recognizer that automatically applied this tag
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+}
+
+/**
+ * Metadata about the recognizer that automatically applied this tag
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
+}
+
+/**
+ * Label is from Tags or Glossary.
+ */
+export enum TagSource {
+    Classification = "Classification",
+    Glossary = "Glossary",
+}
+
+/**
+ * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+ * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+ */
+export enum TagState {
+    Confirmed = "Confirmed",
+    Suggested = "Suggested",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
+}
+
+/**
+ * Votes on the entity.
+ *
+ * This schema defines the Votes for a Data Asset.
+ */
+export interface Votes {
+    /**
+     * List of all the Users who downVoted
+     */
+    downVoters?: EntityReference[];
+    /**
+     * Total down-votes the entity has
+     */
+    downVotes?: number;
+    /**
+     * List of all the Users who upVoted
+     */
+    upVoters?: EntityReference[];
+    /**
+     * Total up-votes the entity has
+     */
+    upVotes?: number;
+}
+
+/**
  * Mapping from an ontology term to an external concept.
  */
 export interface ConceptMapping {
@@ -493,6 +944,7 @@ export enum ConceptMappingType {
 
 export enum OperationType {
     AddRelationship = "ADD_RELATIONSHIP",
+    CreateGlossary = "CREATE_GLOSSARY",
     CreateTerm = "CREATE_TERM",
     DeleteAttribute = "DELETE_ATTRIBUTE",
     DeleteAxiom = "DELETE_AXIOM",
@@ -674,7 +1126,11 @@ export interface GlossaryTerm {
      * User names of the reviewers for this glossary.
      */
     reviewers?: EntityReference[];
-    style?:     Style;
+    /**
+     * Context memories that supported the derivation of this glossary term.
+     */
+    sourceMemoryIds?: string[];
+    style?:           Style;
     /**
      * Alternate names that are synonyms or near-synonyms for the glossary term.
      */
@@ -855,230 +1311,6 @@ export interface TermRelation {
      * Reference to the related glossary term.
      */
     term: EntityReference;
-}
-
-/**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
- *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
- */
-export interface CoverImage {
-    /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
-     */
-    position?: string;
-    /**
-     * URL of the cover image.
-     */
-    url?: string;
-}
-
-/**
- * This schema defines the type for labeling an entity with a Tag.
- */
-export interface TagLabel {
-    /**
-     * Timestamp when this tag was applied in ISO 8601 format
-     */
-    appliedAt?: Date;
-    /**
-     * Who it is that applied this tag (e.g: a bot, AI or a human)
-     */
-    appliedBy?: string;
-    /**
-     * Description for the tag label.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this tag.
-     */
-    displayName?: string;
-    /**
-     * Link to the tag resource.
-     */
-    href?: string;
-    /**
-     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
-     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
-     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
-     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
-     * used to determine the tag label.
-     */
-    labelType: LabelType;
-    /**
-     * Additional metadata associated with this tag label, such as recognizer information for
-     * automatically applied tags.
-     */
-    metadata?: TagLabelMetadata;
-    /**
-     * Name of the tag or glossary term.
-     */
-    name?: string;
-    /**
-     * An explanation of why this tag was proposed, specially for autoclassification tags
-     */
-    reason?: string;
-    /**
-     * Label is from Tags or Glossary.
-     */
-    source: TagSource;
-    /**
-     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
-     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
-     */
-    state:  TagState;
-    style?: Style;
-    tagFQN: string;
-}
-
-/**
- * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
- * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
- * relationship (see Classification.json for more details). 'Propagated` indicates a tag
- * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
- * used to determine the tag label.
- */
-export enum LabelType {
-    Automated = "Automated",
-    Derived = "Derived",
-    Generated = "Generated",
-    Manual = "Manual",
-    Propagated = "Propagated",
-}
-
-/**
- * Additional metadata associated with this tag label, such as recognizer information for
- * automatically applied tags.
- *
- * Additional metadata associated with a tag label, including information about how the tag
- * was applied.
- */
-export interface TagLabelMetadata {
-    /**
-     * Epoch time in milliseconds when the certification tag expires
-     */
-    expiryDate?: number;
-    /**
-     * Metadata about the recognizer that automatically applied this tag
-     */
-    recognizer?: TagLabelRecognizerMetadata;
-}
-
-/**
- * Metadata about the recognizer that automatically applied this tag
- *
- * Metadata about the recognizer that applied a tag, including scoring and pattern
- * information.
- */
-export interface TagLabelRecognizerMetadata {
-    /**
-     * Details of patterns that matched during recognition
-     */
-    patterns?: PatternMatch[];
-    /**
-     * Unique identifier of the recognizer that applied this tag
-     */
-    recognizerId: string;
-    /**
-     * Human-readable name of the recognizer
-     */
-    recognizerName: string;
-    /**
-     * Confidence score assigned by the recognizer (0.0 to 1.0)
-     */
-    score: number;
-    /**
-     * What the recognizer analyzed to apply this tag
-     */
-    target?: Target;
-}
-
-/**
- * Information about a pattern that matched during recognition
- */
-export interface PatternMatch {
-    /**
-     * Name of the pattern that matched
-     */
-    name: string;
-    /**
-     * Regular expression or pattern definition
-     */
-    regex?: string;
-    /**
-     * Confidence score for this specific pattern match
-     */
-    score: number;
-}
-
-/**
- * What the recognizer analyzed to apply this tag
- */
-export enum Target {
-    ColumnName = "column_name",
-    Content = "content",
-}
-
-/**
- * Label is from Tags or Glossary.
- */
-export enum TagSource {
-    Classification = "Classification",
-    Glossary = "Glossary",
-}
-
-/**
- * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
- * entity must confirm the suggested labels before it is marked as 'Confirmed'.
- */
-export enum TagState {
-    Confirmed = "Confirmed",
-    Suggested = "Suggested",
-}
-
-/**
- * Votes on the entity.
- *
- * This schema defines the Votes for a Data Asset.
- */
-export interface Votes {
-    /**
-     * List of all the Users who downVoted
-     */
-    downVoters?: EntityReference[];
-    /**
-     * Total down-votes the entity has
-     */
-    downVotes?: number;
-    /**
-     * List of all the Users who upVoted
-     */
-    upVoters?: EntityReference[];
-    /**
-     * Total up-votes the entity has
-     */
-    upVotes?: number;
 }
 
 export enum OntologyChangeSetState {

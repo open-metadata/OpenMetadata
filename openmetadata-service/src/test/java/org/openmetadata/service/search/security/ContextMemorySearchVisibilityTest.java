@@ -115,6 +115,10 @@ class ContextMemorySearchVisibilityTest {
         "Entity-visibility memories are visible to everyone");
     assertFieldExists(
         json,
+        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Public')]",
+        "Public memories are visible to everyone");
+    assertFieldExists(
+        json,
         "$.bool.should[1].bool.must[1].bool.should[?(@.nested.query.term['owners.id'].value=='"
             + USER_ID
             + "')]",
@@ -139,6 +143,10 @@ class ContextMemorySearchVisibilityTest {
             + USER_ID
             + "')]",
         "owners see their own Private documents");
+    assertFieldDoesNotExist(
+        json,
+        "$.bool.should[2].bool.must[1].bool.should[1].bool.should[?(@.term['visibility'].value=='Public')]",
+        "Public files are not visible to non-owners through search");
   }
 
   @Test
@@ -256,13 +264,17 @@ class ContextMemorySearchVisibilityTest {
   }
 
   @Test
-  void orgWideOnlyFilterAdmitsOnlyEntityVisibilityMemories() {
+  void orgWideOnlyFilterAdmitsPublicAndEntityMemories() {
     DocumentContext json = JsonPath.parse(orgWideOnlyJson());
 
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[?(@.term['visibility'].value=='Entity')]",
+        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Entity')]",
         "the memory branch admits Entity-visibility memories");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Public')]",
+        "the memory branch admits Public memories");
     assertFieldDoesNotExist(
         json, "$..term['owners.id']", "a subject-less path must not match by ownership");
     assertFieldDoesNotExist(
@@ -281,7 +293,7 @@ class ContextMemorySearchVisibilityTest {
   }
 
   @Test
-  void isOrgWideReadableAdmitsEveryNonMemoryDocument() {
+  void isOrgWideReadableAdmitsDocumentsWithoutVisibilityRules() {
     assertTrue(ContextMemorySearchVisibility.isOrgWideReadable(null));
     assertTrue(ContextMemorySearchVisibility.isOrgWideReadable(Map.of()));
     assertTrue(
@@ -293,6 +305,8 @@ class ContextMemorySearchVisibilityTest {
   void isOrgWideReadableRejectsRestrictedMemories() {
     assertTrue(
         ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.ENTITY)));
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.PUBLIC)));
     assertFalse(
         ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.PRIVATE)));
     assertFalse(
@@ -301,6 +315,27 @@ class ContextMemorySearchVisibilityTest {
         ContextMemorySearchVisibility.isOrgWideReadable(
             Map.of("entityType", Entity.CONTEXT_MEMORY)),
         "a memory with no indexed visibility is not org-wide");
+  }
+
+  @Test
+  void isOrgWideReadableKeepsUnstampedFilesAndRejectsRestrictedFiles() {
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(Map.of("entityType", Entity.CONTEXT_FILE)));
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType", Entity.CONTEXT_FILE, "visibility", MemoryVisibility.ENTITY.value())));
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType",
+                Entity.CONTEXT_FILE,
+                "visibility",
+                MemoryVisibility.PRIVATE.value())));
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType", Entity.CONTEXT_FILE, "visibility", MemoryVisibility.PUBLIC.value())));
   }
 
   private Map<String, Object> memoryDocument(MemoryVisibility visibility) {
