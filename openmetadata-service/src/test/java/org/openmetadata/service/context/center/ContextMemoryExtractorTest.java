@@ -17,12 +17,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
-import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 
 @ExtendWith(MockitoExtension.class)
 class ContextMemoryExtractorTest {
@@ -59,7 +59,7 @@ class ContextMemoryExtractorTest {
     assertEquals(source.getId(), first.getPrimaryEntity().getId());
     assertEquals(ContextMemoryScope.ENTITY_SCOPED, first.getMemoryScope());
     assertEquals(MemoryVisibility.ENTITY, first.getShareConfig().getVisibility());
-    assertTrue(ContextMemoryVisibility.isVisibleToUser(first, "ordinary.user", false));
+    assertEquals(ContextMemoryStatus.ACTIVE, first.getStatus());
     assertEquals("Q1", first.getQuestion());
   }
 
