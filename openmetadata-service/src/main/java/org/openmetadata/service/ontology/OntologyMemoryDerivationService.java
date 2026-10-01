@@ -14,6 +14,8 @@
 package org.openmetadata.service.ontology;
 
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ClientErrorException;
+import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -140,7 +142,7 @@ public final class OntologyMemoryDerivationService {
         memoryRepository.get(
             null,
             id,
-            memoryRepository.getFields("primaryEntity,owners"),
+            memoryRepository.getFields("primaryEntity,owners,derivedEntities"),
             Include.NON_DELETED,
             false);
     if (memory.getStatus() != ContextMemoryStatus.ACTIVE) {
@@ -154,6 +156,10 @@ public final class OntologyMemoryDerivationService {
         && visibility != MemoryVisibility.PUBLIC
         && !isDirectOwner(memory, user)) {
       throw new BadRequestException("Restricted memory requires an owner-initiated job: " + id);
+    }
+    if (memory.getDerivedEntities() != null && !memory.getDerivedEntities().isEmpty()) {
+      throw new ClientErrorException(
+          "Memory already has an applied glossary term: " + id, Response.Status.CONFLICT);
     }
     if (memory.getQuestion() == null
         || memory.getQuestion().isBlank()

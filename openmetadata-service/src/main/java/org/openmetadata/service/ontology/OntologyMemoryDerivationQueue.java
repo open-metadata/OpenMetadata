@@ -36,13 +36,11 @@ public final class OntologyMemoryDerivationQueue {
     }
   }
 
-  public void enqueueIfContentChanged(ContextMemory previous, ContextMemory updated) {
-    if (isPublished(updated)
+  public static boolean hasNewPublishedContent(ContextMemory previous, ContextMemory updated) {
+    return isPublished(updated)
         && (!isPublished(previous)
             || !Objects.equals(previous.getQuestion(), updated.getQuestion())
-            || !Objects.equals(previous.getAnswer(), updated.getAnswer()))) {
-      enqueue(updated, updated.getUpdatedBy());
-    }
+            || !Objects.equals(previous.getAnswer(), updated.getAnswer()));
   }
 
   public static boolean isPublished(ContextMemory memory) {

@@ -113,7 +113,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   protected void postUpdate(ContextMemory previous, ContextMemory updated) {
     super.postUpdate(previous, updated);
-    ontologyQueue().enqueueIfContentChanged(previous, updated);
+    if (OntologyMemoryDerivationQueue.hasNewPublishedContent(previous, updated)
+        && getDerivedEntities(updated).isEmpty()) {
+      ontologyQueue().enqueue(updated, updated.getUpdatedBy());
+    }
   }
 
   private OntologyMemoryDerivationQueue ontologyQueue() {

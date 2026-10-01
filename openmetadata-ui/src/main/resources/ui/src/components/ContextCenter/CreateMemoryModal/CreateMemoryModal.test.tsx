@@ -391,6 +391,45 @@ describe('CreateMemoryModal', () => {
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('hides Propose Term when the memory already has an applied term', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'churn-risk-score',
+      status: 'Active',
+      shareConfig: { visibility: 'Entity' },
+      derivedEntities: [
+        {
+          id: 'term-id',
+          type: 'glossaryTerm',
+          name: 'churn_risk_score',
+          fullyQualifiedName: 'business.churn_risk_score',
+        },
+      ],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      proposals: [],
+      queued: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          isAdminUser
+          viewOnly
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByRole('link', { name: 'churn_risk_score' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.propose-term' })
+    ).not.toBeInTheDocument();
+  });
+
   it('lets the creator propose a restricted memory for Studio review', async () => {
     const memory = {
       id: 'memory-id',

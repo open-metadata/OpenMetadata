@@ -24,6 +24,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ClientErrorException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -113,6 +115,22 @@ class OntologyMemoryDerivationServiceTest {
     final UUID id = UUID.randomUUID();
     assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(id, id), "alice"));
     assertThrows(BadRequestException.class, () -> service.loadMemories(List.of(), "alice"));
+  }
+
+  @Test
+  void rejectsMemoryWithAppliedGlossaryTermBeforeGeneratingAnotherDraft() {
+    final UUID id = UUID.randomUUID();
+    final ContextMemory memory = memory(id, ContextMemoryStatus.ACTIVE, MemoryVisibility.PUBLIC);
+    memory.setDerivedEntities(
+        List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.GLOSSARY_TERM)));
+    when(memories.get(isNull(), eq(id), isNull(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(memory);
+
+    final ClientErrorException error =
+        assertThrows(ClientErrorException.class, () -> service.loadMemories(List.of(id), "alice"));
+
+    assertEquals(409, error.getResponse().getStatus());
+    verifyNoInteractions(gateway);
   }
 
   private static ContextMemory memory(

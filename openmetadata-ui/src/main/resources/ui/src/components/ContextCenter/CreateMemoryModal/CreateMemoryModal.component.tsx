@@ -859,6 +859,13 @@ const canProposeFromMemory = (
   if (!memory) {
     return false;
   }
+  if (
+    memory.derivedEntities?.some(
+      (entity) => entity.type === EntityType.GLOSSARY_TERM
+    )
+  ) {
+    return false;
+  }
   if (!isViewOnly || isProposalUnavailable(proposalQueued, proposalStatus)) {
     return false;
   }
