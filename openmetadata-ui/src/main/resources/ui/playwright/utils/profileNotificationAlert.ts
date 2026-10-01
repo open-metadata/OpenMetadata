@@ -27,7 +27,7 @@ import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage, toastNotification } from './common';
-import { selectComboBoxOption, selectDropdownOption } from './destination';
+import { selectDropdownOption } from './destination';
 import { getEntityDisplayName, waitForAllLoadersToDisappear } from './entity';
 
 // ─── CoreUI Select helper ─────────────────────────────────────────────────────
@@ -390,11 +390,11 @@ export const addInternalDestinationProfile = async ({
   category: string;
   type: string;
 }) => {
-  await selectComboBoxOption({
+  await selectCoreUIOption(
     page,
-    testId: `destination-category-select-${destinationNumber}`,
-    optionName: category,
-  });
+    `destination-category-select-${destinationNumber}`,
+    category
+  );
 
   await selectDropdownOption({
     page,
@@ -428,11 +428,11 @@ export const addExternalDestinationProfile = async ({
     queryParams?: Array<{ key: string; value: string }>;
   };
 }) => {
-  await selectComboBoxOption({
+  await selectCoreUIOption(
     page,
-    testId: `destination-category-select-${destinationNumber}`,
-    optionName: category,
-  });
+    `destination-category-select-${destinationNumber}`,
+    category
+  );
 
   if (category === 'Email') {
     const emailInput = page.getByTestId(`email-input-${destinationNumber}`);
