@@ -27,6 +27,7 @@ import {
   Modal,
   ModalOverlay,
   PageLayout,
+  PageHeaderVariant,
   Skeleton,
   Table,
   Typography,
@@ -226,6 +227,9 @@ const getDepthClassName = (depth: number) => {
 // Column flex so the list card can claim the leftover height for placeholders.
 const getContentClassName = (isAiMode: boolean) =>
   classNames('tw:flex tw:flex-col tw:min-h-0', { 'tw:pt-4': isAiMode });
+
+const getHeaderVariant = (isAiMode: boolean): PageHeaderVariant =>
+  isAiMode ? 'gradient' : 'flat';
 const getIsPlaceholderState = ({
   hasError,
   isMetricsPending,
@@ -240,7 +244,9 @@ const getIsPlaceholderState = ({
 
 const MetricListPage = () => {
   const { t } = useTranslation();
-  const contentClassName = getContentClassName(useIsAiMode());
+  const isAiMode = useIsAiMode();
+  const contentClassName = getContentClassName(isAiMode);
+  const headerVariant = getHeaderVariant(isAiMode);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { getResourcePermission } = usePermissionProvider();
@@ -1205,6 +1211,7 @@ const MetricListPage = () => {
             color="primary"
             data-testid="create-metric"
             iconLeading={Plus}
+            size="sm"
             onPress={() => openMetricCreateDrawer()}>
             {t('label.add-entity', { entity: t('label.metric') })}
           </Button>
@@ -1216,7 +1223,7 @@ const MetricListPage = () => {
           onOpenChange={setIsMetricActionsOpen}>
           <Dropdown.DotsButton
             aria-label={t('label.action-plural')}
-            className="tw:flex tw:size-10 tw:items-center tw:justify-center"
+            className="tw:flex tw:size-9 tw:items-center tw:justify-center"
             data-testid="metric-actions"
           />
           <Dropdown.Popover>
@@ -1558,6 +1565,7 @@ const MetricListPage = () => {
           data-testid="metric-list-header"
           subtitle={t('message.metric-description')}
           title={t('label.metric-plural')}
+          variant={headerVariant}
         />
         <PageLayout.Content className={contentClassName}>
           {renderLoading()}
@@ -1574,6 +1582,7 @@ const MetricListPage = () => {
         data-testid="metric-list-header"
         subtitle={t('message.metric-description')}
         title={t('label.metric-plural')}
+        variant={headerVariant}
       />
       <PageLayout.Content className={contentClassName}>
         {renderAccessibleList()}
