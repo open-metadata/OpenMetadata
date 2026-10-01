@@ -118,7 +118,7 @@ const getActionLabel = (
     return getActivityEventLabel(activity, t);
   }
   if (feed) {
-    return t('label.posted-on');
+    return t('message.activity-started-conversation');
   }
 
   return '';

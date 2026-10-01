@@ -14,6 +14,15 @@
 import { render, screen } from '@testing-library/react';
 import ActivityChangePanel from './ActivityChangePanel';
 
+// Renders markdown elsewhere; here the panel only hands it the text.
+jest.mock(
+  '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
+  () => ({
+    __esModule: true,
+    default: ({ markdown }: { markdown: string }) => <p>{markdown}</p>,
+  })
+);
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));

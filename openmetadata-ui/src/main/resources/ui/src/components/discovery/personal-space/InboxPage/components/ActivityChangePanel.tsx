@@ -14,6 +14,7 @@
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
+import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ActivityChange } from '../inbox.utils';
 
 type ChangeTone = 'error' | 'success';
@@ -29,7 +30,7 @@ interface ChangeColumnProps {
 
 const ChangeColumn = ({ title, values, tone, isText }: ChangeColumnProps) => (
   <Box
-    className="tw:min-w-0 tw:flex-1 tw:px-3.5 tw:py-3"
+    className="tw:min-w-0 tw:flex-1 tw:px-4.5 tw:py-3.5"
     data-testid={`activity-change-${tone}`}
     direction="col"
     gap={2}>
@@ -37,9 +38,10 @@ const ChangeColumn = ({ title, values, tone, isText }: ChangeColumnProps) => (
       {title}
     </Typography>
     {isText ? (
-      <Typography className="tw:line-clamp-3 tw:text-secondary" size="text-sm">
-        {values[0]}
-      </Typography>
+      <RichTextEditorPreviewerV1
+        className="tw:text-sm tw:text-secondary"
+        markdown={values[0]}
+      />
     ) : (
       <Box className="tw:gap-1.5" wrap="wrap">
         {values.map((value) => (
@@ -88,7 +90,8 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
           </Badge>
         )}
       </Box>
-      <Box align="center">
+      {/* Top-aligned columns split by a rule, the arrow sitting on it. */}
+      <Box className="tw:relative tw:divide-x tw:divide-secondary">
         {before.length > 0 && (
           <ChangeColumn
             isText={isText}
@@ -98,7 +101,11 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
           />
         )}
         {hasBoth && (
-          <ArrowRight className="tw:size-3.5 tw:shrink-0 tw:text-quaternary" />
+          <span
+            aria-hidden
+            className="tw:absolute tw:top-1/2 tw:left-1/2 tw:flex tw:size-6 tw:-translate-1/2 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-primary">
+            <ArrowRight className="tw:size-3.5 tw:text-fg-quaternary" />
+          </span>
         )}
         {after.length > 0 && (
           <ChangeColumn

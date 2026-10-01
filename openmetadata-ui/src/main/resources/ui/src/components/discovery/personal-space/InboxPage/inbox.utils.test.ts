@@ -103,26 +103,98 @@ describe('inbox.utils', () => {
   });
 
   describe('getActivityEventLabel', () => {
-    const activity = (eventType: ActivityEventType, fieldName?: string) =>
-      ({ eventType, fieldName } as ActivityEvent);
+    const activity = (
+      eventType: ActivityEventType,
+      fieldName?: string,
+      oldValue?: string,
+      newValue?: string
+    ) => ({ eventType, fieldName, oldValue, newValue } as ActivityEvent);
+    const tags = (...fqns: string[]) =>
+      JSON.stringify(fqns.map((tagFQN) => ({ tagFQN })));
 
-    it('labels EntityCreated as "created on"', () => {
-      expect(
-        getActivityEventLabel(activity(ActivityEventType.EntityCreated), t)
-      ).toBe('label.created-lowercase label.on-lowercase');
+    // Each sentence is complete; the entity is the card's next line.
+    it.each([
+      [ActivityEventType.EntityCreated, 'message.activity-created-asset'],
+      [ActivityEventType.EntitySoftDeleted, 'message.activity-deleted-asset'],
+      [ActivityEventType.OwnerUpdated, 'message.activity-changed-owner'],
+      [ActivityEventType.DomainUpdated, 'message.activity-changed-domain'],
+      [
+        ActivityEventType.DescriptionUpdated,
+        'message.activity-updated-description',
+      ],
+    ])('labels %s as a whole sentence', (eventType, key) => {
+      expect(getActivityEventLabel(activity(eventType), t)).toBe(key);
     });
 
-    it('labels DescriptionUpdated as "updated description for"', () => {
+    it('names a column description change', () => {
       expect(
-        getActivityEventLabel(activity(ActivityEventType.DescriptionUpdated), t)
-      ).toBe('label.updated-lowercase label.description label.for-lowercase');
+        getActivityEventLabel(
+          activity(
+            ActivityEventType.DescriptionUpdated,
+            'columns.email.description'
+          ),
+          t
+        )
+      ).toBe('message.activity-updated-column-description');
     });
 
-    // One tags event can add, remove or both, so the verb stays neutral.
-    it('labels TagsUpdated as "updated tags for"', () => {
+    it('reads which way a column tag changed, and how many', () => {
+      const added = activity(
+        ActivityEventType.TagsUpdated,
+        'columns.email.tags',
+        undefined,
+        tags('PII.Sensitive')
+      );
+      const removed = activity(
+        ActivityEventType.TagsUpdated,
+        'tags',
+        tags('PII.Sensitive', 'PersonalData.Personal')
+      );
+
+      expect(getActivityEventLabel(added, t)).toBe(
+        'message.activity-added-column-tag'
+      );
+      expect(getActivityEventLabel(removed, t)).toBe(
+        'message.activity-removed-tag-plural'
+      );
+    });
+
+    it('calls a swap of tags a change', () => {
       expect(
-        getActivityEventLabel(activity(ActivityEventType.TagsUpdated), t)
-      ).toBe('label.updated-lowercase label.tag-plural label.for-lowercase');
+        getActivityEventLabel(
+          activity(
+            ActivityEventType.TagsUpdated,
+            'tags',
+            tags('PII.NonSensitive'),
+            tags('PII.Sensitive')
+          ),
+          t
+        )
+      ).toBe('message.activity-changed-tags');
+    });
+
+    it('calls tags it cannot read a change', () => {
+      expect(
+        getActivityEventLabel(
+          activity(ActivityEventType.TagsUpdated, 'tags', '[{"tagFQN":"PI'),
+          t
+        )
+      ).toBe('message.activity-changed-tags');
+    });
+
+    // Tier is stored as a tag, so its own sentence comes from the values.
+    it('names a tier change', () => {
+      expect(
+        getActivityEventLabel(
+          activity(
+            ActivityEventType.TagsUpdated,
+            'tags',
+            undefined,
+            tags('Tier.Tier1')
+          ),
+          t
+        )
+      ).toBe('message.activity-changed-tier');
     });
 
     it('uses the field name for a generic EntityUpdated', () => {
@@ -131,13 +203,13 @@ describe('inbox.utils', () => {
           activity(ActivityEventType.EntityUpdated, 'schema'),
           t
         )
-      ).toBe('label.updated-lowercase schema label.for-lowercase');
+      ).toBe('label.updated-field-for-lowercase');
     });
 
-    it('falls back to "updated on" for EntityUpdated with no field', () => {
+    it('falls back to updating the asset when no field is named', () => {
       expect(
         getActivityEventLabel(activity(ActivityEventType.EntityUpdated), t)
-      ).toBe('label.updated-lowercase label.on-lowercase');
+      ).toBe('message.activity-updated-asset');
     });
   });
 
@@ -424,15 +496,16 @@ describe('inbox.utils', () => {
       ).toMatchObject({ before: ['Ram'], after: ['platform'] });
     });
 
-    it('keeps a description as plain text', () => {
+    // The panel renders it, so markdown reaches it untouched.
+    it('keeps a description as written', () => {
       expect(
         getActivityChange(
-          event(ActivityEventType.DescriptionUpdated, 'Old', '<p>New</p>')
+          event(ActivityEventType.DescriptionUpdated, 'Old', '**New** ')
         )
       ).toEqual({
         labelKey: 'label.description',
         before: ['Old'],
-        after: ['New'],
+        after: ['**New**'],
         isText: true,
       });
     });

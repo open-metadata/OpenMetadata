@@ -320,7 +320,9 @@ describe('ActivityFeedItem', () => {
   it('renders a conversation with its message', () => {
     render(<ActivityFeedItem feed={baseFeed} />);
 
-    expect(screen.getByText('label.posted-on')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.activity-started-conversation')
+    ).toBeInTheDocument();
     expect(screen.getByText('Hello thread')).toBeInTheDocument();
   });
 

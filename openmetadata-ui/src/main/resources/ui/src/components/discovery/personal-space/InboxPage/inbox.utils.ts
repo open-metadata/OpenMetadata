@@ -39,7 +39,6 @@ import {
   addConversationReaction,
   removeConversationReaction,
 } from '../../../../rest/conversationsAPI';
-import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
   formatDateTimeLong,
   getCurrentMillis,
@@ -72,72 +71,6 @@ export const formatActivityTime = (timestamp?: number): string => {
   return getCurrentMillis() - timestamp >= THREE_DAYS_MS
     ? formatDateTimeLong(timestamp, ACTIVITY_DATE_FORMAT)
     : getRelativeTime(timestamp);
-};
-
-/**
- * Header action text for an activity-event card ("updated Description for"),
- * derived from `eventType` (+ `fieldName`), reusing existing lowercase keys.
- */
-export const getActivityEventLabel = (
-  activity: ActivityEvent,
-  t: TFunction
-): string => {
-  const updated = t('label.updated-lowercase');
-  const forPrep = t('label.for-lowercase');
-  const onPrep = t('label.on-lowercase');
-
-  const labelMap: Partial<Record<ActivityEventType, string>> = {
-    [ActivityEventType.EntityCreated]: `${t(
-      'label.created-lowercase'
-    )} ${onPrep}`,
-    [ActivityEventType.EntityDeleted]: `${t(
-      'label.deleted-lowercase'
-    )} ${onPrep}`,
-    [ActivityEventType.EntitySoftDeleted]: `${t(
-      'label.deleted-lowercase'
-    )} ${onPrep}`,
-    [ActivityEventType.EntityRestored]: `${t(
-      'label.restored-lowercase'
-    )} ${onPrep}`,
-    [ActivityEventType.DescriptionUpdated]: `${updated} ${t(
-      'label.description'
-    )} ${forPrep}`,
-    [ActivityEventType.ColumnDescriptionUpdated]: `${updated} ${t(
-      'label.description'
-    )} ${forPrep}`,
-    // A tags event can add, remove or both, so the verb stays neutral.
-    [ActivityEventType.TagsUpdated]: `${updated} ${t(
-      'label.tag-plural'
-    )} ${forPrep}`,
-    [ActivityEventType.ColumnTagsUpdated]: `${updated} ${t(
-      'label.tag-plural'
-    )} ${forPrep}`,
-    [ActivityEventType.OwnerUpdated]: `${updated} ${t(
-      'label.owner'
-    )} ${forPrep}`,
-    [ActivityEventType.DomainUpdated]: `${updated} ${t(
-      'label.domain'
-    )} ${forPrep}`,
-    [ActivityEventType.TierUpdated]: `${updated} ${t('label.tier')} ${forPrep}`,
-    [ActivityEventType.CustomPropertyUpdated]: `${updated} ${t(
-      'label.custom-property'
-    )} ${forPrep}`,
-    [ActivityEventType.TestCaseStatusChanged]: `${updated} ${t(
-      'label.status'
-    )} ${onPrep}`,
-    [ActivityEventType.PipelineStatusChanged]: `${updated} ${t(
-      'label.pipeline'
-    )} ${t('label.status')} ${onPrep}`,
-  };
-
-  const mappedLabel = labelMap[activity.eventType];
-  if (mappedLabel) {
-    return mappedLabel;
-  }
-
-  return activity.fieldName
-    ? `${updated} ${activity.fieldName} ${forPrep}`
-    : `${updated} ${onPrep}`;
 };
 
 /** What an activity changed, as display values for the card's change panel. */
@@ -188,8 +121,9 @@ export const getActivityChange = (
     return undefined;
   }
   const isText = DESCRIPTION_EVENTS.has(activity.eventType);
+  // Descriptions stay markdown; the panel renders them as the entity page does.
   const parse = isText
-    ? (value?: string) => compact([getTextFromHtmlString(value)])
+    ? (value?: string) => compact([value?.trim()])
     : parseChangeValues;
   const before = parse(activity.oldValue);
   const after = parse(activity.newValue);
@@ -198,6 +132,134 @@ export const getActivityChange = (
   return before && after && hasChange
     ? { labelKey, before, after, isText }
     : undefined;
+};
+
+// A card's sentence, by event type; tags and descriptions also depend on
+// whether a column changed and which way.
+const EVENT_LABEL_KEY: Partial<Record<ActivityEventType, string>> = {
+  [ActivityEventType.EntityCreated]: 'message.activity-created-asset',
+  [ActivityEventType.EntityDeleted]: 'message.activity-deleted-asset',
+  [ActivityEventType.EntitySoftDeleted]: 'message.activity-deleted-asset',
+  [ActivityEventType.EntityRestored]: 'message.activity-restored-asset',
+  [ActivityEventType.OwnerUpdated]: 'message.activity-changed-owner',
+  [ActivityEventType.DomainUpdated]: 'message.activity-changed-domain',
+  [ActivityEventType.TierUpdated]: 'message.activity-changed-tier',
+  [ActivityEventType.CustomPropertyUpdated]:
+    'message.activity-updated-custom-property',
+  [ActivityEventType.TestCaseStatusChanged]:
+    'message.activity-updated-test-status',
+  [ActivityEventType.PipelineStatusChanged]:
+    'message.activity-updated-pipeline-status',
+};
+
+enum TagChange {
+  Added = 'added',
+  Removed = 'removed',
+  Changed = 'changed',
+}
+
+type ChangeTarget = 'asset' | 'column';
+
+// [one value, several values]; a mixed change reads the same for any count.
+const TAG_LABEL_KEY: Record<
+  ChangeTarget,
+  Record<TagChange, [string, string]>
+> = {
+  asset: {
+    [TagChange.Added]: [
+      'message.activity-added-tag',
+      'message.activity-added-tag-plural',
+    ],
+    [TagChange.Removed]: [
+      'message.activity-removed-tag',
+      'message.activity-removed-tag-plural',
+    ],
+    [TagChange.Changed]: [
+      'message.activity-changed-tags',
+      'message.activity-changed-tags',
+    ],
+  },
+  column: {
+    [TagChange.Added]: [
+      'message.activity-added-column-tag',
+      'message.activity-added-column-tag-plural',
+    ],
+    [TagChange.Removed]: [
+      'message.activity-removed-column-tag',
+      'message.activity-removed-column-tag-plural',
+    ],
+    [TagChange.Changed]: [
+      'message.activity-changed-column-tags',
+      'message.activity-changed-column-tags',
+    ],
+  },
+};
+
+const DESCRIPTION_LABEL_KEY: Record<ChangeTarget, string> = {
+  asset: 'message.activity-updated-description',
+  column: 'message.activity-updated-column-description',
+};
+
+const TIER_TAG_PREFIX = 'Tier.';
+
+const getChangeTarget = ({ eventType, fieldName }: ActivityEvent) =>
+  eventType === ActivityEventType.ColumnTagsUpdated ||
+  eventType === ActivityEventType.ColumnDescriptionUpdated ||
+  fieldName?.startsWith('columns.')
+    ? 'column'
+    : 'asset';
+
+// Values cut off by the server parse to nothing, which reads as a change.
+const getTagChange = (before: string[], after: string[]): TagChange => {
+  if (!before.length) {
+    return after.length ? TagChange.Added : TagChange.Changed;
+  }
+
+  return after.length ? TagChange.Changed : TagChange.Removed;
+};
+
+// Tier is stored as a tag, but the design names it.
+const isTierChange = (tags: string[]) =>
+  tags.length > 0 && tags.every((tag) => tag.startsWith(TIER_TAG_PREFIX));
+
+const getTagsLabel = (activity: ActivityEvent, t: TFunction): string => {
+  const { before = [], after = [] } = getActivityChange(activity) ?? {};
+  if (isTierChange([...before, ...after])) {
+    return t('message.activity-changed-tier');
+  }
+  const count = after.length || before.length;
+  const [one, many] =
+    TAG_LABEL_KEY[getChangeTarget(activity)][getTagChange(before, after)];
+
+  return t(count > 1 ? many : one, { count });
+};
+
+/**
+ * The card's sentence after the actor's name ("added a tag to a column"),
+ * complete on its own: the entity is the line below it.
+ */
+export const getActivityEventLabel = (
+  activity: ActivityEvent,
+  t: TFunction
+): string => {
+  const { eventType, fieldName } = activity;
+  if (
+    eventType === ActivityEventType.TagsUpdated ||
+    eventType === ActivityEventType.ColumnTagsUpdated
+  ) {
+    return getTagsLabel(activity, t);
+  }
+  if (DESCRIPTION_EVENTS.has(eventType)) {
+    return t(DESCRIPTION_LABEL_KEY[getChangeTarget(activity)]);
+  }
+  const labelKey = EVENT_LABEL_KEY[eventType];
+  if (labelKey) {
+    return t(labelKey);
+  }
+
+  return fieldName
+    ? t('label.updated-field-for-lowercase', { field: fieldName })
+    : t('message.activity-updated-asset');
 };
 
 /**
