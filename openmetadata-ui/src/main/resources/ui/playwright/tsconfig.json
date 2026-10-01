@@ -28,6 +28,18 @@
     "allowUnreachableCode": false,
     "skipLibCheck": true,
     "noImplicitAny": true,
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    // Resolve the linked core-ui package's subpaths from SOURCE, not its built
+    // dist/. The package's exports map points ./icons at dist/icons/index.es.js,
+    // which only exists after the core-ui package is built — the nightly runs
+    // Playwright without that build, so the import fails to resolve and specs
+    // can't even be listed. The icon entries are pure React/SVG (no CSS side
+    // imports), so Playwright's esbuild loader handles the source directly.
+    "paths": {
+      "@openmetadata/ui-core-components/icons": [
+        "../../../../../../openmetadata-ui-core-components/src/main/resources/ui/src/icons/index.ts"
+      ]
+    }
   }
 }
