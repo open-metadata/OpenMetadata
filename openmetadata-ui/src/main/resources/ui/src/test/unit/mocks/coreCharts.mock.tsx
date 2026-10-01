@@ -61,6 +61,8 @@ export const chartColor = (
     ? palette.status[status]
     : palette.series[index % palette.series.length];
 
+export const hexToRgba = (hex: string, alpha: number) => `${hex}@${alpha}`;
+
 export const PieChart = mockChart('core-pie-chart');
 export const LineChart = mockChart('core-line-chart');
 export const AreaChart = mockChart('core-area-chart');

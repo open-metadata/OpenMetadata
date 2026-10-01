@@ -10,26 +10,53 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  ChartSeries,
+  ChartTooltipItem,
+  LineChart,
+} from '@openmetadata/ui-core-components/charts';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
+import { KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { KPI_LIST } from '../../pages/KPIPage/KPIMock.mock';
 import KPIChart from './KPIChart';
-
-jest.mock('../../hooks/insights/useDataInsightChartColors', () => ({
-  useDataInsightChartColors: jest.fn().mockReturnValue({
-    axis: '#123456',
-    dataInsightSeries: ['#234567'],
-    grid: '#345678',
-    inactive: '#456789',
-  }),
-}));
 
 jest.mock('../../rest/KpiAPI', () => ({
   getListKPIs: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: KPI_LIST })),
+  getListKpiResult: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve({ results: [{ day: 1, count: 40 }] })
+    ),
+  getLatestKpiResult: jest.fn().mockImplementation((fqn: string) =>
+    Promise.resolve({
+      kpiFqn: fqn,
+      timestamp: 1,
+      targetResult: [{ name: 'fraction', value: '0.4', targetMet: false }],
+    })
+  ),
 }));
+
+jest.mock('./EmptyGraphPlaceholder', () => ({
+  EmptyGraphPlaceholder: jest
+    .fn()
+    .mockReturnValue(<div data-testid="empty-graph-placeholder" />),
+}));
+
+const NUMBER_KPI = {
+  ...KPI_LIST[0],
+  id: 'number-kpi-id',
+  name: 'number-kpi',
+  displayName: 'Number KPI',
+  fullyQualifiedName: 'number-kpi',
+  metricType: KpiTargetType.Number,
+};
+
+const lastLineProps = () =>
+  (LineChart as unknown as jest.Mock).mock.calls.at(-1)[0];
 
 describe('Test KPIChart Component', () => {
   const mockProps = {
@@ -94,5 +121,43 @@ describe('Test KPIChart Component', () => {
     const addButton = screen.queryByText('label.add-entity');
 
     expect(addButton).not.toBeInTheDocument();
+  });
+
+  it('plots every KPI on one day axis with the native legend', async () => {
+    await act(async () => {
+      render(<KPIChart {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    const props = lastLineProps();
+
+    expect(props.xKey).toBe('day');
+    expect(props.series.map((s: ChartSeries) => s.key)).toEqual(
+      KPI_LIST.map((k) => k.name)
+    );
+    expect(props.series[0].seriesOption).toEqual({ connectNulls: true });
+    expect(props.legend).toBeUndefined();
+  });
+
+  it('formats percentage KPIs with % and number KPIs without', async () => {
+    await act(async () => {
+      render(<KPIChart {...mockProps} kpiList={[...KPI_LIST, NUMBER_KPI]} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+    const { tooltip } = lastLineProps();
+    const items = [KPI_LIST[0].name, NUMBER_KPI.name].map(
+      (name) =>
+        ({
+          seriesKey: name,
+          name,
+          value: 40,
+          color: '#100000',
+        } as ChartTooltipItem)
+    );
+
+    render(<>{tooltip.render(items, { day: 1 })}</>);
+
+    expect(screen.getByText('40%')).toBeInTheDocument();
+    expect(screen.getByText('40')).toBeInTheDocument();
   });
 });
