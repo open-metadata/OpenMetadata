@@ -1,10 +1,14 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.json.JsonObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.List;
@@ -15,6 +19,7 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.rdf.RdfUpdater;
@@ -116,5 +121,24 @@ class TestCaseRepositoryTest {
         test.setTestSuites(testSuites);
       }
     }
+  }
+
+  @Test
+  void failingTestsQueryKeepsUnusualCharactersInEntityNames() {
+    String fqn = "svc.db.\"quoted.name\".back\\slash";
+
+    JsonNode query = JsonUtils.readTree(TestCaseRepository.failingTestsQuery(List.of(fqn)));
+
+    assertEquals(fqn, query.at("/bool/filter/0/terms/originEntityFQN/0").asText());
+    assertEquals("Failed", query.at("/bool/filter/1/term/testCaseResult.testCaseStatus").asText());
+  }
+
+  @Test
+  void aMissingFilterResultFailsInsteadOfReadingAsNoFailure() {
+    JsonObject empty = JsonUtils.readJson("{}").asJsonObject();
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> TestCaseRepository.entitiesWithFailures(List.of("svc.db.schema.t"), empty));
   }
 }
