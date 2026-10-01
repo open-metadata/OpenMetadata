@@ -241,9 +241,8 @@ export default defineConfig({
      * assertions are calibrated for the default motion path. */
     reducedMotion: 'reduce',
 
-    /* Keep a trace whenever a test fails (any run, not just the first retry) so
-     * every failure is debuggable without tracing the passing majority. */
-    trace: 'retain-on-failure',
+    /* Collect trace and video on every failure (not just retries) for debugging */
+    trace: 'on-first-retry',
     screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
