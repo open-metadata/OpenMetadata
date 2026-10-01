@@ -152,7 +152,9 @@ def test_filters_merge_with_owned_schema_scope(instance, server):
         ("duplicate", "distinct schemas"),
         ("unknown-filter", "Unsupported filter fields"),
         ("database-filter", "Unsupported filter fields"),
-        ("unscoped-schema-filter", "must include owned schemas"),
+        ("unscoped-schema-filter", "only the owned schemas"),
+        ("broad-schema-filter", "only the owned schemas"),
+        ("unowned-schema-filter", "only the owned schemas"),
         ("unknown-connection-option", "Unsupported connection options"),
         ("filters-without-support", "does not accept filters"),
     ],
@@ -174,6 +176,10 @@ def test_invocation_rejects_unowned_or_unscoped_runs(instance, server, case, mes
         filters = {"databaseFilterPattern": {"includes": [".*"]}}
     elif case == "unscoped-schema-filter":
         filters = {"schemaFilterPattern": {"excludes": ["^OTHER$"]}}
+    elif case == "broad-schema-filter":
+        filters = {"schemaFilterPattern": {"includes": [".*"]}}
+    elif case == "unowned-schema-filter":
+        filters = {"schemaFilterPattern": {"includes": ["^E2E_SF_OWNED$", "^OTHER$"]}}
     elif case == "unknown-connection-option":
         connection = {"accountUsageSchema": "SNOWFLAKE.ACCOUNT_USAGE"}
     elif case == "filters-without-support":

@@ -110,9 +110,11 @@ def snowflake_invocation(
     if connection.keys() - _CONNECTION_OPTIONS:
         raise ValueError(f"Unsupported connection options: {sorted(connection.keys() - _CONNECTION_OPTIONS)}")
     if "schemaFilterPattern" in type(options).model_fields:
-        schema_pattern = filters.get("schemaFilterPattern", owned_schema_pattern(sources))
-        if not schema_pattern.get("includes"):
-            raise ValueError("schemaFilterPattern must include owned schemas explicitly")
+        owned = owned_schema_pattern(sources)
+        schema_pattern = filters.get("schemaFilterPattern", owned)
+        includes = schema_pattern.get("includes")
+        if not includes or set(includes) - set(owned["includes"]):
+            raise ValueError("schemaFilterPattern may include only the owned schemas, as their anchored patterns")
         filters = {**filters, "schemaFilterPattern": schema_pattern}
     elif filters:
         raise ValueError(f"{type(options).__name__} does not accept filters")
