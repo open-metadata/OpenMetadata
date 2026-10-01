@@ -14,6 +14,7 @@
 import {
   BadgeWithIcon,
   Box,
+  Button,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -26,6 +27,7 @@ import {
   Plus,
   RefreshCcw01,
   Tag01,
+  ThumbsUp,
   Trash01,
   UserCheck01,
 } from '@untitledui/icons';
@@ -248,6 +250,15 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
     [activity]
   );
 
+  // Like is the thumbs-up reaction, kept out of the emoji row beside it.
+  const likes = reactions.filter(
+    ({ reactionType }) => reactionType === ReactionType.ThumbsUp
+  );
+  const isLiked = likes.some(({ user }) => user?.id === currentUser?.id);
+  const otherReactions = reactions.filter(
+    ({ reactionType }) => reactionType !== ReactionType.ThumbsUp
+  );
+
   const message = useMemo(
     () =>
       getFrontEndFormat(
@@ -389,11 +400,31 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
         align="center"
         className="inbox-feed-actions tw:ml-13 tw:gap-2"
         onClick={(e) => e.stopPropagation()}>
+        <Button
+          aria-pressed={isLiked}
+          className={classNames({
+            'tw:text-brand-secondary tw:*:data-icon:text-fg-brand-secondary':
+              isLiked,
+          })}
+          color="tertiary"
+          data-testid="activity-like"
+          iconLeading={ThumbsUp}
+          size="sm"
+          onPress={() =>
+            handleReactionSelect(
+              ReactionType.ThumbsUp,
+              isLiked ? ReactionOperation.REMOVE : ReactionOperation.ADD
+            )
+          }>
+          {likes.length
+            ? `${t('label.like')} · ${likes.length}`
+            : t('label.like')}
+        </Button>
         <Reactions
-          key={reactions
+          key={otherReactions
             .map((reaction) => `${reaction.reactionType}:${reaction.user?.id}`)
             .join('|')}
-          reactions={reactions}
+          reactions={otherReactions}
           onReactionSelect={handleReactionSelect}
         />
         {/* Change-event activities are read-only (no comments) — the

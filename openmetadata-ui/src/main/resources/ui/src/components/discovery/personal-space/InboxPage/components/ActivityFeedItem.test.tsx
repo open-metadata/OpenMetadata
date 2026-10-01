@@ -132,6 +132,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   BadgeWithIcon: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),
+  Button: ({
+    children,
+    onPress,
+    ...props
+  }: {
+    children?: ReactNode;
+    onPress?: () => void;
+    'aria-pressed'?: boolean;
+    'data-testid'?: string;
+  }) => (
+    <button
+      aria-pressed={props['aria-pressed']}
+      data-testid={props['data-testid']}
+      onClick={onPress}>
+      {children}
+    </button>
+  ),
   Box: ({
     children,
     onClick,
@@ -162,6 +179,7 @@ jest.mock('@untitledui/icons', () => ({
   Plus: () => <span />,
   RefreshCcw01: () => <span />,
   Tag01: () => <span />,
+  ThumbsUp: () => <span />,
   Trash01: () => <span />,
   UserCheck01: () => <span />,
 }));
@@ -418,5 +436,58 @@ describe('ActivityFeedItem', () => {
     );
 
     expect(screen.getByTestId('react-btn')).toHaveTextContent('r1');
+  });
+
+  it('likes the activity with the thumbs-up reaction', async () => {
+    mockToggle.mockResolvedValue([
+      { reactionType: 'thumbsUp', user: { id: 'u1' } },
+    ]);
+
+    render(<ActivityFeedItem activity={baseActivity} onClick={jest.fn()} />);
+
+    expect(screen.getByTestId('activity-like')).toHaveTextContent('label.like');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('activity-like'));
+    });
+
+    expect(mockToggle).toHaveBeenCalledWith(
+      'a1',
+      expect.any(Array),
+      'thumbsUp',
+      'add',
+      expect.objectContaining({ id: 'u1' })
+    );
+    expect(screen.getByTestId('activity-like')).toHaveTextContent(
+      'label.like · 1'
+    );
+    expect(screen.getByTestId('activity-like')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    // Likes stay out of the emoji row.
+    expect(screen.getByTestId('react-btn')).toHaveTextContent('r0');
+  });
+
+  it('removes the like when the viewer already liked it', async () => {
+    mockToggle.mockResolvedValue([]);
+    const liked = {
+      ...baseActivity,
+      reactions: [{ reactionType: 'thumbsUp', user: { id: 'u1' } }],
+    } as unknown as ActivityEvent;
+
+    render(<ActivityFeedItem activity={liked} onClick={jest.fn()} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('activity-like'));
+    });
+
+    expect(mockToggle).toHaveBeenCalledWith(
+      'a1',
+      expect.any(Array),
+      'thumbsUp',
+      'remove',
+      expect.objectContaining({ id: 'u1' })
+    );
   });
 });
