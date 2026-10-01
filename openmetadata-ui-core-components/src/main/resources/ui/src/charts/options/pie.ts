@@ -88,7 +88,9 @@ export const buildPieOption = (
     data: input.data.map((datum, index) => ({
       name: datum.name,
       value: sliceValue(datum.value),
-      itemStyle: { color: chartColor(theme.palette, index, datum.status) },
+      itemStyle: {
+        color: datum.color ?? chartColor(theme.palette, index, datum.status),
+      },
     })),
   };
 

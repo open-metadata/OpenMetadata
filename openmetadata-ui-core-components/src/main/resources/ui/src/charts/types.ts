@@ -97,6 +97,11 @@ export interface ChartSeries {
   name: string;
   /** Status colour; without one the series takes the next palette colour. */
   status?: ChartStatus;
+  /**
+   * Overrides the palette and `status`, in both colour modes. A concrete
+   * colour (hex or rgb): ECharts cannot parse CSS variables.
+   */
+  color?: string;
   /** Only read by `ComposedChart`; other charts fix the type. */
   type?: ChartSeriesType;
   /** Series with the same stack id are stacked. */
@@ -181,6 +186,11 @@ export interface PieDatum {
   value: number;
   /** Status colour; without one the slice takes the next palette colour. */
   status?: ChartStatus;
+  /**
+   * Overrides the palette and `status`, in both colour modes. A concrete
+   * colour (hex or rgb): ECharts cannot parse CSS variables.
+   */
+  color?: string;
 }
 
 export interface PieBuildInput {

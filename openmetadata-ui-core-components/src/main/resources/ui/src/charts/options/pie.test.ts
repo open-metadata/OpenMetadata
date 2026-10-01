@@ -68,6 +68,28 @@ describe('buildPieOption', () => {
     ]);
   });
 
+  it('uses a slice colour override before its status or the palette', () => {
+    const slices = pieOf(
+      buildPieOption(
+        {
+          ...base,
+          data: [
+            { name: 'Success', value: 6, status: 'success', color: '#123456' },
+            { name: 'Failed', value: 3, color: '#abcdef' },
+            { name: 'Aborted', value: 1 },
+          ],
+        },
+        DARK_CHART_THEME
+      )
+    ).data as Array<{ itemStyle: { color: string } }>;
+
+    expect(slices.map((slice) => slice.itemStyle.color)).toEqual([
+      '#123456',
+      '#abcdef',
+      DARK_CHART_PALETTE.series[2],
+    ]);
+  });
+
   it('is a full pie by default and a donut with innerRadius', () => {
     expect(pieOf(buildPieOption(base, LIGHT_CHART_THEME)).radius).toEqual([
       0,

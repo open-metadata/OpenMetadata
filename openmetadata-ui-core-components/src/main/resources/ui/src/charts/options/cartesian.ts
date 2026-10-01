@@ -146,7 +146,8 @@ const buildSeries = <T extends object>(
   index: number,
   type: ChartSeriesType
 ): CartesianSeriesOption => {
-  const color = chartColor(ctx.theme.palette, index, series.status);
+  const color =
+    series.color ?? chartColor(ctx.theme.palette, index, series.status);
   const body =
     type === 'bar'
       ? barSeries(ctx, series, color)

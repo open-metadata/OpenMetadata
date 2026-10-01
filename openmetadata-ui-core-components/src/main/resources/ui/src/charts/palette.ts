@@ -39,9 +39,10 @@ export const CHART_PALETTE: readonly string[] = [
 ];
 
 /**
- * Charts take every colour from one of these two palettes, chosen by colour
- * mode. Callers never pass colours: a series or slice either names a status
- * or takes the next series colour.
+ * Charts take their colours from one of these two palettes, chosen by colour
+ * mode: a series or slice names a status or takes the next series colour.
+ * A series or slice can override this with its own `color`, e.g. for a brand
+ * colour scale.
  */
 export const LIGHT_CHART_PALETTE: ChartPalette = {
   series: CHART_PALETTE,

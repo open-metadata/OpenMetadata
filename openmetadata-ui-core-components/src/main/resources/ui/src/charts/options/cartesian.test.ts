@@ -170,6 +170,31 @@ describe('buildLineOption', () => {
     ]);
   });
 
+  it('uses a series colour override before its status or the palette', () => {
+    const option = buildLineOption(
+      {
+        data: [],
+        xKey: 'x',
+        ariaLabel: 'Override',
+        series: [
+          { key: 'a', name: 'A', color: '#123456' },
+          { key: 'b', name: 'B', status: 'success', color: '#abcdef' },
+          { key: 'c', name: 'C' },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const colors = seriesOf(option).map(
+      (s) => (s.itemStyle as { color: string }).color
+    );
+
+    expect(colors).toEqual([
+      '#123456',
+      '#abcdef',
+      LIGHT_CHART_PALETTE.series[2],
+    ]);
+  });
+
   it('hides dots and smooths lines unless the series says otherwise', () => {
     const option = buildLineOption(
       {
