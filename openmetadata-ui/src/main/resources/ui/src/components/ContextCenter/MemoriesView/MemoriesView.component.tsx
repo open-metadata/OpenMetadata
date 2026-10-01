@@ -289,9 +289,16 @@ const MemoryStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
     return null;
   }
 
+  let color: 'error' | 'warning' | 'gray' = 'gray';
+  if (status === MemoryStatus.Invalidated) {
+    color = 'error';
+  } else if (status === MemoryStatus.Superseded) {
+    color = 'warning';
+  }
+
   return (
     <Badge
-      color={status === MemoryStatus.Invalidated ? 'error' : 'warning'}
+      color={color}
       data-testid={`memory-status-${memory.id}`}
       size="sm"
       type="color">

@@ -17,6 +17,9 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,13 +39,19 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchResultListMapper;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -96,6 +105,34 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+  }
+
+  public ResultList<ContextMemory> listContextMemoriesWithStatuses(
+      UriInfo uriInfo,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q,
+      SecurityContext securityContext,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    SearchResultListMapper results =
+        searchRepository.listContextMemoriesWithStatuses(
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            DefaultAuthorizer.getSubjectContext(securityContext),
+            statuses);
+    List<ContextMemory> entityList = new ArrayList<>();
+    for (Map<String, Object> json : results.getResults()) {
+      SearchIndexUtils.normalizeFollowers(json);
+      ContextMemory entity = JsonUtils.readOrConvertValueLenient(json, ContextMemory.class);
+      entityList.add(withHref(uriInfo, entity));
+    }
+    return new ResultList<>(entityList, offset, limit, (int) results.getTotal());
   }
 
   @Override
@@ -618,6 +655,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     public ContextMemoryUpdater(
         ContextMemory original, ContextMemory updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    protected boolean consolidateChanges(
+        ContextMemory original, ContextMemory updated, Operation operation) {
+      return original.getStatus() == updated.getStatus()
+          && super.consolidateChanges(original, updated, operation);
     }
 
     @Override

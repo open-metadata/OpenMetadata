@@ -16,13 +16,13 @@ package org.openmetadata.service.resources.context;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
@@ -54,6 +54,7 @@ import org.slf4j.LoggerFactory;
 public final class ContextMemoryVisibility {
 
   private static final Logger LOG = LoggerFactory.getLogger(ContextMemoryVisibility.class);
+  private static final int MAX_ANCHOR_DECISIONS_PER_PAGE = 1000;
 
   /** The field selection that already asks for every allowed field, owners included. */
   private static final String ALL_FIELDS = "*";
@@ -155,13 +156,20 @@ public final class ContextMemoryVisibility {
 
   static List<ContextMemory> filterByVisibility(
       List<ContextMemory> memories, String userName, boolean isAdmin, AnchorAccess anchorAccess) {
-    Map<UUID, Boolean> anchorDecisions = new HashMap<>();
+    Cache<UUID, Boolean> anchorDecisions =
+        CacheBuilder.newBuilder().maximumSize(MAX_ANCHOR_DECISIONS_PER_PAGE).build();
     AnchorAccess cachedAccess =
         (name, anchor) -> {
           UUID anchorId = anchor.getId();
-          return anchorId == null
-              ? anchorAccess.canView(name, anchor)
-              : anchorDecisions.computeIfAbsent(anchorId, id -> anchorAccess.canView(name, anchor));
+          if (anchorId == null) {
+            return anchorAccess.canView(name, anchor);
+          }
+          Boolean cached = anchorDecisions.getIfPresent(anchorId);
+          if (cached == null) {
+            cached = anchorAccess.canView(name, anchor);
+            anchorDecisions.put(anchorId, cached);
+          }
+          return cached;
         };
     return memories.stream()
         .filter(m -> isVisibleToUser(m, userName, isAdmin, cachedAccess))

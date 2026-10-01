@@ -22,7 +22,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -30,6 +33,19 @@ import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Response;
 
 class OpenSearchVectorServiceTest {
+
+  @Test
+  void memoryFilterChangesRestampChunksWithoutChangingContent() {
+    ContextMemory memory = new ContextMemory().withStatus(ContextMemoryStatus.ACTIVE);
+    assertFalse(OpenSearchVectorService.memoryFilterChanged(memory, "Active", "unanchored"));
+    assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, null, null));
+    assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, "Superseded", "unanchored"));
+
+    UUID anchorId = UUID.randomUUID();
+    memory.setPrimaryEntity(new EntityReference().withId(anchorId).withType("table"));
+    assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, "Active", "unanchored"));
+    assertFalse(OpenSearchVectorService.memoryFilterChanged(memory, "Active", anchorId.toString()));
+  }
 
   private OpenSearchVectorService vectorService;
   private OpenSearchClient mockClient;

@@ -704,7 +704,7 @@ const ContextCenterMemoriesPage: FC = () => {
 
   useEffect(() => {
     const memoryName = searchParams.get('memory');
-    if (!memoryName || isViewModalOpen) {
+    if (!memoryName || (isViewModalOpen && memoryName === memoryToView?.name)) {
       return;
     }
 
@@ -718,8 +718,13 @@ const ContextCenterMemoriesPage: FC = () => {
           return prev;
         });
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, handleViewMemory, setSearchParams]);
+  }, [
+    searchParams,
+    handleViewMemory,
+    setSearchParams,
+    isViewModalOpen,
+    memoryToView?.name,
+  ]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
@@ -799,7 +804,10 @@ const ContextCenterMemoriesPage: FC = () => {
                   t('label.new-memory'),
                   t('label.all-entity', { entity: t('label.status-plural') }),
                   () => setIsCreateModalOpen(true),
-                  () => setSelectedStatuses(MEMORY_STATUSES)
+                  () => {
+                    setCurrentPage(1);
+                    setSelectedStatuses(MEMORY_STATUSES);
+                  }
                 )}
                 description={t(
                   'message.context-center-memories-empty-subtitle'

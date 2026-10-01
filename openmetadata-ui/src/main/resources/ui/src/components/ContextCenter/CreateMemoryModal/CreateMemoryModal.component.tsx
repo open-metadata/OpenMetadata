@@ -702,7 +702,6 @@ const MemoryLifecycleRows: FC<{
           {memoryToEdit.supersededBy.fullyQualifiedName ||
           memoryToEdit.supersededBy.name ? (
             <Link
-              reloadDocument
               className="tw:text-brand-secondary tw:hover:underline"
               data-testid="memory-lifecycle-successor"
               to={`${

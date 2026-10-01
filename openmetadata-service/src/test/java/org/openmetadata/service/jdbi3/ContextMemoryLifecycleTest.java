@@ -186,6 +186,20 @@ class ContextMemoryLifecycleTest {
   }
 
   @Test
+  void aStatusCannotBeRemoved() {
+    ContextMemory active = memory(ContextMemoryStatus.ACTIVE);
+
+    BadRequestException error =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                ContextMemoryLifecycle.applyUpdate(
+                    active, copyOf(active).withStatus(null), NO_LOOKUP));
+
+    assertTrue(error.getMessage().contains("requires a status"));
+  }
+
+  @Test
   void createCannotBeSupersededWithoutASuccessor() {
     assertThrows(
         BadRequestException.class,

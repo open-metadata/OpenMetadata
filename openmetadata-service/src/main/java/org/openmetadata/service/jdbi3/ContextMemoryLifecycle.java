@@ -57,6 +57,9 @@ final class ContextMemoryLifecycle {
   private ContextMemoryLifecycle() {}
 
   static void validateTransition(ContextMemoryStatus from, ContextMemoryStatus to) {
+    if (to == null) {
+      throw new BadRequestException("A context memory requires a status");
+    }
     Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.getOrDefault(from, Set.of());
     if (from != to && !allowed.contains(to)) {
       throw new BadRequestException(
@@ -67,9 +70,7 @@ final class ContextMemoryLifecycle {
   }
 
   static void applyUpdate(ContextMemory original, ContextMemory updated, MemoryResolver resolver) {
-    if (original.getStatus() != null && updated.getStatus() != null) {
-      validateTransition(original.getStatus(), updated.getStatus());
-    }
+    validateTransition(original.getStatus(), updated.getStatus());
     applyStatusChange(original, updated);
     validateSupersession(updated);
     resolveReferences(original, updated, resolver);

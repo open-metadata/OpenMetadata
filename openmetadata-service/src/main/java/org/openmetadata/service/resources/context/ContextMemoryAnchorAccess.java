@@ -21,17 +21,15 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Whether a caller may ViewBasic the asset an Entity memory is anchored to, decided like
- * DefaultAuthorizer#authorize (reviewer shortcut, then policies) but as a boolean, so the static
- * read guards need no Authorizer. Admins never get here: the visibility check passes them first.
+ * Whether a caller may ViewBasic the asset an Entity memory is anchored to. Admins pass the memory
+ * visibility check before reaching this guard.
  */
 final class ContextMemoryAnchorAccess {
 
@@ -50,14 +48,19 @@ final class ContextMemoryAnchorAccess {
   private static boolean isAllowed(String userName, EntityReference anchor) {
     boolean allowed;
     try {
-      SubjectContext subject = SubjectContext.getSubjectContext(userName);
       ResourceContext<EntityInterface> resource =
           new ResourceContext<>(anchor.getType(), anchor.getId(), anchor.getFullyQualifiedName());
-      allowed =
-          (isReviewer(subject, resource) || hasViewBasic(subject, resource))
-              && isSourceVisible(userName, resource);
-    } catch (EntityNotFoundException e) {
-      LOG.debug("Hiding memory: user {} or anchor {} not found", userName, anchor.getId(), e);
+      DefaultAuthorizer.authorizeUser(
+          userName,
+          new OperationContext(resource.getResource(), MetadataOperation.VIEW_BASIC),
+          resource);
+      allowed = isSourceVisible(userName, resource);
+    } catch (AuthorizationException | EntityNotFoundException e) {
+      LOG.debug("Hiding memory: user {} cannot read anchor {}", userName, anchor.getId(), e);
+      allowed = false;
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "Hiding memory: cannot authorize user {} for anchor {}", userName, anchor.getId(), e);
       allowed = false;
     }
     return allowed;
@@ -69,25 +72,5 @@ final class ContextMemoryAnchorAccess {
     return entity != null
         && (!(entity instanceof ContextFile file)
             || ContextFileVisibility.isVisibleToUser(file, userName, false));
-  }
-
-  private static boolean isReviewer(
-      SubjectContext subject, ResourceContext<EntityInterface> resource) {
-    EntityInterface entity = resource.getEntity();
-    return entity != null && subject.isReviewer(entity.getReviewers());
-  }
-
-  private static boolean hasViewBasic(
-      SubjectContext subject, ResourceContext<EntityInterface> resource) {
-    boolean allowed = true;
-    try {
-      PolicyEvaluator.hasPermission(
-          subject,
-          resource,
-          new OperationContext(resource.getResource(), MetadataOperation.VIEW_BASIC));
-    } catch (AuthorizationException denied) {
-      allowed = false;
-    }
-    return allowed;
   }
 }

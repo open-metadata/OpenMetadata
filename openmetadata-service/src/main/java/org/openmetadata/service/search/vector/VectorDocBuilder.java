@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Database;
@@ -586,34 +585,23 @@ public class VectorDocBuilder {
     String entityType = entity.getEntityReference().getType();
     String metaLight = buildMetaLightText(entity, entityType);
     String body = buildBodyText(entity, entityType);
-    return TextChunkManager.computeFingerprint(metaLight + "|" + body + memoryFilterPart(entity));
+    return TextChunkManager.computeFingerprint(metaLight + "|" + body + shareConfigPart(entity));
   }
 
   /**
-   * Memory filter fields enter the fingerprint so changes restamp chunk docs. Shared principals
-   * are sorted, and Active status contributes nothing to preserve existing fingerprints.
+   * Share config remains in the fingerprint for compatibility with existing chunk documents.
+   * Status and anchor are filter metadata; tracking them separately avoids paid re-embedding.
    */
   @SuppressWarnings("unchecked")
-  private static String memoryFilterPart(EntityInterface entity) {
+  private static String shareConfigPart(EntityInterface entity) {
     String part = "";
     if (entity instanceof ContextMemory memory) {
       Map<String, Object> shareConfig = ContextMemoryIndex.shareConfigFields(memory);
       List<String> sharedWithIds = new ArrayList<>((List<String>) shareConfig.get("sharedWithIds"));
       Collections.sort(sharedWithIds);
-      part =
-          "|"
-              + shareConfig.get("visibility")
-              + "|"
-              + String.join(",", sharedWithIds)
-              + (memory.getPrimaryEntity() == null ? "" : "|" + ContextMemoryIndex.anchorId(memory))
-              + statusPart(memory);
+      part = "|" + shareConfig.get("visibility") + "|" + String.join(",", sharedWithIds);
     }
     return part;
-  }
-
-  private static String statusPart(ContextMemory memory) {
-    ContextMemoryStatus status = memory.getStatus();
-    return status == null || status == ContextMemoryStatus.ACTIVE ? "" : "|" + status.value();
   }
 
   static String buildMetaLightText(EntityInterface entity, String entityType) {

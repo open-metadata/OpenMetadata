@@ -313,16 +313,30 @@ public class ContextMemoryLifecycleIT {
     assertTrue(listOrEmpty(unchanged.getDisputes()).isEmpty());
   }
 
-  /** Two PATCHes by one user inside the session merge; the merge must not replay Active→Draft. */
+  /** A second status change must validate against the current status, not the session baseline. */
   @Test
   void inSessionConsolidation_doesNotReplayTransitionsBackwards(TestNamespace ns) {
     ContextMemory draft =
         admin().create(memory(ns, "consolidated").withStatus(ContextMemoryStatus.DRAFT));
 
     admin().patch(idOf(draft), status(ContextMemoryStatus.ACTIVE));
-    ContextMemory archived = admin().patch(idOf(draft), status(ContextMemoryStatus.ARCHIVED));
+    ContextMemory archived = admin().patch(idOf(draft), status(ContextMemoryStatus.INVALIDATED));
 
-    assertEquals(ContextMemoryStatus.ARCHIVED, archived.getStatus());
+    assertEquals(ContextMemoryStatus.INVALIDATED, archived.getStatus());
+  }
+
+  @Test
+  void removingStatusIsRejectedWithoutChangingTheMemory(TestNamespace ns) {
+    ContextMemory memory = admin().create(memory(ns, "status-required"));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            admin()
+                .patch(
+                    idOf(memory),
+                    JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/status\"}]")));
+    assertEquals(ContextMemoryStatus.ACTIVE, admin().get(idOf(memory)).getStatus());
   }
 
   @Test

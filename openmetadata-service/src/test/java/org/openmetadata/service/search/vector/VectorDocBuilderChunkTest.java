@@ -405,7 +405,7 @@ class VectorDocBuilderChunkTest {
   }
 
   @Test
-  void contentFingerprint_tracksLifecycleStatusButLeavesActiveMemoriesUnchanged() {
+  void contentFingerprint_ignoresLifecycleAndAnchorFilters() {
     ContextMemory memory = memory(MemoryVisibility.ENTITY);
     String entityType = memory.getEntityReference().getType();
     String preLifecycle =
@@ -419,7 +419,8 @@ class VectorDocBuilderChunkTest {
 
     assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
     memory.setStatus(ContextMemoryStatus.SUPERSEDED);
-    assertNotEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
+    memory.setPrimaryEntity(new EntityReference().withId(UUID.randomUUID()).withType("table"));
+    assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
   }
 
   /**
