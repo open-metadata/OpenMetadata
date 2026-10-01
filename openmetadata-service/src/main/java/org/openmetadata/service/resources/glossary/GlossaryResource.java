@@ -80,10 +80,14 @@ import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 
 @Path("/v1/glossaries")
 @Tag(
@@ -176,8 +180,29 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
       filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
     }
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    RestUtil.validateCursors(before, after);
+    if (canViewAllGlossaries(securityContext)) {
+      return super.listInternal(
+          uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    }
+    EntityUtil.addDomainQueryParam(securityContext, filter, Entity.GLOSSARY);
+    final Fields fields = getFields(fieldsParam);
+    final ResultList<Glossary> result =
+        new AuthorizedGlossaryList(
+                repository, authorizer, securityContext, getViewOperations(fields))
+            .list(
+                fields, filter, new AuthorizedGlossaryList.PageRequest(limitParam, before, after));
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, result));
+  }
+
+  private boolean canViewAllGlossaries(SecurityContext securityContext) {
+    boolean allowed = true;
+    try {
+      authorizer.authorizeAdmin(securityContext);
+    } catch (AuthorizationException denied) {
+      allowed = false;
+    }
+    return allowed;
   }
 
   @GET
