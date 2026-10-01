@@ -808,7 +808,7 @@ def render_md(report: dict, title: str) -> str:
 
 
 def slack_headline(report: dict) -> list[str]:
-    """Slack lists flakes only: failed queue runs already alert #ci-cleanup one by one.
+    """Slack lists flakes only: queue failures alert #ci-cleanup through merge-queue-dequeue-report.yml.
     The attached HTML report still has the failures."""
     lines = [headline(report)[0], plural(len(report["flaky"]), "flaky test")]
     if report["unreadable"]:

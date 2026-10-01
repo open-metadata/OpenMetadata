@@ -61,7 +61,14 @@ import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
 import type { ChangeEvent, Key } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
@@ -240,7 +247,8 @@ const getIsPlaceholderState = ({
 
 const MetricListPage = () => {
   const { t } = useTranslation();
-  const contentClassName = getContentClassName(useIsAiMode());
+  const isAiMode = useIsAiMode();
+  const contentClassName = getContentClassName(isAiMode);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { getResourcePermission } = usePermissionProvider();
@@ -1197,6 +1205,16 @@ const MetricListPage = () => {
     </Box>
   );
 
+  const renderHeader = (actions?: ReactNode) => (
+    <PageLayout.PageHeader
+      actions={actions}
+      data-testid="metric-list-header"
+      subtitle={t('message.metric-description')}
+      title={t('label.metric-plural')}
+      variant={isAiMode ? 'gradient' : 'flat'}
+    />
+  );
+
   const renderMetricActions = () => (
     <Box align="center" gap={2}>
       {permission.Create && (
@@ -1205,6 +1223,7 @@ const MetricListPage = () => {
             color="primary"
             data-testid="create-metric"
             iconLeading={Plus}
+            size="sm"
             onPress={() => openMetricCreateDrawer()}>
             {t('label.add-entity', { entity: t('label.metric') })}
           </Button>
@@ -1216,7 +1235,7 @@ const MetricListPage = () => {
           onOpenChange={setIsMetricActionsOpen}>
           <Dropdown.DotsButton
             aria-label={t('label.action-plural')}
-            className="tw:flex tw:size-10 tw:items-center tw:justify-center"
+            className="tw:flex tw:size-9 tw:items-center tw:justify-center"
             data-testid="metric-actions"
           />
           <Dropdown.Popover>
@@ -1554,11 +1573,7 @@ const MetricListPage = () => {
     return (
       <PageLayout data-testid="metric-list-page">
         <DocumentTitle title={t('label.metric-plural')} />
-        <PageLayout.PageHeader
-          data-testid="metric-list-header"
-          subtitle={t('message.metric-description')}
-          title={t('label.metric-plural')}
-        />
+        {renderHeader()}
         <PageLayout.Content className={contentClassName}>
           {renderLoading()}
         </PageLayout.Content>
@@ -1569,12 +1584,7 @@ const MetricListPage = () => {
   return (
     <PageLayout data-testid="metric-list-page">
       <DocumentTitle title={t('label.metric-plural')} />
-      <PageLayout.PageHeader
-        actions={renderMetricActions()}
-        data-testid="metric-list-header"
-        subtitle={t('message.metric-description')}
-        title={t('label.metric-plural')}
-      />
+      {renderHeader(renderMetricActions())}
       <PageLayout.Content className={contentClassName}>
         {renderAccessibleList()}
         <ModalOverlay

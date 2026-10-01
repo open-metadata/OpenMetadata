@@ -398,7 +398,6 @@ jest.mock('../../../utils/EntitySummaryPanelUtils', () => ({
 }));
 
 jest.mock('../../../utils/StringUtils', () => ({
-  stringToHTML: jest.fn().mockImplementation((str) => str),
   getErrorText: jest
     .fn()
     .mockImplementation(
@@ -407,6 +406,10 @@ jest.mock('../../../utils/StringUtils', () => ({
     ),
   getEncodedFqn: jest.fn().mockImplementation((fqn: string) => fqn),
   getDecodedFqn: jest.fn().mockImplementation((fqn: string) => fqn),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
+  stringToHTML: jest.fn().mockImplementation((str) => str),
 }));
 
 jest.mock('../../../utils/TablePureUtils', () => ({

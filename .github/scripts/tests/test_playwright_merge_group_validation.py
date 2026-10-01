@@ -71,9 +71,7 @@ def test_queue_gate_requires_every_upstream_job(tmp_path, overrides, passes):
 
 
 def test_queue_shards_enforce_coverage_but_allow_one_retry():
-    coverage = next(
-        step for step in shard_steps() if step.get("id") == "verify-shard-coverage"
-    )
+    coverage = next(step for step in shard_steps() if step.get("id") == "verify-shard-coverage")
     assert "github.event_name == 'merge_group'" in coverage["if"]
     assert not coverage.get("continue-on-error", False)
     assert '"$(git rev-parse HEAD)" != "$GITHUB_SHA"' in coverage["run"]
@@ -102,9 +100,7 @@ def test_main_health_alerts_and_keeps_the_flake_baseline_off_main():
     assert "HEAD:main" not in script
     assert "refresh_flake_baseline.py" in script
     assert "--threshold 2" in script and "--window 10" in script
-    slack = next(
-        step for step in job["steps"] if step["name"] == "Build the Slack message"
-    )
+    slack = next(step for step in job["steps"] if step["name"] == "Build the Slack message")
     # Anything but a clean pass alerts: flaky passes included.
     assert "classification != 'passed'" in slack["if"]
     # Everything from main goes to #pw-health; #ci-cleanup is queue-only.
@@ -112,34 +108,32 @@ def test_main_health_alerts_and_keeps_the_flake_baseline_off_main():
     assert "C0AC5T013V1" not in slack["run"]
 
 
-def test_merge_queue_failures_alert_ci_cleanup_without_checked_out_code():
-    steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
-        "steps"
-    ]
-    alert = [
-        s
-        for s in steps
-        if "failure() && github.event_name == 'merge_group'" in s.get("if", "")
-    ]
-    assert {s["name"] for s in alert} >= {
-        "Build the merge-queue failure message",
-        "Post the merge-queue failure to Slack (ci-cleanup)",
-    }
-    download = next(
-        s for s in alert if s["name"] == "Download failed merge-queue shard results"
-    )
+def test_merge_queue_failures_alert_ci_cleanup_only_through_the_dequeue_report():
+    # A failed run does not always dequeue its PR: when an entry ahead leaves,
+    # GitHub rebuilds the group and lets the old run finish. So the summary only
+    # annotates its failed tests, and the dequeue report, which fires on a real
+    # dequeue, folds them into the one #ci-cleanup alert.
+    job = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"]
+    assert "C0AC5T013V1" not in json.dumps(job)
+    steps = job["steps"]
+    download = next(s for s in steps if s["name"] == "Download failed merge-queue shard results")
     # Artifacts belong to the run, so an unscoped pattern would report tests
     # that failed only in an earlier attempt of a re-run.
-    assert (
-        download["with"]["pattern"]
-        == "playwright-results-json-*-a${{ github.run_attempt }}*"
-    )
-    build = next(s for s in alert if s.get("id") == "queue-slack")
-    assert "C0AC5T013V1" in build["run"]
-    # Queue runs never check out code in the summary job, so the alert must not
-    # run repository scripts.
-    assert ".github/scripts" not in build["run"]
-    assert 'select(.status == "unexpected")' in build["run"]
+    assert download["with"]["pattern"] == "playwright-results-json-*-a${{ github.run_attempt }}*"
+    annotate = next(s for s in steps if s["name"] == "Annotate the failed merge-queue tests")
+    assert annotate["if"] == "${{ failure() && github.event_name == 'merge_group' }}"
+    # Queue runs never check out code in the summary job, so it must not run
+    # repository scripts.
+    assert ".github/scripts" not in annotate["run"]
+    assert 'select(.status == "unexpected")' in annotate["run"]
+    assert "::error title=Merge queue failed tests::" in annotate["run"]
+
+    dequeue = workflow("merge-queue-dequeue-report.yml")
+    assert dequeue[True]["pull_request_target"]["types"] == ["dequeued"]
+    report = json.dumps(dequeue["jobs"]["report"])
+    assert "C0AC5T013V1" in report
+    assert "check_name=playwright-summary" in report
+    assert 'select(.title == \\"Merge queue failed tests\\")' in report
 
 
 def test_pr_summary_reads_the_flake_baseline_report_only():
@@ -148,33 +142,49 @@ def test_pr_summary_reads_the_flake_baseline_report_only():
     assert "--retry-baseline" in step["run"]
     assert "--enforce" not in step["run"]
 
-
 def test_shard_status_records_execution_identity():
     status = next(
-        step
-        for step in shard_steps()
-        if step["name"] == "Record shard execution status"
+        step for step in shard_steps() if step["name"] == "Record shard execution status"
     )
     for field in ("headSha", "runId", "runAttempt"):
         assert f"{field}: ${field}" in status["run"]
 
 
-def test_merge_groups_upload_no_reports():
+TRACE_REPORT_STEPS = {
+    "Checkout",
+    "Download blob reports",
+    "Setup Node.js",
+    "Restore yarn package cache",
+    "Install report dependencies",
+    "Merge HTML report",
+    "Upload merged Playwright report",
+}
+
+
+def test_merge_groups_upload_only_the_trace_report():
     steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
         "steps"
     ]
     for step in steps:
+        condition = step.get("if", "")
+        if step["name"] in TRACE_REPORT_STEPS:
+            assert "merge_group" not in condition, step["name"]
+            assert "always()" in condition, step["name"]
+            continue
         if step["name"] == "Gate verified merge-group shards":
             continue
-        if "github.event_name == 'merge_group'" in step["if"]:
-            continue  # queue-only Slack alerts: inline, no reports or checkout
-        assert "github.event_name != 'merge_group'" in step["if"], step["name"]
-    # A green queue run costs no artifact storage, but a broken one must still
-    # leave evidence: re-running it locally is a different SHA on a moving base.
+        if "github.event_name == 'merge_group'" in condition:
+            continue  # queue-only Slack alerts: inline
+        assert "github.event_name != 'merge_group'" in condition, step["name"]
+    # Traces ship on every queue run so retry passes stay debuggable; the other
+    # uploads still leave evidence only when the shard failed or was cancelled.
     for step in shard_steps():
         if not step.get("uses", "").startswith("actions/upload-artifact"):
             continue
         condition = step["if"]
+        if step["name"] == "Upload Playwright blob report":
+            assert condition == "always()"
+            continue
         if "github.event_name != 'merge_group'" in condition:
             continue
         assert "failure()" in condition, step["name"]
@@ -194,7 +204,7 @@ def test_baseline_refresh_writes_the_data_branch_from_full_runs_on_main():
     assert "HEAD:main" not in script
     [push] = [step for step in refresh["steps"] if "DATA_BRANCH" in step.get("env", {})]
     assert push["env"]["DATA_BRANCH"] == "ci/playwright-timing"
-    assert "HEAD:refs/heads/$DATA_BRANCH" in push["run"]
+    assert 'HEAD:refs/heads/$DATA_BRANCH' in push["run"]
 
 
 def test_planning_reads_the_data_branch_baseline():
@@ -210,10 +220,8 @@ def test_planning_reads_the_data_branch_baseline():
 
 
 def test_queue_retry_report_lists_only_retry_passes(tmp_path):
-    coverage = next(
-        step for step in shard_steps() if step.get("id") == "verify-shard-coverage"
-    )
-    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE') :]
+    coverage = next(step for step in shard_steps() if step.get("id") == "verify-shard-coverage")
+    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE'):]
     output = tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/output"
     output.mkdir(parents=True)
 
@@ -305,20 +313,14 @@ def test_merge_queue_flakes_are_left_to_the_daily_report():
 def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
     # GitHub keeps only 10 warning annotations per step; one per test would
     # silently drop the rest before the queue's #pw-health alert reads them.
-    coverage = next(
-        step for step in shard_steps() if step.get("id") == "verify-shard-coverage"
-    )
-    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE') :]
+    coverage = next(step for step in shard_steps() if step.get("id") == "verify-shard-coverage")
+    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE'):]
     output = tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/output"
     output.mkdir(parents=True)
     titles = [f"flaky {index:02d}" for index in range(12)] + ["50% done"]
     specs = [
-        {
-            "title": title,
-            "file": "Pages/X.spec.ts",
-            "line": 1,
-            "tests": [{"status": "flaky", "results": [{}, {}]}],
-        }
+        {"title": title, "file": "Pages/X.spec.ts", "line": 1,
+         "tests": [{"status": "flaky", "results": [{}, {}]}]}
         for title in titles
     ]
     (output / "results.json").write_text(json.dumps({"suites": [{"specs": specs}]}))
@@ -326,21 +328,11 @@ def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
     summary.touch()
     result = subprocess.run(
         ["bash", "-e", "-c", report_part],
-        env={
-            **os.environ,
-            "GITHUB_WORKSPACE": str(tmp_path),
-            "GITHUB_STEP_SUMMARY": str(summary),
-            "SHARD_ID": "chromium-01",
-        },
-        capture_output=True,
-        text=True,
-        check=False,
+        env={**os.environ, "GITHUB_WORKSPACE": str(tmp_path),
+             "GITHUB_STEP_SUMMARY": str(summary), "SHARD_ID": "chromium-01"},
+        capture_output=True, text=True, check=False,
     )
     assert result.returncode == 0, result.stderr
-    [warning] = [
-        line for line in result.stdout.splitlines() if line.startswith("::warning")
-    ]
+    [warning] = [line for line in result.stdout.splitlines() if line.startswith("::warning")]
     message = warning.split("::", 2)[2].replace("%0A", "\n").replace("%25", "%")
-    assert sorted(line.split(" › ")[1] for line in message.splitlines()) == sorted(
-        titles
-    )
+    assert sorted(line.split(" › ")[1] for line in message.splitlines()) == sorted(titles)

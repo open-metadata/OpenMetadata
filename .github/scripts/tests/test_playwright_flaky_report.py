@@ -148,7 +148,7 @@ def test_slack_text_ranks_by_distinct_prs(tmp_path, monkeypatch):
         f"1. `{glossary}` — 2 PRs · 3 runs (2 passed, 1 failed), "
         "latest <https://github.com/o/r/actions/runs/4|2026-09-30 10:00>"
     ) in text
-    # Failed tests stay out of Slack: #ci-cleanup already gets each failed queue run.
+    # Failed tests stay out of Slack: #ci-cleanup gets them via the dequeue report.
     assert "Destination" not in text and "failed test" not in text
     assert "NEW" not in text and "New flaky" not in text
     assert slack["channel_id"] == "C1"
