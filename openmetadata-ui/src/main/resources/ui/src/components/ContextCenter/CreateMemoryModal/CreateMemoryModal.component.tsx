@@ -75,6 +75,7 @@ import {
 } from '../../../constants/ContextCenter.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { OntologyMemoryProposalStatus } from '../../../generated/api/data/ontologyMemoryProposalStatus';
 import {
   ContextMemory,
   MemoryStatus,
@@ -84,7 +85,10 @@ import {
 } from '../../../generated/entity/context/contextMemory';
 import { queryClient } from '../../../queryClient';
 import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
-import { proposeTermFromMemory } from '../../../rest/ontologyAPI';
+import {
+  getMemoryOntologyProposalStatus,
+  proposeTermFromMemory,
+} from '../../../rest/ontologyAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
@@ -721,11 +725,55 @@ const MemoryMetadataSection: FC<MemoryMetadataSectionProps> = ({
   </div>
 );
 
+const MemoryDerivedLinks: FC<{
+  derivedTerms: NonNullable<ContextMemory['derivedEntities']>;
+  proposals: OntologyMemoryProposalStatus['proposals'];
+  proposalQueued: boolean;
+  onNavigate: () => void;
+}> = ({ derivedTerms, proposals, proposalQueued, onNavigate }) => {
+  const { t } = useTranslation();
+
+  if (derivedTerms.length === 0 && proposals.length === 0 && !proposalQueued) {
+    return (
+      <Typography className="tw:text-tertiary" size="text-sm">
+        {t('message.no-derived-ontology')}
+      </Typography>
+    );
+  }
+
+  return (
+    <>
+      {derivedTerms.map((term) => (
+        <Link
+          className="tw:text-link tw:hover:underline"
+          key={term.id}
+          to={getGlossaryPath(term.fullyQualifiedName)}
+          onClick={onNavigate}>
+          {getEntityName(term)}
+        </Link>
+      ))}
+      {proposals.map((proposal) => (
+        <Link
+          className="tw:text-link tw:hover:underline"
+          key={proposal.id}
+          to={`${ROUTES.ONTOLOGY_EXPLORER}?draft=${encodeURIComponent(
+            proposal.id
+          )}`}
+          onClick={onNavigate}>
+          {t('label.draft')}:{' '}
+          {proposal.description || proposal.displayName || proposal.name}
+        </Link>
+      ))}
+    </>
+  );
+};
+
 const MemoryDerivedOntology: FC<{
   memory?: ContextMemory;
   canPropose: boolean;
   isProposing: boolean;
   proposalQueued: boolean;
+  proposals: OntologyMemoryProposalStatus['proposals'];
   onNavigate: () => void;
   onPropose: () => void;
 }> = ({
@@ -733,6 +781,7 @@ const MemoryDerivedOntology: FC<{
   canPropose,
   isProposing,
   proposalQueued,
+  proposals,
   onNavigate,
   onPropose,
 }) => {
@@ -758,21 +807,12 @@ const MemoryDerivedOntology: FC<{
       <Typography size="text-sm" weight="medium">
         {t('label.derived-ontology')}
       </Typography>
-      {derivedTerms.length > 0 ? (
-        derivedTerms.map((term) => (
-          <Link
-            className="tw:text-link tw:hover:underline"
-            key={term.id}
-            to={getGlossaryPath(term.fullyQualifiedName)}
-            onClick={onNavigate}>
-            {getEntityName(term)}
-          </Link>
-        ))
-      ) : (
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {t('message.no-derived-ontology')}
-        </Typography>
-      )}
+      <MemoryDerivedLinks
+        derivedTerms={derivedTerms}
+        proposalQueued={proposalQueued}
+        proposals={proposals}
+        onNavigate={onNavigate}
+      />
       {canPropose && (
         <>
           {isRestricted && (
@@ -799,16 +839,26 @@ const MemoryDerivedOntology: FC<{
   );
 };
 
+const isProposalUnavailable = (
+  proposalQueued: boolean,
+  proposalStatus?: OntologyMemoryProposalStatus
+): boolean =>
+  proposalQueued ||
+  !proposalStatus ||
+  proposalStatus.queued ||
+  proposalStatus.proposals.length > 0;
+
 const canProposeRestrictedMemory = (
   memory: ContextMemory | undefined,
   isOwner: boolean,
   isViewOnly: boolean,
-  proposalQueued: boolean
+  proposalQueued: boolean,
+  proposalStatus?: OntologyMemoryProposalStatus
 ): boolean => {
   if (!memory || !isOwner) {
     return false;
   }
-  if (!isViewOnly || proposalQueued) {
+  if (!isViewOnly || isProposalUnavailable(proposalQueued, proposalStatus)) {
     return false;
   }
   if (memory.status && memory.status !== MemoryStatus.Active) {
@@ -885,6 +935,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isProposing, setIsProposing] = useState(false);
   const [proposalQueued, setProposalQueued] = useState(false);
+  const [proposalStatus, setProposalStatus] =
+    useState<OntologyMemoryProposalStatus>();
   const [modalError, setModalError] = useState<string>('');
   const [linkedAssets, setLinkedAssets] = useState<DataAssetOption[]>([]);
   const [selectedTags, setSelectedTags] = useState<TagLabel[]>([]);
@@ -913,6 +965,63 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   useEffect(() => {
     setProposalQueued(false);
   }, [memoryToEdit?.id]);
+
+  useEffect(() => {
+    if (!isOpen || !memoryToEdit?.id) {
+      setProposalStatus(undefined);
+
+      return;
+    }
+    let isCurrent = true;
+    setProposalStatus(undefined);
+    getMemoryOntologyProposalStatus(memoryToEdit.id)
+      .then((status) => {
+        if (isCurrent) {
+          setProposalStatus(status);
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setModalError(t('server.unexpected-error'));
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isOpen, memoryToEdit?.id, t]);
+
+  useEffect(() => {
+    if (
+      !isOpen ||
+      !memoryToEdit?.id ||
+      !(proposalQueued || proposalStatus?.queued)
+    ) {
+      return;
+    }
+    let isCurrent = true;
+    const interval = window.setInterval(() => {
+      getMemoryOntologyProposalStatus(memoryToEdit.id)
+        .then((status) => {
+          if (isCurrent) {
+            setProposalStatus(status);
+            if (!status.queued) {
+              setProposalQueued(false);
+            }
+          }
+        })
+        .catch(() => {
+          if (isCurrent) {
+            setModalError(t('server.unexpected-error'));
+          }
+        });
+    }, 5_000);
+
+    return () => {
+      isCurrent = false;
+      window.clearInterval(interval);
+    };
+  }, [isOpen, memoryToEdit?.id, proposalQueued, proposalStatus?.queued, t]);
 
   // Populate / reset form whenever the memory being edited changes
   useEffect(() => {
@@ -1037,6 +1146,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     try {
       await proposeTermFromMemory(memoryToEdit.id);
       setProposalQueued(true);
+      setProposalStatus({ proposals: [], queued: true });
       showSuccessToast(t('label.queued'));
     } catch (err) {
       setModalError(
@@ -1267,11 +1377,15 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         memoryToEdit,
                         isOwner,
                         isViewOnly,
-                        proposalQueued
+                        proposalQueued,
+                        proposalStatus
                       )}
                       isProposing={isProposing}
                       memory={memoryToEdit}
-                      proposalQueued={proposalQueued}
+                      proposalQueued={
+                        proposalQueued || Boolean(proposalStatus?.queued)
+                      }
+                      proposals={proposalStatus?.proposals ?? []}
                       onNavigate={handleClose}
                       onPropose={handleProposeTerm}
                     />

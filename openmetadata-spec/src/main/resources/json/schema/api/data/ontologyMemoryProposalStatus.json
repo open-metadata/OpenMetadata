@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyMemoryProposalStatus.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyMemoryProposalStatus",
+  "description": "Active ontology drafts and queued derivation work for a context memory.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyMemoryProposalStatus",
+  "properties": {
+    "proposals": {
+      "description": "Open Studio drafts derived from this memory.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "queued": {
+      "description": "Whether a derivation job for this memory is pending or running.",
+      "type": "boolean"
+    }
+  },
+  "required": ["proposals", "queued"],
+  "additionalProperties": false
+}

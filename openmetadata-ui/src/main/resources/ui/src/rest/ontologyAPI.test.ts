@@ -17,6 +17,7 @@ import APIClient from './axiosClient';
 import {
   generateOntologyDomainDraft,
   generateOntologySparql,
+  getMemoryOntologyProposalStatus,
   getOntologyBulkTemplate,
   getRdfEntityDiff,
   installOntologyPack,
@@ -59,6 +60,16 @@ describe('ontologyAPI', () => {
       params: { limit: 25 },
     });
     expect(result).toEqual(response.data);
+  });
+
+  it('reads the proposal status for a memory', async () => {
+    const status = { proposals: [], queued: true };
+    mockedApiClient.get.mockResolvedValue({ data: status });
+
+    expect(await getMemoryOntologyProposalStatus('memory-id')).toEqual(status);
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/ontology/ai/memories/memory-id/proposals'
+    );
   });
 
   it('queues an ontology proposal from a memory', async () => {

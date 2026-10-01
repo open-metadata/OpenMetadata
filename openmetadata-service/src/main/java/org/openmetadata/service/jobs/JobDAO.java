@@ -22,6 +22,7 @@ import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
 import org.openmetadata.service.util.jdbi.BindJson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,6 +125,44 @@ public interface JobDAO {
       connectionType = POSTGRES)
   int countInFlightMemoryJobs(
       @Bind("jobKey") String jobKey, @Bind("includeRunning") boolean includeRunning);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT COUNT(*) FROM background_jobs "
+              + "WHERE jobType = 'ONTOLOGY_MEMORY_DERIVATION' "
+              + "AND status IN ('PENDING', 'RUNNING') "
+              + "AND JSON_SEARCH(jobArgs, 'one', :memoryId, NULL, '$.memoryIds[*]') IS NOT NULL",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT COUNT(*) FROM background_jobs "
+              + "WHERE jobType = 'ONTOLOGY_MEMORY_DERIVATION' "
+              + "AND status IN ('PENDING', 'RUNNING') "
+              + "AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(jobArgs->'memoryIds') "
+              + "AS source(memoryId) WHERE source.memoryId = :memoryId)",
+      connectionType = POSTGRES)
+  int countInFlightOntologyMemoryJobs(@Bind("memoryId") String memoryId);
+
+  @Transaction
+  default Optional<Long> enqueueOntologyMemoryDerivationJob(
+      List<String> memoryIds, String jobArgs, String createdBy) {
+    for (String memoryId : memoryIds.stream().distinct().sorted().toList()) {
+      if (lockMemoryForOntologyQueue(memoryId) == null
+          || countInFlightOntologyMemoryJobs(memoryId) > 0) {
+        return Optional.empty();
+      }
+    }
+    return Optional.of(
+        insertJobInternal(
+            BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION.name(),
+            OntologyMemoryDerivationJobHandler.HANDLER_NAME,
+            jobArgs,
+            createdBy,
+            null));
+  }
+
+  @SqlQuery("SELECT id FROM context_memory WHERE id = :memoryId FOR UPDATE")
+  String lockMemoryForOntologyQueue(@Bind("memoryId") String memoryId);
 
   @ConnectionAwareSqlUpdate(
       value =

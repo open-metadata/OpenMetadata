@@ -56,7 +56,6 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -628,13 +627,11 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     }
     try {
       Entity.getJobDAO()
-          .insertJobInternal(
-              BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION.name(),
-              OntologyMemoryDerivationJobHandler.HANDLER_NAME,
+          .enqueueOntologyMemoryDerivationJob(
+              List.of(memory.getId().toString()),
               JsonUtils.pojoToJson(
                   new OntologyMemoryDerivationJobHandler.Args(null, List.of(memory.getId()))),
-              securityContext.getUserPrincipal().getName(),
-              null);
+              securityContext.getUserPrincipal().getName());
     } catch (RuntimeException exception) {
       LOG.error("Could not queue ontology derivation for memory {}", memory.getId(), exception);
     }

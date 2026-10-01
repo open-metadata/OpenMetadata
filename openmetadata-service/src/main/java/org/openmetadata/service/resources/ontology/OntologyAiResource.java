@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
@@ -33,11 +34,13 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.OntologyDomainDraftRequest;
 import org.openmetadata.schema.api.data.OntologyDomainDraftResult;
 import org.openmetadata.schema.api.data.OntologyMappingSuggestionList;
 import org.openmetadata.schema.api.data.OntologyMappingSuggestionRequest;
 import org.openmetadata.schema.api.data.OntologyMemoryDerivationRequest;
+import org.openmetadata.schema.api.data.OntologyMemoryProposalStatus;
 import org.openmetadata.schema.api.data.OntologyNaturalLanguageQueryRequest;
 import org.openmetadata.schema.api.data.OntologyNaturalLanguageQueryResult;
 import org.openmetadata.schema.api.data.OntologyRelationshipSuggestionList;
@@ -46,7 +49,10 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -201,6 +207,10 @@ public final class OntologyAiResource {
     final String user = securityContext.getUserPrincipal().getName();
     final List<ContextMemory> memories = derivation.loadMemories(memoryIds, user);
     memories.forEach(memory -> authorizeMemory(securityContext, memory));
+    if (memoryIds.stream().anyMatch(id -> hasOpenOrQueuedProposal(derivation, id))) {
+      throw new ClientErrorException(
+          "A memory already has an ontology proposal awaiting review", Response.Status.CONFLICT);
+    }
     if (request.getGlossary() != null) {
       derivation.loadGlossary(request.getGlossary());
       authorizeGlossary(
@@ -215,14 +225,81 @@ public final class OntologyAiResource {
     }
     final long jobId =
         Entity.getJobDAO()
-            .insertJobInternal(
-                BackgroundJob.JobType.ONTOLOGY_MEMORY_DERIVATION.name(),
-                OntologyMemoryDerivationJobHandler.HANDLER_NAME,
+            .enqueueOntologyMemoryDerivationJob(
+                memoryIds.stream().map(UUID::toString).toList(),
                 JsonUtils.pojoToJson(
                     new OntologyMemoryDerivationJobHandler.Args(request.getGlossary(), memoryIds)),
-                user,
-                null);
+                user)
+            .orElseThrow(
+                () ->
+                    new ClientErrorException(
+                        "A memory already has an ontology proposal awaiting review",
+                        Response.Status.CONFLICT));
     return Response.accepted(Entity.getJobDAO().fetchJobById(jobId).orElseThrow()).build();
+  }
+
+  @GET
+  @Path("/memories/{memoryId}/proposals")
+  @Operation(
+      operationId = "listMemoryOntologyProposals",
+      summary = "List active ontology drafts proposed from a memory")
+  public OntologyMemoryProposalStatus listMemoryProposals(
+      @Context final SecurityContext securityContext, @PathParam("memoryId") final UUID memoryId) {
+    final ContextMemoryRepository repository = Objects.requireNonNull(memoryRepository);
+    final ContextMemory memory =
+        repository.get(
+            null,
+            memoryId,
+            repository.getFields("owners,primaryEntity"),
+            Include.NON_DELETED,
+            false);
+    authorizeMemory(securityContext, memory);
+    final List<EntityReference> proposals =
+        memoryDerivationService().findOpenProposals(memoryId).stream()
+            .map(proposal -> proposalReference(proposal, memoryId))
+            .toList();
+    final boolean queued =
+        Entity.getJobDAO().countInFlightOntologyMemoryJobs(memoryId.toString()) > 0;
+    return new OntologyMemoryProposalStatus().withProposals(proposals).withQueued(queued);
+  }
+
+  private static boolean hasOpenOrQueuedProposal(
+      final OntologyMemoryDerivationService derivation, final UUID memoryId) {
+    return !derivation.findOpenProposals(memoryId).isEmpty()
+        || Entity.getJobDAO().countInFlightOntologyMemoryJobs(memoryId.toString()) > 0;
+  }
+
+  private static EntityReference proposalReference(
+      final OntologyChangeSet proposal, final UUID memoryId) {
+    final String terms =
+        proposal.getOperations().stream()
+            .filter(
+                operation ->
+                    operation.getSourceMemoryIds() != null
+                        && operation.getSourceMemoryIds().contains(memoryId))
+            .map(OntologyAiResource::operationLabel)
+            .filter(label -> !label.isBlank())
+            .distinct()
+            .collect(Collectors.joining(", "));
+    return new EntityReference()
+        .withId(proposal.getId())
+        .withType(Entity.ONTOLOGY_CHANGE_SET)
+        .withName(proposal.getName())
+        .withFullyQualifiedName(proposal.getFullyQualifiedName())
+        .withDisplayName(proposal.getDisplayName())
+        .withDescription(terms);
+  }
+
+  private static String operationLabel(final OntologyChangeOperation operation) {
+    if (operation.getTerm() != null) {
+      return Objects.requireNonNullElse(
+          operation.getTerm().getDisplayName(), operation.getTerm().getName());
+    }
+    if (operation.getGlossary() != null) {
+      return Objects.requireNonNullElse(
+          operation.getGlossary().getDisplayName(), operation.getGlossary().getName());
+    }
+    return "";
   }
 
   @GET

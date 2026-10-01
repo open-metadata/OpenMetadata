@@ -31,6 +31,7 @@ import { useOntologyEditLease } from './hooks/useOntologyEditLease';
 interface OntologyMemoryReviewPanelProps {
   canApply: boolean;
   canSubmit: boolean;
+  initialDraftId?: string;
   onApplied: () => void;
 }
 
@@ -225,11 +226,14 @@ function DraftDetail({
 const OntologyMemoryReviewPanel = ({
   canApply,
   canSubmit,
+  initialDraftId,
   onApplied,
 }: OntologyMemoryReviewPanelProps) => {
   const { t } = useTranslation();
   const [changeSets, setChangeSets] = useState<OntologyChangeSet[]>([]);
-  const [selectedId, setSelectedId] = useState<string>();
+  const [selectedId, setSelectedId] = useState<string | undefined>(
+    initialDraftId
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const selected =

@@ -22,7 +22,10 @@ import {
 } from 'react-hook-form';
 import { MemoryRouter } from 'react-router-dom';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
-import { proposeTermFromMemory } from '../../../rest/ontologyAPI';
+import {
+  getMemoryOntologyProposalStatus,
+  proposeTermFromMemory,
+} from '../../../rest/ontologyAPI';
 import CreateMemoryModal from './CreateMemoryModal.component';
 
 jest.mock('react-markdown', () => ({
@@ -45,6 +48,7 @@ jest.mock('../../../rest/contextMemoryAPI', () => ({
 }));
 
 jest.mock('../../../rest/ontologyAPI', () => ({
+  getMemoryOntologyProposalStatus: jest.fn(),
   proposeTermFromMemory: jest.fn(),
 }));
 
@@ -309,6 +313,13 @@ describe('CreateMemoryModal', () => {
     onCreated: jest.fn(),
   };
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getMemoryOntologyProposalStatus as jest.Mock).mockImplementation(
+      () => new Promise(() => {})
+    );
+  });
+
   it('renders the content input', () => {
     render(<CreateMemoryModal {...defaultProps} />);
 
@@ -373,11 +384,15 @@ describe('CreateMemoryModal', () => {
     const memory = {
       id: 'memory-id',
       name: 'inactive-customer',
-      owners: [{ type: 'user', name: 'admin' }],
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
       shareConfig: { visibility: 'Shared' },
       derivedEntities: [],
     } as ContextMemory;
     (proposeTermFromMemory as jest.Mock).mockResolvedValue({ id: 42 });
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      proposals: [],
+      queued: false,
+    });
 
     render(
       <MemoryRouter>
@@ -390,13 +405,97 @@ describe('CreateMemoryModal', () => {
       </MemoryRouter>
     );
 
+    const proposeButton = await screen.findByRole('button', {
+      name: 'label.propose-term',
+    });
+
     expect(
       screen.getByText('message.memory-proposal-reviewer-visibility')
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.propose-term' }));
+    fireEvent.click(proposeButton);
     await waitFor(() =>
       expect(proposeTermFromMemory).toHaveBeenCalledWith('memory-id')
     );
+  });
+
+  it('links an open Studio draft and hides the proposal action', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'inactive-customer',
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Shared' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      proposals: [
+        {
+          id: 'draft-id',
+          name: 'memory-glossary-16',
+          description: 'Inactive Customer',
+        },
+      ],
+      queued: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    const draftLink = await screen.findByRole('link', {
+      name: 'label.draft: Inactive Customer',
+    });
+
+    expect(draftLink).toHaveAttribute(
+      'href',
+      '/governance/ontology?draft=draft-id'
+    );
+    expect(
+      screen.queryByRole('button', { name: 'label.propose-term' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-derived-ontology')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(draftLink);
+
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps proposal action unavailable while derivation is queued', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'inactive-customer',
+      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
+      shareConfig: { visibility: 'Shared' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      proposals: [],
+      queued: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          currentUserName="admin"
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('label.queued')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.propose-term' })
+    ).not.toBeInTheDocument();
   });
 });

@@ -68,6 +68,12 @@ public final class OntologyMemoryDerivationService {
       return Optional.of(previous.get().getId());
     }
     final List<ContextMemory> memories = loadMemories(memoryIds, user);
+    if (memoryIds.size() == 1) {
+      final List<OntologyChangeSet> openProposals = findOpenProposals(memoryIds.getFirst());
+      if (!openProposals.isEmpty()) {
+        return Optional.of(openProposals.getFirst().getId());
+      }
+    }
     final List<OntologyAiCompletionGateway.MemoryContext> contexts =
         memories.stream().map(this::context).toList();
     final List<OntologyAiCompletionGateway.TermContext> existingTerms =
@@ -98,6 +104,10 @@ public final class OntologyMemoryDerivationService {
                         null, fqn, termRepository.getFields(""), Include.NON_DELETED, false)
                     .isPresent());
     return draft.map(request -> persist(request, user));
+  }
+
+  public List<OntologyChangeSet> findOpenProposals(final UUID memoryId) {
+    return changeSetRepository.findOpenBySourceMemoryId(memoryId);
   }
 
   public Glossary loadGlossary(final String glossaryFqn) {

@@ -390,6 +390,9 @@ function resolveQuerySurfaceChange(id: string): QuerySurface | undefined {
     : undefined;
 }
 
+const initialStudioMode = (): StudioMode =>
+  new URLSearchParams(window.location.search).has('draft') ? 'review' : 'view';
+
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -401,7 +404,10 @@ const OntologyExplorerPage: React.FC = () => {
     isRdfEnabled,
     isLoading: isCapabilityLoading,
   } = useOntologyAiCapability();
-  const [mode, setMode] = useState<StudioMode>('view');
+  const initialDraftId = new URLSearchParams(window.location.search).get(
+    'draft'
+  );
+  const [mode, setMode] = useState<StudioMode>(initialStudioMode);
   const [viewSurface, setViewSurface] = useState<ViewSurface>('graph');
   const [editSurface, setEditSurface] = useState<EditSurface>('graph');
   const [querySurface, setQuerySurface] = useState<QuerySurface>('console');
@@ -798,6 +804,7 @@ const OntologyExplorerPage: React.FC = () => {
         <OntologyMemoryReviewPanel
           canApply={changeSetPermissions.canApply}
           canSubmit={changeSetPermissions.canSubmit}
+          initialDraftId={initialDraftId ?? undefined}
           onApplied={() => setExplorerRevision((revision) => revision + 1)}
         />
       );

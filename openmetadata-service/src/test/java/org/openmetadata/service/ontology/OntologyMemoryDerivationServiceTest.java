@@ -66,6 +66,19 @@ class OntologyMemoryDerivationServiceTest {
   }
 
   @Test
+  void anotherJobReusesAnOpenProposalForTheSameMemory() {
+    final UUID memoryId = UUID.randomUUID();
+    final UUID changeSetId = UUID.randomUUID();
+    when(memories.get(isNull(), eq(memoryId), isNull(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(memory(memoryId, ContextMemoryStatus.ACTIVE, MemoryVisibility.PUBLIC));
+    when(changeSets.findOpenBySourceMemoryId(memoryId))
+        .thenReturn(List.of(new OntologyChangeSet().withId(changeSetId)));
+
+    assertEquals(Optional.of(changeSetId), service.derive(43, null, List.of(memoryId), "alice"));
+    verifyNoInteractions(gateway);
+  }
+
+  @Test
   void acceptsOnlyActivePublishedMemories() {
     final UUID id = UUID.randomUUID();
     final ContextMemory memory = memory(id, ContextMemoryStatus.ACTIVE, MemoryVisibility.ENTITY);

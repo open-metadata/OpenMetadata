@@ -53,6 +53,15 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
         UPDATE_FIELDS);
   }
 
+  public List<OntologyChangeSet> findOpenBySourceMemoryId(final UUID memoryId) {
+    return daoCollection
+        .ontologyChangeSetDAO()
+        .findOpenBySourceMemoryId(memoryId.toString())
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyChangeSet.class))
+        .toList();
+  }
+
   @Override
   public void setFields(
       final OntologyChangeSet entity,

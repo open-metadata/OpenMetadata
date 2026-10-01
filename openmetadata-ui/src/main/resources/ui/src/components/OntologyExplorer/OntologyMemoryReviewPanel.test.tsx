@@ -104,6 +104,33 @@ describe('OntologyMemoryReviewPanel', () => {
     });
   });
 
+  it('selects the linked draft even when another proposal is newer', async () => {
+    const newer = {
+      ...draft,
+      id: 'draft-17',
+      name: 'memory-glossary-17',
+      displayName: 'memory-glossary-17',
+      updatedAt: 20,
+    };
+    mockList.mockImplementation(async ({ state } = {}) => ({
+      data: state === OntologyChangeSetState.Draft ? [newer, draft] : [],
+      paging: { total: 2 },
+    }));
+
+    render(
+      <OntologyMemoryReviewPanel
+        canApply
+        canSubmit
+        initialDraftId="draft-16"
+        onApplied={jest.fn()}
+      />
+    );
+
+    expect(
+      await screen.findByTestId('ontology-memory-draft-draft-16')
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('submits the draft and applies it only after review', async () => {
     const onApplied = jest.fn();
     mockSubmit.mockResolvedValue({

@@ -51,6 +51,7 @@ import { OntologyIRIPreviewRequest } from '../generated/api/data/ontologyIriPrev
 import { OntologyMappingSuggestionList } from '../generated/api/data/ontologyMappingSuggestionList';
 import { OntologyMappingSuggestionRequest } from '../generated/api/data/ontologyMappingSuggestionRequest';
 import { OntologyMemoryDerivationRequest } from '../generated/api/data/ontologyMemoryDerivationRequest';
+import { OntologyMemoryProposalStatus } from '../generated/api/data/ontologyMemoryProposalStatus';
 import { OntologyNaturalLanguageQueryRequest } from '../generated/api/data/ontologyNaturalLanguageQueryRequest';
 import { OntologyNaturalLanguageQueryResult } from '../generated/api/data/ontologyNaturalLanguageQueryResult';
 import { OntologyPackInstallResult } from '../generated/api/data/ontologyPackInstallResult';
@@ -103,6 +104,14 @@ export const proposeTermFromMemory = async (memoryId: string) => {
     OntologyMemoryDerivationRequest,
     AxiosResponse<BackgroundJob>
   >(`${ONTOLOGY_AI_PATH}/memories/jobs`, { memoryIds: [memoryId] });
+
+  return response.data;
+};
+
+export const getMemoryOntologyProposalStatus = async (memoryId: string) => {
+  const response = await APIClient.get<OntologyMemoryProposalStatus>(
+    `${ONTOLOGY_AI_PATH}/memories/${memoryId}/proposals`
+  );
 
   return response.data;
 };

@@ -499,6 +499,20 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('ontology-explorer')).not.toBeVisible();
   });
 
+  it('opens a linked draft directly in Studio review', () => {
+    window.history.pushState({}, '', '/governance/ontology?draft=draft-16');
+
+    render(<OntologyExplorerPage />);
+
+    expect(screen.getByTestId('mode-tab-review')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
+
+    window.history.pushState({}, '', '/');
+  });
+
   it('does not expose an AI affordance when the effective flag is disabled', () => {
     render(<OntologyExplorerPage />);
 
