@@ -1574,8 +1574,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           }
 
           // Verify Overview tab is active by default
-          await expect(page.getByTestId('overview-tab')).toHaveClass(
-            /selected/
+          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+            'aria-selected',
+            'true'
           );
 
           // Update description via panel

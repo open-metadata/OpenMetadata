@@ -3441,7 +3441,10 @@ test.describe('Domain asset dryRun — add confirmation', () => {
       .getByTestId('searchbar')
       .fill(name);
     await searchRes;
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   };
 
   test('shows preview modal on cross-domain move and commits on Move Anyway', async ({

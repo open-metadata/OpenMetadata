@@ -744,7 +744,7 @@ export class RightPanelPageObject {
    */
   public async verifyTabExists(tabName: string): Promise<boolean> {
     try {
-      const tab = this.getSummaryPanel().getByRole('menuitem', {
+      const tab = this.getSummaryPanel().getByRole('tab', {
         name: new RegExp(tabName, 'i'),
       });
       await expect(tab).toBeVisible();

@@ -158,7 +158,8 @@ export const addAssetsToTag = async (
     await searchRes;
 
     await assetSelectionModal
-      .locator(`[data-testid="table-data-card_${fqn}"] input`)
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
       .check();
 
     await expect(
@@ -202,7 +203,10 @@ export const removeAssetsFromTag = async (
   await page.getByTestId('assets').click();
   for (const asset of assets) {
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);
@@ -639,7 +643,10 @@ export const verifyEntityTypeFilterInTagAssets = async (
   // Check that items are visible after applying filter
   for (const asset of assets) {
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');

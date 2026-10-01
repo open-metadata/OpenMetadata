@@ -223,6 +223,7 @@ const CheckboxCell = ({
       <Checkbox
         aria-label="select-asset"
         className="assets-checkbox"
+        data-testid="asset-checkbox"
         isSelected={checked}
         size="md"
         onChange={(isSelected) => onCheckboxChange?.(isSelected)}

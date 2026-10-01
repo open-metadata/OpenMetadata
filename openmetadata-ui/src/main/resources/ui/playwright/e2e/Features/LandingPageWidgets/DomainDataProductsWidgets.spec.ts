@@ -217,7 +217,8 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
     const topicFqn = topic.entityResponseData.fullyQualifiedName;
     await page
-      .locator(`[data-testid="table-data-card_${topicFqn}"] input`)
+      .locator(`[data-testid="table-data-card_${topicFqn}"]`)
+      .getByTestId('asset-checkbox')
       .check();
 
     const dryRunRes = page.waitForResponse(
