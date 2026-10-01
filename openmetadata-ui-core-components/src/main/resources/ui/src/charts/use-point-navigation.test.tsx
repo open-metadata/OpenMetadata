@@ -33,7 +33,18 @@ const key = (name: string) =>
     key: name,
     preventDefault: vi.fn(),
   } as unknown as KeyboardEvent<HTMLDivElement>);
-const focusEvent = {} as FocusEvent<HTMLDivElement>;
+const focusEvent = (focusVisible: boolean) =>
+  ({
+    currentTarget: { matches: () => focusVisible },
+  } as unknown as FocusEvent<HTMLDivElement>);
+const keyboardFocus = focusEvent(true);
+const mouseFocus = focusEvent(false);
+const modified = (name: string, mods: Record<string, boolean>) =>
+  ({
+    key: name,
+    ...mods,
+    preventDefault: vi.fn(),
+  } as unknown as KeyboardEvent<HTMLDivElement>);
 
 const setup = (enabled = true) => {
   const chart = {
@@ -91,7 +102,7 @@ describe('navigablePoints', () => {
 describe('usePointNavigation', () => {
   it('reports and highlights the last point on focus', () => {
     const { chart, onPointHover, props } = setup();
-    act(() => props().onFocus?.(focusEvent));
+    act(() => props().onFocus?.(keyboardFocus));
 
     expect(onPointHover).toHaveBeenCalledWith(rows[2], 'v', { x: 30, y: 7 });
     expect(chart.dispatchAction).toHaveBeenCalledWith({
@@ -103,7 +114,7 @@ describe('usePointNavigation', () => {
 
   it('moves with the arrow keys, Home and End, stopping at the ends', () => {
     const { onPointHover, props } = setup();
-    act(() => props().onFocus?.(focusEvent));
+    act(() => props().onFocus?.(keyboardFocus));
     act(() => props().onKeyDown?.(key('ArrowLeft')));
     expect(onPointHover).toHaveBeenLastCalledWith(rows[0], 'v', {
       x: 10,
@@ -129,7 +140,7 @@ describe('usePointNavigation', () => {
 
   it('downplays the previous point before highlighting the next', () => {
     const { chart, props } = setup();
-    act(() => props().onFocus?.(focusEvent));
+    act(() => props().onFocus?.(keyboardFocus));
     chart.dispatchAction.mockClear();
     act(() => props().onKeyDown?.(key('ArrowLeft')));
 
@@ -141,7 +152,7 @@ describe('usePointNavigation', () => {
 
   it('selects the point with Enter and Space', () => {
     const { onPointClick, props } = setup();
-    act(() => props().onFocus?.(focusEvent));
+    act(() => props().onFocus?.(keyboardFocus));
     act(() => props().onKeyDown?.(key('ArrowLeft')));
     act(() => props().onKeyDown?.(key('Enter')));
     const space = key(' ');
@@ -154,14 +165,14 @@ describe('usePointNavigation', () => {
 
   it('leaves on Escape and on blur', () => {
     const { chart, onPointLeave, props } = setup();
-    act(() => props().onFocus?.(focusEvent));
+    act(() => props().onFocus?.(keyboardFocus));
     act(() => props().onKeyDown?.(key('Escape')));
     expect(onPointLeave).toHaveBeenCalledTimes(1);
     expect(chart.dispatchAction).toHaveBeenCalledWith({
       type: 'downplay',
       seriesId: 'v',
     });
-    act(() => props().onFocus?.(focusEvent));
+    act(() => props().onFocus?.(keyboardFocus));
     chart.dispatchAction.mockClear();
     act(() => props().onBlur?.(focusEvent));
 
@@ -172,9 +183,74 @@ describe('usePointNavigation', () => {
     });
   });
 
+  it('does not start on mouse focus, but on the first arrow key', () => {
+    const { chart, onPointHover, hook, props } = setup();
+    act(() => props().onFocus?.(mouseFocus));
+
+    expect(onPointHover).not.toHaveBeenCalled();
+    expect(chart.dispatchAction).not.toHaveBeenCalled();
+    expect(hook.result.current.announcement).toBe('');
+    act(() => props().onKeyDown?.(key('ArrowLeft')));
+
+    expect(onPointHover).toHaveBeenCalledWith(rows[2], 'v', { x: 30, y: 7 });
+  });
+
+  it('does not start when :focus-visible is unsupported', () => {
+    const { onPointHover, props } = setup();
+    const throwing = {
+      currentTarget: {
+        matches: () => {
+          throw new SyntaxError('unsupported selector');
+        },
+      },
+    } as unknown as FocusEvent<HTMLDivElement>;
+    act(() => props().onFocus?.(throwing));
+
+    expect(onPointHover).not.toHaveBeenCalled();
+  });
+
+  it('leaves modified keys to the browser', () => {
+    const { chart, onPointHover, props } = setup();
+    act(() => props().onFocus?.(keyboardFocus));
+    onPointHover.mockClear();
+    chart.dispatchAction.mockClear();
+    const events = [
+      modified('ArrowLeft', { altKey: true }),
+      modified('Home', { metaKey: true }),
+      modified('End', { ctrlKey: true }),
+    ];
+    events.forEach((event) => act(() => props().onKeyDown?.(event)));
+
+    expect(onPointHover).not.toHaveBeenCalled();
+    expect(chart.dispatchAction).not.toHaveBeenCalled();
+    events.forEach((event) =>
+      expect(event.preventDefault).not.toHaveBeenCalled()
+    );
+  });
+
+  it('ignores Escape and blur while no point is active', () => {
+    const { chart, onPointLeave, props } = setup();
+    const escape = key('Escape');
+    act(() => props().onKeyDown?.(escape));
+    act(() => props().onBlur?.(mouseFocus));
+
+    expect(escape.preventDefault).not.toHaveBeenCalled();
+    expect(onPointLeave).not.toHaveBeenCalled();
+    expect(chart.dispatchAction).not.toHaveBeenCalled();
+  });
+
+  it('is inactive again after Escape', () => {
+    const { onPointLeave, props } = setup();
+    act(() => props().onFocus?.(keyboardFocus));
+    act(() => props().onKeyDown?.(key('Escape')));
+    act(() => props().onBlur?.(mouseFocus));
+
+    expect(onPointLeave).toHaveBeenCalledTimes(1);
+  });
+
   it('announces the active point', () => {
     const { hook, props } = setup();
-    act(() => props().onFocus?.(focusEvent));
+    act(() => props().onFocus?.(keyboardFocus));
 
     expect(hook.result.current.announcement).toBe('v=7');
   });

@@ -70,6 +70,16 @@ interface PointNavigation {
 
 const NO_POINT = -1;
 
+// A mouse click also focuses the chart; only keyboard focus starts navigation.
+// Browsers without :focus-visible throw, and the first arrow key still starts it.
+const isKeyboardFocus = (element: Element) => {
+  try {
+    return element.matches(':focus-visible');
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Keyboard navigation over a chart's points: one Tab stop, then arrow keys.
  * Focus starts on the last point (the newest run on a time axis).
@@ -154,11 +164,23 @@ export const usePointNavigation = <T extends object>({
     }
   }, [points, data, onPointClick]);
 
+  const leaveIfActive = useCallback(() => {
+    const wasActive = activeRef.current !== NO_POINT;
+    if (wasActive) {
+      leave();
+    }
+
+    return wasActive;
+  }, [leave]);
+
   const onKeyDown = useCallback<KeyboardEventHandler>(
     (event) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
       const last = points.length - 1;
       const active = activeRef.current;
-      const targets: Record<string, () => void> = {
+      const targets: Partial<Record<string, () => unknown>> = {
         ArrowLeft: () =>
           moveTo(active === NO_POINT ? last : Math.max(active - 1, 0)),
         ArrowRight: () =>
@@ -167,25 +189,31 @@ export const usePointNavigation = <T extends object>({
         End: () => moveTo(last),
         Enter: select,
         ' ': select,
-        Escape: leave,
+        Escape: leaveIfActive,
       };
       const handler = targets[event.key];
-      if (handler) {
+      const isActionable =
+        handler && (event.key !== 'Escape' || active !== NO_POINT);
+      if (isActionable) {
         event.preventDefault();
         handler();
       }
     },
-    [points, moveTo, select, leave]
+    [points, moveTo, select, leaveIfActive]
   );
 
   const onFocus = useCallback<FocusEventHandler>(
-    () => moveTo(points.length - 1),
+    (event) => {
+      if (isKeyboardFocus(event.currentTarget)) {
+        moveTo(points.length - 1);
+      }
+    },
     [points, moveTo]
   );
 
   return {
     containerProps: enabled
-      ? { tabIndex: 0, onKeyDown, onFocus, onBlur: leave }
+      ? { tabIndex: 0, onKeyDown, onFocus, onBlur: leaveIfActive }
       : {},
     announcement,
   };
