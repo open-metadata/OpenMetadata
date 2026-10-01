@@ -12,6 +12,7 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { DataType } from '../../../src/generated/entity/data/table';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { createAdminApiContext } from '../../utils/admin';
@@ -25,7 +26,13 @@ for (const { index, tab, path } of [
   { index: 'tableColumn', tab: 'columns', path: 'columns' },
 ]) {
   test.describe(`Explore ${index} counts`, () => {
-    const fixture = new TableClass('records');
+    // Own service: the describes create fixed-name schemas/tables beside the
+    // fixture and filter Explore by its service name, so they cannot share
+    // the shard's parent chain.
+    const fixture = new TableClass({
+      name: 'records',
+      service: new DatabaseServiceClass(),
+    });
     let apiContext: APIRequestContext;
     let cleanup: () => Promise<void>;
     const filter = {
