@@ -778,21 +778,21 @@ describe('CardinalityDistributionChart', () => {
       );
     });
 
-    it('keeps rich-text markup intact for names with braces or pipes', () => {
+    it('keeps names with braces or pipes readable while a category is selected', () => {
       renderCurrentDay();
       act(() => lastBarProps().onCategoryClick?.('high', {} as never));
 
       expect(
         (lastBarProps().xAxis as unknown as LabelAxis).formatter('a{b}|c')
-      ).toBe('{dimmed|abc}');
+      ).toBe('{dimmed|a\uFF5Bb\uFF5D\uFF5Cc}');
     });
 
-    it('labels plainly when nothing is selected', () => {
+    it('draws labels as plain text, without rich styles, when nothing is selected', () => {
       renderCurrentDay();
+      const axis = lastBarProps().xAxis as unknown as LabelAxis;
 
-      expect(
-        (lastBarProps().xAxis as unknown as LabelAxis).formatter('a{b}')
-      ).toBe('a{b}');
+      expect(axis.formatter('{a|b}')).toBe('{a|b}');
+      expect(axis.axisLabel.rich).toBeUndefined();
     });
   });
 });

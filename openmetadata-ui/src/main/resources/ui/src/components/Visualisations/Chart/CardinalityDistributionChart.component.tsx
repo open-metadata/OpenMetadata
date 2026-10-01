@@ -50,8 +50,19 @@ const PERCENT_AXIS: ChartYAxisProps = {
   formatter: (value) => String(axisTickFormatter(Number(value), '%')),
 };
 
-// ECharts rich text is `{style|text}`; these characters would break it.
-const richSafe = (value: string) => value.replace(/[{}|]/g, '');
+// ECharts rich text is `{style|text}`; these characters would break it, so
+// they are drawn as their full-width lookalikes.
+const RICH_LOOKALIKES: Record<string, string> = {
+  '{': '\uFF5B',
+  '}': '\uFF5D',
+  '|': '\uFF5C',
+};
+const richSafe = (value: string) =>
+  value.replace(/[{}|]/g, (char) => RICH_LOOKALIKES[char]);
+const RICH_STYLES = (selectedColor: string) => ({
+  selected: { color: selectedColor, fontWeight: 600 },
+  dimmed: { opacity: 0.5 },
+});
 
 const renderPlaceholder = (placeholderText?: string | React.ReactNode) => (
   <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full tw:min-h-87.5">
@@ -100,13 +111,15 @@ const CardinalityGraph = ({
 
         return `{${style}|${richSafe(name)}}`;
       },
+      // Rich text only while a category is selected: with `rich` set, ECharts
+      // parses every label as markup, so a raw `{a|b}` name would be mangled.
       axisLabel: {
         width: LABEL_WIDTH,
         overflow: 'truncate',
-        rich: {
-          selected: { color: palette.status.info, fontWeight: 600 },
-          dimmed: { opacity: 0.5 },
-        },
+        rich:
+          selectedCategory === null
+            ? undefined
+            : RICH_STYLES(palette.status.info),
       },
     }),
     [selectedCategory, palette]
