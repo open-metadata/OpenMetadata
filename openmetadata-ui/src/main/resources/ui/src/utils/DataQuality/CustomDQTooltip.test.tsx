@@ -13,7 +13,6 @@
 import { render, screen } from '@testing-library/react';
 import {
   chartTooltipRows,
-  CustomDQTooltip,
   DQTooltipContent,
 } from './CustomDQTooltip.component';
 
@@ -50,7 +49,7 @@ describe('DQTooltipContent', () => {
 });
 
 describe('chartTooltipRows', () => {
-  it('maps chart items to rows and drops gaps, as the recharts tooltip did', () => {
+  it('maps chart items to rows and drops gaps', () => {
     expect(
       chartTooltipRows([
         {
@@ -69,43 +68,5 @@ describe('chartTooltipRows', () => {
         },
       ])
     ).toEqual([{ key: 'insert', name: 'Insert', value: 4, color: '#1' }]);
-  });
-});
-
-describe('CustomDQTooltip', () => {
-  it('still renders a recharts payload, one row per dataKey', () => {
-    render(
-      <CustomDQTooltip
-        active
-        displayDateInHeader={false}
-        payload={[
-          {
-            dataKey: 'count',
-            name: 'count',
-            value: 5,
-            color: '#1',
-            payload: { timestampValue: 'Mon' },
-          },
-          {
-            dataKey: 'count',
-            name: 'count',
-            value: 5,
-            color: '#1',
-            payload: { timestampValue: 'Mon' },
-          },
-        ]}
-      />
-    );
-
-    expect(screen.getByText('Mon')).toBeInTheDocument();
-    expect(screen.getAllByText('Count')).toHaveLength(1);
-  });
-
-  it('renders nothing when inactive', () => {
-    const { container } = render(
-      <CustomDQTooltip active={false} payload={[]} />
-    );
-
-    expect(container).toBeEmptyDOMElement();
   });
 });

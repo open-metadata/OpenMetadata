@@ -12,11 +12,10 @@
  */
 
 import type { ChartTooltipItem } from '@openmetadata/ui-core-components/charts';
-import { startCase, uniqBy } from 'lodash';
+import { startCase } from 'lodash';
 import { ReactNode } from 'react';
 import { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
 import { getEntryFormattedValue } from '../DataInsightPureUtils';
-import { formatDate } from '../date-time/DateTimeUtils';
 
 export interface DQTooltipRow {
   key: string;
@@ -35,7 +34,7 @@ export interface DQTooltipContentProps {
 
 /**
  * The Data Quality tooltip card. Plain markup, so core charts can render it
- * through `tooltip.render` and recharts charts through `CustomDQTooltip`.
+ * through `tooltip.render`.
  */
 export const DQTooltipContent = ({
   header,
@@ -72,8 +71,7 @@ export const DQTooltipContent = ({
 );
 
 /**
- * Core chart tooltip items as tooltip rows. Gaps are dropped, as the
- * recharts tooltip dropped null values.
+ * Core chart tooltip items as tooltip rows. Gaps (missing values) are dropped.
  */
 export const chartTooltipRows = (items: ChartTooltipItem[]): DQTooltipRow[] =>
   items.flatMap((item) =>
@@ -88,41 +86,3 @@ export const chartTooltipRows = (items: ChartTooltipItem[]): DQTooltipRow[] =>
           },
         ]
   );
-
-/** recharts `content` adapter; remove once the last recharts chart moves (O3). */
-export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
-  const {
-    active,
-    dateTimeFormatter = formatDate,
-    isPercentage,
-    payload = [],
-    timeStampKey = 'timestampValue',
-    transformLabel = true,
-    valueFormatter,
-    displayDateInHeader = true,
-  } = props;
-
-  if (!active || !payload?.length) {
-    return null;
-  }
-
-  const header = displayDateInHeader
-    ? dateTimeFormatter(payload[0].payload[timeStampKey] || 0)
-    : payload[0].payload[timeStampKey];
-  const rows = uniqBy(payload, 'dataKey').map((entry) => ({
-    key: String(entry.name ?? entry.dataKey),
-    name: String(entry.name ?? entry.dataKey),
-    value: entry.value as number | string,
-    color: entry.color,
-  }));
-
-  return (
-    <DQTooltipContent
-      header={header}
-      isPercentage={isPercentage}
-      rows={rows}
-      transformLabel={transformLabel}
-      valueFormatter={valueFormatter}
-    />
-  );
-};
