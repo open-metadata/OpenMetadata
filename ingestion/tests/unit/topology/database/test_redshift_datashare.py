@@ -19,6 +19,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_redshift.dialect import RedshiftDialect
 
@@ -442,6 +443,22 @@ class RedshiftDatashareTest(RedshiftSourceFixture, unittest.TestCase):
         self.assertEqual(results["sales"], (["refunds"], ["refunds"]))
         # One query per schema. A shared slot would make it four.
         self.assertEqual(len(self._svv_all_columns_queries), 2)
+
+    def test_an_unresolved_type_survives_another_connector_patching_the_dialect(self):
+        """`PGDialect._get_column_info` is monkey-patched at import by redshift,
+        postgres and greenplum alike, so whichever was imported last decides what
+        an unresolved type comes back as - redshift yields a class, postgres
+        yields `NULLTYPE`. Reading that answer made the column type depend on
+        import order; a full test run imports postgres and the ARRAY became NULL.
+        """
+        from metadata.ingestion.source.database.postgres.utils import get_column_info
+
+        self._enter_datashare_mode()
+        with patch.object(PGDialect, "_get_column_info", get_column_info):
+            columns, _, _ = self._catalog_columns()
+        payload = columns[2]
+        self.assertEqual(payload.dataType, DataType.ARRAY)
+        self.assertEqual(payload.dataTypeDisplay, "array<struct<a:string>>")
 
     def test_columns_are_read_once_per_schema_not_once_per_table(self):
         """The rows cross a database boundary, so the per-table query this

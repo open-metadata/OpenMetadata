@@ -20,6 +20,7 @@ Their metadata is only reachable through the cross-database ``SVV_ALL_*``
 catalog views, which are queried from the connection to a local database.
 """
 
+import re
 import threading
 from collections import defaultdict
 from collections.abc import Callable
@@ -39,6 +40,7 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_SCHEMAS_FOR_DATABASE,
     REDSHIFT_SHOW_DATABASES,
 )
+from metadata.ingestion.source.database.redshift.utils import ischema_names
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -61,6 +63,18 @@ def _table_type(raw_table_type: str | None) -> TableType:
     if "external" in value:
         return TableType.External
     return TableType.Regular
+
+
+def _unresolved_type(format_type: str) -> bool:
+    """Whether the dialect has a SQLAlchemy type for this spelling.
+
+    Mirrors how the dialect normalises before looking up: parenthesised arguments
+    stripped, then a plain `ischema_names` lookup. Domains and enums are the only
+    other resolution paths and both are empty for a cross-database read.
+    """
+    attype = re.sub(r"\(.*\)", "", format_type or "").strip().lower()
+    attype = re.sub(r"\[\]$", "", attype)
+    return attype not in ischema_names
 
 
 def build_columns(dialect: Any, rows: list[Any]) -> list[dict]:
@@ -86,11 +100,16 @@ def build_columns(dialect: Any, rows: list[Any]) -> list[dict]:
             encode=row.encode,
             comment=row.comment,
         )
-        # A type the dialect cannot resolve comes back as the class itself rather
-        # than an instance. The raw spelling is more use to the column type parser
-        # than an unusable class - that is how `array<struct<...>>` stays an ARRAY
-        # instead of degrading to UNKNOWN.
-        if isinstance(column_info["type"], type):
+        # For a type it cannot resolve the dialect yields something the column
+        # parser cannot read, and the raw spelling is more use than that - it is
+        # how `array<struct<...>>` stays an ARRAY rather than degrading.
+        #
+        # What that something *is* cannot be relied on: `PGDialect._get_column_info`
+        # is monkey-patched at import by redshift, postgres and greenplum alike, so
+        # whichever module was imported last decides whether an unresolved type
+        # arrives as a class or as `NULLTYPE`. `ischema_names` is the map the
+        # dialect resolves against and is the same either way, so ask it directly.
+        if _unresolved_type(row.format_type):
             column_info["type"] = row.format_type
         column_info["distkey"] = row.distkey
         column_info["sortkey"] = row.sortkey
