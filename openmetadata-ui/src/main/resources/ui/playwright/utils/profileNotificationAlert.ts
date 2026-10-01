@@ -26,7 +26,7 @@ import { ALERT_DESCRIPTION } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TableClass } from '../support/entity/TableClass';
-import { redirectToHomePage, toastNotification } from './common';
+import { chooseSelectOption, redirectToHomePage, toastNotification } from './common';
 import { selectDropdownOption } from './destination';
 import { getEntityDisplayName, waitForAllLoadersToDisappear } from './entity';
 
@@ -390,10 +390,11 @@ export const addInternalDestinationProfile = async ({
   category: string;
   type: string;
 }) => {
-  await selectCoreUIOption(
-    page,
-    `destination-category-select-${destinationNumber}`,
-    category
+  await chooseSelectOption(
+    page.getByTestId(`destination-category-select-${destinationNumber}`),
+    page
+      .getByRole('listbox', { name: /destination/i })
+      .getByRole('option', { name: category, exact: true })
   );
 
   await selectDropdownOption({
@@ -428,10 +429,11 @@ export const addExternalDestinationProfile = async ({
     queryParams?: Array<{ key: string; value: string }>;
   };
 }) => {
-  await selectCoreUIOption(
-    page,
-    `destination-category-select-${destinationNumber}`,
-    category
+  await chooseSelectOption(
+    page.getByTestId(`destination-category-select-${destinationNumber}`),
+    page
+      .getByRole('listbox', { name: /destination/i })
+      .getByRole('option', { name: category, exact: true })
   );
 
   if (category === 'Email') {
