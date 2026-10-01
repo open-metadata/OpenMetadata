@@ -1217,7 +1217,8 @@ test.describe('Data Contract Inheritance', () => {
       const assetFqn =
         tableForRemoveAssetTest.entityResponseData.fullyQualifiedName;
       await page
-        .locator(`[data-testid="table-data-card_${assetFqn}"] input`)
+        .locator(`[data-testid="table-data-card_${assetFqn}"]`)
+        .getByTestId('asset-checkbox')
         .check();
 
       // Click delete button
