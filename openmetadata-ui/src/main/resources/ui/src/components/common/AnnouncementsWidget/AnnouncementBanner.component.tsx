@@ -17,7 +17,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
@@ -49,17 +48,33 @@ const stopAnd = (handler?: () => void) => (e: MouseEvent) => {
 };
 
 /**
- * `w-full` overrides the `w-max` the generated tooltip trigger carries by
- * default; without it the title sizes to its untruncated content and never
- * ellipsizes. The focus ring replaces the one the browser drew on the
- * `<button>` this wrapper stands in for.
+ * The banner cannot *be* the button: it holds the dismiss and expand controls,
+ * and ARIA makes a button's descendants presentational, which would hide those
+ * from a screen reader. A bare `onClick` on the container is no better — a
+ * static element with a click handler and no keyboard path, which three lint
+ * rules reject.
+ *
+ * So the click target is its own transparent control stretched across the
+ * banner. It carries no tooltip, which is the point: an earlier version hung
+ * the overlay off the title's tooltip trigger, and then hovering anywhere on
+ * the banner popped the title's tooltip and the description never got to show
+ * its own. Everything that needs its own hover or click sits above it on
+ * `OVER_OVERLAY_CLASS`; the chip, the badge and the padding stay beneath it, so
+ * a pointer there still opens the announcement.
+ *
+ * A raw `<button>` rather than core's `Button`: this one draws nothing at all,
+ * and `Button`'s padding, fill and `::before` gradient would all have to be
+ * overridden away.
  */
 // Kept as whole literals so Tailwind still sees each class.
-const TITLE_TRIGGER_CLASS = [
-  'tw:flex tw:w-full tw:min-w-0 tw:cursor-pointer tw:items-center',
-  'tw:rounded-xs tw:text-left',
-  'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand',
+const OVERLAY_CLASS = [
+  'tw:absolute tw:inset-0 tw:z-10 tw:cursor-pointer',
+  'tw:rounded-[10px] tw:border-none tw:bg-transparent tw:p-0',
+  'tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-brand',
 ].join(' ');
+
+/** Sits above the overlay, so it keeps its own hover and clicks. */
+const OVER_OVERLAY_CLASS = 'tw:relative tw:z-20';
 
 /**
  * The trigger `Typography` generates for `ellipsis.tooltip` is a `<button>`, and
@@ -71,14 +86,10 @@ const TITLE_TRIGGER_CLASS = [
 const ELLIPSIS_HOST_CLASS = 'tw:block tw:min-w-0 tw:[&>button]:text-start';
 
 /**
- * A plain title carries its own overflow tooltip through `ellipsis.tooltip`,
- * the same way every other truncated label in the app does.
- *
- * When the title is also the banner's click target it cannot: Typography's
- * tooltip trigger is itself an AriaButton, so putting it inside a `<button>`
- * nests one button in another. `Tooltip` is given the click handler instead and
- * generates that single button — `onTriggerPress` is the documented way to make
- * the trigger the click target — while the text stays a bare Typography.
+ * Just a truncated label with the built-in overflow tooltip. The `onClick` is a
+ * pointer convenience for the text itself — the text sits above the overlay, so
+ * it would otherwise be the one place on the banner that did not open it.
+ * Keyboard users reach the action through the overlay button, not here.
  */
 const AnnouncementTitle = ({
   className,
@@ -90,39 +101,25 @@ const AnnouncementTitle = ({
   size?: 'text-sm' | 'text-xl';
   onClick?: () => void;
   title: string;
-}) => {
-  if (!onClick) {
-    return (
-      <span className={ELLIPSIS_HOST_CLASS}>
-        <Typography
-          as="span"
-          className={className}
-          ellipsis={{ tooltip: title }}
-          size={size}
-          weight="semibold">
-          {title}
-        </Typography>
-      </span>
-    );
-  }
-
-  return (
-    <Tooltip
-      title={title}
-      triggerClassName={TITLE_TRIGGER_CLASS}
-      onTriggerPress={onClick}>
-      <Typography
-        ellipsis
-        as="span"
-        className={className}
-        data-testid="announcement-title-btn"
-        size={size}
-        weight="semibold">
-        {title}
-      </Typography>
-    </Tooltip>
-  );
-};
+}) => (
+  <span
+    className={classNames(
+      ELLIPSIS_HOST_CLASS,
+      OVER_OVERLAY_CLASS,
+      onClick && 'tw:cursor-pointer'
+    )}>
+    <Typography
+      as="span"
+      className={className}
+      data-testid="announcement-title-btn"
+      ellipsis={{ tooltip: title }}
+      size={size}
+      weight="semibold"
+      onClick={onClick}>
+      {title}
+    </Typography>
+  </span>
+);
 
 const AnnouncementFooter = ({
   announcement,
@@ -145,7 +142,9 @@ const AnnouncementFooter = ({
   const postedBy = getEntityName(user) || createdBy;
 
   return (
-    <Box align="center" className="tw:gap-1.5">
+    <Box
+      align="center"
+      className={classNames('tw:gap-1.5', OVER_OVERLAY_CLASS)}>
       {/* The hover profile card comes from UserPopOverCard; ProfilePicture on
           its own is just an avatar image and has no popover of its own. */}
       <UserPopOverCard userName={createdBy}>
@@ -195,7 +194,12 @@ const AnnouncementActions = ({
   const { t } = useTranslation();
 
   return (
-    <Box align="center" className="tw:ml-auto tw:shrink-0 tw:gap-1">
+    <Box
+      align="center"
+      className={classNames(
+        'tw:ml-auto tw:shrink-0 tw:gap-1',
+        OVER_OVERLAY_CLASS
+      )}>
       {showToggle && (
         <Button
           className={actionClassName}
@@ -284,13 +288,20 @@ const CollapsedBody = ({
       />
     </span>
     {hasDescription && (
-      <span className={classNames('tw:flex-1', ELLIPSIS_HOST_CLASS)}>
+      <span
+        className={classNames(
+          'tw:flex-1',
+          ELLIPSIS_HOST_CLASS,
+          OVER_OVERLAY_CLASS,
+          onClick && 'tw:cursor-pointer'
+        )}>
         <Typography
           as="span"
           className="tw:text-secondary"
           data-testid="announcement-description"
           ellipsis={{ tooltip: plainDescription }}
-          size="text-sm">
+          size="text-sm"
+          onClick={onClick}>
           {plainDescription}
         </Typography>
       </span>
@@ -519,12 +530,29 @@ const AnnouncementBanner = ({
     <section
       aria-label={`${t('label.announcement')}: ${shared.title}`}
       className={classNames(
-        'tw:rounded-[10px] tw:outline-1 tw:-outline-offset-1',
+        // `relative` so the overlay's `inset-0` resolves against the banner,
+        // and `isolate` so the z-indexes it and the raised content carry stay
+        // inside it. Without the stacking context they land in the root one,
+        // where they beat the announcement drawer — its overlay is `fixed`
+        // with no z-index, so it wins on DOM order alone and anything at
+        // `z-index >= 1` paints straight through it.
+        'tw:relative tw:isolate tw:rounded-[10px] tw:outline-1 tw:-outline-offset-1',
         surface.surface,
         BANNER_PADDING[layout],
         className
       )}
       data-testid={testId}>
+      {onClick && (
+        <button
+          aria-label={t('label.view-entity', {
+            entity: t('label.announcement'),
+          })}
+          className={OVERLAY_CLASS}
+          data-testid="announcement-open-btn"
+          type="button"
+          onClick={onClick}
+        />
+      )}
       <BannerBody
         actions={actions}
         announcement={announcement}

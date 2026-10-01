@@ -141,11 +141,11 @@ describe('AnnouncementBanner', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it('should render a plain title when the banner is not clickable', () => {
+  it('should not render the click overlay when the banner is not clickable', () => {
     renderBanner();
 
     expect(
-      screen.queryByTestId('announcement-title-btn')
+      screen.queryByTestId('announcement-open-btn')
     ).not.toBeInTheDocument();
     expect(screen.getByText('Pipeline maintenance')).toBeInTheDocument();
   });
@@ -215,15 +215,65 @@ describe('AnnouncementBanner', () => {
   });
 
   it('should keep the ellipsis tooltip trigger left-aligned', () => {
-    renderBanner();
+    render(<AnnouncementBanner announcement={announcement} variant="full" />, {
+      wrapper: MemoryRouter,
+    });
 
     // The trigger Typography generates is a `<button>`; preflight leaves the UA
     // `text-align: center` in place, so a stretched trigger centres its label.
     const host = screen
-      .getByTestId('announcement-description')
+      .getByText('service.db.schema.table')
       .closest('button')?.parentElement;
 
     expect(host).toHaveClass('tw:[&>button]:text-start');
+  });
+
+  it('should make the whole banner clickable through a separate overlay', () => {
+    const onClick = jest.fn();
+    renderBanner({ onClick, onDismiss: jest.fn() });
+
+    // The banner cannot be the button — it holds the dismiss control, and ARIA
+    // makes a button's descendants presentational. A transparent overlay is the
+    // click target instead, and the controls are lifted back above it.
+    const overlay = screen.getByTestId('announcement-open-btn');
+
+    // `isolate` keeps those z-indexes inside the banner. Without it they land
+    // in the root stacking context and paint over the announcement drawer,
+    // whose overlay is `fixed` with no z-index of its own.
+    expect(screen.getByTestId('announcement-banner')).toHaveClass(
+      'tw:relative',
+      'tw:isolate'
+    );
+    expect(overlay).toHaveClass('tw:absolute', 'tw:inset-0', 'tw:z-10');
+    expect(
+      screen.getByTestId('announcement-dismiss-btn').closest('div')
+    ).toHaveClass('tw:relative', 'tw:z-20');
+
+    fireEvent.click(overlay);
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('should give the title and the description each their own tooltip', () => {
+    const onClick = jest.fn();
+    renderBanner({ onClick });
+
+    // Hanging the overlay off the title's trigger made every hover on the
+    // banner pop the title's tooltip, and the description never showed its own.
+    // Each label owns its trigger now, and both sit above the overlay.
+    for (const testId of [
+      'announcement-title-btn',
+      'announcement-description',
+    ]) {
+      const trigger = screen.getByTestId(testId).closest('button');
+
+      expect(trigger).not.toBeNull();
+      expect(trigger?.parentElement).toHaveClass('tw:relative', 'tw:z-20');
+    }
+
+    fireEvent.click(screen.getByTestId('announcement-description'));
+
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 
   it('should put the badge beside the title on the landing banner', () => {
