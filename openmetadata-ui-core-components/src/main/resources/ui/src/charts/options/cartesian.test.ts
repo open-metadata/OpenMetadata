@@ -269,6 +269,79 @@ describe('buildLineOption', () => {
     expect([second.smooth, second.showSymbol]).toEqual([false, true]);
   });
 
+  it('styles each point from pointStyle', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        series: [
+          {
+            key: 'passed',
+            name: 'Passed',
+            pointStyle: (datum) =>
+              datum.day === 'Mon'
+                ? { status: 'failed' }
+                : datum.day === 'Tue'
+                ? { hollow: true, status: 'warning' }
+                : undefined,
+          },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [mon, tue, wed] = seriesOf(option)[0].data as Array<{
+      value: unknown;
+      symbol: string;
+      itemStyle?: Record<string, unknown>;
+    }>;
+    const { status } = LIGHT_CHART_PALETTE;
+
+    expect(seriesOf(option)[0].showSymbol).toBe(true);
+    expect(mon).toEqual({
+      value: 3,
+      symbol: 'circle',
+      symbolSize: 8,
+      itemStyle: {
+        color: status.failed,
+        borderColor: LIGHT_CHART_THEME.segmentBorder,
+        borderWidth: 1,
+      },
+    });
+    expect(tue.itemStyle).toEqual({
+      color: 'transparent',
+      borderColor: status.warning,
+      borderWidth: 2,
+    });
+    expect(wed).toEqual({ value: 4, symbol: 'none' });
+  });
+
+  it('gives a selected point a halo in its own colour', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        series: [
+          {
+            key: 'passed',
+            name: 'Passed',
+            status: 'info',
+            pointStyle: () => ({ selected: true }),
+          },
+        ],
+      },
+      LIGHT_CHART_THEME
+    );
+    const [first] = seriesOf(option)[0].data as Array<{
+      itemStyle: Record<string, unknown>;
+    }>;
+
+    expect(first.itemStyle).toEqual(
+      expect.objectContaining({
+        color: LIGHT_CHART_PALETTE.status.info,
+        shadowBlur: 8,
+        shadowColor: LIGHT_CHART_PALETTE.status.info,
+      })
+    );
+  });
+
   it('shows the legend only when there is more than one series', () => {
     const one = buildLineOption(
       { ...base, series: [base.series[0]] },

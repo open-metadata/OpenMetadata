@@ -90,6 +90,16 @@ export type ChartOption = ComposeOption<
 
 export type ChartSeriesType = 'line' | 'area' | 'bar';
 
+/** How one point of a line or area series is drawn. */
+export interface ChartPointStyle {
+  /** Status colour of the dot. Without one it takes the series colour. */
+  status?: ChartStatus;
+  /** A ring instead of a filled dot, e.g. for a run that produced no value. */
+  hollow?: boolean;
+  /** A soft halo around the dot, e.g. for the selected point. */
+  selected?: boolean;
+}
+
 export interface ChartSeries {
   /** Field read from each datum. */
   key: string;
@@ -112,6 +122,14 @@ export interface ChartSeries {
   smooth?: boolean;
   /** Line and area only. Defaults to false. */
   showDots?: boolean;
+  /**
+   * Line and area only. The dot of each point; `undefined` draws none for
+   * that point. Turns the series' dots on, whatever `showDots` says.
+   */
+  pointStyle?: (
+    datum: Record<string, unknown>,
+    index: number
+  ) => ChartPointStyle | undefined;
   /** Merged into this series' ECharts option. */
   seriesOption?: Partial<LineSeriesOption | BarSeriesOption>;
 }

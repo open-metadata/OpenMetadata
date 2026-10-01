@@ -87,6 +87,7 @@ export type {
   ChartLegendProps,
   ChartOption,
   ChartPalette,
+  ChartPointStyle,
   ChartReferenceLine,
   ChartSeries,
   ChartSeriesType,

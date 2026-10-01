@@ -144,6 +144,41 @@ const barSeries = <T extends object>(
   };
 };
 
+const POINT_SIZE = 8;
+const POINT_RING_WIDTH = 2;
+const POINT_HALO_BLUR = 8;
+
+const pointItem = <T extends object>(
+  ctx: SeriesContext<T>,
+  series: ChartSeries,
+  color: string,
+  datum: T,
+  index: number
+) => {
+  const value = pointValue(ctx, datum, series);
+  const style = series.pointStyle?.(datum as Datum, index);
+  if (!style) {
+    return { value, symbol: 'none' };
+  }
+  const pointColor = style.status
+    ? ctx.theme.palette.status[style.status]
+    : color;
+
+  return {
+    value,
+    symbol: 'circle',
+    symbolSize: POINT_SIZE,
+    itemStyle: {
+      color: style.hollow ? 'transparent' : pointColor,
+      borderColor: style.hollow ? pointColor : ctx.theme.segmentBorder,
+      borderWidth: style.hollow ? POINT_RING_WIDTH : 1,
+      ...(style.selected
+        ? { shadowBlur: POINT_HALO_BLUR, shadowColor: pointColor }
+        : {}),
+    },
+  };
+};
+
 const lineSeries = <T extends object>(
   ctx: SeriesContext<T>,
   series: ChartSeries,
@@ -152,14 +187,16 @@ const lineSeries = <T extends object>(
 ): LineSeriesOption => ({
   type: 'line',
   smooth: series.smooth ?? true,
-  showSymbol: series.showDots ?? false,
+  showSymbol: series.pointStyle ? true : series.showDots ?? false,
   lineStyle: { color, width: LINE_WIDTH, cap: 'round', join: 'round' },
   itemStyle: { color },
   // Always set, so a re-render that drops the fill clears the old one.
   areaStyle: filled ? { color: areaGradient(color) } : undefined,
   ...(ctx.composed ? { z: Z_LINE } : {}),
-  data: ctx.input.data.map((datum) =>
-    pointValue(ctx, datum, series)
+  data: ctx.input.data.map((datum, index) =>
+    series.pointStyle
+      ? pointItem(ctx, series, color, datum, index)
+      : pointValue(ctx, datum, series)
   ) as LineSeriesOption['data'],
 });
 
