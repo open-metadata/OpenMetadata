@@ -40,6 +40,7 @@ import { cx } from '@/utils/cx';
 import { Tree } from '../tree/tree';
 import {
   TreeSelectEmptyItemContent,
+  TreeSelectLoadMoreItemContent,
   TreeSelectTreeItemContent,
 } from './tree-select-node';
 import type { TreeSelectNode, TreeSelectProps } from './tree-select.types';
@@ -54,6 +55,8 @@ import {
   useTreeSelectSelection,
 } from './use-tree-select-selection';
 
+/** Row id of a branch's load-more item; a real node is matched first. */
+const LOAD_MORE_SUFFIX = '__more';
 /** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
 const DROPDOWN_CHROME_WIDTH = 320;
 /** Matches react-aria's default overlay `containerPadding`. */
@@ -304,7 +307,7 @@ export const TreeSelect = <T = unknown,>({
   }
 
   // The button badge excludes root ids, so it needs the tree while closed.
-  const { treeData, loading, loadingNodes, loadChildren } =
+  const { treeData, loading, loadingNodes, loadChildren, loadMoreChildren } =
     useTreeSelectData<T>({
       fetchData,
       searchTerm,
@@ -436,7 +439,8 @@ export const TreeSelect = <T = unknown,>({
 
   const loadAllDescendants = useCallback(
     async (node: TreeSelectNode<T>): Promise<TreeSelectNode<T>> => {
-      if (node.children?.length) {
+      // A truncated branch is refetched whole; its page is only a subset.
+      if (node.children?.length && !node.hasMoreChildren) {
         const deepChildren = await Promise.all(
           node.children.map((child) => loadAllDescendants(child))
         );
@@ -450,7 +454,8 @@ export const TreeSelect = <T = unknown,>({
 
       // Fetch directly — do NOT call loadChildren here to avoid a duplicate
       // API request (loadChildren would re-fetch the same parentId).
-      const response = await fetchData({ parentId: node.id });
+      // `loadAll`: a cascade cannot select a page, so it opts out of paging.
+      const response = await fetchData({ parentId: node.id, loadAll: true });
 
       if (response.nodes.length > 0) {
         const deepChildren = await Promise.all(
@@ -476,7 +481,7 @@ export const TreeSelect = <T = unknown,>({
       const { isFullySelected } = getNodeSelectionState(
         getDescendantSelection(node),
         isNodeSelected(node.id),
-        multiple
+        multiple && cascadeSelection
       );
 
       // Both directions: a branch selected while collapsed keeps children out of the tree.
@@ -553,6 +558,50 @@ export const TreeSelect = <T = unknown,>({
   const resolvedEmptyBranchMessage =
     emptyBranchMessage ?? noDataMessage ?? t('label.no-data-found');
 
+  // Only once a page has landed; before that `remaining` is the whole branch.
+  const renderLoadMore = useCallback(
+    (node: TreeSelectNode<T>) => {
+      if (!node.hasMoreChildren) {
+        return null;
+      }
+
+      const loaded = node.children?.length ?? 0;
+      const remaining = node.childrenTotal
+        ? node.childrenTotal - loaded
+        : undefined;
+      const nextCount = Math.min(pageSize, remaining ?? pageSize);
+
+      if (nextCount <= 0) {
+        return null;
+      }
+
+      return (
+        <Tree.Item
+          id={`${node.id}${LOAD_MORE_SUFFIX}`}
+          key={`${node.id}${LOAD_MORE_SUFFIX}`}
+          textValue={t('label.show-count-more', { count: nextCount })}>
+          <TreeSelectLoadMoreItemContent
+            isLoading={loadingNodes.has(node.id)}
+            maxIndentLevel={maxIndentLevel}
+            nextCount={nextCount}
+            parentId={node.id}
+            remaining={remaining}
+            showExpandIcon={showExpandIcon}
+            onLoadMore={() => loadMoreChildren(node.id)}
+          />
+        </Tree.Item>
+      );
+    },
+    [
+      pageSize,
+      loadingNodes,
+      maxIndentLevel,
+      showExpandIcon,
+      loadMoreChildren,
+      t,
+    ]
+  );
+
   const renderNodes = useCallback(
     (
       nodes: TreeSelectNode<T>[],
@@ -565,7 +614,7 @@ export const TreeSelect = <T = unknown,>({
         const { isFullySelected, isPartiallySelected } = getNodeSelectionState(
           getDescendantSelection(node),
           isNodeSelected(node.id),
-          multiple
+          multiple && cascadeSelection
         );
 
         return (
@@ -590,21 +639,26 @@ export const TreeSelect = <T = unknown,>({
                 }
               }}
             />
-            {node.children?.length
-              ? renderNodes(node.children, node)
-              : node.children &&
-                node.isLeaf === false &&
-                !loadingNodes.has(node.id) && (
-                  <Tree.Item
-                    id={`${node.id}__empty`}
-                    key={`${node.id}__empty`}
-                    textValue={resolvedEmptyBranchMessage}>
-                    <TreeSelectEmptyItemContent
-                      message={resolvedEmptyBranchMessage}
-                      parentId={node.id}
-                    />
-                  </Tree.Item>
-                )}
+            {node.children?.length || node.hasMoreChildren ? (
+              <Fragment key={`${node.id}__children`}>
+                {renderNodes(node.children ?? [], node)}
+                {renderLoadMore(node)}
+              </Fragment>
+            ) : (
+              node.children &&
+              node.isLeaf === false &&
+              !loadingNodes.has(node.id) && (
+                <Tree.Item
+                  id={`${node.id}__empty`}
+                  key={`${node.id}__empty`}
+                  textValue={resolvedEmptyBranchMessage}>
+                  <TreeSelectEmptyItemContent
+                    message={resolvedEmptyBranchMessage}
+                    parentId={node.id}
+                  />
+                </Tree.Item>
+              )
+            )}
           </Tree.Item>
         );
       });
@@ -622,6 +676,7 @@ export const TreeSelect = <T = unknown,>({
       showIcon,
       maxIndentLevel,
       handleNodeAction,
+      renderLoadMore,
     ]
   );
 
@@ -844,8 +899,15 @@ export const TreeSelect = <T = unknown,>({
             expandedKeys={filteredExpandedKeys}
             selectionMode="none"
             onAction={(key) => {
-              const node = findNode(treeData, String(key));
+              const id = String(key);
+              const node = findNode(treeData, id);
+              // Keyboard activation lands here too, so the load-more row needs
+              // to answer it — its button alone is not reachable by arrow keys.
               if (!node) {
+                if (id.endsWith(LOAD_MORE_SUFFIX)) {
+                  loadMoreChildren(id.slice(0, -LOAD_MORE_SUFFIX.length));
+                }
+
                 return;
               }
               if (!hasExclusiveChildren(node)) {

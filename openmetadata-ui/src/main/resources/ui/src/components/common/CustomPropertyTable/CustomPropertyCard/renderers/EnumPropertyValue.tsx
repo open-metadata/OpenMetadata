@@ -82,11 +82,13 @@ const EnumPropertyEdit = ({
     <form noValidate id={formId} onSubmit={handleSubmit}>
       <Box direction="col" gap={2}>
         <div data-testid="enum-select">
+          {/* Always multiple: core hides the single-select input once a value
+              is picked. Single-select keeps only the latest pick instead. */}
           <Autocomplete
+            multiple
             aria-label={property.displayName || property.name}
             isDisabled={isSaving}
             items={options}
-            multiple={isMultiSelect}
             placeholder={
               selected.length
                 ? t('label.add-more')
@@ -97,7 +99,9 @@ const EnumPropertyEdit = ({
               setSelected((prev) => prev.filter((item) => item !== key))
             }
             onItemInserted={(key) =>
-              setSelected((prev) => [...prev, String(key)])
+              setSelected((prev) =>
+                isMultiSelect ? [...prev, String(key)] : [String(key)]
+              )
             }>
             {(item) => (
               <Autocomplete.Item
