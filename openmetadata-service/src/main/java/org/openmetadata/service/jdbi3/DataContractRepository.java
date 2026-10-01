@@ -36,6 +36,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.ContractSecurity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
@@ -43,7 +44,6 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.LatestResult;
 import org.openmetadata.schema.entity.data.TermsOfUse;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.FailedRule;
@@ -86,6 +86,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -482,26 +483,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<String> failedFields = new ArrayList<>();
     List<String> typeMismatchFields = new ArrayList<>();
 
-    switch (entityType) {
-      case Entity.TABLE:
-        SchemaValidationResult tableResult = validateFieldsAgainstTable(dataContract, entityRef);
-        failedFields = tableResult.failedFields;
-        typeMismatchFields = tableResult.typeMismatchFields;
-        break;
-      case Entity.TOPIC:
-        failedFields = validateFieldsAgainstTopic(dataContract, entityRef);
-        break;
-      case Entity.API_ENDPOINT:
-        failedFields = validateFieldsAgainstApiEndpoint(dataContract, entityRef);
-        break;
-      case Entity.DASHBOARD_DATA_MODEL:
-        SchemaValidationResult dataModelResult =
-            validateFieldsAgainstDashboardDataModel(dataContract, entityRef);
-        failedFields = dataModelResult.failedFields;
-        typeMismatchFields = dataModelResult.typeMismatchFields;
-        break;
-      default:
-        break;
+    if (ChildFieldResolver.supports(entityType)) {
+      SchemaValidationResult result = validateFieldsAgainstEntity(dataContract, entityRef);
+      failedFields = result.failedFields;
+      typeMismatchFields = result.typeMismatchFields;
     }
 
     validation.setTypeMismatchFields(typeMismatchFields.isEmpty() ? null : typeMismatchFields);
@@ -539,178 +524,82 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     List<String> typeMismatchFields = new ArrayList<>();
   }
 
-  private SchemaValidationResult validateFieldsAgainstTable(
-      DataContract dataContract, EntityReference tableRef) {
+  /**
+   * Validate a contract's declared fields against whatever child collection the entity type
+   * actually has, per the child-field registry. Replaces four near-identical per-type validators.
+   * Column-shaped children (table, dashboardDataModel, container, worksheet) additionally get the
+   * dataType compatibility check; name-shaped children are matched by name only, as before.
+   */
+  private SchemaValidationResult validateFieldsAgainstEntity(
+      DataContract dataContract, EntityReference entityRef) {
+    ChildFieldResolver.ChildContainerSpec spec = ChildFieldResolver.specFor(entityRef.getType());
+    EntityInterface parent =
+        Entity.getEntity(
+            entityRef.getType(), entityRef.getId(), spec.requiredFields(), Include.NON_DELETED);
+    List<FieldInterface> children = ChildFieldResolver.childrenOf(parent, entityRef.getType());
+    return children.isEmpty()
+        ? allFieldsFailed(dataContract)
+        : matchContractFields(dataContract, children, spec);
+  }
+
+  private SchemaValidationResult allFieldsFailed(DataContract dataContract) {
     SchemaValidationResult result = new SchemaValidationResult();
-    org.openmetadata.schema.entity.data.Table table =
-        Entity.getEntity(Entity.TABLE, tableRef.getId(), "columns", Include.NON_DELETED);
-
-    if (table.getColumns() == null || table.getColumns().isEmpty()) {
-      result.failedFields = getAllContractFieldNames(dataContract);
-      return result;
-    }
-
-    Map<String, Column> tableColumnMap = buildColumnMap(table.getColumns());
-
-    for (Column contractColumn : dataContract.getSchema()) {
-      String columnName = contractColumn.getName();
-      Column entityColumn = tableColumnMap.get(columnName);
-
-      if (entityColumn == null) {
-        result.failedFields.add(columnName);
-      } else if (contractColumn.getDataType() != null
-          && !areTypesCompatible(contractColumn.getDataType(), entityColumn.getDataType())) {
-        result.typeMismatchFields.add(
-            String.format(
-                "%s: expected %s, got %s",
-                columnName, entityColumn.getDataType(), contractColumn.getDataType()));
-      }
-    }
-
+    result.failedFields = getAllContractFieldNames(dataContract);
     return result;
   }
 
-  private List<String> validateFieldsAgainstTopic(
-      DataContract dataContract, EntityReference topicRef) {
-    Topic topic =
-        Entity.getEntity(Entity.TOPIC, topicRef.getId(), "messageSchema", Include.NON_DELETED);
-
-    if (topic.getMessageSchema() == null
-        || topic.getMessageSchema().getSchemaFields() == null
-        || topic.getMessageSchema().getSchemaFields().isEmpty()) {
-      return getAllContractFieldNames(dataContract);
-    }
-
-    Set<String> topicFieldNames = extractFieldNames(topic.getMessageSchema().getSchemaFields());
-
-    return validateContractFieldsAgainstNames(dataContract, topicFieldNames);
-  }
-
-  private List<String> validateFieldsAgainstApiEndpoint(
-      DataContract dataContract, EntityReference apiEndpointRef) {
-    org.openmetadata.schema.entity.data.APIEndpoint apiEndpoint =
-        Entity.getEntity(
-            Entity.API_ENDPOINT,
-            apiEndpointRef.getId(),
-            "requestSchema,responseSchema",
-            Include.NON_DELETED);
-
-    Set<String> apiFieldNames = new HashSet<>();
-
-    if (apiEndpoint.getRequestSchema() != null
-        && apiEndpoint.getRequestSchema().getSchemaFields() != null
-        && !apiEndpoint.getRequestSchema().getSchemaFields().isEmpty()) {
-      apiFieldNames.addAll(extractFieldNames(apiEndpoint.getRequestSchema().getSchemaFields()));
-    }
-
-    if (apiEndpoint.getResponseSchema() != null
-        && apiEndpoint.getResponseSchema().getSchemaFields() != null
-        && !apiEndpoint.getResponseSchema().getSchemaFields().isEmpty()) {
-      apiFieldNames.addAll(extractFieldNames(apiEndpoint.getResponseSchema().getSchemaFields()));
-    }
-
-    if (apiFieldNames.isEmpty()) {
-      return getAllContractFieldNames(dataContract);
-    }
-
-    return validateContractFieldsAgainstNames(dataContract, apiFieldNames);
-  }
-
-  private SchemaValidationResult validateFieldsAgainstDashboardDataModel(
-      DataContract dataContract, EntityReference dashboardDataModelRef) {
+  private SchemaValidationResult matchContractFields(
+      DataContract dataContract,
+      List<FieldInterface> children,
+      ChildFieldResolver.ChildContainerSpec spec) {
     SchemaValidationResult result = new SchemaValidationResult();
-    org.openmetadata.schema.entity.data.DashboardDataModel dashboardDataModel =
-        Entity.getEntity(
-            Entity.DASHBOARD_DATA_MODEL,
-            dashboardDataModelRef.getId(),
-            "columns",
-            Include.NON_DELETED);
-
-    if (dashboardDataModel.getColumns() == null || dashboardDataModel.getColumns().isEmpty()) {
-      result.failedFields = getAllContractFieldNames(dataContract);
-      return result;
-    }
-
-    Map<String, Column> columnMap = buildColumnMap(dashboardDataModel.getColumns());
-
+    Map<String, FieldInterface> childByName = flattenChildrenByName(children);
     for (Column contractColumn : dataContract.getSchema()) {
-      String columnName = contractColumn.getName();
-      Column entityColumn = columnMap.get(columnName);
-
-      if (entityColumn == null) {
-        result.failedFields.add(columnName);
-      } else if (contractColumn.getDataType() != null
-          && !areTypesCompatible(contractColumn.getDataType(), entityColumn.getDataType())) {
-        result.typeMismatchFields.add(
-            String.format(
-                "%s: expected %s, got %s",
-                columnName, entityColumn.getDataType(), contractColumn.getDataType()));
+      FieldInterface child = childByName.get(contractColumn.getName());
+      if (child == null) {
+        result.failedFields.add(contractColumn.getName());
+      } else if (spec.childClass() == Column.class) {
+        recordTypeMismatch(result, contractColumn, (Column) child);
       }
     }
-
     return result;
+  }
+
+  private void recordTypeMismatch(
+      SchemaValidationResult result, Column contractColumn, Column entityColumn) {
+    boolean mismatch =
+        contractColumn.getDataType() != null
+            && !areTypesCompatible(contractColumn.getDataType(), entityColumn.getDataType());
+    if (mismatch) {
+      result.typeMismatchFields.add(
+          String.format(
+              "%s: expected %s, got %s",
+              contractColumn.getName(), entityColumn.getDataType(), contractColumn.getDataType()));
+    }
+  }
+
+  /**
+   * Flatten a child collection to a name-keyed map, recursing into nested children. Mirrors the
+   * behavior of the deleted buildColumnMap and extractFieldNames, both of which keyed by bare name
+   * across all nesting levels, so contract fields keep matching nested struct children.
+   */
+  @SuppressWarnings("unchecked")
+  private Map<String, FieldInterface> flattenChildrenByName(List<FieldInterface> children) {
+    Map<String, FieldInterface> byName = new HashMap<>();
+    for (FieldInterface child : children) {
+      byName.putIfAbsent(child.getName(), child);
+      if (child.getChildren() != null) {
+        flattenChildrenByName((List<FieldInterface>) child.getChildren())
+            .forEach(byName::putIfAbsent);
+      }
+    }
+    return byName;
   }
 
   private List<String> getAllContractFieldNames(DataContract dataContract) {
     return dataContract.getSchema().stream()
         .map(org.openmetadata.schema.type.Column::getName)
         .collect(Collectors.toList());
-  }
-
-  private List<String> validateContractFieldsAgainstNames(
-      DataContract dataContract, Set<String> entityFieldNames) {
-    List<String> failedFields = new ArrayList<>();
-    for (org.openmetadata.schema.type.Column column : dataContract.getSchema()) {
-      if (!entityFieldNames.contains(column.getName())) {
-        failedFields.add(column.getName());
-      }
-    }
-    return failedFields;
-  }
-
-  private Set<String> extractFieldNames(List<org.openmetadata.schema.type.Field> fields) {
-    if (fields == null || fields.isEmpty()) {
-      return Collections.emptySet();
-    }
-
-    Set<String> fieldNames = new HashSet<>();
-    for (org.openmetadata.schema.type.Field field : fields) {
-      fieldNames.add(field.getName());
-      if (field.getChildren() != null && !field.getChildren().isEmpty()) {
-        fieldNames.addAll(extractFieldNames(field.getChildren()));
-      }
-    }
-    return fieldNames;
-  }
-
-  private Set<String> extractColumnNames(List<Column> columns) {
-    if (columns == null || columns.isEmpty()) {
-      return Collections.emptySet();
-    }
-
-    Set<String> columnNames = new HashSet<>();
-    for (Column column : columns) {
-      columnNames.add(column.getName());
-      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
-        columnNames.addAll(extractColumnNames(column.getChildren()));
-      }
-    }
-    return columnNames;
-  }
-
-  private Map<String, Column> buildColumnMap(List<Column> columns) {
-    if (columns == null || columns.isEmpty()) {
-      return Collections.emptyMap();
-    }
-
-    Map<String, Column> columnMap = new HashMap<>();
-    for (Column column : columns) {
-      columnMap.put(column.getName(), column);
-      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
-        columnMap.putAll(buildColumnMap(column.getChildren()));
-      }
-    }
-    return columnMap;
   }
 
   /**

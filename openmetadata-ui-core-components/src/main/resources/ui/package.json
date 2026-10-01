@@ -42,6 +42,11 @@
       "types": "./dist/types/src/icon/index.d.ts",
       "import": "./dist/icon/index.es.js",
       "require": "./dist/icon/index.cjs.js"
+    },
+    "./charts": {
+      "types": "./dist/types/src/charts/index.d.ts",
+      "import": "./dist/charts/index.es.js",
+      "require": "./dist/charts/index.cjs.js"
     }
   },
   "files": [
@@ -102,6 +107,8 @@
     "@tailwindcss/typography": ">=0.5.0",
     "@tailwindcss/vite": ">=4.0.0",
     "@untitledui/icons": "^0.0.21",
+    "echarts": "^6.1.0",
+    "echarts-for-react": "^3.0.6",
     "i18next": "^21.10.0",
     "input-otp": "^1.4.2",
     "react": ">=18.0.0",
@@ -115,6 +122,14 @@
     "tailwindcss": ">=4.0.0",
     "tailwindcss-animate": ">=1.0.0",
     "tailwindcss-react-aria-components": ">=2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "echarts": {
+      "optional": true
+    },
+    "echarts-for-react": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
@@ -143,6 +158,8 @@
     "@types/react-dom": "^18.2.0",
     "@untitledui/icons": "^0.0.21",
     "@vitejs/plugin-react": "^5.0.1",
+    "echarts": "^6.1.0",
+    "echarts-for-react": "^3.0.6",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.37.3",
@@ -175,7 +192,7 @@
     "vitest": "^4.1.11"
   },
   "resolutions": {
-    "brace-expansion": "5.0.9",
+    "brace-expansion": "5.0.12",
     "browserslist": "4.28.8",
     "fast-uri": "3.1.8",
     "lodash": "4.18.1",

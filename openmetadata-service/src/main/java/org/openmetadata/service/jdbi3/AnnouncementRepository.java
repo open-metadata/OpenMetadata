@@ -287,7 +287,7 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       try {
         EntityRepository<?> targetRepo = Entity.getEntityRepository(about.getType());
         Object targetEntity =
-            targetRepo.get(null, about.getId(), targetRepo.getFields(FIELD_DOMAINS));
+            targetRepo.get(null, about.getId(), targetRepo.getOnlySupportedFields(FIELD_DOMAINS));
         announcement.setDomains(extractDomainsFromEntity(targetEntity));
       } catch (Exception e) {
         LOG.debug(

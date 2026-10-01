@@ -13,6 +13,7 @@
 
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
+import alertsClassBase from '../../../../../../utils/AlertsClassBase';
 import NotificationAlertConfigView from './NotificationAlertConfigView';
 
 jest.mock('react-i18next', () => ({
@@ -82,6 +83,7 @@ jest.mock('../../../../../../utils/AlertsClassBase', () => ({
       filteringRules: { resources: ['table'] },
     }),
     getAddAlertFormExtraWidgets: jest.fn().mockReturnValue({}),
+    getAlertAiTemplateSection: jest.fn().mockReturnValue(null),
   },
 }));
 
@@ -171,5 +173,40 @@ describe('NotificationAlertConfigView', () => {
     });
 
     expect(screen.queryByTestId('filters-editor')).not.toBeInTheDocument();
+  });
+
+  it('renders the registered template section read-only', async () => {
+    const TemplateSection = jest.fn(() => (
+      <div data-testid="template-section" />
+    ));
+    (alertsClassBase.getAlertAiTemplateSection as jest.Mock).mockReturnValue(
+      TemplateSection
+    );
+
+    await act(async () => {
+      render(<NotificationAlertConfigView alertDetails={mockAlertDetails} />);
+    });
+
+    expect(await screen.findByTestId('template-section')).toBeInTheDocument();
+    expect(TemplateSection).toHaveBeenCalledWith(
+      expect.objectContaining({ isViewOnly: true }),
+      expect.anything()
+    );
+  });
+
+  it('renders no template section without one registered', async () => {
+    (alertsClassBase.getAlertAiTemplateSection as jest.Mock).mockReturnValue(
+      null
+    );
+
+    await act(async () => {
+      render(<NotificationAlertConfigView alertDetails={mockAlertDetails} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('source-select')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('template-section')).not.toBeInTheDocument();
   });
 });
