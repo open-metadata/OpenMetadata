@@ -2,7 +2,9 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import Column, Integer
+import pytest
+from snowflake.sqlalchemy import VARIANT
+from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.selectable import CTE  # noqa: TC002
 
@@ -20,9 +22,11 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
 from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.ingestion.source.sqa_types import SQASGeography
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.sampler.models import (
     ProfileSampleConfig,
     SampleConfig,
@@ -30,6 +34,7 @@ from metadata.sampler.models import (
 from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.sampler.sqlalchemy.snowflake.sampler import SnowflakeSampler
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 
 class Base(DeclarativeBase):
@@ -199,3 +204,31 @@ class SampleTest(TestCase):
             '\nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+
+
+# The Snowflake driver returns VARIANT, OBJECT and ARRAY values as pretty-printed JSON text.
+@pytest.mark.parametrize(
+    ("column_type", "fetched", "sampled"),
+    [
+        (VARIANT, '{\n  "count": 2,\n  "kind": "fixture"\n}', {"count": 2, "kind": "fixture"}),
+        (VARIANT, '"plain text"', "plain text"),
+        (VARIANT, "42", 42),
+        (CustomArray(String), '[\n  "a",\n  "b"\n]', ["a", "b"]),
+        (VARIANT, None, None),
+        (VARIANT, "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1), "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1)),
+        (String, '{"kind": "fixture"}', '{"kind": "fixture"}'),
+        (
+            SQASGeography,
+            '{\n  "coordinates": [1, 2],\n  "type": "Point"\n}',
+            '{\n  "coordinates": [1, 2],\n  "type": "Point"\n}',
+        ),
+    ],
+)
+@patch.object(SQASampler, "build_table_orm", return_value=User)
+def test_semi_structured_samples_are_json(_build_table_orm, column_type, fetched, sampled):
+    sampler = SnowflakeSampler(
+        service_connection_config=SnowflakeConnection(username="myuser", account="myaccount", warehouse="mywarehouse"),
+        ometa_client=None,
+        entity=Table(id=uuid4(), name="user", columns=[EntityColumn(name=ColumnName("id"), dataType=DataType.INT)]),
+    )
+    assert sampler._process_sample_value(Column("value", column_type), fetched) == sampled

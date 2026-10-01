@@ -14,7 +14,7 @@ for the profiler
 """
 
 import hashlib
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy import Column, inspect, select, text
 from sqlalchemy.orm import Query
@@ -164,6 +164,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         Child classes can override this method to return a different expression.
         """
         return column
+
+    def _process_sample_value(self, column: Column, value: Any) -> Any:
+        """Convert one fetched sample cell, before truncation, for drivers that return encoded values.
+        Child classes override this method.
+        """
+        return value
 
     def _base_sample_query(
         self,
@@ -334,7 +340,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 value = row[i]
                 if has_array_columns and self._handle_array_column(col):
                     value = self._process_array_value(value)
-                processed_row.append(self._truncate_cell(value))
+                processed_row.append(self._truncate_cell(self._process_sample_value(col, value)))
             processed_rows.append(processed_row)
         if self.partition_details and not sqa_sample:
             self._warn_empty_partition()
