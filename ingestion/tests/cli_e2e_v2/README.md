@@ -335,6 +335,8 @@ copy, whose secrets a non-bot token reads masked.
 
 The manually dispatched v2 workflow runs Snowflake with four workers and passes the v1 job's existing
 `TEST_SNOWFLAKE_*` secrets (key pair, database and warehouse) only to its Snowflake matrix job. The v1
-test drops and recreates that database for every test, so do not dispatch the v2 Snowflake job while the
-nightly v1 run (00:00 UTC) or a manual v1 run is in progress. Remove the v1 Snowflake test and its
-`py-cli-e2e-tests.yml` matrix entry only after this suite has passed for the agreed stability window.
+test drops and recreates that database for every test, so the Snowflake jobs of both workflows share the
+non-cancelling concurrency group `cli-e2e-snowflake-database` and run one at a time. GitHub keeps one
+pending job per group, so a third Snowflake run queued behind a pending one replaces it. Remove the v1
+Snowflake test, its `py-cli-e2e-tests.yml` matrix entry and that workflow's concurrency group only after
+this suite has passed for the agreed stability window.

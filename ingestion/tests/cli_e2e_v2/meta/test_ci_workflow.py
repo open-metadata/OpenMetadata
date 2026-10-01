@@ -22,6 +22,10 @@ import yaml
 
 _CONDITION_CLAUSE = re.compile(r"^matrix\.connector (==|!=) '([a-z]+)'$")
 _TEST_STEP_IDS = ("e2e-v2-test", "e2e-v2-bigquery-test", "e2e-v2-snowflake-test")
+_SNOWFLAKE_CONCURRENCY_GROUP = re.compile(
+    r"^\$\{\{ matrix\.(?P<key>[a-z0-9-]+) == 'snowflake' && '(?P<group>[a-z0-9-]+)' "
+    r"\|\| format\('\{0\}-\{1\}-\{2\}', github\.workflow, github\.run_id, matrix\.(?P=key)\) \}\}$"
+)
 
 
 def _condition_holds(condition, connector):
@@ -162,3 +166,21 @@ def test_ci_rejects_unsupported_connectors_without_running_commands(tmp_path, co
     assert not list(tmp_path.rglob("injected"))
     assert result.returncode != 0
     assert not (tmp_path / "ingestion/pytest-args.json").exists()
+
+
+def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
+    """v1 drops and recreates the E2E database the v2 Snowflake job uses, so the two must never overlap."""
+    root = Path(__file__).resolve().parents[4]
+    groups = set()
+    for workflow_file, job_id, matrix_key in (
+        ("py-cli-e2e-tests-v2.yml", "py-cli-e2e-tests-v2", "connector"),
+        ("py-cli-e2e-tests.yml", "py-cli-e2e-tests", "e2e-test"),
+    ):
+        job = yaml.safe_load((root / ".github/workflows" / workflow_file).read_text())["jobs"][job_id]
+        assert "snowflake" in job["strategy"]["matrix"][matrix_key]
+        assert job["concurrency"]["cancel-in-progress"] is False
+        match = _SNOWFLAKE_CONCURRENCY_GROUP.match(job["concurrency"]["group"])
+        assert match, job["concurrency"]["group"]
+        assert match["key"] == matrix_key
+        groups.add(match["group"])
+    assert len(groups) == 1
