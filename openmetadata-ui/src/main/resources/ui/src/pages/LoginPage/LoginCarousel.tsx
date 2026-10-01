@@ -13,8 +13,15 @@
 
 import loginClassBase from '../../constants/LoginClassBase';
 
+// ThemeProvider isn't mounted on unauthenticated routes; index.html sets the
+// class before first paint, and the theme can't change on the login page.
+const isDarkTheme = () =>
+  document.documentElement.classList.contains('dark-mode');
+
 const LoginCarousel = () => {
-  const loginVideo = loginClassBase.getLoginVideo();
+  const loginVideo =
+    (isDarkTheme() && loginClassBase.getLoginDarkVideo()) ||
+    loginClassBase.getLoginVideo();
 
   if (!loginVideo) {
     return null;
