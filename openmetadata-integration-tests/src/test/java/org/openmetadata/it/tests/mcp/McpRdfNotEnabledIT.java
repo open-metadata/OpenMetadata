@@ -17,8 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -28,13 +30,17 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 
 /**
- * On a deployment without the RDF store the graph tools answer with a clear "not enabled" message
- * instead of a backend fault, for administrators and for callers who hold only the query grant. Runs
- * in the default lane: in the RDF lane the store is on and {@code RdfMcpKnowledgeGraphIT} covers the
- * tools.
+ * What an MCP client sees on a deployment without the RDF store. The server withholds the tools that
+ * cannot run from {@code tools/list} and refuses a direct call to them, so a client is never offered
+ * a tool that fails. {@code ontology_describe} stays offered because the bundled ontology needs no
+ * store; describing a resource does, and answers with a clear "not enabled" message to administrators
+ * and to callers who hold only the query grant. Runs in the default lane: in the RDF lane the store is
+ * on and {@code RdfMcpKnowledgeGraphIT} covers the tools.
  */
 public class McpRdfNotEnabledIT extends McpTestBase {
-  private static final String QUERY = "SELECT ?s WHERE { ?s ?p ?o } LIMIT 1";
+  private static final Set<String> WITHHELD =
+      Set.of("sparql_query", "entity_neighborhood", "find_by_tag", "shacl_validate");
+  private static final String RESOURCE = "https://open-metadata.org/ontology/Table";
   private static RdfAccessFixtures access;
   private static String grantedToken;
 
@@ -55,22 +61,49 @@ public class McpRdfNotEnabledIT extends McpTestBase {
   }
 
   @Test
-  void anAdministratorIsToldTheGraphIsNotEnabled() throws Exception {
+  void theToolsThatNeedTheStoreAreNotOffered() throws Exception {
+    final JsonNode list =
+        executeMcpRequest(McpTestUtils.createJsonRpcRequest("tools/list", Map.of()), authToken);
+    final Set<String> offered = new HashSet<>();
+    list.path("result").path("tools").forEach(tool -> offered.add(tool.path("name").asText()));
+
+    assertThat(offered).doesNotContainAnyElementsOf(WITHHELD).contains("ontology_describe");
+  }
+
+  @Test
+  void aDirectCallToAWithheldToolDoesNotSucceed() throws Exception {
+    final JsonNode response =
+        executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "sparql_query", Map.of("query", "SELECT ?s WHERE { ?s ?p ?o } LIMIT 1")),
+            grantedToken);
+
+    final boolean refused =
+        response.has("error") || response.path("result").path("isError").asBoolean(false);
+    assertThat(refused).as(response.toString()).isTrue();
+  }
+
+  @Test
+  void anAdministratorDescribingAResourceIsToldTheGraphIsNotEnabled() throws Exception {
     assertNotEnabled(authToken);
   }
 
   @Test
-  void aGrantedUserIsToldTheGraphIsNotEnabled() throws Exception {
+  void aGrantedUserDescribingAResourceIsToldTheGraphIsNotEnabled() throws Exception {
     assertNotEnabled(grantedToken);
   }
 
   private void assertNotEnabled(final String token) throws Exception {
     final JsonNode result =
-        executeMcpRequest(McpTestUtils.createToolCallRequest("sparql_query", Map.of("query", QUERY)), token)
+        executeMcpRequest(
+                McpTestUtils.createToolCallRequest(
+                    "ontology_describe", Map.of("resource", RESOURCE, "maxBytes", 2048)),
+                token)
             .path("result");
 
-    assertThat(result.path("isError").asBoolean()).isTrue();
-    final JsonNode error = OBJECT_MAPPER.readTree(result.path("content").path(0).path("text").asText());
+    assertThat(result.path("isError").asBoolean()).as(result.toString()).isTrue();
+    final JsonNode error =
+        OBJECT_MAPPER.readTree(result.path("content").path(0).path("text").asText());
     assertThat(error.path("statusCode").asInt()).isEqualTo(400);
     assertThat(error.path("error").asText()).contains("RDF knowledge graph is not enabled");
   }

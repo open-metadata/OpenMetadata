@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -40,6 +41,7 @@ import java.util.stream.IntStream;
 import org.apache.jena.query.QueryFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.rdf.AgentSparqlBinding;
 import org.openmetadata.schema.api.rdf.AgentSparqlCompletenessReason;
@@ -49,7 +51,12 @@ import org.openmetadata.schema.api.rdf.AgentSparqlRdfTerm;
 import org.openmetadata.schema.api.rdf.AgentSparqlRdfTermType;
 import org.openmetadata.schema.api.rdf.AgentSparqlResponse;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
+import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSparqlService;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
@@ -152,6 +159,29 @@ class AgentSparqlServiceTest {
 
     assertEquals(2, result.rowCount());
     assertEquals(AgentSparqlCompletenessStatus.COMPLETE, result.completeness().getStatus());
+  }
+
+  @Test
+  void theDefaultFactoryReadsReadinessFromTheServersRunStore() {
+    returnRows(1);
+    when(repository.getConfig()).thenReturn(new RdfConfiguration());
+    final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
+    final AppRunRecord run = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
+    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+        .thenReturn(List.of(JsonUtils.pojoToJson(run)));
+    final CollectionDAO dao = mock(CollectionDAO.class);
+    when(dao.appExtensionTimeSeriesDao()).thenReturn(runStore);
+    RdfProjectionHealth.markReady();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+      AgentSparqlResult result =
+          AgentSparqlService.forRepository(() -> repository)
+              .execute("user", SELECT_ALL + " LIMIT 5");
+
+      assertEquals(1, result.rowCount());
+    }
   }
 
   @Test

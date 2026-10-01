@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -24,9 +25,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 
 class RdfProjectionStateResolverTest {
@@ -51,6 +55,22 @@ class RdfProjectionStateResolverTest {
         .thenReturn(List.of(JsonUtils.pojoToJson(run)));
 
     assertEquals(expectedState, resolver.resolve());
+  }
+
+  @Test
+  void resolveConfiguredReadsTheRunStoreOfTheRunningServer() {
+    RdfProjectionHealth.markReady();
+    final AppRunRecord run = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
+    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+        .thenReturn(List.of(JsonUtils.pojoToJson(run)));
+    final CollectionDAO dao = mock(CollectionDAO.class);
+    when(dao.appExtensionTimeSeriesDao()).thenReturn(runStore);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+      assertEquals(RdfProjectionState.READY, RdfProjectionStateResolver.resolveConfigured());
+    }
   }
 
   @Test
