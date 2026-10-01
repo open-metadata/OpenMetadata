@@ -30,6 +30,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { clickUntilVisible } from '../../utils/waitHelpers';
 
 const persona = new PersonaClass();
 const adminUser = new AdminClass();
@@ -184,13 +185,14 @@ test.describe('Data Product Persona customization', () => {
       await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
       await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
 
-      const addWidgetButton = adminPage.getByTestId('add-widget-button');
-      await addWidgetButton.waitFor({ state: 'visible' });
-      await addWidgetButton.click();
-
-      await adminPage
-        .getByTestId('widget-info-tabs')
-        .waitFor({ state: 'visible' });
+      // Closing the antd modal restores the body scrollbar, which changes the
+      // grid's measured width and shifts the placeholder under the cursor:
+      // mousedown and mouseup land on different elements, so no click event
+      // fires and the modal never opens. Re-click until it does.
+      await clickUntilVisible(
+        adminPage.getByTestId('add-widget-button'),
+        adminPage.getByTestId('widget-info-tabs')
+      );
 
       await adminPage.getByTestId('Description-widget').click();
       await adminPage

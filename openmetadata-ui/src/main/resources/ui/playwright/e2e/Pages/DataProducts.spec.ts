@@ -42,6 +42,7 @@ import {
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
+import { waitForAriaOverlayToSettle } from '../../utils/waitHelpers';
 
 const user = new UserClass();
 const domain = new Domain();
@@ -199,6 +200,8 @@ test.describe('Data Products', () => {
 
     await test.step('Delete data product', async () => {
       await page.getByTestId('manage-button').click();
+      await expect(page.getByTestId('delete-button-title')).toBeVisible();
+      await waitForAriaOverlayToSettle(page);
       await page.getByTestId('delete-button-title').click();
 
       await expect(page.getByTestId('modal-header')).toContainText(
@@ -220,10 +223,12 @@ test.describe('Data Products', () => {
   });
 
   test('Search Data Products', async ({ page }) => {
-    // Distinct words keep this search assertion independent of fuzzy matches
-    // between the shared prefix and short hexadecimal IDs of default fixtures.
-    const dataProduct1 = new DataProduct([domain], `revenuecatalog${uuid()}`);
-    const dataProduct2 = new DataProduct([domain], `inventorycatalog${uuid()}`);
+    // The data product index matches on n-grams, so any token the two names
+    // share — `catalog` in the previous pair — can pull the second product
+    // into the first one's results and make the "not visible" assertion flaky.
+    // These names share no substring; only the random IDs differ in length.
+    const dataProduct1 = new DataProduct([domain], `revenue${uuid()}`);
+    const dataProduct2 = new DataProduct([domain], `shipyard${uuid()}`);
 
     await test.step('Create test data products', async () => {
       const { apiContext, afterAction } = await performAdminLogin(

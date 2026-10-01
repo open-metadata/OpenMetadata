@@ -82,3 +82,35 @@ export const clickAndWaitFor = async (
 
   return response;
 };
+
+/**
+ * React Aria popovers (`Dropdown.Popover`, menus, selects) slide in over
+ * ~150ms and carry `data-entering` for the duration. Playwright's click
+ * auto-wait only requires the box to be stable across two animation frames,
+ * which a loaded CI runner can satisfy *inside* the slide: the press then
+ * starts on the item and ends off it, so the item takes focus but
+ * `onAction` never fires and whatever the click was meant to open never
+ * appears. Same hazard `waitForAntOverlayToOpen` covers for antd, keyed on
+ * the attribute instead of a class so it holds for every RAC overlay.
+ */
+export const waitForAriaOverlayToSettle = async (page: Page) => {
+  await expect(page.locator('[data-entering]')).toHaveCount(0);
+};
+
+/**
+ * Clicks `trigger` until `target` shows up, for triggers whose click is
+ * idempotent (it opens something; clicking again re-opens it). Covers the
+ * case where a single click is swallowed because the target moved between
+ * mousedown and mouseup — a re-layout under the cursor leaves no click event
+ * at all, so there is nothing to wait longer for.
+ */
+export const clickUntilVisible = async (
+  trigger: Locator,
+  target: Locator,
+  options?: { timeout?: number }
+) => {
+  await expect(async () => {
+    await trigger.click();
+    await expect(target).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: options?.timeout ?? 30_000, intervals: [500, 1_000] });
+};
