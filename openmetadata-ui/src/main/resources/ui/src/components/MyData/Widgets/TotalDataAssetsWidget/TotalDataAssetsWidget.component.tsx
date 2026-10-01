@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { PieChart } from '@openmetadata/ui-core-components/charts';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
@@ -230,9 +231,12 @@ const TotalDataAssetsWidget = ({
             <PieChart
               ariaLabel={t('label.data-insight-total-entity-summary')}
               centerLabel={
-                <span className="tw:text-display-xs tw:font-semibold tw:text-secondary">
+                <CoreTypography
+                  className="tw:text-secondary"
+                  size="display-xs"
+                  weight="semibold">
                   {totalDatAssets.toLocaleString()}
-                </span>
+                </CoreTypography>
               }
               data={pieData}
               height={250}

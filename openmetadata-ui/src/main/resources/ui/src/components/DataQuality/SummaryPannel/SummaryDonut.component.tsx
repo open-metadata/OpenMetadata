@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { PieChart } from '@openmetadata/ui-core-components/charts';
 import { ChartData } from './SummaryPanel.interface';
 
@@ -41,11 +42,12 @@ export const SummaryDonut = ({
       track
       ariaLabel={ariaLabel}
       centerLabel={
-        <span
-          className="tw:font-semibold tw:text-primary"
-          style={{ fontSize: Math.round(size * 0.135) }}>
+        <Typography
+          className="tw:text-primary"
+          style={{ fontSize: Math.round(size * 0.135) }}
+          weight="semibold">
           {percentage}
-        </span>
+        </Typography>
       }
       data={chartData}
       height={size}

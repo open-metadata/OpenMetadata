@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import type { PieDatum } from '@openmetadata/ui-core-components/charts';
 import { PieChart } from '@openmetadata/ui-core-components/charts';
 import { Space, Typography } from 'antd';
@@ -32,7 +33,9 @@ const CustomPieChart = ({
   onSegmentClick,
 }: CustomPieChartProps) => {
   const centerLabel = isString(label) ? (
-    <span className="tw:text-sm tw:font-medium tw:text-tertiary">{label}</span>
+    <CoreTypography color="secondary" size="text-sm" weight="medium">
+      {label}
+    </CoreTypography>
   ) : (
     label
   );

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { t } from 'i18next';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/entity/column.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-test.svg';
@@ -38,12 +39,12 @@ export const TEST_LEVEL_OPTIONS: SelectionOption[] = [
 export const getPieChartLabel = (label: string, value = 0) => {
   return (
     <div className="tw:flex tw:flex-col tw:items-center">
-      <span className="tw:text-xs tw:font-medium tw:text-tertiary">
+      <Typography color="secondary" size="text-xs" weight="medium">
         {label}
-      </span>
-      <span className="tw:text-xl tw:font-semibold tw:text-primary">
+      </Typography>
+      <Typography className="tw:text-primary" size="text-xl" weight="semibold">
         {value}
-      </span>
+      </Typography>
     </div>
   );
 };
