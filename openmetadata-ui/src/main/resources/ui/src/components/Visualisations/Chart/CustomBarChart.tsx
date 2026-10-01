@@ -11,53 +11,56 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
-import { useMemo, useState } from 'react';
 import {
-  Bar,
   BarChart,
-  Brush,
-  CartesianGrid,
-  Legend,
-  LegendProps,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+  type ChartSeries,
+  type ChartTooltipProps,
+  type ChartYAxisProps,
+} from '@openmetadata/ui-core-components/charts';
+import { Col, Row } from 'antd';
+import { useMemo } from 'react';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
-import { useChartColors } from '../../../hooks/useChartColors';
-import {
-  axisTickFormatter,
-  createHorizontalGridLineRenderer,
-  tooltipFormatter,
-  updateActiveChartFilter,
-} from '../../../utils/ChartUtils';
-import { CustomDQTooltip } from '../../../utils/DataQuality/CustomDQTooltip.component';
-import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
+import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
+
+const STACK_ID = 'custom-bar-chart';
+const CHART_HEIGHT = 300;
 
 const CustomBarChart = ({
   chartCollection,
   tickFormatter,
   name,
+  ariaLabel,
   noDataPlaceholderText,
 }: CustomBarChartProps) => {
-  const { axis, cursorFill, grid } = useChartColors();
   const { data, information } = chartCollection;
-  const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
-  const { showBrush, endIndex } = useMemo(() => {
-    return {
-      showBrush: data.length > PROFILER_CHART_DATA_SIZE,
-      endIndex: PROFILER_CHART_DATA_SIZE,
-    };
-  }, [data.length]);
+  // `info.color` is a CSS variable, which ECharts cannot paint; the series
+  // take palette colours in order instead.
+  const series = useMemo<ChartSeries[]>(
+    () =>
+      information.map((info) => ({
+        key: info.dataKey,
+        name: info.title,
+        stack: STACK_ID,
+      })),
+    [information]
+  );
 
-  const renderHorizontalGridLine = useMemo(
-    () => createHorizontalGridLineRenderer(),
-    []
+  const yAxis = useMemo<ChartYAxisProps>(
+    () => ({
+      formatter: (value) =>
+        String(axisTickFormatter(Number(value), tickFormatter)),
+    }),
+    [tickFormatter]
+  );
+
+  const tooltip = useMemo<ChartTooltipProps>(
+    () => ({
+      valueFormatter: (value) => String(tooltipFormatter(value, tickFormatter)),
+    }),
+    [tickFormatter]
   );
 
   if (data.length === 0) {
@@ -72,79 +75,21 @@ const CustomBarChart = ({
       </Row>
     );
   }
-  const handleClick: LegendProps['onClick'] = (event) => {
-    setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(event.dataKey, prevActiveKeys)
-    );
-  };
 
   return (
-    <ResponsiveContainer
-      className="custom-legend"
-      debounce={200}
-      id={`${name}_graph`}
-      minHeight={300}>
-      <BarChart className="w-full" data={data} margin={{ left: 16 }}>
-        <CartesianGrid
-          horizontal={renderHorizontalGridLine}
-          stroke={grid}
-          strokeDasharray="3 3"
-          vertical={false}
-        />
-        <XAxis
-          axisLine={false}
-          dataKey="name"
-          padding={{ left: 16, right: 16 }}
-          tick={{ fill: axis, fontSize: 12 }}
-          tickLine={false}
-        />
-
-        <YAxis
-          allowDataOverflow
-          axisLine={false}
-          padding={{ top: 16, bottom: 16 }}
-          tick={{ fill: axis, fontSize: 12 }}
-          tickFormatter={(props) => axisTickFormatter(props, tickFormatter)}
-          tickLine={false}
-        />
-        <Tooltip
-          content={
-            <CustomDQTooltip
-              dateTimeFormatter={formatDateTimeLong}
-              timeStampKey="timestamp"
-              valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
-            />
-          }
-          cursor={{
-            fill: cursorFill,
-            stroke: grid,
-            strokeDasharray: '3 3',
-          }}
-        />
-        {information.map((info) => (
-          <Bar
-            dataKey={info.dataKey}
-            fill={info.color}
-            hide={
-              activeKeys.length ? !activeKeys.includes(info.dataKey) : false
-            }
-            key={info.dataKey}
-            name={info.title}
-            stackId="custom-bar-chart"
-          />
-        ))}
-        <Legend onClick={handleClick} />
-        {showBrush && (
-          <Brush
-            data={data}
-            endIndex={endIndex}
-            gap={5}
-            height={30}
-            padding={{ left: 16, right: 16 }}
-          />
-        )}
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="w-full" id={`${name}_graph`}>
+      <BarChart
+        ariaLabel={ariaLabel}
+        data={data}
+        height={CHART_HEIGHT}
+        series={series}
+        tooltip={tooltip}
+        xKey="name"
+        yAxis={yAxis}
+        zoom="auto"
+        zoomVisiblePoints={PROFILER_CHART_DATA_SIZE}
+      />
+    </div>
   );
 };
 

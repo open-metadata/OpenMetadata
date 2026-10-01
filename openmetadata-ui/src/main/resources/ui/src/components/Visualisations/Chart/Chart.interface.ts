@@ -19,6 +19,8 @@ import { MetricChartType } from '../../Database/Profiler/ProfilerDashboard/profi
 export interface CustomBarChartProps {
   chartCollection: MetricChartType;
   name: string;
+  /** Accessible name of the chart, e.g. the card title. Translated by the caller. */
+  ariaLabel: string;
   tickFormatter?: string;
   noDataPlaceholderText?: ReactNode;
 }

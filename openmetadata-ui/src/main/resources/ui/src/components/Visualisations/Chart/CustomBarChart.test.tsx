@@ -10,140 +10,81 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+import {
+  BarChart,
+  type BarChartProps,
+} from '@openmetadata/ui-core-components/charts';
 import { render, screen } from '@testing-library/react';
-import '../../../test/unit/mocks/recharts.mock';
+import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
+import { tooltipFormatter } from '../../../utils/ChartUtils';
 import { CustomBarChartProps } from './Chart.interface';
 import CustomBarChart from './CustomBarChart';
 
-const mockedRecharts = jest.requireMock('recharts') as {
-  CartesianGrid: jest.Mock;
-  Tooltip: jest.Mock;
-};
+type Row = Record<string, string | number | undefined>;
+const mockBarChart = BarChart as unknown as jest.Mock<
+  null,
+  [BarChartProps<Row>]
+>;
+const barProps = () =>
+  mockBarChart.mock.calls[mockBarChart.mock.calls.length - 1][0];
 
-jest.mock('../../../hooks/useChartColors', () => ({
-  useChartColors: jest.fn().mockReturnValue({
-    cursorFill: '#123456',
-    grid: '#234567',
-  }),
-}));
-
-const mockCustomBarChartProp: CustomBarChartProps = {
+const props: CustomBarChartProps = {
+  ariaLabel: 'Volume change',
+  name: 'operationMetrics',
+  tickFormatter: '%',
   chartCollection: {
     information: [
-      {
-        title: 'insert',
-        dataKey: 'INSERT',
-        color: '#00ff00',
-      },
+      { title: 'Insert', dataKey: 'INSERT', color: 'var(--a)' },
+      { title: 'Delete', dataKey: 'DELETE', color: 'var(--b)' },
     ],
     data: [
-      {
-        name: '07/Dec 14:32',
-        timestamp: 1670403758680,
-        INSERT: 37251,
-      },
+      { name: 'Jan 1', timestamp: 1, INSERT: 4, DELETE: 1 },
+      { name: 'Jan 2', timestamp: 2, INSERT: 2, DELETE: 0 },
     ],
   },
-  name: 'testChart',
 };
-jest.mock('../../../utils/DataInsightUtils', () => {
-  return jest.fn().mockImplementation(() => {
-    return <div>CustomTooltip</div>;
-  });
-});
 
-const mockData = Array.from({ length: 501 }, (_, index) => ({
-  name: `test ${index}`,
-  value: index,
-}));
+describe('CustomBarChart', () => {
+  it('stacks one bar series per metric, palette-coloured, zooming above 500 points', () => {
+    render(<CustomBarChart {...props} />);
 
-jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
-  formatDateTimeLong: jest.fn(),
-  getEpochMillisForPastDays: jest.fn().mockReturnValue(1609459200000),
-  getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
-}));
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>),
-}));
-
-jest.mock('../../../constants/profiler.constant', () => ({
-  PROFILER_CHART_DATA_SIZE: 500,
-  DEFAULT_SELECTED_RANGE: {
-    key: 'last7Days',
-    title: 'Last 7 days',
-    days: 7,
-  },
-}));
-
-jest.mock('../../../utils/ChartUtils', () => ({
-  axisTickFormatter: jest.fn(),
-  tooltipFormatter: jest.fn(),
-  updateActiveChartFilter: jest.fn(),
-  createHorizontalGridLineRenderer: jest.fn(() => jest.fn()),
-}));
-
-describe('CustomBarChart component test', () => {
-  it('Component should render', async () => {
-    render(<CustomBarChart {...mockCustomBarChartProp} />);
-
-    const container = await screen.findByTestId('responsive-container');
-    const XAxis = await screen.findByText('XAxis');
-    const YAxis = await screen.findByText('YAxis');
-    const noData = screen.queryByTestId('"no-data-placeholder');
-
-    expect(container).toBeInTheDocument();
-    expect(XAxis).toBeInTheDocument();
-    expect(YAxis).toBeInTheDocument();
-    expect(noData).not.toBeInTheDocument();
-    expect(screen.queryByText('Brush')).not.toBeInTheDocument();
-  });
-
-  it('uses active theme colors for the chart grid and cursor', () => {
-    render(<CustomBarChart {...mockCustomBarChartProp} />);
-
-    expect(mockedRecharts.CartesianGrid.mock.calls[0][0]).toEqual(
-      expect.objectContaining({ stroke: '#234567' })
-    );
-    expect(mockedRecharts.Tooltip.mock.calls[0][0]).toEqual(
+    expect(
+      document.getElementById('operationMetrics_graph')
+    ).toBeInTheDocument();
+    expect(barProps()).toEqual(
       expect.objectContaining({
-        cursor: expect.objectContaining({
-          fill: '#123456',
-          stroke: '#234567',
-        }),
+        ariaLabel: 'Volume change',
+        data: props.chartCollection.data,
+        xKey: 'name',
+        zoom: 'auto',
+        zoomVisiblePoints: PROFILER_CHART_DATA_SIZE,
       })
     );
+    expect(barProps().series).toEqual([
+      { key: 'INSERT', name: 'Insert', stack: 'custom-bar-chart' },
+      { key: 'DELETE', name: 'Delete', stack: 'custom-bar-chart' },
+    ]);
   });
 
-  it('Component should render brush when data length is greater than PROFILER_CHART_DATA_SIZE', async () => {
+  it('formats y ticks and tooltip values with the tick formatter', () => {
+    render(<CustomBarChart {...props} />);
+    const yAxis = barProps().yAxis as { formatter: (value: number) => string };
+
+    expect(yAxis.formatter(40)).toBe('40%');
+    expect(barProps().tooltip?.valueFormatter?.(4, 'INSERT')).toBe(
+      String(tooltipFormatter(4, '%'))
+    );
+  });
+
+  it('shows the placeholder and no chart when there is no data', () => {
     render(
       <CustomBarChart
-        {...mockCustomBarChartProp}
-        chartCollection={{
-          data: mockData,
-          information: mockCustomBarChartProp.chartCollection.information,
-        }}
+        {...props}
+        chartCollection={{ ...props.chartCollection, data: [] }}
+        noDataPlaceholderText="No data"
       />
     );
 
-    expect(screen.getByText('Brush')).toBeInTheDocument();
-  });
-
-  it('If there is no data, placeholder should be visible', async () => {
-    render(
-      <CustomBarChart
-        {...mockCustomBarChartProp}
-        chartCollection={{
-          information: [],
-          data: [],
-        }}
-      />
-    );
-
-    const noData = await screen.findByText('ErrorPlaceHolder');
-
-    expect(noData).toBeInTheDocument();
+    expect(screen.queryByTestId('core-bar-chart')).not.toBeInTheDocument();
   });
 });
