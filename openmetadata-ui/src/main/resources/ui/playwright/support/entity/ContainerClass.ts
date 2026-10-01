@@ -23,7 +23,6 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
-  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -31,26 +30,25 @@ import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { resolveParents } from './ParentResolver';
+import { StorageServiceClass } from './service/StorageServiceClass';
+
+/**
+ * Without `service` the container sits in the shard's shared storageService.
+ * Pass a StorageServiceClass when the test needs its own service — to
+ * assert on a unique service name, visit the service page, or mutate it.
+ */
+export type ContainerClassOptions = {
+  name?: string;
+  service?: StorageServiceClass;
+  sharedInfraKey?: string;
+};
 
 export class ContainerClass extends EntityClass {
   private readonly containerName: string;
   private readonly childContainerName: string;
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        awsConfig: {
-          awsAccessKeyId: string;
-          awsSecretAccessKey: string;
-          awsRegion: string;
-          assumeRoleSessionName: string;
-        };
-        supportsMetadataExtraction: boolean;
-      };
-    };
-  };
+  service = new StorageServiceClass().entity;
+  private readonly serviceOverride?: StorageServiceClass;
   entity: {
     name: string;
     displayName: string;
@@ -72,28 +70,16 @@ export class ContainerClass extends EntityClass {
   childResponseData: ResponseDataType = {} as ResponseDataType;
   childArrayResponseData: ResponseDataType[] = [];
 
-  constructor(name?: string) {
+  constructor(options: ContainerClassOptions = {}) {
     super(EntityTypeEndpoint.Container);
+    this.serviceOverride = options.service;
+    this.sharedInfraKey = options.sharedInfraKey;
+    if (options.service) {
+      this.service = options.service.entity;
+    }
 
-    this.containerName = `pw-container-${uuid()}`;
+    this.containerName = options.name ?? `pw-container-${uuid()}`;
     this.childContainerName = `pw-container-${uuid()}`;
-
-    this.service = {
-      name: name ?? `pw-storage-service-${uuid()}`,
-      serviceType: 'S3',
-      connection: {
-        config: {
-          type: 'S3',
-          awsConfig: {
-            awsAccessKeyId: 'admin',
-            awsSecretAccessKey: 'key',
-            awsRegion: 'us-east-2',
-            assumeRoleSessionName: 'OpenMetadataSession',
-          },
-          supportsMetadataExtraction: true,
-        },
-      },
-    };
 
     this.entity = {
       name: this.containerName,
@@ -177,12 +163,20 @@ export class ContainerClass extends EntityClass {
     apiContext: APIRequestContext,
     customChildContainer?: { name: string; displayName: string }[]
   ) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'ContainerClass.create service',
-      createPath: '/api/v1/services/storageServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
+      apiContext,
+      'storage',
+      { service: this.serviceOverride },
+      this.sharedInfraKey
+    );
+    this.serviceResponseData = parents.service as ResponseDataType;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.service = { ...this.service, name: this.serviceResponseData.name };
+    this.entity.service = this.serviceResponseData.name;
+    this.childContainer = {
+      ...this.childContainer,
+      service: this.serviceResponseData.name,
+    };
 
     // `dataModel` is in ContainerResource.FIELDS, so a by-name lookup omits it
     // unless asked — and childrenSelectorId below reads dataModel.columns[0].
@@ -274,12 +268,25 @@ export class ContainerClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
-  public set(data: { entity: Container; service: ResponseDataType }): void {
+  public set(data: {
+    entity: Container;
+    service: ResponseDataType;
+    ownedRootPath?: string;
+  }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.entity.service = data.service.name;
+    this.service = { ...this.service, name: data.service.name };
+    this.childContainer = {
+      ...this.childContainer,
+      service: data.service.name,
+    };
   }
 
   async visitEntityPage(page: Page) {
@@ -291,16 +298,11 @@ export class ContainerClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await deleteFixtureEntity(
+    await this.deleteOwnedOrLeaf(
       apiContext,
-      `/api/v1/services/storageServices/name/${encodeURIComponent(
-        this.serviceResponseData?.fullyQualifiedName ?? ''
-      )}?recursive=true&hardDelete=true`
+      `/api/v1/containers/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 }
