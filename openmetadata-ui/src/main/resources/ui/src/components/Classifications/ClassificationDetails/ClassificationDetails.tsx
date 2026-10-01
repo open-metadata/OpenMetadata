@@ -682,11 +682,13 @@ const ClassificationDetails = forwardRef(
               }
               className="flex-wrap"
               displayName={displayName}
+              displayNameClassName="text-xl"
               icon={
                 <ClassificationIcon className="tw:text-quaternary" size={36} />
               }
               isDisabled={isClassificationDisabled}
               name={name ?? classification.name}
+              nameClassName="text-xl"
               serviceName="classification"
             />
           }

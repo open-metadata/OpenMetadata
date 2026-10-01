@@ -829,8 +829,10 @@ const GlossaryHeader = ({
             color={getGlossaryTitleColor(isGlossary, selectedData.style?.color)}
             deleted={selectedData.deleted}
             displayName={selectedData.displayName}
+            displayNameClassName="text-xl"
             icon={icon}
             name={selectedData.name}
+            nameClassName="text-xl"
             serviceName=""
             suffix={getGlossaryHeaderSuffix(isGlossary)}
           />
