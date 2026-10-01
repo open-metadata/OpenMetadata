@@ -1493,7 +1493,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/v1/lod/entity/{entityType}/{id}` | Dereference an OpenMetadata entity IRI |
-| `POST` | `/v1/rdf` | Execute a permissioned read-only SPARQL SELECT for agent tools |
 | `GET` | `/v1/rdf/debug/glossary-relations` | Debug glossary term relations in RDF |
 | `GET` | `/v1/rdf/entity/{entityType}/{id}` | Get entity as RDF |
 | `GET` | `/v1/rdf/entity/{entityType}/{id}/diff` | Diff two RDF entity versions |
@@ -1532,6 +1531,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/rdf/search/similar/{entityType}/{id}` | Find similar entities |
 | `GET` | `/v1/rdf/sparql` | Execute SPARQL query via GET |
 | `POST` | `/v1/rdf/sparql` | Execute SPARQL query via POST |
+| `POST` | `/v1/rdf/sparql/agent` | Execute a permissioned read-only SPARQL SELECT for agent tools |
 | `POST` | `/v1/rdf/sparql/update` | Execute SPARQL UPDATE |
 | `POST` | `/v1/rdf/sql/query` | Execute SQL query over RDF data |
 | `POST` | `/v1/rdf/sql/translate` | Translate SQL to SPARQL |
