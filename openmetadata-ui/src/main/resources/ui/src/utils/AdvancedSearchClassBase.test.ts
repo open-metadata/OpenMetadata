@@ -300,6 +300,19 @@ describe('getEntitySpecificQueryBuilderFields', () => {
     advancedSearchClassBase = new AdvancedSearchClassBase();
   });
 
+  it('should return data contract specific fields', () => {
+    const result = advancedSearchClassBase.getEntitySpecificQueryBuilderFields([
+      SearchIndex.DATA_CONTRACT,
+    ]);
+
+    expect(Object.keys(result)).toEqual([
+      EntityFields.DATA_CONTRACT_ENTITY_TYPE,
+      EntityFields.DATA_CONTRACT_ENTITY_FQN,
+      EntityFields.DATA_CONTRACT_LATEST_RESULT_STATUS,
+      EntityFields.REVIEWERS,
+    ]);
+  });
+
   it('should return table specific fields', () => {
     const result = advancedSearchClassBase.getEntitySpecificQueryBuilderFields([
       SearchIndex.TABLE,

@@ -43,6 +43,7 @@ import {
 import { SearchIndex } from '../enums/search.enum';
 import type { Config } from '../generated/api/data/createCustomProperty';
 import { EntityStatus } from '../generated/entity/data/searchIndex';
+import { ContractExecutionStatus } from '../generated/type/contractExecutionStatus';
 import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
@@ -464,6 +465,61 @@ class AdvancedSearchClassBase {
       fieldSettings: {
         asyncFetch: this.autocomplete({
           searchIndex: SearchIndex.GLOSSARY,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  // Fields specific to data contracts
+  dataContractQueryBuilderFields: Fields = {
+    [EntityFields.DATA_CONTRACT_ENTITY_TYPE]: {
+      label: t('label.asset-type'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DATA_CONTRACT,
+          entityField: EntityFields.DATA_CONTRACT_ENTITY_TYPE,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    [EntityFields.DATA_CONTRACT_ENTITY_FQN]: {
+      label: t('label.asset'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DATA_CONTRACT,
+          entityField: EntityFields.DATA_CONTRACT_ENTITY_FQN,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    [EntityFields.DATA_CONTRACT_LATEST_RESULT_STATUS]: {
+      label: t('label.contract-execution-status'),
+      type: 'select',
+      operators: LIST_VALUE_OPERATORS,
+      mainWidgetProps: this.mainWidgetProps,
+      valueSources: ['value'],
+      fieldSettings: {
+        listValues: Object.values(ContractExecutionStatus).map((status) => ({
+          value: status,
+          title: status,
+        })),
+        showSearch: true,
+        useAsyncSearch: false,
+      },
+    },
+    [EntityFields.REVIEWERS]: {
+      label: t('label.reviewer-plural'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
         useAsyncSearch: true,
@@ -1160,6 +1216,7 @@ class AdvancedSearchClassBase {
       [SearchIndex.FILE]: this.fileSearchQueryBuilderFields,
       [SearchIndex.SPREADSHEET]: this.spreadsheetSearchQueryBuilderFields,
       [SearchIndex.WORKSHEET]: this.worksheetSearchQueryBuilderFields,
+      [SearchIndex.DATA_CONTRACT]: this.dataContractQueryBuilderFields,
       [SearchIndex.ALL]: {
         ...this.tableQueryBuilderFields,
         ...this.pipelineQueryBuilderFields,
