@@ -178,6 +178,7 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -4828,6 +4829,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, total.intValue());
     }
+  }
+
+  public ResultList<T> listContextMemoriesWithStatuses(
+      UriInfo uriInfo,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q,
+      SecurityContext securityContext,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    if (!Entity.CONTEXT_MEMORY.equals(entityType)) {
+      throw new IllegalStateException(
+          "Status-aware listing is only supported for context memories");
+    }
+    SearchResultListMapper results =
+        searchRepository.listContextMemoriesWithStatuses(
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            getSubjectContext(securityContext),
+            statuses);
+    List<T> entityList = new ArrayList<>();
+    for (Map<String, Object> json : results.getResults()) {
+      SearchIndexUtils.normalizeFollowers(json);
+      T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
+      entityList.add(withHref(uriInfo, entity));
+    }
+    return new ResultList<>(entityList, offset, limit, (int) results.getTotal());
   }
 
   @Transaction

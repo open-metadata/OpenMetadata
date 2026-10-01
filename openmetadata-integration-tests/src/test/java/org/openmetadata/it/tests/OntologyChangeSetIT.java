@@ -199,6 +199,18 @@ public class OntologyChangeSetIT {
                 OntologyMemoryProposalStatus.class)
             .getProposals()
             .isEmpty());
+
+    memories.patch(
+        memory.getId().toString(),
+        JsonUtils.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/status\",\"value\":\"Invalidated\"}]"));
+    assertEquals(
+        Set.of(memory.getId()), client.glossaryTerms().get(termId.toString()).getSourceMemoryIds());
+    assertEquals(
+        List.of(termId),
+        memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities().stream()
+            .map(ref -> ref.getId())
+            .toList());
   }
 
   @Test

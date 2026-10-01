@@ -47,7 +47,7 @@ const hasOpenWork = (status: OntologyMemoryProposalStatus): boolean =>
 
 const isProposable = (memory: ContextMemory): boolean =>
   getDerivedTerms(memory).length === 0 &&
-  (!memory.status || memory.status === MemoryStatus.Active);
+  memory.status === MemoryStatus.Active;
 
 const isIdle = (status: OntologyMemoryProposalStatus | undefined): boolean =>
   status !== undefined && status.enabled && !hasOpenWork(status);

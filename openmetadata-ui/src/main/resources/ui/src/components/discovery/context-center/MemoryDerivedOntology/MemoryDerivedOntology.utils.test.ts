@@ -78,6 +78,20 @@ describe('canProposeFromMemory', () => {
       canProposeFromMemory(published, { ...idle, queued: true }, viewer)
     ).toBe(false);
   });
+
+  it('blocks proposals from non-Active memories', () => {
+    for (const status of [
+      undefined,
+      MemoryStatus.Draft,
+      MemoryStatus.Archived,
+      MemoryStatus.Superseded,
+      MemoryStatus.Invalidated,
+    ]) {
+      const retired = { ...memory(ShareVisibility.Public), status };
+
+      expect(canProposeFromMemory(retired, idle, viewer)).toBe(false);
+    }
+  });
 });
 
 describe('getLastOutcomeMessage', () => {

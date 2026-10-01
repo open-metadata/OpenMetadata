@@ -162,8 +162,7 @@ class OntologyMemoryDerivationServiceTest {
   @Test
   void requireEligibleRejectsRestrictedInactiveAndDerivedMemories() {
     final ContextMemory restricted = memory(MemoryVisibility.PRIVATE);
-    final ContextMemory archived = memory(MemoryVisibility.ENTITY);
-    archived.setStatus(ContextMemoryStatus.ARCHIVED);
+    final ContextMemory retired = memory(MemoryVisibility.ENTITY);
     final ContextMemory derived = memory(MemoryVisibility.PUBLIC);
     derived.setDerivedEntities(
         List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.GLOSSARY_TERM)));
@@ -171,9 +170,16 @@ class OntologyMemoryDerivationServiceTest {
     assertThrows(
         BadRequestException.class,
         () -> OntologyMemoryDerivationService.requireEligible(List.of(restricted), "bob"));
-    assertThrows(
-        BadRequestException.class,
-        () -> OntologyMemoryDerivationService.requireEligible(List.of(archived), "alice"));
+    for (ContextMemoryStatus status :
+        List.of(
+            ContextMemoryStatus.ARCHIVED,
+            ContextMemoryStatus.SUPERSEDED,
+            ContextMemoryStatus.INVALIDATED)) {
+      retired.setStatus(status);
+      assertThrows(
+          BadRequestException.class,
+          () -> OntologyMemoryDerivationService.requireEligible(List.of(retired), "alice"));
+    }
     final ClientErrorException conflict =
         assertThrows(
             ClientErrorException.class,

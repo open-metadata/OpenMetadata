@@ -45,8 +45,7 @@
         { "name": "ARCHIVED" },
         { "name": "SUPERSEDED" },
         { "name": "INVALIDATED" }
-      ],
-      "default": "Active"
+      ]
     },
     "sourceType": {
       "javaType": "org.openmetadata.schema.entity.context.ContextMemorySourceType",

@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { getListContextMemories } from '../../../rest/contextMemoryAPI';
+import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import ContextCenterMemoriesPage from './ContextCenterMemoriesPage';
 
 // Resource-level permission (getResourcePermission(CONTEXT_MEMORY)) — no prior
@@ -71,7 +72,13 @@ jest.mock(
   '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="context-center-header" />,
+    default: ({ onSearch }: { onSearch: (value: string) => void }) => (
+      <input
+        aria-label="Search memories"
+        data-testid="memory-search"
+        onChange={(event) => onSearch(event.target.value)}
+      />
+    ),
   })
 );
 
@@ -110,7 +117,17 @@ jest.mock(
   '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="data-asset-select-list" />,
+    default: ({
+      onChange,
+    }: {
+      onChange: (value: { id: string; label: string }) => void;
+    }) => (
+      <button
+        aria-label="Select test asset"
+        data-testid="mock-asset-select"
+        onClick={() => onChange({ id: 'asset-1', label: 'Test Asset' })}
+      />
+    ),
   })
 );
 
@@ -171,38 +188,101 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     );
   });
 
-  it('uses the direct list and cursor pagination for memory history', async () => {
+  it('filters by selected statuses while retaining author and sort controls', async () => {
     mockGetResourcePermission.mockResolvedValue({ EditAll: true });
-    (getListContextMemories as jest.Mock).mockImplementation(async (params) =>
-      params.offset === undefined
-        ? {
-            data: [{ id: 'retired-memory', title: 'Retired Memory' }],
-            paging: { after: 'next-history-page' },
-          }
-        : {
-            data: [{ id: 'active-memory', title: 'Active Memory' }],
-            paging: { total: 1 },
-          }
-    );
-
     renderPage();
-    fireEvent.click(await screen.findByText('label.history'));
 
     await waitFor(() => {
-      expect(getListContextMemories).toHaveBeenCalledWith({
-        limit: 10,
-        after: undefined,
-        fields: expect.any(String),
-      });
+      expect(getListContextMemories).toHaveBeenCalledWith(
+        expect.objectContaining({ statuses: 'Active', offset: 0 })
+      );
     });
 
-    fireEvent.click(screen.getByTestId('memory-history-next'));
+    fireEvent.click(screen.getByTestId('memory-status-filter'));
+    fireEvent.click(await screen.findByText('label.invalidated'));
+
     await waitFor(() => {
-      expect(getListContextMemories).toHaveBeenCalledWith({
-        limit: 10,
-        after: 'next-history-page',
-        fields: expect.any(String),
-      });
+      expect(getListContextMemories).toHaveBeenCalledWith(
+        expect.objectContaining({ statuses: 'Active,Invalidated', offset: 0 })
+      );
+      expect(getListContextMemories).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statuses: 'Active,Invalidated',
+          limit: 0,
+          offset: 0,
+        })
+      );
+    });
+
+    fireEvent.click(screen.getByTestId('memory-count-card-created-by-me'));
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statuses: 'Active,Invalidated',
+          author: 'user-1',
+        })
+      );
+    });
+
+    fireEvent.change(screen.getByTestId('memory-search'), {
+      target: { value: 'missing glossary fact' },
+    });
+    fireEvent.click(screen.getByTestId('mock-asset-select'));
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statuses: 'Active,Invalidated',
+          q: 'missing glossary fact',
+          assets: 'asset-1',
+          author: 'user-1',
+        })
+      );
+    });
+
+    fireEvent.click(screen.getByText(/label.sort/));
+    fireEvent.click(await screen.findByText('label.most-used'));
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statuses: 'Active,Invalidated',
+          q: 'missing glossary fact',
+          assets: 'asset-1',
+          author: 'user-1',
+          sortBy: 'usageCount',
+        })
+      );
+    });
+  });
+
+  it('combines the author dropdown with selected statuses', async () => {
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    (getUserAndTeamSearch as jest.Mock).mockResolvedValue({
+      data: {
+        hits: {
+          hits: [
+            {
+              _id: 'other-user',
+              _source: { name: 'other-user', displayName: 'Other User' },
+            },
+          ],
+        },
+      },
+    } as Awaited<ReturnType<typeof getUserAndTeamSearch>>);
+    renderPage();
+
+    fireEvent.click(screen.getByTestId('memory-status-filter'));
+    fireEvent.click(await screen.findByText('label.invalidated'));
+    fireEvent.click(screen.getByTestId('memory-count-card-created-by-me'));
+    fireEvent.click(screen.getByTestId('author-filter-button'));
+    fireEvent.click(await screen.findByText('Other User'));
+
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statuses: 'Active,Invalidated',
+          author: 'other-user',
+        })
+      );
     });
   });
 });

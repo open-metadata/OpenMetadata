@@ -65,6 +65,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
@@ -406,6 +407,44 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String queryString,
       SubjectContext subjectContext)
       throws IOException {
+    return listWithOffsetForStatuses(
+        filter,
+        limit,
+        offset,
+        index,
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext,
+        List.of(ContextMemoryStatus.ACTIVE));
+  }
+
+  @Override
+  public SearchResultListMapper listContextMemoriesWithStatuses(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    return listWithOffsetForStatuses(
+        filter, limit, offset, index, searchSortFilter, q, null, subjectContext, statuses);
+  }
+
+  private SearchResultListMapper listWithOffsetForStatuses(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
     }
@@ -435,7 +474,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       applySearchFilter(filter, requestBuilder);
     }
 
-    applyRbacCondition(subjectContext, requestBuilder);
+    applyRbacCondition(subjectContext, requestBuilder, statuses);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -630,6 +669,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
   private void applyRbacCondition(
       SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+    applyRbacCondition(subjectContext, requestBuilder, List.of(ContextMemoryStatus.ACTIVE));
+  }
+
+  private void applyRbacCondition(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      List<ContextMemoryStatus> statuses) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQueryBuilder != null) {
@@ -651,7 +697,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
     }
-    applyContextMemoryVisibility(subjectContext, requestBuilder);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses);
   }
 
   /**
@@ -676,8 +722,16 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
    */
   private void applyContextMemoryVisibility(
       SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+    applyContextMemoryVisibility(
+        subjectContext, requestBuilder, List.of(ContextMemoryStatus.ACTIVE));
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      List<ContextMemoryStatus> statuses) {
     OMQueryBuilder visibilityBuilder =
-        contextMemoryVisibility.buildVisibilityFilter(subjectContext);
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses);
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }
