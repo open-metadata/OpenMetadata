@@ -26,7 +26,8 @@ export const pointPixel = <T extends object>(
   datum: T,
   xKey: keyof T & string,
   seriesKey: string,
-  isTime: boolean
+  isTime: boolean,
+  horizontal: boolean
 ): ChartPixel | undefined => {
   const row = datum as Record<string, unknown>;
   const y = row[seriesKey];
@@ -34,7 +35,9 @@ export const pointPixel = <T extends object>(
     return undefined;
   }
   const x = isTime ? row[xKey] : String(row[xKey]);
-  const pixel = chart.convertToPixel({ seriesId: seriesKey }, [x, y]);
+  // A horizontal bar chart puts the value axis first.
+  const pair = horizontal ? [y, x] : [x, y];
+  const pixel = chart.convertToPixel({ seriesId: seriesKey }, pair);
   const [px, py] = Array.isArray(pixel) ? pixel : [];
 
   return isFiniteNumber(px) && isFiniteNumber(py)

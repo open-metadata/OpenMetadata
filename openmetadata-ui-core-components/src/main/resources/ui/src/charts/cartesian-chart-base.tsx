@@ -153,7 +153,8 @@ export const CartesianChartBase = <T extends object>({
                   datum,
                   xKey,
                   seriesKey,
-                  xAxis?.type === 'time'
+                  xAxis?.type === 'time',
+                  layout === 'horizontal'
                 )
               : undefined;
           if (datum && position) {
@@ -172,6 +173,7 @@ export const CartesianChartBase = <T extends object>({
     series,
     xKey,
     xAxis,
+    layout,
     onPointClick,
     onPointHover,
     onPointLeave,
