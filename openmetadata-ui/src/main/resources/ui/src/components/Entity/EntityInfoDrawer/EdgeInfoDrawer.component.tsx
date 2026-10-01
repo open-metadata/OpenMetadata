@@ -332,6 +332,7 @@ const EdgeInfoDrawer = ({
           className="summary-panel-card sql-function-section"
           showEditButton={hasEditAccess}
           title={t('label.sql-function')}
+          titleClassName="tw:justify-start tw:gap-2"
           onEdit={() => {
             setSqlFunction(functionValue ?? '');
             setShowSqlFunctionModal(true);
@@ -349,6 +350,7 @@ const EdgeInfoDrawer = ({
           className="summary-panel-card"
           showEditButton={hasEditAccess}
           title={t('label.sql-uppercase-query')}
+          titleClassName="tw:justify-start tw:gap-2"
           onEdit={() => setShowSqlQueryModal(true)}>
           {mysqlQuery ? (
             <SchemaEditor
