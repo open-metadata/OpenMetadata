@@ -67,9 +67,7 @@ interface SeriesContext<T extends object> {
 
 // Values on a category axis stay strings; ECharts maps them to categories.
 const categoryValue = (value: unknown): string | null =>
-  value === null || value === undefined || value === ''
-    ? null
-    : String(value);
+  value === null || value === undefined || value === '' ? null : String(value);
 
 const isCategoryValueAxis = <T extends object>(
   input: CartesianBuildInput<T>,
@@ -198,16 +196,56 @@ const buildSeries = <T extends object>(
   );
 };
 
-const valueAxes = (
+/**
+ * The distinct values of the series on a category value axis, in order of
+ * appearance. Given as the axis data, because an axis that collects its own
+ * categories would collect a gap (`null`) as one more category.
+ */
+const valueCategories = <T extends object>(
+  input: CartesianBuildInput<T>,
+  axisIndex: number
+): string[] => {
+  const keys = input.series
+    .filter((series) => (series.yAxisIndex ?? 0) === axisIndex)
+    .map((series) => series.key);
+  const values = input.data.flatMap((datum) =>
+    keys.map((key) => categoryValue((datum as Datum)[key]))
+  );
+
+  const seen = new Set<string>();
+
+  return values.filter((value): value is string => {
+    const isNew = value !== null && !seen.has(value);
+    if (isNew) {
+      seen.add(value);
+    }
+
+    return isNew;
+  });
+};
+
+const valueAxes = <T extends object>(
   theme: ChartTheme,
-  yAxis: CartesianBuildInput<object>['yAxis'],
+  input: CartesianBuildInput<T>,
   horizontal: boolean
 ): YAXisComponentOption[] => {
+  const { yAxis } = input;
   const props: ChartYAxisProps[] = Array.isArray(yAxis) ? yAxis : [yAxis ?? {}];
 
-  return props.map((axis, index) =>
-    valueAxis(theme, axis, horizontal ? 'bottom' : index ? 'right' : 'left')
-  );
+  return props.map((axis, index) => {
+    const built = valueAxis(
+      theme,
+      axis,
+      horizontal ? 'bottom' : index ? 'right' : 'left'
+    );
+
+    return isCategoryValueAxis(input, index)
+      ? ({
+          ...built,
+          data: valueCategories(input, index),
+        } as YAXisComponentOption)
+      : built;
+  });
 };
 
 export const REFERENCE_SERIES_ID = '__reference-lines';
@@ -282,7 +320,7 @@ export const buildCartesianOption = <T extends object>(
   const category = input.categoryClickable
     ? { ...axis, triggerEvent: true }
     : axis;
-  const values = valueAxes(theme, input.yAxis, horizontal);
+  const values = valueAxes(theme, input, horizontal);
   const valueSlot = values.length === 1 ? values[0] : values;
   const layout = { legend, horizontal };
 

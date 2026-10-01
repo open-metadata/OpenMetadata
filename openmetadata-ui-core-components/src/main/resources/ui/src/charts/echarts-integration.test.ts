@@ -390,4 +390,40 @@ describe('category value axis on a real chart', () => {
     expect(svg).toContain('apac');
     expect(svg).toContain('eu');
   });
+
+  it('adds no category for a series without values', () => {
+    const chart = mount(
+      buildLineOption(
+        {
+          data: [
+            { day: 'Mon', min: 'apac', mean: null },
+            { day: 'Tue', min: 'eu', mean: undefined },
+          ],
+          xKey: 'day',
+          ariaLabel: 'Range',
+          series: [
+            { key: 'min', name: 'Min' },
+            { key: 'mean', name: 'Mean' },
+          ],
+          yAxis: { type: 'category' },
+        },
+        LIGHT_CHART_THEME
+      )
+    );
+    type OrdinalAxis = {
+      axis: { scale: { getOrdinalMeta: () => { categories: unknown[] } } };
+    };
+    const model = (
+      chart as unknown as {
+        getModel: () => {
+          getComponent: (type: string, index: number) => OrdinalAxis;
+        };
+      }
+    ).getModel();
+    const categories = model
+      .getComponent('yAxis', 0)
+      .axis.scale.getOrdinalMeta().categories;
+
+    expect(categories).toEqual(['apac', 'eu']);
+  });
 });
