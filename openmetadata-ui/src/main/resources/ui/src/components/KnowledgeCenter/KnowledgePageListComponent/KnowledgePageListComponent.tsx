@@ -12,7 +12,10 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
+import {
+  File06 as Articles,
+  Lock01 as Lock,
+} from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -25,12 +28,12 @@ import React, {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
-import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
   PAGE_SIZE_MEDIUM,
@@ -44,6 +47,7 @@ import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 import {
   CreateKnowledgePage,
   KnowledgeCenterPageProps,
@@ -80,6 +84,10 @@ interface KnowledgePageListComponentProps {
   hideAddButton?: boolean;
   rightPanelSlot?: React.ReactNode;
   searchQuery?: string;
+  quickFilterQuery?: Record<string, unknown>;
+  sortField?: string;
+  restSortField?: string;
+  sortOrder?: 'asc' | 'desc';
   onEmptyStateChange?: (isEmpty: boolean) => void;
   isPermissionsLoading?: boolean;
 }
@@ -253,7 +261,7 @@ const resolveKnowledgePageListViewState = (
   isPermissionsLoading: boolean,
   hasViewPermission: boolean,
   knowledgePages: KnowledgePage[],
-  searchQuery: string | undefined
+  isFiltered: boolean
 ): KnowledgePageListViewState => {
   if (isLoading || isCreatingNewPage || isPermissionsLoading) {
     return 'loading';
@@ -261,7 +269,7 @@ const resolveKnowledgePageListViewState = (
   if (!hasViewPermission) {
     return 'noAccess';
   }
-  if (isEmpty(knowledgePages) && searchQuery) {
+  if (isEmpty(knowledgePages) && isFiltered) {
     return 'noSearchResults';
   }
   if (isEmpty(knowledgePages)) {
@@ -282,6 +290,10 @@ const KnowledgePageListComponent = forwardRef<
       hideAddButton = false,
       rightPanelSlot,
       searchQuery,
+      quickFilterQuery,
+      sortField = 'updatedAt',
+      restSortField,
+      sortOrder = 'desc',
       onEmptyStateChange,
       isPermissionsLoading = false,
     },
@@ -312,43 +324,83 @@ const KnowledgePageListComponent = forwardRef<
     const handleRefreshTagsCategory = (value: boolean) =>
       setRefreshTagsCategory(value);
 
+    // Quick-filter facets are only available through the `page` search index, so
+    // any active text search or filter routes the listing through ES; the plain
+    // REST list serves the unfiltered default view.
+    const hasQueryFilter = !isEmpty(quickFilterQuery);
+    const isFiltered = Boolean(searchQuery) || hasQueryFilter;
+    // Publication-date / popularity sorts have no REST equivalent, so they route
+    // through ES even with no filter (`restSortField` is undefined for them).
+    const useSearchPath = isFiltered || !restSortField;
+
+    // Search/filter/sort changes fire overlapping requests with no cancellation;
+    // only the latest one may commit its results so a slow earlier response can't
+    // overwrite the current sort/filter view.
+    const latestRequestId = useRef(0);
+
+    const fetchFilteredKnowledgePages = async (
+      offset: number,
+      requestId: number
+    ) => {
+      const results = await fetchSearchResults({
+        query: searchQuery || '',
+        pageNumber: offset / PAGE_SIZE_MEDIUM + 1,
+        pageSize: PAGE_SIZE_MEDIUM,
+        searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
+        queryFilter: quickFilterQuery,
+        sortField,
+        sortOrder,
+      });
+      if (requestId !== latestRequestId.current) {
+        return;
+      }
+      const hits = results.hits.hits.map((hit) => hit._source as KnowledgePage);
+      setKnowledgePages((prev) =>
+        uniqBy<KnowledgePage>(offset > 0 ? [...prev, ...hits] : hits, 'id')
+      );
+      setPaging({ total: results.hits.total.value });
+    };
+
+    const fetchUnfilteredKnowledgePages = async (
+      offset: number,
+      requestId: number
+    ) => {
+      const { data, paging: pagingObj } = await getListKnowledgePages({
+        fields: getKnowledgePageFields(),
+        limit: PAGE_SIZE_MEDIUM,
+        offset,
+        sortBy: restSortField ?? 'updatedAt',
+        sortOrder,
+      });
+      if (requestId !== latestRequestId.current) {
+        return;
+      }
+      setKnowledgePages((prev) =>
+        uniqBy<KnowledgePage>(offset > 0 ? [...prev, ...data] : data, 'id')
+      );
+      setPaging(pagingObj);
+    };
+
     const fetchKnowledgePages = async (offset = 0) => {
+      const requestId = ++latestRequestId.current;
       if (offset > 0) {
         setIsLoadingMore(true);
       } else {
         setIsLoading(true);
       }
       try {
-        if (searchQuery) {
-          const results = await fetchSearchResults({
-            query: searchQuery,
-            searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
-            sortField: 'updatedAt',
-            sortOrder: 'desc',
-            pageSize: PAGE_SIZE_MEDIUM,
-          });
-          setKnowledgePages(
-            results.hits.hits.map((hit) => hit._source as KnowledgePage)
-          );
-          setPaging({ total: results.hits.total.value });
+        if (useSearchPath) {
+          await fetchFilteredKnowledgePages(offset, requestId);
         } else {
-          const { data, paging: pagingObj } = await getListKnowledgePages({
-            fields: getKnowledgePageFields(),
-            limit: PAGE_SIZE_MEDIUM,
-            offset,
-            sortBy: 'updatedAt',
-            sortOrder: 'desc',
-          });
-          setKnowledgePages((prev) =>
-            uniqBy<KnowledgePage>(offset > 0 ? [...prev, ...data] : data, 'id')
-          );
-          setPaging(pagingObj);
+          await fetchUnfilteredKnowledgePages(offset, requestId);
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
+        if (requestId === latestRequestId.current) {
+          setIsLoading(false);
+          setIsLoadingMore(false);
+        }
       }
     };
 
@@ -532,24 +584,32 @@ const KnowledgePageListComponent = forwardRef<
       } else {
         setIsLoading(false);
       }
-    }, [hasViewPermission, searchQuery, isPermissionsLoading]);
+    }, [
+      hasViewPermission,
+      searchQuery,
+      quickFilterQuery,
+      sortField,
+      restSortField,
+      sortOrder,
+      isPermissionsLoading,
+    ]);
 
     useEffect(() => {
-      if (!isLoading && !isPermissionsLoading && !searchQuery) {
+      if (!isLoading && !isPermissionsLoading && !isFiltered) {
         onEmptyStateChange?.(isEmpty(knowledgePages));
       }
     }, [
       isLoading,
       isPermissionsLoading,
-      searchQuery,
+      isFiltered,
       knowledgePages,
       onEmptyStateChange,
     ]);
 
     useEffect(() => {
       const hasMore = knowledgePages.length < paging.total;
-      const canLoadMore = isInView && hasMore && !isLoadingMore;
-      if (canLoadMore && !searchQuery && hasViewPermission) {
+      const canLoadMore = isInView && hasMore && !isLoadingMore && !isLoading;
+      if (canLoadMore && hasViewPermission) {
         const nextOffset = pageOffset + PAGE_SIZE_MEDIUM;
         setPageOffset(nextOffset);
         fetchKnowledgePages(nextOffset);
@@ -559,7 +619,7 @@ const KnowledgePageListComponent = forwardRef<
       paging.total,
       knowledgePages.length,
       isLoadingMore,
-      searchQuery,
+      isLoading,
       hasViewPermission,
     ]);
 
@@ -637,7 +697,7 @@ const KnowledgePageListComponent = forwardRef<
       isPermissionsLoading,
       hasViewPermission,
       knowledgePages,
-      searchQuery
+      isFiltered
     );
 
     if (viewState === 'loading') {

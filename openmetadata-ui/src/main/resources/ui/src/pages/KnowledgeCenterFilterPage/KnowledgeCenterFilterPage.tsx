@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Lock } from '@openmetadata/ui-core-components/icons';
+import { Lock01 } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -24,11 +24,9 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { PAGE_SIZE_BASE, ROUTES } from '../../constants/constants';
 import { getKnowledgePageFields } from '../../constants/KnowledgeCenter.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Paging } from '../../generated/type/paging';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { useElementInView } from '../../hooks/useElementInView';
@@ -228,7 +226,7 @@ const KnowledgeCenterFilterPage = () => {
               }}
             />
           }
-          icon={<Lock className="tw:text-secondary" />}
+          icon={<Lock01 className="tw:text-secondary" />}
           title={t('label.access-denied')}
         />
       </div>

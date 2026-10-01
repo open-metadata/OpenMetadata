@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { DotsVertical } from '@untitledui/icons';
+import { DotsVertical } from '@openmetadata/ui-core-components/icons';
 import { Form, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
@@ -41,7 +41,7 @@ import {
 } from '../../../../../utils/ChartUtils';
 import { CustomDQTooltip } from '../../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
-import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import {
   showErrorToast,
   showSuccessToast,
@@ -72,7 +72,7 @@ const CustomMetricGraphs = ({
   } = useTableProfiler();
   const editPermission =
     permissions &&
-    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
+    getDerivedPermissionFlags(permissions).can(Operation.EditDataProfile);
   const deletePermission = permissions?.Delete || false;
 
   const [selectedMetrics, setSelectedMetrics] = useState<CustomMetric>();

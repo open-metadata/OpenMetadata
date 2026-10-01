@@ -14,11 +14,13 @@
 import { SelectItemType } from '@openmetadata/ui-core-components';
 import { ComponentProps, ReactNode } from 'react';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import {
   Destination,
   EventFilterRule,
 } from '../../../generated/events/eventSubscription';
+import { EventType } from '../../../generated/type/changeEvent';
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
@@ -48,7 +50,9 @@ export interface AlertAiFormFieldsProps {
   shouldShowFiltersSection: boolean;
   supportedFilters?: EventFilterRule[];
   supportedTriggers?: EventFilterRule[];
+  templateResourcePermission?: OperationPermission;
   templates?: NotificationTemplate[];
+  templatesLoading?: boolean;
   validationErrors?: AlertAiFormValidationErrors;
   value: AlertAiFormValue;
 }
@@ -58,6 +62,7 @@ interface AlertAiFormBaseProps
     AlertAiFormFieldsProps,
     'isViewOnly' | 'onChange' | 'showBasicFields' | 'value'
   > {
+  fieldDocDisplay?: 'popover' | 'panel';
   formId?: string;
   showHint?: boolean;
 }
@@ -99,6 +104,7 @@ export interface RuleSectionProps {
   containerEntities?: string[];
   field: RuleSectionField;
   selectedSource?: string;
+  supportedEventTypes?: EventType[];
   supportedRules?: EventFilterRule[];
   title: string;
   isViewOnly?: boolean;
@@ -110,6 +116,7 @@ export interface RuleSectionProps {
 export interface RuleArgumentFieldProps {
   argument: string;
   containerEntities?: string[];
+  supportedEventTypes?: EventType[];
   field: RuleSectionField;
   index: number;
   name: number;
@@ -151,11 +158,4 @@ export interface AlertAiDestinationItemProps
   destination: ModifiedDestination;
   destinationsWithStatus?: Destination[];
   isDestinationStatusLoading?: boolean;
-}
-
-export interface AlertAiNotificationSectionProps {
-  isViewOnly?: boolean;
-  onChange?: AlertAiFormFieldsProps['onChange'];
-  templates?: NotificationTemplate[];
-  value: AlertAiFormValue;
 }

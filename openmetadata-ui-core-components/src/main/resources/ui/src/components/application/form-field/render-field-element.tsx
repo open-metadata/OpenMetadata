@@ -413,6 +413,9 @@ export const renderFieldElement = (
 
     case FieldTypes.SELECT_NATIVE: {
       const nativeSelectedItem = field.value as FormSelectItem | null;
+      // The form-field `size` ('sm' | 'md') is a style variant; on <select> it
+      // would become the HTML `size` attribute (visible row count).
+      const { size: _size, ...nativeRest } = rest;
 
       return (
         <NativeSelect
@@ -425,7 +428,7 @@ export const renderFieldElement = (
             disabled: item.isDisabled,
           }))}
           value={nativeSelectedItem?.id ?? ''}
-          {...rest}
+          {...nativeRest}
           onBlur={() => {
             field.onBlur();
             onBlur?.();

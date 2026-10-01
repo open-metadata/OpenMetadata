@@ -160,3 +160,46 @@ describe('StoredProcedureVersion tests', () => {
     );
   });
 });
+
+describe('StoredProcedureVersion ViewCustomFields permission', () => {
+  const mockCustomPropertyTable = jest.requireMock(
+    '../../common/CustomPropertyTable/CustomPropertyTable'
+  ).CustomPropertyTable;
+
+  const renderWithViewCustomFields = (viewCustomFields: boolean) => {
+    render(
+      <StoredProcedureVersion
+        {...storedProcedureVersionMockProps}
+        entityPermissions={{
+          ...storedProcedureVersionMockProps.entityPermissions,
+          ViewCustomFields: viewCustomFields,
+        }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    fireEvent.click(screen.getByText('label.custom-property-plural'));
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should pass hasPermission=true to CustomPropertyTable when ViewCustomFields is granted', () => {
+    renderWithViewCustomFields(true);
+
+    expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+      expect.objectContaining({ hasPermission: true }),
+      expect.any(Object)
+    );
+  });
+
+  it('should pass hasPermission=false to CustomPropertyTable when ViewCustomFields is denied', () => {
+    renderWithViewCustomFields(false);
+
+    expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+      expect.objectContaining({ hasPermission: false }),
+      expect.any(Object)
+    );
+  });
+});

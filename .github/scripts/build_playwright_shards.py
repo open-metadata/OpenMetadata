@@ -94,6 +94,18 @@ COMMON_MAX_SHARDS = 28
 # suite. 30 s preserves a reasonable margin so the first plan after re-enable
 # does not silently over-pack the shard.
 FALLBACK_TEST_MS = 30_000
+# A history run whose tests are, at the median, this much slower than the same
+# tests in the other runs measured a degraded runner, not the suite. Weights are
+# p75 across runs, so with 3-4 runs one such run sets most of them: run
+# 36754924437 was 1.48x slower and alone pushed chromium past COMMON_MAX_SHARDS,
+# failing planning (and ejecting the merge group) for content that fits in 26.
+# Healthy runs sit within ~0.9-1.05 of each other.
+MAX_HISTORY_RUN_SLOWDOWN = 1.3
+# Fewer shared tests than this and a run's slowdown is noise, so it is kept.
+MIN_SHARED_TESTS_FOR_SLOWDOWN = 100
+CHECKED_IN_TIMING_BASELINE = (
+    Path(__file__).resolve().parents[1] / "playwright/timing-baseline.json"
+)
 AUDITED_PARALLEL_SUITES = {
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
     # Six long-running tests (each 5-10 min per test.setTimeout) inside one
@@ -325,17 +337,61 @@ def percentile_75(values: list[int]) -> int:
     return round(quartiles[2])
 
 
+def timed_tests(payload: dict[str, Any]) -> dict[str, int]:
+    return {
+        test["id"]: int(test["durationMs"])
+        for test in payload.get("tests", [])
+        if test.get("id") and int(test.get("durationMs", 0)) > 0
+    }
+
+
+def run_slowdown(run: dict[str, int], others: list[dict[str, int]]) -> float | None:
+    """Median ratio of a run's test durations to the other runs' median, or
+    None when too few tests are shared to tell."""
+    ratios = [
+        duration / statistics.median(other[test_id] for other in shared)
+        for test_id, duration in run.items()
+        if (shared := [other for other in others if test_id in other])
+    ]
+    if len(ratios) < MIN_SHARED_TESTS_FOR_SLOWDOWN:
+        return None
+    return statistics.median(ratios)
+
+
+def drop_slow_history_runs(
+    runs: list[tuple[Path, dict[str, Any]]],
+) -> list[tuple[Path, dict[str, Any]]]:
+    timed = [timed_tests(payload) for _, payload in runs]
+    kept = []
+    for index, run in enumerate(runs):
+        others = timed[:index] + timed[index + 1 :]
+        slowdown = run_slowdown(timed[index], others)
+        if slowdown is not None and slowdown > MAX_HISTORY_RUN_SLOWDOWN:
+            print(
+                f"::warning::Ignoring timing history {run[0]}: its tests ran "
+                f"{slowdown:.2f}x slower than the other runs "
+                f"(limit {MAX_HISTORY_RUN_SLOWDOWN}x), so it measured the runner, "
+                "not the suite.",
+                file=sys.stderr,
+            )
+        else:
+            kept.append(run)
+    return kept
+
+
 def load_history(
     paths: list[Path],
 ) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
     durations: dict[str, list[int]] = defaultdict(list)
     identity_durations: dict[tuple[str, str], list[int]] = defaultdict(list)
+    runs = []
     for path in paths:
         if not path.exists():
             continue
         payload = json.loads(path.read_text(encoding="utf-8"))
-        if payload.get("mode") != "full":
-            continue
+        if payload.get("mode") == "full":
+            runs.append((path, payload))
+    for _, payload in drop_slow_history_runs(runs):
         for test in payload.get("tests", []):
             test_id = test.get("id")
             duration = max(0, int(test.get("durationMs", 0)))
@@ -366,6 +422,22 @@ def load_history(
         identity: percentile_75(values)
         for identity, values in identity_durations.items()
     }
+    return weights, identity_weights
+
+
+def load_history_with_baseline(
+    paths: list[Path], baseline: Path = CHECKED_IN_TIMING_BASELINE
+) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
+    """Use seeded timings only when downloaded history has no matching evidence."""
+    resolved_baseline = baseline.resolve()
+    weights, identity_weights = load_history(
+        [path for path in paths if path.resolve() != resolved_baseline]
+    )
+    baseline_weights, baseline_identity_weights = load_history([baseline])
+    for test_id, weight in baseline_weights.items():
+        weights.setdefault(test_id, weight)
+    for identity, weight in baseline_identity_weights.items():
+        identity_weights.setdefault(identity, weight)
     return weights, identity_weights
 
 
@@ -605,7 +677,11 @@ def assign_lane_within_budget(
     units: list[Unit], lane: str, mode: str
 ) -> list[list[Unit]]:
     count = shard_count(units, lane, mode)
-    _, maximum = lane_bounds(lane, mode)
+    # The targeted cap is where a PR's lane starts, not a ceiling: a PR that
+    # touches helpers nearly every spec imports selects a whole side lane, and
+    # growing to the full-mode bound beats failing the plan. Everyday targeted
+    # PRs never need more, so their shard count is unchanged.
+    _, maximum = lane_bounds(lane, "full")
     workers = LANE_WORKERS.get(lane, 3)
     budget_ms = shard_budget_ms_for_lane(lane)
     while True:
@@ -668,46 +744,11 @@ def write_plan(
     }
 
 
-# The workflow passes one `--history` per downloaded full-run artifact and only
-# falls back to the checked-in baseline when *no* artifact could be downloaded
-# (see the `history_args` block in playwright-e2e-reusable.yml). A newly added
-# spec file exists in the baseline -- its author seeds the durations there, as
-# the stale-baseline gate below instructs -- but in no artifact yet, so a single
-# successful download silently dropped those seeded timings and the gate fired
-# on a file that *does* have history. Fold the baseline in at the lowest
-# precedence instead: an artifact weight always wins where one exists, and the
-# baseline only backfills tests no artifact has ever observed.
-CHECKED_IN_BASELINE = Path(".github/playwright/timing-baseline.json")
-
-
-def backfill_from_checked_in_baseline(
-    paths: list[Path],
-    weights: dict[str, int],
-    identity_weights: dict[tuple[str, str], int],
-) -> None:
-    baseline = next(
-        (
-            candidate
-            for candidate in (root / CHECKED_IN_BASELINE for root in SPEC_ROOT_CANDIDATES)
-            if candidate.is_file()
-        ),
-        None,
-    )
-    if baseline is None or any(path.resolve() == baseline.resolve() for path in paths):
-        return
-    fallback_weights, fallback_identity = load_history([baseline])
-    for test_id, weight in fallback_weights.items():
-        weights.setdefault(test_id, weight)
-    for identity, weight in fallback_identity.items():
-        identity_weights.setdefault(identity, weight)
-
-
 def main() -> None:
     args = parse_args()
     report = json.loads(args.test_list.read_text(encoding="utf-8"))
     selection = json.loads(args.selection.read_text(encoding="utf-8"))
-    test_weights, identity_weights = load_history(args.history)
-    backfill_from_checked_in_baseline(args.history, test_weights, identity_weights)
+    test_weights, identity_weights = load_history_with_baseline(args.history)
     discovered_units = discover_units(report)
     unmatched_selectors = [
         selector["spec"]

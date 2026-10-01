@@ -32,6 +32,7 @@ import {
   expectBreadcrumbToContainAncestor,
   openBreadcrumbOverflowMenu,
 } from '../../utils/headerBreadcrumbUtils';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -278,7 +279,7 @@ test.describe('Container entity specific tests ', () => {
     expect(validationResult.pathname).toContain('container');
 
     // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');
@@ -396,7 +397,9 @@ test.describe('Deeply nested container navigation', () => {
     const initialContainerResponse = page.waitForResponse(
       '/api/v1/containers/name/*'
     );
-    await page.goto(`/container/${deepContainer4Fqn}`);
+    await page.goto(`/container/${deepContainer4Fqn}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await initialContainerResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -470,7 +473,9 @@ test.describe('Deeply nested container navigation', () => {
     const initialContainerResponse = page.waitForResponse(
       '/api/v1/containers/name/*'
     );
-    await page.goto(`/container/${deepContainer4Fqn}`);
+    await page.goto(`/container/${deepContainer4Fqn}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await initialContainerResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -633,13 +638,17 @@ test.describe('Children tab search + Deleted toggle', () => {
     // listener BEFORE goto, then await it. The container's only tab when
     // dataModel is empty (our fixture parents) is CHILDREN, so the page
     // fires /children automatically on mount — no separate tab click needed.
-    const initialChildrenResponse = page.waitForResponse(
+    const initialChildrenResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes(`/api/v1/containers/name/`) &&
-        res.url().includes('/children?') &&
-        res.status() === 200
+        res.url().includes('/children?'),
+      200
     );
-    await page.goto(`/container/${parentFqn}`);
+    await page.goto(`/container/${parentFqn}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await initialChildrenResponse;
     await waitForAllLoadersToDisappear(page);
   });
@@ -661,13 +670,15 @@ test.describe('Children tab search + Deleted toggle', () => {
     // someone wires this through the global search index, the URL would no
     // longer match this matcher and the test fails fast — exactly the scoping
     // regression we want to catch.
-    const searchResponse = page.waitForResponse(
+    const searchResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes(`/api/v1/containers/name/`) &&
         res.url().includes(encodeURIComponent(parentFqn)) &&
         res.url().includes('/children?') &&
-        res.url().includes(`q=${SEARCH_TERM_ALICE}`) &&
-        res.status() === 200
+        res.url().includes(`q=${SEARCH_TERM_ALICE}`),
+      200
     );
     await page.getByTestId('searchbar').fill(SEARCH_TERM_ALICE);
     await searchResponse;
@@ -684,11 +695,13 @@ test.describe('Children tab search + Deleted toggle', () => {
     // Empty state — a substring no child contains returns zero rows. Empty
     // here means the API returned an empty page, not that the filter was
     // ignored and the previous full result is still on screen.
-    const emptyResponse = page.waitForResponse(
+    const emptyResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes('/children?') &&
-        res.url().includes(`q=${SEARCH_TERM_NO_MATCH}`) &&
-        res.status() === 200
+        res.url().includes(`q=${SEARCH_TERM_NO_MATCH}`),
+      200
     );
     await page.getByTestId('searchbar').fill(SEARCH_TERM_NO_MATCH);
     await emptyResponse;
@@ -700,11 +713,13 @@ test.describe('Children tab search + Deleted toggle', () => {
 
     // Clearing the search restores the unfiltered listing — same baseline
     // as the start of the test.
-    const clearResponse = page.waitForResponse(
+    const clearResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes('/children?') &&
-        !res.url().includes('q=') &&
-        res.status() === 200
+        !res.url().includes('q='),
+      200
     );
     await page.getByTestId('searchbar').fill('');
     await clearResponse;
@@ -727,11 +742,13 @@ test.describe('Children tab search + Deleted toggle', () => {
 
     // Toggle on — include flips to 'deleted'. The deleted child appears,
     // the live children disappear (deleted-only mode, not "all").
-    const deletedOnResponse = page.waitForResponse(
+    const deletedOnResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes('/children?') &&
-        res.url().includes('include=deleted') &&
-        res.status() === 200
+        res.url().includes('include=deleted'),
+      200
     );
     await page.getByTestId('show-deleted').click();
     await deletedOnResponse;
@@ -746,11 +763,13 @@ test.describe('Children tab search + Deleted toggle', () => {
     // URL guards against the cache returning a stale page from the toggled
     // request (ChildrenPageCache key includes the include tag for this
     // reason).
-    const deletedOffResponse = page.waitForResponse(
+    const deletedOffResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes('/children?') &&
-        res.url().includes('include=non-deleted') &&
-        res.status() === 200
+        res.url().includes('include=non-deleted'),
+      200
     );
     await page.getByTestId('show-deleted').click();
     await deletedOffResponse;
@@ -768,12 +787,14 @@ test.describe('Children tab search + Deleted toggle', () => {
     // Start in default mode and search for the deleted child's substring —
     // it must NOT appear because include defaults to non-deleted, regardless
     // of whether the substring matches.
-    const initialSearchResponse = page.waitForResponse(
+    const initialSearchResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes('/children?') &&
         res.url().includes(`q=${SEARCH_TERM_DELETED}`) &&
-        res.url().includes('include=non-deleted') &&
-        res.status() === 200
+        res.url().includes('include=non-deleted'),
+      200
     );
     await page.getByTestId('searchbar').fill(SEARCH_TERM_DELETED);
     await initialSearchResponse;
@@ -786,12 +807,14 @@ test.describe('Children tab search + Deleted toggle', () => {
     // Asserting on the URL params (not just the result) catches the case
     // where the toggle handler resets the search state — a likely bug if
     // the page-reset on toggle change ever drops the search value too.
-    const combinedResponse = page.waitForResponse(
+    const combinedResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes('/children?') &&
         res.url().includes(`q=${SEARCH_TERM_DELETED}`) &&
-        res.url().includes('include=deleted') &&
-        res.status() === 200
+        res.url().includes('include=deleted'),
+      200
     );
     await page.getByTestId('show-deleted').click();
     await combinedResponse;
@@ -892,14 +915,18 @@ test.describe('Children tab Deleted toggle is scoped per-level', () => {
   test('grandparent Deleted toggle returns empty — deleted grandchild does not bubble up', async ({
     page,
   }) => {
-    const initialChildrenResponse = page.waitForResponse(
+    const initialChildrenResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes('/api/v1/containers/name/') &&
         res.url().includes(encodeURIComponent(grandparentFqn)) &&
-        res.url().includes('/children?') &&
-        res.status() === 200
+        res.url().includes('/children?'),
+      200
     );
-    await page.goto(`/container/${grandparentFqn}`);
+    await page.goto(`/container/${grandparentFqn}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await initialChildrenResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -913,12 +940,14 @@ test.describe('Children tab Deleted toggle is scoped per-level', () => {
     // Toggle ON at the grandparent level. The request must carry include=deleted
     // and the URL must still target the grandparent FQN — pinning that the toggle
     // is applied locally and not somehow widened to a service-wide search.
-    const deletedResponse = page.waitForResponse(
+    const deletedResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes(encodeURIComponent(grandparentFqn)) &&
         res.url().includes('/children?') &&
-        res.url().includes('include=deleted') &&
-        res.status() === 200
+        res.url().includes('include=deleted'),
+      200
     );
     await page.getByTestId('show-deleted').click();
     await deletedResponse;
@@ -934,14 +963,18 @@ test.describe('Children tab Deleted toggle is scoped per-level', () => {
   test('parent Deleted toggle reveals the deleted grandchild — its actual direct parent', async ({
     page,
   }) => {
-    const initialChildrenResponse = page.waitForResponse(
+    const initialChildrenResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes('/api/v1/containers/name/') &&
         res.url().includes(encodeURIComponent(parentFqn)) &&
-        res.url().includes('/children?') &&
-        res.status() === 200
+        res.url().includes('/children?'),
+      200
     );
-    await page.goto(`/container/${parentFqn}`);
+    await page.goto(`/container/${parentFqn}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await initialChildrenResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -951,12 +984,14 @@ test.describe('Children tab Deleted toggle is scoped per-level', () => {
     // is hidden because include defaults to non-deleted.
     await expect(childTable.getByText(deletedChildName)).toHaveCount(0);
 
-    const deletedResponse = page.waitForResponse(
+    const deletedResponse = waitForResponseWithStatus(
+      page,
       (res) =>
+        res.request().method() === 'GET' &&
         res.url().includes(encodeURIComponent(parentFqn)) &&
         res.url().includes('/children?') &&
-        res.url().includes('include=deleted') &&
-        res.status() === 200
+        res.url().includes('include=deleted'),
+      200
     );
     await page.getByTestId('show-deleted').click();
     await deletedResponse;

@@ -48,11 +48,12 @@ import {
   renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { stripMarkdown } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
-import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
+import DomainTags from '../../common/DomainTags/DomainTags';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -330,15 +331,17 @@ const EntityTitleColumn = ({
           </Typography.Text>
         </Link>
 
-        {!isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
-          <div className="tw:ml-1.5">
-            <CertificationTag
-              certification={
-                (source as Table).certification as AssetCertification
-              }
-            />
-          </div>
-        )}
+        {/* Column docs carry the parent table's certification; a column isn't certified itself */}
+        {source.entityType !== EntityType.TABLE_COLUMN &&
+          !isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
+            <div className="tw:ml-1.5">
+              <CertificationTag
+                certification={
+                  (source as Table).certification as AssetCertification
+                }
+              />
+            </div>
+          )}
 
         {hasGlossaryTermStatus && (
           <EntityStatusBadge
@@ -552,11 +555,16 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const { isTourOpen } = useTourProvider();
     const queryClient = useQueryClient();
 
-    const source = useMemo(() => {
-      return highlight
-        ? highlightEntityNameAndDescription(_source, highlight)
-        : _source;
-    }, [_source, highlight]);
+    const source = useMemo(
+      () =>
+        highlight
+          ? highlightEntityNameAndDescription(_source, highlight, true)
+          : {
+              ..._source,
+              description: stripMarkdown(_source.description ?? ''),
+            },
+      [_source, highlight]
+    );
 
     const rankingStages = useMemo(() => {
       const stageNames = new Set<string>();
@@ -773,7 +781,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             ? [
                 {
                   key: 'Domains',
-                  value: <DomainDisplay domains={source.domains} />,
+                  value: <DomainTags domains={source.domains} maxVisible={1} />,
                 },
               ]
             : emptyDomainInfo;
@@ -802,7 +810,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return source?.entityType === EntityType.TABLE_COLUMN
         ? buildColumnDetails()
         : buildEntityDetails();
-    }, [source]);
+    }, [source, t]);
 
     const breadcrumbs = useMemo(
       () =>
@@ -821,11 +829,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             return (
               <img
                 alt={source.entityType}
-                className="align-middle m-r-xs object-contain"
+                className="align-middle tw:mr-1.5 object-contain"
                 data-testid="icon"
-                height={24}
+                height={20}
                 src={source.style.iconURL}
-                width={24}
+                width={20}
               />
             );
           }
@@ -834,10 +842,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         }
 
         return (
-          <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
+          <span className="tw:mr-1.5 d-inline-flex text-xl align-middle">
             {searchClassBase.getEntityIcon(
               source.entityType ?? '',
-              'text-link-color'
+              'text-link-color tw:w-5 tw:h-5'
             )}
           </span>
         );

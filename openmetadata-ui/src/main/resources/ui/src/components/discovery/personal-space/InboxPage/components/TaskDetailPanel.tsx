@@ -21,10 +21,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Delete as DeleteIcon,
-  Edit as EditIcon,
+  CheckCircle,
+  Edit01 as EditIcon,
+  Trash01 as DeleteIcon,
+  XCircle,
 } from '@openmetadata/ui-core-components/icons';
-import { CheckCircle, XCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import React, {
   ComponentProps,
@@ -42,10 +43,8 @@ import ProfilePicture from '../../../../../components/common/ProfilePicture/Prof
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { UserTeamSelectableList } from '../../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { Operation } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
   Task,

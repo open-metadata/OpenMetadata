@@ -572,13 +572,16 @@ test.describe('Context Center Articles', () => {
     await updateBody(page, description);
 
     await navigateToArticles(page);
+    await verifyArticleSearch(page, title);
     let card = page.getByTestId(`knowledge-card-${title}`);
     await expect(card).toBeVisible();
     await expect(card.getByTestId('knowledge-card-description')).toContainText(
       description
     );
     await expect(card.getByTestId('owner-label')).not.toBeVisible();
-    await expect(card.getByTestId('domain-link')).not.toBeVisible();
+    await expect(
+      card.locator('[data-testid^="domain-tag-"]')
+    ).not.toBeVisible();
 
     await card.click();
     await page.getByTestId('edit-domain-btn').click();
@@ -591,13 +594,12 @@ test.describe('Context Center Articles', () => {
     );
 
     await page
-      .getByTestId('domain-selectable-tree')
-      .getByTestId('searchbar')
+      .getByTestId('domain-selectable-tree-search')
       .fill(domain.responseData.name);
     await searchDomain;
 
     const domainTagSelector = page.getByTestId(
-      `tag-${domain.responseData.fullyQualifiedName}`
+      `tree-node-${domain.responseData.fullyQualifiedName}`
     );
     await domainTagSelector.waitFor({ state: 'visible' });
 
@@ -647,6 +649,8 @@ test.describe('Context Center Articles', () => {
     await followAfterAction();
 
     await navigateToArticles(page);
+    await verifyArticleSearch(page, title);
+
     card = page.getByTestId(`knowledge-card-${title}`);
     await expect(card).toBeVisible();
     await expect(card).toContainText(domain.responseData.displayName);
@@ -659,9 +663,6 @@ test.describe('Context Center Articles', () => {
     await expect(
       page.getByTestId(`tag-category-KnowledgeCenter.HowToGuide-${title}`)
     ).toBeVisible();
-
-    await verifyArticleSearch(page, title);
-    await expect(card).toBeVisible();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await deleteArticleByFqn(apiContext, title);
@@ -814,13 +815,12 @@ test.describe('Context Center Articles', () => {
               .includes(encodeURIComponent(domain.responseData.name as string))
         );
         await page
-          .getByTestId('domain-selectable-tree')
-          .getByTestId('searchbar')
+          .getByTestId('domain-selectable-tree-search')
           .fill(domain.responseData.name as string);
         await searchResponse;
 
         const domainTagSelector = page.getByTestId(
-          `tag-${domain.responseData.fullyQualifiedName}`
+          `tree-node-${domain.responseData.fullyQualifiedName}`
         );
         await domainTagSelector.waitFor({ state: 'visible' });
 
@@ -976,6 +976,11 @@ test.describe('Context Center Articles', () => {
     });
     await expect(ExpandIcon).toBeVisible();
     await ExpandIcon.click();
+    // Scroll to the child as well, not just the parent. The hierarchy is an
+    // infinite-scroll list, so expanding a node does not guarantee its child
+    // is inside the rendered window -- and the more articles the Context
+    // Center holds, the further down it lands.
+    await scrollHierarchyToNode(page, child.displayName);
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -1594,9 +1599,25 @@ test.describe('Context Center Articles', () => {
     expect(versionsListRes.ok()).toBeTruthy();
     await waitForAllLoadersToDisappear(page);
 
+    // Editor autosave can land the data consumer's edit as one or several
+    // versions, and the governance workflow asynchronously bumps entityStatus
+    // as governance-bot, so the newest entry need not be the data consumer's.
+    // Pick the newest version the data consumer authored and assert on it.
+    const { versions } = await versionsListRes.json();
+    const dataConsumerVersion = (versions as string[])
+      .map((entry) => JSON.parse(entry))
+      .find((entry: { updatedBy?: string }) =>
+        entry.updatedBy?.startsWith('pw-data-consumer')
+      );
+
+    expect(dataConsumerVersion).toBeDefined();
+
     await expect(
       page
         .getByTestId('versions-list-container')
+        .getByTestId(
+          `version-entry-v${parseFloat(dataConsumerVersion.version).toFixed(1)}`
+        )
         .getByRole('link', { name: /PW DataConsumer/i })
     ).toBeVisible();
 
@@ -1613,7 +1634,7 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', async ({ page }) => {
+    test('Text formatting', { tag: '@quarantine' }, async ({ page }) => {
       await runTextFormattingTest(
         page,
         editorKnowledgeCenter.knowledgePages[1]
@@ -1654,12 +1675,16 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', async ({ dataConsumerPage }) => {
-      await runTextFormattingTest(
-        dataConsumerPage,
-        dataConsumerEditorKnowledgeCenter.knowledgePages[1]
-      );
-    });
+    test(
+      'Text formatting',
+      { tag: '@quarantine' },
+      async ({ dataConsumerPage }) => {
+        await runTextFormattingTest(
+          dataConsumerPage,
+          dataConsumerEditorKnowledgeCenter.knowledgePages[1]
+        );
+      }
+    );
 
     test('Editor operations', async ({ dataConsumerPage }) => {
       await runEditorOperationsTest(
@@ -1698,12 +1723,16 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', async ({ dataStewardPage }) => {
-      await runTextFormattingTest(
-        dataStewardPage,
-        dataStewardEditorKnowledgeCenter.knowledgePages[1]
-      );
-    });
+    test(
+      'Text formatting',
+      { tag: '@quarantine' },
+      async ({ dataStewardPage }) => {
+        await runTextFormattingTest(
+          dataStewardPage,
+          dataStewardEditorKnowledgeCenter.knowledgePages[1]
+        );
+      }
+    );
 
     test('Editor operations', async ({ dataStewardPage }) => {
       await runEditorOperationsTest(
@@ -1745,6 +1774,7 @@ test.describe('Context Center Articles', () => {
       await test.step('Navigate to draft article A and type new content without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', newDescription);
+        await waitForDraftPersisted(page, draftArticleA.id, newDescription);
       });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {

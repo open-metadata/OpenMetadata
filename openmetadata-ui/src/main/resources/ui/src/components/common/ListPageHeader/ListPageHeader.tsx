@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, PageLayout } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import {
+  Box,
+  Button,
+  PageLayout,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MarketplaceIcon } from '../../../assets/svg/marketplace-default.svg';
@@ -22,6 +27,55 @@ import {
   ListPageHeaderConfig,
   ListPageHeaderRenderProps,
 } from './ListPageHeader.interface';
+
+interface SearchHeaderRowProps {
+  title: string;
+  subtitle?: string;
+  search: ReactNode;
+  actions?: ReactNode;
+}
+
+/**
+ * Page-header title row with a search between the title and the actions.
+ * The search centres in the space the title leaves; 35vw matches Explore.
+ */
+export const SearchHeaderRow = ({
+  title,
+  subtitle,
+  search,
+  actions,
+}: SearchHeaderRowProps) => (
+  <Box
+    align="center"
+    className="tw:w-full"
+    data-testid="search-header-row"
+    direction="row"
+    gap={4}>
+    <div className="tw:shrink-0" data-testid="search-header-title">
+      <Typography as="h3" size="text-xl" weight="semibold">
+        {title}
+      </Typography>
+      {subtitle && (
+        <Typography
+          className="tw:whitespace-nowrap"
+          color="secondary"
+          size="text-sm">
+          {subtitle}
+        </Typography>
+      )}
+    </div>
+    <div className="tw:min-w-0 tw:flex-1">
+      <div
+        className="tw:mx-auto tw:w-full tw:max-w-[35vw] tw:min-w-0"
+        data-testid="search-header-search">
+        {search}
+      </div>
+    </div>
+    <div className="tw:shrink-0" data-testid="search-header-actions">
+      {actions}
+    </div>
+  </Box>
+);
 
 const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
   titleKey,
@@ -44,12 +98,7 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
       actions={
         // PageLayout.PageHeader renders its actions box on any truthy value, so keep this
         // undefined when there is nothing to show rather than passing a fragment.
-        search || addButton ? (
-          <>
-            {search}
-            {addButton}
-          </>
-        ) : undefined
+        !search && addButton ? addButton : undefined
       }
       breadcrumb={
         <HeaderBreadcrumb
@@ -66,11 +115,21 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
           showHome={false}
         />
       }
-      className="tw:mb-5"
+      className="tw:mb-4"
       data-testid="list-page-header"
-      density="compact"
-      subtitle={subtitleKey ? t(subtitleKey) : undefined}
-      title={t(titleKey)}
+      subtitle={search || !subtitleKey ? undefined : t(subtitleKey)}
+      title={
+        search ? (
+          <SearchHeaderRow
+            actions={addButton}
+            search={search}
+            subtitle={subtitleKey && t(subtitleKey)}
+            title={t(titleKey)}
+          />
+        ) : (
+          t(titleKey)
+        )
+      }
       variant="gradient"
     />
   );

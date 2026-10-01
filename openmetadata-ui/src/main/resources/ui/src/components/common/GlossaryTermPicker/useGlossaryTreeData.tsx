@@ -16,7 +16,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Glossary as GlossaryIcon } from '@openmetadata/ui-core-components/icons';
 import axios, { AxiosError } from 'axios';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
@@ -43,8 +43,15 @@ interface HierarchicalGlossary extends Glossary {
 type GlossaryTreeFetcher = TreeSelectDataFetcher<GlossaryPickerValue>;
 
 // Glossaries at the root, terms lazy-loaded on expand; ids are FQNs to match tagFQN.
-export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
+// A glossary row is checkable when it is the value, or when a multi-select
+// cascades its terms — and then only if it has any.
+export const useGlossaryTreeData = (
+  rootIsValue = false,
+  rootCascades = true
+): GlossaryTreeFetcher => {
   const { getExclusivity, setExclusivity } = useGlossaryMutualExclusivity();
+  // The listing a search matches glossary names against; hits only carry terms.
+  const rootsRef = useRef<TreeSelectNode<GlossaryPickerValue>[]>([]);
 
   return useCallback(
     async ({ searchTerm, parentId, signal }) => {
@@ -77,8 +84,8 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
                     glossary.fullyQualifiedName || glossary.name || glossary.id,
                   children: convertToTreeNodes(childrenOptions),
                   isLeaf: false,
-                  // See the root branch: checkable, but never a tag itself.
-                  allowSelection: true,
+                  // Same rule as the root branch; a hit always has terms.
+                  allowSelection: rootIsValue || rootCascades,
                   hasExclusiveChildren: glossary.mutuallyExclusive === true,
                   lazyLoad: false,
                   icon: <GlossaryIcon size={16} />,
@@ -88,7 +95,14 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
             });
           }
 
-          return { nodes: treeNodes };
+          // A glossary whose own name matches has no term hit to carry it.
+          const named = rootsRef.current.filter(
+            (root) =>
+              root.label.toLowerCase().includes(searchTerm.toLowerCase()) &&
+              !treeNodes.some((hit) => hit.id === root.id)
+          );
+
+          return { nodes: [...named, ...treeNodes] };
         }
 
         // Only glossaries lazy-load; a term's children arrive with its glossary.
@@ -112,13 +126,14 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
 
         const { data: glossaries } = await getGlossariesList(
           {
-            fields: 'name,displayName,fullyQualifiedName,mutuallyExclusive',
+            fields:
+              'name,displayName,fullyQualifiedName,mutuallyExclusive,termCount',
             limit: PAGE_SIZE_LARGE,
           },
           signal
         );
 
-        const treeNodes: TreeSelectNode<GlossaryPickerValue>[] = glossaries.map(
+        const rootNodes: TreeSelectNode<GlossaryPickerValue>[] = glossaries.map(
           (glossary: Glossary) => {
             const isExclusive = glossary.mutuallyExclusive === true;
             setExclusivity(glossary.name, isExclusive);
@@ -128,8 +143,9 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
               label: getEntityName(glossary),
               value: glossary.fullyQualifiedName || glossary.name,
               isLeaf: false,
-              // Checkable to tick its terms; the payload marks it a root.
-              allowSelection: true,
+              allowSelection:
+                rootIsValue || (rootCascades && glossary.termCount !== 0),
+              count: glossary.termCount,
               data: glossaryRootValue(glossary),
               hasExclusiveChildren: isExclusive,
               lazyLoad: true,
@@ -138,7 +154,9 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
           }
         );
 
-        return { nodes: treeNodes };
+        rootsRef.current = rootNodes;
+
+        return { nodes: rootNodes };
       } catch (error) {
         if (axios.isCancel(error)) {
           throw error;
@@ -148,6 +166,6 @@ export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
         return { nodes: [] };
       }
     },
-    [getExclusivity, setExclusivity]
+    [getExclusivity, setExclusivity, rootIsValue, rootCascades]
   );
 };

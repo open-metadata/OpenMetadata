@@ -15,6 +15,7 @@ import { TFunction } from 'i18next';
 import { isEmpty } from 'lodash';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
 import {
+  AlertType,
   ArgumentsInput,
   Effect,
   EventFilterRule,
@@ -458,3 +459,16 @@ export const getDestinationWithNotifyDownstream = (
     : undefined,
   notifyDownstream,
 });
+
+/**
+ * Event types offered by the event-type filter. Only the Settings → Notifications
+ * flow narrows them to the source's supported types (classic
+ * `AddNotificationPage`); the Observability flow always offered every type.
+ */
+export const getRuleEventTypes = (
+  alertType: AlertType | undefined,
+  resource?: ObservabilityFilterResourceDescriptor
+) =>
+  alertType === AlertType.Notification
+    ? resource?.supportedEventTypes
+    : undefined;

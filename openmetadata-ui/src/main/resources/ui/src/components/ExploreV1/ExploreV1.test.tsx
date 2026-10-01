@@ -20,12 +20,12 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { useAdvanceSearch } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   MOCK_EXPLORE_SEARCH_RESULTS,
   MOCK_EXPLORE_TAB_ITEMS,
 } from '../Explore/Explore.mock';
-import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import ExploreV1 from './ExploreV1.component';
@@ -194,7 +194,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
   Edit05: () => <span data-testid="edit-05-icon" />,
@@ -575,13 +575,8 @@ describe('ExploreV1', () => {
   it('uses parent header spacing and actions without persistent focus styles', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    expect(screen.getByTestId('resizable-left-panel-card')).toHaveClass(
-      'tw:[&_.ant-card-head-title]:pb-2'
-    );
     expect(screen.getByTestId('resizable-left-panel-title')).toHaveClass(
-      'tw:items-center'
-    );
-    expect(screen.getByTestId('resizable-left-panel-title')).not.toHaveClass(
+      'tw:items-center',
       'tw:pb-2'
     );
     expect(screen.getByTestId('resizable-left-panel-title-text')).toHaveClass(

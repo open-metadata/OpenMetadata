@@ -12,7 +12,7 @@
  */
 import { RightOutlined } from '@ant-design/icons';
 import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -67,6 +67,7 @@ export const TestCases = () => {
     debounceFetchServiceOptions,
     debounceFetchDataProductOptions,
     testCase,
+    entityPermissions,
     isLoading,
     pagingData,
     showPagination,
@@ -341,6 +342,7 @@ export const TestCases = () => {
           deletionMode={TEST_CASE_DELETION_MODE.SOFT}
           emptyStateAction={displayedEmptyStateAction}
           enableBulkActions={enableBulkActions}
+          entityPermissions={entityPermissions}
           fetchTestCases={sortTestCase}
           hasActiveFilters={hasListActiveFilters}
           isLoading={isLoading}

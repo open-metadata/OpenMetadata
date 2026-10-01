@@ -57,12 +57,9 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
 
         try:
             column: SQALikeColumn | Column = self.get_column()
-            res = self._run_results(Metrics.countInSet, column, values=test_params[self.FORBIDDEN_VALUES])
-
-            metric_values = {Metrics.countInSet.name: res}
-
-            if self._needs_row_count():
-                metric_values[Metrics.rowCount.name] = self.get_row_count()
+            metric_values = self._run_results_with_row_count(
+                Metrics.countInSet, column, values=test_params[self.FORBIDDEN_VALUES]
+            )
 
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.name} for {get_table_fqn(self.test_case.entityLink.root)}: {exc}"
@@ -177,15 +174,13 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
-        count_in_set = metric_values[Metrics.countInSet.name]
-
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found countInSet={count_in_set}. It should be 0."
-            )
-        else:  # noqa: RET505
-            return f"Found countInSet={count_in_set}. It should be 0."
+        return self.format_violation_message(
+            violations=metric_values[Metrics.countInSet.name],
+            population=metric_values.get(Metrics.rowCount.name),
+            violation_noun="values in the forbidden set",
+            matched=self._matched(metric_values, test_params),
+            dimension_info=dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for in-set test

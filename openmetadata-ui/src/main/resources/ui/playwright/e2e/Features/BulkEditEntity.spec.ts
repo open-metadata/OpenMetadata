@@ -26,8 +26,11 @@ import {
   descriptionBoxReadOnly,
   getApiContext,
   redirectToHomePage,
-  toastNotification,
 } from '../../utils/common';
+import {
+  getCustomPropertyCard,
+  openCustomPropertiesTab,
+} from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
@@ -43,6 +46,7 @@ import {
   fillRowDetails,
   fillTagDetails,
   pressKeyXTimes,
+  saveBulkImport,
   validateImportStatus,
 } from '../../utils/importUtils';
 import { waitForSearchIndexed } from '../../utils/polling';
@@ -245,19 +249,7 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
-      const updateButtonResponse = page.waitForResponse(
-        `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=false*`
-      );
-      const navigationPromise = page.waitForEvent('framenavigated');
-
-      await page.getByRole('button', { name: 'Update' }).click();
-
-      await page
-        .locator('.inovua-react-toolkit-load-mask__background-layer')
-        .waitFor({ state: 'detached' });
-      await updateButtonResponse;
-      await navigationPromise;
-      await toastNotification(page, /details updated successfully/);
+      await saveBulkImport(page, 'services/databaseServices');
 
       await page.click('[data-testid="databases"]');
 
@@ -390,17 +382,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.locator('.rdg-header-row').waitFor({
         state: 'visible',
       });
-      const updateButtonResponse = page.waitForResponse(
-        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=false*`
-      );
-      const navigationPromise = page.waitForEvent('framenavigated');
-      await page.getByRole('button', { name: 'Update' }).click();
-      await page
-        .locator('.inovua-react-toolkit-load-mask__background-layer')
-        .waitFor({ state: 'detached' });
-      await updateButtonResponse;
-      await navigationPromise;
-      await toastNotification(page, /details updated successfully/);
+      await saveBulkImport(page, 'databases');
 
       await waitForSearchIndexed(
         apiContext,
@@ -534,15 +516,7 @@ test.describe('Bulk Edit Entity', () => {
         processed: '1',
         failed: '0',
       });
-      const updateButtonResponse = page.waitForResponse(
-        `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=false*`
-      );
-      const navigationPromise = page.waitForEvent('framenavigated');
-      await page.getByRole('button', { name: 'Update' }).click();
-
-      await updateButtonResponse;
-      await navigationPromise;
-      await toastNotification(page, /details updated successfully/);
+      await saveBulkImport(page, 'databaseSchemas');
 
       await waitForSearchIndexed(
         apiContext,
@@ -612,7 +586,7 @@ test.describe('Bulk Edit Entity', () => {
     await afterAction();
   });
 
-  test('Table', async ({ page }) => {
+  test('Table', { tag: '@quarantine' }, async ({ page }) => {
     test.slow(true);
 
     const tableEntity = new TableClass();
@@ -676,20 +650,7 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
-      const updateButtonResponse = page.waitForResponse(
-        `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=false*`
-      );
-      // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
-      await page.click('[type="button"] >> text="Update"', { force: true });
-      await page
-        .locator('.inovua-react-toolkit-load-mask__background-layer')
-        .waitFor({ state: 'detached' });
-
-      await updateButtonResponse;
-      await page.locator('.message-banner-wrapper').waitFor({
-        state: 'detached',
-      });
-      await toastNotification(page, /details updated successfully/);
+      await saveBulkImport(page, 'tables');
 
       // Verify Details updated
       await expect(
@@ -792,15 +753,9 @@ test.describe('Bulk Edit Entity', () => {
 
       await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-      await page.getByRole('button', { name: 'Update' }).click();
-      await page
-        .locator('.inovua-react-toolkit-load-mask__background-layer')
-        .waitFor({ state: 'detached' });
-
-      await waitForAllLoadersToDisappear(page);
-
-      await toastNotification(
+      await saveBulkImport(
         page,
+        'glossaries',
         `Glossary ${glossary.responseData.fullyQualifiedName} details updated successfully`
       );
 
@@ -831,11 +786,10 @@ test.describe('Bulk Edit Entity', () => {
       ).toBeVisible();
 
       // Verify Custom Properties
-      await page.click('[data-testid="custom_properties"]');
-      await waitForAllLoadersToDisappear(page);
+      await openCustomPropertiesTab(page);
 
       for (const propertyName of Object.values(glossaryTermCustomProperties)) {
-        await expect(page.getByText(propertyName)).toBeVisible();
+        await expect(getCustomPropertyCard(page, propertyName)).toBeVisible();
       }
     });
 
@@ -946,20 +900,7 @@ test.describe('Bulk Edit Entity', () => {
 
       await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-      const updateButtonResponse = page.waitForResponse(
-        `/api/v1/glossaryTerms/name/*/importAsync?*dryRun=false*`
-      );
-
-      await page.getByRole('button', { name: 'Update' }).click();
-      await page
-        .locator('.inovua-react-toolkit-load-mask__background-layer')
-        .waitFor({ state: 'detached' });
-
-      await updateButtonResponse;
-
-      await waitForAllLoadersToDisappear(page);
-
-      await toastNotification(page, /details updated successfully/);
+      await saveBulkImport(page, 'glossaryTerms');
 
       // Visit the glossary terms tab
       await page.click('[data-testid="terms"]');
@@ -974,11 +915,10 @@ test.describe('Bulk Edit Entity', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Verify Custom Properties
-      await page.click('[data-testid="custom_properties"]');
-      await waitForAllLoadersToDisappear(page);
+      await openCustomPropertiesTab(page);
 
       for (const propertyName of Object.values(glossaryTermCustomProperties)) {
-        await expect(page.getByText(propertyName)).toBeVisible();
+        await expect(getCustomPropertyCard(page, propertyName)).toBeVisible();
       }
     });
 

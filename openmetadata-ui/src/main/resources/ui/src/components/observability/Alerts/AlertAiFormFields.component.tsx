@@ -19,10 +19,13 @@ import {
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { ComponentType, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
+import alertsClassBase, {
+  AlertAiTemplateSectionProps,
+} from '../../../utils/AlertsClassBase';
 import { loadFormFieldDocs } from '../../../utils/DataQuality/FormFieldDocs';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
 import {
@@ -34,14 +37,33 @@ import {
   getAlertAiResources,
   getAlertAiSectionInputs,
   getAlertAiSectionVisibility,
+  getRuleEventTypes,
   updateAlertAiValue,
 } from './AlertAiFormFieldsPureUtils';
 import { getAlertAiSourceItems } from './AlertAiFormFieldsSearchUtils';
 import { renderSelectItem } from './AlertAiFormFieldsSelectUtils';
-import AlertAiNotificationSection from './AlertAiNotificationSection.component';
 import AlertAiRuleSection from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import { OBSERVABILITY_ALERT_FORM } from './alertFormDocs.constants';
+
+/**
+ * The notification template section comes from `alertsClassBase` (Collate);
+ * OSS has none. Kept as its own component so the condition does not push
+ * AlertAiFormFields over the cyclomatic-complexity limit.
+ */
+const AlertAiTemplateField = ({
+  docProps,
+  TemplateSection,
+  ...sectionProps
+}: AlertAiTemplateSectionProps & {
+  docProps: ReturnType<typeof useFieldDoc>;
+  TemplateSection: ComponentType<AlertAiTemplateSectionProps> | null;
+}) =>
+  TemplateSection ? (
+    <div {...docProps}>
+      <TemplateSection {...sectionProps} />
+    </div>
+  ) : null;
 
 /** Coordinates the AI alert form sections for add/edit and read-only configuration views. */
 function AlertAiFormFields({
@@ -56,11 +78,17 @@ function AlertAiFormFields({
   shouldShowFiltersSection,
   supportedFilters,
   supportedTriggers,
+  templateResourcePermission,
   templates,
+  templatesLoading,
   validationErrors,
   value,
 }: Readonly<AlertAiFormFieldsProps>) {
   const { t } = useTranslation();
+  const TemplateSection = useMemo(
+    () => alertsClassBase.getAlertAiTemplateSection(),
+    []
+  );
   // Field docs for the Form Hint panel, sourced from ObservabilityAlertForm.md
   // (same markdown-backed mechanism the Data Quality forms use). Docs are
   // suppressed in the read-only configuration view, where there is nothing to
@@ -157,7 +185,7 @@ function AlertAiFormFields({
     name: 'alertDestinations',
   });
   const notificationTemplateDoc = useFieldDoc({
-    doc: docFor('notificationTemplate'),
+    doc: docFor('notificationTemplate', Boolean(TemplateSection)),
     label: t('label.notification-template'),
     name: 'alertNotificationTemplate',
   });
@@ -258,6 +286,10 @@ function AlertAiFormFields({
             field="filters"
             isViewOnly={isViewOnly}
             selectedSource={selectedSource}
+            supportedEventTypes={getRuleEventTypes(
+              value.alertType,
+              selectedFilterResource
+            )}
             supportedRules={selectedSupportedFilters}
             title={t('label.filter-plural')}
             validationErrors={validationErrors}
@@ -293,14 +325,16 @@ function AlertAiFormFields({
         />
       </div>
 
-      <div {...notificationTemplateDoc}>
-        <AlertAiNotificationSection
-          isViewOnly={isViewOnly}
-          templates={templates}
-          value={value}
-          onChange={onChange}
-        />
-      </div>
+      <AlertAiTemplateField
+        TemplateSection={TemplateSection}
+        docProps={notificationTemplateDoc}
+        isViewOnly={isViewOnly}
+        loading={templatesLoading}
+        templateResourcePermission={templateResourcePermission}
+        templates={templates}
+        value={value}
+        onChange={onChange}
+      />
 
       {!isUndefined(inlineAlert) && <InlineAlert {...inlineAlert} />}
     </Box>

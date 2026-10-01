@@ -28,7 +28,7 @@ import {
   FilterFunnel01,
   InfoCircle,
   Trash01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { Card, Col, Menu, Modal, Radio, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -57,6 +57,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
@@ -81,7 +82,6 @@ import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
-  ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
@@ -500,7 +500,9 @@ const ExploreResultsPanel = ({
   selectedQuickFilters,
 }: ExploreResultsPanelProps) => {
   return (
-    <Box className="tw:h-full tw:min-w-0 tw:w-full" colGap={3}>
+    <Box
+      className="explore-results-row tw:h-full tw:min-w-0 tw:w-full"
+      colGap={3}>
       <ExploreResultsListPanel
         entityDetails={entityDetails}
         handleExplorePageChange={handleExplorePageChange}
@@ -1310,14 +1312,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
           'filter-applied': Boolean(sqlQuery),
         })}
         firstPanel={{
-          // Ant Card owns the title padding, so the spacing belongs on its header rather than the inner row.
-          cardClassName: 'tw:[&_.ant-card-head-title]:pb-2',
           className: 'content-resizable-panel-container',
           flex: 0.2,
           minWidth: 280,
           title: t('label.browse-estate'),
           titleClassName: 'tw:capitalize tw:font-medium',
-          titleContainerClassName: 'tw:items-center',
+          titleContainerClassName: 'tw:items-center tw:pb-2',
           titleStrong: false,
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}

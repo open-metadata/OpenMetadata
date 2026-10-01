@@ -26,7 +26,6 @@ from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
 from metadata.ingestion.api.models import Either
@@ -99,9 +98,9 @@ class TableUsageStage(Stage):
         return if we find any users in OM that match, plus the user that we found in the db record.
         """
         if username:
-            user = self.metadata.get_by_name(entity=User, fqn=username)
-            if user:
-                return [user.fullyQualifiedName.root], [username]
+            user_reference = self.metadata.get_cached_user_reference(name=username)
+            if user_reference and user_reference.fullyQualifiedName:
+                return [user_reference.fullyQualifiedName], [username]
             return None, [username]
         return None, None
 

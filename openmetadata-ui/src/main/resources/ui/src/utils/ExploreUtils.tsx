@@ -16,12 +16,10 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, lowerCase } from 'lodash';
 import React from 'react';
-import {
-  ExploreSearchIndex,
-  SearchHitCounts,
-} from '../components/Explore/ExplorePage.interface';
+import { SearchHitCounts } from '../components/Explore/ExplorePage.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { Aggregations, SearchResponse } from '../interface/search.interface';
 import {
   QueryFilterInterface,
