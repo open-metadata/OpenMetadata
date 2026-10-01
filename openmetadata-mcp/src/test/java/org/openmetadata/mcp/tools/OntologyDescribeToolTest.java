@@ -19,12 +19,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -41,6 +43,35 @@ class OntologyDescribeToolTest {
     assertEquals("full-ontology", result.scope());
     assertEquals("turtle", result.format());
     assertFalse(result.body().isBlank());
+  }
+
+  @Test
+  void fullOntologyNeedsNoPermission() throws IOException {
+    final Authorizer authorizer = mock(Authorizer.class);
+
+    new OntologyDescribeTool(() -> null).execute(authorizer, SECURITY_CONTEXT, Map.of());
+    new OntologyDescribeTool(() -> null)
+        .execute(authorizer, SECURITY_CONTEXT, Map.of("resource", "  "));
+
+    verifyNoInteractions(authorizer);
+  }
+
+  @Test
+  void describingAResourceRequiresTheSparqlGrantBeforeAnyRead() {
+    final Authorizer authorizer = RdfToolAuthorization.denyingAuthorizer();
+    final RdfRepository repository = mock(RdfRepository.class);
+
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            new OntologyDescribeTool(() -> repository)
+                .execute(
+                    authorizer,
+                    SECURITY_CONTEXT,
+                    Map.of("resource", "https://open-metadata.org/entity/table/abc")));
+
+    RdfToolAuthorization.assertSparqlGrantRequested(authorizer, SECURITY_CONTEXT);
+    verifyNoInteractions(repository);
   }
 
   @Test

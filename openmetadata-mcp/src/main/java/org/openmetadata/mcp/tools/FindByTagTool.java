@@ -75,10 +75,12 @@ public class FindByTagTool extends RdfMcpTool<FindByTagTool.Result> {
     String entityType = validatedEntityType(parameters.optionalString("entityType"));
     int limit = clamp(parameters.integer("limit", DEFAULT_LIMIT), 1, MAX_LIMIT);
     int offset = Math.max(parameters.integer("offset", 0), 0);
+    RdfRepository repository = repository();
+    String sparql = buildSparql(tagFqn, entityType, limit, offset);
     String json =
-        repository()
-            .executeSparqlQuery(
-                buildSparql(tagFqn, entityType, limit, offset), "application/sparql-results+json");
+        guardedRead(
+            securityContext,
+            () -> repository.executeSparqlQuery(sparql, "application/sparql-results+json"));
     List<EntityMatch> matches = parseRows(json);
 
     return Result.of(tagFqn, entityType, limit, offset, matches);

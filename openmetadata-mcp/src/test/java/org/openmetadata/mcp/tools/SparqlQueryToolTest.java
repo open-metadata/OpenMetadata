@@ -17,17 +17,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -46,12 +48,9 @@ class SparqlQueryToolTest {
       new CatalogSecurityContext(() -> "mcp-admin", "https", "JWT", Set.of());
 
   @Test
-  void rejectsNonAdminBeforeAccessingTheGraph() {
-    final Authorizer deniedAuthorizer = mock(Authorizer.class);
+  void deniedCallerNeverReachesTheGraph() {
+    final Authorizer deniedAuthorizer = RdfToolAuthorization.denyingAuthorizer();
     final RdfRepository repository = enabledRepository();
-    doThrow(new AuthorizationException("Admin permission is required"))
-        .when(deniedAuthorizer)
-        .authorizeAdmin(SECURITY_CONTEXT);
 
     assertThrows(
         AuthorizationException.class,
@@ -62,8 +61,39 @@ class SparqlQueryToolTest {
                     SECURITY_CONTEXT,
                     Map.of("query", "SELECT * WHERE { ?s ?p ?o }")));
 
-    verify(deniedAuthorizer).authorizeAdmin(SECURITY_CONTEXT);
+    RdfToolAuthorization.assertSparqlGrantRequested(deniedAuthorizer, SECURITY_CONTEXT);
+    verify(deniedAuthorizer, never()).authorizeAdmin(any(SecurityContext.class));
     verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
+
+  @Test
+  void deniedCallerLearnsNothingAboutWhetherRdfIsEnabled() {
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            new SparqlQueryTool(() -> null)
+                .execute(
+                    RdfToolAuthorization.denyingAuthorizer(),
+                    SECURITY_CONTEXT,
+                    Map.of("query", "SELECT * WHERE { ?s ?p ?o }")));
+  }
+
+  @Test
+  void grantedCallerOnADeploymentWithoutRdfGetsTheNotEnabledMessage() {
+    final Authorizer grantingAuthorizer = mock(Authorizer.class);
+
+    final RdfNotEnabledException exception =
+        assertThrows(
+            RdfNotEnabledException.class,
+            () ->
+                new SparqlQueryTool(() -> null)
+                    .execute(
+                        grantingAuthorizer,
+                        SECURITY_CONTEXT,
+                        Map.of("query", "SELECT * WHERE { ?s ?p ?o }")));
+
+    RdfToolAuthorization.assertSparqlGrantRequested(grantingAuthorizer, SECURITY_CONTEXT);
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("rdf"));
   }
 
   @Test

@@ -22,6 +22,7 @@ import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfIriValidator;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Returns the canonical ontology or a focused description of one ontology resource. */
@@ -51,6 +52,20 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
       int byteCount) {
     public Result {
       body = Objects.requireNonNullElse(body, "");
+    }
+  }
+
+  /**
+   * The bundled ontology is the same static file the unauthenticated {@code GET /v1/rdf/ontology}
+   * serves, so it needs no permission. A {@code resource} DESCRIBE reads instance data and does.
+   */
+  @Override
+  protected void authorize(
+      final Authorizer authorizer,
+      final CatalogSecurityContext securityContext,
+      final Map<String, Object> params) {
+    if (!McpToolParameters.isBlank(McpToolParameters.from(params).optionalString("resource"))) {
+      super.authorize(authorizer, securityContext, params);
     }
   }
 

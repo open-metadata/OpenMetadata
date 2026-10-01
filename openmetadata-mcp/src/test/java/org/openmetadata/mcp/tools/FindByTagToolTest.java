@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -34,6 +36,8 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -185,6 +189,35 @@ class FindByTagToolTest {
     assertEquals(500, result.limit());
     assertEquals(0, result.returnedCount());
     assertEquals(List.of(), result.results());
+  }
+
+  @Test
+  void deniedCallerNeverReachesTheGraph() {
+    final Authorizer authorizer = RdfToolAuthorization.denyingAuthorizer();
+    final RdfRepository repository = enabledRepository();
+
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            tool(repository)
+                .execute(authorizer, SECURITY_CONTEXT, Map.of("tagFqn", "PII.Sensitive")));
+
+    RdfToolAuthorization.assertSparqlGrantRequested(authorizer, SECURITY_CONTEXT);
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
+
+  @Test
+  void readsRunInsideTheSharedAdmissionGuard() throws Exception {
+    final CatalogSecurityContext caller = RdfToolAuthorization.caller("find-by-tag-user");
+    final RdfRepository repository = enabledRepository();
+
+    try (var saturation = RdfToolAuthorization.saturateGuardFor("find-by-tag-user")) {
+      assertThrows(
+          SparqlQueryExecutionGuard.QueryCapacityException.class,
+          () -> tool(repository).execute(AUTHORIZER, caller, Map.of("tagFqn", "PII.Sensitive")));
+    }
+
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
   }
 
   private static FindByTagTool tool(RdfRepository repository) {

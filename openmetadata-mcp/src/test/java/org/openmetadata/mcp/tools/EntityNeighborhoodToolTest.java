@@ -20,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -38,6 +40,8 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -249,6 +253,43 @@ class EntityNeighborhoodToolTest {
       result.close();
       source.close();
     }
+  }
+
+  @Test
+  void deniedCallerNeverReachesTheGraph() {
+    final Authorizer authorizer = RdfToolAuthorization.denyingAuthorizer();
+    final RdfRepository repository = enabledRepository();
+
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            tool(repository)
+                .execute(
+                    authorizer,
+                    SECURITY_CONTEXT,
+                    Map.of("entityId", UUID.randomUUID().toString(), "entityType", "table")));
+
+    RdfToolAuthorization.assertSparqlGrantRequested(authorizer, SECURITY_CONTEXT);
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
+  }
+
+  @Test
+  void bothGraphReadsRunInsideTheSharedAdmissionGuard() throws Exception {
+    final CatalogSecurityContext caller = RdfToolAuthorization.caller("neighborhood-user");
+    final RdfRepository repository = enabledRepository();
+
+    try (var saturation = RdfToolAuthorization.saturateGuardFor("neighborhood-user")) {
+      assertThrows(
+          SparqlQueryExecutionGuard.QueryCapacityException.class,
+          () ->
+              tool(repository)
+                  .execute(
+                      AUTHORIZER,
+                      caller,
+                      Map.of("entityId", UUID.randomUUID().toString(), "entityType", "table")));
+    }
+
+    verify(repository, never()).executeSparqlQuery(anyString(), anyString());
   }
 
   private static EntityNeighborhoodTool tool(RdfRepository repository) {

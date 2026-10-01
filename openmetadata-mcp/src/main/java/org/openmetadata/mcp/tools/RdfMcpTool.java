@@ -17,11 +17,15 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.resources.rdf.RdfQueryResourceContext;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
 
@@ -49,8 +53,24 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
       final CatalogSecurityContext securityContext,
       final Map<String, Object> params)
       throws IOException {
-    authorizer.authorizeAdmin(securityContext);
+    authorize(authorizer, securityContext, params);
     return executeAuthorized(securityContext, params);
+  }
+
+  /**
+   * Requires the explicit {@code ExecuteSparqlQuery} grant on the {@code rdf} resource, the same
+   * check as {@code POST /v1/rdf/sparql/agent}. Admins pass through the authorizer's short-circuit.
+   * Runs before {@link #repository()}, so an unauthorized caller learns nothing about whether RDF
+   * is enabled.
+   */
+  protected void authorize(
+      final Authorizer authorizer,
+      final CatalogSecurityContext securityContext,
+      final Map<String, Object> params) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.RDF, MetadataOperation.EXECUTE_SPARQL_QUERY),
+        RdfQueryResourceContext.INSTANCE);
   }
 
   /**
