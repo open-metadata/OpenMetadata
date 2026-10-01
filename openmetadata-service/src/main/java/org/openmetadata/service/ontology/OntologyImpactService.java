@@ -22,11 +22,15 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.DeleteOntologyResource;
@@ -37,6 +41,7 @@ import org.openmetadata.schema.api.data.OntologyImpactReport;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.ResultList;
@@ -86,14 +91,55 @@ public final class OntologyImpactService {
   }
 
   public OntologyDeleteResult delete(
-      final UUID termId, final DeleteOntologyResource request, final String principal) {
+      final UUID termId,
+      final DeleteOntologyResource request,
+      final String principal,
+      final BiConsumer<UUID, MetadataOperation> authorizeTerm) {
+    Objects.requireNonNull(authorizeTerm);
     final ImpactSnapshot snapshot = loadSnapshot(termId);
     verify(request.getImpactToken(), snapshot, principal);
     final DeletionPlan plan = deletionPlan(request, snapshot);
+    authorizeAffectedTerms(snapshot, plan, authorizeTerm);
     final int reassignedChildren = reassignChildren(snapshot, plan.target(), principal);
     final DeleteResponse<GlossaryTerm> response =
         repository.delete(principal, termId, plan.cascade(), plan.hardDelete());
     return result(response.entity(), reassignedChildren, plan);
+  }
+
+  private void authorizeAffectedTerms(
+      final ImpactSnapshot snapshot,
+      final DeletionPlan plan,
+      final BiConsumer<UUID, MetadataOperation> authorizeTerm) {
+    if (plan.cascade() || plan.target() != null) {
+      final MetadataOperation operation =
+          plan.cascade() ? MetadataOperation.DELETE : MetadataOperation.EDIT_GLOSSARY_TERMS;
+      final List<EntityReference> children =
+          plan.cascade()
+              ? childrenIncludingDeleted(snapshot.term().getId())
+              : snapshot.dependencies().children();
+      authorizeSubtree(children, operation, authorizeTerm);
+    }
+  }
+
+  private void authorizeSubtree(
+      final List<EntityReference> children,
+      final MetadataOperation operation,
+      final BiConsumer<UUID, MetadataOperation> authorizeTerm) {
+    final Deque<EntityReference> pending = new ArrayDeque<>(children);
+    final Set<UUID> visited = new HashSet<>();
+    while (!pending.isEmpty()) {
+      final UUID id = pending.removeFirst().getId();
+      if (visited.add(id)) {
+        authorizeTerm.accept(id, operation);
+        pending.addAll(childrenIncludingDeleted(id));
+      }
+    }
+  }
+
+  private List<EntityReference> childrenIncludingDeleted(final UUID termId) {
+    // Cascades and subtree moves also affect terms hidden from the live-child impact preview.
+    return repository.findTo(
+        termId, Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY_TERM, Include.ALL);
   }
 
   private ImpactSnapshot loadSnapshot(final UUID termId) {

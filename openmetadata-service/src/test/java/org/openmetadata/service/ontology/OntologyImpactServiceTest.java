@@ -26,16 +26,22 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.data.DeleteOntologyResource;
@@ -45,6 +51,7 @@ import org.openmetadata.schema.api.data.OntologyImpactReport;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -61,10 +68,16 @@ class OntologyImpactServiceTest {
   private static final UUID ASSET_ID = UUID.fromString("a2980889-bd2d-469c-8480-b48f1b0c2d94");
   private static final Instant NOW = Instant.parse("2026-07-18T21:00:00Z");
   private static final String PRINCIPAL = "alice";
+  private static final BiConsumer<UUID, MetadataOperation> ALLOW_ALL = (id, operation) -> {};
+  private static final BiConsumer<UUID, MetadataOperation> REJECT_AUTHORIZATION =
+      (id, operation) -> {
+        throw new AssertionError(
+            "Invalid requests must be rejected before descendant authorization");
+      };
 
   @Mock private GlossaryTermRepository repository;
   @Mock private InternalActionTokenSigner tokenSigner;
-  @Mock private Fields fields;
+  private final Fields fields = new Fields(Set.of("relatedTerms", "conceptMappings"));
 
   private final AtomicReference<Claims> signedClaims = new AtomicReference<>();
   private GlossaryTerm term;
@@ -103,7 +116,9 @@ class OntologyImpactServiceTest {
     stubTokenVerification();
     final DeleteOntologyResource request = request(token);
 
-    assertThrows(IllegalArgumentException.class, () -> service.delete(TERM_ID, request, PRINCIPAL));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> service.delete(TERM_ID, request, PRINCIPAL, ALLOW_ALL));
     verify(repository, never()).delete(anyString(), any(), anyBoolean(), anyBoolean());
   }
 
@@ -117,7 +132,7 @@ class OntologyImpactServiceTest {
     when(repository.delete(PRINCIPAL, TERM_ID, false, false))
         .thenReturn(new DeleteResponse<>(term, null));
 
-    final OntologyDeleteResult result = service.delete(TERM_ID, request, PRINCIPAL);
+    final OntologyDeleteResult result = service.delete(TERM_ID, request, PRINCIPAL, ALLOW_ALL);
 
     assertEquals(1, result.getReassignedChildren());
     assertFalse(result.getCascaded());
@@ -133,8 +148,82 @@ class OntologyImpactServiceTest {
     stubTokenVerification();
 
     assertThrows(
-        IllegalArgumentException.class, () -> service.delete(TERM_ID, request(token), PRINCIPAL));
+        IllegalArgumentException.class,
+        () -> service.delete(TERM_ID, request(token), PRINCIPAL, ALLOW_ALL));
     verify(repository, never()).delete(anyString(), any(), anyBoolean(), anyBoolean());
+  }
+
+  @Test
+  void rejectsInvalidTokenBeforeAuthorizingDescendants() {
+    stubSnapshot(List.of(child), 1);
+    final String token = service.previewDelete(TERM_ID, PRINCIPAL).getImpactToken();
+    when(tokenSigner.verify(token, "ontology-delete"))
+        .thenThrow(new JWTVerificationException("invalid token"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            service.delete(
+                TERM_ID,
+                request(token).withCascadeConfirmed(true),
+                PRINCIPAL,
+                REJECT_AUTHORIZATION));
+  }
+
+  @Test
+  void rejectsAnotherPrincipalsTokenBeforeAuthorizingDescendants() {
+    stubSnapshot(List.of(child), 1);
+    final String token = service.previewDelete(TERM_ID, "bob").getImpactToken();
+    stubTokenVerification();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            service.delete(
+                TERM_ID,
+                request(token).withCascadeConfirmed(true),
+                PRINCIPAL,
+                REJECT_AUTHORIZATION));
+  }
+
+  @Test
+  void rejectsConflictingChildHandlingChoicesBeforeAuthorizingDescendants() {
+    stubSnapshot(List.of(child), 1);
+    final String token = service.previewDelete(TERM_ID, PRINCIPAL).getImpactToken();
+    stubTokenVerification();
+    final DeleteOntologyResource request =
+        request(token)
+            .withCascadeConfirmed(true)
+            .withReassignChildrenTo(reference(Entity.GLOSSARY, UUID.randomUUID(), "Other"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> service.delete(TERM_ID, request, PRINCIPAL, REJECT_AUTHORIZATION));
+  }
+
+  @ParameterizedTest
+  @MethodSource("invalidReassignmentTargets")
+  void rejectsInvalidReassignmentBeforeAuthorizingDescendants(final EntityReference target) {
+    stubSnapshot(List.of(child), 1);
+    final String token = service.previewDelete(TERM_ID, PRINCIPAL).getImpactToken();
+    stubTokenVerification();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            service.delete(
+                TERM_ID,
+                request(token).withReassignChildrenTo(target),
+                PRINCIPAL,
+                REJECT_AUTHORIZATION));
+  }
+
+  private static Stream<EntityReference> invalidReassignmentTargets() {
+    return Stream.of(
+        reference(Entity.GLOSSARY_TERM, TERM_ID, "Risk"),
+        reference(Entity.GLOSSARY_TERM, CHILD_ID, "Risk.Child"),
+        reference(Entity.TABLE, ASSET_ID, "service.db.table"),
+        new EntityReference().withType(Entity.GLOSSARY));
   }
 
   private void stubSnapshot(
