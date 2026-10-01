@@ -14,10 +14,11 @@
 import type { ECElementEvent, EChartsType } from 'echarts';
 import { useCallback, useMemo, useRef } from 'react';
 import { EChart } from './echart';
-import { PixelChart, pointPixel } from './point-pixel';
+import { pointPixel } from './point-pixel';
 import type { BarChartProps } from './props';
 import { withTooltipRender } from './tooltip-render';
 import type { CartesianBuildInput, ChartOption, ChartTheme } from './types';
+import { NavigationChart, usePointNavigation } from './use-point-navigation';
 
 type CartesianBuilder = <T extends object>(
   input: CartesianBuildInput<T>,
@@ -55,6 +56,8 @@ export const CartesianChartBase = <T extends object>({
   onPointHover,
   onPointLeave,
   onCategoryClick,
+  keyboardNavigation,
+  pointAriaLabel,
   height,
   isDark,
   loading,
@@ -62,7 +65,7 @@ export const CartesianChartBase = <T extends object>({
   className,
   'data-testid': dataTestId,
 }: CartesianChartBaseProps<T>) => {
-  const chartRef = useRef<PixelChart>();
+  const chartRef = useRef<NavigationChart>();
   const builtTooltip = useMemo(
     () => withTooltipRender(tooltip, data),
     [tooltip, data]
@@ -186,10 +189,30 @@ export const CartesianChartBase = <T extends object>({
     chartRef.current = {
       convertToPixel: (finder, value) =>
         chart.convertToPixel(finder, value as number[]),
+      dispatchAction: (action) => chart.dispatchAction(action as never),
     };
   }, []);
 
-  return (
+  const getChart = useCallback(() => chartRef.current, []);
+  const keyboardSelect = useCallback(
+    (datum: T, seriesKey: string) => onPointClick?.(datum, seriesKey),
+    [onPointClick]
+  );
+  const navigation = usePointNavigation({
+    data,
+    series,
+    xKey,
+    isTime: xAxis?.type === 'time',
+    horizontal: layout === 'horizontal',
+    enabled: Boolean(keyboardNavigation),
+    getChart,
+    onPointHover,
+    onPointLeave,
+    onPointClick: keyboardSelect,
+    pointAriaLabel,
+  });
+
+  const chart = (
     <EChart
       ariaLabel={ariaLabel}
       className={className}
@@ -203,5 +226,20 @@ export const CartesianChartBase = <T extends object>({
       onChartReady={handleChartReady}
       onEvents={onEvents}
     />
+  );
+
+  return keyboardNavigation ? (
+    <div
+      aria-label={ariaLabel}
+      className="tw:rounded-md tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
+      role="group"
+      {...navigation.containerProps}>
+      {chart}
+      <span aria-live="polite" className="tw:sr-only">
+        {navigation.announcement}
+      </span>
+    </div>
+  ) : (
+    chart
   );
 };

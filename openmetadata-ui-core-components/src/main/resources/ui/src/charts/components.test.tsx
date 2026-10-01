@@ -265,6 +265,34 @@ describe('point hover', () => {
   });
 });
 
+describe('keyboard navigation', () => {
+  it('wraps the chart in one focusable group with a live region', () => {
+    render(
+      <LineChart
+        keyboardNavigation
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        xKey="day"
+      />
+    );
+    const group = screen.getByRole('group', { name: 'Runs' });
+
+    expect(group).toHaveAttribute('tabindex', '0');
+    expect(group.querySelector('[aria-live="polite"]')).not.toBeNull();
+  });
+
+  it('adds neither the wrapper nor the live region by default', () => {
+    const { container } = render(
+      <LineChart ariaLabel="Runs" data={rows} series={series} xKey="day" />
+    );
+
+    expect(screen.queryByRole('group')).toBeNull();
+    expect(container.querySelector('[aria-live]')).toBeNull();
+    expect(container.querySelector('[tabindex]')).toBeNull();
+  });
+});
+
 describe('AreaChart', () => {
   it('renders filled line series', () => {
     render(

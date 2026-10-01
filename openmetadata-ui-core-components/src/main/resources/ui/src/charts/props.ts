@@ -66,6 +66,15 @@ export interface CartesianChartProps<T extends object>
   /** The pointer left the point (or keyboard focus left the chart). */
   onPointLeave?: () => void;
   onPointClick?: (datum: T, seriesKey: string, event?: ECElementEvent) => void;
+  /**
+   * The chart takes keyboard focus (one Tab stop). Left / Right move to the
+   * previous / next point, Home / End to the first / last, each reported
+   * through `onPointHover`; Enter / Space through `onPointClick`; Escape and
+   * blur through `onPointLeave`. Focus starts on the last point.
+   */
+  keyboardNavigation?: boolean;
+  /** Announced (aria-live) for the point keyboard navigation moves to. */
+  pointAriaLabel?: (datum: T, seriesKey: string) => string;
   /** A click on a category-axis label. Receives the category value. */
   onCategoryClick?: (category: string, event: ECElementEvent) => void;
 }
