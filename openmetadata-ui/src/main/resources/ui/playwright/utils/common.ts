@@ -512,10 +512,9 @@ export const toastNotification = async (
     .filter({ hasText: message })
     .first();
 
-  // The message-filtered wait is the assertion: a toast carrying this text appeared. Do not
-  // also assert the nested alert-icon — toasts auto-dismiss, so the icon can detach between the
-  // wait resolving and the check, failing on a success the text already proved.
-  await toast.waitFor({ state: 'visible', timeout });
+  // Toasts auto-dismiss; assert only the text-filtered toast being visible, not its internal
+  // icon, to avoid the icon detaching between the filter resolving and the check.
+  await expect(toast).toBeVisible({ timeout });
 };
 
 /**

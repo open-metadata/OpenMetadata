@@ -84,8 +84,7 @@ const applyDomainFilter = async (page: Page, domainDisplayName: string) => {
   const searchResponse = page.waitForResponse(
     (response) =>
       response.url().includes(PAGE_INDEX_SEARCH) &&
-      response.url().includes('index=page') &&
-      response.status() === 200
+      response.url().includes('index=page')
   );
   await page.getByTestId('update-btn').click();
 
@@ -221,6 +220,7 @@ test.describe(
           domainA.responseData.displayName
         );
         const response = await searchResponse;
+        expect(response.status()).toBe(200);
         const body = await response.json();
 
         expect(body.hits.total.value).toBe(DOMAIN_A_ARTICLE_COUNT);
@@ -229,12 +229,11 @@ test.describe(
       });
 
       await test.step('Clear resets to the unfiltered listing', async () => {
-        const listResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes(REST_LIST) && response.status() === 200
+        const listResponse = page.waitForResponse((response) =>
+          response.url().includes(REST_LIST)
         );
         await page.getByTestId('clear-articles-filters').click();
-        await listResponse;
+        expect((await listResponse).status()).toBe(200);
 
         await waitForAllLoadersToDisappear(page);
         await expect(page.getByTestId('clear-articles-filters')).toHaveCount(0);
@@ -249,11 +248,10 @@ test.describe(
         const listResponse = page.waitForResponse(
           (response) =>
             response.url().includes(REST_LIST) &&
-            response.url().includes('sortBy=displayName') &&
-            response.status() === 200
+            response.url().includes('sortBy=displayName')
         );
         await selectSort(page, 'Alphabetical');
-        await listResponse;
+        expect((await listResponse).status()).toBe(200);
       });
 
       await test.step('Publication date uses the ES search path', async () => {
@@ -261,11 +259,10 @@ test.describe(
           (response) =>
             response.url().includes(PAGE_INDEX_SEARCH) &&
             response.url().includes('index=page') &&
-            response.url().includes('sort_field=page.publicationDate') &&
-            response.status() === 200
+            response.url().includes('sort_field=page.publicationDate')
         );
         await selectSort(page, 'Publication date');
-        await searchResponse;
+        expect((await searchResponse).status()).toBe(200);
       });
 
       await test.step('Popularity uses the ES search path', async () => {
@@ -273,11 +270,10 @@ test.describe(
           (response) =>
             response.url().includes(PAGE_INDEX_SEARCH) &&
             response.url().includes('index=page') &&
-            response.url().includes('sort_field=totalVotes') &&
-            response.status() === 200
+            response.url().includes('sort_field=totalVotes')
         );
         await selectSort(page, 'Popularity');
-        await searchResponse;
+        expect((await searchResponse).status()).toBe(200);
       });
     });
 
@@ -293,6 +289,7 @@ test.describe(
           domainA.responseData.displayName
         );
         const response = await searchResponse;
+        expect(response.status()).toBe(200);
         const body = await response.json();
 
         expect(body.hits.total.value).toBe(DOMAIN_A_ARTICLE_COUNT);
@@ -308,11 +305,11 @@ test.describe(
           const searchResponse = page.waitForResponse(
             (response) =>
               response.url().includes(PAGE_INDEX_SEARCH) &&
-              response.url().includes('index=page') &&
-              response.status() === 200
+              response.url().includes('index=page')
           );
           await selectSort(page, sortLabel);
           const response = await searchResponse;
+          expect(response.status()).toBe(200);
           const body = await response.json();
 
           expect(body.hits.total.value).toBe(DOMAIN_A_ARTICLE_COUNT);
