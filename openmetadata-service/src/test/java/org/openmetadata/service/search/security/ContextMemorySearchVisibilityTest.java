@@ -113,25 +113,25 @@ class ContextMemorySearchVisibilityTest {
         "the memory branch is scoped to contextMemory documents");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[?(@.term['status'].value=='Active')]",
+        "$.bool.should[1].bool.must[1].bool.must[?(@.term['status'].value=='Active')]",
         "normal search only admits Active memories");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.term['anchorId'].value=='unanchored')])]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.bool.must[?(@.term['anchorId'].value=='unanchored')])]",
         "non-owner Entity memories must have an explicit unanchored marker");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Public')]",
-        "Public memories are visible to everyone");
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[0].bool.must[0].bool.should[?(@.term['visibility'].value=='Public')]",
+        "unanchored Public memories are visible to everyone");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.nested.query.term['owners.id'].value=='"
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.nested.query.term['owners.id'].value=='"
             + USER_ID
             + "')]",
         "owners see their own (including Private) memories");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
         "Shared memories are matched via sharedWithIds (gated by visibility=Shared)");
   }
 
@@ -213,15 +213,15 @@ class ContextMemorySearchVisibilityTest {
 
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.term['visibility'].value=='Shared')])]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.bool.must[?(@.term['visibility'].value=='Shared')])]",
         "the sharedWithIds match sits in a bool.must alongside visibility=Shared");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
         "that same gated branch carries the sharedWithIds terms");
     assertFieldDoesNotExist(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.terms['sharedWithIds'])]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.terms['sharedWithIds'])]",
         "sharedWithIds must never appear as an ungated (bare) should clause");
   }
 
@@ -265,7 +265,7 @@ class ContextMemorySearchVisibilityTest {
 
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[?(@.term['status'].value=='Active')]",
+        "$.bool.should[1].bool.must[1].bool.must[?(@.term['status'].value=='Active')]",
         "admin search still excludes retired memories");
     assertFieldDoesNotExist(json, "$..term['visibility']", "admins bypass visibility");
   }
@@ -303,19 +303,19 @@ class ContextMemorySearchVisibilityTest {
 
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.term['visibility'].value=='Entity')]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.must[0].bool.should[?(@.term['visibility'].value=='Entity')]",
         "the memory branch admits Entity-visibility memories");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.term['visibility'].value=='Public')]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.must[0].bool.should[?(@.term['visibility'].value=='Public')]",
         "the memory branch admits Public memories");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.must[?(@.term['anchorId'].value=='unanchored')]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.must[?(@.term['anchorId'].value=='unanchored')]",
         "anonymous search admits only explicitly unanchored memories");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[?(@.term['status'].value=='Active')]",
+        "$.bool.should[1].bool.must[1].bool.must[?(@.term['status'].value=='Active')]",
         "anonymous search excludes retired memories");
     assertFieldDoesNotExist(
         json, "$..term['owners.id']", "a subject-less path must not match by ownership");

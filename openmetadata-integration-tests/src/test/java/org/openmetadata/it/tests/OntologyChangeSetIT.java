@@ -401,7 +401,7 @@ public class OntologyChangeSetIT {
   }
 
   @Test
-  void appliesADraftWhoseSourceMemoryWasDeleted(TestNamespace ns) {
+  void cannotApplyADraftWhoseSourceMemoryWasDeleted(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
     ContextMemory memory = memories.create(memoryRequest(ns.prefix("deletedSourceMemory")));
@@ -412,13 +412,13 @@ public class OntologyChangeSetIT {
     memories.delete(memory.getId().toString(), Map.of("hardDelete", "true"));
     OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("orphanEditor"));
 
-    OntologyChangeSet applied =
-        client
-            .ontologyChangeSets()
-            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
-
-    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
-    assertEquals(termId, client.glossaryTerms().get(termId.toString()).getId());
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            client
+                .ontologyChangeSets()
+                .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease)));
+    assertThrows(OpenMetadataException.class, () -> client.glossaryTerms().get(termId.toString()));
   }
 
   @Test

@@ -64,7 +64,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
   public static final String FIELD_RELATED_ENTITIES = "relatedEntities";
   static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
-  static final String FIELD_SOURCE_FILE = "sourceFile";
+  public static final String FIELD_SOURCE_FILE = "sourceFile";
   static final String FIELD_SOURCE_ENTITY = "sourceEntity";
   private static final String PATCH_FIELDS =
       FIELD_PRIMARY_ENTITY

@@ -112,7 +112,9 @@ public class ContextMemoryIndex implements TaggableIndex {
    * any divergence between them is a privacy bug rather than a cosmetic inconsistency.
    */
   public static Map<String, Object> shareConfigFields(ContextMemory memory) {
-    return shareConfigFields(memory.getShareConfig());
+    Map<String, Object> fields = shareConfigFields(memory.getShareConfig());
+    fields.put(FIELD_ANCHOR_ID, anchorId(memory));
+    return fields;
   }
 
   /**
@@ -125,7 +127,6 @@ public class ContextMemoryIndex implements TaggableIndex {
     Map<String, Object> fields = new LinkedHashMap<>();
     fields.put("visibility", visibility == null ? null : visibility.value());
     fields.put("sharedWithIds", sharedWithIds(shareConfig));
-    fields.put(FIELD_ANCHOR_ID, anchorId(memory));
     return fields;
   }
 

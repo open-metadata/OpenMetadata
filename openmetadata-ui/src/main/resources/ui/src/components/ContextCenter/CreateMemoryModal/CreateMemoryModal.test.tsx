@@ -18,8 +18,6 @@ import {
   waitFor,
 } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
-import { MemoryStatus } from '../../../generated/entity/context/contextMemory';
 import {
   Control,
   FieldValues,
@@ -29,7 +27,10 @@ import {
   useFormContext,
 } from 'react-hook-form';
 import { MemoryRouter } from 'react-router-dom';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  MemoryStatus,
+} from '../../../generated/entity/context/contextMemory';
 import {
   getMemoryOntologyProposalStatus,
   proposeTermFromMemory,
@@ -740,6 +741,7 @@ describe('CreateMemoryModal', () => {
       screen.queryByRole('button', { name: 'label.propose-term' })
     ).not.toBeInTheDocument();
   });
+
   it('shows why a memory was superseded and links to its successor', () => {
     render(
       <MemoryRouter>

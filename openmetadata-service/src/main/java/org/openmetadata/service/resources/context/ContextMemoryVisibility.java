@@ -263,7 +263,8 @@ public final class ContextMemoryVisibility {
     return switch (visibility == null ? MemoryVisibility.PRIVATE : visibility) {
       case PRIVATE -> "Memory with visibility PRIVATE is only accessible to its owner.";
       case SHARED -> "Memory with visibility SHARED is only accessible to explicitly shared users.";
-      case ENTITY -> "Memory with visibility ENTITY is only accessible to users who can view its"
+      case ENTITY,
+          PUBLIC -> "Memory with visibility ENTITY or PUBLIC is only accessible to users who can view its"
           + " primary entity.";
     };
   }
