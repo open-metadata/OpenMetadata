@@ -103,6 +103,12 @@ export const waitForAriaOverlayToSettle = async (page: Page) => {
  * case where a single click is swallowed because the target moved between
  * mousedown and mouseup — a re-layout under the cursor leaves no click event
  * at all, so there is nothing to wait longer for.
+ *
+ * Only re-clicks while the target is still hidden: once a click has landed,
+ * the thing it opened usually covers the trigger, and a redundant click would
+ * block on that mask. The click is bounded for the same reason — the config
+ * sets no `actionTimeout`, so an intercepted click would otherwise eat the
+ * whole retry budget in one attempt instead of failing fast and retrying.
  */
 export const clickUntilVisible = async (
   trigger: Locator,
@@ -110,7 +116,9 @@ export const clickUntilVisible = async (
   options?: { timeout?: number }
 ) => {
   await expect(async () => {
-    await trigger.click();
+    if (!(await target.isVisible())) {
+      await trigger.click({ timeout: 5_000 });
+    }
     await expect(target).toBeVisible({ timeout: 5_000 });
   }).toPass({ timeout: options?.timeout ?? 30_000, intervals: [500, 1_000] });
 };
