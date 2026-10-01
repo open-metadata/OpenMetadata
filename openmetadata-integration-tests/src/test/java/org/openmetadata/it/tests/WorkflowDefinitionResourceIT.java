@@ -24,7 +24,9 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,9 +39,15 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.awaitility.core.ConditionTimeoutException;
+import org.flowable.bpmn.model.FieldExtension;
+import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.RepositoryService;
+import org.flowable.engine.RuntimeService;
+import org.flowable.engine.impl.persistence.entity.ExecutionEntityManager;
+import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.ProcessDefinition;
+import org.flowable.engine.runtime.ProcessInstance;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -108,6 +116,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -137,8 +146,10 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -372,6 +383,138 @@ public class WorkflowDefinitionResourceIT {
     assertNotNull(updateResponse);
     JsonNode updated = MAPPER.readTree(updateResponse);
     assertEquals("Updated workflow description", updated.get("description").asText());
+  }
+
+  @Test
+  void test_sinkTaskCredentialsAreMaskedInResponses(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String workflowName = ns.prefix("gitSinkMasking");
+    String rawToken = "ghp_itRawToken_%s".formatted(UUID.randomUUID());
+    String rotatedToken = "ghp_itRotatedToken_%s".formatted(UUID.randomUUID());
+
+    JsonNode created =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                buildGitSinkWorkflowRequest(workflowName, rawToken)));
+    trackWorkflowFromJson(created);
+    String workflowId = created.get("id").asText();
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, gitSinkToken(created));
+
+    List<String> readResponses =
+        List.of(
+            executeWorkflowRequest(client, HttpMethod.GET, BASE_PATH + "/" + workflowId, null),
+            executeWorkflowRequest(
+                client, HttpMethod.GET, BASE_PATH + "/name/" + workflowName, null),
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    BASE_PATH,
+                    null,
+                    RequestOptions.builder().queryParam("limit", "1000").build()));
+    readResponses.forEach(response -> assertFalse(response.contains(rawToken)));
+
+    Map<String, Object> maskedUpdate =
+        buildGitSinkWorkflowRequest(workflowName, PasswordEntityMasker.PASSWORD_MASK);
+    maskedUpdate.put("description", "Masked token sent back");
+    String maskedUpdateResponse =
+        executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, maskedUpdate);
+    assertFalse(maskedUpdateResponse.contains(rawToken));
+    assertTrue(deployedSinkConfig(workflowName).contains(rawToken));
+
+    String rotateResponse =
+        executeWorkflowRequest(
+            client,
+            HttpMethod.PUT,
+            BASE_PATH,
+            buildGitSinkWorkflowRequest(workflowName, rotatedToken));
+    assertFalse(rotateResponse.contains(rawToken));
+    assertFalse(rotateResponse.contains(rotatedToken));
+    assertTrue(deployedSinkConfig(workflowName).contains(rotatedToken));
+
+    String versions =
+        executeWorkflowRequest(
+            client, HttpMethod.GET, BASE_PATH + "/" + workflowId + "/versions", null);
+    assertFalse(versions.contains(rawToken));
+    assertFalse(versions.contains(rotatedToken));
+  }
+
+  /**
+   * Reproduces a periodic-batch instance left behind by a server that died mid-run: the trigger
+   * waits on its main-workflow child, and both process instances carry an exclusive-job lock owned
+   * by an executor that no longer exists. Terminating the instance must remove the whole process
+   * tree despite those locks and record the instance as FAILURE.
+   */
+  @Test
+  void test_terminateStuckPeriodicBatchWorkflowInstance(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagAwaitingApproval(client, ns);
+    String workflowName = ns.prefix("terminateStuckInstance");
+    JsonNode created =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                MAPPER.readValue(
+                    periodicTagApprovalWorkflowJson(workflowName, tag.getClassification().getId()),
+                    CreateWorkflowDefinition.class)));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(client, workflowName);
+    client.workflowDefinitions().trigger(workflowName);
+    awaitOpenApprovalTaskForEntity(tag.getFullyQualifiedName());
+
+    String workflowInstanceId = triggerRootInstance(workflowName).getBusinessKey();
+    List<String> processInstanceIds = processInstanceIdsForBusinessKey(workflowInstanceId);
+    assertEquals(2, processInstanceIds.size(), "Trigger and main workflow should both be running");
+    String deadExecutorLockOwner = "dead-executor-%s".formatted(UUID.randomUUID());
+    lockProcessInstances(processInstanceIds, deadExecutorLockOwner);
+    assertEquals(
+        List.of(deadExecutorLockOwner, deadExecutorLockOwner),
+        processInstanceLockOwners(processInstanceIds));
+
+    String terminatePath =
+        "/v1/governance/workflowInstances/%s/terminate".formatted(workflowInstanceId);
+    OpenMetadataException forbidden =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                executeWorkflowRequest(
+                    SdkClients.user3Client(), HttpMethod.POST, terminatePath, null));
+    assertEquals(403, forbidden.getStatusCode());
+    assertEquals(processInstanceIds, processInstanceIdsForBusinessKey(workflowInstanceId));
+
+    JsonNode terminated =
+        MAPPER.readTree(
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST,
+                    terminatePath,
+                    null,
+                    RequestOptions.builder().queryParam("reason", "server died mid-run").build()));
+    assertEquals(
+        WorkflowInstance.WorkflowStatus.FAILURE.value(), terminated.get("status").asText());
+    assertTrue(terminated.get("exception").asText().endsWith("server died mid-run"));
+    assertTrue(processInstanceIdsForBusinessKey(workflowInstanceId).isEmpty());
+    processInstanceIds.forEach(this::assertNoRuntimeRowsRemain);
+    await("terminated instance to stay FAILURE")
+        .during(Duration.ofSeconds(3))
+        .atMost(Duration.ofSeconds(10))
+        .until(
+            () ->
+                WorkflowInstance.WorkflowStatus.FAILURE
+                    .value()
+                    .equals(workflowInstanceStatus(client, workflowName, workflowInstanceId)));
+
+    OpenMetadataException alreadyTerminated =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> executeWorkflowRequest(client, HttpMethod.POST, terminatePath, null));
+    assertEquals(409, alreadyTerminated.getStatusCode());
   }
 
   @Test
@@ -2365,6 +2508,216 @@ public class WorkflowDefinitionResourceIT {
     if (workflow != null && workflow.has("name") && workflow.has("id")) {
       trackWorkflow(workflow.get("name").asText(), workflow.get("id").asText());
     }
+  }
+
+  private String executeWorkflowRequest(
+      OpenMetadataClient client, HttpMethod method, String path, Object body) {
+    return client
+        .getHttpClient()
+        .executeForString(method, path, body, RequestOptions.builder().build());
+  }
+
+  private Map<String, Object> buildGitSinkWorkflowRequest(String name, String token) {
+    Map<String, Object> sinkConfig = new HashMap<>();
+    sinkConfig.put("repositoryUrl", "https://github.com/open-metadata/sink-masking-it.git");
+    sinkConfig.put("credentials", Map.of("type", "token", "token", token));
+
+    Map<String, Object> sinkNode = new HashMap<>();
+    sinkNode.put("type", "automatedTask");
+    sinkNode.put("subType", "sinkTask");
+    sinkNode.put("name", "gitSink");
+    sinkNode.put("config", Map.of("sinkType", "git", "sinkConfig", sinkConfig));
+
+    Map<String, Object> request = buildMinimalWorkflowRequest(name);
+    List<Object> nodes = new ArrayList<>((List<?>) request.get("nodes"));
+    nodes.add(sinkNode);
+    request.put("nodes", nodes);
+    request.put(
+        "edges",
+        List.of(Map.of("from", "start", "to", "gitSink"), Map.of("from", "gitSink", "to", "end")));
+    return request;
+  }
+
+  private Tag createTagAwaitingApproval(OpenMetadataClient client, TestNamespace ns) {
+    String classificationName = ns.prefix("terminate");
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(
+                        classificationName.substring(0, Math.min(25, classificationName.length())))
+                    .withDescription("Classification for workflow instance termination"));
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("stuckTag")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Tag held at an approval task")
+                    .withOwners(List.of(SharedEntities.get().USER1_REF)));
+    waitForEntityIndexedInSearch(client, "tag_search_index", tag.getFullyQualifiedName());
+    return tag;
+  }
+
+  private String periodicTagApprovalWorkflowJson(String workflowName, UUID classificationId) {
+    return """
+        {
+          "name": "%s",
+          "displayName": "Terminate Stuck Instance",
+          "description": "Periodic batch whose main workflow waits at an approval task",
+          "trigger": {
+            "type": "periodicBatchEntity",
+            "config": {
+              "entityTypes": ["tag"],
+              "schedule": {"scheduleTimeline": "None"},
+              "batchSize": 10,
+              "filters": {
+                "tag": "{\\"query\\":{\\"bool\\":{\\"filter\\":[{\\"term\\":{\\"classification.id\\":\\"%s\\"}}]}}}"
+              }
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+            {
+              "name": "ApproveTag",
+              "displayName": "Approve Tag",
+              "type": "userTask",
+              "subType": "userApprovalTask",
+              "config": {
+                "assignees": {"addReviewers": false, "addOwners": true, "candidates": []},
+                "approvalThreshold": 1,
+                "rejectionThreshold": 1
+              },
+              "inputNamespaceMap": {"relatedEntity": "global"}
+            },
+            {"name": "endApproved", "displayName": "End Approved", "type": "endEvent", "subType": "endEvent"},
+            {"name": "endRejected", "displayName": "End Rejected", "type": "endEvent", "subType": "endEvent"}
+          ],
+          "edges": [
+            {"from": "start", "to": "ApproveTag"},
+            {"from": "ApproveTag", "to": "endApproved", "condition": "approve"},
+            {"from": "ApproveTag", "to": "endRejected", "condition": "reject"}
+          ],
+          "config": {"storeStageStatus": true}
+        }
+        """
+        .formatted(workflowName, classificationId);
+  }
+
+  private ProcessInstance triggerRootInstance(String workflowName) {
+    String triggerWorkflowId = TriggerFactory.getTriggerWorkflowId(workflowName);
+    List<ProcessInstance> roots =
+        WorkflowHandler.getInstance()
+            .getRuntimeService()
+            .createProcessInstanceQuery()
+            .processDefinitionKeyLike(triggerWorkflowId + "%")
+            .excludeSubprocesses(true)
+            .list();
+    assertEquals(1, roots.size(), "Expected one running trigger for " + workflowName);
+    return roots.getFirst();
+  }
+
+  private List<String> processInstanceIdsForBusinessKey(String businessKey) {
+    return WorkflowHandler.getInstance()
+        .getRuntimeService()
+        .createProcessInstanceQuery()
+        .processInstanceBusinessKey(businessKey)
+        .list()
+        .stream()
+        .map(ProcessInstance::getId)
+        .sorted()
+        .toList();
+  }
+
+  /** Applies the exclusive-job process-instance lock the async executor takes before a job. */
+  private void lockProcessInstances(List<String> processInstanceIds, String lockOwner) {
+    Date lockedUntil = Date.from(Instant.now().plus(Duration.ofDays(15)));
+    WorkflowHandler.getInstance()
+        .getManagementService()
+        .executeCommand(
+            commandContext -> {
+              ExecutionEntityManager executions =
+                  CommandContextUtil.getExecutionEntityManager(commandContext);
+              processInstanceIds.forEach(
+                  id -> executions.updateProcessInstanceLockTime(id, lockOwner, lockedUntil));
+              return null;
+            });
+  }
+
+  private List<String> processInstanceLockOwners(List<String> processInstanceIds) {
+    return WorkflowHandler.getInstance()
+        .getManagementService()
+        .executeCommand(
+            commandContext -> {
+              ExecutionEntityManager executions =
+                  CommandContextUtil.getExecutionEntityManager(commandContext);
+              return processInstanceIds.stream()
+                  .map(id -> executions.findById(id).getLockOwner())
+                  .toList();
+            });
+  }
+
+  private void assertNoRuntimeRowsRemain(String processInstanceId) {
+    RuntimeService runtimeService = WorkflowHandler.getInstance().getRuntimeService();
+    ManagementService managementService = WorkflowHandler.getInstance().getManagementService();
+    assertEquals(
+        0, runtimeService.createExecutionQuery().processInstanceId(processInstanceId).count());
+    assertEquals(
+        0, managementService.createJobQuery().processInstanceId(processInstanceId).count());
+    assertEquals(
+        0, managementService.createTimerJobQuery().processInstanceId(processInstanceId).count());
+    assertEquals(
+        0,
+        managementService.createSuspendedJobQuery().processInstanceId(processInstanceId).count());
+    assertEquals(
+        0,
+        managementService.createDeadLetterJobQuery().processInstanceId(processInstanceId).count());
+  }
+
+  private String workflowInstanceStatus(
+      OpenMetadataClient client, String workflowName, String workflowInstanceId) throws Exception {
+    String instancesPath =
+        "/v1/governance/workflowInstances?workflowDefinitionName=%s&startTs=0&endTs=%d&limit=100"
+            .formatted(workflowName, System.currentTimeMillis());
+    JsonNode instances =
+        MAPPER.readTree(executeWorkflowRequest(client, HttpMethod.GET, instancesPath, null));
+    return Stream.of(MAPPER.convertValue(instances.path("data"), JsonNode[].class))
+        .filter(instance -> workflowInstanceId.equals(instance.path("id").asText()))
+        .map(instance -> instance.path("status").asText())
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private String gitSinkToken(JsonNode workflow) {
+    JsonNode sinkNode =
+        Stream.of(MAPPER.convertValue(workflow.get("nodes"), JsonNode[].class))
+            .filter(node -> "gitSink".equals(node.path("name").asText()))
+            .findFirst()
+            .orElseThrow();
+    return sinkNode.at("/config/sinkConfig/credentials/token").asText();
+  }
+
+  private String deployedSinkConfig(String workflowFqn) {
+    RepositoryService repositoryService = WorkflowHandler.getInstance().getRepositoryService();
+    ProcessDefinition processDefinition =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKey(workflowFqn)
+            .latestVersion()
+            .singleResult();
+    ServiceTask executeSink =
+        (ServiceTask)
+            repositoryService
+                .getBpmnModel(processDefinition.getId())
+                .getFlowElement(Workflow.getFlowableElementId("gitSink", "executeSink"));
+    return executeSink.getFieldExtensions().stream()
+        .filter(field -> "sinkConfigExpr".equals(field.getFieldName()))
+        .map(FieldExtension::getStringValue)
+        .findFirst()
+        .orElseThrow();
   }
 
   private Map<String, Object> buildMinimalWorkflowRequest(String name) {

@@ -30,6 +30,7 @@ import org.flowable.bpmn.model.StartEvent;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 
 class PeriodicBatchEntityTriggerTest {
 
@@ -233,6 +234,82 @@ class PeriodicBatchEntityTriggerTest {
         "MyMainWorkflow",
         callActivity.getCalledElement(),
         "CallActivity should call the main workflow");
+  }
+
+  @Test
+  void callActivityCarriesSubWorkflowFailureToTheTrigger() {
+    PeriodicBatchEntityTrigger trigger =
+        new PeriodicBatchEntityTrigger(
+            "MainWorkflow", "MainWorkflowTrigger", createTriggerDefinition(), true);
+    BpmnModel model = new BpmnModel();
+    trigger.addToWorkflow(model);
+
+    CallActivity callActivity = findCallActivity(model);
+
+    assertTrue(
+        callActivity.getOutParameters().stream()
+            .anyMatch(
+                p ->
+                    "global_failure".equals(p.getSource())
+                        && SubWorkflowFailureListener.SUB_WORKFLOW_FAILURE_VARIABLE.equals(
+                            p.getTarget())),
+        "global_failure is mapped out of the called workflow");
+    assertTrue(
+        callActivity.getOutParameters().stream()
+            .anyMatch(p -> "global_exception".equals(p.getSource())),
+        "the exception mapping is kept");
+    assertTrue(
+        callActivity.getExecutionListeners().stream()
+            .anyMatch(
+                l ->
+                    "end".equals(l.getEvent())
+                        && SubWorkflowFailureListener.class
+                            .getName()
+                            .equals(l.getImplementation())),
+        "an end listener folds the mapped failure into the trigger's failure variable");
+  }
+
+  @Test
+  void singleExecutionModeCapsEntitiesFetchedPerIteration() {
+    PeriodicBatchEntityTriggerDefinition triggerDef = createTriggerDefinition();
+    triggerDef.getConfig().setBatchSize(20_000);
+
+    PeriodicBatchEntityTrigger single =
+        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, true);
+    PeriodicBatchEntityTrigger multiple =
+        new PeriodicBatchEntityTrigger("MainWorkflow", "MainWorkflowTrigger", triggerDef, false);
+
+    assertEquals(5000, PeriodicBatchEntityTrigger.MAX_SINGLE_EXECUTION_BATCH_SIZE);
+    assertEquals(
+        PeriodicBatchEntityTrigger.MAX_SINGLE_EXECUTION_BATCH_SIZE,
+        fetchBatchSize(single),
+        "single execution mode fetches at most the capped size per iteration");
+    assertEquals(20_000, fetchBatchSize(multiple), "per-entity mode keeps the configured size");
+
+    triggerDef.getConfig().setBatchSize(50);
+    assertEquals(
+        50,
+        fetchBatchSize(
+            new PeriodicBatchEntityTrigger(
+                "MainWorkflow", "MainWorkflowTrigger", triggerDef, true)),
+        "a configured size below the cap is kept");
+  }
+
+  private int fetchBatchSize(PeriodicBatchEntityTrigger trigger) {
+    BpmnModel model = new BpmnModel();
+    trigger.addToWorkflow(model);
+    ServiceTask fetchTask =
+        model.getProcesses().getFirst().getFlowElements().stream()
+            .filter(ServiceTask.class::isInstance)
+            .map(ServiceTask.class::cast)
+            .findFirst()
+            .orElseThrow();
+    return Integer.parseInt(
+        fetchTask.getFieldExtensions().stream()
+            .filter(f -> "batchSizeExpr".equals(f.getFieldName()))
+            .findFirst()
+            .orElseThrow()
+            .getStringValue());
   }
 
   private CallActivity findCallActivity(BpmnModel model) {

@@ -21,18 +21,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.IntStream;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -40,16 +50,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.feeds.MessageParser;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -67,6 +74,7 @@ class SinkTaskDelegateTest {
   @Mock private Expression batchModeExpr;
   @Mock private Expression timeoutSecondsExpr;
   @Mock private Expression inputNamespaceMapExpr;
+  @Mock private Expression failureHandledByBranchExpr;
 
   private SinkTaskDelegate delegate;
   private TestSinkProvider testProvider;
@@ -116,14 +124,8 @@ class SinkTaskDelegateTest {
     EntityInterface batchEntity = mock(EntityInterface.class);
     when(batchEntity.getFullyQualifiedName()).thenReturn("test.fqn");
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(
-              () -> Entity.getEntity(any(MessageParser.EntityLink.class), eq("*"), eq(Include.ALL)))
-          .thenReturn(batchEntity);
-
-      delegate.execute(execution);
-    }
+    delegate.entityLoader = link -> batchEntity;
+    delegate.execute(execution);
 
     // Legacy batchSinkProcessed flag is ignored; batch execution is controlled by trigger config.
     assertEquals(0, testProvider.getWriteCallCount());
@@ -149,14 +151,8 @@ class SinkTaskDelegateTest {
     EntityInterface batchEntity = mock(EntityInterface.class);
     when(batchEntity.getFullyQualifiedName()).thenReturn("test.fqn");
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(
-              () -> Entity.getEntity(any(MessageParser.EntityLink.class), eq("*"), eq(Include.ALL)))
-          .thenReturn(batchEntity);
-
-      delegate.execute(execution);
-    }
+    delegate.entityLoader = link -> batchEntity;
+    delegate.execute(execution);
 
     assertEquals(0, testProvider.getWriteCallCount());
     assertEquals(1, testProvider.getBatchWriteCallCount());
@@ -347,6 +343,420 @@ class SinkTaskDelegateTest {
     when(entity.getFullyQualifiedName()).thenReturn("test.entity");
 
     assertThrows(RuntimeException.class, () -> provider.write(context, entity));
+  }
+
+  @Test
+  void failedBatchIsPersistedForTheTriggerProcess() {
+    runBatch(scripted(entities -> failedWrite(entities)), 10, "300");
+
+    verify(execution).setVariable("global_failure", true);
+    verify(execution).setVariable(eq("process_result"), eq("failure"));
+  }
+
+  @Test
+  void failureNotRoutedToABranchIsPersistedForTheTriggerProcess() throws Exception {
+    injectExpression(delegate, "failureHandledByBranchExpr", failureHandledByBranchExpr);
+    when(failureHandledByBranchExpr.getValue(execution)).thenReturn("false");
+
+    runBatch(scripted(entities -> failedWrite(entities)), 10, "300");
+
+    verify(execution).setVariable("global_failure", true);
+  }
+
+  @Test
+  void failureRoutedToABranchIsNotPersistedAsAWorkflowFailure() throws Exception {
+    injectExpression(delegate, "failureHandledByBranchExpr", failureHandledByBranchExpr);
+    when(failureHandledByBranchExpr.getValue(execution)).thenReturn("true");
+
+    runBatch(scripted(entities -> failedWrite(entities)), 10, "300");
+
+    verify(execution, never()).setVariable(eq("global_failure"), any());
+    verify(execution).setVariable(eq("process_result"), eq("failure"));
+  }
+
+  @Test
+  void successfulBatchDoesNotRecordFailure() {
+    runBatch(testProvider, 10, "300");
+
+    verify(execution, never()).setVariable(eq("global_failure"), any());
+    verify(execution).setVariable(eq("process_result"), eq("success"));
+  }
+
+  @Test
+  void consecutiveFailedSubBatchesStopTheBatch() {
+    AtomicInteger calls = new AtomicInteger();
+    SinkProvider down =
+        scripted(
+            entities -> {
+              calls.incrementAndGet();
+              return failedWrite(entities);
+            });
+
+    runBatch(down, 1000, "300");
+
+    assertEquals(SinkTaskDelegate.MAX_CONSECUTIVE_FAILED_SUB_BATCHES, calls.get());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(0));
+    verify(execution).setVariable(eq("process_failedCount"), eq(1000));
+  }
+
+  @Test
+  void subBatchesWithPartialProgressDoNotStopTheBatch() {
+    AtomicInteger calls = new AtomicInteger();
+    SinkProvider flaky =
+        scripted(
+            entities -> {
+              calls.incrementAndGet();
+              return SinkResult.builder()
+                  .success(false)
+                  .syncedCount(entities.size() - 1)
+                  .failedCount(1)
+                  .build();
+            });
+
+    runBatch(flaky, 1000, "300");
+
+    assertEquals(10, calls.get());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(990));
+  }
+
+  @Test
+  void storedSyncResultIsBoundedAndHasNoStackTraces() {
+    runBatch(scripted(entities -> failedWrite(entities)), 1000, "300");
+
+    ArgumentCaptor<Object> syncResult = ArgumentCaptor.forClass(Object.class);
+    verify(execution).setVariable(eq("process_syncResult"), syncResult.capture());
+    String json = (String) syncResult.getValue();
+    JsonNode tree = JsonUtils.readTree(json);
+
+    assertEquals(SinkResultSummary.MAX_ERRORS, tree.path("errors").size());
+    assertEquals(1000 - SinkResultSummary.MAX_ERRORS, tree.path("unlistedFailures").asInt());
+    assertFalse(json.contains("stackTrace"), json);
+    assertFalse(json.contains("cause"), json);
+    assertFalse(json.contains("syncedEntities"), json);
+    assertTrue(
+        json.length() < 10_000, "stored result stays small: %d chars".formatted(json.length()));
+  }
+
+  @Test
+  void providerChoosesTheSizeOfEachSubBatch() {
+    List<Integer> sizes = new ArrayList<>();
+    SinkProvider sized =
+        new TestSinkProvider() {
+          @Override
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+            sizes.add(entities.size());
+            return SinkResult.builder().success(true).syncedCount(entities.size()).build();
+          }
+
+          @Override
+          public int nextBatchSize() {
+            return 250;
+          }
+        };
+
+    runBatch(sized, 600, "300");
+
+    assertEquals(List.of(250, 250, 100), sizes);
+    verify(execution).setVariable(eq("process_syncedCount"), eq(600));
+  }
+
+  @Test
+  void otherProvidersKeepTheDefaultSubBatchSize() {
+    List<Integer> sizes = new ArrayList<>();
+    runBatch(
+        scripted(
+            entities -> {
+              sizes.add(entities.size());
+              return SinkResult.builder().success(true).syncedCount(entities.size()).build();
+            }),
+        250,
+        "300");
+
+    assertEquals(List.of(100, 100, 50), sizes);
+  }
+
+  @Test
+  void nextSubBatchIsFetchedWhileTheCurrentOneIsWrittenButNoFurther() {
+    int subBatchSize = SinkProvider.DEFAULT_BATCH_SIZE;
+    AtomicInteger loads = new AtomicInteger();
+    CountDownLatch nextSubBatchLoading = new CountDownLatch(1);
+    AtomicBoolean overlapped = new AtomicBoolean();
+    AtomicInteger furthestAhead = new AtomicInteger(Integer.MIN_VALUE);
+    AtomicInteger writes = new AtomicInteger();
+    SinkProvider slowWriter =
+        scripted(
+            entities -> {
+              int written = writes.getAndIncrement();
+              if (written == 0) {
+                overlapped.set(awaitQuietly(nextSubBatchLoading));
+              }
+              furthestAhead.accumulateAndGet(loads.get() - (written + 2) * subBatchSize, Math::max);
+              return SinkResult.builder().success(true).syncedCount(entities.size()).build();
+            });
+    delegate.entityLoader =
+        link -> {
+          if (loads.incrementAndGet() > subBatchSize) {
+            nextSubBatchLoading.countDown();
+          }
+          return namedEntity(link);
+        };
+
+    runBatchWithLoader(slowWriter, 400);
+
+    assertTrue(overlapped.get(), "sub-batch 2 is loaded while sub-batch 1 is being written");
+    assertTrue(furthestAhead.get() <= 0, "never more than one sub-batch is fetched ahead");
+    assertEquals(4, writes.get());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(400));
+  }
+
+  @Test
+  void prefetchThreadStopsWhenTheBatchEnds() throws InterruptedException {
+    Set<Thread> loaderThreads = ConcurrentHashMap.newKeySet();
+    delegate.entityLoader =
+        link -> {
+          loaderThreads.add(Thread.currentThread());
+          return namedEntity(link);
+        };
+
+    runBatchWithLoader(testProvider, 250);
+
+    assertEquals(SubBatchPrefetcher.FETCH_THREADS, loaderThreads.size(), "a pool loads each batch");
+    for (Thread prefetchThread : loaderThreads) {
+      assertTrue(prefetchThread.getName().startsWith(SubBatchPrefetcher.THREAD_NAME_PREFIX));
+      prefetchThread.join(TimeUnit.SECONDS.toMillis(5));
+      assertFalse(prefetchThread.isAlive(), "every fetch thread is shut down");
+    }
+  }
+
+  @Test
+  void entitiesLoadedInParallelReachTheProviderInInputOrder() {
+    List<String> written = new ArrayList<>();
+    SinkProvider recording =
+        new TestSinkProvider() {
+          @Override
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+            entities.forEach(entity -> written.add(entity.getFullyQualifiedName()));
+            return SinkResult.builder().success(true).syncedCount(entities.size()).build();
+          }
+
+          @Override
+          public int nextBatchSize() {
+            return 97;
+          }
+        };
+    delegate.entityLoader = SinkTaskDelegateTest::namedEntity;
+
+    runBatchWithLoader(recording, 300);
+
+    assertEquals(
+        IntStream.range(0, 300).mapToObj("<#E::table::svc.db.sch.t%d>"::formatted).toList(),
+        written);
+  }
+
+  @Test
+  void slicesCoverTheSubBatchInOrderWithAtMostOneSlicePerThread() {
+    List<String> links = IntStream.range(0, 10).mapToObj("l%d"::formatted).toList();
+
+    List<List<String>> slices = SubBatchPrefetcher.slices(links);
+
+    assertEquals(SubBatchPrefetcher.FETCH_THREADS, slices.size());
+    assertEquals(links, slices.stream().flatMap(List::stream).toList());
+    assertEquals(List.of(List.of("l0")), SubBatchPrefetcher.slices(List.of("l0")));
+  }
+
+  @Test
+  void finishBatchRunsOnceAfterTheLastSubBatchAndItsResultIsCounted() {
+    AtomicInteger finishes = new AtomicInteger();
+    List<Integer> heldBack = new ArrayList<>();
+    SinkProvider holdingBack =
+        new TestSinkProvider() {
+          @Override
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+            heldBack.add(entities.size());
+            return SinkResult.builder().success(true).build();
+          }
+
+          @Override
+          public SinkResult finishBatch(SinkContext context) {
+            finishes.incrementAndGet();
+            return SinkResult.builder()
+                .success(true)
+                .syncedCount(heldBack.stream().mapToInt(Integer::intValue).sum())
+                .metadata(Map.of("commitOids", List.of("pushed")))
+                .build();
+          }
+        };
+
+    runBatch(holdingBack, 250, "300");
+
+    assertEquals(1, finishes.get());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(250));
+    verify(execution).setVariable(eq("process_result"), eq("success"));
+  }
+
+  @Test
+  void finishBatchRunsOnceEvenWhenConsecutiveFailuresSkippedSubBatches() {
+    AtomicInteger writes = new AtomicInteger();
+    AtomicInteger finishes = new AtomicInteger();
+    SinkProvider down =
+        new TestSinkProvider() {
+          @Override
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+            writes.incrementAndGet();
+            return failedWrite(entities);
+          }
+
+          @Override
+          public SinkResult finishBatch(SinkContext context) {
+            finishes.incrementAndGet();
+            return SinkResult.builder().success(true).syncedCount(7).build();
+          }
+        };
+
+    runBatch(down, 1000, "300");
+
+    assertEquals(SinkTaskDelegate.MAX_CONSECUTIVE_FAILED_SUB_BATCHES, writes.get());
+    assertEquals(1, finishes.get());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(7));
+    verify(execution).setVariable(eq("process_failedCount"), eq(1000));
+  }
+
+  @Test
+  void aStopRequestedBeforeTheSecondSubBatchWritesOnlyTheFirst() {
+    String workflowInstanceId = UUID.randomUUID().toString();
+    when(execution.getProcessInstanceBusinessKey()).thenReturn(workflowInstanceId);
+    AtomicInteger writes = new AtomicInteger();
+    AtomicInteger finishes = new AtomicInteger();
+    SinkProvider counting =
+        new TestSinkProvider() {
+          @Override
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+            writes.incrementAndGet();
+            return SinkResult.builder().success(true).syncedCount(entities.size()).build();
+          }
+
+          @Override
+          public SinkResult finishBatch(SinkContext context) {
+            finishes.incrementAndGet();
+            return SinkResult.builder().success(true).build();
+          }
+        };
+    List<String> checkedKeys = new ArrayList<>();
+    delegate.isStopRequested =
+        businessKey -> {
+          checkedKeys.add(businessKey);
+          return writes.get() >= 1;
+        };
+
+    runBatch(counting, 250, "300");
+
+    assertEquals(1, writes.get(), "only sub-batch 1 is written");
+    assertEquals(1, finishes.get(), "staged work is still finished");
+    assertEquals(List.of(workflowInstanceId, workflowInstanceId), checkedKeys);
+    verify(execution).setVariable(eq("process_syncedCount"), eq(100));
+    verify(execution).setVariable(eq("process_failedCount"), eq(150));
+    verify(execution).setVariable(eq("process_result"), eq("failure"));
+    verify(execution, never()).setVariable(eq("global_failure"), any());
+    ArgumentCaptor<Object> syncResult = ArgumentCaptor.forClass(Object.class);
+    verify(execution).setVariable(eq("process_syncResult"), syncResult.capture());
+    assertTrue(
+        ((String) syncResult.getValue()).contains(SinkTaskDelegate.STOP_REQUESTED_REASON),
+        "skipped entities say why they were not synced");
+  }
+
+  @Test
+  void prefetchThreadStopsWhenTheProviderThrows() throws InterruptedException {
+    Set<Thread> loaderThreads = ConcurrentHashMap.newKeySet();
+    delegate.entityLoader =
+        link -> {
+          loaderThreads.add(Thread.currentThread());
+          return namedEntity(link);
+        };
+    SinkProvider broken =
+        scripted(
+            entities -> {
+              throw new IllegalStateException("provider bug");
+            });
+
+    assertThrows(BpmnError.class, () -> runBatchWithLoader(broken, 250));
+
+    for (Thread prefetchThread : loaderThreads) {
+      prefetchThread.join(TimeUnit.SECONDS.toMillis(5));
+      assertFalse(prefetchThread.isAlive(), "every fetch thread is shut down on failure too");
+    }
+  }
+
+  private static boolean awaitQuietly(CountDownLatch latch) {
+    boolean released;
+    try {
+      released = latch.await(10, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      released = false;
+    }
+    return released;
+  }
+
+  private static EntityInterface namedEntity(String link) {
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getFullyQualifiedName()).thenReturn(link);
+    return entity;
+  }
+
+  private static SinkResult failedWrite(List<EntityInterface> entities) {
+    RuntimeException cause = new RuntimeException("GitHub request failed with status 499");
+    return SinkResult.builder()
+        .success(false)
+        .syncedCount(0)
+        .failedCount(entities.size())
+        .errors(
+            entities.stream()
+                .map(
+                    entity ->
+                        SinkResult.SinkError.builder()
+                            .entityFqn(entity.getFullyQualifiedName())
+                            .errorMessage(cause.getMessage())
+                            .cause(cause)
+                            .build())
+                .toList())
+        .build();
+  }
+
+  private static SinkProvider scripted(Function<List<EntityInterface>, SinkResult> behavior) {
+    return new TestSinkProvider() {
+      @Override
+      public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+        return behavior.apply(entities);
+      }
+    };
+  }
+
+  private void runBatch(SinkProvider provider, int entityCount, String timeoutSeconds) {
+    SinkProviderRegistry.getInstance().register(TEST_SINK_TYPE, config -> provider);
+    setupCommonExpressions(true);
+    when(timeoutSecondsExpr.getValue(execution)).thenReturn(timeoutSeconds);
+    when(inputNamespaceMapExpr.getValue(execution))
+        .thenReturn(JsonUtils.pojoToJson(Map.of(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE)));
+    List<String> links =
+        IntStream.range(0, entityCount).mapToObj("<#E::table::svc.db.sch.t%d>"::formatted).toList();
+    setupVariableAccess(links, false);
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getFullyQualifiedName()).thenReturn("svc.db.sch.t");
+
+    delegate.entityLoader = link -> entity;
+    delegate.execute(execution);
+  }
+
+  /** Like {@link #runBatch} with a 300s budget, keeping the entity loader the test installed. */
+  private void runBatchWithLoader(SinkProvider provider, int entityCount) {
+    SinkProviderRegistry.getInstance().register(TEST_SINK_TYPE, config -> provider);
+    setupCommonExpressions(true);
+    when(inputNamespaceMapExpr.getValue(execution))
+        .thenReturn(JsonUtils.pojoToJson(Map.of(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE)));
+    setupVariableAccess(
+        IntStream.range(0, entityCount).mapToObj("<#E::table::svc.db.sch.t%d>"::formatted).toList(),
+        false);
+    delegate.execute(execution);
   }
 
   private void setupCommonExpressions(boolean batchMode) {

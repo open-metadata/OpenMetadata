@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,8 +58,8 @@ public class SinkResult {
     /** Error code for programmatic handling. */
     private String errorCode;
 
-    /** The exception that caused the error, if any. */
-    private Throwable cause;
+    /** The exception that caused the error, if any. Kept in memory only, never serialized. */
+    @JsonIgnore private Throwable cause;
   }
 
   /**

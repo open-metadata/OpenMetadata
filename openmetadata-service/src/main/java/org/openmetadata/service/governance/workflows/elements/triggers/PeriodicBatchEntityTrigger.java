@@ -29,6 +29,7 @@ import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchEntitiesImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
@@ -48,6 +49,14 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   public static String HAS_FINISHED_VARIABLE = "hasFinished";
   public static String CARDINALITY_VARIABLE = "numberOfEntities";
   public static String COLLECTION_VARIABLE = "entityList";
+
+  /**
+   * Upper bound on the entities fetched per loop iteration in single execution mode. Each iteration
+   * hands its whole list to one run of the main workflow, processed inside one async job; the
+   * bound keeps the work of that one job bounded, and the trigger's {@code searchAfter}
+   * cursor, committed between iterations, records how far the run has progressed.
+   */
+  static final int MAX_SINGLE_EXECUTION_BATCH_SIZE = 5000;
 
   public PeriodicBatchEntityTrigger(
       String mainWorkflowName,
@@ -161,7 +170,9 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     outputParameter.setTarget(EXCEPTION_VARIABLE);
 
     workflowTrigger.setInParameters(List.of(inputParameter, entityListParameter));
-    workflowTrigger.setOutParameters(List.of(outputParameter));
+    workflowTrigger.setOutParameters(
+        List.of(outputParameter, SubWorkflowFailureListener.outParameter()));
+    workflowTrigger.getExecutionListeners().add(SubWorkflowFailureListener.endListener());
     workflowTrigger.setLoopCharacteristics(multiInstance);
 
     return workflowTrigger;
@@ -187,7 +198,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     FieldExtension batchSizeExpr =
         new FieldExtensionBuilder()
             .fieldName("batchSizeExpr")
-            .fieldValue(String.valueOf(triggerDefinition.getConfig().getBatchSize()))
+            .fieldValue(String.valueOf(effectiveBatchSize(triggerDefinition)))
             .build();
 
     ServiceTask serviceTask =
@@ -202,6 +213,20 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     serviceTask.setAsynchronousLeave(true);
 
     return serviceTask;
+  }
+
+  private int effectiveBatchSize(PeriodicBatchEntityTriggerDefinition triggerDefinition) {
+    int configured = triggerDefinition.getConfig().getBatchSize();
+    int effective =
+        singleExecutionMode ? Math.min(configured, MAX_SINGLE_EXECUTION_BATCH_SIZE) : configured;
+    if (effective != configured) {
+      LOG.info(
+          "Trigger {} fetches {} entities per iteration instead of the configured {} (single execution mode)",
+          triggerWorkflowId,
+          effective,
+          configured);
+    }
+    return effective;
   }
 
   private String extractEntitySpecificFilter(Object filtersObj, String entityType) {

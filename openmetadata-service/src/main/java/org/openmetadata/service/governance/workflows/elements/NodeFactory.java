@@ -1,6 +1,8 @@
 package org.openmetadata.service.governance.workflows.elements;
 
+import java.util.List;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTaskDefinition;
@@ -47,6 +49,15 @@ public class NodeFactory {
       WorkflowNodeDefinitionInterface nodeDefinition,
       WorkflowConfiguration config,
       String workflowDefinitionName) {
+    return createNode(nodeDefinition, config, workflowDefinitionName, List.of());
+  }
+
+  /** {@code edges} are the workflow's edges, from which a node learns how its results are routed. */
+  public static NodeInterface createNode(
+      WorkflowNodeDefinitionInterface nodeDefinition,
+      WorkflowConfiguration config,
+      String workflowDefinitionName,
+      List<EdgeDefinition> edges) {
     return switch (NodeSubType.fromValue(nodeDefinition.getSubType())) {
       case START_EVENT -> new StartEvent((StartEventDefinition) nodeDefinition, config);
       case END_EVENT -> new EndEvent((EndEventDefinition) nodeDefinition, config);
@@ -74,7 +85,10 @@ public class NodeFactory {
           (DataCompletenessTaskDefinition) nodeDefinition, config);
       case PARALLEL_GATEWAY -> new ParallelGateway(
           (ParallelGatewayDefinition) nodeDefinition, config);
-      case SINK_TASK -> new SinkTask((SinkTaskDefinition) nodeDefinition, config);
+      case SINK_TASK -> new SinkTask(
+          (SinkTaskDefinition) nodeDefinition,
+          config,
+          SinkTask.isFailureHandledByBranch(nodeDefinition.getName(), edges));
       case CREATE_RECOGNIZER_FEEDBACK_APPROVAL_TASK -> new CreateRecognizerFeedbackApprovalTask(
           (CreateRecognizerFeedbackApprovalTaskDefinition) nodeDefinition, config);
       case APPLY_RECOGNIZER_FEEDBACK_TASK -> new ApplyRecognizerFeedbackTask(
