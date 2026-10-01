@@ -458,7 +458,9 @@ const ExplorePageV1: FC<unknown> = () => {
       hitCounts?: SearchHitCounts;
       autoSelectedSearchIndex?: ExploreSearchIndex;
       indexNotFound?: boolean;
-    } = {};
+    } = {
+      hitCounts: cached ? cached.data.hitCounts : searchHitCounts,
+    };
     const isStale = () => latestFetchDepsRef.current !== cacheKey;
     const handleNlqAppliedFilters = (
       appliedQuickFilters?: QueryFilterInterface
@@ -502,7 +504,7 @@ const ExplorePageV1: FC<unknown> = () => {
       }
       captured.hitCounts =
         typeof value === 'function' ? value(captured.hitCounts) : value;
-      setSearchHitCounts(value);
+      setSearchHitCounts(captured.hitCounts);
     };
     const captureSetAutoSelectedSearchIndex: typeof setAutoSelectedSearchIndex =
       (value) => {
