@@ -87,6 +87,13 @@
         "$ref": "../../entity/data/glossaryTerm.json#/definitions/termReference"
       }
     },
+    "sourceMemoryIds": {
+      "description": "Context memories that supported the derivation of this glossary term.",
+      "type": "array",
+      "items": { "$ref": "../../type/basic.json#/definitions/uuid" },
+      "uniqueItems": true,
+      "maxItems": 20
+    },
     "conceptMappings": {
       "description": "Optional mappings to external concepts (e.g., SKOS alignments).",
       "type": "array",

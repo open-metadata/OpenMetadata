@@ -635,6 +635,7 @@ llmConfiguration:
   # `enabled` above, which also gates embeddings: LLM features can stay on for semantic search
   # with extraction off. Unmetered here, so opt-in.
   memoryExtractionEnabled: ${LLM_MEMORY_EXTRACTION_ENABLED:-false}
+  ontologyMemoryDerivationEnabled: ${LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED:-false}
   # FQCN of an alternate AiProvider for Context Center memory extraction; empty = built-in LLM provider
   aiProviderClass: ${LLM_AI_PROVIDER_CLASS:-""}
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
@@ -917,7 +918,8 @@ rdf:
   shaclValidationMode: ${RDF_SHACL_VALIDATION_MODE:-"REPORT"}
   dereferenceableIris: ${RDF_DEREFERENCEABLE_IRIS:-false}
   strictOwlProfile: ${RDF_STRICT_OWL_PROFILE:-true}
-  askCollateEnabled: ${RDF_ASK_COLLATE_ENABLED:-false}
+  # RDF_ASK_COLLATE_ENABLED is the deprecated name of RDF_AI_ENABLED.
+  aiEnabled: ${RDF_AI_ENABLED:-${RDF_ASK_COLLATE_ENABLED:-false}}
   federation:
     enabled: ${RDF_FEDERATION_ENABLED:-false}
     allowedEndpoints: ${RDF_FEDERATION_ALLOWED_ENDPOINTS:-[]}

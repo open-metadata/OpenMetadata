@@ -827,7 +827,8 @@ rdf:
   shaclValidationMode: ${RDF_SHACL_VALIDATION_MODE:-"REPORT"}
   dereferenceableIris: ${RDF_DEREFERENCEABLE_IRIS:-false}
   strictOwlProfile: ${RDF_STRICT_OWL_PROFILE:-true}
-  askCollateEnabled: ${RDF_ASK_COLLATE_ENABLED:-false}
+  # RDF_ASK_COLLATE_ENABLED is the deprecated name of RDF_AI_ENABLED.
+  aiEnabled: ${RDF_AI_ENABLED:-${RDF_ASK_COLLATE_ENABLED:-false}}
   federation:
     enabled: ${RDF_FEDERATION_ENABLED:-false}
     allowedEndpoints: ${RDF_FEDERATION_ALLOWED_ENDPOINTS:-[]}

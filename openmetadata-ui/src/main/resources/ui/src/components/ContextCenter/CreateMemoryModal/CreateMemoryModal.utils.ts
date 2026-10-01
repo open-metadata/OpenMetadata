@@ -93,7 +93,7 @@ export const submitMemoryUpdate = async ({
     tags: selectedTags,
     primaryEntity,
     relatedEntities,
-    ...(hasExistingShareConfig || visibility !== ShareVisibility.Shared
+    ...(hasExistingShareConfig || visibility !== ShareVisibility.Private
       ? { shareConfig: { visibility } }
       : {}),
   };
@@ -198,7 +198,7 @@ export const buildMemoryFormState = (
     memoryType: memoryTypeOption
       ? { id: memoryTypeOption.id, label: t(memoryTypeOption.labelKey) }
       : null,
-    visibility: memoryToEdit.shareConfig?.visibility ?? ShareVisibility.Shared,
+    visibility: memoryToEdit.shareConfig?.visibility ?? ShareVisibility.Private,
   };
 
   const assets: DataAssetOption[] = [
