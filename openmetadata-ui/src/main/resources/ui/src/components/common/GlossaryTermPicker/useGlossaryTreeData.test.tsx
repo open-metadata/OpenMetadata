@@ -123,6 +123,16 @@ describe('useGlossaryTreeData', () => {
       expect(hasMore).toBe(false);
     });
 
+    // Swallowing it would look like an empty last page: the tree would clear
+    // the cursor and strand every term after the failure.
+    it('lets a failed page reject instead of ending the branch', async () => {
+      mockGetGlossaryTermChildrenLazy.mockRejectedValue(new Error('boom'));
+
+      await expect(
+        expand({ parentId: 'Filled', after: 'cursor-1' })
+      ).rejects.toThrow('boom');
+    });
+
     // The cursor is what the "Show N more" row spends; total is what it counts.
     it('reports the cursor and total of a truncated branch', async () => {
       mockGetGlossaryTermChildrenLazy.mockResolvedValue(

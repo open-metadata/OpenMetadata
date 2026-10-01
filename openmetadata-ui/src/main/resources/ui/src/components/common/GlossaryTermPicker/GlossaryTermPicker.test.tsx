@@ -96,6 +96,36 @@ describe('GlossaryTermPicker', () => {
     expect(second.total).toBe(135);
   });
 
+  // Callers pass an inline array, so a per-identity memo would rebuild the
+  // exclude set every render and wipe the tally between pages.
+  it('keeps the pruned tally across re-renders', async () => {
+    const node = (id: string) => ({ id, label: id, value: id });
+    mockFetchTree
+      .mockResolvedValueOnce({
+        nodes: [node('g.a'), node('g.b')],
+        hasMore: true,
+        total: 137,
+        nextCursor: 'c1',
+      })
+      .mockResolvedValueOnce({
+        nodes: [node('g.c'), node('g.d')],
+        hasMore: true,
+        total: 137,
+        nextCursor: 'c2',
+      });
+
+    const { rerender } = render(
+      <GlossaryTermPicker excludeFqns={['g.a', 'g.c']} />
+    );
+    await lastProps().fetchData({ parentId: 'g' });
+
+    // A fresh inline array with the same contents, as a parent re-render gives.
+    rerender(<GlossaryTermPicker excludeFqns={['g.a', 'g.c']} />);
+    const second = await lastProps().fetchData({ parentId: 'g', after: 'c1' });
+
+    expect(second.total).toBe(135);
+  });
+
   it('seeds the tree with the glossary labels only', () => {
     render(<GlossaryTermPicker value={[APPLIED_TERM, CLASSIFICATION_TAG]} />);
 

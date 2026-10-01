@@ -186,12 +186,16 @@ export const useGlossaryTreeData = (
 
   return useCallback(
     async ({ searchTerm, parentId, pageSize, after, signal }) => {
+      // Not wrapped: an empty page reads as the end of the branch, so a failed
+      // one would clear its cursor and strand every term after it. The tree
+      // leaves a branch untouched on a rejection, keeping it resumable.
+      if (parentId && !searchTerm) {
+        return fetchChildPage(parentId, pageSize, after, signal);
+      }
+
       try {
         if (searchTerm) {
           return await fetchSearchHits(searchTerm, signal);
-        }
-        if (parentId) {
-          return await fetchChildPage(parentId, pageSize, after, signal);
         }
 
         return await fetchGlossaries(signal);

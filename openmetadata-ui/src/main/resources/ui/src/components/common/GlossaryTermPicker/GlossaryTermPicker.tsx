@@ -16,12 +16,14 @@ import {
   TreeSelectNode,
   TreeSelectProps,
 } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_EXTRA_LARGE } from '../../../constants/constants';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import Fqn from '../../../utils/Fqn';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   GlossaryPickerValue,
   pruneNodes,
@@ -85,7 +87,13 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   const { t } = useTranslation();
   const fetchGlossaryTree = useGlossaryTreeData(selectGlossaries);
 
-  const excluded = useMemo(() => new Set(excludeFqns ?? []), [excludeFqns]);
+  // Keyed by contents: callers pass an inline array, so a per-identity memo
+  // would hand back a new Set every render and reset the tally below.
+  const excludeKey = (excludeFqns ?? []).join('\u0000');
+  const excluded = useMemo(
+    () => new Set(excludeKey ? excludeKey.split('\u0000') : []),
+    [excludeKey]
+  );
 
   // Running per branch, because the tree keeps only the newest page's total.
   const prunedPerBranch = useRef<Map<string, number>>(new Map());
@@ -170,6 +178,11 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   // The server already filtered; filtering again would hide matching glossaries.
   const keepAllNodes = useCallback(() => true, []);
 
+  const handleFetchError = useCallback(
+    (error: unknown) => showErrorToast(error as AxiosError),
+    []
+  );
+
   return (
     // No cascade: a term is applied on its own; a parent is a container.
     <TreeSelect
@@ -208,6 +221,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       triggerVariant={triggerVariant}
       value={selectedValue}
       onChange={handleChange}
+      // Owned here, so a failed page reports the API error, not axios's string.
+      onFetchError={handleFetchError}
       onOpenChange={onOpenChange}
     />
   );
