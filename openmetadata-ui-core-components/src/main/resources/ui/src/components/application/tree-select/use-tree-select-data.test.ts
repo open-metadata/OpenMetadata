@@ -53,6 +53,24 @@ const renderPagedBranch = () => {
   return { fetchData, ...renderHook(() => useTreeSelectData({ fetchData })) };
 };
 
+/** A root listing that arrives in two pages of one. */
+const renderPagedRoot = () => {
+  const fetchData = vi
+    .fn()
+    .mockImplementation(async ({ after }: { after?: string }) =>
+      after
+        ? { nodes: [child('g2')], hasMore: false, total: 2 }
+        : {
+            nodes: [child('g1')],
+            hasMore: true,
+            total: 2,
+            nextCursor: 'root-cursor-1',
+          }
+    );
+
+  return { fetchData, ...renderHook(() => useTreeSelectData({ fetchData })) };
+};
+
 const renderData = (enabled?: boolean) => {
   const fetchData = vi.fn().mockResolvedValue({ nodes });
   const hook = renderHook(
@@ -156,6 +174,37 @@ describe('useTreeSelectData', () => {
     await act(() => result.current.loadMoreChildren('root'));
 
     // Root fetch only — an unloaded branch has no cursor to resume from.
+    expect(fetchData).toHaveBeenCalledTimes(1);
+  });
+
+  it('records what a truncated root listing needs for its next page', async () => {
+    const { result } = renderPagedRoot();
+
+    await waitFor(() => expect(result.current.treeData).toHaveLength(1));
+
+    expect(result.current.hasMoreRoot).toBe(true);
+    expect(result.current.rootTotal).toBe(2);
+  });
+
+  it('appends the next root page rather than replacing the listing', async () => {
+    const { fetchData, result } = renderPagedRoot();
+
+    await waitFor(() => expect(result.current.treeData).toHaveLength(1));
+    await act(() => result.current.loadMoreRoot());
+
+    expect(fetchData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ after: 'root-cursor-1' })
+    );
+    expect(result.current.treeData.map(({ id }) => id)).toEqual(['g1', 'g2']);
+    expect(result.current.hasMoreRoot).toBe(false);
+  });
+
+  it('ignores a load-more on a root listing that has everything', async () => {
+    const { fetchData, result } = renderData();
+
+    await waitFor(() => expect(result.current.treeData).toHaveLength(1));
+    await act(() => result.current.loadMoreRoot());
+
     expect(fetchData).toHaveBeenCalledTimes(1);
   });
 });

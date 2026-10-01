@@ -32,9 +32,13 @@ interface BranchPage<T> {
 interface TreeSelectDataState<T> {
   data: TreeSelectNode<T>[];
   loading: boolean;
+  /** A root page appended to what is already shown, rather than replacing it. */
+  loadingMore: boolean;
   error: string | null;
   loadingNodes: Set<string>;
   cachedData: Map<string, BranchPage<T>>;
+  /** Paging state for the root listing, mirroring BranchPage for a branch. */
+  rootPage: Omit<BranchPage<T>, 'nodes'>;
 }
 
 interface UseTreeSelectDataOptions<T> {
@@ -53,6 +57,12 @@ interface UseTreeSelectDataReturn<T> {
   loadingNodes: Set<string>;
   loadChildren: (parentId: string) => Promise<void>;
   loadMoreChildren: (parentId: string) => Promise<void>;
+  /** Set when the root listing is a truncated page. */
+  hasMoreRoot: boolean;
+  /** Root total, when the source reports one. */
+  rootTotal?: number;
+  loadingMoreRoot: boolean;
+  loadMoreRoot: () => Promise<void>;
 }
 
 const insertChildrenIntoTree = <T>(
@@ -114,9 +124,11 @@ export const useTreeSelectData = <T = unknown>({
   const [state, setState] = useState<TreeSelectDataState<T>>({
     data: [],
     loading: false,
+    loadingMore: false,
     error: null,
     loadingNodes: new Set(),
     cachedData: new Map(),
+    rootPage: {},
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -125,6 +137,11 @@ export const useTreeSelectData = <T = unknown>({
   // Read inside stable callbacks, so `loadMoreChildren` never needs the tree.
   const dataRef = useRef<TreeSelectNode<T>[]>([]);
   dataRef.current = state.data;
+  // Same reason as dataRef: `loadMoreRoot` must not depend on the tree.
+  const rootPageRef = useRef<Omit<BranchPage<T>, 'nodes'>>({});
+  rootPageRef.current = state.rootPage;
+  const loadingMoreRef = useRef(false);
+  loadingMoreRef.current = state.loadingMore;
 
   const fetchTreeData = useCallback(
     async (params: TreeSelectDataFetcherParams, append = false) => {
@@ -138,9 +155,11 @@ export const useTreeSelectData = <T = unknown>({
         );
       }
 
+      const isRootAppend = !params.parentId && append;
       setState((prev) => ({
         ...prev,
-        loading: !params.parentId,
+        loading: !params.parentId && !append,
+        loadingMore: isRootAppend,
         error: null,
         loadingNodes: loadingNodesRef.current,
       }));
@@ -167,6 +186,7 @@ export const useTreeSelectData = <T = unknown>({
           const nextLoadingNodes = new Set(loadingNodesRef.current);
           let nextData = prev.data;
           let nextCachedData = cachedDataRef.current;
+          let nextRootPage = prev.rootPage;
 
           if (params.parentId) {
             const previous = cachedDataRef.current.get(params.parentId);
@@ -190,11 +210,16 @@ export const useTreeSelectData = <T = unknown>({
             );
             nextLoadingNodes.delete(params.parentId);
           } else {
-            nextData = response.nodes;
+            nextData = append
+              ? [...prev.data, ...response.nodes]
+              : response.nodes;
+            nextRootPage = {
+              hasMore: response.hasMore,
+              total: response.total,
+              cursor: response.nextCursor,
+            };
             if (!params.searchTerm) {
-              nextCachedData = new Map([
-                [ROOT_CACHE_KEY, { nodes: response.nodes }],
-              ]);
+              nextCachedData = new Map([[ROOT_CACHE_KEY, { nodes: nextData }]]);
             }
           }
 
@@ -207,6 +232,8 @@ export const useTreeSelectData = <T = unknown>({
             cachedData: nextCachedData,
             loadingNodes: nextLoadingNodes,
             loading: false,
+            loadingMore: false,
+            rootPage: nextRootPage,
           };
         });
       } catch (error) {
@@ -236,6 +263,7 @@ export const useTreeSelectData = <T = unknown>({
         setState((prev) => ({
           ...prev,
           loading: false,
+          loadingMore: false,
           error: errorMessage,
           loadingNodes: nextLoadingNodes,
         }));
@@ -296,6 +324,18 @@ export const useTreeSelectData = <T = unknown>({
     [fetchTreeData]
   );
 
+  // The next page of the root listing, appended to what is already shown.
+  const loadMoreRoot = useCallback(async () => {
+    if (!rootPageRef.current.hasMore || loadingMoreRef.current) {
+      return;
+    }
+
+    await fetchTreeData(
+      { after: rootPageRef.current.cursor, searchTerm },
+      true
+    );
+  }, [fetchTreeData, searchTerm]);
+
   return {
     treeData: state.data,
     loading: state.loading,
@@ -303,5 +343,9 @@ export const useTreeSelectData = <T = unknown>({
     loadingNodes: state.loadingNodes,
     loadChildren,
     loadMoreChildren,
+    hasMoreRoot: state.rootPage.hasMore === true,
+    rootTotal: state.rootPage.total,
+    loadingMoreRoot: state.loadingMore,
+    loadMoreRoot,
   };
 };

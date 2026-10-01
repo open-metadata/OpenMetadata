@@ -142,13 +142,15 @@ export const useGlossaryTreeData = (
     [getExclusivity, setExclusivity]
   );
 
+  // Glossaries page like terms do; hundreds must not stop at the first page.
   const fetchGlossaries = useCallback(
-    async (signal?: AbortSignal) => {
-      const { data: glossaries } = await getGlossariesList(
+    async (pageSize?: number, after?: string, signal?: AbortSignal) => {
+      const { data: glossaries, paging } = await getGlossariesList(
         {
+          after,
           fields:
             'name,displayName,fullyQualifiedName,mutuallyExclusive,termCount',
-          limit: PAGE_SIZE_LARGE,
+          limit: pageSize ?? PAGE_SIZE_LARGE,
         },
         signal
       );
@@ -177,9 +179,17 @@ export const useGlossaryTreeData = (
         }
       );
 
-      rootsRef.current = rootNodes;
+      // Search matches names against this, so a later page extends it.
+      rootsRef.current = after
+        ? [...rootsRef.current, ...rootNodes]
+        : rootNodes;
 
-      return { nodes: rootNodes };
+      return {
+        nodes: rootNodes,
+        hasMore: Boolean(paging?.after),
+        total: paging?.total,
+        nextCursor: paging?.after,
+      };
     },
     [setExclusivity, rootIsValue]
   );
@@ -198,7 +208,7 @@ export const useGlossaryTreeData = (
           return await fetchSearchHits(searchTerm, signal);
         }
 
-        return await fetchGlossaries(signal);
+        return await fetchGlossaries(pageSize, after, signal);
       } catch (error) {
         if (axios.isCancel(error)) {
           throw error;
