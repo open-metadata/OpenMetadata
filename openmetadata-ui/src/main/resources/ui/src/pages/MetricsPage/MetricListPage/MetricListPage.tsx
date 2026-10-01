@@ -32,11 +32,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  keepPreviousData,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
-import {
   BarChart03,
   ChevronDown,
   ChevronRight,
@@ -50,13 +45,18 @@ import {
   Package,
   Plus,
   Rows03,
-  SearchLg,
+  Search,
   Settings01,
   Trash01,
   UploadCloud01,
   User01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
@@ -1252,7 +1252,7 @@ const MetricListPage = () => {
         <Input
           className="tw:w-full tw:sm:max-w-84"
           data-testid="metric-search"
-          icon={SearchLg}
+          icon={Search}
           placeholder={t('label.search-entity', {
             entity: t('label.metric-plural'),
           })}
