@@ -223,10 +223,8 @@ test.describe('Data Products', () => {
   });
 
   test('Search Data Products', async ({ page }) => {
-    // The data product index matches on n-grams, so any token the two names
-    // share — `catalog` in the previous pair — can pull the second product
-    // into the first one's results and make the "not visible" assertion flaky.
-    // These names share no substring; only the random IDs differ in length.
+    // Names must share no token: the index matches on n-grams, so a shared
+    // `catalog` pulled the second product into the first one's results.
     const dataProduct1 = new DataProduct([domain], `revenue${uuid()}`);
     const dataProduct2 = new DataProduct([domain], `shipyard${uuid()}`);
 

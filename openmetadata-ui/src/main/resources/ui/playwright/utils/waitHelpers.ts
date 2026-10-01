@@ -84,40 +84,32 @@ export const clickAndWaitFor = async (
 };
 
 /**
- * React Aria popovers (`Dropdown.Popover`, menus, selects) slide in over
- * ~150ms and carry `data-entering` for the duration. Playwright's click
- * auto-wait only requires the box to be stable across two animation frames,
- * which a loaded CI runner can satisfy *inside* the slide: the press then
- * starts on the item and ends off it, so the item takes focus but
- * `onAction` never fires and whatever the click was meant to open never
- * appears. Same hazard `waitForAntOverlayToOpen` covers for antd, keyed on
- * the attribute instead of a class so it holds for every RAC overlay.
+ * React Aria counterpart of `waitForAntOverlayToOpen`: a RAC popover carries
+ * `data-entering` while it slides in, and a click landing mid-slide ends off
+ * the item, so the press is cancelled and `onAction` never fires.
  */
 export const waitForAriaOverlayToSettle = async (page: Page) => {
   await expect(page.locator('[data-entering]')).toHaveCount(0);
 };
 
 /**
- * Clicks `trigger` until `target` shows up, for triggers whose click is
- * idempotent (it opens something; clicking again re-opens it). Covers the
- * case where a single click is swallowed because the target moved between
- * mousedown and mouseup — a re-layout under the cursor leaves no click event
- * at all, so there is nothing to wait longer for.
- *
- * Only re-clicks while the target is still hidden: once a click has landed,
- * the thing it opened usually covers the trigger, and a redundant click would
- * block on that mask. The click is bounded for the same reason — the config
- * sets no `actionTimeout`, so an intercepted click would otherwise eat the
- * whole retry budget in one attempt instead of failing fast and retrying.
+ * Clicks `trigger` until `target` appears, for triggers that only open things.
+ * A click swallowed by a re-layout fires no event at all, so retrying is the
+ * only fix; the guard and the bounded click keep a retry from blocking on the
+ * overlay the first click already opened. `force` escalates after attempt one.
  */
 export const clickUntilVisible = async (
   trigger: Locator,
   target: Locator,
-  options?: { timeout?: number }
+  options?: { timeout?: number; forceOnRetry?: boolean }
 ) => {
+  let attempt = 0;
   await expect(async () => {
     if (!(await target.isVisible())) {
-      await trigger.click({ timeout: 5_000 });
+      await trigger.click({
+        force: Boolean(options?.forceOnRetry) && attempt++ > 0,
+        timeout: 5_000,
+      });
     }
     await expect(target).toBeVisible({ timeout: 5_000 });
   }).toPass({ timeout: options?.timeout ?? 30_000, intervals: [500, 1_000] });

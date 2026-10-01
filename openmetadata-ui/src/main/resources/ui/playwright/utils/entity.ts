@@ -54,6 +54,7 @@ import {
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
+import { clickUntilVisible } from './waitHelpers';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -924,19 +925,11 @@ export const openClassificationTagPicker = async (
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
 
-  const searchInput = page.getByTestId('classification-tag-picker-search');
-
-  // On CI the first click routinely lands without opening the popover, and
-  // one force-click retry was the only margin left. Keep clicking until the
-  // input shows, but only while it is hidden, so a retry can never toggle an
-  // already-open popover shut.
-  let attempt = 0;
-  await expect(async () => {
-    if (!(await searchInput.isVisible())) {
-      await trigger.click({ force: attempt++ > 0, timeout: 5_000 });
-    }
-    await expect(searchInput).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 30_000 });
+  await clickUntilVisible(
+    trigger,
+    page.getByTestId('classification-tag-picker-search'),
+    { forceOnRetry: true }
+  );
 };
 
 export const assignTag = async (
