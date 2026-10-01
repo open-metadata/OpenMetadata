@@ -129,7 +129,7 @@ def test_slack_text_ranks_by_distinct_prs(tmp_path, monkeypatch):
     slack, _ = build(tmp_path, monkeypatch)
     text = slack["initial_comment"]
     assert "6 merge-queue runs (3 passed, 3 failed) for 4 PRs" in text
-    assert "1 failed test · 4 flaky tests · 1 failed run with no failing test" in text
+    assert "\n4 flaky tests\n" in text
     assert "1 run could not be fully read" in text
     # Glossary hit 3 runs but only 2 PRs: the re-queue does not triple it.
     glossary = "Features/CustomizeDetailPage.spec.ts:10 › Glossary Term tabs"
@@ -137,11 +137,8 @@ def test_slack_text_ranks_by_distinct_prs(tmp_path, monkeypatch):
         f"1. `{glossary}` — 2 PRs · 3 runs (2 passed, 1 failed), "
         "latest <https://github.com/o/r/actions/runs/4|2026-09-30 10:00>"
     ) in text
-    # Ejected twice for one PR.
-    assert (
-        "`Features/ProfileNotificationTab.spec.ts:478 › Destination` — 1 PR · 2 failed runs"
-        in text
-    )
+    # Failed tests stay out of Slack: #ci-cleanup already gets each failed queue run.
+    assert "Destination" not in text and "failed test" not in text
     assert "NEW" not in text and "New flaky" not in text
     assert slack["channel_id"] == "C1"
     assert slack["file"] == str((tmp_path / PAGE).resolve())
@@ -199,7 +196,7 @@ def test_untrusted_test_names_are_escaped(tmp_path, monkeypatch):
 
 def test_quiet_window_still_posts(tmp_path, monkeypatch):
     slack, _ = build(tmp_path, monkeypatch, [run(9, "2026-09-30T06:00:00Z", 1)])
-    assert "No failed or flaky tests in the merge queue." in slack["initial_comment"]
+    assert "No flaky tests in the merge queue." in slack["initial_comment"]
 
 
 def test_window_over_48h_is_refused(monkeypatch):
@@ -392,10 +389,7 @@ def test_fallback_message_lists_top_offenders_and_links_the_run(tmp_path, monkey
         "1. `Features/CustomizeDetailPage.spec.ts:10 › Glossary Term tabs` → 3 times (2 PRs)"
         in text
     )
-    assert (
-        "`Features/ProfileNotificationTab.spec.ts:478 › Destination` → 2 times (1 PR)"
-        in text
-    )
+    assert "Destination" not in text and "Failed" not in text
     assert "*Top 5 flaky:*" in text and "\n6. " not in text
     assert "<https://github.com/o/r/actions/runs/777|the workflow run>" in text
     assert "`playwright-flaky-report`" in text

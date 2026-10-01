@@ -777,32 +777,31 @@ def render_md(report: dict, title: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def slack_headline(report: dict) -> list[str]:
+    """Slack lists flakes only: failed queue runs already alert #ci-cleanup one by one.
+    The attached HTML report still has the failures."""
+    lines = [headline(report)[0], plural(len(report["flaky"]), "flaky test")]
+    if report["unreadable"]:
+        lines.append(
+            f"{plural(report['unreadable'], 'run')} could not be fully read, so some flaky tests may be missing"
+        )
+    return lines
+
+
 def slack_text(report: dict, title: str) -> str:
-    lines = [f":bar_chart: *{title}*"] + headline(report)
+    lines = [f":bar_chart: *{title}*"] + slack_headline(report)
     if report["unreadable"] == report["runs"]:
         return "\n".join(lines + [":warning: No run in this window could be read."])
-    if not report["failed"] and not report["flaky"] and not report["broken"]:
+    if not report["flaky"]:
         return "\n".join(
-            lines
-            + [":large_green_circle: No failed or flaky tests in the merge queue."]
+            lines + [":large_green_circle: No flaky tests in the merge queue."]
         )
-
-    def line(test: dict, failed: bool) -> str:
-        run = test["hits"][0][0]
-        return (
-            f"`{mq.sanitize_external(test_name(test))}` — {counts(test, failed)}, "
-            f"latest <{run['url']}|{utc(run['createdAt'])}>"
-        )
-
-    if report["failed"]:
-        lines.append(":red_circle: *Failed* (by distinct PRs):")
-        lines += [f"• {line(test, True)}" for test in report["failed"][:5]]
-    if report["flaky"]:
-        lines.append(":large_yellow_circle: *Top flaky* (by distinct PRs):")
-        lines += [
-            f"{i}. {line(test, False)}"
-            for i, test in enumerate(report["flaky"][:TOP], 1)
-        ]
+    lines.append(":large_yellow_circle: *Top flaky* (by distinct PRs):")
+    lines += [
+        f"{i}. `{mq.sanitize_external(test_name(test))}` — {counts(test, False)}, "
+        f"latest <{test['hits'][0][0]['url']}|{utc(test['hits'][0][0]['createdAt'])}>"
+        for i, test in enumerate(report["flaky"][:TOP], 1)
+    ]
     lines.append(
         "Every run of every test is in the attached HTML report; open it in a browser."
     )
@@ -814,28 +813,19 @@ FALLBACK_TOP = 5
 
 def fallback_text(report: dict, title: str, run_url: str) -> str:
     """Plain message for when the HTML upload fails (e.g. the bot lacks files:write):
-    the worst offenders inline, and the run that holds the report artifact."""
-    lines = [f":bar_chart: *{title}*"] + headline(report)
-
-    def line(test: dict) -> str:
-        times = plural(test["runs"], "time")
-        return f"`{mq.sanitize_external(test_name(test))}` → {times} ({plural(len(test['prs']), 'PR')})"
-
-    if report["failed"]:
-        lines.append(":red_circle: *Failed:*")
-        lines += [f"• {line(test)}" for test in report["failed"][:3]]
+    the worst flaky offenders inline, and the run that holds the report artifact."""
+    lines = [f":bar_chart: *{title}*"] + slack_headline(report)
     if report["flaky"]:
         lines.append(
             f":large_yellow_circle: *Top {min(FALLBACK_TOP, len(report['flaky']))} flaky:*"
         )
         lines += [
-            f"{i}. {line(test)}"
+            f"{i}. `{mq.sanitize_external(test_name(test))}` → {plural(test['runs'], 'time')} "
+            f"({plural(len(test['prs']), 'PR')})"
             for i, test in enumerate(report["flaky"][:FALLBACK_TOP], 1)
         ]
-    if not report["failed"] and not report["flaky"]:
-        lines.append(
-            ":large_green_circle: No failed or flaky tests in the merge queue."
-        )
+    else:
+        lines.append(":large_green_circle: No flaky tests in the merge queue.")
     lines.append(
         f":warning: The HTML report could not be attached. Download `{REPORT_ARTIFACT}` "
         f"from <{run_url}|the workflow run> for every run of every test."
