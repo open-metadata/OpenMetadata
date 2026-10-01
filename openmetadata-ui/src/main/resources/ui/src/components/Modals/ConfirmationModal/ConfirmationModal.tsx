@@ -52,6 +52,11 @@ const ConfirmationModal = ({
     // `maskClosable={false}` -> `isDismissable={false}`: a confirmation is
     // often destructive, so a stray backdrop click must not answer it.
     <ModalOverlay
+      // Core's overlay is z-50; antd's Drawer and Modal roots are z-1000, and
+      // several callers open this from inside one (AnnouncementDrawer ->
+      // AnnouncementThreadBody -> here). Sit above antd's stack until those
+      // overlays move to core, or the prompt opens under their mask.
+      className="tw:z-[1001]"
       isDismissable={false}
       isOpen={visible}
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
@@ -67,6 +72,9 @@ const ConfirmationModal = ({
           // antd's `className` landed on `.ant-modal`, which is the panel —
           // core's `className` is the outer wrapper, so styling goes here.
           panelClassName={className}
+          // Dialog defaults to 688; antd's Modal defaulted to 520. Keep the
+          // prompt the width every caller was already getting.
+          width={520}
           onClose={onCancel}>
           {/* Rendered only when there is a header: the SCIM delete prompt
               passes an empty one and supplies its own heading in the body,
