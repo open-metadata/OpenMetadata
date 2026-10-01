@@ -67,7 +67,6 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly markdownEditor: Locator;
   private readonly saveButton: Locator;
   private readonly updateButton: Locator;
-  private readonly loader: Locator;
   private readonly selectableList: Locator;
   private readonly descriptionSection: Locator;
   private readonly searchBar: Locator;
@@ -118,7 +117,6 @@ export class OverviewPageObject extends RightPanelBase {
     );
     this.saveButton = this.page.getByTestId('save');
     this.updateButton = this.page.getByTestId('selectable-list-update-btn');
-    this.loader = this.page.getByTestId('loader');
     this.selectableList = this.page.getByTestId('selectable-list');
     this.descriptionSection = this.getSummaryPanel().locator(
       '.description-section'
@@ -310,8 +308,9 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the tier selection popover
     await this.tierListContainer.waitFor({ state: 'visible' });
 
-    // Wait for loader to disappear
-    await this.loader.waitFor({ state: 'hidden' });
+    // Scoped to the popover: a page-wide `loader` also matches the overview's
+    // lineage-section loader, and two at once is a strict-mode violation.
+    await expect(this.tierListContainer.getByTestId('loader')).toHaveCount(0);
 
     // Find and click the tier radio button
     const tierRadioButton = this.tierListContainer.getByTestId(
@@ -420,7 +419,7 @@ export class OverviewPageObject extends RightPanelBase {
     await this.openOwnerSelector();
     await expect(this.userSearchBar).toBeVisible();
     await this.userSearchBar.fill(ownerName);
-    await this.loader.waitFor({ state: 'hidden' });
+    await expect(this.selectOwnerTabsLoader).toHaveCount(0);
     await this.userListItem
       .filter({ hasText: ownerName })
       .waitFor({ state: 'visible' });
@@ -607,7 +606,7 @@ export class OverviewPageObject extends RightPanelBase {
    * the open click is not swallowed by a re-render on slower panels.
    */
   private async openDomainPicker(): Promise<void> {
-    await this.loader.waitFor({ state: 'detached' });
+    await this.waitForLoadersToDisappear();
     await this.addDomainIcon.waitFor({ state: 'visible' });
     await this.addDomainIcon.scrollIntoViewIfNeeded();
     await this.addDomainIcon.click();
