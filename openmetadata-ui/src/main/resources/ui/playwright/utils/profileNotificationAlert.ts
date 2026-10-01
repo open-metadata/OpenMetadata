@@ -366,16 +366,13 @@ export const addMultipleFiltersProfile = async ({
 // ─── Destination helper ───────────────────────────────────────────────────────
 
 /**
- * Fill a controlled input and retry until the value lands. Destination fields
- * are controlled off the form value, so a write built from a stale closure can
- * silently revert — retrying until `toHaveValue` passes prevents the clobbered
- * empty-key payload the backend rejects.
+ * Fill a controlled input and assert the value landed. One fill, one assertion — no retry: the
+ * functional-updater fix means writes no longer clobber each other, so a value that fails to stick
+ * is a real regression this must surface, not hide.
  */
 const fillAndVerify = async (input: Locator, value: string) => {
-  await expect(async () => {
-    await input.fill(value);
-    await expect(input).toHaveValue(value, { timeout: 1_000 });
-  }).toPass({ timeout: 10_000 });
+  await input.fill(value);
+  await expect(input).toHaveValue(value);
 };
 
 /**

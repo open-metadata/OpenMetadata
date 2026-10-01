@@ -47,17 +47,24 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
     useState<AlertAiFormValidationErrors>({});
 
   const handleChange = (
-    updater: (
-      prev: ModifiedCreateEventSubscription
-    ) => ModifiedCreateEventSubscription
+    valueOrUpdater:
+      | ModifiedCreateEventSubscription
+      | ((
+          prev: ModifiedCreateEventSubscription
+        ) => ModifiedCreateEventSubscription)
   ) => {
     if (mode === 'view') {
       return;
     }
 
-    // Derive the pending value from the current one to refresh the error preview. setValueAtPath is
-    // pure, so applying the updater here (and again in the owner) is side-effect free; the actual
-    // write still flows through the functional updater so rapid edits compose instead of clobbering.
+    // Collate's template section sends a plain value; the rest send a functional updater. Normalise
+    // to an updater so a value caller can't crash the `updater(prev)` call below, and the write
+    // always composes against the latest state.
+    const updater =
+      typeof valueOrUpdater === 'function'
+        ? valueOrUpdater
+        : () => valueOrUpdater;
+
     if (Object.keys(validationErrors).length > 0) {
       setValidationErrors(validateAlertAiForm(updater(props.value), t));
     }

@@ -715,15 +715,13 @@ export const verifyTextFormatting = async (
     code: 'code',
   }[format];
 
-  const lastWord = text.split(' ').pop() ?? text;
-  const fullTextLocator = editor
-    .locator(formatTag)
-    .filter({ hasText: new RegExp(`^${text}$`) });
-  const lastWordLocator = editor
-    .locator(formatTag)
-    .filter({ hasText: new RegExp(`^${lastWord}$`) });
+  // Assert the WHOLE text carries the format — a last-word fallback would let a half-applied
+  // format (e.g. only "text" of "Italic text" italic) pass. Escape regex metacharacters in `text`.
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  await expect(fullTextLocator.or(lastWordLocator)).toBeVisible({
+  await expect(
+    editor.locator(formatTag).filter({ hasText: new RegExp(`^${escaped}$`) })
+  ).toBeVisible({
     timeout: 15_000,
   });
 };

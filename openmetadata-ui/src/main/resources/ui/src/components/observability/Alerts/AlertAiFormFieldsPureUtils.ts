@@ -173,9 +173,10 @@ export const getAlertAiSectionVisibility = ({
 });
 
 /**
- * Returns a copy of `source` with `path` set to `nextValue`, cloning ONLY the nodes along the
- * path (structural sharing). Off-path siblings keep their reference, so React skips re-rendering
- * untouched rows — this is what keeps an open react-aria dropdown from being torn down mid-edit.
+ * Returns a copy of `source` with `path` set to `nextValue`, cloning only the nodes along the path
+ * and sharing every off-path branch by reference — a cheaper immutable update than deep-cloning the
+ * whole form value on each keystroke. (It does not reduce re-renders: the destination rows are
+ * index-keyed and unmemoized. The functional `updateAlertAiValue` below is the real write fix.)
  * Missing containers are created as array or object based on the next path segment.
  */
 export const setValueAtPath = (

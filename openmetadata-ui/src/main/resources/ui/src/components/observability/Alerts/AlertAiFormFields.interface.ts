@@ -44,10 +44,15 @@ export interface AlertAiFormFieldsProps {
   filterResources: ObservabilityFilterResourceDescriptor[];
   inlineAlert?: ComponentProps<typeof InlineAlert>;
   isViewOnly?: boolean;
+  // Accepts a value or a functional updater. Prefer the updater — it composes against the latest
+  // state so rapid edits don't clobber each other. The value form stays assignable to the
+  // value-only AlertAiTemplateSectionProps.onChange (Collate), so the two repos can merge in any order.
   onChange?: (
-    updater: (
-      prev: ModifiedCreateEventSubscription
-    ) => ModifiedCreateEventSubscription
+    valueOrUpdater:
+      | ModifiedCreateEventSubscription
+      | ((
+          prev: ModifiedCreateEventSubscription
+        ) => ModifiedCreateEventSubscription)
   ) => void;
   showBasicFields?: boolean;
   shouldShowActionsSection: boolean;
@@ -74,9 +79,11 @@ interface AlertAiFormBaseProps
 export interface AlertAiEditableFormProps extends AlertAiFormBaseProps {
   mode: Exclude<AlertAiFormMode, 'view'>;
   onChange: (
-    updater: (
-      prev: ModifiedCreateEventSubscription
-    ) => ModifiedCreateEventSubscription
+    valueOrUpdater:
+      | ModifiedCreateEventSubscription
+      | ((
+          prev: ModifiedCreateEventSubscription
+        ) => ModifiedCreateEventSubscription)
   ) => void;
   onSubmit: (value: ModifiedCreateEventSubscription) => Promise<void> | void;
   value: ModifiedCreateEventSubscription;
