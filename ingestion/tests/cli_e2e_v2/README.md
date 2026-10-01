@@ -7,6 +7,7 @@ MySQL is the reference connector; BigQuery is the first cloud-warehouse migratio
 |---|---|---|
 | `mysql` | disposable testcontainers MySQL + restricted account, fresh schema per test | `cli_e2e/test_cli_mysql.py` |
 | `bigquery` | fresh labelled dataset per test in two real GCP projects | `cli_e2e/test_cli_bigquery.py`, `cli_e2e/test_cli_bigquery_multiple_project.py` |
+| `snowflake` | fresh schema per test in one real Snowflake database | `cli_e2e/test_cli_snowflake.py` |
 
 ## Run
 
@@ -50,6 +51,7 @@ cli_e2e_v2/
   contracts/           coverage inventory, collection validation, required-result enforcement
   mysql/               owned source, context, expectations, checks, named feature tests
   bigquery/            owned datasets in two GCP projects, same layout as mysql/ plus test_data_quality.py
+  snowflake/           owned schemas in one Snowflake database, bigquery/ layout plus test_features.py
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
   conftest.py          shared fixtures and thin pytest hooks
@@ -160,3 +162,83 @@ life-cycle query (403). That is a permission difference in the environment, not 
 
 Remove the v1 BigQuery tests and their `py-cli-e2e-tests.yml` matrix entries only after this suite has
 passed for the agreed stability window.
+
+## Snowflake
+
+Snowflake cannot run in a container, so `snowflake/` owns one fresh schema per test (`E2E_SF_<uuid>`,
+comment `owner=cli-e2e-v2`, zero Time Travel retention) in the configured database and drops it with
+`CASCADE` on success and failure. Every workflow sets the connection `database` and carries an anchored
+`schemaFilterPattern` for the owned schemas, because the database also holds unowned schemas. The
+invocation helper rejects a schema filter without explicit includes. Missing credentials are errors, not skips.
+
+```bash
+export E2E_SNOWFLAKE_ACCOUNT=... E2E_SNOWFLAKE_USERNAME=... E2E_SNOWFLAKE_WAREHOUSE=... E2E_SNOWFLAKE_DATABASE=...
+export E2E_SNOWFLAKE_PRIVATE_KEY=...      # PEM, real or \n-escaped newlines
+export E2E_SNOWFLAKE_PASSPHRASE=...       # optional, for an encrypted key
+export E2E_SNOWFLAKE_ROLE=...             # optional
+python -m pytest ingestion/tests/cli_e2e_v2/snowflake --e2e-contract-check -v
+```
+
+The default `E2E_SNOWFLAKE_AUTH=key_pair` is what CI uses. The session exports a single-line copy of the
+key as `E2E_SNOWFLAKE_CLI_PRIVATE_KEY` because the CLI expands `${VARS}` before parsing YAML. For a test
+account without MFA, `E2E_SNOWFLAKE_AUTH=password` reads `E2E_SNOWFLAKE_PASSWORD` instead. Every test logs
+in several times, so never point this suite at a password account that prompts for MFA. The role needs
+`CREATE SCHEMA` on the database, usage on the warehouse (dynamic tables refresh on it), and
+`IMPORTED PRIVILEGES` on the `SNOWFLAKE` database. One identity seeds and ingests.
+
+### ACCOUNT_USAGE shim
+
+The connector lists routines, tags and query history from `SNOWFLAKE.ACCOUNT_USAGE`, whose views lag by up
+to two hours, so no freshly created object is visible there during a test. v1 therefore asserted nothing
+about routines or tags and marked its system-metrics test as a flaky expected failure. Here,
+`SnowflakeSource.account_usage_shim()` creates a sibling owned schema (`<schema>_AU`, outside the schema
+filter) and the latency-bound scenarios point the real `accountUsageSchema` connection setting at it:
+
+| View | Source |
+|---|---|
+| `PROCEDURES`, `FUNCTIONS` | the database's `INFORMATION_SCHEMA` views, plus a NULL `DELETED` |
+| `TAG_REFERENCES` | `TAG_REFERENCES` and `TAG_REFERENCES_ALL_COLUMNS` for the database, the schema and each of its tables, without the `INHERITED` rows that ACCOUNT_USAGE omits |
+| `QUERY_HISTORY` | `INFORMATION_SCHEMA.QUERY_HISTORY()`, whose real `ROWS_INSERTED` is kept. It reports no update or delete counts (and `ROWS_PRODUCED` counts rewritten rows), so the test records each DML statement's own result row and the view joins it by `QUERY_ID` |
+| `TABLES`, `ACCESS_HISTORY`, `DYNAMIC_TABLE_REFRESH_HISTORY`, `COPY_HISTORY` | pass-through to `SNOWFLAKE.ACCOUNT_USAGE` |
+
+`test_fixture_safety.py` runs the connector's own ACCOUNT_USAGE queries against the shim, and an offline
+meta-test fails when the connector starts reading a view the shim does not provide. Every other scenario
+reads the real `SNOWFLAKE.ACCOUNT_USAGE` with `includeStoredProcedures=False`, so its catalog stays
+deterministic.
+
+v1 → v2 mapping:
+
+| v1 behaviour | v2 contract |
+|---|---|
+| vanilla ingestion, no failures, ≥ N records | `catalog.metadata` (complete inventory, native types, keys, comments, view) |
+| schema include/exclude filters | `filter.schema.include-one`, `filter.schema.exclude-wins` |
+| table include/exclude/mix filters (filtered-count floors) | `filter.table.*` (always combined with the owned-schema filter) |
+| create table + profiler | `profile.metrics` |
+| system profile INSERT/MERGE/DELETE on same-named tables in two schemas (expected failure) | `profile.system` (shim) |
+| auto-classification, sample rows | `classification.tags`, `sample.limit`, `sample.values.native` |
+| deleted table marked deleted | `deletion.tables` |
+| view lineage, 2 column edges | `lineage.view` |
+| `tableDiff` data-quality test (expected failure) | `dq.table-diff` |
+| profiler time partition (only checked a profile exists) | `profile.partition.time-unit` (rows outside the window must not be profiled) |
+| transient tables included / excluded | `table.transient.include`, `table.transient.exclude` |
+| dynamic table, stream, foreign key, clustering key | `table.dynamic`, `table.stream`, `fk.relationships`, `partition.cluster-key` |
+| stored procedures and tags ingested without failures | `procedure.code`, `tags.source` (shim) |
+
+Added beyond v1: `ingest.repeat`, `sample.values.replacement`. v1's usage config builder was never called,
+so usage, query-log lineage and stored-procedure lineage stay out of scope.
+
+Snowflake reports every integer and fixed-point column as `NUMBER(p, s)`, a synonym of `DECIMAL`, and OM
+has always ingested it as `DECIMAL`. `VARIANT` and `OBJECT` are `JSON` and every `TIMESTAMP` variant is
+`TIMESTAMP`, as the type parser declares for Snowflake. Table-level profile metrics come from
+`INFORMATION_SCHEMA.TABLES` and describe the whole table, so a partitioned profile shows its window in
+column metrics only.
+
+Fixed while migrating, each found by a strict assertion here: Snowflake tag classifications are created
+mutually exclusive (a table that sets its own value no longer also shows the schema's inherited value),
+`VARIANT`, `OBJECT` and `ARRAY` samples persist as JSON instead of the driver's JSON text, and `tableDiff`
+builds the table's diff URL from the workflow's resolved connection instead of the server's copy, whose
+secrets a non-bot token reads masked.
+
+Remove the v1 Snowflake test and its `py-cli-e2e-tests.yml` matrix entry only after this suite has passed
+for the agreed stability window. Enabling it in `py-cli-e2e-tests-v2.yml` needs the `snowflake` allowlist
+entry and the existing `TEST_SNOWFLAKE_*` secrets mapped to the variables above for that job only.
