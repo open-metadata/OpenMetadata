@@ -46,6 +46,7 @@ import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.OntologyMemoryProposalStatus;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
@@ -59,6 +60,7 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.type.OntologyEditLock;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -197,6 +199,53 @@ public class OntologyChangeSetIT {
                 OntologyMemoryProposalStatus.class)
             .getProposals()
             .isEmpty());
+  }
+
+  @Test
+  void cannotApplyAProposalAfterItsSourceMemoryIsInvalidated(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
+    ContextMemory memory =
+        ns.trackRoot(
+            "contextMemory",
+            memories.create(
+                new CreateContextMemory()
+                    .withName(ns.prefix("retiredSource"))
+                    .withQuestion("What is the canonical orders table?")
+                    .withAnswer("sales.orders is canonical.")));
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    UUID termId = UUID.randomUUID();
+    OntologyChangeOperation operation =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.CREATE_TERM)
+            .withTerm(
+                new GlossaryTerm()
+                    .withId(termId)
+                    .withName(ns.prefix("ordersTable"))
+                    .withDescription("Canonical orders table")
+                    .withGlossary(glossary.getEntityReference())
+                    .withVersion(0.1))
+            .withSourceMemoryIds(Set.of(memory.getId()))
+            .withState(OntologyChangeOperationState.ACTIVE);
+    OntologyChangeSet changeSet = createChangeSet(client, glossary, operation, ns);
+    memories.patch(
+        memory.getId().toString(),
+        JsonUtils.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/status\",\"value\":\"Invalidated\"}]"));
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("retiredSourceEditor"));
+
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            client
+                .ontologyChangeSets()
+                .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease)));
+    assertEquals(
+        OntologyChangeSetState.DRAFT,
+        client.ontologyChangeSets().get(changeSet.getId()).getState());
+    assertEquals(
+        ContextMemoryStatus.INVALIDATED, memories.get(memory.getId().toString()).getStatus());
   }
 
   @Test

@@ -18,8 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
@@ -29,6 +32,25 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
 
 class OntologyChangePreflightTest {
+  @Test
+  void rejectsAProposalWhoseSourceMemoryWasRetired() {
+    final UUID glossaryId = UUID.randomUUID();
+    final UUID memoryId = UUID.randomUUID();
+    final OntologyChangeOperation proposal =
+        createOperation(storedTerm(glossaryId, null)).withSourceMemoryIds(Set.of(memoryId));
+
+    for (final ContextMemoryStatus status :
+        List.of(ContextMemoryStatus.SUPERSEDED, ContextMemoryStatus.INVALIDATED)) {
+      final OntologyChangePreflight preflight =
+          new OntologyChangePreflight(
+              (entityType, id) -> new ContextMemory().withId(id).withStatus(status));
+
+      assertThrows(
+          BadRequestException.class,
+          () -> preflight.validate(changeSet(glossaryId), List.of(proposal)));
+    }
+  }
+
   @Test
   void acceptsScopedTargetAtExpectedVersion() {
     final UUID glossaryId = UUID.randomUUID();
