@@ -71,7 +71,9 @@ def test_queue_gate_requires_every_upstream_job(tmp_path, overrides, passes):
 
 
 def test_queue_shards_enforce_coverage_but_allow_one_retry():
-    coverage = next(step for step in shard_steps() if step.get("id") == "verify-shard-coverage")
+    coverage = next(
+        step for step in shard_steps() if step.get("id") == "verify-shard-coverage"
+    )
     assert "github.event_name == 'merge_group'" in coverage["if"]
     assert not coverage.get("continue-on-error", False)
     assert '"$(git rev-parse HEAD)" != "$GITHUB_SHA"' in coverage["run"]
@@ -100,7 +102,9 @@ def test_main_health_alerts_and_keeps_the_flake_baseline_off_main():
     assert "HEAD:main" not in script
     assert "refresh_flake_baseline.py" in script
     assert "--threshold 2" in script and "--window 10" in script
-    slack = next(step for step in job["steps"] if step["name"] == "Build the Slack message")
+    slack = next(
+        step for step in job["steps"] if step["name"] == "Build the Slack message"
+    )
     # Anything but a clean pass alerts: flaky passes included.
     assert "classification != 'passed'" in slack["if"]
     # Everything from main goes to #pw-health; #ci-cleanup is queue-only.
@@ -112,15 +116,24 @@ def test_merge_queue_failures_alert_ci_cleanup_without_checked_out_code():
     steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
         "steps"
     ]
-    alert = [s for s in steps if "failure() && github.event_name == 'merge_group'" in s.get("if", "")]
+    alert = [
+        s
+        for s in steps
+        if "failure() && github.event_name == 'merge_group'" in s.get("if", "")
+    ]
     assert {s["name"] for s in alert} >= {
         "Build the merge-queue failure message",
         "Post the merge-queue failure to Slack (ci-cleanup)",
     }
-    download = next(s for s in alert if s["name"] == "Download failed merge-queue shard results")
+    download = next(
+        s for s in alert if s["name"] == "Download failed merge-queue shard results"
+    )
     # Artifacts belong to the run, so an unscoped pattern would report tests
     # that failed only in an earlier attempt of a re-run.
-    assert download["with"]["pattern"] == "playwright-results-json-*-a${{ github.run_attempt }}*"
+    assert (
+        download["with"]["pattern"]
+        == "playwright-results-json-*-a${{ github.run_attempt }}*"
+    )
     build = next(s for s in alert if s.get("id") == "queue-slack")
     assert "C0AC5T013V1" in build["run"]
     # Queue runs never check out code in the summary job, so the alert must not
@@ -135,9 +148,12 @@ def test_pr_summary_reads_the_flake_baseline_report_only():
     assert "--retry-baseline" in step["run"]
     assert "--enforce" not in step["run"]
 
+
 def test_shard_status_records_execution_identity():
     status = next(
-        step for step in shard_steps() if step["name"] == "Record shard execution status"
+        step
+        for step in shard_steps()
+        if step["name"] == "Record shard execution status"
     )
     for field in ("headSha", "runId", "runAttempt"):
         assert f"{field}: ${field}" in status["run"]
@@ -178,7 +194,7 @@ def test_baseline_refresh_writes_the_data_branch_from_full_runs_on_main():
     assert "HEAD:main" not in script
     [push] = [step for step in refresh["steps"] if "DATA_BRANCH" in step.get("env", {})]
     assert push["env"]["DATA_BRANCH"] == "ci/playwright-timing"
-    assert 'HEAD:refs/heads/$DATA_BRANCH' in push["run"]
+    assert "HEAD:refs/heads/$DATA_BRANCH" in push["run"]
 
 
 def test_planning_reads_the_data_branch_baseline():
@@ -194,8 +210,10 @@ def test_planning_reads_the_data_branch_baseline():
 
 
 def test_queue_retry_report_lists_only_retry_passes(tmp_path):
-    coverage = next(step for step in shard_steps() if step.get("id") == "verify-shard-coverage")
-    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE'):]
+    coverage = next(
+        step for step in shard_steps() if step.get("id") == "verify-shard-coverage"
+    )
+    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE') :]
     output = tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/output"
     output.mkdir(parents=True)
 
@@ -242,62 +260,43 @@ def test_queue_retry_report_lists_only_retry_passes(tmp_path):
     assert result.stdout.count("::warning") == 1
 
 
-def test_merge_queue_flaky_tests_feed_the_daily_report_not_slack():
+def test_merge_queue_flakes_are_left_to_the_daily_report():
     steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
         "steps"
     ]
-    build = next(s for s in steps if s.get("id") == "queue-flaky")
-    assert "github.event_name == 'merge_group'" in build["if"]
-    assert "failure()" not in build["if"], "flakes are collected on green queue runs too"
-    # Reads what the shards already emit instead of uploading reports.
-    assert '"Retry pass in merge queue"' in build["run"]
-    assert ".github/scripts" not in build["run"]
-    upload = next(s for s in steps if s.get("name") == "Upload merge-queue retry passes")
-    # playwright_flaky_report.py looks the artifact up by this exact name.
-    assert upload["with"]["name"] == "playwright-mq-flaky"
-    assert "steps.queue-flaky.outcome == 'success'" in upload["if"]
     # #pw-health gets one daily report, not a post per queue run.
     assert not any(
-        "C0C008ZAK0V" in str(s.get("run", "")) for s in steps if "queue" in s.get("name", "")
+        "C0C008ZAK0V" in str(s.get("run", ""))
+        for s in steps
+        if "queue" in s.get("name", "")
     )
+    assert not any(s.get("id") == "queue-flaky" for s in steps)
+    # The daily report reads these annotations; the shards must keep writing them.
     shard_warning = next(
         s for s in shard_steps() if s.get("id") == "verify-shard-coverage"
     )["run"]
     assert "::warning title=Retry pass in merge queue::" in shard_warning
-    permissions = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
-        "permissions"
-    ]
-    assert permissions.get("checks") == "read"
-
-
-def test_queue_flaky_collector_writes_one_entry_per_test():
-    build = summary_step("Collect merge-queue retry passes")["run"]
-    jq_program = build[build.index("jq -Rn '") + len("jq -Rn '") :]
-    jq_program = jq_program[: jq_program.index("'")]
-    result = subprocess.run(
-        ["jq", "-Rn", jq_program],
-        input="A.spec.ts:1 › one\nB.spec.ts:2 › two\n",
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    assert json.loads(result.stdout) == {
-        "schemaVersion": 1,
-        "flaky": [{"test": "A.spec.ts:1 › one"}, {"test": "B.spec.ts:2 › two"}],
-    }
+    report = workflow("playwright-flaky-daily-report.yml")["permissions"]
+    assert report == {"actions": "read", "checks": "read", "contents": "read"}
 
 
 def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
     # GitHub keeps only 10 warning annotations per step; one per test would
     # silently drop the rest before the queue's #pw-health alert reads them.
-    coverage = next(step for step in shard_steps() if step.get("id") == "verify-shard-coverage")
-    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE'):]
+    coverage = next(
+        step for step in shard_steps() if step.get("id") == "verify-shard-coverage"
+    )
+    report_part = coverage["run"][coverage["run"].index('results="$GITHUB_WORKSPACE') :]
     output = tmp_path / "openmetadata-ui/src/main/resources/ui/playwright/output"
     output.mkdir(parents=True)
     titles = [f"flaky {index:02d}" for index in range(12)] + ["50% done"]
     specs = [
-        {"title": title, "file": "Pages/X.spec.ts", "line": 1,
-         "tests": [{"status": "flaky", "results": [{}, {}]}]}
+        {
+            "title": title,
+            "file": "Pages/X.spec.ts",
+            "line": 1,
+            "tests": [{"status": "flaky", "results": [{}, {}]}],
+        }
         for title in titles
     ]
     (output / "results.json").write_text(json.dumps({"suites": [{"specs": specs}]}))
@@ -305,11 +304,21 @@ def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
     summary.touch()
     result = subprocess.run(
         ["bash", "-e", "-c", report_part],
-        env={**os.environ, "GITHUB_WORKSPACE": str(tmp_path),
-             "GITHUB_STEP_SUMMARY": str(summary), "SHARD_ID": "chromium-01"},
-        capture_output=True, text=True, check=False,
+        env={
+            **os.environ,
+            "GITHUB_WORKSPACE": str(tmp_path),
+            "GITHUB_STEP_SUMMARY": str(summary),
+            "SHARD_ID": "chromium-01",
+        },
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert result.returncode == 0, result.stderr
-    [warning] = [line for line in result.stdout.splitlines() if line.startswith("::warning")]
+    [warning] = [
+        line for line in result.stdout.splitlines() if line.startswith("::warning")
+    ]
     message = warning.split("::", 2)[2].replace("%0A", "\n").replace("%25", "%")
-    assert sorted(line.split(" › ")[1] for line in message.splitlines()) == sorted(titles)
+    assert sorted(line.split(" › ")[1] for line in message.splitlines()) == sorted(
+        titles
+    )

@@ -139,8 +139,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       actions: read
-      # Reads shard annotations for the merge-queue flaky alert.
-      checks: read
       contents: read
       # For the budget-breach tracked issue (Signal Playwright budget
       # breaches step below).
@@ -226,43 +224,9 @@ jobs:
           errors: true
           payload-file-path: ${{ runner.temp }}/queue-slack.json
 
-      # Queue flakes feed the daily #pw-health report
-      # (playwright-flaky-daily-report.yml) instead of one Slack post per run.
-      # Each shard leaves one "Retry pass in merge queue" annotation listing its
-      # retry passes (one per line); this collects them
-      # into one small artifact per run, inline for the same reason as the
-      # failure alert above. A run with no retry passes still uploads an empty
-      # list, so the report can tell "none" from "no data".
-      - name: Collect merge-queue retry passes
-        id: queue-flaky
-        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' }}
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          jobs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
-            --jq '.jobs[] | select(.name | contains("playwright-ci")) | .id')
-          mkdir -p "$RUNNER_TEMP/mq-flaky"
-          for job in $jobs; do
-            gh api --paginate "repos/$GITHUB_REPOSITORY/check-runs/$job/annotations" \
-              --jq '.[] | select(.title == "Retry pass in merge queue") | .message'
-          done | sed '/^$/d' | sort -u |
-            jq -Rn '{schemaVersion: 1, flaky: [inputs | {test: .}]}' \
-            > "$RUNNER_TEMP/mq-flaky/flaky.json"
-          jq '.flaky | length' "$RUNNER_TEMP/mq-flaky/flaky.json"
-
-      - name: Upload merge-queue retry passes
-        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' && steps.queue-flaky.outcome == 'success' }}
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-mq-flaky
-          path: ${{ runner.temp }}/mq-flaky/flaky.json
-          # Bounds how far back a dispatched report can look.
-          retention-days: 14
-          # A re-run attempt replaces the earlier attempt's list.
-          overwrite: true
+      # Queue flakes and failures go to #pw-health once a day
+      # (playwright-flaky-daily-report.yml), read from the shards' "Retry pass in
+      # merge queue" annotations, instead of one Slack post per queue run.
 
       # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
       # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we

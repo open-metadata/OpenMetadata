@@ -9,16 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Daily merge-queue flaky-test report: one PDF in #pw-health instead of one Slack
+# Daily merge-queue Playwright report: one PDF in #pw-health instead of one Slack
 # post per queue run.
 #
-# Every merge-group run of playwright-postgresql-e2e.yml uploads a
-# `playwright-mq-flaky` artifact with its retry passes and their first-attempt
-# errors. This rolls up every run in the window, ranks tests by distinct PRs (a
-# re-queued PR counts once), splits hits in passing runs from hits in ejected
-# runs, and marks tests that are new against the previous 24h and main's flake
-# baseline. A dispatched window is at most 48h (GITHUB_TOKEN API budget) and must
-# fall within the 14-day artifact retention.
+# For every merge-group run of playwright-postgresql-e2e.yml in the window it reads
+# the shards' "Retry pass in merge queue" annotations (flaky tests, one GraphQL
+# query per run) and, for failed runs, the failed shards' results JSON (failed
+# tests and errors). Tests are ranked by distinct PRs (a re-queued PR counts
+# once); flaky tests not seen in the previous 24h or on main are marked NEW. A
+# dispatched window is at most 48h.
 name: Playwright Flaky Daily Report
 
 on:
@@ -42,9 +41,11 @@ on:
 
 permissions:
   # Naming any permission sets every other one to none:
-  #   actions  — list merge-group runs and download their flaky artifacts
+  #   actions  — list merge-group runs, their jobs, and failed shards' results JSON
+  #   checks   — the shards' retry-pass and failure annotations
   #   contents — checkout, and flake-baseline.json on ci/playwright-timing
   actions: read
+  checks: read
   contents: read
 
 concurrency:
@@ -53,7 +54,7 @@ concurrency:
 
 jobs:
   report:
-    name: Summarise merge-queue flaky tests
+    name: Summarise merge-queue failed and flaky tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
