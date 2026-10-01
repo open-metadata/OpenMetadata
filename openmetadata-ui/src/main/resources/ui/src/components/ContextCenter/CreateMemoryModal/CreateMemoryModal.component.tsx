@@ -848,14 +848,15 @@ const isProposalUnavailable = (
   proposalStatus.queued ||
   proposalStatus.proposals.length > 0;
 
-const canProposeRestrictedMemory = (
+const canProposeFromMemory = (
   memory: ContextMemory | undefined,
   isOwner: boolean,
+  isAdminUser: boolean | undefined,
   isViewOnly: boolean,
   proposalQueued: boolean,
   proposalStatus?: OntologyMemoryProposalStatus
 ): boolean => {
-  if (!memory || !isOwner) {
+  if (!memory) {
     return false;
   }
   if (!isViewOnly || isProposalUnavailable(proposalQueued, proposalStatus)) {
@@ -865,9 +866,12 @@ const canProposeRestrictedMemory = (
     return false;
   }
 
-  return [ShareVisibility.Private, ShareVisibility.Shared].includes(
-    memory.shareConfig?.visibility ?? ShareVisibility.Private
+  const visibility = memory.shareConfig?.visibility ?? ShareVisibility.Private;
+  const isPublished = [ShareVisibility.Entity, ShareVisibility.Public].includes(
+    visibility
   );
+
+  return isOwner || (isPublished && Boolean(isAdminUser));
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -1373,9 +1377,10 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     />
 
                     <MemoryDerivedOntology
-                      canPropose={canProposeRestrictedMemory(
+                      canPropose={canProposeFromMemory(
                         memoryToEdit,
                         isOwner,
+                        isAdminUser,
                         isViewOnly,
                         proposalQueued,
                         proposalStatus

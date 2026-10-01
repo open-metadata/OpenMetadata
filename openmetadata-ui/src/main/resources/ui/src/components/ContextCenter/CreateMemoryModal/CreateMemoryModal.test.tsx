@@ -33,6 +33,17 @@ jest.mock('react-markdown', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Database01: jest.fn(() => null),
+  FileLock02: jest.fn(() => null),
+  InfoCircle: jest.fn(() => null),
+  Lightbulb03: jest.fn(() => null),
+  Lock01: jest.fn(() => null),
+  Plus: jest.fn(() => null),
+  Share07: jest.fn(() => null),
+  X: jest.fn(() => null),
+}));
+
 jest.mock(
   '../../../components/common/MarkdownEditor/markdownComponents',
   () => ({
@@ -467,6 +478,35 @@ describe('CreateMemoryModal', () => {
     fireEvent.click(draftLink);
 
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers proposal for a file-derived entity memory with no draft', async () => {
+    const memory = {
+      id: 'memory-id',
+      name: 'metrics.md-f02e2a5c',
+      status: 'Active',
+      shareConfig: { visibility: 'Entity' },
+      derivedEntities: [],
+    } as ContextMemory;
+    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
+      proposals: [],
+      queued: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal
+          {...defaultProps}
+          isAdminUser
+          viewOnly
+          memoryToEdit={memory}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'label.propose-term' })
+    ).toBeInTheDocument();
   });
 
   it('keeps proposal action unavailable while derivation is queued', async () => {

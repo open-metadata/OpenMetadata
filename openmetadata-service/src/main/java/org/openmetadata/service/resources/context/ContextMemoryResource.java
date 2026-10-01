@@ -53,8 +53,6 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
-import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -67,7 +65,7 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.llm.LLMClientHolder;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
+import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
@@ -598,43 +596,19 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     return response;
   }
 
-  private static boolean isPublishedForOntology(final ContextMemory memory) {
-    if (memory == null
-        || memory.getStatus() != ContextMemoryStatus.ACTIVE
-        || memory.getShareConfig() == null
-        || memory.getQuestion() == null
-        || memory.getQuestion().isBlank()
-        || memory.getAnswer() == null
-        || memory.getAnswer().isBlank()) {
-      return false;
-    }
-    final MemoryVisibility visibility = memory.getShareConfig().getVisibility();
-    return visibility == MemoryVisibility.ENTITY || visibility == MemoryVisibility.PUBLIC;
-  }
-
   private static boolean hasNewPublishedContent(
       final ContextMemory previous, final ContextMemory updated) {
-    return isPublishedForOntology(updated)
-        && (!isPublishedForOntology(previous)
+    return OntologyMemoryDerivationQueue.isPublished(updated)
+        && (!OntologyMemoryDerivationQueue.isPublished(previous)
             || !Objects.equals(previous.getQuestion(), updated.getQuestion())
             || !Objects.equals(previous.getAnswer(), updated.getAnswer()));
   }
 
   private void queueOntologyDerivation(
       final ContextMemory memory, final SecurityContext securityContext) {
-    if (!isPublishedForOntology(memory) || !LLMClientHolder.isOntologyMemoryDerivationEnabled()) {
-      return;
-    }
-    try {
-      Entity.getJobDAO()
-          .enqueueOntologyMemoryDerivationJob(
-              List.of(memory.getId().toString()),
-              JsonUtils.pojoToJson(
-                  new OntologyMemoryDerivationJobHandler.Args(null, List.of(memory.getId()))),
-              securityContext.getUserPrincipal().getName());
-    } catch (RuntimeException exception) {
-      LOG.error("Could not queue ontology derivation for memory {}", memory.getId(), exception);
-    }
+    new OntologyMemoryDerivationQueue(
+            Entity.getJobDAO(), LLMClientHolder::isOntologyMemoryDerivationEnabled)
+        .enqueue(memory, securityContext.getUserPrincipal().getName());
   }
 
   @PUT
