@@ -1925,9 +1925,11 @@ jobs:
               }
             }' > "$STATUS_DIR/ci-status.json"
 
+      # Uploaded on merge_group too: the blob carries the traces the merged HTML
+      # report links to, the only way to debug a queue failure or retry pass.
       - name: Upload Playwright blob report
         uses: actions/upload-artifact@v6
-        if: ${{ always() && github.event_name != 'merge_group' }}
+        if: always()
         continue-on-error: true
         with:
           name: playwright-blob-${{ matrix.shardId }}
