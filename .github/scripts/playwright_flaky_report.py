@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Daily merge-queue Playwright report for #pw-health: hard failures and flakes.
 
-Replaces the one-Slack-post-per-queue-run flaky alert, which buried the channel.
+Rolls up the day next to the per-run flaky alerts that playwright-postgresql-e2e.yml
+posts, so the worst offenders stand out from the stream of single-run posts.
 For every merge-group run of playwright-postgresql-e2e.yml in the window it reads:
   * flaky tests — each shard's "Retry pass in merge queue" annotation, fetched for
     the whole run with one GraphQL check-suite query;

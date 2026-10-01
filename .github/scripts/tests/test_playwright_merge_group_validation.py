@@ -268,36 +268,34 @@ def test_queue_retry_report_lists_only_retry_passes(tmp_path):
     assert result.stdout.count("::warning") == 1
 
 
-def test_merge_queue_flakes_are_left_to_the_daily_report():
+def test_merge_queue_flaky_tests_alert_pw_health_from_annotations():
     steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
         "steps"
     ]
-    # #pw-health gets one daily report, not a post per queue run.
-    assert not any(
-        "C0C008ZAK0V" in str(s.get("run", ""))
-        for s in steps
-        if "queue" in s.get("name", "")
-    )
-    assert not any(s.get("id") == "queue-flaky" for s in steps)
-    # The daily report reads these annotations; the shards must keep writing them.
+    build = next(s for s in steps if s.get("id") == "queue-flaky")
+    assert "github.event_name == 'merge_group'" in build["if"]
+    assert "failure()" not in build["if"], "flakes are reported on green queue runs too"
+    assert "C0C008ZAK0V" in build["run"]  # #pw-health
+    # Reads what the shards already emit instead of uploading reports.
+    assert '"Retry pass in merge queue"' in build["run"]
+    assert ".github/scripts" not in build["run"]
     shard_warning = next(
         s for s in shard_steps() if s.get("id") == "verify-shard-coverage"
     )["run"]
     assert "::warning title=Retry pass in merge queue::" in shard_warning
-    report = workflow("playwright-flaky-daily-report.yml")["permissions"]
-    assert report == {"actions": "read", "checks": "read", "contents": "read"}
-    post = next(
-        s
-        for s in workflow("playwright-flaky-daily-report.yml")["jobs"]["report"][
-            "steps"
-        ]
-        if s["name"].startswith("Post to Slack")
-    )
+    permissions = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
+        "permissions"
+    ]
+    assert permissions.get("checks") == "read"
+
+
+def test_daily_report_reads_queue_results_and_posts_with_a_fallback():
+    daily = workflow("playwright-flaky-daily-report.yml")
+    assert daily["permissions"] == {"actions": "read", "checks": "read", "contents": "read"}
+    steps = daily["jobs"]["report"]["steps"]
+    post = next(s for s in steps if s["name"].startswith("Post to Slack"))
     # An absent input compares equal to false, so the schedule is named explicitly.
-    assert (
-        post["if"] == "${{ github.event_name == 'schedule' || inputs.post_to_slack }}"
-    )
-    steps = workflow("playwright-flaky-daily-report.yml")["jobs"]["report"]["steps"]
+    assert post["if"] == "${{ github.event_name == 'schedule' || inputs.post_to_slack }}"
     # A failed HTML upload must not end the job before the text fallback posts.
     assert post.get("continue-on-error") is True
     fallback = next(s for s in steps if s["name"].startswith("Post a text fallback"))

@@ -9,8 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Daily merge-queue Playwright report: one HTML file in #pw-health instead of one
-# Slack post per queue run.
+# Daily merge-queue Playwright report in #pw-health: one HTML file rolling up the
+# day, next to the per-run flaky alerts that playwright-postgresql-e2e.yml posts.
 #
 # For every merge-group run of playwright-postgresql-e2e.yml in the window it reads
 # the shards' "Retry pass in merge queue" annotations (flaky tests, one GraphQL
