@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.MaxLatency;
 import org.openmetadata.schema.api.data.RefreshFrequency;
@@ -40,6 +41,10 @@ import org.openmetadata.service.datacontract.sla.RefreshHistory.Observation;
  */
 final class SlaCheck {
   private static final Pattern TIME_OF_DAY = Pattern.compile("^(\\d{1,2}):(\\d{2})");
+  private static final String PROFILER_SCHEDULE_NOTE =
+      "Note: SLA validation uses stored profiler results, which may lag behind actual data updates."
+          + " Check the profiler runtime configuration and align its schedule with the ETL schedule,"
+          + " especially for hourly SLAs.";
 
   private final ContractSLA sla;
   private final ZoneId zone;
@@ -74,7 +79,23 @@ final class SlaCheck {
     if (sla.getRetention() != null) {
       notes.add("Retention is not checked.");
     }
+    addProfilerScheduleNote(history.source());
     return validation.withMessage(notes.isEmpty() ? null : String.join(" ", notes));
+  }
+
+  private void addProfilerScheduleNote(RefreshedAtSource source) {
+    final boolean usesProfiler =
+        source == RefreshedAtSource.SLA_COLUMN_PROFILE
+            || source == RefreshedAtSource.SYSTEM_PROFILE;
+    final boolean hasFailure =
+        Stream.of(
+                validation.getRefreshFrequencyMet(),
+                validation.getLatencyMet(),
+                validation.getAvailabilityMet())
+            .anyMatch(Boolean.FALSE::equals);
+    if (usesProfiler && hasFailure) {
+      notes.add(PROFILER_SCHEDULE_NOTE);
+    }
   }
 
   private void checkRefreshFrequency(Observation newest) {

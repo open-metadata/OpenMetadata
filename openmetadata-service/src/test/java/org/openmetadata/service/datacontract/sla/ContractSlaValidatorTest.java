@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.MaxLatency;
 import org.openmetadata.schema.api.data.RefreshFrequency;
@@ -44,6 +46,10 @@ class ContractSlaValidatorTest {
   private static final String TABLE_FQN = "svc.db.sch.orders";
   private static final Instant NOW = Instant.parse("2026-09-25T14:00:00Z");
   private static final ZoneId NEW_YORK = ZoneId.of("America/New_York");
+  private static final String PROFILER_SCHEDULE_NOTE =
+      "Note: SLA validation uses stored profiler results, which may lag behind actual data updates."
+          + " Check the profiler runtime configuration and align its schedule with the ETL schedule,"
+          + " especially for hourly SLAs.";
 
   private RefreshHistory history;
   private String requestedColumn;
@@ -113,6 +119,71 @@ class ContractSlaValidatorTest {
     assertTrue(validation.getMessage().contains("more than 1 day ago"), validation.getMessage());
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = RefreshedAtSource.class,
+      names = {"SLA_COLUMN_PROFILE", "SYSTEM_PROFILE"})
+  void missedHourlyRefreshIncludesProfilerScheduleGuidance(RefreshedAtSource source) {
+    final Instant refreshedAt = NOW.minus(Duration.ofHours(2));
+    history = new RefreshHistory(source, List.of(new Observation(refreshedAt, refreshedAt)));
+
+    final SlaValidation validation =
+        validator.validate(
+            contract(
+                sla(new RefreshFrequency().withInterval(1).withUnit(RefreshFrequency.Unit.HOUR))));
+
+    assertEquals(Boolean.FALSE, validation.getRefreshFrequencyMet());
+    assertTrue(validation.getMessage().startsWith("Refresh frequency missed:"));
+    assertTrue(validation.getMessage().endsWith(PROFILER_SCHEDULE_NOTE), validation.getMessage());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = RefreshedAtSource.class,
+      names = {"SLA_COLUMN_PROFILE", "SYSTEM_PROFILE"})
+  void passingProfilerChecksHaveNoScheduleNote(RefreshedAtSource source) {
+    history = new RefreshHistory(source, List.of(new Observation(NOW, NOW)));
+
+    final SlaValidation validation = validator.validate(contract(daily()));
+
+    assertEquals(Boolean.TRUE, validation.getRefreshFrequencyMet());
+    assertNull(validation.getMessage());
+  }
+
+  @Test
+  void missedLifeCycleRefreshDoesNotSuggestChangingTheProfilerSchedule() {
+    final Instant refreshedAt = NOW.minus(Duration.ofDays(2));
+    history =
+        new RefreshHistory(
+            RefreshedAtSource.LIFE_CYCLE, List.of(new Observation(refreshedAt, refreshedAt)));
+
+    final SlaValidation validation = validator.validate(contract(daily()));
+
+    assertEquals(Boolean.FALSE, validation.getRefreshFrequencyMet());
+    assertTrue(validation.getMessage().startsWith("Refresh frequency missed:"));
+    assertFalse(validation.getMessage().contains(PROFILER_SCHEDULE_NOTE));
+  }
+
+  @Test
+  void multipleMissedRequirementsIncludeTheProfilerScheduleNoteOnlyOnce() {
+    history = columnProfile(NOW.minus(Duration.ofHours(2)), NOW.minus(Duration.ofDays(2)));
+
+    final SlaValidation validation =
+        validator.validate(
+            contract(
+                availableBy("09:00")
+                    .withRefreshFrequency(daily().getRefreshFrequency())
+                    .withMaxLatency(maxLatency(1).getMaxLatency())));
+
+    assertEquals(Boolean.FALSE, validation.getRefreshFrequencyMet());
+    assertEquals(Boolean.FALSE, validation.getLatencyMet());
+    assertEquals(Boolean.FALSE, validation.getAvailabilityMet());
+    final String message = validation.getMessage();
+    assertTrue(message.endsWith(PROFILER_SCHEDULE_NOTE), message);
+    assertEquals(
+        message.indexOf(PROFILER_SCHEDULE_NOTE), message.lastIndexOf(PROFILER_SCHEDULE_NOTE));
+  }
+
   @Test
   void monthlyRefreshFollowsTheCalendar() {
     Instant endOfJanuary = Instant.parse("2026-01-31T12:00:00Z");
@@ -140,8 +211,10 @@ class ContractSlaValidatorTest {
 
     assertEquals(Boolean.TRUE, withinFiveHours.getLatencyMet());
     assertEquals((int) Duration.ofHours(4).toMillis(), withinFiveHours.getActualLatency());
+    assertNull(withinFiveHours.getMessage());
     assertEquals(Boolean.FALSE, overThreeHours.getLatencyMet());
     assertTrue(overThreeHours.getMessage().contains("240 minutes"), overThreeHours.getMessage());
+    assertTrue(overThreeHours.getMessage().endsWith(PROFILER_SCHEDULE_NOTE));
   }
 
   @Test
@@ -151,7 +224,8 @@ class ContractSlaValidatorTest {
     SlaValidation validation = validator.validate(contract(maxLatency(5)));
 
     assertNull(validation.getLatencyMet());
-    assertTrue(validation.getMessage().startsWith("Latency is not evaluated"));
+    assertEquals(
+        "Latency is not evaluated: it needs a profile of the SLA column.", validation.getMessage());
   }
 
   @Test
@@ -175,6 +249,7 @@ class ContractSlaValidatorTest {
     assertEquals(Boolean.FALSE, validation.getAvailabilityMet());
     assertTrue(
         validation.getMessage().contains("no data from 2026-09-25"), validation.getMessage());
+    assertTrue(validation.getMessage().endsWith(PROFILER_SCHEDULE_NOTE));
     assertEquals(Instant.parse("2026-09-24T04:00:00Z"), requestedSince);
   }
 
