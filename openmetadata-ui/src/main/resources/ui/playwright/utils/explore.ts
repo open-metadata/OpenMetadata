@@ -409,9 +409,7 @@ export const navigateToExploreAndSelectEntity = async ({
 }) => {
   await redirectToExplorePage(page);
 
-  await expect(page.locator('[data-testid="loader"]')).toHaveCount(0, {
-    timeout: 30000,
-  });
+  await waitForAllLoadersToDisappear(page);
 
   await openEntitySummaryPanel({
     page,

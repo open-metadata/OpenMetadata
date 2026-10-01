@@ -379,10 +379,9 @@ test.describe('Lineage Filters', () => {
           await page.getByTestId('filters-button').click();
           await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
-          await page
-            .getByTestId('drop-down-menu')
-            .getByTestId('loader')
-            .waitFor({ state: 'hidden' });
+          await waitForAllLoadersToDisappear(
+            page.getByTestId('drop-down-menu')
+          );
           await page
             .getByTestId('drop-down-menu')
             .getByText(filterValue)
@@ -426,10 +425,9 @@ test.describe('Lineage Filters', () => {
           await page.getByTestId('filters-button').click();
           await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
-          await page
-            .getByTestId('drop-down-menu')
-            .getByTestId('loader')
-            .waitFor({ state: 'hidden' });
+          await waitForAllLoadersToDisappear(
+            page.getByTestId('drop-down-menu')
+          );
           await page
             .getByTestId('drop-down-menu')
             .getByText(filterValue)
@@ -511,9 +509,7 @@ test.describe('Lineage Filters', () => {
       }
       await test.step(`Select service for ${entity.entityResponseData.fullyQualifiedName}`, async () => {
         await page.getByTestId('search-dropdown-Service').click();
-        await page.getByTestId('drop-down-menu').getByTestId('loader').waitFor({
-          state: 'hidden',
-        });
+        await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
         const serviceName = get(
           entity,
           entity.type === 'Metric'
@@ -630,9 +626,7 @@ test.describe('Lineage Filters', () => {
       }
       await test.step(`Select service for ${entity.entityResponseData.fullyQualifiedName}`, async () => {
         await page.getByTestId('search-dropdown-Service').click();
-        await page.getByTestId('drop-down-menu').getByTestId('loader').waitFor({
-          state: 'hidden',
-        });
+        await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
         const serviceName = get(
           entity,
           entity.type === 'Metric'
@@ -925,10 +919,7 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.database.name',
         ''
       );
-      await page
-        .getByTestId('drop-down-menu')
-        .getByTestId('loader')
-        .waitFor({ state: 'hidden' });
+      await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
       await page.getByTestId('drop-down-menu').getByText(databaseName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
@@ -974,10 +965,7 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.databaseSchema.name',
         ''
       );
-      await page
-        .getByTestId('drop-down-menu')
-        .getByTestId('loader')
-        .waitFor({ state: 'hidden' });
+      await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
       await page
         .getByTestId('drop-down-menu')
         .getByText(databaseSchemaName)
@@ -1026,10 +1014,7 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.columns[0].name',
         ''
       );
-      await page
-        .getByTestId('drop-down-menu')
-        .getByTestId('loader')
-        .waitFor({ state: 'hidden' });
+      await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
       await page.getByTestId('drop-down-menu').getByText(columnName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');

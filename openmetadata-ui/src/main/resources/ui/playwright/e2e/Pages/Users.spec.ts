@@ -277,9 +277,7 @@ test.describe('User with Admin Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
     await settingClick(adminPage, GlobalSettingOptions.USERS);
-    await adminPage.locator('.user-list-table [data-testid="loader"]').waitFor({
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(adminPage.locator('.user-list-table'));
     await softDeleteUserProfilePage(
       adminPage,
       user.responseData.name,

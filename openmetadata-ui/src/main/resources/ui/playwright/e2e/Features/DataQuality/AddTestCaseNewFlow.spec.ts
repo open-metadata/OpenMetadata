@@ -437,9 +437,7 @@ test.describe(
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid="loader"]').waitFor({
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       const selectAllSwitch = page
         .getByRole('switch')
         .and(page.getByTestId('select-all-test-cases'));

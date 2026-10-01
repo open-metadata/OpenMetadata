@@ -122,12 +122,9 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     ]);
 
     // Wait for table loader to disappear
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 })
-      .catch(() => {});
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
   };
 
   // Helper to reset filter to "All"
@@ -154,12 +151,9 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       page.getByTestId('glossary-status-save-btn').click(),
     ]);
 
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 })
-      .catch(() => {});
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
   };
 
   // Helper to expand a specific term in the table
@@ -210,12 +204,9 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     const searchInput = page.getByPlaceholder(/search.*term/i);
     await searchInput.fill(query);
 
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 })
-      .catch(() => {});
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
     await page
       .locator('tbody > tr:not([aria-hidden="true"])')
       .first()
@@ -228,12 +219,9 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     const searchInput = page.getByPlaceholder(/search.*term/i);
     await searchInput.clear();
 
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 })
-      .catch(() => {});
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
     await page
       .locator('tbody > tr:not([aria-hidden="true"])')
       .first()
@@ -369,11 +357,9 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     await disableEtagConditionalReads(page);
     await glossary.visitEntityPage(page);
     await page.getByTestId('glossary-terms-table').waitFor();
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
   });
 
   // ==================== BASIC NESTED TERM STATUS FILTERING ====================
@@ -550,10 +536,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await page.getByTestId('expand-collapse-all-button').click();
       await termRes;
 
-      await page
-        .locator('[data-testid="loader"]')
-        .waitFor({ state: 'detached', timeout: 30000 })
-        .catch(() => {});
+      await waitForAllLoadersToDisappear(page);
 
       // Terms should be expanded
       const rowCount = await getRowCount(page);

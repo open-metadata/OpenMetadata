@@ -230,19 +230,13 @@ class ServiceBaseClass {
 
     // Header available once page loads
     await page.getByTestId('data-assets-header').waitFor();
-    await page
-      .getByTestId('table-container')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('table-container'));
     await page.getByTestId('agents').click();
     const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
     if (await metadataTab2.isVisible()) {
       await metadataTab2.click();
     }
-    await page
-      .getByLabel('agents')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
     const triggerPipeline = page.waitForResponse(
       (response) =>
@@ -538,10 +532,7 @@ class ServiceBaseClass {
       false
     );
 
-    await page
-      .getByTestId('table-container')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('table-container'));
 
     await page.click('[data-testid="agents"]');
     const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
@@ -549,10 +540,7 @@ class ServiceBaseClass {
       await metadataTab2.click();
     }
 
-    await page
-      .getByLabel('agents')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByLabel('agents'));
     await page.getByTestId('logs-button').first().waitFor({ state: 'visible' });
 
     const triggerPipeline = page.waitForResponse(
