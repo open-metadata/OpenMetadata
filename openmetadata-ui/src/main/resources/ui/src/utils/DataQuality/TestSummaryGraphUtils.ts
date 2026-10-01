@@ -62,6 +62,8 @@ export const getIncidentDetails = (task?: Task) => {
   };
 };
 
+const FALLBACK_SERIES_NAME = 'value';
+
 export const prepareChartData = ({
   testCaseParameterValue,
   testCaseResults,
@@ -86,7 +88,7 @@ export const prepareChartData = ({
 
       return {
         ...acc,
-        [curr.name ?? 'value']: value,
+        [curr.name ?? FALLBACK_SERIES_NAME]: value,
       };
     }, {});
     const metric = {
@@ -132,9 +134,17 @@ export const prepareChartData = ({
       (info) => !EXCLUDED_CHART_FIELDS.has(info.name ?? '')
     ) ?? [];
 
+  // A run that aborted before measuring records no values, so a test whose
+  // every run did so names no series; one stands in so its runs still get a point.
+  const measuredSeries = filteredResultValues.map((info) => info.name ?? '');
+  const seriesNames =
+    isEmpty(measuredSeries) && !isEmpty(dataPoints)
+      ? [FALLBACK_SERIES_NAME]
+      : measuredSeries;
+
   return {
-    information: filteredResultValues.map((info, i) => ({
-      label: info.name ?? '',
+    information: seriesNames.map((label, i) => ({
+      label,
       color: COLORS[i] ?? getRandomHexColor(),
     })),
     data: dataPoints,
@@ -162,7 +172,7 @@ export interface ThresholdReference {
   labelValue?: string;
 }
 
-const toFiniteNumber = (value?: string) => {
+export const toFiniteNumber = (value?: string) => {
   // Number('') is 0, so a cleared parameter would otherwise draw a line at 0.
   if (isEmpty(value?.trim())) {
     return undefined;
@@ -266,9 +276,10 @@ export const PLACED_KEYS_FIELD = 'placedKeys';
 /**
  * A run that produced no value carries no key for any series, so recharts drew
  * nothing at all for it and the run was missing from the chart. Aborted runs are
- * placed at the lowest value on the plot and queued runs on the expectation
- * line, on the series itself, so the line runs through them and the point is
- * not left floating off it. Which keys were placed is recorded on the point.
+ * placed at the lowest value on the plot (or the expectation line, or zero, when
+ * nothing was plotted) and queued runs on the expectation line, on the series
+ * itself, so the line runs through them and the point is not left floating off
+ * it. Which keys were placed is recorded on the point.
  */
 export const applyStatusPlacements = (
   data: TestCaseChartDataType['data'],
@@ -279,11 +290,9 @@ export const applyStatusPlacements = (
     seriesLabels.map((label) => point[label]).filter(isNumber)
   );
 
-  if (isEmpty(plotted) && isUndefined(thresholdY)) {
-    return data;
-  }
-
-  const baseline = isEmpty(plotted) ? thresholdY : Math.min(...plotted);
+  // With no value and no line there is no scale to sit on, so the zero line
+  // stands in; otherwise every run of an always-aborting test would be invisible.
+  const baseline = isEmpty(plotted) ? thresholdY ?? 0 : Math.min(...plotted);
 
   const placementByStatus: Partial<Record<TestCaseStatus, number | undefined>> =
     {

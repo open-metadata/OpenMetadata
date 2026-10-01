@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
@@ -46,16 +47,19 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
 
   /**
    * Derives memories from {@code text} without persisting anything. Long documents are processed in
-   * paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across chunks. Chunk
-   * failures are tolerated as long as at least one chunk succeeds — the stats in the result expose
-   * partial coverage; if every chunk fails the run fails. Kept side-effect free so callers can
-   * reconcile the source's previous pills only after the LLM pass succeeded. Each derived memory is
-   * linked to {@code sourceRef} and tagged {@code sourceType}.
+   * paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across chunks. The
+   * whole derivation fails if any chunk fails or the document exceeds the configured chunk budget;
+   * otherwise reconciliation could retire good pills and stamp an incomplete run as successful.
+   * Each derived memory is linked to {@code sourceRef} and tagged {@code sourceType}.
    */
   @Override
   public DeriveResult derive(
       String text, EntityReference sourceRef, ContextMemorySourceType sourceType) {
     ChunkPlan plan = chunkText(text, sourceRef);
+    if (plan.totalChunks() > plan.chunks().size()) {
+      throw new LLMCompletionException(
+          "Knowledge pill extraction exceeds the " + MAX_CHUNKS + " chunk limit");
+    }
     List<KnowledgePill> collected = new ArrayList<>();
     int processed = 0;
     RuntimeException firstFailure = null;
@@ -72,9 +76,14 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         firstFailure = firstFailure == null ? e : firstFailure;
       }
     }
-    if (processed == 0 && firstFailure != null) {
+    if (firstFailure != null) {
       throw new LLMCompletionException(
-          "All " + plan.chunks().size() + " chunks failed knowledge pill extraction", firstFailure);
+          "Knowledge pill extraction failed for "
+              + (plan.chunks().size() - processed)
+              + " of "
+              + plan.chunks().size()
+              + " chunks",
+          firstFailure);
     }
     List<ContextMemory> memories = new ArrayList<>();
     for (KnowledgePill pill : dedupe(collected)) {
@@ -173,10 +182,12 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         .withAnswer(pill.answer())
         .withSummary(pill.summary())
         .withMemoryType(parseType(pill.memoryType()))
+        .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
         .withStatus(ContextMemoryStatus.ACTIVE)
         .withSourceType(sourceType)
         .withSourceEntity(sourceRef)
-        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.SHARED))
+        .withPrimaryEntity(sourceRef)
+        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
         .withUpdatedBy(Entity.ADMIN_USER_NAME)
         .withUpdatedAt(System.currentTimeMillis());
   }
