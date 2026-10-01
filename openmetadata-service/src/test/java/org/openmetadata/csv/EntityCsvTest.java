@@ -86,6 +86,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
@@ -1551,6 +1552,14 @@ public class EntityCsvTest {
             "");
 
     TableRepository repository = mock(TableRepository.class);
+    Mockito.when(
+            repository.patch(
+                Mockito.isNull(), Mockito.eq(original.getId()), Mockito.eq("admin"), Mockito.any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(
+                jakarta.ws.rs.core.Response.Status.OK,
+                updated,
+                org.openmetadata.schema.type.EventType.ENTITY_UPDATED));
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
@@ -1564,6 +1573,53 @@ public class EntityCsvTest {
       assertTrue(testCsv.pendingTableUpdates.isEmpty());
       assertEquals(1, testCsv.importResult.getNumberOfRowsPassed());
       assertEquals(0, testCsv.importResult.getNumberOfRowsFailed());
+    }
+  }
+
+  @Test
+  void test_flushPendingTableUpdatesReportsHeldColumnRowsAsPendingApproval() {
+    TestCsv testCsv = new TestCsv();
+    testCsv.setDryRun(false);
+
+    Table original =
+        new Table().withId(UUID.randomUUID()).withFullyQualifiedName("service.db.schema.orders");
+    Table updated =
+        new Table().withId(original.getId()).withFullyQualifiedName("service.db.schema.orders");
+    CSVRecord record =
+        columnRecord(
+            testCsv,
+            "customer_id",
+            "",
+            "held description",
+            "service.db.schema.orders.customer_id",
+            "",
+            "INT",
+            "",
+            "");
+    UUID changeRequestId = UUID.randomUUID();
+    TableRepository repository = mock(TableRepository.class);
+    Mockito.when(
+            repository.patch(
+                Mockito.isNull(), Mockito.eq(original.getId()), Mockito.eq("admin"), Mockito.any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(
+                jakarta.ws.rs.core.Response.Status.OK,
+                original,
+                org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE,
+                changeRequestId));
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      testCsv.queuePendingTableUpdate("service.db.schema.orders", original, updated, record);
+
+      testCsv.flushPendingTableUpdates(mock(CSVPrinter.class));
+
+      assertEquals(1, testCsv.importResult.getNumberOfRowsPendingApproval());
+      assertEquals(1, testCsv.importResult.getNumberOfRowsPassed());
+      assertEquals(0, testCsv.importResult.getNumberOfRowsFailed());
+      assertEquals(
+          "Pending approval: change request " + changeRequestId,
+          testCsv.pendingCsvResults.get(record));
     }
   }
 

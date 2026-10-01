@@ -130,6 +130,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
@@ -4388,17 +4389,31 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
-  void test_gatedFieldChangedSinceSubmitConflicts(TestNamespace ns) throws Exception {
+  void test_gatedFieldChangedSinceSubmitBlocksApprovalUntilResubmitted(TestNamespace ns)
+      throws Exception {
     Glossary glossary = reviewedGlossary(ns, "conflict");
     String requestId = submitDescription(glossary, "requested description");
     Task task = awaitRequestTask(requestId, glossary);
     patchAs(SdkClients.ingestionBotClient(), glossary, descriptionPatch("ingested description"));
     assertEquals("ingested description", descriptionOf(glossary));
 
-    approve(task);
-
-    awaitRequestStatus(requestId, "Conflicted");
+    OpenMetadataException refused = assertThrows(OpenMetadataException.class, () -> approve(task));
+    assertEquals(409, refused.getStatusCode(), refused.getMessage());
+    JsonNode flagged = changeRequest(requestId);
+    assertEquals("Pending", flagged.get("status").asText());
+    assertEquals("description", flagged.get("conflicts").get(0).get("field").asText());
     assertEquals("ingested description", descriptionOf(glossary));
+
+    assertEquals(requestId, submitDescription(glossary, "rebased description"));
+    await("revision 2 of " + requestId)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals(2, changeRequest(requestId).get("activeRevisionNumber").asInt()));
+    approve(awaitRequestTask(requestId, glossary));
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals("rebased description", descriptionOf(glossary));
   }
 
   @Test
@@ -4435,9 +4450,13 @@ public class WorkflowDefinitionResourceIT {
 
     approve(awaitRequestTask(first, glossary));
     awaitRequestStatus(first, "Applied");
-    approve(awaitRequestTask(second, glossary));
+    Task secondTask = awaitRequestTask(second, glossary);
 
-    awaitRequestStatus(second, "Conflicted");
+    // The first publication moved the description the second request was based on.
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> approve(secondTask));
+    assertEquals(409, refused.getStatusCode(), refused.getMessage());
+    assertEquals("Pending", changeRequest(second).get("status").asText());
     assertEquals("from user2", descriptionOf(glossary));
   }
 
@@ -4699,6 +4718,87 @@ public class WorkflowDefinitionResourceIT {
     JsonNode gated = preview(SdkClients.user2Client(), glossary, descriptionPatch("gated"));
     assertTrue(gated.get("requiresApproval").asBoolean(), "description is gated here");
     assertEquals(0, changeRequestsOn(glossary).size(), "a preview never submits");
+  }
+
+  @Test
+  void test_tableColumnCsvImportReportsHeldRowsAsPendingApproval(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    DatabaseService service =
+        admin.databaseServices().create(createDatabaseServiceRequest(ns.prefix("csvgate_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName("csvgate_db")
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName("csvgate_schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        admin
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName("csvgate_table")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withOwners(List.of(shared.USER2_REF, shared.USER3_REF))
+                    .withColumns(
+                        List.of(
+                            new Column().withName("id").withDataType(ColumnDataType.INT),
+                            new Column().withName("name").withDataType(ColumnDataType.STRING))));
+    deployHookWorkflow(admin, "table", table.getFullyQualifiedName(), List.of());
+
+    // USER2 edits one column description in the table's column CSV.
+    String[] lines =
+        SdkClients.user2Client().tables().exportCsv(table.getFullyQualifiedName()).split("\n");
+    String[] firstColumn = lines[1].split(",", -1);
+    firstColumn[2] = "held column description";
+    lines[1] = String.join(",", firstColumn);
+    String edited = String.join("\n", lines) + "\n";
+
+    CsvImportResult dryRun =
+        JsonUtils.readValue(
+            SdkClients.user2Client()
+                .tables()
+                .importCsv(table.getFullyQualifiedName(), edited, true),
+            CsvImportResult.class);
+
+    CsvImportResult result =
+        JsonUtils.readValue(
+            SdkClients.user2Client()
+                .tables()
+                .importCsv(table.getFullyQualifiedName(), edited, false),
+            CsvImportResult.class);
+    assertEquals(2, result.getNumberOfRowsPendingApproval(), result.getImportResultsCsv());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    assertTrue(
+        result.getImportResultsCsv().contains("Pending approval: change request"),
+        result.getImportResultsCsv());
+    assertEquals(2, dryRun.getNumberOfRowsPendingApproval(), dryRun.getImportResultsCsv());
+
+    Table published = admin.tables().get(table.getId().toString(), "columns");
+    assertNull(published.getColumns().get(0).getDescription(), "the column edit is held");
+    JsonNode requests =
+        MAPPER
+            .readTree(
+                admin
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.GET,
+                        "/v1/changeRequests?entityId=" + table.getId(),
+                        null,
+                        RequestOptions.builder().build()))
+            .get("data");
+    assertEquals(1, requests.size());
+    assertEquals("Pending", requests.get(0).get("status").asText());
+    assertTrue(result.getImportResultsCsv().contains(requests.get(0).get("id").asText()));
   }
 
   private static final String PUBLISHED_DESCRIPTION = "published description";

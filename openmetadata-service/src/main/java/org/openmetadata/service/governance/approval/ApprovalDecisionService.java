@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.governance.approval;
 
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
+
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.ForbiddenException;
@@ -64,6 +66,9 @@ public final class ApprovalDecisionService {
     if (request != null) {
       Integer reviewed = revisionNumber == null ? revisionOf(task) : revisionNumber;
       requireRevision(reviewed);
+      if (decision == DecisionType.APPROVE) {
+        requireApplicable(request);
+      }
       EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
       repository.executeInTransaction(
           () ->
@@ -72,6 +77,36 @@ public final class ApprovalDecisionService {
                   request,
                   new Proposed(decision, reviewed, task.getId(), comment, user)));
     }
+  }
+
+  /**
+   * Records the approval a review step gives on its own when no one but the requester could review
+   * the change request: the asset has no reviewers or owners and there is no other admin. Commit
+   * then publishes the revision, and the decision explains why no one reviewed it.
+   */
+  public static void recordAutomaticApproval(UUID changeRequestId, int revisionNumber) {
+    ChangeRequest request = ChangeRequestService.get(changeRequestId);
+    EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
+    String reason =
+        "Auto-approved: %s has no reviewers, owners or other admins who can review it"
+            .formatted(request.getEntityFullyQualifiedName());
+    repository.executeInTransaction(
+        () -> {
+          repository.getDao().findJsonByIdForUpdate(request.getEntityId(), Include.ALL);
+          ChangeRequest locked =
+              ChangeRequestService.dao().changeRequestDAO().findByIdForUpdate(request.getId());
+          if (locked.getStatus() == ChangeRequestStatus.PENDING
+              && Objects.equals(locked.getActiveRevisionNumber(), revisionNumber)) {
+            ChangeRevision revision = ChangeRequestService.activeRevision(locked);
+            if (existingDecision(revision.getId(), GOVERNANCE_BOT) == null) {
+              insert(
+                  locked,
+                  revision,
+                  new Proposed(DecisionType.APPROVE, revisionNumber, null, reason, GOVERNANCE_BOT));
+            }
+          }
+          return locked;
+        });
   }
 
   public static List<ApprovalDecision> decisions(UUID revisionId) {
@@ -138,6 +173,16 @@ public final class ApprovalDecisionService {
       revision = number.intValue();
     }
     return revision;
+  }
+
+  private static void requireApplicable(ChangeRequest request) {
+    ChangeApplyService.Applicability applicability = ChangeApplyService.applicability(request);
+    if (!applicability.applicable()) {
+      ChangeRequestService.flagConflicts(request.getId(), applicability);
+      throw conflict(
+          "%s. %s must submit an updated change before it can be approved."
+              .formatted(applicability.reason(), request.getRequestedBy()));
+    }
   }
 
   private static void requireRevision(Integer revisionNumber) {

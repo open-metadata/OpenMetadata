@@ -95,6 +95,15 @@ public final class GovernanceApprovalRegistry {
     }
   }
 
+  /**
+   * Whether the most recently resolved rules gate {@code entityType}, without querying workflow
+   * definitions. Used on hot write paths; admission and review always resolve rules afresh.
+   */
+  public static boolean hasCachedRules(String entityType) {
+    Snapshot snapshot = SNAPSHOT.get();
+    return snapshot != null && snapshot.rulesByEntityType().containsKey(entityType);
+  }
+
   public static void invalidate() {
     SNAPSHOT.set(null);
   }

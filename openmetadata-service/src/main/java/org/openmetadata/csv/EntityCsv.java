@@ -1445,12 +1445,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   // Pending rows are successful submissions; they also count as passed (see csvImportResult).
-  private void countPendingApproval() {
+  protected void countPendingApproval() {
     importResult.withNumberOfRowsPendingApproval(
         Objects.requireNonNullElse(importResult.getNumberOfRowsPendingApproval(), 0) + 1);
   }
 
-  private static String pendingApprovalDetail(UUID changeRequestId) {
+  protected static String pendingApprovalDetail(UUID changeRequestId) {
     return "%s: change request %s".formatted(ENTITY_PENDING_APPROVAL, changeRequestId);
   }
 
@@ -2162,7 +2162,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
       if (Boolean.FALSE.equals(importResult.getDryRun())) {
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(context.originalTable, context.updatedTable);
-          tableRepo.patch(null, context.updatedTable.getId(), importedBy, jsonPatch);
+          UUID pendingChangeRequestId =
+              tableRepo
+                  .patch(null, context.updatedTable.getId(), importedBy, jsonPatch)
+                  .pendingChangeRequestId();
+          if (pendingChangeRequestId != null) {
+            markPendingApproval(context.csvRecords, pendingApprovalDetail(pendingChangeRequestId));
+          }
           LOG.info(
               "Batch patched table {} with {} column updates", tableFQN, context.csvRecords.size());
         } catch (Exception ex) {
@@ -2182,10 +2188,47 @@ public abstract class EntityCsv<T extends EntityInterface> {
         tableRepo.setFullyQualifiedName(context.updatedTable);
         dryRunCreatedEntities.put(
             context.updatedTable.getFullyQualifiedName(), (T) context.updatedTable);
+        if (wouldBeHeld(tableRepo, context)) {
+          markPendingApproval(context.csvRecords, ENTITY_PENDING_APPROVAL);
+        }
       }
     }
 
     pendingTableUpdates.clear();
+  }
+
+  // The column rows of one table are written as a single patch; when that patch is held for
+  // approval, every row in it is reported as pending instead of updated.
+  private void markPendingApproval(List<CSVRecord> records, String detail) {
+    for (CSVRecord record : records) {
+      pendingCsvResults.put(record, detail);
+      countPendingApproval();
+    }
+  }
+
+  private boolean wouldBeHeld(TableRepository tableRepo, TableUpdateContext context) {
+    return wouldBeHeld(tableRepo, context.originalTable, context.updatedTable);
+  }
+
+  /**
+   * Whether writing {@code updated} over {@code original} would be held for approval, for a dry run
+   * that saves nothing.
+   */
+  protected <E extends EntityInterface> boolean wouldBeHeld(
+      EntityRepository<E> repository, E original, E updated) {
+    boolean held = false;
+    if (original.getId() != null && isGated(repository.getEntityType())) {
+      try {
+        held =
+            repository
+                .previewPatch(
+                    original.getId(), importedBy, JsonUtils.getJsonPatch(original, updated))
+                .isPresent();
+      } catch (RuntimeException e) {
+        LOG.debug("Could not preview approval for {}: {}", original.getId(), e.getMessage());
+      }
+    }
+    return held;
   }
 
   private void updateColumnsFromCsvRecursive(Table table, CSVRecord csvRecord, CSVPrinter printer) {

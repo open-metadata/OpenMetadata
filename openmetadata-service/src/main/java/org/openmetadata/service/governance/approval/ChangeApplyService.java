@@ -48,6 +48,9 @@ import org.openmetadata.service.util.FreshReadScope;
  */
 @Slf4j
 public final class ChangeApplyService {
+  private static final String MOVED = "Newer published values conflict with this change";
+  private static final String CONNECTION = "connection";
+
   private ChangeApplyService() {}
 
   private record Approval(ChangeRequest request, boolean current, boolean eligible) {}
@@ -66,12 +69,62 @@ public final class ChangeApplyService {
     try (FreshReadScope.Handle fresh = FreshReadScope.enter()) {
       return repository.executeInTransaction(() -> applyBypassingCache(repository, request));
     } catch (IllegalArgumentException | EntityNotFoundException | WebApplicationException e) {
-      return ChangeRequestService.finish(
-          changeRequestId,
-          null,
-          ChangeRequestStatus.CONFLICTED,
-          "The approved change can no longer be applied: %s".formatted(e.getMessage()));
+      return ChangeRequestService.flagConflicts(
+          changeRequestId, new Applicability(List.of(), notApplicable(e)));
     }
+  }
+
+  /**
+   * Whether the active revision still applies to the asset as published now: no gated field it
+   * changes has moved since submission, and the resulting entity passes the same validation a PATCH
+   * runs. Nothing is saved.
+   */
+  public static Applicability applicability(ChangeRequest request) {
+    EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
+    Applicability result;
+    try (FreshReadScope.Handle fresh = FreshReadScope.enter();
+        EntityCacheBypass.Handle bypass = EntityCacheBypass.skip()) {
+      ChangeRevision revision = ChangeRequestService.activeRevision(request);
+      JsonNode currentTree =
+          JsonUtils.valueToTree(readCurrent(repository, request.getEntityId(), revision.getOps()));
+      MutationPlanner.ConflictSplit split =
+          MutationPlanner.splitConflicts(currentTree, revision.getOps());
+      result =
+          split.gatedConflicts().isEmpty()
+              ? validated(repository, request, currentTree, split)
+              : new Applicability(conflictDetails(currentTree, split.gatedConflicts()), MOVED);
+    } catch (IllegalArgumentException | EntityNotFoundException | WebApplicationException e) {
+      result = new Applicability(List.of(), notApplicable(e));
+    }
+    return result;
+  }
+
+  /** Conflicts and the reason a revision cannot apply; applicable when the reason is null. */
+  public record Applicability(List<ChangeConflict> conflicts, String reason) {
+    public boolean applicable() {
+      return reason == null;
+    }
+  }
+
+  private static String notApplicable(Exception e) {
+    return "This change can no longer be applied: %s".formatted(e.getMessage());
+  }
+
+  // Connection secrets are written to the secrets manager while an entity is prepared, so a
+  // revision that changes a connection is only checked for moved values here.
+  private static Applicability validated(
+      EntityRepository<?> repository,
+      ChangeRequest request,
+      JsonNode currentTree,
+      MutationPlanner.ConflictSplit split) {
+    if (!MutationPlanner.fieldsOf(split.applicable()).contains(CONNECTION)) {
+      JsonPatch patch =
+          JsonUtils.getJsonPatch(
+              currentTree.toString(),
+              MutationPlanner.applyTo(currentTree, split.applicable()).toString());
+      repository.validatePatch(request.getEntityId(), request.getRequestedBy(), patch);
+    }
+    return new Applicability(List.of(), null);
   }
 
   // The entity is read past every cache inside the transaction; the cache evictions recorded by
@@ -190,7 +243,11 @@ public final class ChangeApplyService {
     ChangeRequestStatus from = request.getStatus();
     ChangeRequestService.dao()
         .changeRequestDAO()
-        .update(request.withStatus(ChangeRequestStatus.APPLIED).withStatusReason(null));
+        .update(
+            request
+                .withStatus(ChangeRequestStatus.APPLIED)
+                .withStatusReason(null)
+                .withConflicts(List.of()));
     ChangeRequestLifecycle.record(request, LifecycleEventType.APPLIED, from, null, null);
     return request;
   }
@@ -213,26 +270,20 @@ public final class ChangeApplyService {
 
   private static ChangeRequest markConflicted(
       ChangeRequest request, JsonNode current, List<MutationOp> conflicts) {
-    ChangeRequestStatus from = request.getStatus();
-    List<ChangeConflict> details =
-        conflicts.stream()
-            .map(
-                op ->
-                    new ChangeConflict()
-                        .withField(op.getField())
-                        .withBaseValue(op.getBaseValue())
-                        .withCurrentValue(String.valueOf(current.get(op.getField())))
-                        .withProposedValue(op.getValue()))
-            .toList();
-    ChangeRequestService.dao()
-        .changeRequestDAO()
-        .update(
-            request
-                .withStatus(ChangeRequestStatus.CONFLICTED)
-                .withConflicts(details)
-                .withStatusReason("Newer published values conflict with the approved change"));
-    ChangeRequestLifecycle.record(
-        request, LifecycleEventType.CONFLICTED, from, null, request.getStatusReason());
-    return request;
+    return ChangeRequestService.flagConflictsLocked(
+        request, new Applicability(conflictDetails(current, conflicts), MOVED));
+  }
+
+  private static List<ChangeConflict> conflictDetails(
+      JsonNode current, List<MutationOp> conflicts) {
+    return conflicts.stream()
+        .map(
+            op ->
+                new ChangeConflict()
+                    .withField(op.getField())
+                    .withBaseValue(op.getBaseValue())
+                    .withCurrentValue(String.valueOf(current.get(op.getField())))
+                    .withProposedValue(op.getValue()))
+        .toList();
   }
 }

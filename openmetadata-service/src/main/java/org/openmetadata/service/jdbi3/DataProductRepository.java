@@ -358,8 +358,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     BulkOperationResult result =
         bulkAssetsOperation(
             dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true, userName);
+    // Refused assets were removed from the request; the ones added still get their lineage.
+    boolean added = result.getStatus().equals(ApiStatus.SUCCESS);
     ApprovalGate.withRefused(result, refused);
-    if (refused.isEmpty() && result.getStatus().equals(ApiStatus.SUCCESS)) {
+    if (added) {
       for (EntityReference ref : listOrEmpty(request.getAssets())) {
         LineageUtil.addDataProductsLineage(
             ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));

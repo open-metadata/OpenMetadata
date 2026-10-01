@@ -4515,6 +4515,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return ApprovalGate.preview(original, preparePatched(original, patch, user), user);
   }
 
+  /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
+  public final void validatePatch(UUID id, String user, JsonPatch patch) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    preparePatched(original, patch, user);
+  }
+
   private T preparePatched(T original, JsonPatch patch, String user) {
     T updated;
     try (var ignored = phase("patchApplyJson")) {
@@ -9566,6 +9572,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       try (var ignored = phase("entityUpdatePostUpdate")) {
         postUpdate(original, updated);
       }
+      ChangeRequestService.afterEntityChanged(entityType, updated.getId());
       try (var ignored = phase("entityUpdateDeferredReact")) {
         runDeferredReactOperations();
       }

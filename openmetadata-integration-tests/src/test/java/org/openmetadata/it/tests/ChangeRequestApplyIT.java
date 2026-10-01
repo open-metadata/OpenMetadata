@@ -108,20 +108,36 @@ class ChangeRequestApplyIT {
   }
 
   @Test
-  void approvalAfterGatedBaseMovedConflictsWithoutOverwrite(TestNamespace ns) {
+  void approvalAfterGatedBaseMovedIsRefusedAndTheRequestContinuesWithANewRevision(
+      TestNamespace ns) {
     Glossary glossary = gatedOn(ns, "\"description\"");
-    ChangeRequest request =
-        stageThenApprove(
-            glossary,
-            replace("description", "stale proposal"),
+    patchAs(SdkClients.user2Client(), glossary.getId(), replace("description", "stale proposal"));
+    Task task = awaitOpenApprovalTask(glossary.getFullyQualifiedName());
+    ChangeRequest request = onlyPendingRequest(glossary.getId());
+    patchAs(SdkClients.botClient(), glossary.getId(), replace("description", "newer by bot"));
+
+    org.openmetadata.sdk.exceptions.OpenMetadataException refused =
+        org.junit.jupiter.api.Assertions.assertThrows(
+            org.openmetadata.sdk.exceptions.OpenMetadataException.class,
             () ->
-                patchAs(
-                    SdkClients.botClient(),
-                    glossary.getId(),
-                    replace("description", "newer by bot")));
-    ChangeRequest conflicted = awaitStatus(request.getId(), ChangeRequestStatus.CONFLICTED);
+                resolveAs(
+                    SdkClients.user1Client(), task, "approve", TaskResolutionType.Approved, 1));
+    assertEquals(409, refused.getStatusCode(), refused.getMessage());
+    ChangeRequest flagged = ChangeRequestService.get(request.getId());
+    assertEquals(ChangeRequestStatus.PENDING, flagged.getStatus());
+    assertEquals("description", flagged.getConflicts().get(0).getField());
+    assertNotNull(flagged.getStatusReason());
     assertEquals("newer by bot", descriptionOf(glossary.getId()));
-    assertEquals("description", conflicted.getConflicts().get(0).getField());
+
+    // The requester resubmits against the current value: the same request continues as revision 2.
+    patchAs(SdkClients.user2Client(), glossary.getId(), replace("description", "rebased proposal"));
+    Task next = awaitNewOpenApprovalTask(glossary.getFullyQualifiedName(), task.getId());
+    ChangeRequest revised = ChangeRequestService.get(request.getId());
+    assertEquals(2, revised.getActiveRevisionNumber());
+    assertTrue(revised.getConflicts() == null || revised.getConflicts().isEmpty());
+    resolveAs(SdkClients.user1Client(), next, "approve", TaskResolutionType.Approved, 2);
+    awaitStatus(request.getId(), ChangeRequestStatus.APPLIED);
+    assertEquals("rebased proposal", descriptionOf(glossary.getId()));
   }
 
   @Test

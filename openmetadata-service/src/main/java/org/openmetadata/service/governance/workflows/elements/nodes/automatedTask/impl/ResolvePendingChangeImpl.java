@@ -15,6 +15,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -24,6 +25,7 @@ import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeAction;
 import org.openmetadata.service.governance.approval.ChangeApplyService;
@@ -39,6 +41,9 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 @Slf4j
 public class ResolvePendingChangeImpl implements JavaDelegate {
   private static final String REJECTED_REASON = "Rejected by the review workflow";
+  private static final String APPLIED = "applied";
+  private static final String NOT_APPLIED = "notApplied";
+  private static final String DISCARDED = "discarded";
   private Expression actionExpr;
   private Expression inputNamespaceMapExpr;
 
@@ -48,7 +53,8 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
     try {
       ResolvePendingChangeAction action =
           ResolvePendingChangeAction.fromValue((String) actionExpr.getValue(execution));
-      resolve(action, ChangeRequestRun.required(varHandler));
+      varHandler.setNodeVariable(
+          RESULT_VARIABLE, resolve(action, ChangeRequestRun.required(varHandler)));
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -57,9 +63,14 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
     }
   }
 
-  private void resolve(ResolvePendingChangeAction action, ChangeRequestRun run) {
+  // "applied" when the revision was published, "notApplied" when it could not be (the request stays
+  // open with its conflicts), and "discarded" when the request was rejected.
+  private String resolve(ResolvePendingChangeAction action, ChangeRequestRun run) {
+    String result = DISCARDED;
     if (action == ResolvePendingChangeAction.COMMIT) {
-      ChangeApplyService.approveAndApply(run.changeRequestId(), run.revisionNumber());
+      ChangeRequest request =
+          ChangeApplyService.approveAndApply(run.changeRequestId(), run.revisionNumber());
+      result = request.getStatus() == ChangeRequestStatus.APPLIED ? APPLIED : NOT_APPLIED;
     } else {
       ChangeRequestService.finish(
           run.changeRequestId(),
@@ -67,5 +78,6 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
           ChangeRequestStatus.REJECTED,
           REJECTED_REASON);
     }
+    return result;
   }
 }

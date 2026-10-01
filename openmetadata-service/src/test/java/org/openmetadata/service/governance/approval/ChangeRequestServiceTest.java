@@ -53,6 +53,7 @@ import org.openmetadata.schema.api.governance.OverrideChangeRequest;
 import org.openmetadata.schema.api.governance.WithdrawChangeRequest;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
+import org.openmetadata.schema.governance.changeRequest.ChangeConflict;
 import org.openmetadata.schema.governance.changeRequest.ChangeLifecycleEvent;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestPreview;
@@ -446,6 +447,97 @@ class ChangeRequestServiceTest {
     void noRequestsMeansNoQuery() {
       assertTrue(ChangeRequestService.activeRevisions(List.of()).isEmpty());
       verify(revisions, never()).findByIds(any());
+    }
+  }
+
+  @Nested
+  class AutomaticApproval {
+    @Test
+    void recordsAGovernanceBotApprovalThatExplainsWhy() {
+      ChangeRequest request = stored(ChangeRequestStatus.PENDING, 2);
+
+      ApprovalDecisionService.recordAutomaticApproval(request.getId(), 2);
+
+      ArgumentCaptor<ApprovalDecision> decision = ArgumentCaptor.forClass(ApprovalDecision.class);
+      verify(decisions).insert(decision.capture());
+      assertEquals(DecisionType.APPROVE, decision.getValue().getDecision());
+      assertEquals("governance-bot", decision.getValue().getDecidedBy());
+      assertEquals(2, decision.getValue().getRevisionNumber());
+      assertTrue(
+          decision.getValue().getComment().contains("has no reviewers, owners or other admins"));
+    }
+
+    @Test
+    void movedRevisionOrEndedRequestRecordsNothing() {
+      ChangeRequest revised = stored(ChangeRequestStatus.PENDING, 3);
+      ApprovalDecisionService.recordAutomaticApproval(revised.getId(), 2);
+      ChangeRequest ended = stored(ChangeRequestStatus.APPLIED, 1);
+      ApprovalDecisionService.recordAutomaticApproval(ended.getId(), 1);
+      verify(decisions, never()).insert(any());
+    }
+
+    @Test
+    void anExistingAutomaticApprovalIsNotRecordedTwice() {
+      ChangeRequest request = stored(ChangeRequestStatus.PENDING, 1);
+      when(decisions.listByRevision(request.getActiveRevisionId()))
+          .thenReturn(
+              List.of(
+                  new ApprovalDecision()
+                      .withDecision(DecisionType.APPROVE)
+                      .withDecidedBy("governance-bot")));
+      ApprovalDecisionService.recordAutomaticApproval(request.getId(), 1);
+      verify(decisions, never()).insert(any());
+    }
+  }
+
+  @Nested
+  class FlagConflicts {
+    private final ChangeApplyService.Applicability moved =
+        new ChangeApplyService.Applicability(
+            List.of(new ChangeConflict().withField("description")), "values moved");
+
+    @Test
+    void pendingRequestStaysOpenWithItsConflictsAndTheTaskIsTold() {
+      ChangeRequest request = stored(ChangeRequestStatus.PENDING, 1);
+
+      ChangeRequest result = ChangeRequestService.flagConflicts(request.getId(), moved);
+
+      assertEquals(ChangeRequestStatus.PENDING, result.getStatus());
+      assertEquals("values moved", result.getStatusReason());
+      assertEquals("description", result.getConflicts().get(0).getField());
+      ChangeLifecycleEvent event = recordedEvents(1).get(0);
+      assertEquals(LifecycleEventType.CONFLICTED, event.getEventType());
+      assertEquals(ChangeRequestStatus.PENDING, event.getToStatus());
+      tasks.verify(
+          () ->
+              ChangeRequestTasks.comment(
+                  eq(request.getTaskId()),
+                  org.mockito.ArgumentMatchers.contains("can submit an updated change")));
+    }
+
+    @Test
+    void approvedRequestThatCannotApplyReturnsToPending() {
+      ChangeRequest request = stored(ChangeRequestStatus.APPROVED, 1);
+      ChangeRequest result = ChangeRequestService.flagConflicts(request.getId(), moved);
+      assertEquals(ChangeRequestStatus.PENDING, result.getStatus());
+      assertEquals(ChangeRequestStatus.APPROVED, recordedEvents(1).get(0).getFromStatus());
+    }
+
+    @Test
+    void sameConflictAgainRecordsNothingNew() {
+      ChangeRequest request = stored(ChangeRequestStatus.PENDING, 1);
+      request.withStatusReason("values moved");
+      ChangeRequestService.flagConflicts(request.getId(), moved);
+      verify(events, never()).insert(any());
+      tasks.verify(() -> ChangeRequestTasks.comment(any(), any()), never());
+    }
+
+    @Test
+    void endedRequestIsLeftAlone() {
+      ChangeRequest request = stored(ChangeRequestStatus.APPLIED, 1);
+      ChangeRequest result = ChangeRequestService.flagConflicts(request.getId(), moved);
+      assertEquals(ChangeRequestStatus.APPLIED, result.getStatus());
+      verify(requests, never()).update(any());
     }
   }
 

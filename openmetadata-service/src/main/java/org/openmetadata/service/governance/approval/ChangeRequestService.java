@@ -25,10 +25,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.api.governance.OverrideChangeRequest;
 import org.openmetadata.schema.api.governance.WithdrawChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
+import org.openmetadata.schema.governance.changeRequest.ChangeConflict;
 import org.openmetadata.schema.governance.changeRequest.ChangeLifecycleEvent;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestOrigin;
@@ -53,6 +56,7 @@ import org.openmetadata.service.util.PostCommitActionQueue;
  * Owns the change request aggregate. Every mutation locks the entity row first, then the request
  * row, then revision rows, so submission, withdrawal and application serialize on the same order.
  */
+@Slf4j
 public final class ChangeRequestService {
   private static final String UNIQUE_VIOLATION_MYSQL = "23000";
   private static final String UNIQUE_VIOLATION_POSTGRES = "23505";
@@ -139,13 +143,24 @@ public final class ChangeRequestService {
    * review and the caller closes it with {@link #closeStaleTask(UUID)}.
    */
   public static boolean attachTask(UUID changeRequestId, int revisionNumber, UUID taskId) {
-    ChangeRequest request = dao().changeRequestDAO().findById(changeRequestId);
-    boolean reviewable =
-        request != null
-            && isOpen(request)
-            && Objects.equals(request.getActiveRevisionNumber(), revisionNumber);
-    if (reviewable) {
-      dao().changeRequestDAO().update(request.withTaskId(taskId));
+    ChangeRequest snapshot = dao().changeRequestDAO().findById(changeRequestId);
+    boolean reviewable = false;
+    if (snapshot != null) {
+      EntityRepository<?> repository = Entity.getEntityRepository(snapshot.getEntityType());
+      // Read and write under the entity -> request locks, so a revision submitted concurrently is
+      // never overwritten by this request's earlier state.
+      reviewable =
+          repository.executeInTransaction(
+              () -> {
+                ChangeRequest locked = lockForUpdate(repository, snapshot);
+                boolean current =
+                    isOpen(locked)
+                        && Objects.equals(locked.getActiveRevisionNumber(), revisionNumber);
+                if (current) {
+                  dao().changeRequestDAO().update(locked.withTaskId(taskId));
+                }
+                return current;
+              });
     }
     return reviewable;
   }
@@ -246,6 +261,120 @@ public final class ChangeRequestService {
             .formatted(
                 request.getId(), request.getStatus().value(), request.getActiveRevisionNumber()),
         Status.CONFLICT);
+  }
+
+  /**
+   * Keeps an open request open but marks why its active revision cannot apply, so its review task
+   * shows the conflict and the requester can submit a new revision. A request that has ended is
+   * left as it is.
+   */
+  public static ChangeRequest flagConflicts(
+      UUID id, ChangeApplyService.Applicability applicability) {
+    ChangeRequest request = get(id);
+    EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
+    return repository.executeInTransaction(
+        () -> {
+          ChangeRequest locked = lockForUpdate(repository, request);
+          return isOpen(locked) ? flagConflictsLocked(locked, applicability) : locked;
+        });
+  }
+
+  /** As {@link #flagConflicts}, for a caller that already holds the request lock. */
+  static ChangeRequest flagConflictsLocked(
+      ChangeRequest locked, ChangeApplyService.Applicability applicability) {
+    ChangeRequestStatus from = locked.getStatus();
+    boolean newlyFlagged =
+        from != ChangeRequestStatus.PENDING
+            || !Objects.equals(locked.getStatusReason(), applicability.reason());
+    dao()
+        .changeRequestDAO()
+        .update(
+            locked
+                .withStatus(ChangeRequestStatus.PENDING)
+                .withConflicts(applicability.conflicts())
+                .withStatusReason(applicability.reason()));
+    if (newlyFlagged) {
+      ChangeRequestLifecycle.record(
+          locked, LifecycleEventType.CONFLICTED, from, null, applicability.reason());
+      UUID taskId = locked.getTaskId();
+      String message = conflictMessage(locked, applicability);
+      PostCommitActionQueue.runOrDefer(() -> ChangeRequestTasks.comment(taskId, message));
+    }
+    return locked;
+  }
+
+  private static String conflictMessage(
+      ChangeRequest request, ChangeApplyService.Applicability applicability) {
+    String fields =
+        applicability.conflicts().stream()
+            .map(ChangeConflict::getField)
+            .distinct()
+            .collect(Collectors.joining(", "));
+    String moved = fields.isEmpty() ? "" : " Changed since submission: %s.".formatted(fields);
+    return "%s changed after this request was submitted, so revision %d cannot be applied as it is. %s.%s %s can submit an updated change to continue the review."
+        .formatted(
+            request.getEntityFullyQualifiedName(),
+            request.getActiveRevisionNumber(),
+            applicability.reason(),
+            moved,
+            request.getRequestedBy());
+  }
+
+  /** Re-checks the open requests on an asset after it changed, once committed and off-thread. */
+  public static void afterEntityChanged(String entityType, UUID entityId) {
+    if (entityId != null && GovernanceApprovalRegistry.hasCachedRules(entityType)) {
+      PostCommitActionQueue.runOrDefer(
+          () -> AsyncService.getInstance().execute(() -> recheckOpenRequests(entityId)));
+    }
+  }
+
+  static void recheckOpenRequests(UUID entityId) {
+    ChangeRequestDAO requests = changeRequests();
+    if (requests != null) {
+      requests
+          .listByEntitiesAndStatuses(
+              List.of(entityId.toString()), List.of(ChangeRequestStatus.PENDING.value()))
+          .forEach(ChangeRequestService::recheckSafely);
+    }
+  }
+
+  private static void recheckSafely(ChangeRequest request) {
+    try {
+      ChangeApplyService.Applicability applicability = ChangeApplyService.applicability(request);
+      if (!applicability.applicable()) {
+        flagConflicts(request.getId(), applicability);
+      } else if (request.getStatusReason() != null) {
+        clearConflicts(request.getId());
+      }
+    } catch (RuntimeException e) {
+      LOG.warn("[ChangeRequest] Could not re-check change request {}", request.getId(), e);
+    }
+  }
+
+  // The asset no longer conflicts with the revision (for example, the newer value was reverted).
+  private static void clearConflicts(UUID id) {
+    ChangeRequest request = get(id);
+    EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
+    repository.executeInTransaction(
+        () -> {
+          ChangeRequest locked = lockForUpdate(repository, request);
+          if (locked.getStatus() == ChangeRequestStatus.PENDING
+              && locked.getStatusReason() != null) {
+            dao().changeRequestDAO().update(locked.withConflicts(List.of()).withStatusReason(null));
+            UUID taskId = locked.getTaskId();
+            PostCommitActionQueue.runOrDefer(
+                () ->
+                    ChangeRequestTasks.comment(
+                        taskId, "The change applies to the current version again."));
+          }
+          return locked;
+        });
+  }
+
+  private static ChangeRequest lockForUpdate(
+      EntityRepository<?> repository, ChangeRequest request) {
+    repository.getDao().findJsonByIdForUpdate(request.getEntityId(), Include.ALL);
+    return dao().changeRequestDAO().findByIdForUpdate(request.getId());
   }
 
   /** Withdraws the requester's own pending request, provided it is still at the revision they saw. */
@@ -405,7 +534,9 @@ public final class ChangeRequestService {
         .withActiveRevisionNumber(number)
         .withWorkflowDefinitionId(staged.workflowDefinitionId())
         .withImpersonatedBy(staged.impersonatedBy())
-        .withTaskId(null);
+        .withTaskId(null)
+        .withConflicts(List.of())
+        .withStatusReason(null);
     dao().changeRequestDAO().update(active);
     ChangeRequestLifecycle.record(
         active,

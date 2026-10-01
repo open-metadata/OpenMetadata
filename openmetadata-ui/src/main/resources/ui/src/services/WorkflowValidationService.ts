@@ -36,6 +36,7 @@ import {
   getNodeConfiguration,
   getNodeName,
 } from '../utils/WorkflowNodeConfigUtils';
+import { deserializeEventBasedFilters } from '../utils/WorkflowSerializationUtils';
 
 type NodeConfigWithMetadata = NodeConfig & {
   lastSaved?: string;
@@ -141,17 +142,27 @@ const resolveEventBasedFilter = (
   existingTriggerConfig: Record<string, unknown> | undefined,
   hasUserChanges: boolean
 ) => {
-  if (
-    hasUserChanges &&
-    startNodeConfig.triggerFilter &&
-    startNodeConfig.triggerFilter.trim() !== ''
-  ) {
+  const triggerFilter = startNodeConfig.triggerFilter?.trim() ?? '';
+  if (hasUserChanges && triggerFilter !== '') {
     const filterObj: Record<string, string> = {};
     entityTypes.forEach((entityType) => {
       filterObj[entityType] = startNodeConfig.triggerFilter || '';
     });
 
     return filterObj;
+  }
+
+  // The user emptied a filter that was shown to them: save no filter instead of the old one.
+  const savedFilter = deserializeEventBasedFilters(
+    existingTriggerConfig?.filter as Record<string, string> | undefined,
+    entityTypes
+  );
+  if (
+    hasUserChanges &&
+    startNodeConfig.triggerFilter !== undefined &&
+    savedFilter.trim() !== ''
+  ) {
+    return undefined;
   }
 
   return existingTriggerConfig?.filter;
@@ -211,6 +222,11 @@ const buildEventBasedTriggerConfig = (
   );
   if (filter) {
     finalTriggerConfig.filter = filter;
+  }
+
+  // The builder has no control for the approval mode yet; keep whatever was saved.
+  if (existingTriggerConfig?.approvalMode) {
+    finalTriggerConfig.approvalMode = existingTriggerConfig.approvalMode;
   }
 
   return finalTriggerConfig;
