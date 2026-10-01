@@ -187,7 +187,11 @@ const lineSeries = <T extends object>(
 ): LineSeriesOption => ({
   type: 'line',
   smooth: series.smooth ?? true,
-  showSymbol: series.pointStyle ? true : series.showDots ?? false,
+  // A lone point has no segment to draw, so it needs its symbol to be visible.
+  showSymbol:
+    series.pointStyle || ctx.input.data.length === 1
+      ? true
+      : series.showDots ?? false,
   lineStyle: { color, width: LINE_WIDTH, cap: 'round', join: 'round' },
   itemStyle: { color },
   // Always set, so a re-render that drops the fill clears the old one.

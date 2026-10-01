@@ -661,6 +661,32 @@ describe('buildLineOption', () => {
   });
 });
 
+describe('a chart with a single data row', () => {
+  const oneRow = { ...base, data: [rows[0]] };
+  const twoRows = { ...base, data: rows.slice(0, 2) };
+
+  it('shows the point of a line series without showDots', () => {
+    const option = buildLineOption(oneRow, LIGHT_CHART_THEME);
+
+    expect(seriesOf(option)[0].showSymbol).toBe(true);
+  });
+
+  it('shows the point of an area series without showDots', () => {
+    const option = buildAreaOption(oneRow, LIGHT_CHART_THEME);
+
+    expect(seriesOf(option)[0].showSymbol).toBe(true);
+  });
+
+  it('keeps symbols off for two rows without showDots', () => {
+    expect(
+      seriesOf(buildLineOption(twoRows, LIGHT_CHART_THEME))[0].showSymbol
+    ).toBe(false);
+    expect(
+      seriesOf(buildAreaOption(twoRows, LIGHT_CHART_THEME))[0].showSymbol
+    ).toBe(false);
+  });
+});
+
 describe('buildAreaOption', () => {
   it('fills each line with a fading gradient of its colour', () => {
     const option = buildAreaOption(base, LIGHT_CHART_THEME);
