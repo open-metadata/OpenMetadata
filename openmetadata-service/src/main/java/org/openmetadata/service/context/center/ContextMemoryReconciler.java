@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
@@ -35,7 +34,6 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 public class ContextMemoryReconciler {
   private final ContextMemoryRepository memoryRepository;
   private final DuplicateFinder duplicateFinder;
-  private final Consumer<ContextMemory> onPublishedMemory;
 
   @FunctionalInterface
   public interface DuplicateFinder {
@@ -43,21 +41,13 @@ public class ContextMemoryReconciler {
   }
 
   public ContextMemoryReconciler(ContextMemoryRepository memoryRepository) {
-    this(memoryRepository, ignored -> null, ignored -> {});
+    this(memoryRepository, ignored -> null);
   }
 
   public ContextMemoryReconciler(
       ContextMemoryRepository memoryRepository, DuplicateFinder duplicateFinder) {
-    this(memoryRepository, duplicateFinder, ignored -> {});
-  }
-
-  public ContextMemoryReconciler(
-      ContextMemoryRepository memoryRepository,
-      DuplicateFinder duplicateFinder,
-      Consumer<ContextMemory> onPublishedMemory) {
     this.memoryRepository = memoryRepository;
     this.duplicateFinder = duplicateFinder;
-    this.onPublishedMemory = onPublishedMemory;
   }
 
   /** Counts of what the run did, by reconciliation outcome. */
@@ -73,7 +63,6 @@ public class ContextMemoryReconciler {
     }
     for (ContextMemory pill : existing) {
       memoryRepository.linkExtractedMemory(pill.getId(), sourceRef);
-      onPublishedMemory.accept(pill);
     }
     return new ReconcileResult(0, 0, existing.size(), 0);
   }
@@ -137,11 +126,9 @@ public class ContextMemoryReconciler {
       ContextMemory equivalent = duplicateFinder.findEquivalent(pill);
       if (equivalent == null) {
         memoryRepository.create(null, pill);
-        onPublishedMemory.accept(pill);
         counts.created++;
       } else {
         memoryRepository.linkExtractedMemory(equivalent.getId(), sourceRef);
-        onPublishedMemory.accept(equivalent);
         counts.kept++;
       }
     }
@@ -234,7 +221,6 @@ public class ContextMemoryReconciler {
       updated.setUpdatedBy(Entity.ADMIN_USER_NAME);
       updated.setUpdatedAt(System.currentTimeMillis());
       memoryRepository.update(null, existing, updated, Entity.ADMIN_USER_NAME);
-      onPublishedMemory.accept(updated);
     }
     return changed;
   }

@@ -9,7 +9,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -61,19 +60,6 @@ class ContextMemoryReconcilerTest {
 
   private ContextMemoryReconciler.ReconcileResult reconcile(List<ContextMemory> derived) {
     return new ContextMemoryReconciler(memoryRepository).reconcile(source, Entity.PAGE, derived);
-  }
-
-  @Test
-  void publishesCreatedExtractedMemoriesForOntologyDerivation() {
-    existing();
-    List<ContextMemory> published = new ArrayList<>();
-    ContextMemory candidate = derived("What is customer churn?", "Customers lost in a period.");
-    ContextMemoryReconciler reconciler =
-        new ContextMemoryReconciler(memoryRepository, ignored -> null, published::add);
-
-    reconciler.reconcile(source, Entity.PAGE, List.of(candidate));
-
-    assertEquals(List.of(candidate), published);
   }
 
   @Test

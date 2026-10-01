@@ -1,6 +1,7 @@
 package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -48,6 +49,39 @@ class OntologyMemoryDerivationQueueTest {
     new OntologyMemoryDerivationQueue(jobDao, () -> false).enqueue(memory, "admin");
 
     verifyNoInteractions(jobDao);
+  }
+
+  @Test
+  void queuesWhenPublishedMemoryContentChanges() {
+    UUID memoryId = UUID.randomUUID();
+    ContextMemory previous = memory(memoryId, MemoryVisibility.ENTITY);
+    ContextMemory updated = memory(memoryId, MemoryVisibility.ENTITY);
+    updated.setAnswer("Revenue lost from existing customers during the last month.");
+    updated.setUpdatedBy("steward");
+
+    new OntologyMemoryDerivationQueue(jobDao, () -> true)
+        .enqueueIfContentChanged(previous, updated);
+
+    verify(jobDao)
+        .enqueueOntologyMemoryDerivationJob(
+            eq(List.of(memoryId.toString())), anyString(), eq("steward"));
+  }
+
+  @Test
+  void skipsUnchangedContentAndQueuesWhenMemoryBecomesPublished() {
+    UUID memoryId = UUID.randomUUID();
+    ContextMemory previous = memory(memoryId, MemoryVisibility.SHARED);
+    ContextMemory updated = memory(memoryId, MemoryVisibility.ENTITY);
+    updated.setUpdatedBy("steward");
+    OntologyMemoryDerivationQueue queue = new OntologyMemoryDerivationQueue(jobDao, () -> true);
+
+    queue.enqueueIfContentChanged(updated, updated);
+    verifyNoInteractions(jobDao);
+
+    queue.enqueueIfContentChanged(previous, updated);
+    verify(jobDao)
+        .enqueueOntologyMemoryDerivationJob(
+            eq(List.of(memoryId.toString())), anyString(), eq("steward"));
   }
 
   private static ContextMemory memory(UUID id, MemoryVisibility visibility) {

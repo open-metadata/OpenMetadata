@@ -1,6 +1,7 @@
 package org.openmetadata.service.ontology;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -32,6 +33,15 @@ public final class OntologyMemoryDerivationQueue {
           createdBy);
     } catch (RuntimeException exception) {
       LOG.error("Could not queue ontology derivation for memory {}", memory.getId(), exception);
+    }
+  }
+
+  public void enqueueIfContentChanged(ContextMemory previous, ContextMemory updated) {
+    if (isPublished(updated)
+        && (!isPublished(previous)
+            || !Objects.equals(previous.getQuestion(), updated.getQuestion())
+            || !Objects.equals(previous.getAnswer(), updated.getAnswer()))) {
+      enqueue(updated, updated.getUpdatedBy());
     }
   }
 

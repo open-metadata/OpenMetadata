@@ -3,8 +3,6 @@ package org.openmetadata.service.context.center;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
-import org.openmetadata.service.llm.LLMClientHolder;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 
 /**
  * Process-wide holder of the page processing engine. The repository post-update hook and the
@@ -31,14 +29,7 @@ public final class PageContextProcessingEngineHolder {
       KnowledgePageRepository pageRepository =
           (KnowledgePageRepository) Entity.getEntityRepository(Entity.PAGE);
       DocumentMemoryExtractor extractor = AiProviderHolder.get().documentExtractor();
-      OntologyMemoryDerivationQueue ontologyQueue =
-          new OntologyMemoryDerivationQueue(
-              Entity.getJobDAO(), LLMClientHolder::isOntologyMemoryDerivationEnabled);
-      ContextMemoryReconciler reconciler =
-          new ContextMemoryReconciler(
-              memoryRepository,
-              ignored -> null,
-              memory -> ontologyQueue.enqueue(memory, Entity.ADMIN_USER_NAME));
+      ContextMemoryReconciler reconciler = new ContextMemoryReconciler(memoryRepository);
       long quietPeriodMillis =
           Long.getLong(
               "page.context.quiet.period.millis",

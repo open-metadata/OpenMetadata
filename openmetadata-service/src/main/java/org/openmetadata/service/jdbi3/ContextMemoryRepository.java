@@ -36,6 +36,8 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.util.EntityUtil;
@@ -90,6 +92,33 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+  }
+
+  @Override
+  protected void postCreate(ContextMemory memory) {
+    super.postCreate(memory);
+    ontologyQueue().enqueue(memory, memory.getUpdatedBy());
+  }
+
+  @Override
+  protected void postCreate(List<ContextMemory> memories) {
+    super.postCreate(memories);
+    if (nullOrEmpty(memories)) {
+      return;
+    }
+    OntologyMemoryDerivationQueue queue = ontologyQueue();
+    memories.forEach(memory -> queue.enqueue(memory, memory.getUpdatedBy()));
+  }
+
+  @Override
+  protected void postUpdate(ContextMemory previous, ContextMemory updated) {
+    super.postUpdate(previous, updated);
+    ontologyQueue().enqueueIfContentChanged(previous, updated);
+  }
+
+  private OntologyMemoryDerivationQueue ontologyQueue() {
+    return new OntologyMemoryDerivationQueue(
+        Entity.getJobDAO(), LLMClientHolder::isOntologyMemoryDerivationEnabled);
   }
 
   @Override

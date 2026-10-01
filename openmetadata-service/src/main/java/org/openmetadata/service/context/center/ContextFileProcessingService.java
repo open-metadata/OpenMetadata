@@ -32,7 +32,6 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.LLMClientHolder;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.util.RequestEntityCache;
 
 /**
@@ -389,16 +388,10 @@ public class ContextFileProcessingService {
             memoryRepository,
             () -> Entity.getSearchRepository().getVectorIndexService(),
             LLMClientHolder.get());
-    OntologyMemoryDerivationQueue ontologyQueue =
-        new OntologyMemoryDerivationQueue(
-            Entity.getJobDAO(), LLMClientHolder::isOntologyMemoryDerivationEnabled);
     return new FileContextProcessingEngine(
         repository,
         memoryExtractorSupplier.get(),
-        new ContextMemoryReconciler(
-            memoryRepository,
-            duplicateFinder,
-            memory -> ontologyQueue.enqueue(memory, Entity.ADMIN_USER_NAME)));
+        new ContextMemoryReconciler(memoryRepository, duplicateFinder));
   }
 
   private void markProcessed(UUID fileId, UUID contentId) {

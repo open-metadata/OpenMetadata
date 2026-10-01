@@ -46,7 +46,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -64,8 +63,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.llm.LLMClientHolder;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
@@ -530,9 +527,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Valid CreateContextMemory create) {
     ContextMemory memory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    final Response response = create(uriInfo, securityContext, memory);
-    queueOntologyDerivation((ContextMemory) response.getEntity(), securityContext);
-    return response;
+    return create(uriInfo, securityContext, memory);
   }
 
   @PUT
@@ -555,11 +550,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Valid CreateContextMemory create) {
     ContextMemory memory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    final Response response = createOrUpdate(uriInfo, securityContext, memory);
-    if (response.getStatus() == Response.Status.CREATED.getStatusCode()) {
-      queueOntologyDerivation((ContextMemory) response.getEntity(), securityContext);
-    }
-    return response;
+    return createOrUpdate(uriInfo, securityContext, memory);
   }
 
   @PATCH
@@ -587,28 +578,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                       examples =
                           @ExampleObject("[{op:replace, path:/displayName, value: 'New name'}]")))
           JsonPatch patch) {
-    final ContextMemory previous = repository.get(null, id, repository.getFields(""));
-    final Response response = patchInternal(uriInfo, securityContext, id, patch);
-    final ContextMemory updated = (ContextMemory) response.getEntity();
-    if (hasNewPublishedContent(previous, updated)) {
-      queueOntologyDerivation(updated, securityContext);
-    }
-    return response;
-  }
-
-  private static boolean hasNewPublishedContent(
-      final ContextMemory previous, final ContextMemory updated) {
-    return OntologyMemoryDerivationQueue.isPublished(updated)
-        && (!OntologyMemoryDerivationQueue.isPublished(previous)
-            || !Objects.equals(previous.getQuestion(), updated.getQuestion())
-            || !Objects.equals(previous.getAnswer(), updated.getAnswer()));
-  }
-
-  private void queueOntologyDerivation(
-      final ContextMemory memory, final SecurityContext securityContext) {
-    new OntologyMemoryDerivationQueue(
-            Entity.getJobDAO(), LLMClientHolder::isOntologyMemoryDerivationEnabled)
-        .enqueue(memory, securityContext.getUserPrincipal().getName());
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @PUT
