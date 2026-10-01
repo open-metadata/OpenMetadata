@@ -17,6 +17,7 @@ import type {
   FocusEventHandler,
   KeyboardEvent,
   PointerEventHandler,
+  UIEvent,
   ReactNode,
   RefAttributes,
   RefObject,
@@ -29,6 +30,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -542,14 +544,37 @@ export const AutocompleteBase = ({
   // the listbox between plain and virtualized rendering.
   const isVirtualized = allItems.length > AUTOCOMPLETE_VIRTUALIZATION_THRESHOLD;
 
+  // Crossing the threshold moves scrolling from the popover to the listbox.
+  // React's onScroll does not bubble, so the handler follows the scroller, and
+  // the offset is carried over so the newly loaded page stays in view instead
+  // of the list jumping back to the top.
+  const listBoxRef = useRef<HTMLDivElement>(null);
+  const scrollTopRef = useRef(0);
+
+  const handleScroll = useCallback(
+    (event: UIEvent<HTMLElement>) => {
+      scrollTopRef.current = event.currentTarget.scrollTop;
+      onPopoverScroll?.(event);
+    },
+    [onPopoverScroll]
+  );
+
+  useLayoutEffect(() => {
+    if (isVirtualized && listBoxRef.current) {
+      listBoxRef.current.scrollTop = scrollTopRef.current;
+    }
+  }, [isVirtualized]);
+
   const listBox = (
     <AriaListBox
       className={cx(
         'tw:size-full tw:outline-hidden',
         isVirtualized && 'tw:max-h-80 tw:overflow-y-auto tw:py-1'
       )}
+      ref={listBoxRef}
       renderEmptyState={() => <SelectEmptyState />}
-      selectionMode="multiple">
+      selectionMode="multiple"
+      onScroll={isVirtualized ? handleScroll : undefined}>
       {visibleChildren}
     </AriaListBox>
   );
@@ -653,7 +678,7 @@ export const AutocompleteBase = ({
                   size="md"
                   style={{ width: popoverWidth }}
                   triggerRef={triggerRef}
-                  onScroll={onPopoverScroll}>
+                  onScroll={isVirtualized ? undefined : handleScroll}>
                   {isVirtualized ? (
                     <Virtualizer
                       layout={ListLayout}

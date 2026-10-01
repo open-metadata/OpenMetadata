@@ -166,3 +166,69 @@ describe('Autocomplete – virtualized listbox', () => {
     expect(onItemInserted).toHaveBeenCalledWith('value-249');
   });
 });
+
+// Async callers page in more results from `onPopoverScroll`. Past the
+// threshold the listbox, not the popover, is the scroller, so the handler has
+// to follow it or paging stops at the threshold.
+describe('Autocomplete – scroll paging across the virtualization threshold', () => {
+  const ROW_HEIGHT = 40;
+
+  const renderWithItems = (
+    items: SelectItemType[],
+    onPopoverScroll: () => void
+  ) => (
+    <Autocomplete
+      items={items}
+      placeholder="Select"
+      selectedItems={[]}
+      onPopoverScroll={onPopoverScroll}>
+      {(item) => (
+        <Autocomplete.Item id={item.id} key={item.id}>
+          {item.label}
+        </Autocomplete.Item>
+      )}
+    </Autocomplete>
+  );
+
+  beforeEach(() => {
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(320);
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(400);
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(
+      ROW_HEIGHT
+    );
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(400);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('reports scrolls of the virtualized listbox', async () => {
+    const onPopoverScroll = vi.fn();
+    render(renderWithItems(LARGE_OPTIONS, onPopoverScroll));
+
+    await userEvent.click(screen.getByRole('combobox'));
+    fireEvent.scroll(screen.getByRole('listbox'));
+
+    expect(onPopoverScroll).toHaveBeenCalled();
+  });
+
+  it('keeps the scroll position when a loaded page crosses the threshold', async () => {
+    const onPopoverScroll = vi.fn();
+    const firstPages = LARGE_OPTIONS.slice(0, 200);
+    const { rerender } = render(renderWithItems(firstPages, onPopoverScroll));
+
+    await userEvent.click(screen.getByRole('combobox'));
+
+    const popover = screen.getByRole('listbox').parentElement as HTMLElement;
+    const scrolledTo = 190 * ROW_HEIGHT;
+    popover.scrollTop = scrolledTo;
+    fireEvent.scroll(popover);
+
+    expect(onPopoverScroll).toHaveBeenCalledTimes(1);
+
+    rerender(renderWithItems(LARGE_OPTIONS, onPopoverScroll));
+
+    expect(screen.getByRole('listbox').scrollTop).toBe(scrolledTo);
+  });
+});
