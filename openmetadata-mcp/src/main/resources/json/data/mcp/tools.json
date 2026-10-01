@@ -891,7 +891,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Run a read-only SPARQL query (SELECT, ASK, DESCRIBE, CONSTRUCT) against the OpenMetadata knowledge graph. Use this when the question is graph-shaped — e.g. 'all tables with FK references into customers.id', 'all upstream tables of dashboard X', 'columns tagged PII whose null count > 0'. UPDATE / INSERT / DELETE / DROP / LOAD / CLEAR / CREATE are rejected; use the admin REST endpoint for writes. SERVICE clauses against external endpoints are rejected unless on the federation allowlist, which is empty and disabled by default - so in a default deployment this tool never reaches outside the local graph. Returns the result body in the chosen format (default 'json' for SELECT/ASK; 'turtle' is recommended for DESCRIBE/CONSTRUCT). Body is capped at maxBytes (default and maximum 80000 bytes, matching the MCP response budget); when it does not fit you get a prefix plus 'truncated': true and the full 'byteCount'. Narrow the query with LIMIT rather than raising maxBytes. A 'warning' field appears when the requested inferenceLevel could not be applied because the graph was too large - results are then NOT inferred. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "description": "Run a read-only SPARQL query against the OpenMetadata knowledge graph. Use it for graph-shaped questions: lineage paths, column lineage, and joins across owners, tags, tiers and services. Requires the ExecuteSparqlQuery permission; administrators always pass. Callers who are not administrators get SELECT only, with no FROM, GRAPH or SERVICE, no inference and JSON output. Administrators may also run ASK, DESCRIBE and CONSTRUCT and set format and inferenceLevel. Updates are rejected. PAGING: always ORDER BY a stable key, then LIMIT 400 (about what fits the 80000-byte body cap) and OFFSET 0, 400, 800 and so on; stop when a page returns fewer rows than LIMIT. If 'truncated' is true the body was cut, so lower LIMIT and repeat the same OFFSET. If completeness.status is TRUNCATED the server capped the rows, so add an explicit LIMIT. VOCABULARY (PREFIX om: <https://open-metadata.org/ontology/>): entities are https://open-metadata.org/entity/{type}/{uuid}, typed 'a om:Table', om:Dashboard, om:Pipeline, om:Topic or om:Container, with om:fullyQualifiedName and rdfs:label for the name. Related terms: om:hasOwner, om:hasTag and om:hasGlossaryTerm (tag nodes carry om:tagFQN), om:hasTier, om:belongsToService, om:belongsToSchema, om:belongsToDatabase, om:belongsToDomain. Table lineage points from the output to its source: ?output om:upstream ?source (om:downstream is the reverse). COLUMN LINEAGE: om:fromColumn and om:toColumn hold column FQNs as plain string literals, not IRIs, and one mapping can have several fromColumn values. Columns are resources: ?asset om:hasColumn ?c, with om:fullyQualifiedName and nested columns under om:hasChildColumn. All columns downstream of one column, with their asset: SELECT DISTINCT ?column ?asset WHERE { \"svc.db.schema.table.col\" (^om:fromColumn/om:toColumn)+ ?column . ?c om:fullyQualifiedName ?column . ?c (^om:hasChildColumn)*/^om:hasColumn ?asset } ORDER BY ?column ?asset LIMIT 400 OFFSET 0. For upstream use ^om:toColumn/om:fromColumn. Filter by adding patterns on ?asset, for example ?asset a om:Table, ?asset om:belongsToService/om:fullyQualifiedName \"svc\", ?asset om:hasOwner/rdfs:label \"growth\", or ?asset om:hasTier/om:tagFQN \"Tier.Tier1\". Lineage columns whose table is not in the graph are skipped silently, and column lineage reflects the last RdfIndexApp run, so a new mapping can take until the next reindex to appear. Use ontology_describe for the rest of the vocabulary.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -901,12 +901,12 @@
           },
           "format": {
             "type": "string",
-            "description": "Result format. SELECT/ASK: json (default), xml, csv, tsv. CONSTRUCT/DESCRIBE: turtle, jsonld, ntriples, rdfxml.",
+            "description": "Result format. Non-administrators: json only. Administrators: SELECT/ASK json (default), xml, csv, tsv; CONSTRUCT/DESCRIBE turtle, jsonld, ntriples, rdfxml.",
             "default": "json"
           },
           "inferenceLevel": {
             "type": "string",
-            "description": "Optional. Reasoning level applied at query time: none (default), rdfs, owl, custom.",
+            "description": "Optional. Reasoning level applied at query time: none (default), rdfs, owl, custom. Non-administrators: none only.",
             "default": "none"
           },
           "maxBytes": {
@@ -928,7 +928,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Return the n-hop instance-data neighborhood of an OpenMetadata entity in the knowledge graph. Use this when you have a specific entity (UUID + type) and want to see what else is connected to it: hasColumn, belongsToSchema, hasTag, owners, lineage, etc. Ontology and SHACL definition graphs are excluded so schema triples do not consume result slots. The full 1..depth-hop subgraph (depth bounded 1-3) is returned as Turtle 'triples'. Each traversal branch gets its own share of 'limit', so deeper hops are always represented rather than being crowded out by a high-degree start node. The 'edges' array is a flat, DIRECT (1-hop) adjacency summary of the start entity only (direction, predicate, neighbor URI, neighbor label) — for 2nd/3rd-hop traversal parse 'triples', not 'edges'. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "description": "Return the n-hop instance-data neighborhood of an OpenMetadata entity in the knowledge graph. Use this when you have a specific entity (UUID + type) and want to see what else is connected to it: hasColumn, belongsToSchema, hasTag, owners, lineage, etc. Ontology and SHACL definition graphs are excluded so schema triples do not consume result slots. The full 1..depth-hop subgraph (depth bounded 1-3) is returned as Turtle 'triples'. Each traversal branch gets its own share of 'limit', so deeper hops are always represented rather than being crowded out by a high-degree start node. The 'edges' array is a flat, DIRECT (1-hop) adjacency summary of the start entity only (direction, predicate, neighbor URI, neighbor label) — for 2nd/3rd-hop traversal parse 'triples', not 'edges'. Requires the ExecuteSparqlQuery permission; administrators always pass.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -965,7 +965,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Find all entities tagged with a given classification tag or glossary term FQN. Walks om:hasTag and om:hasGlossaryTerm. Use this for 'show me everything classified PII.Sensitive' or 'all assets associated with the BusinessTerms.Customer glossary term'. Optionally filter by entity type. Paginated. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "description": "Find all entities tagged with a given classification tag or glossary term FQN. Walks om:hasTag and om:hasGlossaryTerm. Use this for 'show me everything classified PII.Sensitive' or 'all assets associated with the BusinessTerms.Customer glossary term'. Optionally filter by entity type. Paginated. Requires the ExecuteSparqlQuery permission; administrators always pass.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1001,7 +1001,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Run SHACL validation against either a single entity's subgraph (scoped via entityId+entityType or entityUri) or the entire dataset. Returns conforms (boolean), violationCount, and the SHACL ValidationReport in the requested RDF format. Read-only; never blocks writes. Use this to debug data-quality issues before mutating the graph. The report body is capped at maxBytes; 'conforms' and 'violationCount' are always returned in full even when the report itself is truncated. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "description": "Run SHACL validation against either a single entity's subgraph (scoped via entityId+entityType or entityUri) or the entire dataset. Returns conforms (boolean), violationCount, and the SHACL ValidationReport in the requested RDF format. Read-only; never blocks writes. Use this to debug data-quality issues before mutating the graph. The report body is capped at maxBytes; 'conforms' and 'violationCount' are always returned in full even when the report itself is truncated. Admin only: this tool requires an administrator principal, because whole-graph validation loads up to 100,000 triples into memory.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -1043,7 +1043,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Return the OpenMetadata ontology — either the full canonical ontology (when 'resource' is omitted) or a SPARQL DESCRIBE for a single class or property URI. Use this to discover available classes, properties, ranges, and domains the agent can query. Prefer passing 'resource' for a focused DESCRIBE because the full ontology can exceed the response limit; the body is capped at maxBytes and flagged 'truncated' when it does not fit. Format: turtle (default), jsonld, ntriples, rdfxml. Admin only: this tool requires an administrator principal and returns 403 for ordinary users and for bot tokens.",
+      "description": "Return the OpenMetadata ontology — either the full canonical ontology (when 'resource' is omitted) or a SPARQL DESCRIBE for a single class or property URI. Use this to discover available classes, properties, ranges, and domains the agent can query. Prefer passing 'resource' for a focused DESCRIBE because the full ontology can exceed the response limit; the body is capped at maxBytes and flagged 'truncated' when it does not fit. Format: turtle (default), jsonld, ntriples, rdfxml. The full ontology (no 'resource') is open to every caller, like the REST ontology endpoint. A DESCRIBE of a 'resource' reads instance data and requires the ExecuteSparqlQuery permission; administrators always pass.",
       "parameters": {
         "type": "object",
         "properties": {

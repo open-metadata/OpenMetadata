@@ -32,7 +32,9 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
@@ -166,6 +168,69 @@ class RdfColumnLineageTraversalTest {
         "[column-lineage-timing] downstream of %s: %d rows in %d ms over %d columnLineage nodes%n",
         SOURCE_COLUMN, rows.size(), totalMillis, columnLineageNodes);
     assertTrue(totalMillis < SparqlQueryLimits.TIMEOUT_MILLIS, "took " + totalMillis + " ms");
+  }
+
+  /**
+   * The sparql_query tool description tells clients to narrow the asset join with these patterns,
+   * so each one is pinned against what the production translator writes for an asset.
+   */
+  @Test
+  void assetFilterPatternsAdvertisedToClientsMatchTheProjection() {
+    final Table orders = projectedOrdersTable();
+    graph.add(translator.toRdf(orders));
+    final String assetFqn = orders.getFullyQualifiedName();
+
+    assertTrue(ask("?a om:fullyQualifiedName \"%s\" . ?a a om:Table".formatted(assetFqn)));
+    assertTrue(
+        ask(
+            "?a om:fullyQualifiedName \"%s\" . ?a om:belongsToService/om:fullyQualifiedName \"svc\""
+                .formatted(assetFqn)));
+    assertTrue(
+        ask(
+            "?a om:fullyQualifiedName \"%s\" . ?a om:hasOwner/rdfs:label \"growth\""
+                .formatted(assetFqn)));
+    assertTrue(
+        ask(
+            "?a om:fullyQualifiedName \"%s\" . ?a om:hasTier/om:tagFQN \"Tier.Tier1\""
+                .formatted(assetFqn)));
+    assertTrue(
+        ask(
+            "?a om:fullyQualifiedName \"%s\" . ?a om:hasTag/om:tagFQN \"Tier.Tier1\""
+                .formatted(assetFqn)));
+  }
+
+  private static Table projectedOrdersTable() {
+    final Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName(SCHEMA_FQN + "orders")
+            .withService(reference("databaseService", "svc"))
+            .withOwners(List.of(reference("team", "growth")))
+            .withTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN("Tier.Tier1")
+                        .withSource(TagLabel.TagSource.CLASSIFICATION)
+                        .withLabelType(TagLabel.LabelType.MANUAL)
+                        .withState(TagLabel.State.CONFIRMED)));
+    return table.withColumns(List.of(column(table.getFullyQualifiedName(), "id")));
+  }
+
+  private static EntityReference reference(final String type, final String name) {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(type)
+        .withName(name)
+        .withFullyQualifiedName(name);
+  }
+
+  private boolean ask(final String pattern) {
+    final String query =
+        PREFIXES + "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nASK { " + pattern + " }";
+    try (QueryExecution execution = QueryExecution.create(query, graph)) {
+      return execution.execAsk();
+    }
   }
 
   private void addFanOutAndChain() {
