@@ -14,10 +14,12 @@
 package org.openmetadata.service.resources.context;
 
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -51,12 +53,22 @@ final class ContextMemoryAnchorAccess {
       SubjectContext subject = SubjectContext.getSubjectContext(userName);
       ResourceContext<EntityInterface> resource =
           new ResourceContext<>(anchor.getType(), anchor.getId(), anchor.getFullyQualifiedName());
-      allowed = isReviewer(subject, resource) || hasViewBasic(subject, resource);
+      allowed =
+          (isReviewer(subject, resource) || hasViewBasic(subject, resource))
+              && isSourceVisible(userName, resource);
     } catch (EntityNotFoundException e) {
       LOG.debug("Hiding memory: user {} or anchor {} not found", userName, anchor.getId(), e);
       allowed = false;
     }
     return allowed;
+  }
+
+  private static boolean isSourceVisible(
+      String userName, ResourceContext<EntityInterface> resource) {
+    EntityInterface entity = resource.getEntity();
+    return entity != null
+        && (!(entity instanceof ContextFile file)
+            || ContextFileVisibility.isVisibleToUser(file, userName, false));
   }
 
   private static boolean isReviewer(

@@ -318,22 +318,22 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
   }
 
   return (
-    <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-warning-300 tw:bg-warning-50 tw:px-3 tw:py-2.5">
+    <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-3 tw:py-2.5">
       <Lock01
-        className="tw:shrink-0 tw:text-warning-700 tw:mt-0.5"
+        className="tw:shrink-0 tw:text-fg-warning-primary tw:mt-0.5"
         size={16}
         strokeWidth={2}
       />
       <div className="tw:flex tw:flex-col">
         <Typography
-          className="tw:text-warning-700"
+          className="tw:text-utility-warning-700"
           size="text-xs"
           weight="semibold">
           {t('label.cant-edit-this-memory')}
         </Typography>
         <Typography
           as="p"
-          className="tw:text-warning-700 tw:leading-4"
+          className="tw:text-utility-warning-700 tw:leading-4"
           size="text-xs">
           {t('message.context-memory-read-only-description', {
             creatorName:

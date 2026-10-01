@@ -132,6 +132,7 @@ public class ContextMemoryIndex implements TaggableIndex {
 
   public static String anchorId(ContextMemory memory) {
     EntityReference anchor = memory.getPrimaryEntity();
+    // Context files and pages remain anchors: search cannot evaluate their read rules per hit.
     return anchor == null
         ? UNANCHORED
         : anchor.getId() == null ? "anchored" : anchor.getId().toString();

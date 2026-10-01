@@ -22,14 +22,17 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.context.CreateContextMemory;
+import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -175,6 +178,66 @@ public class ContextMemoryAnchorIT {
             .index("context_memory_search_index")
             .execute()
             .contains(anchored.getId().toString()));
+  }
+
+  @Test
+  void fileExtractedMemoriesRemainAnchoredInSearch(TestNamespace ns) {
+    ContextFile file =
+        ns.trackRoot(
+            Entity.CONTEXT_FILE,
+            SdkClients.adminClient()
+                .contextFiles()
+                .create(new CreateContextFile().withName(ns.prefix("source-file"))));
+    String query = "fileanchor" + UUID.randomUUID().toString().substring(0, 8);
+    ContextMemory extracted =
+        adminMemories()
+            .create(
+                entityMemory(ns, "file-extracted")
+                    .withQuestion(query)
+                    .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+                    .withSourceEntity(file.getEntityReference())
+                    .withPrimaryEntity(file.getEntityReference()));
+    User reader = createUser(ns, null, null);
+    ContextMemoryService readerMemories = memoriesAs(reader);
+    ListParams params = new ListParams().setLimit(100).addQueryParam("q", query);
+
+    assertEquals(extracted.getId(), readerMemories.get(extracted.getId().toString()).getId());
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertTrue(ids(adminMemories().list(params)).contains(extracted.getId())));
+    assertFalse(ids(readerMemories.list(params)).contains(extracted.getId()));
+  }
+
+  @Test
+  void aPrivateFileHidesItsAnchoredMemoryFromOtherReaders(TestNamespace ns) {
+    User fileOwner = createUser(ns, null, null);
+    ContextFile file =
+        ns.trackRoot(
+            Entity.CONTEXT_FILE,
+            SdkClients.adminClient()
+                .contextFiles()
+                .create(
+                    new CreateContextFile()
+                        .withName(ns.prefix("private-source"))
+                        .withOwners(List.of(ref(Entity.USER, fileOwner.getId())))));
+    SdkClients.adminClient()
+        .contextFiles()
+        .patch(
+            file.getId(),
+            JsonUtils.readTree(
+                "[{\"op\":\"add\",\"path\":\"/shareConfig\",\"value\":{\"visibility\":\"Private\"}}]"));
+    ContextMemory memory =
+        adminMemories()
+            .create(
+                entityMemory(ns, "private-file-memory")
+                    .withPrimaryEntity(file.getEntityReference()));
+
+    assertEquals(memory.getId(), memoriesAs(fileOwner).get(memory.getId().toString()).getId());
+    assertThrows(
+        ForbiddenException.class,
+        () -> memoriesAs(createUser(ns, null, null)).get(memory.getId().toString()));
   }
 
   @Test
