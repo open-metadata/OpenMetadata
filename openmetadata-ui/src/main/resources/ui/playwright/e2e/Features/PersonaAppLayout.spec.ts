@@ -18,14 +18,12 @@
  * mode) and list pages open in the chosen view.
  */
 
-import { Browser, BrowserContext, Page } from '@playwright/test';
+import { Browser, BrowserContext, expect, Page } from '@playwright/test';
 import { Document } from '../../../src/generated/entity/docStore/document';
 import {
   AppMode,
   PageViewMode,
 } from '../../../src/generated/type/personaPreferences';
-import { expect } from '../../support/fixtures/base';
-import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -73,7 +71,6 @@ const signInAndSaveSession = async (browser: Browser, user: UserClass) => {
 // way a signed-in user opens it in a new window.
 const openAppAsUser = async (browser: Browser, session: SessionState) => {
   const context = await browser.newContext({ storageState: session });
-  await installServerLoadReducers(context);
   const page = await context.newPage();
   // `/` redirects, so wait only for the first commit.
   await page.goto('/', { waitUntil: 'commit' });
