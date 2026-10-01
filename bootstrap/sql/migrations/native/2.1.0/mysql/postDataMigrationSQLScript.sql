@@ -329,3 +329,22 @@ WHERE name IN (
 UPDATE user_entity
 SET json = JSON_SET(json, '$.email', LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email'))))
 WHERE BINARY JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')) <> LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')));
+
+-- Table Diff gained the optional parallelQueries parameter. Seeding only covers fresh installs
+-- (initializeEntity returns early when the entity exists), so without this backfill an upgraded
+-- deployment would never offer it in the test case form. A no-op once the parameter is present.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'parallelQueries',
+        'displayName', 'Parallel queries per database',
+        'description', 'How many queries the comparison may run at once against each database (defaults to 1). Both databases are always queried at the same time. A higher value compares large tables faster, but adds load to both databases and holds more rows in memory.',
+        'dataType', 'NUMBER',
+        'required', false
+    )
+)
+WHERE name = 'tableDiff'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.parameterDefinition')) = 'ARRAY'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'parallelQueries'), '$.parameterDefinition');
