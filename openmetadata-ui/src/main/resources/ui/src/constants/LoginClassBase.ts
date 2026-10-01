@@ -50,12 +50,6 @@ class LoginClassBase {
     return loginVideo;
   }
 
-  // The light video bakes a light background into every frame, so dark mode
-  // needs its own cut. Until one ships, dark mode keeps the light video.
-  public getLoginDarkVideo(): string | undefined {
-    return undefined;
-  }
-
   // Gradient behind the login video panel. Returned from here (not inlined in
   // CarouselLayout) so Collate can override the login palette via
   // LoginClassCollate without forking the layout. Fixed brand illustration
