@@ -17,7 +17,7 @@ import {
   Input,
   SearchInputIcon,
 } from '@openmetadata/ui-core-components';
-import { FilterLines } from '@untitledui/icons';
+import { FilterLines } from '@openmetadata/ui-core-components/icons';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Task } from '../../../../../generated/entity/tasks/task';

@@ -15,14 +15,14 @@ import { Box, Typography } from '@openmetadata/ui-core-components';
 import {
   Calendar,
   Clock,
-  Columns02,
+  Columns03,
   Key01,
   Stars01,
   Tag01,
   Type01,
   User01,
   Users01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -46,7 +46,7 @@ export interface TaskDetailSummaryProps {
 const ROW_ICON: Record<TaskDetailRowIcon, typeof User01> = {
   calendar: Calendar,
   clock: Clock,
-  columns: Columns02,
+  columns: Columns03,
   owner: Users01,
   shield: Key01,
   source: Stars01,

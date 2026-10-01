@@ -24,7 +24,7 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete } from '@openmetadata/ui-core-components/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, {
@@ -396,7 +396,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
           <ButtonUtility
             color="tertiary"
             data-testid={`delete-action-${getEntityName(policy)}`}
-            icon={Delete}
+            icon={Trash01}
             isDisabled={!deletePolicyPermission}
             size="xs"
             tooltip={

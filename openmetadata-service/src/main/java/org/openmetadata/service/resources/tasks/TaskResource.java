@@ -1097,7 +1097,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   private List<EntityReference> getEntityDomains(EntityReference entityRef) {
     try {
       EntityRepository<?> repo = Entity.getEntityRepository(entityRef.getType());
-      Object entity = repo.get(null, entityRef.getId(), repo.getFields("domains"));
+      // Drop the field where the target type does not declare it (e.g. a Domain has none).
+      Object entity =
+          repo.get(null, entityRef.getId(), repo.getOnlySupportedFields(Entity.FIELD_DOMAINS));
 
       java.lang.reflect.Method getDomainsMethod = entity.getClass().getMethod("getDomains");
       Object domains = getDomainsMethod.invoke(entity);

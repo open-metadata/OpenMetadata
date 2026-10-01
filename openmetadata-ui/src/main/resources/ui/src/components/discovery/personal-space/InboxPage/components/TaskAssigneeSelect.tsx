@@ -12,7 +12,7 @@
  */
 
 import { Autocomplete } from '@openmetadata/ui-core-components';
-import { User01 } from '@untitledui/icons';
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import React, {
   useCallback,

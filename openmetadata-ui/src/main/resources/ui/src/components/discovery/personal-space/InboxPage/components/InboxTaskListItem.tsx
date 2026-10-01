@@ -12,7 +12,7 @@
  */
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
-import { MessageCircle01 } from '@untitledui/icons';
+import { MessageDotsCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -77,7 +77,7 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
           align="center"
           className="tw:ml-auto tw:shrink-0 tw:gap-1"
           data-testid="inbox-task-comment-count">
-          <MessageCircle01
+          <MessageDotsCircle
             className="tw:text-fg-quaternary"
             height={14}
             width={14}

@@ -32,6 +32,7 @@ import {
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 
 const KnowledgePages: FC = () => {
   const { t } = useTranslation();
@@ -117,7 +118,7 @@ const KnowledgePages: FC = () => {
                 target={isQuickLink ? '_blank' : '_self'}
                 to={
                   isQuickLink
-                    ? quickLink.url
+                    ? getSafeHttpUrl(quickLink.url) ?? '#'
                     : {
                         pathname: contextCenterClassBase.getArticlePath(
                           knowledgePage.fullyQualifiedName

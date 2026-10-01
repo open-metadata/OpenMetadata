@@ -380,7 +380,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock(
-  '@untitledui/icons',
+  '@openmetadata/ui-core-components/icons',
   () =>
     new Proxy(
       {},

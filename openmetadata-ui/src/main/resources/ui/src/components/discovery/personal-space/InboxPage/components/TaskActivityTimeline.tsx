@@ -18,7 +18,7 @@ import {
   Plus,
   UserPlus01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { mapValues } from 'lodash';
 import React, { useMemo } from 'react';

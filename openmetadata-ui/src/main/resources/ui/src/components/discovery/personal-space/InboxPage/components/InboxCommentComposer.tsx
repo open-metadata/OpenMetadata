@@ -12,7 +12,7 @@
  */
 
 import { Box, Button } from '@openmetadata/ui-core-components';
-import { ArrowRight } from '@untitledui/icons';
+import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
