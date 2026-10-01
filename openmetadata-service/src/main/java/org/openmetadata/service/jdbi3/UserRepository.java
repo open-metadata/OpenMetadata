@@ -722,6 +722,7 @@ public class UserRepository extends EntityRepository<User> {
     // Multiple teams must resolve consistently regardless of relationship query ordering.
     return listOrEmpty(inheritedPersonas).stream()
         .min(EntityUtil.compareEntityReference)
+        .map(persona -> JsonUtils.deepCopy(persona, EntityReference.class).withInherited(true))
         .orElse(null);
   }
 
@@ -1971,29 +1972,22 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     private void updateDefaultPersona(User original, User updated) {
-      // Get the actual default persona from the database (not the system default)
-      // The relationship is: persona --DEFAULTS_TO--> user, so we need to find FROM user
       EntityReference originalDefaultPersona =
           getFromEntityRef(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
-
       EntityReference updatedDefaultPersona = updated.getDefaultPersona();
-      PersonaRepository personaRepository =
-          (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
-      Persona systemDefaultPersona = personaRepository.getSystemDefaultPersona();
 
-      // Only process defaultPersona changes if it's not just the system providing a default value
-      // If the updated default persona is the system default and the original had no explicit
-      // default,
-      // then this is not an actual change - it's just the system providing a default value
-      boolean isSystemDefaultBeingApplied =
-          updatedDefaultPersona != null
-              && systemDefaultPersona != null
-              && updatedDefaultPersona.getId().equals(systemDefaultPersona.getId())
-              && originalDefaultPersona == null;
+      // Echoing a resolved fallback must not turn it into a saved user preference.
+      boolean isUnchangedFallback =
+          originalDefaultPersona == null
+              && updatedDefaultPersona != null
+              && (Boolean.TRUE.equals(updatedDefaultPersona.getInherited())
+                  || (operation.isPut()
+                      && original.getDefaultPersona() != null
+                      && EntityUtil.entityReferenceMatch.test(
+                          original.getDefaultPersona(), updatedDefaultPersona)));
 
-      if (!isSystemDefaultBeingApplied) {
+      if (!isUnchangedFallback) {
         if (originalDefaultPersona != null) {
-          // Delete the relationship: persona --DEFAULTS_TO--> user
           deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA);
         }
         assignDefaultPersona(updated, updatedDefaultPersona);

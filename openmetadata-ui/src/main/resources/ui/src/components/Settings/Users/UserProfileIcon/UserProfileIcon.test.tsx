@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import { User } from '../../../../generated/entity/teams/user';
@@ -264,6 +264,29 @@ describe('UserProfileIcon', () => {
 
     expect(screen.queryByTestId('default-persona-tag')).not.toBeInTheDocument();
     expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
+  });
+
+  it('shows the inherited team persona as selected without a default badge', async () => {
+    const inheritedPersona = { ...mockPersonas[0], inherited: true };
+    mockUseApplicationStore.mockReturnValue(
+      createMockStoreData({
+        currentUser: { ...mockUser, defaultPersona: inheritedPersona },
+        selectedPersona: inheritedPersona,
+      })
+    );
+
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
+    openDropdown();
+    const label = within(await screen.findByRole('menu')).getByRole('button', {
+      name: /Default Persona/,
+    });
+
+    expect(within(label).getByRole('radio')).toBeChecked();
+    expect(screen.queryByTestId('default-persona-tag')).not.toBeInTheDocument();
   });
 
   it('should update dropdown labels when language changes', async () => {

@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,9 +38,11 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 
 @Isolated("Changes the organization-wide default persona")
@@ -79,6 +82,10 @@ class UserDefaultPersonaIT {
 
     assertDefaultPersona(teamDefault, client.users().get(user.getId().toString(), fields));
     assertDefaultPersona(teamDefault, client.users().getByName(user.getName(), fields));
+    assertEquals(
+        Boolean.TRUE,
+        client.users().get(user.getId().toString(), fields).getDefaultPersona().getInherited());
+    assertEquals(Boolean.TRUE, listTeamUsers(fields).getFirst().getDefaultPersona().getInherited());
   }
 
   @ParameterizedTest
@@ -89,6 +96,13 @@ class UserDefaultPersonaIT {
 
     assertDefaultPersona(explicitDefault, client.users().get(user.getId().toString(), fields));
     assertDefaultPersona(explicitDefault, client.users().getByName(user.getName(), fields));
+    assertFalse(
+        Boolean.TRUE.equals(
+            client
+                .users()
+                .get(user.getId().toString(), fields)
+                .getDefaultPersona()
+                .getInherited()));
   }
 
   @ParameterizedTest
@@ -134,6 +148,24 @@ class UserDefaultPersonaIT {
   }
 
   @Test
+  void selectingSystemDefaultOverridesInheritedTeamDefault(TestNamespace ns) {
+    final User user = createUser(ns, "member", null);
+    final User fetched =
+        client.users().get(user.getId().toString(), "defaultPersona,teams,personas");
+    client
+        .users()
+        .update(
+            user.getId().toString(),
+            fetched
+                .withPersonas(List.of(systemDefault.getEntityReference()))
+                .withDefaultPersona(systemDefault.getEntityReference()));
+
+    assertDefaultPersona(
+        systemDefault, client.users().get(user.getId().toString(), "defaultPersona"));
+    assertDefaultPersona(systemDefault, listTeamUsers("defaultPersona").getFirst());
+  }
+
+  @Test
   void updatingUserDoesNotPinInheritedDefault(TestNamespace ns) {
     final User user = createUser(ns, "member", null);
     final User fetched =
@@ -148,6 +180,63 @@ class UserDefaultPersonaIT {
     assertDefaultPersona(
         replacement, client.users().get(user.getId().toString(), "defaultPersona"));
     assertDefaultPersona(replacement, listTeamUsers("defaultPersona").getFirst());
+  }
+
+  @Test
+  void replacingUserDoesNotPinInheritedDefault(TestNamespace ns) {
+    final User user = createUser(ns, "member", null);
+    final User fetched = client.users().get(user.getId().toString(), "defaultPersona");
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser()
+                .withName(user.getName())
+                .withEmail(user.getEmail())
+                .withTeams(List.of(team.getId()))
+                .withDefaultPersona(fetched.getDefaultPersona())
+                .withDescription("Updated profile"),
+            User.class);
+    final Persona replacement = createPersona(ns, "replacement", false);
+    team = client.teams().get(team.getId().toString(), "defaultPersona");
+    client
+        .teams()
+        .update(team.getId().toString(), team.withDefaultPersona(replacement.getEntityReference()));
+
+    assertDefaultPersona(
+        replacement, client.users().get(user.getId().toString(), "defaultPersona"));
+  }
+
+  @Test
+  void inheritedPersonaCanBeSavedAndClearedAsAnExplicitDefault(TestNamespace ns) {
+    final User user = createUser(ns, "member", null);
+    final User fetched = client.users().get(user.getId().toString(), "defaultPersona");
+    client
+        .users()
+        .update(
+            user.getId().toString(),
+            fetched.withDefaultPersona(teamDefault.getEntityReference().withInherited(false)));
+
+    final User saved = client.users().get(user.getId().toString(), "defaultPersona");
+    assertDefaultPersona(teamDefault, saved);
+    assertFalse(Boolean.TRUE.equals(saved.getDefaultPersona().getInherited()));
+
+    final Persona replacement = createPersona(ns, "replacement", false);
+    team = client.teams().get(team.getId().toString(), "defaultPersona");
+    client
+        .teams()
+        .update(team.getId().toString(), team.withDefaultPersona(replacement.getEntityReference()));
+    assertDefaultPersona(
+        teamDefault, client.users().get(user.getId().toString(), "defaultPersona"));
+
+    client
+        .users()
+        .patch(
+            user.getId(), JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/defaultPersona\"}]"));
+    final User cleared = client.users().get(user.getId().toString(), "defaultPersona");
+    assertDefaultPersona(replacement, cleared);
+    assertEquals(Boolean.TRUE, cleared.getDefaultPersona().getInherited());
   }
 
   @ParameterizedTest
