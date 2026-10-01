@@ -223,8 +223,20 @@ const getDepthClassName = (depth: number) => {
 };
 
 // AI padding standard: 16px under the header band (core PageLayout gives 8px).
+// Column flex so the list card can claim the leftover height for placeholders.
 const getContentClassName = (isAiMode: boolean) =>
-  isAiMode ? 'tw:pt-4' : undefined;
+  classNames('tw:flex tw:flex-col tw:min-h-0', { 'tw:pt-4': isAiMode });
+const getIsPlaceholderState = ({
+  hasError,
+  isMetricsPending,
+  isSearchPending,
+  rowCount,
+}: {
+  hasError: boolean;
+  isMetricsPending: boolean;
+  isSearchPending: boolean;
+  rowCount: number;
+}) => hasError || (!isMetricsPending && !isSearchPending && rowCount === 0);
 
 const MetricListPage = () => {
   const { t } = useTranslation();
@@ -1109,7 +1121,7 @@ const MetricListPage = () => {
     const isUnfiltered = !searchText && !statusFilter;
 
     return (
-      <Box className="tw:min-h-96 tw:p-4" justify="center">
+      <Box className="tw:flex-1 tw:min-h-0 tw:p-4" justify="center">
         <EmptyPlaceholder
           actions={
             isUnfiltered && permission.Create
@@ -1167,7 +1179,7 @@ const MetricListPage = () => {
   };
 
   const renderError = () => (
-    <Box className="tw:min-h-80 tw:p-6" justify="center">
+    <Box className="tw:flex-1 tw:min-h-0 tw:p-6" justify="center">
       <Card data-testid="metric-list-error" size="sm">
         <Card.Content>
           <Box align="center" direction="col" gap={3}>
@@ -1484,6 +1496,13 @@ const MetricListPage = () => {
     </Box>
   );
 
+  const isPlaceholderState = getIsPlaceholderState({
+    hasError: Boolean(listingError),
+    isMetricsPending,
+    isSearchPending: isSearchTextPending,
+    rowCount: rows.length,
+  });
+
   const renderListingContent = () => {
     if (listingError) {
       return renderError();
@@ -1499,7 +1518,11 @@ const MetricListPage = () => {
   };
 
   const renderListCard = () => (
-    <Card size="sm">
+    <Card
+      className={classNames({
+        'tw:flex tw:flex-col tw:flex-1 tw:min-h-0': isPlaceholderState,
+      })}
+      size="sm">
       {renderToolbar()}
       <span aria-live="polite" className="tw:sr-only">
         {isMetricsBusy || isSearchTextPending

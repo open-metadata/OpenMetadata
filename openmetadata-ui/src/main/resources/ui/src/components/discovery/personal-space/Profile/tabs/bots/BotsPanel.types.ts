@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
-export const CUSTOM_TEMPLATE_VALUE = 'CUSTOM_TEMPLATE';
-
-export const SYSTEM_DEFAULT_TEMPLATES = 'System Default Templates';
+export type BotsView =
+  | { type: 'list' }
+  | { type: 'detail'; fqn: string; name: string }
+  | { type: 'add' };

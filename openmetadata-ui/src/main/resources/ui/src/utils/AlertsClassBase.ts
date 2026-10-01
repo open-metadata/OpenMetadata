@@ -55,7 +55,26 @@ export interface AddAlertFormWidgetProps {
   templateResourcePermission?: OperationPermission;
 }
 
+/** Props for the notification template section of the AI alert form. */
+export interface AlertAiTemplateSectionProps {
+  /** Edits `notificationTemplate` and `customNotificationTemplateData`. */
+  value: ModifiedCreateEventSubscription | ModifiedEventSubscription;
+  onChange?: (value: ModifiedCreateEventSubscription) => void;
+  isViewOnly?: boolean;
+  loading?: boolean;
+  templates?: NotificationTemplate[];
+  templateResourcePermission?: OperationPermission;
+}
+
 class AlertsClassBase {
+  /**
+   * The AI alert form's notification template section. Templates are a Collate
+   * feature, so OSS renders none; Collate returns its own section.
+   */
+  public getAlertAiTemplateSection(): React.ComponentType<AlertAiTemplateSectionProps> | null {
+    return null;
+  }
+
   public getAddAlertFormExtraWidgets() {
     const widgets: Record<
       string,

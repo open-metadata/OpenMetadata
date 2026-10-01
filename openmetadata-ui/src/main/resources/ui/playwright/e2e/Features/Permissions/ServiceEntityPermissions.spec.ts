@@ -37,6 +37,20 @@ import {
   initializePermissions,
 } from '../../../utils/permission';
 
+// Kept beside its only consumer: in constant/service.ts this map closed an
+// import cycle (the service classes import that module), so whichever spec
+// loaded a service class first left entries undefined for this one.
+const SERVICE_ENTITIES = {
+  'Api Service': ApiServiceClass,
+  'Dashboard Service': DashboardServiceClass,
+  'Database Service': DatabaseServiceClass,
+  'Messaging Service': MessagingServiceClass,
+  'Mlmodel Service': MlmodelServiceClass,
+  'Pipeline Service': PipelineServiceClass,
+  'SearchIndex Service': SearchIndexServiceClass,
+  'Storage Service': StorageServiceClass,
+} as const;
+
 const testUser = new UserClass();
 
 const test = baseTest.extend<{
@@ -62,20 +76,6 @@ test.afterAll('Cleanup user', async ({ browser }) => {
   await testUser.delete(apiContext);
   await afterAction();
 });
-
-// Kept here rather than in constant/service: the service classes import that
-// module, so building this map there captured whichever class was still
-// loading as undefined when a spec imported a service class first.
-const SERVICE_ENTITIES = {
-  'Api Service': ApiServiceClass,
-  'Dashboard Service': DashboardServiceClass,
-  'Database Service': DatabaseServiceClass,
-  'Messaging Service': MessagingServiceClass,
-  'Mlmodel Service': MlmodelServiceClass,
-  'Pipeline Service': PipelineServiceClass,
-  'SearchIndex Service': SearchIndexServiceClass,
-  'Storage Service': StorageServiceClass,
-} as const;
 
 Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
   test.describe(`${entityType} Permissions`, () => {
