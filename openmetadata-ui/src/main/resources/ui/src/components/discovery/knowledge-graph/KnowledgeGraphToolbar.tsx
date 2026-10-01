@@ -32,7 +32,7 @@ import {
   FilterLines,
   Minimize01,
   Settings01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
 import type { Selection } from 'react-aria-components';
 import { Heading } from 'react-aria-components';

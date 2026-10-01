@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HelpCircle, SearchLg } from '@untitledui/icons';
+import { HelpCircle, Search } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Input } from '../components/base/input/input';
 import { TextArea } from '../components/base/textarea/textarea';
@@ -65,7 +65,7 @@ export const WithLeadingIcon: StoryObj = {
   render: () => (
     <div
       style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 320 }}>
-      <Input icon={SearchLg} label="Search" placeholder="Search..." size="sm" />
+      <Input icon={Search} label="Search" placeholder="Search..." size="sm" />
       <Input
         icon={HelpCircle}
         label="Email"

@@ -21,7 +21,6 @@ import {
   INTERNAL_CATEGORY_OPTIONS,
 } from '../../../constants/Alerts.constants';
 import { StatusType } from '../../../generated/entity/data/pipeline';
-import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import { PipelineState } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Type } from '../../../generated/events/eventSubscription';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
@@ -32,13 +31,7 @@ import {
   getSelectOptionsFromValues,
   getSubscriptionTypeOptions,
 } from '../../../utils/Alerts/AlertsUtilPure';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getAlertDestinationCategoryIcons } from '../../../utils/ObservabilityUtils';
-import { getTemplateEntityRefObject } from './NotificationTemplateUtils';
-import {
-  CUSTOM_TEMPLATE_VALUE,
-  SYSTEM_DEFAULT_TEMPLATES,
-} from './Template.constants';
 
 /** Renders Core UI select items with a stable text value for search and a11y. */
 export const renderSelectItem = ({
@@ -194,52 +187,4 @@ export const getSelectArgumentConfig = (
     default:
       return;
   }
-};
-
-/** Builds notification template options, including the selected template when it is not preloaded. */
-export const getTemplateItems = (
-  templates: NotificationTemplate[] | undefined,
-  selectedTemplate: string | undefined,
-  t: TFunction
-) => {
-  const items =
-    templates?.map((template) => ({
-      id: JSON.stringify(getTemplateEntityRefObject(template)),
-      label: getEntityName(template),
-    })) ?? [];
-
-  if (
-    isEmpty(templates) &&
-    selectedTemplate &&
-    ![CUSTOM_TEMPLATE_VALUE, SYSTEM_DEFAULT_TEMPLATES].includes(
-      selectedTemplate
-    )
-  ) {
-    try {
-      const parsedTemplate = JSON.parse(selectedTemplate);
-      items.push({
-        id: selectedTemplate,
-        label: parsedTemplate.displayName ?? parsedTemplate.name,
-      });
-    } catch {
-      items.push({
-        id: selectedTemplate,
-        label: selectedTemplate,
-      });
-    }
-  }
-
-  return [
-    ...items,
-    {
-      id: SYSTEM_DEFAULT_TEMPLATES,
-      label: t('label.system-default-template'),
-    },
-    {
-      id: CUSTOM_TEMPLATE_VALUE,
-      label: t('label.create-entity', {
-        entity: t('label.custom-template'),
-      }),
-    },
-  ];
 };

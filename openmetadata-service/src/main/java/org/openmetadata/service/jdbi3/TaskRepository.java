@@ -535,7 +535,7 @@ public class TaskRepository extends EntityRepository<Task> {
       // Get the target entity to extract its domains
       EntityRepository<?> targetRepo = Entity.getEntityRepository(about.getType());
       Object targetEntity =
-          targetRepo.get(null, about.getId(), targetRepo.getFields(FIELD_DOMAINS));
+          targetRepo.get(null, about.getId(), targetRepo.getOnlySupportedFields(FIELD_DOMAINS));
 
       // Extract domains from target entity using reflection
       List<EntityReference> targetDomains = extractDomainsFromEntity(targetEntity);

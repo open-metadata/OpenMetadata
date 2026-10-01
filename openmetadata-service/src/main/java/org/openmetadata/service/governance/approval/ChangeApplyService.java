@@ -63,15 +63,23 @@ public final class ChangeApplyService {
   public static ChangeRequest apply(UUID changeRequestId) {
     ChangeRequest request = ChangeRequestService.get(changeRequestId);
     EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
-    try (FreshReadScope.Handle fresh = FreshReadScope.enter();
-        EntityCacheBypass.Handle bypass = EntityCacheBypass.skip()) {
-      return repository.executeInTransaction(() -> applyLocked(repository, request));
+    try (FreshReadScope.Handle fresh = FreshReadScope.enter()) {
+      return repository.executeInTransaction(() -> applyBypassingCache(repository, request));
     } catch (IllegalArgumentException | EntityNotFoundException | WebApplicationException e) {
       return ChangeRequestService.finish(
           changeRequestId,
           null,
           ChangeRequestStatus.CONFLICTED,
           "The approved change can no longer be applied: %s".formatted(e.getMessage()));
+    }
+  }
+
+  // The entity is read past every cache inside the transaction; the cache evictions recorded by
+  // the write still run after commit, outside this scope.
+  private static ChangeRequest applyBypassingCache(
+      EntityRepository<?> repository, ChangeRequest request) {
+    try (EntityCacheBypass.Handle bypass = EntityCacheBypass.skip()) {
+      return applyLocked(repository, request);
     }
   }
 
