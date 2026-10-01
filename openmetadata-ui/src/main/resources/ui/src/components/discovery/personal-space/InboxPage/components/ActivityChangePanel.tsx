@@ -92,7 +92,7 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
         {before.length > 0 && (
           <ChangeColumn
             isText={isText}
-            title={t('label.previous')}
+            title={t('label.before')}
             tone="error"
             values={before}
           />
@@ -103,7 +103,7 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
         {after.length > 0 && (
           <ChangeColumn
             isText={isText}
-            title={t('label.current')}
+            title={t('label.after')}
             tone="success"
             values={after}
           />

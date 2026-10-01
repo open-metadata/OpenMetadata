@@ -108,7 +108,10 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     activityContent = emptyPlaceholder;
   } else {
     activityContent = (
-      <Box direction="col" gap={3}>
+      <Box
+        className="tw:mx-auto tw:w-full tw:max-w-220"
+        direction="col"
+        gap={3}>
         {visibleItems.map((item) => {
           const itemId = item.activity?.id ?? item.feed?.id;
 

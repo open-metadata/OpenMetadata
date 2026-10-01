@@ -52,10 +52,10 @@ describe('ActivityChangePanel', () => {
     );
 
     expect(screen.getByTestId('activity-change-error')).toHaveTextContent(
-      'label.previous− Ram'
+      'label.before− Ram'
     );
     expect(screen.getByTestId('activity-change-success')).toHaveTextContent(
-      'label.current+ Data Platform team'
+      'label.after+ Data Platform team'
     );
     expect(screen.getByText('−1')).toBeInTheDocument();
   });
