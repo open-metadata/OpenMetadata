@@ -129,11 +129,21 @@ for (const { index, tab, path } of [
         'preserves badges across cached tab switches when counts fail',
         { tag: '@Discovery' },
         async ({ page }) => {
+          // A tab switch drops quick filters other than owner and tags, which would change the
+          // search. Every tab keeps the browse path, so the switches below stay in one search.
           const params = new URLSearchParams({
             search: 'customer',
             sort: '_score',
             sortOrder: 'desc',
-            quickFilter: JSON.stringify(filter),
+            browsePath: JSON.stringify([
+              {
+                key: 'service.displayName.keyword',
+                label: 'Service',
+                value: [
+                  { key: fixture.service.name, label: fixture.service.name },
+                ],
+              },
+            ]),
           });
           const now = Date.now();
           await page.clock.setFixedTime(now);

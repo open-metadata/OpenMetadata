@@ -425,6 +425,14 @@ const ExplorePageV1: FC<unknown> = () => {
     latestFetchDepsRef.current = fetchDependencies;
   }, [fetchDependencies]);
 
+  // Counts on screen and the count scope they belong to. A cache miss starts from them so that a
+  // failed count request keeps the other badges, but only within that scope: a tab, page or sort
+  // change leaves every tab's count as is, while a new query, filter or deleted flag does not.
+  const shownCountsRef = useRef<{
+    scope: string;
+    hitCounts?: SearchHitCounts;
+  }>();
+
   const performFetch = async () => {
     // Tab-switch on Explore (Tables → Dashboards → …) re-runs the same shape of search-fetch
     // with a different `searchIndex`. Within a session most users flip back and forth without
@@ -439,6 +447,17 @@ const ExplorePageV1: FC<unknown> = () => {
     };
     const cacheKey = fetchDependencies;
     const cached = getCached<CachedSearchState>(cacheKey);
+    const countScope = JSON.stringify({
+      quickFilter: parsedSearch.quickFilter,
+      browsePath: parsedSearch.browsePath,
+      queryFilter,
+      searchQueryParam,
+      showDeleted,
+      isNLPRequestEnabled,
+    });
+    const shownCounts = shownCountsRef.current;
+    const sameScopeShownCounts =
+      shownCounts?.scope === countScope ? shownCounts.hitCounts : undefined;
 
     // Single injection point for the browse-tree location: pre-combining here
     // scopes the tab counts, search and NLQ queries inside fetchEntityData
@@ -459,7 +478,7 @@ const ExplorePageV1: FC<unknown> = () => {
       autoSelectedSearchIndex?: ExploreSearchIndex;
       indexNotFound?: boolean;
     } = {
-      hitCounts: cached ? cached.data.hitCounts : searchHitCounts,
+      hitCounts: cached ? cached.data.hitCounts : sameScopeShownCounts,
     };
     const isStale = () => latestFetchDepsRef.current !== cacheKey;
     const handleNlqAppliedFilters = (
@@ -498,13 +517,17 @@ const ExplorePageV1: FC<unknown> = () => {
         typeof value === 'function' ? value(captured.aggregations) : value;
       setUpdatedAggregations(value);
     };
+    const showHitCounts = (hitCounts?: SearchHitCounts) => {
+      shownCountsRef.current = { scope: countScope, hitCounts };
+      setSearchHitCounts(hitCounts);
+    };
     const captureSetSearchHitCounts: typeof setSearchHitCounts = (value) => {
       if (isStale()) {
         return;
       }
       captured.hitCounts =
         typeof value === 'function' ? value(captured.hitCounts) : value;
-      setSearchHitCounts(captured.hitCounts);
+      showHitCounts(captured.hitCounts);
     };
     const captureSetAutoSelectedSearchIndex: typeof setAutoSelectedSearchIndex =
       (value) => {
@@ -552,7 +575,7 @@ const ExplorePageV1: FC<unknown> = () => {
       // cache hit — the user sees no spinner.
       setSearchResults(cached.data.searchResults);
       setUpdatedAggregations(cached.data.aggregations);
-      setSearchHitCounts(cached.data.hitCounts);
+      showHitCounts(cached.data.hitCounts);
       setAutoSelectedSearchIndex(cached.data.autoSelectedSearchIndex);
       setShowIndexNotFoundAlert(cached.data.indexNotFound);
       setIsLoading(false);
