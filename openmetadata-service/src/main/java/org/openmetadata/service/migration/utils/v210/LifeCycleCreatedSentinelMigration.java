@@ -30,6 +30,9 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 @Slf4j
 public final class LifeCycleCreatedSentinelMigration {
 
+  /** Run once per version through {@code DataMigrationStep}; ingestion no longer writes it. */
+  public static final String STEP_NAME = "lifecycle-created-placeholder-removal";
+
   private LifeCycleCreatedSentinelMigration() {}
 
   public static void removeCreatedSentinel(

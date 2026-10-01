@@ -54,6 +54,9 @@ public final class CreationAuditMigration {
           new AuditedEntity(Entity.TEAM, "team_entity"),
           new AuditedEntity(Entity.ROLE, "role_entity"));
 
+  /** Run once per version through {@code DataMigrationStep}; repeating it finds nothing to fill. */
+  public static final String STEP_NAME = "creation-audit-backfill";
+
   private static final String VERSION_PREFIX_BIND = "versionPrefix";
 
   private CreationAuditMigration() {}

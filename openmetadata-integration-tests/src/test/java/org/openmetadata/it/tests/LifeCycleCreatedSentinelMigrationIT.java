@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,7 +21,9 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 
 /**
@@ -60,6 +63,24 @@ class LifeCycleCreatedSentinelMigrationIT {
         REAL_CREATED,
         readCreatedTimestamp(table.getId()),
         "a real created time must survive the repair, however often it runs");
+  }
+
+  /**
+   * The suite's bootstrap ran the real migration workflow, so this step already recorded its
+   * marker. A later re-run of 2.1.0, which any change to a v210 helper triggers, must skip it.
+   */
+  @Test
+  void upgradeRecordedTheRepairSoAReRunSkipsIt() {
+    MigrationDAO migrationDAO = jdbi().onDemand(MigrationDAO.class);
+    AtomicInteger runs = new AtomicInteger();
+
+    DataMigrationStep.runOnce(
+        migrationDAO, "2.1.0", LifeCycleCreatedSentinelMigration.STEP_NAME, runs::incrementAndGet);
+
+    assertEquals(
+        0,
+        runs.get(),
+        "the upgrade already ran the repair, so a re-run must not scan table_entity again");
   }
 
   private void runRepair() {

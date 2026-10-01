@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
@@ -23,7 +24,9 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 
 /**
@@ -97,6 +100,24 @@ class CreationAuditMigrationIT {
         createdAtAfterCreate,
         readCreatedAt(table.getId()),
         "re-running the backfill must not move an already-populated createdAt");
+  }
+
+  /**
+   * The suite's bootstrap ran the real migration workflow, so this step already recorded its
+   * marker. A later re-run of 2.1.0, which any change to a v210 helper triggers, must skip it.
+   */
+  @Test
+  void upgradeRecordedTheBackfillSoAReRunSkipsIt() {
+    MigrationDAO migrationDAO = jdbi().onDemand(MigrationDAO.class);
+    AtomicInteger runs = new AtomicInteger();
+
+    DataMigrationStep.runOnce(
+        migrationDAO, "2.1.0", CreationAuditMigration.STEP_NAME, runs::incrementAndGet);
+
+    assertEquals(
+        0,
+        runs.get(),
+        "the upgrade already ran the backfill, so a re-run must not scan the tables again");
   }
 
   private void runBackfill() {

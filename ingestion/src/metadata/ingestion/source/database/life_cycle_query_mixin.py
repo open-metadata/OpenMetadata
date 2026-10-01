@@ -114,14 +114,14 @@ class LifeCycleQueryMixin:
         try:
             life_cycle_data = self.life_cycle_query_dict(query=query).get(entity_name)
             if life_cycle_data:
-                # Yielded even when both aspects are empty: the sink replaces lifeCycle wholesale,
-                # so this clears a placeholder `created` stored by earlier ingestion runs.
-                life_cycle = LifeCycle(  # pyright: ignore[reportCallIssue]
-                    created=self._build_access_details(life_cycle_data.created_at),  # pyright: ignore[reportAttributeAccessIssue]
-                    updated=self._build_access_details(life_cycle_data.updated_at),  # pyright: ignore[reportAttributeAccessIssue]
-                )
-
-                yield Either(right=OMetaLifeCycleData(entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle))
+                created = self._build_access_details(life_cycle_data.created_at)  # pyright: ignore[reportAttributeAccessIssue]
+                updated = self._build_access_details(life_cycle_data.updated_at)  # pyright: ignore[reportAttributeAccessIssue]
+                # The server keeps each stored aspect when the incoming one is empty or older, so a
+                # record with neither would be a no-op patch. Placeholder `created` values written by
+                # earlier runs are removed by the 2.1.0 data migration, not by ingestion.
+                if created is not None or updated is not None:
+                    life_cycle = LifeCycle(created=created, updated=updated)  # pyright: ignore[reportCallIssue]
+                    yield Either(right=OMetaLifeCycleData(entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle))
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

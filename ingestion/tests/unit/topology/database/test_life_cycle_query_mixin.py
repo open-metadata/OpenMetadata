@@ -97,12 +97,9 @@ class TestGetLifeCycleData:
         assert life_cycle.created is None
         assert life_cycle.updated.timestamp.root == datetime_to_timestamp(UPDATED_AT, milliseconds=True)
 
-    def test_row_without_timestamps_still_yields_life_cycle(self):
+    def test_row_without_timestamps_yields_nothing(self):
         life_cycle_data = LifeCycleQueryByTable(table_name=TABLE_NAME)
 
         results = _run_get_life_cycle_data(life_cycle_data)
 
-        assert len(results) == 1
-        life_cycle = results[0].right.life_cycle
-        assert life_cycle.created is None
-        assert life_cycle.updated is None
+        assert results == []
