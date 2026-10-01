@@ -18,37 +18,19 @@ import {
   type ChartTooltipRenderProps,
 } from '@openmetadata/ui-core-components/charts';
 import { Card, Typography } from 'antd';
-import { isEmpty, startCase, uniqBy } from 'lodash';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
-  DEFAULT_CHART_OPACITY,
-  GRAYED_OUT_COLOR,
-  HOVER_CHART_OPACITY,
-} from '../constants/constants';
-import { BAR_CHART_MARGIN } from '../constants/DataInsight.constants';
+import { startCase, uniqBy } from 'lodash';
+import { GRAYED_OUT_COLOR, HOVER_CHART_OPACITY } from '../constants/constants';
 import {
   DataInsightChartTooltipProps,
   DataInsightLegendProps,
 } from '../interface/data-insight.interface';
-import { axisTickFormatter } from './ChartUtils';
-import { entityChartColor } from './ColorUtils';
 import './DataInsightChartUtils.style.less';
-import {
-  getEntryFormattedValue,
-  getRandomHexColor,
-} from './DataInsightPureUtils';
+import { getEntryFormattedValue } from './DataInsightPureUtils';
 import {
   chartTooltipRows,
   DQTooltipContent,
 } from './DataQuality/CustomDQTooltip.component';
-import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
+import { formatDate } from './date-time/DateTimeUtils';
 
 export const renderLegend = (
   legendData: DataInsightLegendProps,
@@ -175,61 +157,9 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   return null;
 };
 
-export const renderDataInsightLineChart = (
-  graphData: Array<Record<string, number>>,
-  labels: string[],
-  activeKeys: string[],
-  activeMouseHoverKey: string,
-  isPercentage: boolean,
-  colors: { axis: string; grid: string }
-) => {
-  return (
-    <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
-      <CartesianGrid stroke={colors.grid} vertical={false} />
-      <Tooltip
-        content={
-          <CustomTooltip isPercentage={isPercentage} timeStampKey="day" />
-        }
-        wrapperStyle={{ pointerEvents: 'auto' }}
-      />
-      <XAxis
-        allowDuplicatedCategory={false}
-        dataKey="day"
-        tick={{ fill: colors.axis }}
-        tickFormatter={(value: number) => customFormatDateTime(value, 'MMM dd')}
-        type="category"
-      />
-      <YAxis
-        tick={{ fill: colors.axis }}
-        tickFormatter={
-          isPercentage
-            ? (value: number) => axisTickFormatter(value, '%')
-            : undefined
-        }
-      />
-
-      {labels.map((s, i) => (
-        <Line
-          dataKey={s}
-          hide={
-            activeKeys.length && s !== activeMouseHoverKey
-              ? !activeKeys.includes(s)
-              : false
-          }
-          key={s}
-          name={s}
-          stroke={entityChartColor(i) ?? getRandomHexColor()}
-          strokeOpacity={
-            isEmpty(activeMouseHoverKey) || s === activeMouseHoverKey
-              ? DEFAULT_CHART_OPACITY
-              : HOVER_CHART_OPACITY
-          }
-          type="monotone"
-        />
-      ))}
-    </LineChart>
-  );
-};
+// The chart title already names the card and the side panel is the legend, so
+// the built-in one stays off.
+export const HIDDEN_CHART_LEGEND = { show: false } as const;
 
 export const dataInsightColor = (
   palette: ChartPalette,

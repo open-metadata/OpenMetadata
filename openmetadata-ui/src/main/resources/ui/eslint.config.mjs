@@ -461,12 +461,10 @@ export default [
       'src/components/DataContract/ContractExecutionChart/ContractExecutionChartTooltip.component.tsx',
       'src/components/DataContract/ContractExecutionChart/ContractExecutionChartTooltip.test.tsx',
       'src/components/DataInsight/DailyActiveUsersChart.tsx',
-      'src/components/DataInsight/DataInsightChartCard.tsx',
       'src/components/DataInsight/KPIChart.tsx',
       'src/components/DataInsight/PageViewsByEntitiesChart.tsx',
       'src/components/MyData/Widgets/KPIWidget/KPIWidget.component.tsx',
       'src/constants/DataContract.constants.ts',
-      'src/utils/DataInsightChartUtils.tsx',
     ],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
