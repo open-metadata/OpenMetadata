@@ -83,7 +83,7 @@ const ActivityToolbar = ({
   return (
     <Box
       align="center"
-      className="tw:sticky tw:top-0 tw:z-10 tw:flex-wrap tw:justify-between tw:bg-primary tw:py-2"
+      className="tw:flex-wrap tw:justify-between"
       data-testid="activity-toolbar"
       gap={2}>
       <Tabs

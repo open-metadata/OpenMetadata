@@ -17,6 +17,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FilterFunnel01, Hourglass01 } from '@untitledui/icons';
+import classNames from 'classnames';
 import { groupBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,6 +43,7 @@ import {
   useInboxActivity,
 } from '../useInboxActivity';
 import { useIncrementalRender } from '../useIncrementalRender';
+import { useIsScrolled } from '../useIsScrolled';
 
 // Cards rendered per batch. The feed is fetched whole (up to ACTIVITY_LIMIT),
 // but mounting all of it made opening the detail drawer block for a second.
@@ -119,6 +121,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     onCountChange?.(total);
   }, [total, onCountChange]);
 
+  const { isScrolled, onScroll } = useIsScrolled();
   const { visibleItems, hasMore, scrollRef, sentinelRef } =
     useIncrementalRender(
       filteredItems,
@@ -220,14 +223,13 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   return (
     <Box className="tw:flex tw:h-full tw:min-h-0" direction="col">
+      {/* Lifts with a shadow once the feed scrolls under it. */}
       <div
-        className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-4 tw:pr-1"
-        data-testid="inbox-activity-tab"
-        ref={scrollRef}>
-        <Box
-          className="tw:mx-auto tw:w-full tw:max-w-220"
-          direction="col"
-          gap={4}>
+        className={classNames(
+          'tw:relative tw:z-10 tw:py-3 tw:transition-shadow',
+          isScrolled && 'tw:shadow-sm'
+        )}>
+        <div className="tw:mx-auto tw:w-full tw:max-w-220">
           <ActivityToolbar
             datePreset={dateRange?.key ?? DEFAULT_INBOX_DATE_PRESET}
             filter={filter}
@@ -238,8 +240,16 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
             onGroupingChange={setGrouping}
             onTypeKeysChange={setTypeKeys}
           />
+        </div>
+      </div>
+      <div
+        className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-1 tw:pb-4 tw:pr-1"
+        data-testid="inbox-activity-tab"
+        ref={scrollRef}
+        onScroll={onScroll}>
+        <div className="tw:mx-auto tw:w-full tw:max-w-220">
           {activityContent}
-        </Box>
+        </div>
       </div>
     </Box>
   );
