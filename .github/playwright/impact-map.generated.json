@@ -6768,6 +6768,13 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ExploreV1/ExploreSearchCard/ExploreSearchCard.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
+        "playwright/e2e/Features/MetricAssets.spec.ts",
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DomainAdvanced.spec.ts",
+        "playwright/e2e/Pages/Domains.spec.ts",
+        "playwright/e2e/Pages/InputOutputPorts.spec.ts",
         "playwright/e2e/Search/SearchRelevance.spec.ts"
       ]
     },
