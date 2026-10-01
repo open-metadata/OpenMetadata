@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../styles/variables.less';
+import { CustomProperty } from '../../../../generated/type/customProperty';
+import { CustomPropertyChanges } from '../../../../rest/metadataTypeAPI';
 
-.custom-property-type-chip {
-  background: @grey-1;
-  border: 1px solid @text-color;
-  padding: var(--om-space-4) var(--om-space-8);
-  border-radius: var(--om-radius-15);
-  width: fit-content;
+export interface EditCustomPropertyModalProps {
+  customProperty: CustomProperty;
+  onCancel: () => void;
+  onSave: (changes: CustomPropertyChanges) => Promise<void>;
 }

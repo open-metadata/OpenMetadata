@@ -499,6 +499,23 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void getEntityTypesForIndexUsesRegisteredMappings() {
+    SearchRepository resolver =
+        newRepository(
+            Map.of(
+                Entity.TABLE, TABLE_MAPPING,
+                Entity.TABLE_COLUMN, COLUMN_MAPPING,
+                Entity.DOMAIN, DOMAIN_MAPPING,
+                Entity.MLMODEL_SERVICE, MLMODEL_SERVICE_MAPPING),
+            "cluster");
+    assertEquals(
+        List.of("domain", "table"),
+        resolver.getEntityTypesForIndex("table,domain,table_search_index"));
+    assertEquals(List.of("mlmodelService"), resolver.getEntityTypesForIndex("mlModelService"));
+    assertEquals(List.of(), resolver.getEntityTypesForIndex("unknown"));
+  }
+
+  @Test
   void indexExistsFallsBackToAliasLookup() {
     when(searchClient.indexExists("cluster_table_search_index")).thenReturn(false);
     when(searchClient.getIndicesByAlias("cluster_table_search_index"))
