@@ -11,39 +11,56 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { PropsWithChildren } from 'react';
-import {
-  CustomTooltip,
-  renderDataInsightLineChart,
-  renderLegend,
-} from './DataInsightChartUtils';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { CustomTooltip, renderLegend } from './DataInsightChartUtils';
 
-jest.mock('recharts', () => ({
-  CartesianGrid: ({ stroke }: { stroke: string }) => (
-    <div data-stroke={stroke} data-testid="data-insight-grid" />
-  ),
-  Line: ({ stroke }: { stroke: string }) => (
-    <div data-stroke={stroke} data-testid="data-insight-line" />
-  ),
-  LineChart: ({ children }: PropsWithChildren) => <div>{children}</div>,
-  Surface: ({ children }: PropsWithChildren) => <svg>{children}</svg>,
-  Tooltip: () => null,
-  XAxis: ({ tick }: { tick?: { fill: string } }) => (
-    <div data-fill={tick?.fill} data-testid="data-insight-x-axis" />
-  ),
-  YAxis: ({ tick }: { tick?: { fill: string } }) => (
-    <div data-fill={tick?.fill} data-testid="data-insight-y-axis" />
-  ),
-}));
+describe('renderLegend', () => {
+  it('renders one swatch per entry and greys out inactive ones', () => {
+    const onClick = jest.fn();
+    render(
+      renderLegend(
+        {
+          payload: [
+            { value: 'table', color: '#111111' },
+            { value: 'topic', color: '#222222' },
+          ],
+          onClick,
+        },
+        ['table'],
+        undefined,
+        '#959595'
+      )
+    );
 
-const CHART_COLORS = {
-  axis: '#123456',
-  grid: '#234567',
-  inactive: '#345678',
-};
+    const swatches = document.querySelectorAll('svg rect');
 
-describe('DataInsightChartUtils theme colors', () => {
+    expect(swatches[0]).toHaveAttribute('fill', '#111111');
+    expect(swatches[1]).toHaveAttribute('fill', '#959595');
+
+    fireEvent.click(screen.getByText('topic'));
+
+    expect(onClick).toHaveBeenCalledWith(
+      expect.objectContaining({ value: 'topic' }),
+      1,
+      expect.anything()
+    );
+  });
+
+  it('applies the active theme muted color to inactive legends', () => {
+    render(
+      renderLegend(
+        { payload: [{ color: '#abcdef', value: 'Table' }] },
+        ['Dashboard'],
+        undefined,
+        '#345678'
+      )
+    );
+
+    expect(screen.getByText('Table')).toHaveStyle({ color: '#345678' });
+  });
+});
+
+describe('CustomTooltip', () => {
   it('uses the semantic text color for tooltip titles', () => {
     render(
       <CustomTooltip
@@ -66,46 +83,27 @@ describe('DataInsightChartUtils theme colors', () => {
     );
   });
 
-  it('applies active theme colors to reusable line charts', () => {
+  it('renders a row per series from a structural payload', () => {
     render(
-      Reflect.apply(renderDataInsightLineChart, null, [
-        [{ day: 1, table: 2 }],
-        ['table'],
-        [],
-        '',
-        false,
-        CHART_COLORS,
-      ])
+      <CustomTooltip
+        active
+        payload={[
+          {
+            dataKey: 'table',
+            name: 'table',
+            value: 4,
+            color: '#111111',
+            payload: { timestampValue: 1696118400000 },
+          },
+        ]}
+      />
     );
 
-    expect(screen.getByTestId('data-insight-grid')).toHaveAttribute(
-      'data-stroke',
-      '#234567'
+    expect(screen.getByText('Table')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+    expect(document.querySelector('svg rect')).toHaveAttribute(
+      'fill',
+      '#111111'
     );
-    expect(screen.getByTestId('data-insight-x-axis')).toHaveAttribute(
-      'data-fill',
-      '#123456'
-    );
-    expect(screen.getByTestId('data-insight-y-axis')).toHaveAttribute(
-      'data-fill',
-      '#123456'
-    );
-  });
-
-  it('applies the active theme muted color to inactive legends', () => {
-    const legend = {
-      payload: [{ color: '#abcdef', value: 'Table' }],
-    };
-
-    render(
-      Reflect.apply(renderLegend, null, [
-        legend,
-        ['Dashboard'],
-        undefined,
-        CHART_COLORS.inactive,
-      ])
-    );
-
-    expect(screen.getByText('Table')).toHaveStyle({ color: '#345678' });
   });
 });

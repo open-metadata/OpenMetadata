@@ -15,10 +15,8 @@ import { Card, Typography } from 'antd';
 import { isEmpty, startCase, uniqBy } from 'lodash';
 import {
   CartesianGrid,
-  LegendProps,
   Line,
   LineChart,
-  Surface,
   Tooltip,
   XAxis,
   YAxis,
@@ -29,7 +27,10 @@ import {
   HOVER_CHART_OPACITY,
 } from '../constants/constants';
 import { BAR_CHART_MARGIN } from '../constants/DataInsight.constants';
-import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
+import {
+  DataInsightChartTooltipProps,
+  DataInsightLegendProps,
+} from '../interface/data-insight.interface';
 import { axisTickFormatter } from './ChartUtils';
 import { entityChartColor } from './ColorUtils';
 import './DataInsightChartUtils.style.less';
@@ -40,7 +41,7 @@ import {
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 
 export const renderLegend = (
-  legendData: LegendProps,
+  legendData: DataInsightLegendProps,
   activeKeys = [] as string[],
   valueFormatter?: (value: string) => string,
   inactiveColor = GRAYED_OUT_COLOR
@@ -69,14 +70,14 @@ export const renderLegend = (
               legendData.onMouseLeave &&
               legendData.onMouseLeave(entry, index, e)
             }>
-            <Surface className="m-r-xss" height={14} version="1.1" width={14}>
+            <svg aria-hidden className="m-r-xss" height={14} width={14}>
               <rect
                 fill={isActive ? entry.color : inactiveColor}
                 height="14"
                 rx="2"
                 width="14"
               />
-            </Surface>
+            </svg>
             <span style={{ color: isActive ? 'inherit' : inactiveColor }}>
               {valueFormatter ? valueFormatter(entry.value) : entry.value}
             </span>
@@ -136,22 +137,21 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
                 className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
                 key={`item-${entry.name ?? entry.dataKey}`}>
                 <span className="flex items-center text-grey-muted">
-                  <Surface
-                    className="mr-2"
-                    height={12}
-                    version="1.1"
-                    width={12}>
+                  <svg aria-hidden className="mr-2" height={12} width={12}>
                     <rect fill={entry.color} height="14" rx="2" width="14" />
-                  </Surface>
+                  </svg>
                   <span style={labelStyles}>
                     {transformLabel
-                      ? startCase(entry.name ?? (entry.dataKey as string))
+                      ? startCase((entry.name ?? entry.dataKey) as string)
                       : entry.name ?? (entry.dataKey as string)}
                   </span>
                 </span>
                 <span className="font-medium" style={valueStyles}>
                   {valueFormatter
-                    ? valueFormatter(value, entry.name ?? entry.dataKey)
+                    ? valueFormatter(
+                        value,
+                        (entry.name ?? entry.dataKey) as string
+                      )
                     : getEntryFormattedValue(value, isPercentage)}
                 </span>
               </li>

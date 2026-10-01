@@ -466,9 +466,6 @@ export default [
       'src/components/DataInsight/PageViewsByEntitiesChart.tsx',
       'src/components/MyData/Widgets/KPIWidget/KPIWidget.component.tsx',
       'src/constants/DataContract.constants.ts',
-      'src/constants/DataInsight.constants.ts',
-      'src/interface/data-insight.interface.ts',
-      'src/utils/ChartUtils.tsx',
       'src/utils/DataInsightChartUtils.tsx',
     ],
     rules: {

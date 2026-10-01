@@ -12,7 +12,6 @@
  */
 
 import { RowProps } from 'antd/lib/grid/row';
-import { Margin } from 'recharts/types/util/types';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
@@ -26,7 +25,14 @@ import {
 } from '../utils/date-time/DateTimeUtils';
 import { DEFAULT_SELECTED_RANGE } from './profiler.constant';
 
-export const BAR_CHART_MARGIN: Margin = {
+export interface ChartMargin {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
+export const BAR_CHART_MARGIN: ChartMargin = {
   top: 20,
   right: 30,
   left: 0,

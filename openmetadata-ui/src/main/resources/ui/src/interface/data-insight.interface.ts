@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { TooltipProps } from 'recharts';
 import { DataInsightIndex, SystemChartType } from '../enums/DataInsight.enum';
 import { ReportData } from '../generated/analytics/reportData';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
@@ -38,11 +37,23 @@ export interface ChartFilter {
   endTs: number;
 }
 
-export interface DataInsightChartTooltipProps
-  extends TooltipProps<
-    number | string | Array<number | string>,
-    number | string
-  > {
+/**
+ * One series value handed to a Data Insight tooltip. Structural, so recharts'
+ * tooltip payload (Collate) still fits.
+ */
+export interface DataInsightTooltipEntry {
+  name?: string | number;
+  dataKey?: string | number;
+  value?: number | string | Array<number | string>;
+  color?: string;
+  // The hovered row, any shape.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload?: any;
+}
+
+export interface DataInsightChartTooltipProps {
+  active?: boolean;
+  payload?: DataInsightTooltipEntry[];
   cardStyles?: React.CSSProperties;
   customValueKey?: string;
   displayDateInHeader?: boolean;
@@ -56,6 +67,31 @@ export interface DataInsightChartTooltipProps
   valueStyles?: React.CSSProperties;
   transformLabel?: boolean;
   valueFormatter?: (value: number | string, key?: string) => string | number;
+}
+
+export interface DataInsightLegendEntry {
+  value: string;
+  color?: string;
+}
+
+/** Structural, so recharts' `LegendProps` (Collate) still fits. */
+export interface DataInsightLegendProps {
+  payload?: DataInsightLegendEntry[];
+  onClick?: (
+    entry: DataInsightLegendEntry,
+    index: number,
+    event: React.MouseEvent
+  ) => void;
+  onMouseEnter?: (
+    entry: DataInsightLegendEntry,
+    index: number,
+    event: React.MouseEvent
+  ) => void;
+  onMouseLeave?: (
+    entry: DataInsightLegendEntry,
+    index: number,
+    event: React.MouseEvent
+  ) => void;
 }
 
 export interface UIKpiResult extends KpiResult {
