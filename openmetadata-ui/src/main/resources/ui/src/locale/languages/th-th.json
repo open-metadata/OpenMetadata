@@ -3447,6 +3447,7 @@
     "expected-schema-structure-of-this-asset": "โครงสร้างสคีมาที่คาดหวังของทรัพย์สินนี้",
     "expected-true-or-false-got-type": "ต้องการ true หรือ false แต่ได้รับ {{type}}",
     "explore-our-guide-here": "สำรวจกับคู่มือนี้ที่นี่",
+    "explore-search-placeholder": "ค้นหาทั่ว Context Platform ของคุณ",
     "export-all-matching-assets-description": "ส่งออกทั้งหมดของทรัพย์สินที่ตรงกับคำค้นหาในประเภททรัพย์สิน",
     "export-assets-limit-exceeded": "การส่งออกจะถูกจำกัดไว้ที่ {{limit}} ทรัพย์สิน โปรดปรับปรุงตัวกรองของคุณหรือเลือกผลลัพธ์ที่สามารถเห็นได้",
     "export-audit-logs-description": "ส่งออกบันทึกการตรวจสอบ เลือกช่วงวันที่เพื่อกรองเหตุการณ์ ไฟล์ส่งออกจะถูกจำกัดไว้ที่ 100,000 รายการ",

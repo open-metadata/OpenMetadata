@@ -3447,6 +3447,7 @@
     "expected-schema-structure-of-this-asset": "بنية المخطط المتوقعة لهذا الأصل",
     "expected-true-or-false-got-type": "كان من المتوقع true أو false، تم الحصول على {{type}}",
     "explore-our-guide-here": "استكشف دليلنا هنا.",
+    "explore-search-placeholder": "ابحث في Context Platform الخاص بك",
     "export-all-matching-assets-description": "تصدير جميع الأصول المطابقة لهذا البحث عبر أنواع الأصول",
     "export-assets-limit-exceeded": "يتم تقييد التصدير إلى {{limit}} أصول. يرجى تحسين التصفيات أو اختيار النتائج المرئية.",
     "export-audit-logs-description": "تصدير سجلات التدقيق. حدد نطاق تاريخ لتصفية الأحداث. سيكون ملف التصدير محدودًا بـ 100,000 إدخال.",

@@ -3447,6 +3447,7 @@
     "expected-schema-structure-of-this-asset": "מבנה סchema צפוי של נכס זה",
     "expected-true-or-false-got-type": "צפוי true או false, התקבל {{type}}",
     "explore-our-guide-here": "חקור את המדריך שלנו כאן.",
+    "explore-search-placeholder": "חפש ב-Context Platform שלך",
     "export-all-matching-assets-description": "ייצא את כל הנכסים המתאימים לחיפוש זה בכל סוגי הנכסים",
     "export-assets-limit-exceeded": "ייצוא מוגבל ל-{{limit}} נכסים. נא לשפר את הסינונות שלך או לבחור תוצאות נכונות.",
     "export-audit-logs-description": "ייצא יומני ביקורת. בחר טווח תאריכים לסינון אירועים. קובץ הייצוא יוגבל ל-100,000 רשומות.",

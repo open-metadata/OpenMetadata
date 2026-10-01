@@ -3447,6 +3447,7 @@
     "expected-schema-structure-of-this-asset": "ساختار طرح مورد انتظار این دارایی",
     "expected-true-or-false-got-type": "true یا false انتظار می‌رفت، {{type}} دریافت شد",
     "explore-our-guide-here": "راهنمای ما را اینجا ببینید.",
+    "explore-search-placeholder": "Search across your Context Platform",
     "export-all-matching-assets-description": "صادرات همه ی دارایی‌های مطابق با این جستجو در طرح‌های دارایی",
     "export-assets-limit-exceeded": "Export is beperkt tot {{limit}} activa. Please refine your filters or choose visible results.",
     "export-audit-logs-description": "صدور گزارش‌های حسابرسی. یک بازه تاریخ برای فیلتر کردن رویدادها انتخاب کنید. فایل صادر شده به 100,000 ورودی محدود خواهد بود.",

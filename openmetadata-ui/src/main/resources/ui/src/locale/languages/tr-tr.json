@@ -3447,6 +3447,7 @@
     "expected-schema-structure-of-this-asset": "Bu varlığın beklenen şema yapısı",
     "expected-true-or-false-got-type": "true veya false bekleniyordu, {{type}} alındı",
     "explore-our-guide-here": "kılavuzumuzu buradan keşfedin.",
+    "explore-search-placeholder": "Context Platform genelinde arayın",
     "export-all-matching-assets-description": "Bu aramayla eşleşen tüm varlıkları varlık türleri arasında dışa aktarın",
     "export-assets-limit-exceeded": "Dışa aktarma {{limit}} varlığa kadar sınırlıdır. Lütfen filtrelerinizi iyileştirin veya görünür sonuçları seçin.",
     "export-audit-logs-description": "Denetim günlüklerini dışa aktar. Olayları filtrelemek için bir tarih aralığı seçin. Dışa aktarma dosyası 100.000 girişle sınırlı olacaktır.",

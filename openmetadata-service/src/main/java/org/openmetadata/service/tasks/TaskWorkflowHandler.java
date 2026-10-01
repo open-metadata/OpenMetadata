@@ -56,6 +56,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
@@ -686,8 +687,16 @@ public class TaskWorkflowHandler {
       String user,
       List<TagLabel> tagsToAdd,
       List<TagLabel> tagsToRemove) {
+    patchEntityTags(entity, repository, user, mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
+  }
+
+  private void patchEntityTags(
+      EntityInterface entity,
+      EntityRepository<?> repository,
+      String user,
+      List<TagLabel> updatedTags) {
     String originalJson = JsonUtils.pojoToJson(entity);
-    entity.setTags(mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
+    entity.setTags(updatedTags);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
     if (patch != null && !patch.toJsonArray().isEmpty()) {
       PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
@@ -929,9 +938,9 @@ public class TaskWorkflowHandler {
         return;
       }
 
-      String targetFqn = entity.getFullyQualifiedName();
-      repository.applyTags(List.of(newTier), targetFqn);
-      RdfUpdater.updateEntity(entity);
+      List<TagLabel> updatedTags =
+          TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), List.of(newTier));
+      patchEntityTags(entity, repository, user, updatedTags);
       LOG.info(
           "[TaskWorkflowHandler] Applied TierUpdate for entity '{}': tier={}",
           entity.getName(),

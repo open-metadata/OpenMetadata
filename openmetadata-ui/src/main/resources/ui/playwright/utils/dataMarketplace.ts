@@ -24,7 +24,7 @@ export const navigateToMarketplace = async (page: Page) => {
 };
 
 export const searchMarketplace = async (page: Page, term: string) => {
-  const searchWrapper = page.getByTestId('marketplace-search-input');
+  const searchWrapper = page.getByTestId('explore-search-input');
   await expect(searchWrapper).toBeVisible();
   const searchInput = searchWrapper.locator('input');
   await searchInput.clear();
@@ -40,7 +40,7 @@ export const searchMarketplace = async (page: Page, term: string) => {
 };
 
 export const closeSearchPopover = async (page: Page) => {
-  const searchWrapper = page.getByTestId('marketplace-search-input');
+  const searchWrapper = page.getByTestId('explore-search-input');
   const searchInput = searchWrapper.locator('input');
   await searchInput.clear();
   await expect(page.locator('.marketplace-search-results')).not.toBeVisible();

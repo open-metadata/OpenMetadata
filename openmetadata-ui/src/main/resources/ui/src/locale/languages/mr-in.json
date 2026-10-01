@@ -3447,6 +3447,7 @@
     "expected-schema-structure-of-this-asset": "या मालमत्तेची अपेक्षित स्कीमा रचना",
     "expected-true-or-false-got-type": "true किंवा false अपेक्षित होते, मिळाले {{type}}",
     "explore-our-guide-here": "आमचा मार्गदर्शक येथे एक्सप्लोर करा.",
+    "explore-search-placeholder": "तुमच्या Context Platform मध्ये शोधा",
     "export-all-matching-assets-description": "या शोधासाठी या शोधासाठी सर्व मिळणारे ॲसेट्स निर्यात करा",
     "export-assets-limit-exceeded": "निर्यात {{limit}} ॲसेट्स पर्यंत मर्यादित आहे. कृपया आपले फिल्टर्स तपासा किंवा दिसणारे परिणाम निवडा.",
     "export-audit-logs-description": "ऑडिट लॉग एक्सपोर्ट करा. इव्हेंट फिल्टर करण्यासाठी तारीख श्रेणी निवडा. एक्सपोर्ट फाइल 100,000 एंट्रीपर्यंत मर्यादित असेल.",

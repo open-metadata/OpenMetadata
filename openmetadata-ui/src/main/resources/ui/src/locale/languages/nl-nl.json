@@ -3447,6 +3447,7 @@
     "expected-schema-structure-of-this-asset": "Verwachte schemastructuur van dit asset",
     "expected-true-or-false-got-type": "true of false verwacht, kreeg {{type}}",
     "explore-our-guide-here": "bekijk onze handleiding hier.",
+    "explore-search-placeholder": "Zoek in je Context Platform",
     "export-all-matching-assets-description": "Exporteer alle activa die overeenkomen met deze zoekopdracht over activa typen",
     "export-assets-limit-exceeded": "Export is beperkt tot {{limit}} activa. Please refine your filters or choose visible results.",
     "export-audit-logs-description": "Exporteer auditlogs. Selecteer een datumbereik om gebeurtenissen te filteren. Het exportbestand is beperkt tot 100.000 items.",
