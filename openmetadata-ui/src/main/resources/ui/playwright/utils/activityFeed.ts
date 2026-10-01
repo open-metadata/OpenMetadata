@@ -80,7 +80,8 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
 
   await page.locator('[data-testid="delete-message"]').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  // Same here: the delete confirm is ConfirmationModal, now a core Dialog.
+  await page.getByTestId('confirmation-modal').waitFor();
   await waitForAntdModalToSettle(page);
 
   const deleteResponse = page.waitForResponse(

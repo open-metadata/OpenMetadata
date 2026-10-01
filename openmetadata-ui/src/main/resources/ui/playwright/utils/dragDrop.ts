@@ -103,7 +103,7 @@ export const confirmationDragAndDropTeam = async (
 ) => {
   // Confirmation message before the transfer
   await expect(
-    page.locator('[data-testid="confirmation-modal"] [data-testid="body-text"]')
+    page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
   ).toContainText(
     `Click on Confirm if you’d like to move ${dragTeam} team under ${dropTeam} team.`
   );
