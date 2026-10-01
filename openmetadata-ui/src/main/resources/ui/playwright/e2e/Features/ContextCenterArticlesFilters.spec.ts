@@ -159,7 +159,7 @@ test.describe(
       // code — the throw names the first FQN that never appeared so the cause is unambiguous.
       await Promise.all(
         createdArticleFqns.map((fqn) =>
-          waitForSearchIndexed(apiContext, fqn, 'page', { timeout: 90_000 })
+          waitForSearchIndexed(apiContext, fqn, 'page', { timeout: 180_000 })
         )
       );
 
