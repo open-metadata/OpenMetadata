@@ -32,6 +32,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 
 // Mock react-i18next
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
   Tooltip: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
@@ -123,20 +124,6 @@ jest.mock('antd', () => ({
         {children}
       </button>
     )),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
-    )),
-    Paragraph: jest
-      .fn()
-      .mockImplementation(({ children, className, ...props }) => (
-        <p className={className} data-testid="typography-paragraph" {...props}>
-          {children}
-        </p>
-      )),
-  },
 }));
 
 // Mock SVG components with unique implementations
@@ -529,7 +516,7 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} />);
 
-      const paragraph = screen.getByTestId('typography-paragraph');
+      const paragraph = screen.getByText('label.lineage-not-found');
 
       expect(paragraph).toBeInTheDocument();
       expect(paragraph).toHaveClass('text-center');

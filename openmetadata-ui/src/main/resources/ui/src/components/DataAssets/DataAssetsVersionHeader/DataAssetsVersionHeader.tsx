@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Owner } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Divider, Row, Space, Tooltip } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -134,7 +134,7 @@ function DataAssetsVersionHeader({
                 data-testid="version-button"
                 icon={<Icon component={VersionIcon} />}
                 onClick={onVersionClick}>
-                <Typography.Text>{version}</Typography.Text>
+                <Typography>{version}</Typography>
               </Button>
             </Tooltip>
           </Col>

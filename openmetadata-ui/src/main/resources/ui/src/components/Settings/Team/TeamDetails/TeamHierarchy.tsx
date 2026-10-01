@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Skeleton, Space, Switch, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Modal, Skeleton, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -147,9 +148,11 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
               paragraph={{ rows: 0 }}
             />
           ) : (
-            <Typography.Text data-testid="team-asset-count">
+            <Typography
+              className="tw:text-primary"
+              data-testid="team-asset-count">
               {teamAssetCounts?.[fullyQualifiedName] ?? 0}
-            </Typography.Text>
+            </Typography>
           ),
       },
       ...descriptionTableObject<Team>({ width: 300 }),
@@ -333,9 +336,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
                   data-testid="show-deleted"
                   onClick={onShowDeletedTeamChange}
                 />
-                <Typography.Text className="m-l-xs">
-                  {t('label.deleted')}
-                </Typography.Text>
+                <Typography className="m-l-xs">{t('label.deleted')}</Typography>
               </span>
 
               {createTeamPermission && !isTeamDeleted && (

@@ -80,7 +80,8 @@ import org.openmetadata.service.util.EntityUtil;
 @Collection(name = "contextMemories")
 public class ContextMemoryResource extends EntityResource<ContextMemory, ContextMemoryRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/memories/";
-  public static final String FIELDS = "owners,tags,domains,primaryEntity,relatedEntities";
+  public static final String FIELDS =
+      "owners,tags,domains,primaryEntity,relatedEntities,derivedEntities";
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
 
@@ -104,6 +105,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     super.addHref(uriInfo, memory);
     Entity.withHref(uriInfo, memory.getPrimaryEntity());
     Entity.withHref(uriInfo, memory.getRelatedEntities());
+    Entity.withHref(uriInfo, memory.getDerivedEntities());
     Entity.withHref(uriInfo, memory.getRootMemory());
     Entity.withHref(uriInfo, memory.getParentMemory());
     return memory;

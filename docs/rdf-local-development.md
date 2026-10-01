@@ -203,7 +203,7 @@ rdf:
   shaclValidationMode: ${RDF_SHACL_VALIDATION_MODE:-"REPORT"}
   dereferenceableIris: ${RDF_DEREFERENCEABLE_IRIS:-false}
   strictOwlProfile: ${RDF_STRICT_OWL_PROFILE:-true}
-  askCollateEnabled: ${RDF_ASK_COLLATE_ENABLED:-false}
+  aiEnabled: ${RDF_AI_ENABLED:-false}
 ```
 
 ### Environment Variables
@@ -231,7 +231,16 @@ rdf:
 | `RDF_SHACL_VALIDATION_MODE` | Import validation policy | `REPORT` |
 | `RDF_DEREFERENCEABLE_IRIS` | Enable authenticated LOD redirects | `false` |
 | `RDF_STRICT_OWL_PROFILE` | Enforce supported OWL profile rules | `true` |
-| `RDF_ASK_COLLATE_ENABLED` | Enable Ontology Studio AI | `false` |
+| `RDF_AI_ENABLED` | Enable Ontology Studio AI | `false` |
+| `LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED` | Allow memory-derived ontology draft jobs when RDF AI and LLM completion are enabled | `false` |
+
+Memory-derived glossary drafts require `RDF_AI_ENABLED=true`, `LLM_ENABLED=true`, and
+`LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED=true`. With all three on, creating or publishing an Entity or
+Public memory queues a derivation job automatically; memories extracted from the same file or page
+share one job, which starts about 30 seconds after the first of them. A proposal can also be
+requested through `POST /api/v1/ontology/ai/memories/jobs`; Private and Shared memories need their
+owner to request it. `RDF_ASK_COLLATE_ENABLED` is still read as a deprecated alias of
+`RDF_AI_ENABLED`.
 
 ### Docker Compose Configuration
 

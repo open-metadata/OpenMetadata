@@ -319,8 +319,11 @@ export const redirectToHomePage = async (
 };
 
 export const redirectToExplorePage = async (page: Page) => {
-  await page.goto('/explore');
-  await page.waitForURL('**/explore');
+  // `load` (the default) also waits for every image, font and stylesheet; on a
+  // slow runner that alone can exceed the navigation timeout. Callers depend
+  // only on the DOM and the loader wait below.
+  await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL('**/explore', { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -512,9 +515,9 @@ export const toastNotification = async (
     .filter({ hasText: message })
     .first();
 
-  await toast.waitFor({ state: 'visible', timeout });
-
-  await expect(toast.getByTestId('alert-icon')).toBeVisible();
+  // Toasts auto-dismiss; assert only the text-filtered toast being visible, not its internal
+  // icon, to avoid the icon detaching between the filter resolving and the check.
+  await expect(toast).toBeVisible({ timeout });
 };
 
 /**
