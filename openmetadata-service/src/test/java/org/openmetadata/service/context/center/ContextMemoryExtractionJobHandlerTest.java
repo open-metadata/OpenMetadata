@@ -1,6 +1,8 @@
 package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -42,6 +44,24 @@ class ContextMemoryExtractionJobHandlerTest {
         new ContextMemoryExtractionJobHandler.Args(Entity.CONTEXT_FILE, fileId, null, "bad");
 
     assertThrows(BackgroundJobException.class, () -> handler.runJob(job(args)));
+  }
+
+  @Test
+  void fileFailureUsesSourceNeutralJobMessage() {
+    UUID fileId = UUID.randomUUID();
+    UUID contentId = UUID.randomUUID();
+    doThrow(new IllegalStateException("unavailable"))
+        .when(fileService)
+        .runMemoryExtraction(fileId, contentId);
+
+    BackgroundJobException error =
+        assertThrows(
+            BackgroundJobException.class,
+            () ->
+                handler.runJob(
+                    job(ContextMemoryExtractionJobHandler.Args.file(fileId, contentId))));
+
+    assertTrue(error.getMessage().contains("Context memory extraction failed"));
   }
 
   private BackgroundJob job(ContextMemoryExtractionJobHandler.Args args) {

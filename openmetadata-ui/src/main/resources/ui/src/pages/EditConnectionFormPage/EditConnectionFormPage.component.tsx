@@ -17,10 +17,10 @@ import {
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { OpenIncidents } from '@openmetadata/ui-core-components/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState, ServicesUpdateRequest } from 'Models';
 import React, {
   lazy,
@@ -59,7 +59,10 @@ import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { getServiceType } from '../../utils/ServicePureUtils';
+import {
+  getServiceCategoryLabel,
+  getServiceType,
+} from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -190,7 +193,7 @@ function EditConnectionFormPage() {
       setServiceDetails(response);
       setSlashedBreadcrumb([
         {
-          label: startCase(serviceCategory),
+          label: getServiceCategoryLabel(serviceCategory),
           id: 'service-category',
         },
         {
@@ -273,7 +276,7 @@ function EditConnectionFormPage() {
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <EmptyPlaceholder
           description={getEntityMissingError(serviceCategory, serviceFQN)}
-          icon={<OpenIncidents className="tw:text-secondary" />}
+          icon={<AlertTriangle className="tw:text-secondary" />}
           title={t('message.something-went-wrong')}
         />
       </div>

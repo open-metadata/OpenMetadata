@@ -383,8 +383,15 @@ public class ContextFileProcessingService {
   private FileContextProcessingEngine defaultFileEngine() {
     ContextMemoryRepository memoryRepository =
         (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    SemanticMemoryDuplicateFinder duplicateFinder =
+        new SemanticMemoryDuplicateFinder(
+            memoryRepository,
+            () -> Entity.getSearchRepository().getVectorIndexService(),
+            LLMClientHolder.get());
     return new FileContextProcessingEngine(
-        repository, memoryExtractorSupplier.get(), new ContextMemoryReconciler(memoryRepository));
+        repository,
+        memoryExtractorSupplier.get(),
+        new ContextMemoryReconciler(memoryRepository, duplicateFinder));
   }
 
   private void markProcessed(UUID fileId, UUID contentId) {

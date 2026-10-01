@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
@@ -705,11 +706,141 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return memories;
   }
 
+  public void linkExtractedMemory(UUID memoryId, EntityReference source) {
+    boolean alreadyLinked =
+        findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, source.getType())
+            .stream()
+            .anyMatch(existing -> source.getId().equals(existing.getId()));
+    if (alreadyLinked) {
+      return;
+    }
+    ContextMemory current =
+        get(
+            null,
+            memoryId,
+            getFields("sourceEntity,primaryEntity,relatedEntities"),
+            Include.NON_DELETED,
+            false);
+    boolean isPrimary =
+        current.getPrimaryEntity() != null
+            && source.getId().equals(current.getPrimaryEntity().getId());
+    boolean isRelated =
+        listOrEmpty(current.getRelatedEntities()).stream()
+            .anyMatch(related -> source.getId().equals(related.getId()));
+    if (!isPrimary && !isRelated) {
+      ContextMemory updated = JsonUtils.deepCopy(current, ContextMemory.class);
+      List<EntityReference> related = new ArrayList<>(listOrEmpty(current.getRelatedEntities()));
+      related.add(source);
+      updated.setRelatedEntities(related);
+      update(null, current, updated, Entity.ADMIN_USER_NAME);
+    }
+    addRelationship(
+        source.getId(),
+        memoryId,
+        source.getType(),
+        Entity.CONTEXT_MEMORY,
+        Relationship.MENTIONED_IN);
+  }
+
+  public boolean hasOtherSources(UUID memoryId, EntityReference source) {
+    return findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null).stream()
+        .anyMatch(
+            other ->
+                !other.getId().equals(source.getId()) || !other.getType().equals(source.getType()));
+  }
+
+  public void releaseExtractedMemory(UUID memoryId, EntityReference source) {
+    List<EntityReference> otherSources =
+        findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null).stream()
+            .filter(
+                other ->
+                    !other.getId().equals(source.getId())
+                        || !other.getType().equals(source.getType()))
+            .toList();
+    if (otherSources.isEmpty()) {
+      delete(Entity.ADMIN_USER_NAME, memoryId, false, true);
+      return;
+    }
+
+    boolean wasPrimary = hasSourceRelationship(memoryId, source, Relationship.APPLIED_TO);
+    boolean wasRelated = hasSourceRelationship(memoryId, source, Relationship.RELATED_TO);
+    reparentSharedMemory(memoryId, source, otherSources.getFirst(), wasPrimary, wasRelated);
+    deleteRelationship(
+        source.getId(),
+        source.getType(),
+        memoryId,
+        Entity.CONTEXT_MEMORY,
+        Relationship.MENTIONED_IN);
+    if (wasPrimary) {
+      deleteRelationship(
+          source.getId(),
+          source.getType(),
+          memoryId,
+          Entity.CONTEXT_MEMORY,
+          Relationship.APPLIED_TO);
+    }
+    if (wasRelated) {
+      deleteRelationship(
+          source.getId(),
+          source.getType(),
+          memoryId,
+          Entity.CONTEXT_MEMORY,
+          Relationship.RELATED_TO);
+    }
+  }
+
+  private boolean hasSourceRelationship(
+      UUID memoryId, EntityReference source, Relationship relationship) {
+    return findFrom(memoryId, Entity.CONTEXT_MEMORY, relationship, source.getType(), Include.ALL)
+        .stream()
+        .anyMatch(reference -> reference.getId().equals(source.getId()));
+  }
+
+  private void reparentSharedMemory(
+      UUID memoryId,
+      EntityReference source,
+      EntityReference replacement,
+      boolean wasPrimary,
+      boolean wasRelated) {
+    ContextMemory current =
+        get(
+            null,
+            memoryId,
+            getFields("sourceEntity,primaryEntity,relatedEntities"),
+            Include.NON_DELETED,
+            false);
+    boolean sourceEntityMatches =
+        current.getSourceEntity() != null
+            && current.getSourceEntity().getId().equals(source.getId());
+    boolean replacementIsRelated =
+        wasPrimary
+            && listOrEmpty(current.getRelatedEntities()).stream()
+                .anyMatch(related -> related.getId().equals(replacement.getId()));
+    if (!sourceEntityMatches && !wasPrimary && !wasRelated && !replacementIsRelated) {
+      return;
+    }
+    ContextMemory updated = JsonUtils.deepCopy(current, ContextMemory.class);
+    if (sourceEntityMatches) {
+      updated.setSourceEntity(replacement);
+    }
+    if (wasPrimary) {
+      updated.setPrimaryEntity(replacement);
+    }
+    if (wasRelated || replacementIsRelated) {
+      updated.setRelatedEntities(
+          listOrEmpty(current.getRelatedEntities()).stream()
+              .filter(
+                  related ->
+                      !related.getId().equals(source.getId())
+                          && (!wasPrimary || !related.getId().equals(replacement.getId())))
+              .toList());
+    }
+    update(null, current, updated, Entity.ADMIN_USER_NAME);
+  }
+
   /**
-   * Hard-deletes every knowledge pill linked to a Context Center source, whichever kind of delete
-   * the source got. A pill is derived data, regenerable from its source, so a deleted source must
-   * not leave one behind in any form — a soft-deleted pill is an invisible row that still occupies
-   * an FQN and keeps its search/vector entry until something reindexes it.
+   * Releases every knowledge pill linked to a Context Center source. A pill still linked to another
+   * source remains active; a pill whose last source is removed is hard-deleted.
    *
    * <p>The lookup uses {@link Include#ALL} because a hard delete runs the soft-delete pass first:
    * by the time the hard pass reaches here the pills this method already soft-deleted are invisible
@@ -718,8 +849,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public void deleteExtractedMemories(UUID sourceId, String sourceType) {
     List<EntityReference> refs =
         findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY, Include.ALL);
+    EntityReference source = new EntityReference().withId(sourceId).withType(sourceType);
     for (EntityReference ref : refs) {
-      delete(Entity.ADMIN_USER_NAME, ref.getId(), false, true);
+      releaseExtractedMemory(ref.getId(), source);
     }
   }
 }

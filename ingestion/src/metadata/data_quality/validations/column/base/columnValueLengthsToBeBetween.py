@@ -75,6 +75,14 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
                 Metrics.minLength.name: min_res,
             }
 
+            if self._needs_violation_count():
+                # The counts go under the same two keys a dimension row carries its own under:
+                # the verdict and the message are read off `metric_values` by code shared with
+                # the dimensional path, which only finds them by those names.
+                total_rows, violating_rows = self._run_violation_count(column, test_params)
+                metric_values[DIMENSION_TOTAL_COUNT_KEY] = total_rows
+                metric_values[DIMENSION_FAILED_COUNT_KEY] = violating_rows
+
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -89,12 +97,16 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
                 ],
             )
 
-        if self.test_case.computePassedFailedRowCount:
+        # A row tolerance already counted both, so report the counts the verdict was taken on
+        # rather than counting twice: a second scan reads the table again -- or, on a percentage
+        # sample, a different set of rows -- and could report rows that contradict the status.
+        row_count = metric_values.get(DIMENSION_TOTAL_COUNT_KEY)
+        failed_rows = metric_values.get(DIMENSION_FAILED_COUNT_KEY)
+
+        if failed_rows is None and self.test_case.computePassedFailedRowCount:
             row_count, failed_rows = self.compute_row_count(
                 column, test_params[self.MIN_BOUND], test_params[self.MAX_BOUND]
             )
-        else:
-            row_count, failed_rows = None, None
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
         result_message = self._format_result_message(metric_values, test_params=test_params)
@@ -120,17 +132,26 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
     def _get_test_parameters(self) -> dict:
         """Get test parameters for this validator
 
+        The window is left exactly as the test case configured it. This test reads every row,
+        so its failure threshold is a row tolerance -- it is spent on how many values may fall
+        outside the length window, not on widening the window itself. Widening here as well
+        would apply the same tolerance twice.
+
         Returns:
-            dict: Test parameters including min and max bounds, widened by the failure threshold
+            dict: Test parameters including min and max bounds
         """
-        min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
         return {
-            self.MIN_BOUND: min_bound,
-            self.MAX_BOUND: max_bound,
+            self.MIN_BOUND: self.get_min_bound(self.MIN_BOUND),
+            self.MAX_BOUND: self.get_max_bound(self.MAX_BOUND),
         }
 
     def _get_metrics_to_compute(self, test_params: dict | None = None) -> dict:
         """Get metrics that need to be computed for this test
+
+        The values whose length falls outside the window are not a registry metric -- there is
+        no aggregate that answers "how many values are too short or too long". They are built
+        from the bounds by `BetweenBoundsChecker` instead, in `_run_violation_count()` for the
+        overall result and in `_execute_dimensional_validation()` for each dimension row.
 
         Args:
             test_params: Optional test parameters (unused for max validator)
@@ -143,11 +164,30 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
             Metrics.minLength.name: Metrics.minLength,
         }
 
+    def _needs_violation_count(self) -> bool:
+        """Whether the values outside the length window have to be counted
+
+        Only a configured tolerance needs the count: with no tolerance, one value outside the
+        window and a shortest or longest value outside it are the same verdict, and counting
+        would cost a query nobody reads.
+        """
+        return bool(self.get_failure_threshold().value)
+
+    def _has_violation_count(self, metric_values: dict) -> bool:
+        """Whether this result was decided by counting rows rather than by the two extremes
+
+        The dimensional query counts violations for every test case, tolerance or not, so the
+        count alone does not mean a row tolerance applies. Without one the two agree anyway.
+        """
+        return self._needs_violation_count() and metric_values.get(DIMENSION_FAILED_COUNT_KEY) is not None
+
     def _evaluate_test_condition(self, metric_values: dict, test_params: dict) -> TestEvaluation:
         """Evaluate the max-to-be-between test condition
 
-        For dimensional validation, computes row-level passed/failed counts.
-        For non-dimensional validation, row counts are not applicable.
+        Without a tolerance the verdict is read off the two extremes: the shortest and the
+        longest value inside the window means every length is. That cannot answer "how many
+        rows are out of range", which is what a row tolerance is checked against, so a test
+        case that configures one is decided on the counted violations instead.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -169,11 +209,15 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
-        matched = min_bound <= min_length_value and max_length_value <= max_bound
-
-        # Extract row counts if available (dimensional validation)
+        # Extract row counts if available (row tolerance or dimensional validation)
         total_rows = metric_values.get(DIMENSION_TOTAL_COUNT_KEY)
         failed_rows = metric_values.get(DIMENSION_FAILED_COUNT_KEY)
+
+        if self._has_violation_count(metric_values):
+            matched = self._apply_row_threshold(failed_rows, total_rows)
+        else:
+            matched = min_bound <= min_length_value and max_length_value <= max_bound
+
         passed_rows = None
         if total_rows is not None and failed_rows is not None:
             passed_rows = total_rows - failed_rows
@@ -211,6 +255,22 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
 
         column = self.column_label()
 
+        if self._has_violation_count(metric_values):
+            # A row tolerance is a verdict on rows, so the message leads with the count it was
+            # checked against and keeps the window and its extremes as context.
+            counted = self.format_violation_message(
+                violations=metric_values.get(DIMENSION_FAILED_COUNT_KEY),
+                population=metric_values.get(DIMENSION_TOTAL_COUNT_KEY),
+                violation_noun=f"values in {column} outside the expected length",
+                matched=self._matched(metric_values, test_params),
+                dimension_info=dimension_info,
+            )
+            return (
+                f"{counted} Expected lengths {result_messages.bounds_phrase(min_bound, max_bound)}, "
+                f"with a shortest value of {result_messages.format_value(min_length_value)} characters "
+                f"and a longest of {result_messages.format_value(max_length_value)}."
+            )
+
         # Both extremes are checked against the same window, so the message reports both and
         # states the verdict once, on the pair.
         return self.format_statistic_message(
@@ -243,6 +303,23 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
 
     @abstractmethod
     def _run_results(self, metric: Metrics, column: SQALikeColumn | Column):
+        raise NotImplementedError
+
+    @abstractmethod
+    def _run_violation_count(self, column: SQALikeColumn | Column, test_params: dict) -> tuple[int | None, int | None]:
+        """Count the rows read and the ones whose length falls outside the window
+
+        Both halves are built by `BetweenBoundsChecker` so the SQL and the pandas engines
+        count the same rows: a NULL has no length and is not a violation, and an unset bound
+        excludes nothing.
+
+        Args:
+            column: the column under test
+            test_params: test parameters including min and max bounds
+
+        Returns:
+            tuple[int | None, int | None]: rows evaluated, rows outside the window
+        """
         raise NotImplementedError
 
     @abstractmethod

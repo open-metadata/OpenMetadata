@@ -900,7 +900,11 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   protected void postDelete(Page entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     if (LLMClientHolder.isMemoryExtractionEnabled()) {
-      PageContextProcessingEngineHolder.get().cancel(entity.getId());
+      try {
+        PageContextProcessingEngineHolder.get().cancel(entity.getId());
+      } catch (RuntimeException e) {
+        LOG.warn("Unable to cancel memory extraction for deleted page {}", entity.getId(), e);
+      }
     }
   }
 
@@ -938,7 +942,11 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
    */
   private void schedulePillExtraction(UUID pageId) {
     if (isExtractionEnabled()) {
-      PageContextProcessingEngineHolder.get().schedule(pageId);
+      try {
+        PageContextProcessingEngineHolder.get().schedule(pageId);
+      } catch (RuntimeException e) {
+        LOG.warn("Unable to queue memory extraction for page {}", pageId, e);
+      }
     }
   }
 

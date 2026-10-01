@@ -99,6 +99,7 @@ jest.mock('./TestSummaryGraph', () => {
   return jest.fn().mockImplementation(() => <div>TestSummaryGraph</div>);
 });
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn().mockImplementation((val) => `date-${val}`),
 }));
 jest.mock(
@@ -285,6 +286,86 @@ describe('TestSummary component', () => {
     });
 
     expect(screen.getByTestId('run-summary-failed')).toHaveTextContent('2');
+  });
+
+  it('should show the newest run below the tiles', async () => {
+    mockGetListTestCaseResults.mockResolvedValueOnce({
+      data: [
+        { timestamp: 1, testCaseStatus: 'Success' },
+        { timestamp: 2, testCaseStatus: 'Failed' },
+      ],
+    });
+    render(<TestSummary {...mockProps} />);
+
+    expect(await screen.findByTestId('run-details-card')).toHaveAttribute(
+      'data-status',
+      'Failed'
+    );
+  });
+
+  it('should reload the results in place when the latest run changes', async () => {
+    mockGetListTestCaseResults.mockResolvedValueOnce({
+      data: [{ timestamp: 1, testCaseStatus: 'Failed' }],
+    });
+    const testCase = {
+      ...mockProps.data,
+      testCaseResult: { timestamp: 1, testCaseStatus: 'Failed' },
+    } as TestCase;
+    const { rerender } = render(<TestSummary data={testCase} />);
+
+    expect(await screen.findByTestId('run-details-card')).toHaveAttribute(
+      'data-status',
+      'Failed'
+    );
+
+    let resolveReload!: (value: unknown) => void;
+    mockGetListTestCaseResults.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveReload = resolve;
+      })
+    );
+    rerender(
+      <TestSummary
+        data={
+          {
+            ...testCase,
+            testCaseResult: { timestamp: 2, testCaseStatus: 'Success' },
+          } as TestCase
+        }
+      />
+    );
+
+    // The chart stays on screen while the window reloads.
+    expect(screen.getByText('TestSummaryGraph')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveReload({
+        data: [
+          { timestamp: 1, testCaseStatus: 'Failed' },
+          { timestamp: 2, testCaseStatus: 'Success' },
+        ],
+      });
+    });
+
+    expect(mockGetListTestCaseResults).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('run-details-card')).toHaveAttribute(
+      'data-status',
+      'Success'
+    );
+  });
+
+  it('should not reload the results when the test case changes but its latest run does not', async () => {
+    const testCase = {
+      ...mockProps.data,
+      testCaseResult: { timestamp: 1, testCaseStatus: 'Success' },
+    } as TestCase;
+    const { rerender } = render(<TestSummary data={testCase} />);
+    await screen.findByText('DqDateRangeFilter');
+
+    rerender(<TestSummary data={{ ...testCase, description: 'edited' }} />);
+    await screen.findByText('DqDateRangeFilter');
+
+    expect(mockGetListTestCaseResults).toHaveBeenCalledTimes(1);
   });
 
   const shape = (

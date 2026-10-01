@@ -54,7 +54,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children }) => <span>{children}</span>),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Bell01: jest.fn(() => <span data-testid="bell-icon" />),
 }));
 

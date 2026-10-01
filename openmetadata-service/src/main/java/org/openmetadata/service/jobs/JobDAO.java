@@ -76,7 +76,8 @@ public interface JobDAO {
     if (lockPageForMemoryQueue(pageId) == null) {
       return;
     }
-    if (reschedulePendingMemoryJob(jobKey, runAt, updatedAt) == 0) {
+    Long pendingId = findPendingMemoryJobId(jobKey);
+    if (pendingId == null || reschedulePendingMemoryJob(pendingId, runAt, updatedAt) == 0) {
       insertJobInternal(
           BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
           "ContextMemoryExtractionJobHandler",
@@ -88,6 +89,21 @@ public interface JobDAO {
 
   @SqlQuery("SELECT id FROM knowledge_center WHERE id = :pageId FOR UPDATE")
   String lockPageForMemoryQueue(@Bind("pageId") String pageId);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id FROM background_jobs WHERE jobType = 'CONTEXT_MEMORY_EXTRACTION' "
+              + "AND methodName = 'ContextMemoryExtractionJobHandler' AND status = 'PENDING' "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.jobKey')) = :jobKey "
+              + "ORDER BY createdAt LIMIT 1",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id FROM background_jobs WHERE jobType = 'CONTEXT_MEMORY_EXTRACTION' "
+              + "AND methodName = 'ContextMemoryExtractionJobHandler' AND status = 'PENDING' "
+              + "AND jobArgs->>'jobKey' = :jobKey ORDER BY createdAt LIMIT 1",
+      connectionType = POSTGRES)
+  Long findPendingMemoryJobId(@Bind("jobKey") String jobKey);
 
   // The file row also serializes startup recovery on multiple servers. A retry may enqueue while
   // its current job is RUNNING, but ordinary recovery only enqueues when no job is in flight.
@@ -167,18 +183,15 @@ public interface JobDAO {
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE background_jobs SET runAt = :runAt, updatedAt = GREATEST(updatedAt + 1, :updatedAt) "
-              + "WHERE jobType = 'CONTEXT_MEMORY_EXTRACTION' AND methodName = 'ContextMemoryExtractionJobHandler' "
-              + "AND status = 'PENDING' "
-              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.jobKey')) = :jobKey",
+              + "WHERE id = :id AND status = 'PENDING'",
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE background_jobs SET runAt = :runAt, updatedAt = GREATEST(updatedAt + 1, :updatedAt) "
-              + "WHERE jobType = 'CONTEXT_MEMORY_EXTRACTION' AND methodName = 'ContextMemoryExtractionJobHandler' "
-              + "AND status = 'PENDING' AND jobArgs->>'jobKey' = :jobKey",
+              + "WHERE id = :id AND status = 'PENDING'",
       connectionType = POSTGRES)
   int reschedulePendingMemoryJob(
-      @Bind("jobKey") String jobKey, @Bind("runAt") long runAt, @Bind("updatedAt") long updatedAt);
+      @Bind("id") long id, @Bind("runAt") long runAt, @Bind("updatedAt") long updatedAt);
 
   @ConnectionAwareSqlUpdate(
       value =
@@ -221,8 +234,9 @@ public interface JobDAO {
       @Bind("total") int total,
       @Bind("message") String message);
 
-  default Optional<BackgroundJob> fetchPendingJob() throws BackgroundJobException {
-    return Optional.ofNullable(fetchPendingJobInternal());
+  default Optional<BackgroundJob> fetchPendingJob(boolean includeMemoryJobs)
+      throws BackgroundJobException {
+    return Optional.ofNullable(fetchPendingJobInternal(includeMemoryJobs));
   }
 
   @ConnectionAwareSqlQuery(
@@ -230,6 +244,7 @@ public interface JobDAO {
           "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
               + "progress, total, result, error, message, cancelRequested, completedAt FROM background_jobs"
               + " WHERE status = 'PENDING'"
+              + " AND (:includeMemoryJobs = true OR jobType <> 'CONTEXT_MEMORY_EXTRACTION')"
               + " AND COALESCE(runAt, 0) <= UNIX_TIMESTAMP(NOW(3)) * 1000"
               + " ORDER BY createdAt LIMIT 1",
       connectionType = MYSQL)
@@ -238,11 +253,13 @@ public interface JobDAO {
           "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
               + "progress, total, result, error, message, cancelRequested, completedAt FROM background_jobs"
               + " WHERE status = 'PENDING'"
+              + " AND (:includeMemoryJobs = true OR jobType <> 'CONTEXT_MEMORY_EXTRACTION')"
               + " AND COALESCE(runAt, 0) <= EXTRACT(EPOCH FROM NOW()) * 1000"
               + " ORDER BY createdAt LIMIT 1",
       connectionType = POSTGRES)
   @RegisterRowMapper(BackgroundJobMapper.class)
-  BackgroundJob fetchPendingJobInternal() throws StatementException;
+  BackgroundJob fetchPendingJobInternal(@Bind("includeMemoryJobs") boolean includeMemoryJobs)
+      throws StatementException;
 
   @ConnectionAwareSqlUpdate(
       value =

@@ -88,8 +88,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
         return;
       }
       long quietUntil = page.getUpdatedAt() == null ? 0L : page.getUpdatedAt() + quietPeriodMillis;
-      if (System.currentTimeMillis() < quietUntil) {
-        scheduleAt(pageId, quietUntil);
+      if (System.currentTimeMillis() < quietUntil && deferUntilQuiet(pageId, quietUntil)) {
         return;
       }
       ExtractionOutcome outcome = runExtraction(pageId);
@@ -100,6 +99,16 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       LOG.error("Knowledge pill extraction failed for page {}", pageId, e);
       stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
       throw e;
+    }
+  }
+
+  private boolean deferUntilQuiet(UUID pageId, long quietUntil) {
+    try {
+      scheduleAt(pageId, quietUntil);
+      return true;
+    } catch (RuntimeException e) {
+      LOG.warn("Unable to defer memory extraction for page {}; processing now", pageId, e);
+      return false;
     }
   }
 

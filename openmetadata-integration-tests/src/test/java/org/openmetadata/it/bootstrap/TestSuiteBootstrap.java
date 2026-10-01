@@ -294,7 +294,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // 30-day expiry, and keeps it in the datadir — the tmpfs below. That is a second,
           // append-only copy of every write, kept for replication and point-in-time recovery that
           // a throwaway single-node test database never uses.
-          "--skip-log-bin");
+          "--skip-log-bin",
+          // A deadlock error only names the statement that lost. InnoDB can log both
+          // transactions and their locks, but writes the report as a Note, which the default
+          // error-log verbosity of 2 drops.
+          "--innodb_print_all_deadlocks=ON",
+          "--log_error_verbosity=3");
+      mysql.withLogConsumer(
+          new InnoDbDeadlockReportLogger(
+              report -> LOG.warn("InnoDB deadlock report:{}{}", System.lineSeparator(), report)));
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {

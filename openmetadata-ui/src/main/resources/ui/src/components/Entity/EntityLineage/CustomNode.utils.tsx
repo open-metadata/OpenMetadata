@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
-import { Dataflow01, Plus } from '@untitledui/icons';
+import { Dataflow01, Plus } from '@openmetadata/ui-core-components/icons';
 import { Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';

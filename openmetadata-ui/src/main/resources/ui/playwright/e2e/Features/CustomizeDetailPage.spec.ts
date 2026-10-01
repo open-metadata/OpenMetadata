@@ -65,12 +65,18 @@ const openPlaceholderWidgetPicker = async (page: Page) => {
 const persona = new PersonaClass();
 // Keeping it separate so that it won't affect other tests
 const navigationPersona = new PersonaClass();
+// "Glossary Term - customization should work" saves `persona`'s Glossary Term
+// layout, so the tab-order test gets its own persona and user; otherwise it
+// inherits that layout whenever both tests run in the same worker.
+const glossaryTermPersona = new PersonaClass();
 const adminUser = new AdminClass();
 const user = new UserClass();
+const glossaryTermUser = new UserClass();
 
 const test = base.extend<{
   adminPage: Page;
   userPage: Page;
+  glossaryTermUserPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
@@ -84,6 +90,12 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  glossaryTermUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await glossaryTermUser.login(page);
+    await use(page);
+    await page.close();
+  },
 });
 
 test.beforeAll('Setup Customize tests', async ({ browser }) => {
@@ -93,9 +105,12 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
   await adminUser.setAdminRole(apiContext);
   await user.create(apiContext);
   await user.setAdminRole(apiContext);
+  await glossaryTermUser.create(apiContext);
+  await glossaryTermUser.setAdminRole(apiContext);
 
   await persona.create(apiContext);
   await navigationPersona.create(apiContext);
+  await glossaryTermPersona.create(apiContext);
 
   // Assign persona to user to validate page changes
   await user.patch({
@@ -137,6 +152,25 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
     ],
   });
 
+  const glossaryTermPersonaReference = {
+    id: glossaryTermPersona.responseData.id,
+    name: glossaryTermPersona.responseData.name,
+    displayName: glossaryTermPersona.responseData.displayName,
+    fullyQualifiedName: glossaryTermPersona.responseData.fullyQualifiedName,
+    type: 'persona',
+  };
+  await glossaryTermUser.patch({
+    apiContext,
+    patchData: [
+      { op: 'add', path: '/personas/0', value: glossaryTermPersonaReference },
+      {
+        op: 'add',
+        path: '/defaultPersona',
+        value: glossaryTermPersonaReference,
+      },
+    ],
+  });
+
   await afterAction();
 });
 
@@ -144,8 +178,10 @@ test.afterAll('Cleanup Customize tests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await user.delete(apiContext);
+  await glossaryTermUser.delete(apiContext);
   await persona.delete(apiContext);
   await navigationPersona.delete(apiContext);
+  await glossaryTermPersona.delete(apiContext);
   await afterAction();
 });
 
@@ -652,7 +688,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test('Validate Glossary Term details page after customization of tabs', async ({
     adminPage,
-    userPage,
+    glossaryTermUserPage,
   }) => {
     test.slow();
 
@@ -677,7 +713,11 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await personaListResponse;
 
       // Need to find persona card and click as the list might get paginated
-      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
+      await navigateToPersonaWithPagination(
+        adminPage,
+        glossaryTermPersona.data.name,
+        true
+      );
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.getByText('Governance').click();
       await adminPage.getByText('Glossary Term', { exact: true }).click();
@@ -700,31 +740,37 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Validate customization', async () => {
-      await redirectToHomePage(userPage);
+      await redirectToHomePage(glossaryTermUserPage);
 
-      await entity?.visitEntityPage(userPage);
-      await waitForAllLoadersToDisappear(userPage);
+      await entity?.visitEntityPage(glossaryTermUserPage);
+      await waitForAllLoadersToDisappear(glossaryTermUserPage);
 
       await expect(
-        userPage.getByRole('tab', { name: 'Overview' })
+        glossaryTermUserPage.getByRole('tab', { name: 'Overview' })
       ).toBeVisible();
       await expect(
-        userPage.getByRole('tab', { name: 'Glossary Terms' })
+        glossaryTermUserPage.getByRole('tab', { name: 'Glossary Terms' })
       ).toBeVisible();
       await expect(
-        userPage.getByTestId('create-error-placeholder-Glossary Term')
+        glossaryTermUserPage.getByTestId(
+          'create-error-placeholder-Glossary Term'
+        )
       ).toBeVisible();
 
-      await userPage.getByRole('tab', { name: 'Overview' }).click();
+      await glossaryTermUserPage.getByRole('tab', { name: 'Overview' }).click();
 
       await expect(
-        userPage.getByTestId('asset-description-container')
+        glossaryTermUserPage.getByTestId('asset-description-container')
       ).toBeVisible();
 
-      await userPage.getByRole('tab', { name: 'Glossary Terms' }).click();
+      await glossaryTermUserPage
+        .getByRole('tab', { name: 'Glossary Terms' })
+        .click();
 
       await expect(
-        userPage.getByTestId('create-error-placeholder-Glossary Term')
+        glossaryTermUserPage.getByTestId(
+          'create-error-placeholder-Glossary Term'
+        )
       ).toBeVisible();
     });
   });

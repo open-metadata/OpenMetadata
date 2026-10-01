@@ -28,6 +28,7 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -96,8 +97,9 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
         if not data_model_entity:
             return None
         for entity_column in data_model_entity.columns:
-            if entity_column.displayName.lower() == column.lower():
-                return entity_column.fullyQualifiedName.root
+            # Storage connectors leave displayName unset on partition columns, so fall back to the name.
+            if (entity_column.displayName or model_str(entity_column.name)).lower() == column.lower():
+                return model_str(entity_column.fullyQualifiedName) if entity_column.fullyQualifiedName else None
         return None
 
     def _get_column_lineage(
@@ -107,16 +109,16 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
         columns_list: list[str],
     ) -> list[ColumnLineage]:
         """
-        Get the column lineage
+        Get the column lineage, resolving each column on its own so one that fails costs only its own edge
         """
-        try:
-            column_lineage = []
-            for field in columns_list or []:
+        column_lineage = []
+        for field in columns_list or []:
+            try:
                 from_column = self._get_data_model_column_fqn(data_model_entity=data_model_entity, column=field)
                 to_column = get_column_fqn(table_entity=table_entity, column=field)
                 if from_column and to_column:
                     column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
-            return column_lineage  # noqa: TRY300
-        except Exception as exc:
-            logger.debug(f"Error to get column lineage: {exc}")
-            logger.debug(traceback.format_exc())
+            except Exception as exc:
+                logger.debug("Error to get column lineage for [%s]: %s", field, exc)
+                logger.debug(traceback.format_exc())
+        return column_lineage

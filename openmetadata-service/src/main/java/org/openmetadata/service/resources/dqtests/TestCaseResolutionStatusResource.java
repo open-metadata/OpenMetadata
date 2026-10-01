@@ -785,8 +785,7 @@ public class TestCaseResolutionStatusResource
       return repository.listLatestFromSearch(
           Fields.EMPTY_FIELDS,
           searchListFilter,
-          "testCase.fullyQualifiedName.keyword", // Group by test case to get latest status per test
-          // case
+          TestCaseResolutionStatusRepository.LATEST_PER_TEST_CASE,
           null,
           limit,
           offset,
