@@ -121,6 +121,16 @@ def test_iceberg_lookup_is_one_call_per_schema():
     assert source.client.api_client.do.call_count == 1
 
 
+def test_iceberg_lookup_omits_columns_and_properties():
+    # The lookup reads name + securable_kind only. Without these flags the server
+    # ships every column and every property of every table in the schema.
+    source = _source_with_pages({"tables": REAL_LIST_ROWS})
+    UnitycatalogSource._iceberg_table_names(source, "demo", "s")
+    query = source.client.api_client.do.call_args.kwargs["query"]
+    assert query["omit_columns"] is True
+    assert query["omit_properties"] is True
+
+
 @pytest.mark.parametrize("row", REAL_LIST_ROWS, ids=[row["name"] for row in REAL_LIST_ROWS])
 def test_real_schema_table_types(row):
     assert _run(_table_info(row), {"managed_iceberg"}) == [(row["name"], EXPECTED_TYPES[row["name"]])]

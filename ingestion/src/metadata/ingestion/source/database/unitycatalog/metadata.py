@@ -491,6 +491,10 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             "catalog_name": catalog_name,
             "schema_name": schema_name,
             "max_results": 0,
+            # Only name and securable_kind are read here; without these the server
+            # ships every column and property of every table in the schema.
+            "omit_columns": True,
+            "omit_properties": True,
         }
         try:
             while True:
