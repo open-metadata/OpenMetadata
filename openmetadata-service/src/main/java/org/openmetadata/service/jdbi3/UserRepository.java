@@ -1735,8 +1735,23 @@ public class UserRepository extends EntityRepository<User> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
+    private final boolean isDefaultPersonaUnchanged;
+    private boolean isDefaultPersonaPatched = true;
+
     public UserUpdater(User original, User updated, Operation operation) {
       super(original, updated, operation);
+      isDefaultPersonaUnchanged =
+          original.getDefaultPersona() != null
+              && updated.getDefaultPersona() != null
+              && EntityUtil.entityReferenceMatch.test(
+                  original.getDefaultPersona(), updated.getDefaultPersona());
+    }
+
+    @Override
+    public void setPatchedFields(Set<String> patchedFields) {
+      super.setPatchedFields(patchedFields);
+      // Consolidation resets the comparison fields and baseline; preserve this request's intent.
+      isDefaultPersonaPatched = shouldCompare(DEFAULT_PERSONA_FIELD);
     }
 
     /**
@@ -1981,10 +1996,8 @@ public class UserRepository extends EntityRepository<User> {
           originalDefaultPersona == null
               && updatedDefaultPersona != null
               && (Boolean.TRUE.equals(updatedDefaultPersona.getInherited())
-                  || (operation.isPut()
-                      && original.getDefaultPersona() != null
-                      && EntityUtil.entityReferenceMatch.test(
-                          original.getDefaultPersona(), updatedDefaultPersona)));
+                  || (isDefaultPersonaUnchanged
+                      && (operation.isPut() || (operation.isPatch() && !isDefaultPersonaPatched))));
 
       if (!isUnchangedFallback) {
         if (originalDefaultPersona != null) {

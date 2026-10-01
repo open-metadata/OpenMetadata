@@ -182,6 +182,51 @@ class UserDefaultPersonaIT {
     assertDefaultPersona(replacement, listTeamUsers("defaultPersona").getFirst());
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void repeatedProfileEditsDoNotPinSystemDefault(boolean addTeamDefault, TestNamespace ns) {
+    team = client.teams().get(team.getId().toString(), "defaultPersona");
+    client.teams().update(team.getId().toString(), team.withDefaultPersona(null));
+    final User user = createUser(ns, "fallback", null);
+
+    patchProfileTwice(user);
+
+    final Persona replacement =
+        addTeamDefault ? teamDefault : createPersona(ns, "replacement", true);
+    if (addTeamDefault) {
+      client
+          .teams()
+          .update(
+              team.getId().toString(), team.withDefaultPersona(teamDefault.getEntityReference()));
+    }
+
+    assertDefaultPersona(
+        replacement, client.users().get(user.getId().toString(), "defaultPersona"));
+    assertDefaultPersona(replacement, client.users().getByName(user.getName(), "defaultPersona"));
+    assertDefaultPersona(replacement, listTeamUsers("defaultPersona").getFirst());
+  }
+
+  @Test
+  void systemFallbackCanBeSavedExplicitlyDuringConsolidation(TestNamespace ns) {
+    team = client.teams().get(team.getId().toString(), "defaultPersona");
+    client.teams().update(team.getId().toString(), team.withDefaultPersona(null));
+    final User user = createUser(ns, "fallback", null);
+    patchProfileTwice(user);
+    final User fetched = client.users().get(user.getId().toString(), "defaultPersona");
+    client
+        .users()
+        .update(
+            user.getId().toString(),
+            fetched.withDefaultPersona(systemDefault.getEntityReference().withInherited(false)));
+    client
+        .teams()
+        .update(team.getId().toString(), team.withDefaultPersona(teamDefault.getEntityReference()));
+
+    assertDefaultPersona(
+        systemDefault, client.users().get(user.getId().toString(), "defaultPersona"));
+    assertDefaultPersona(systemDefault, listTeamUsers("defaultPersona").getFirst());
+  }
+
   @Test
   void replacingUserDoesNotPinInheritedDefault(TestNamespace ns) {
     final User user = createUser(ns, "member", null);
@@ -318,6 +363,26 @@ class UserDefaultPersonaIT {
           .withDefaultPersona(explicitDefault.getEntityReference());
     }
     return ns.trackRoot(Entity.USER, client.users().create(request));
+  }
+
+  private void patchProfileTwice(User user) {
+    final User firstUpdate =
+        client
+            .users()
+            .patch(
+                user.getId(),
+                JsonUtils.readTree(
+                    "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Updated description\"}]"));
+    final User secondUpdate =
+        client
+            .users()
+            .patch(
+                user.getId(),
+                JsonUtils.readTree(
+                    "[{\"op\":\"add\",\"path\":\"/displayName\",\"value\":\"Updated display name\"}]"));
+
+    assertEquals(0.2, firstUpdate.getVersion());
+    assertEquals(firstUpdate.getVersion(), secondUpdate.getVersion());
   }
 
   private Team createTeam(TestNamespace ns, String suffix, Persona defaultPersona) {
