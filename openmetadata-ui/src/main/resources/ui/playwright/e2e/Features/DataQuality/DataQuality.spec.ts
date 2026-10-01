@@ -24,7 +24,6 @@ import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  assignSingleSelectDomain,
   clickOutside,
   createNewPage,
   descriptionBox,
@@ -46,6 +45,7 @@ import {
   customFormatDateTime,
   getCurrentMillis,
 } from '../../../utils/dateTime';
+import { setDomain } from '../../../utils/domainPicker';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   glossaryFieldTrigger,
@@ -996,7 +996,7 @@ test.describe(
 
       // Add domain to table
       await filterTable1.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       const testCases = [
         `pw_first_table_column_count_to_be_between_${uuid()}`,
         `pw_second_table_column_count_to_be_between_${uuid()}`,

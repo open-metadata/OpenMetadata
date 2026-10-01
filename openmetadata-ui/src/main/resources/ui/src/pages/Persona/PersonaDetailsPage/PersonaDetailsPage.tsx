@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
-import { User03 } from '@untitledui/icons';
+import { User03 } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -98,10 +98,6 @@ export const PersonaDetailsPage = () => {
     }
   }, [permissionsError]);
 
-  // AI is always available in OSS — the shell ships in-tree, no
-  // install-gate.
-  const hasNonDefaultMode = true;
-
   const breadcrumb = useMemo(() => {
     const breadcrumbList = [
       {
@@ -115,13 +111,9 @@ export const PersonaDetailsPage = () => {
     ];
 
     if (activeCategory) {
-      const category = getCustomizePageCategories()
-        .filter(
-          (item) =>
-            !['app-mode', 'askCollateSidebar'].includes(item.key) ||
-            hasNonDefaultMode
-        )
-        .find((category) => category.key === activeCategory);
+      const category = getCustomizePageCategories().find(
+        (category) => category.key === activeCategory
+      );
 
       if (category) {
         breadcrumbList.push({
@@ -132,7 +124,7 @@ export const PersonaDetailsPage = () => {
     }
 
     return breadcrumbList;
-  }, [personaDetails, activeCategory, fqn, hasNonDefaultMode]);
+  }, [personaDetails, activeCategory, fqn]);
 
   const fetchPersonaDetails = async () => {
     try {

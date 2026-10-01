@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Typography } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 

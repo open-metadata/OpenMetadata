@@ -18,6 +18,7 @@ import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { getCustomPropertyWidgetEditIcons } from '../../../utils/customProperty';
 import {
   assignRoleToUser,
   cleanupPermissions,
@@ -95,11 +96,7 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
   await domain.visitEntityPage(testUserPage);
 
   // Test that domain operation elements are visible
-  const directElements = [
-    'edit-description',
-    'add-tag',
-    'edit-icon-right-panel',
-  ];
+  const directElements = ['edit-description', 'add-tag'];
 
   const manageButtonElements = ['delete-button', 'rename-button'];
 
@@ -117,6 +114,10 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
 
     await expect(element).toBeVisible();
   }
+
+  await expect(getCustomPropertyWidgetEditIcons(testUserPage)).not.toHaveCount(
+    0
+  );
 
   const ownerButton = testUserPage
     .getByTestId('add-owner')
@@ -166,11 +167,7 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
   await domain.visitEntityPage(testUserPage);
 
   // Test that domain operation elements are visible
-  const directElements = [
-    'edit-description',
-    'add-tag',
-    'edit-icon-right-panel',
-  ];
+  const directElements = ['edit-description', 'add-tag'];
 
   const manageButtonElements = ['delete-button', 'rename-button'];
 
@@ -187,6 +184,8 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
 
     await expect(element).not.toBeVisible();
   }
+
+  await expect(getCustomPropertyWidgetEditIcons(testUserPage)).toHaveCount(0);
   const ownerButton = testUserPage
     .getByTestId('add-owner')
     .or(testUserPage.getByTestId('edit-owner'))
