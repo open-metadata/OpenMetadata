@@ -43,12 +43,9 @@ const ENTITY_TYPE_TO_TAB_TESTID: Record<string, string> = {
   worksheet: 'worksheets-tab',
 };
 
-const SEARCH_URL_FRAGMENT = '/api/v1/search/query';
+const SEARCH_QUERY_PATH = '/api/v1/search/query';
+const ENTITY_TYPE_COUNTS_PATH = '/api/v1/search/entityTypeCounts';
 const SEARCH_QUERY = 'customers';
-const AGGREGATION_INDEX = 'dataAsset';
-// The left-panel count query asks for a single hit (`pageSize: 1`) and only the
-// entityType source field — see `runCountSearch` in ExploreUtils.tsx.
-const AGGREGATION_RESULT_SIZE = '1';
 // The tab results query is the only one that asks for trackTotalHits; the search-box
 // suggestion dropdown fires an index=dataAsset query with the same size/from, so the
 // predicate must not rely on size/from alone.
@@ -57,27 +54,19 @@ const TAB_RESULT_SIZE = '15';
 const getSearchParams = (response: Response) =>
   new URL(response.url()).searchParams;
 
-const isSearchQuery = (response: Response) =>
-  response.url().includes(SEARCH_URL_FRAGMENT) &&
+const isSearchResponse = (response: Response, path: string) =>
+  new URL(response.url()).pathname === path &&
   response.request().method() === 'GET' &&
   getSearchParams(response).get('q') === SEARCH_QUERY;
 
-const isAggregationCountResponse = (response: Response) => {
-  const searchParams = getSearchParams(response);
-
-  return (
-    isSearchQuery(response) &&
-    searchParams.get('index') === AGGREGATION_INDEX &&
-    searchParams.get('size') === AGGREGATION_RESULT_SIZE &&
-    searchParams.get('fetch_source') === 'true'
-  );
-};
+const isAggregationCountResponse = (response: Response) =>
+  isSearchResponse(response, ENTITY_TYPE_COUNTS_PATH);
 
 const isTabResultsResponse = (response: Response, index?: string) => {
   const searchParams = getSearchParams(response);
 
   return (
-    isSearchQuery(response) &&
+    isSearchResponse(response, SEARCH_QUERY_PATH) &&
     (index === undefined || searchParams.get('index') === index) &&
     searchParams.get('track_total_hits') === 'true' &&
     searchParams.get('size') === TAB_RESULT_SIZE &&

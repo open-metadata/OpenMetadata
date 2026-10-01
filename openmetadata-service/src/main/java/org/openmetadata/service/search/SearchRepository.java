@@ -18,8 +18,6 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
-import static org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface.getStringWithClusterAlias;
-import static org.openmetadata.service.jdbi3.DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX;
 import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
@@ -1184,69 +1182,15 @@ public class SearchRepository {
     return false;
   }
 
-  /**
-   * Resolve the supplied index alias into the actual Elasticsearch / OpenSearch index name to
-   * query. Handles these shapes:
-   *
-   * <ul>
-   *   <li><b>Entity-specific alias</b> (e.g. {@code "table"}): looked up in
-   *       {@code entityIndexMap} and resolved to the canonical {@code *_search_index} name.
-   *       This is the bug fix — without resolving, ES would treat {@code "table"} as an alias
-   *       and expand it to every index that has that alias attached, including
-   *       {@code column_search_index} (because {@code tableColumn} declares {@code "table"} as
-   *       a {@code parentAlias}). Resolving here bypasses ES's alias expansion entirely so a
-   *       query for tables only hits the table index.
-   *   <li><b>Compound alias</b> (e.g. {@code "all"}, {@code "dataAsset"}): no entry in
-   *       {@code entityIndexMap}, no canonical index, so the alias passes through and ES
-   *       resolves it natively across the entities that have registered the alias. This is the
-   *       intended behavior — searching {@code dataAsset} should surface every data-asset
-   *       entity.
-   *   <li><b>Canonical / legacy index name</b> (e.g. {@code "table_search_index"}): not a key
-   *       in {@code entityIndexMap}, falls through to the prefix-and-pass branch, identical to
-   *       the legacy behavior.
-   *   <li><b>Already cluster-prefixed token</b>: idempotent — returned unchanged so that
-   *       internal code paths that hand back a resolved value don't double-prefix.
-   *   <li><b>Data Insights index or wildcard</b>: uses the hyphen-separated cluster prefix
-   *       used by DI data streams and aliases.
-   * </ul>
-   *
-   * Comma-separated tokens are resolved independently. Empty tokens (from {@code "table,"} or
-   * {@code ","}) are dropped instead of materializing as a bare cluster prefix; if every token
-   * is empty the original input is returned unchanged so downstream ES surfaces a normal
-   * "unknown index" error instead of an empty-target failure.
-   */
+  /** @see SearchIndexUtils#getIndexOrAliasName(String, Map, Map, String) */
   public String getIndexOrAliasName(String name) {
-    if (nullOrEmpty(name)) {
-      return name;
-    }
-    String prefix =
-        clusterAlias == null || clusterAlias.isEmpty() ? null : clusterAlias + INDEX_NAME_SEPARATOR;
-    String resolved =
-        Arrays.stream(name.split(","))
-            .map(String::trim)
-            .filter(t -> !t.isEmpty())
-            .map(t -> resolveSingleAliasToken(t, prefix))
-            .collect(Collectors.joining(","));
-    return resolved.isEmpty() ? name : resolved;
+    return SearchIndexUtils.getIndexOrAliasName(name, entityIndexMap, aliasIndexMap, clusterAlias);
   }
 
-  private String resolveSingleAliasToken(String token, String clusterPrefix) {
-    if (clusterPrefix != null
-        && (token.startsWith(clusterPrefix)
-            || token.startsWith(getStringWithClusterAlias(clusterAlias, DI_SEARCH_INDEX_PREFIX)))) {
-      return token;
-    }
-    if (token.startsWith(DI_SEARCH_INDEX_PREFIX)) {
-      return getStringWithClusterAlias(clusterAlias, token);
-    }
-    IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
-    if (mapping == null && aliasIndexMap != null) {
-      mapping = aliasIndexMap.get(token);
-    }
-    if (mapping != null) {
-      return mapping.getIndexName(clusterAlias);
-    }
-    return clusterPrefix == null ? token : clusterPrefix + token;
+  /** @see SearchIndexUtils#getEntityTypesForIndex(String, Map, Map, String) */
+  public List<String> getEntityTypesForIndex(String index) {
+    return SearchIndexUtils.getEntityTypesForIndex(
+        index, entityIndexMap, aliasIndexMap, clusterAlias);
   }
 
   private static final Map<String, Set<String>> RBAC_CHILD_TYPES =

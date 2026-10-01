@@ -756,6 +756,7 @@
         "playwright/e2e/Flow/SchemaTable.spec.ts",
         "playwright/e2e/Pages/AssetHealthWidget.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
         "playwright/e2e/Pages/DataMarketplace.spec.ts",
@@ -1680,6 +1681,7 @@
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
@@ -1719,6 +1721,7 @@
         "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
       ]
@@ -2208,6 +2211,7 @@
         "playwright/e2e/Pages/Teams.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/VersionPages/ClassificationVersionPage.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/MetricVersionPage.spec.ts",
@@ -2929,6 +2933,7 @@
         "playwright/e2e/Pages/AssetHealthWidget.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
         "playwright/e2e/Pages/DataMarketplace.spec.ts",
@@ -2971,6 +2976,7 @@
         "playwright/e2e/Pages/UserCreationWithPersona.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts",
         "playwright/e2e/VersionPages/MetricVersionPage.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
@@ -3026,7 +3032,8 @@
         "playwright/e2e/Pages/DataInsight.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/TaskComments.spec.ts"
+        "playwright/e2e/Pages/TaskComments.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -3375,6 +3382,7 @@
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/CustomThemeConfig.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts",
@@ -4172,6 +4180,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/odcsImportExport.ts"
       ],
       "specs": [
+        "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts"
       ]
@@ -5638,6 +5647,7 @@
       ],
       "specs": [
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
@@ -7599,7 +7609,8 @@
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -7894,6 +7905,30 @@
       "specs": [
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
         "playwright/e2e/Features/MetricHierarchy.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/CustomProperty/CustomPropertiesListTable.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/CustomProperty/CustomPropertyEditForm/CustomPropertyEditForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/CustomProperty/EditCustomPropertyModal/EditCustomPropertyModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
       ]
     },
     {
@@ -8589,30 +8624,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/PropertyValue.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/CustomProperties.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/TableTypeProperty/EditTableTypePropertyModal.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/CustomProperties.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/TableTypeProperty/TableTypePropertyView.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/CustomProperties.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTypeBadge/CustomPropertyTypeBadge.component.tsx"
       ],
       "specs": [
@@ -9089,7 +9100,8 @@
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -9115,7 +9127,8 @@
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -10781,6 +10794,7 @@
         "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
         "playwright/e2e/Pages/CustomThemeConfig.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts",
@@ -10853,6 +10867,7 @@
         "playwright/e2e/Pages/UserCreationWithPersona.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/Search/SearchNightly.spec.ts",
         "playwright/e2e/Search/SearchRelevance.spec.ts",
         "playwright/e2e/VersionPages/ClassificationVersionPage.spec.ts",

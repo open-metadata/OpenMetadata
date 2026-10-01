@@ -86,7 +86,11 @@ class ElasticSearchFieldQueryTest {
 
     assertFalse(request.get().trackTotalHits().enabled());
     assertEquals(List.of("id"), request.get().source().filter().includes());
-    assertEquals("lineage", requestJson().findValue("exists").path("field").asText());
+    // The visibility filter carries an exists clause of its own, so the projection's is found
+    // by its field rather than by position.
+    assertTrue(
+        requestJson().findValues("exists").stream()
+            .anyMatch(node -> "lineage".equals(node.path("field").asText())));
     assertTrue(requestJson().findValue("case_insensitive").asBoolean());
     assertEquals(1, request.get().sort().size());
     assertTrue(requestJson().toString().contains(Entity.CONTEXT_MEMORY));
@@ -104,9 +108,14 @@ class ElasticSearchFieldQueryTest {
     assertNull(request.get().source());
     assertTrue(requestJson().toString().contains(Entity.CONTEXT_MEMORY));
     assertTrue(requestJson().toString().contains("\"Entity\""));
+    // The visibility filter also uses a terms clause, so the caller's is found by its field.
+    JsonNode idTerms =
+        requestJson().findValues("terms").stream()
+            .filter(node -> node.has("id"))
+            .findFirst()
+            .orElseThrow();
     assertEquals(
-        List.of("literal*", "literal?"),
-        JsonUtils.convertValue(requestJson().findValue("terms").path("id"), List.class));
+        List.of("literal*", "literal?"), JsonUtils.convertValue(idTerms.path("id"), List.class));
   }
 
   private JsonNode requestJson() throws Exception {

@@ -50,8 +50,7 @@ const ApplicationCard = ({
         'tw:flex tw:h-full tw:items-center tw:border-utility-gray-blue-100 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:dark:border-subtle',
         isUnavailable
           ? 'tw:opacity-65 tw:dark:opacity-100'
-          : onClick &&
-              'tw:cursor-pointer tw:transition-shadow tw:hover:shadow-xl'
+          : 'tw:cursor-pointer tw:transition-shadow tw:hover:shadow-xl'
       )}
       data-testid={`${kebabCase(appName)}-card`}
       onClick={isUnavailable ? undefined : onClick}>
