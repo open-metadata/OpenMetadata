@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { ActivityFilter, ActivityGrouping } from '../inbox.utils';
 import ActivityToolbar from './ActivityToolbar';
@@ -63,6 +63,33 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
+// Exercised by its own suite; here it lists its options and reports picks.
+jest.mock('./ActivityToolbarMenu', () => ({
+  __esModule: true,
+  default: ({
+    options,
+    triggerLabel,
+    onChange,
+    ...props
+  }: {
+    options: MockOption[];
+    triggerLabel?: string;
+    onChange: (value: string) => void;
+    'data-testid': string;
+  }) => (
+    <div data-testid={props['data-testid']}>
+      <span data-testid={`${props['data-testid']}-trigger`}>
+        {triggerLabel}
+      </span>
+      {options.map(({ value, label }) => (
+        <button key={value} onClick={() => onChange(value)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  ),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -96,16 +123,18 @@ describe('ActivityToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith(ActivityFilter.Mentions);
   });
 
-  it('groups by the chosen key, back to day when cleared', () => {
+  it('reads Group until a grouping is picked, with day groups as None', () => {
     const { onGroupingChange } = renderToolbar();
+
+    expect(
+      screen.getByTestId('activity-group-filter-trigger')
+    ).toHaveTextContent('label.group');
 
     fireEvent.click(screen.getByText('label.user'));
 
     expect(onGroupingChange).toHaveBeenLastCalledWith(ActivityGrouping.User);
 
-    fireEvent.click(
-      within(screen.getByTestId('activity-group-filter')).getByText('clear')
-    );
+    fireEvent.click(screen.getByText('label.none'));
 
     expect(onGroupingChange).toHaveBeenLastCalledWith(ActivityGrouping.Day);
   });

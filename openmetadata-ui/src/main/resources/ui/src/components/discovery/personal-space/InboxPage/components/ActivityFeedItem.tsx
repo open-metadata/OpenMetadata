@@ -21,17 +21,12 @@ import {
 import {
   ChevronDown,
   ChevronUp,
-  Edit05,
-  File02,
-  Globe01,
   MessageCircle01,
   MessageDotsCircle,
   Plus,
   RefreshCcw01,
-  Tag01,
   ThumbsUp,
   Trash01,
-  UserCheck01,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -64,10 +59,12 @@ import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { ActivityKind, ACTIVITY_TYPE_KIND } from '../activityKind';
 import {
   ACTIVITY_DATE_FORMAT,
   getActivityChange,
   getActivityEventLabel,
+  getActivityTypeKey,
   toggleActivityReaction,
   toggleConversationReaction,
 } from '../inbox.utils';
@@ -140,50 +137,37 @@ const getEventEntity = (
   };
 };
 
-interface ActivityKind {
-  icon: typeof Tag01;
-  className: string;
-}
+type ActivityBadge = Pick<ActivityKind, 'icon' | 'badgeClassName'>;
 
-const TAGS_KIND = { icon: Tag01, className: 'tw:bg-utility-purple-600' };
-const DESCRIPTION_KIND = { icon: File02, className: 'tw:bg-utility-blue-600' };
-const DELETED_KIND = { icon: Trash01, className: 'tw:bg-utility-error-600' };
-const DEFAULT_KIND = { icon: Edit05, className: 'tw:bg-utility-gray-600' };
-const CONVERSATION_KIND = {
+const DELETED_BADGE = {
+  icon: Trash01,
+  badgeClassName: 'tw:bg-utility-error-600',
+};
+const CONVERSATION_BADGE = {
   icon: MessageDotsCircle,
-  className: 'tw:bg-utility-gray-600',
+  badgeClassName: 'tw:bg-utility-gray-600',
 };
 
-// The badge on the actor's avatar that says what kind of change this is.
-const ACTIVITY_KIND: Partial<Record<ActivityEventType, ActivityKind>> = {
-  [ActivityEventType.TagsUpdated]: TAGS_KIND,
-  [ActivityEventType.ColumnTagsUpdated]: TAGS_KIND,
-  [ActivityEventType.DescriptionUpdated]: DESCRIPTION_KIND,
-  [ActivityEventType.ColumnDescriptionUpdated]: DESCRIPTION_KIND,
-  [ActivityEventType.OwnerUpdated]: {
-    icon: UserCheck01,
-    className: 'tw:bg-utility-indigo-600',
-  },
-  [ActivityEventType.DomainUpdated]: {
-    icon: Globe01,
-    className: 'tw:bg-utility-blue-light-600',
-  },
+// Lifecycle events filter as Other but read better with their own badge.
+const LIFECYCLE_BADGE: Partial<Record<ActivityEventType, ActivityBadge>> = {
   [ActivityEventType.EntityCreated]: {
     icon: Plus,
-    className: 'tw:bg-utility-success-600',
+    badgeClassName: 'tw:bg-utility-success-600',
   },
   [ActivityEventType.EntityRestored]: {
     icon: RefreshCcw01,
-    className: 'tw:bg-utility-success-600',
+    badgeClassName: 'tw:bg-utility-success-600',
   },
-  [ActivityEventType.EntityDeleted]: DELETED_KIND,
-  [ActivityEventType.EntitySoftDeleted]: DELETED_KIND,
+  [ActivityEventType.EntityDeleted]: DELETED_BADGE,
+  [ActivityEventType.EntitySoftDeleted]: DELETED_BADGE,
 };
 
-const getActivityKind = (activity?: ActivityEvent): ActivityKind =>
+// The badge on the actor's avatar that says what kind of change this is.
+const getActivityBadge = (activity?: ActivityEvent): ActivityBadge =>
   activity
-    ? ACTIVITY_KIND[activity.eventType] ?? DEFAULT_KIND
-    : CONVERSATION_KIND;
+    ? LIFECYCLE_BADGE[activity.eventType] ??
+      ACTIVITY_TYPE_KIND[getActivityTypeKey(activity)]
+    : CONVERSATION_BADGE;
 
 /**
  * Where the asset line points. A column-level change reads "table.column" and
@@ -262,8 +246,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const actionLabel = getActionLabel(activity, feed, t);
   const { entity, entityName } = getEventEntity(isActivity, activity, feed);
   const timestamp = getEventTimestamp(isActivity, activity, feed);
-  const { icon: KindIcon, className: kindClassName } =
-    getActivityKind(activity);
+  const { icon: KindIcon, badgeClassName: kindClassName } =
+    getActivityBadge(activity);
   const target = getEntityTarget(entity, entityName, activity?.about);
   const change = useMemo(
     () => (activity ? getActivityChange(activity) : undefined),

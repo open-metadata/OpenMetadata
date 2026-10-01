@@ -69,6 +69,8 @@ jest.mock('../inbox.utils', () => ({
   formatActivityTime: () => '12 min ago',
   getActivityChange: (...args: unknown[]) => mockGetActivityChange(...args),
   getActivityEventLabel: () => 'updated description for',
+  getActivityTypeKey: () => 'label.other',
+  ACTIVITY_TYPE_OTHER: 'label.other',
   toggleActivityReaction: (...args: unknown[]) => mockToggle(...args),
   toggleConversationReaction: (...args: unknown[]) =>
     mockToggleConversation(...args),

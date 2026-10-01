@@ -12,15 +12,26 @@
  */
 
 import { Box, FilterSelect, Tabs } from '@openmetadata/ui-core-components';
-import { Calendar, FilterLines, LayersTwo01 } from '@untitledui/icons';
+import {
+  Calendar,
+  Clock,
+  FilterLines,
+  LayersTwo01,
+  List,
+  Table,
+  Users01,
+} from '@untitledui/icons';
+import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ACTIVITY_TYPE_KIND } from '../activityKind';
 import {
   ActivityFilter,
   ActivityGrouping,
   ACTIVITY_TYPE_KEYS,
   INBOX_DATE_RANGE_OPTIONS,
 } from '../inbox.utils';
+import ActivityToolbarMenu from './ActivityToolbarMenu';
 
 const FILTER_LABEL_KEY: Record<ActivityFilter, string> = {
   [ActivityFilter.All]: 'label.all',
@@ -29,11 +40,12 @@ const FILTER_LABEL_KEY: Record<ActivityFilter, string> = {
   [ActivityFilter.Following]: 'label.following',
 };
 
-const GROUPING_LABEL_KEY: Record<ActivityGrouping, string> = {
-  [ActivityGrouping.Day]: 'label.day',
-  [ActivityGrouping.Asset]: 'label.asset',
-  [ActivityGrouping.User]: 'label.user',
-};
+// Day groups are the feed's plain form, so the design offers them as None.
+const GROUPING_OPTIONS = [
+  { value: ActivityGrouping.Asset, labelKey: 'label.asset', icon: Table },
+  { value: ActivityGrouping.User, labelKey: 'label.user', icon: Users01 },
+  { value: ActivityGrouping.Day, labelKey: 'label.none', icon: List },
+];
 
 export interface ActivityToolbarProps {
   datePreset: string;
@@ -64,19 +76,31 @@ const ActivityToolbar = ({
       Object.entries(INBOX_DATE_RANGE_OPTIONS).map(([value, preset]) => ({
         value,
         label: t(preset.title, preset.titleData),
+        // A single day reads as a time, a span as dates.
+        icon: preset.days === 1 ? Clock : Calendar,
       })),
     [t]
   );
   const groupingOptions = useMemo(
     () =>
-      Object.values(ActivityGrouping).map((value) => ({
+      GROUPING_OPTIONS.map(({ value, labelKey, icon }) => ({
         value,
-        label: t(GROUPING_LABEL_KEY[value]),
+        label: t(labelKey),
+        icon,
       })),
     [t]
   );
   const typeOptions = useMemo(
-    () => ACTIVITY_TYPE_KEYS.map((value) => ({ value, label: t(value) })),
+    () =>
+      ACTIVITY_TYPE_KEYS.map((value) => {
+        const { icon: Icon, iconClassName } = ACTIVITY_TYPE_KIND[value];
+
+        return {
+          value,
+          label: t(value),
+          icon: <Icon className={classNames('tw:size-4', iconClassName)} />,
+        };
+      }),
     [t]
   );
 
@@ -102,34 +126,25 @@ const ActivityToolbar = ({
       </Tabs>
       <Box align="center" gap={2}>
         {onDatePresetChange && (
-          <FilterSelect
-            bordered
+          <ActivityToolbarMenu
             data-testid="activity-date-filter"
-            label={t('label.date')}
             options={dateOptions}
-            popoverClassName="tw:w-48"
-            selectedValues={[datePreset]}
-            selectionMode="single"
+            title={t('label.date')}
             triggerIcon={Calendar}
-            triggerVariant="button"
-            onChange={([value]) => value && onDatePresetChange(value)}
+            value={datePreset}
+            onChange={onDatePresetChange}
           />
         )}
-        <FilterSelect
-          bordered
+        <ActivityToolbarMenu
           data-testid="activity-group-filter"
-          label={t('label.group-by')}
           options={groupingOptions}
-          popoverClassName="tw:w-36"
-          selectedValues={[grouping]}
-          selectionMode="single"
+          title={t('label.group-by')}
           triggerIcon={LayersTwo01}
-          triggerVariant="button"
-          onChange={([value]) =>
-            onGroupingChange(
-              (value as ActivityGrouping) ?? ActivityGrouping.Day
-            )
+          triggerLabel={
+            grouping === ActivityGrouping.Day ? t('label.group') : undefined
           }
+          value={grouping}
+          onChange={(value) => onGroupingChange(value as ActivityGrouping)}
         />
         <FilterSelect
           bordered
