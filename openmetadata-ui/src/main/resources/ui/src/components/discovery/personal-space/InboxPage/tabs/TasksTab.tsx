@@ -17,7 +17,11 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle, Inbox01 } from '@openmetadata/ui-core-components/icons';
+import {
+  CheckCircle,
+  FilterFunnel01,
+  Inbox01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
@@ -324,6 +328,14 @@ const TasksTab: React.FC<TasksTabProps> = ({
 
   useEffect(() => () => commitSearch.cancel(), [commitSearch]);
 
+  const handleClearFilters = useCallback(() => {
+    commitSearch.cancel();
+    setSearch('');
+    setSearchQuery('');
+    setTypeFilter([]);
+    setStatusFilter([]);
+  }, [commitSearch]);
+
   const handleSearchChange = useCallback(
     (value: string) => {
       setSearch(value);
@@ -556,7 +568,29 @@ const TasksTab: React.FC<TasksTabProps> = ({
       />
     ),
   };
-  const emptyState = emptyStateByStatus[status];
+  // A search or filter that matches nothing must not read as an empty queue.
+  const isNarrowed =
+    Boolean(searchQuery) || typeFilter.length > 0 || statusFilter.length > 0;
+  const emptyState = isNarrowed ? (
+    <EmptyPlaceholder
+      actions={[
+        {
+          key: 'clear-filters',
+          label: t('label.clear-all'),
+          onPress: handleClearFilters,
+        },
+      ]}
+      data-testid="inbox-tasks-no-match"
+      description={t('message.no-results-for-filters-description')}
+      icon={
+        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
+      }
+      title={t('message.no-match-found')}
+      variant="blank"
+    />
+  ) : (
+    emptyStateByStatus[status]
+  );
 
   return (
     <Box

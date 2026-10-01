@@ -237,15 +237,22 @@ jest.mock('@openmetadata/ui-core-components', () => {
     EmptyPlaceholder: ({
       title,
       description,
+      actions,
       ...props
     }: {
       title?: ReactNode;
       description?: ReactNode;
+      actions?: { key: string; label: ReactNode; onPress?: () => void }[];
       'data-testid'?: string;
     }) => (
       <div data-testid={props['data-testid']}>
         <span>{title}</span>
         <span>{description}</span>
+        {actions?.map(({ key, label, onPress }) => (
+          <button key={key} onClick={onPress}>
+            {label}
+          </button>
+        ))}
       </div>
     ),
     Tabs,
@@ -277,6 +284,29 @@ describe('TasksTab', () => {
 
     // Defaults to the Open filter, so the Open empty state renders.
     expect(screen.getByText('label.no-open-tasks-yet')).toBeInTheDocument();
+  });
+
+  // A filter that matches nothing must not claim the queue is empty.
+  it('says nothing matches a filter, and clears it on request', () => {
+    hookState = {
+      items: [{ id: 't2', type: 'TestCaseResolution' } as unknown as Task],
+      isLoading: false,
+      total: 1,
+    };
+    renderTab();
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(screen.getByTestId('inbox-tasks-no-match')).toHaveTextContent(
+      'message.no-match-found'
+    );
+    expect(
+      screen.queryByText('label.no-open-tasks-yet')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.clear-all'));
+
+    expect(screen.getByTestId('task-t2')).toBeInTheDocument();
   });
 
   it('shows the skeleton while loading', () => {
