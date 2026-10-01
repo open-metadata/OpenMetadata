@@ -942,8 +942,6 @@ When the budget expires, Playwright reports whichever action happened to be runn
    ```
    Join the two by test `id`. If the shard-wide median slowdown is **> 1.3x**, the runner was degraded
    and the failure is a budget cliff, not a code regression.
-3. Trace trap: the long red `Wait for selector #email` in login is the losing branch of the
-   `Promise.any` in `authenticateAdminPage` (`playwright/utils/admin.ts`) — not a login stall.
 
 ---
 
