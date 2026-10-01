@@ -43,6 +43,7 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SubBatchPrefetcher.FetchedSubBatch;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.secrets.WorkflowSinkSecrets;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
@@ -92,8 +93,10 @@ public class SinkTaskDelegate implements JavaDelegate {
 
     try {
       String sinkType = (String) sinkTypeExpr.getValue(execution);
+      // The deployed sink config carries its secrets encrypted; the provider gets the plaintext.
       Object sinkConfig =
-          JsonUtils.readOrConvertValue(sinkConfigExpr.getValue(execution), Object.class);
+          WorkflowSinkSecrets.decrypt(
+              JsonUtils.readOrConvertValue(sinkConfigExpr.getValue(execution), Object.class));
       String syncMode = (String) syncModeExpr.getValue(execution);
       String outputFormat = (String) outputFormatExpr.getValue(execution);
       Object hierarchyConfig =

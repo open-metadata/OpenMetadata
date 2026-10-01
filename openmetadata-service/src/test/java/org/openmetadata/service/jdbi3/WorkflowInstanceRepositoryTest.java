@@ -152,7 +152,7 @@ class WorkflowInstanceRepositoryTest {
   }
 
   @Test
-  void aStopRequestedBetweenTheEndListenersReadAndWriteKeepsBothTheMarkerAndTheEnd() {
+  void aStopRequestedBetweenTheEndListenersReadAndWriteEndsTheInstanceAsFailure() {
     storeRunningInstance();
     StopRequest stopRequest = new StopRequest(true, STOP_REASON, "admin", 1L);
     AtomicReference<Boolean> isStopRecorded = new AtomicReference<>();
@@ -163,10 +163,12 @@ class WorkflowInstanceRepositoryTest {
 
     assertTrue(isStopRecorded.get(), "the instance was still RUNNING when the stop landed");
     WorkflowInstance ended = storedInstance();
-    assertEquals(WorkflowStatus.FINISHED, ended.getStatus(), "the end is not reverted to RUNNING");
+    assertEquals(WorkflowStatus.FAILURE, ended.getStatus(), "the accepted stop is honoured");
+    assertEquals(STOP_REASON, ended.getException());
     assertEquals(42L, ended.getEndedAt());
     assertEquals("kept", ended.getVariables().get("existing"));
     assertEquals(Optional.of(stopRequest), repository.findStopRequest(workflowInstanceId));
+    verify(stateRepository).markRunningStatesAsFailed(workflowInstanceId, STOP_REASON);
     verify(timeSeriesDao, never()).update(anyString(), any(UUID.class));
   }
 

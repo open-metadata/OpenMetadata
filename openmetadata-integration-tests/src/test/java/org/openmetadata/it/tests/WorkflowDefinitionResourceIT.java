@@ -15,6 +15,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -27,10 +28,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +45,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.awaitility.core.ConditionTimeoutException;
 import org.flowable.bpmn.model.FieldExtension;
@@ -51,8 +53,6 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
-import org.flowable.engine.impl.persistence.entity.ExecutionEntityManager;
-import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.junit.jupiter.api.AfterEach;
@@ -154,6 +154,8 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
@@ -161,7 +163,11 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProvider;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProviderRegistry;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkResult;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.v210.WorkflowSinkSecretsMigration;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -399,21 +405,30 @@ public class WorkflowDefinitionResourceIT {
 
   @Test
   void test_sinkTaskCredentialsAreMaskedInResponses(TestNamespace ns) throws Exception {
+    assertTrue(
+        Fernet.getInstance().isKeyDefined(), "the test server must encrypt sink secrets at rest");
     OpenMetadataClient client = SdkClients.adminClient();
     String workflowName = ns.prefix("gitSinkMasking");
     String rawToken = "ghp_itRawToken_%s".formatted(UUID.randomUUID());
     String rotatedToken = "ghp_itRotatedToken_%s".formatted(UUID.randomUUID());
+    String privateKey = "itRawPrivateKey_%s".formatted(UUID.randomUUID());
+    String passphrase = "itRawPassphrase_%s".formatted(UUID.randomUUID());
+    String mask = PasswordEntityMasker.PASSWORD_MASK;
+    List<String> plaintexts = List.of(rawToken, rotatedToken, privateKey, passphrase);
 
-    JsonNode created =
-        MAPPER.readTree(
-            executeWorkflowRequest(
-                client,
-                HttpMethod.POST,
-                BASE_PATH,
-                buildGitSinkWorkflowRequest(workflowName, rawToken)));
+    String createResponse =
+        executeWorkflowRequest(
+            client,
+            HttpMethod.POST,
+            BASE_PATH,
+            buildGitSinkWorkflowRequest(workflowName, rawToken, privateKey, passphrase));
+    JsonNode created = MAPPER.readTree(createResponse);
     trackWorkflowFromJson(created);
     String workflowId = created.get("id").asText();
-    assertEquals(PasswordEntityMasker.PASSWORD_MASK, gitSinkToken(created));
+    assertEquals(mask, gitSinkToken(created));
+    assertNoSecretOrCiphertext(createResponse, plaintexts);
+    JsonNode storedOnCreate =
+        assertSinkSecretsStoredEncrypted(workflowId, rawToken, privateKey, passphrase, plaintexts);
 
     List<String> readResponses =
         List.of(
@@ -427,31 +442,250 @@ public class WorkflowDefinitionResourceIT {
                     BASE_PATH,
                     null,
                     RequestOptions.builder().queryParam("limit", "1000").build()));
-    readResponses.forEach(response -> assertFalse(response.contains(rawToken)));
+    readResponses.forEach(response -> assertNoSecretOrCiphertext(response, plaintexts));
 
-    Map<String, Object> maskedUpdate =
-        buildGitSinkWorkflowRequest(workflowName, PasswordEntityMasker.PASSWORD_MASK);
+    Map<String, Object> maskedUpdate = buildGitSinkWorkflowRequest(workflowName, mask, mask, mask);
     maskedUpdate.put("description", "Masked token sent back");
     String maskedUpdateResponse =
         executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, maskedUpdate);
-    assertFalse(maskedUpdateResponse.contains(rawToken));
-    assertTrue(deployedSinkConfig(workflowName).contains(rawToken));
+    assertNoSecretOrCiphertext(maskedUpdateResponse, plaintexts);
+    assertEquals(
+        storedOnCreate,
+        assertSinkSecretsStoredEncrypted(workflowId, rawToken, privateKey, passphrase, plaintexts),
+        "sending the mask back keeps the stored ciphertext");
+    assertDeployedTokenEncrypted(workflowName, rawToken, plaintexts);
 
     String rotateResponse =
         executeWorkflowRequest(
             client,
             HttpMethod.PUT,
             BASE_PATH,
-            buildGitSinkWorkflowRequest(workflowName, rotatedToken));
-    assertFalse(rotateResponse.contains(rawToken));
-    assertFalse(rotateResponse.contains(rotatedToken));
-    assertTrue(deployedSinkConfig(workflowName).contains(rotatedToken));
+            buildGitSinkWorkflowRequest(workflowName, rotatedToken, mask, mask));
+    assertNoSecretOrCiphertext(rotateResponse, plaintexts);
+    assertSinkSecretsStoredEncrypted(workflowId, rotatedToken, privateKey, passphrase, plaintexts);
+    assertDeployedTokenEncrypted(workflowName, rotatedToken, plaintexts);
 
     String versions =
         executeWorkflowRequest(
             client, HttpMethod.GET, BASE_PATH + "/" + workflowId + "/versions", null);
-    assertFalse(versions.contains(rawToken));
-    assertFalse(versions.contains(rotatedToken));
+    assertNoSecretOrCiphertext(versions, plaintexts);
+    List<String> storedVersions = storedVersionJson(workflowId);
+    assertFalse(storedVersions.isEmpty(), "the updates must have stored version snapshots");
+    storedVersions.forEach(version -> assertNoSecret(version, plaintexts));
+  }
+
+  /**
+   * Runs the v2.1.0 sink-secret migration over a definition whose row and version snapshot were put
+   * back to plaintext, as a definition stored before encryption at rest has them. The migration
+   * must encrypt both and redeploy the definition, and a second run must change nothing.
+   */
+  @Test
+  void test_sinkSecretsMigrationEncryptsStoredPlaintext(TestNamespace ns) throws Exception {
+    assertTrue(Fernet.getInstance().isKeyDefined(), "the migration needs the Fernet key");
+    OpenMetadataClient client = SdkClients.adminClient();
+    String workflowName = ns.prefix("gitSinkMigration");
+    String token = "ghp_itMigrationToken_%s".formatted(UUID.randomUUID());
+    String privateKey = "itMigrationPrivateKey_%s".formatted(UUID.randomUUID());
+    String passphrase = "itMigrationPassphrase_%s".formatted(UUID.randomUUID());
+    List<String> plaintexts = List.of(token, privateKey, passphrase);
+    Map<String, Object> request =
+        buildGitSinkWorkflowRequest(workflowName, token, privateKey, passphrase);
+    JsonNode created =
+        MAPPER.readTree(executeWorkflowRequest(client, HttpMethod.POST, BASE_PATH, request));
+    trackWorkflowFromJson(created);
+    String workflowId = created.get("id").asText();
+    request.put("description", "Stores a version snapshot");
+    executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, request);
+    request.put("description", "Stores another version snapshot");
+    executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, request);
+    assertFalse(storedVersionJson(workflowId).isEmpty(), "the updates must store a version row");
+
+    restorePlaintextSinkSecrets(workflowId, token, privateKey, passphrase);
+    String restoredDefinition = storedDefinitionJson(workflowId);
+    assertTrue(
+        restoredDefinition.contains(token),
+        () -> "the stored row lacks the restored plaintext: %s".formatted(restoredDefinition));
+    List<String> restoredVersions = storedVersionJson(workflowId);
+    assertTrue(
+        restoredVersions.stream().anyMatch(json -> json.contains(token)),
+        () ->
+            "no version row holds the restored plaintext: %s"
+                .formatted(
+                    restoredVersions.stream()
+                        .map(json -> json.substring(0, Math.min(json.length(), 1500)))
+                        .toList()));
+
+    runSinkSecretsMigration();
+
+    JsonNode encrypted =
+        assertSinkSecretsStoredEncrypted(workflowId, token, privateKey, passphrase, plaintexts);
+    storedVersionJson(workflowId).forEach(version -> assertNoSecret(version, plaintexts));
+    assertDeployedTokenEncrypted(workflowName, token, plaintexts);
+
+    String storedAfterFirstRun = storedDefinitionJson(workflowId);
+    List<String> versionsAfterFirstRun = storedVersionJson(workflowId);
+    runSinkSecretsMigration();
+    assertEquals(storedAfterFirstRun, storedDefinitionJson(workflowId));
+    assertEquals(versionsAfterFirstRun, storedVersionJson(workflowId));
+    assertEquals(
+        encrypted,
+        assertSinkSecretsStoredEncrypted(workflowId, token, privateKey, passphrase, plaintexts));
+  }
+
+  private static final String UPDATE_STORED_DEFINITION_MYSQL =
+      "UPDATE workflow_definition_entity SET json = :json WHERE id = :id";
+
+  private static final String UPDATE_STORED_DEFINITION_POSTGRES =
+      "UPDATE workflow_definition_entity SET json = :json::jsonb WHERE id = :id";
+
+  private static final String UPDATE_STORED_VERSIONS_MYSQL =
+      "UPDATE entity_extension SET json = :json WHERE id = :id AND extension = :extension";
+
+  private static final String UPDATE_STORED_VERSIONS_POSTGRES =
+      "UPDATE entity_extension SET json = :json::jsonb WHERE id = :id AND extension = :extension";
+
+  private static final String STORED_VERSION_ROWS_SQL =
+      "SELECT extension, json FROM entity_extension WHERE id = :id AND extension LIKE :extensionPattern";
+
+  private static ConnectionType connectionType() {
+    return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+        ? ConnectionType.MYSQL
+        : ConnectionType.POSTGRES;
+  }
+
+  private static void runSinkSecretsMigration() {
+    // The test server's workflow handler is already running, so there is nothing to initialize.
+    Entity.getJdbi()
+        .useHandle(
+            handle ->
+                WorkflowSinkSecretsMigration.encryptSinkSecrets(
+                    handle, connectionType(), () -> {}));
+  }
+
+  /** Puts the plaintext secrets back into the stored row and every stored version snapshot. */
+  private void restorePlaintextSinkSecrets(
+      String workflowId, String token, String privateKey, String passphrase) {
+    boolean mysql = connectionType() == ConnectionType.MYSQL;
+    String definition =
+        withPlaintextSinkSecrets(storedDefinitionJson(workflowId), token, privateKey, passphrase);
+    Entity.getJdbi()
+        .useHandle(
+            handle -> {
+              handle
+                  .createUpdate(
+                      mysql ? UPDATE_STORED_DEFINITION_MYSQL : UPDATE_STORED_DEFINITION_POSTGRES)
+                  .bind("id", workflowId)
+                  .bind("json", definition)
+                  .execute();
+              handle
+                  .createQuery(STORED_VERSION_ROWS_SQL)
+                  .bind("id", workflowId)
+                  .bind("extensionPattern", workflowVersionPattern())
+                  .map(
+                      (rs, ctx) ->
+                          new StoredVersion(rs.getString("extension"), rs.getString("json")))
+                  .list()
+                  .forEach(
+                      row ->
+                          handle
+                              .createUpdate(
+                                  mysql
+                                      ? UPDATE_STORED_VERSIONS_MYSQL
+                                      : UPDATE_STORED_VERSIONS_POSTGRES)
+                              .bind("id", workflowId)
+                              .bind("extension", row.extension())
+                              .bind(
+                                  "json",
+                                  withPlaintextSinkSecrets(
+                                      row.json(), token, privateKey, passphrase))
+                              .execute());
+            });
+  }
+
+  private record StoredVersion(String extension, String json) {}
+
+  private static String withPlaintextSinkSecrets(
+      String storedJson, String token, String privateKey, String passphrase) {
+    JsonNode stored = JsonUtils.readTree(storedJson);
+    // A stored sink config is a JSON object, so its credentials and signing key are too.
+    if (gitSinkNode(stored).at("/config/sinkConfig") instanceof ObjectNode sinkConfig) {
+      sinkConfig.putObject("credentials").put("type", "token").put("token", token);
+      sinkConfig
+          .putObject("signingKey")
+          .put("privateKey", privateKey)
+          .put("passphrase", passphrase);
+    }
+    return stored.toString();
+  }
+
+  private static String workflowVersionPattern() {
+    return "%s.%%".formatted(EntityUtil.getVersionExtensionPrefix(Entity.WORKFLOW_DEFINITION));
+  }
+
+  private String storedDefinitionJson(String workflowId) {
+    return Entity.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(STORED_WORKFLOW_DEFINITION_SQL)
+                    .bind("id", workflowId)
+                    .mapTo(String.class)
+                    .one());
+  }
+
+  private static final String STORED_WORKFLOW_DEFINITION_SQL =
+      "SELECT json FROM workflow_definition_entity WHERE id = :id";
+
+  private static final String STORED_WORKFLOW_VERSIONS_SQL =
+      "SELECT json FROM entity_extension WHERE id = :id AND extension LIKE :extensionPattern";
+
+  /** Asserts the stored sink secrets are ciphertext of the given values and returns them. */
+  private JsonNode assertSinkSecretsStoredEncrypted(
+      String workflowId,
+      String token,
+      String privateKey,
+      String passphrase,
+      List<String> plaintexts) {
+    String stored = storedDefinitionJson(workflowId);
+    assertNoSecret(stored, plaintexts);
+    JsonNode sinkConfig = gitSinkNode(JsonUtils.readTree(stored)).at("/config/sinkConfig");
+    assertDecryptsTo(token, sinkConfig.at("/credentials/token").asText());
+    assertDecryptsTo(privateKey, sinkConfig.at("/signingKey/privateKey").asText());
+    assertDecryptsTo(passphrase, sinkConfig.at("/signingKey/passphrase").asText());
+    return sinkConfig;
+  }
+
+  private List<String> storedVersionJson(String workflowId) {
+    return Entity.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(STORED_WORKFLOW_VERSIONS_SQL)
+                    .bind("id", workflowId)
+                    .bind("extensionPattern", workflowVersionPattern())
+                    .mapTo(String.class)
+                    .list());
+  }
+
+  private void assertDeployedTokenEncrypted(
+      String workflowName, String token, List<String> plaintexts) {
+    String deployed = deployedSinkConfig(workflowName);
+    assertNoSecret(deployed, plaintexts);
+    assertDecryptsTo(token, JsonUtils.readTree(deployed).at("/credentials/token").asText());
+  }
+
+  private static void assertDecryptsTo(String plaintext, String stored) {
+    assertTrue(Fernet.isTokenized(stored), "a sink secret is stored as Fernet ciphertext");
+    assertEquals(plaintext, Fernet.getInstance().decrypt(stored));
+  }
+
+  private static void assertNoSecret(String json, List<String> plaintexts) {
+    plaintexts.forEach(plaintext -> assertFalse(json.contains(plaintext), "plaintext secret"));
+  }
+
+  private static void assertNoSecretOrCiphertext(String response, List<String> plaintexts) {
+    assertNoSecret(response, plaintexts);
+    assertFalse(response.contains(Fernet.FERNET_PREFIX), "ciphertext in a response");
   }
 
   /**
@@ -477,6 +711,7 @@ public class WorkflowDefinitionResourceIT {
     List<String> processInstanceIds = processInstanceIdsForBusinessKey(workflowInstanceId);
     assertEquals(2, processInstanceIds.size(), "Trigger and main workflow should both be running");
     String deadExecutorLockOwner = "dead-executor-%s".formatted(UUID.randomUUID());
+    awaitNoAsyncJobs(processInstanceIds);
     lockProcessInstances(processInstanceIds, deadExecutorLockOwner);
     assertEquals(
         List.of(deadExecutorLockOwner, deadExecutorLockOwner),
@@ -2583,11 +2818,12 @@ public class WorkflowDefinitionResourceIT {
         .executeForString(method, path, body, RequestOptions.builder().build());
   }
 
-  private Map<String, Object> buildGitSinkWorkflowRequest(String name, String token) {
+  private Map<String, Object> buildGitSinkWorkflowRequest(
+      String name, String token, String privateKey, String passphrase) {
     Map<String, Object> sinkConfig = new HashMap<>();
     sinkConfig.put("repositoryUrl", "https://github.com/open-metadata/sink-masking-it.git");
     sinkConfig.put("credentials", Map.of("type", "token", "token", token));
-
+    sinkConfig.put("signingKey", Map.of("privateKey", privateKey, "passphrase", passphrase));
     Map<String, Object> sinkNode = new HashMap<>();
     sinkNode.put("type", "automatedTask");
     sinkNode.put("subType", "sinkTask");
@@ -2816,7 +3052,7 @@ public class WorkflowDefinitionResourceIT {
         HttpRequest.newBuilder()
             .uri(
                 URI.create(
-                    "%s/api%s?reason=%s"
+                    "%s%s?reason=%s"
                         .formatted(
                             SdkClients.baseUrl(),
                             terminatePath(workflowInstanceId),
@@ -2854,32 +3090,61 @@ public class WorkflowDefinitionResourceIT {
         .toList();
   }
 
+  /**
+   * A finishing async job clears its process-instance lock without checking the owner, and the job
+   * that opens the approval task can still be committing when the task becomes visible, so a lock
+   * planted before it finishes is wiped.
+   */
+  private void awaitNoAsyncJobs(List<String> processInstanceIds) {
+    ManagementService managementService = WorkflowHandler.getInstance().getManagementService();
+    await("no async job left on %s".formatted(processInstanceIds))
+        .atMost(Duration.ofMinutes(1))
+        .pollInterval(Duration.ofMillis(250))
+        .until(
+            () ->
+                processInstanceIds.stream()
+                    .allMatch(
+                        id ->
+                            managementService.createJobQuery().processInstanceId(id).count() == 0));
+  }
+
+  /** The exclusive-job lock a server that died mid-run leaves on its process instances. */
+  private static final String LOCK_PROCESS_INSTANCE_SQL =
+      "UPDATE ACT_RU_EXECUTION SET LOCK_OWNER_ = :owner, LOCK_TIME_ = :until WHERE ID_ = :id";
+
+  private static final String PROCESS_INSTANCE_LOCK_OWNER_SQL =
+      "SELECT LOCK_OWNER_ FROM ACT_RU_EXECUTION WHERE ID_ = :id";
+
   /** Applies the exclusive-job process-instance lock the async executor takes before a job. */
   private void lockProcessInstances(List<String> processInstanceIds, String lockOwner) {
-    Date lockedUntil = Date.from(Instant.now().plus(Duration.ofDays(15)));
-    WorkflowHandler.getInstance()
-        .getManagementService()
-        .executeCommand(
-            commandContext -> {
-              ExecutionEntityManager executions =
-                  CommandContextUtil.getExecutionEntityManager(commandContext);
-              processInstanceIds.forEach(
-                  id -> executions.updateProcessInstanceLockTime(id, lockOwner, lockedUntil));
-              return null;
-            });
+    Timestamp lockedUntil = Timestamp.from(Instant.now().plus(Duration.ofDays(15)));
+    Entity.getJdbi()
+        .useHandle(
+            handle ->
+                processInstanceIds.forEach(
+                    id ->
+                        handle
+                            .createUpdate(LOCK_PROCESS_INSTANCE_SQL)
+                            .bind("owner", lockOwner)
+                            .bind("until", lockedUntil)
+                            .bind("id", id)
+                            .execute()));
   }
 
   private List<String> processInstanceLockOwners(List<String> processInstanceIds) {
-    return WorkflowHandler.getInstance()
-        .getManagementService()
-        .executeCommand(
-            commandContext -> {
-              ExecutionEntityManager executions =
-                  CommandContextUtil.getExecutionEntityManager(commandContext);
-              return processInstanceIds.stream()
-                  .map(id -> executions.findById(id).getLockOwner())
-                  .toList();
-            });
+    return Entity.getJdbi()
+        .withHandle(
+            handle ->
+                processInstanceIds.stream()
+                    .map(
+                        id ->
+                            handle
+                                .createQuery(PROCESS_INSTANCE_LOCK_OWNER_SQL)
+                                .bind("id", id)
+                                .mapTo(String.class)
+                                .findOne()
+                                .orElse(null))
+                    .toList());
   }
 
   private void assertNoRuntimeRowsRemain(String processInstanceId) {
@@ -2918,12 +3183,17 @@ public class WorkflowDefinitionResourceIT {
   }
 
   private String gitSinkToken(JsonNode workflow) {
-    JsonNode sinkNode =
-        Stream.of(MAPPER.convertValue(workflow.get("nodes"), JsonNode[].class))
-            .filter(node -> "gitSink".equals(node.path("name").asText()))
-            .findFirst()
-            .orElseThrow();
-    return sinkNode.at("/config/sinkConfig/credentials/token").asText();
+    return gitSinkNode(workflow).at("/config/sinkConfig/credentials/token").asText();
+  }
+
+  /** The node inside {@code workflow} itself, so edits to it change the workflow document. */
+  private static JsonNode gitSinkNode(JsonNode workflow) {
+    JsonNode nodes = workflow.get("nodes");
+    return IntStream.range(0, nodes.size())
+        .mapToObj(nodes::get)
+        .filter(node -> "gitSink".equals(node.path("name").asText()))
+        .findFirst()
+        .orElseThrow();
   }
 
   private String deployedSinkConfig(String workflowFqn) {

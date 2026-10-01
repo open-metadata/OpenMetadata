@@ -25,20 +25,19 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
-import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkConfig;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.GitSinkConfig;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.WebhookSinkConfig;
-import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 
@@ -51,14 +50,30 @@ import org.openmetadata.service.exception.BadRequestException;
  * secret locations are derived from the {@link PasswordField} getters of the typed sink config
  * classes and applied to the raw JSON tree, which leaves every other key (and every omitted
  * default) untouched.
+ *
+ * <p>The same traversal rewrites the secrets for at-rest encryption, so the set of secret fields is
+ * defined once, here.
  */
 public final class WorkflowDefinitionMasker {
   static final List<JsonPointer> GIT_SECRET_POINTERS = passwordPointers(GitSinkConfig.class);
   static final List<JsonPointer> WEBHOOK_SECRET_POINTERS =
       passwordPointers(WebhookSinkConfig.class);
+  static final List<JsonPointer> ALL_SECRET_POINTERS =
+      Stream.of(GIT_SECRET_POINTERS, WEBHOOK_SECRET_POINTERS)
+          .flatMap(List::stream)
+          .distinct()
+          .toList();
 
+  private static final UnaryOperator<String> MASK_SECRET = secret -> PASSWORD_MASK;
   private static final String NODES_FIELD = "nodes";
   private static final String SUB_TYPE_FIELD = "subType";
+  private static final String OLD_VALUE_FIELD = "oldValue";
+  private static final String NEW_VALUE_FIELD = "newValue";
+  private static final String FIELD_CHANGE_NAME = "name";
+  private static final List<String> CHANGE_DESCRIPTION_FIELDS =
+      List.of("changeDescription", "incrementalChangeDescription");
+  private static final List<String> FIELD_CHANGE_LISTS =
+      List.of("fieldsAdded", "fieldsUpdated", "fieldsDeleted");
   private static final String OPENMETADATA_PACKAGE = "org.openmetadata";
   private static final JsonPointer SINK_CONFIG_POINTER = JsonPointer.compile("/config/sinkConfig");
   private static final String MASKED_SECRET_MESSAGE =
@@ -68,11 +83,9 @@ public final class WorkflowDefinitionMasker {
 
   /** Returns a copy of {@code definition} with sink secrets masked, including change descriptions. */
   public static WorkflowDefinition mask(WorkflowDefinition definition) {
-    WorkflowDefinition masked = JsonUtils.deepCopy(definition, WorkflowDefinition.class);
-    listOrEmpty(masked.getNodes()).forEach(WorkflowDefinitionMasker::maskNode);
-    maskChangeDescription(masked.getChangeDescription());
-    maskChangeDescription(masked.getIncrementalChangeDescription());
-    return masked;
+    JsonNode masked = JsonUtils.valueToTree(definition);
+    transformSecrets(masked, MASK_SECRET);
+    return JsonUtils.treeToValue(masked, WorkflowDefinition.class);
   }
 
   public static EntityHistory mask(EntityHistory history) {
@@ -81,6 +94,41 @@ public final class WorkflowDefinitionMasker {
             .map(WorkflowDefinitionMasker::maskVersion)
             .toList();
     return new EntityHistory().withEntityType(history.getEntityType()).withVersions(versions);
+  }
+
+  /** Rewrites, in place, every textual sink secret of the nodes of {@code definition}. */
+  public static void transformSecrets(
+      WorkflowDefinition definition, UnaryOperator<String> transform) {
+    sinkTasks(definition)
+        .filter(WorkflowDefinitionMasker::hasSinkConfig)
+        .forEach(sinkTask -> transformSinkTask(sinkTask, transform));
+  }
+
+  /**
+   * Rewrites, in place, every textual sink secret of a workflow definition JSON tree, including the
+   * nodes recorded in its change descriptions. Returns whether any value changed.
+   */
+  public static boolean transformSecrets(JsonNode definition, UnaryOperator<String> transform) {
+    boolean changed = transformSinkTaskArray(definition.path(NODES_FIELD), transform);
+    for (String changeDescriptionField : CHANGE_DESCRIPTION_FIELDS) {
+      changed |= transformChangeDescription(definition.path(changeDescriptionField), transform);
+    }
+    return changed;
+  }
+
+  /**
+   * Returns a copy of a sink config with every textual secret, of any sink type, rewritten. A sink
+   * task's runtime config carries no sink type, so the secret locations of every type are applied.
+   */
+  public static Object transformSinkConfigSecrets(
+      Object sinkConfig, UnaryOperator<String> transform) {
+    Object transformed = null;
+    if (sinkConfig != null) {
+      JsonNode tree = JsonUtils.valueToTree(sinkConfig);
+      transformText(tree, ALL_SECRET_POINTERS, transform);
+      transformed = JsonUtils.treeToValue(tree, Object.class);
+    }
+    return transformed;
   }
 
   /**
@@ -158,53 +206,78 @@ public final class WorkflowDefinitionMasker {
     return pointers;
   }
 
-  private static void maskNode(WorkflowNodeDefinitionInterface node) {
-    // Workflow nodes are polymorphic by subType; only sink tasks carry credentials.
-    if (node instanceof SinkTaskDefinition sinkTask && hasSinkConfig(sinkTask)) {
-      JsonNode sinkConfig = JsonUtils.valueToTree(sinkTask.getConfig().getSinkConfig());
-      maskSecrets(sinkConfig, secretPointers(sinkTask));
+  private static void transformSinkTask(
+      SinkTaskDefinition sinkTask, UnaryOperator<String> transform) {
+    JsonNode sinkConfig = JsonUtils.valueToTree(sinkTask.getConfig().getSinkConfig());
+    if (transformText(sinkConfig, secretPointers(sinkTask), transform)) {
       sinkTask.getConfig().setSinkConfig(JsonUtils.treeToValue(sinkConfig, SinkConfig.class));
     }
   }
 
-  private static void maskChangeDescription(ChangeDescription change) {
-    if (change == null) {
-      return;
+  private static boolean transformChangeDescription(
+      JsonNode changeDescription, UnaryOperator<String> transform) {
+    boolean changed = false;
+    for (String fieldChangeList : FIELD_CHANGE_LISTS) {
+      for (JsonNode fieldChange : changeDescription.path(fieldChangeList)) {
+        changed |= transformNodesFieldChange(fieldChange, transform);
+      }
     }
-    Stream.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())
-        .flatMap(fieldChanges -> listOrEmpty(fieldChanges).stream())
-        .filter(fieldChange -> NODES_FIELD.equals(fieldChange.getName()))
-        .forEach(WorkflowDefinitionMasker::maskFieldChange);
+    return changed;
   }
 
-  private static void maskFieldChange(FieldChange fieldChange) {
-    fieldChange.setOldValue(maskNodesJson(fieldChange.getOldValue()));
-    fieldChange.setNewValue(maskNodesJson(fieldChange.getNewValue()));
-  }
-
-  private static Object maskNodesJson(Object value) {
-    // FieldChange values are untyped; the updater records the nodes list as a JSON array string.
-    Object masked = value;
-    if (value instanceof String json && JsonUtils.readTree(json) instanceof ArrayNode nodes) {
-      nodes.forEach(WorkflowDefinitionMasker::maskSinkTaskJson);
-      masked = JsonUtils.pojoToJson(nodes);
+  private static boolean transformNodesFieldChange(
+      JsonNode fieldChange, UnaryOperator<String> transform) {
+    boolean changed = false;
+    if (NODES_FIELD.equals(fieldChange.path(FIELD_CHANGE_NAME).asText())) {
+      changed = transformNodesJson(fieldChange, OLD_VALUE_FIELD, transform);
+      changed |= transformNodesJson(fieldChange, NEW_VALUE_FIELD, transform);
     }
-    return masked;
+    return changed;
   }
 
-  private static void maskSinkTaskJson(JsonNode node) {
+  private static boolean transformNodesJson(
+      JsonNode fieldChange, String valueField, UnaryOperator<String> transform) {
+    JsonNode value = fieldChange.path(valueField);
+    boolean changed = false;
+    // FieldChange values are untyped; the updater records the nodes list as a JSON array string,
+    // and a FieldChange is always a JSON object.
+    if (value.isTextual()
+        && JsonUtils.readTree(value.textValue()) instanceof ArrayNode nodes
+        && transformSinkTaskArray(nodes, transform)
+        && fieldChange instanceof ObjectNode holder) {
+      holder.put(valueField, JsonUtils.pojoToJson(nodes));
+      changed = true;
+    }
+    return changed;
+  }
+
+  private static boolean transformSinkTaskArray(JsonNode nodes, UnaryOperator<String> transform) {
+    boolean changed = false;
+    for (JsonNode node : nodes) {
+      changed |= transformSinkTaskJson(node, transform);
+    }
+    return changed;
+  }
+
+  private static boolean transformSinkTaskJson(JsonNode node, UnaryOperator<String> transform) {
+    boolean changed = false;
     // The "nodes" field change also carries edge objects, so only sink task elements are parsed.
     if (NodeSubType.SINK_TASK.value().equals(node.path(SUB_TYPE_FIELD).asText())) {
       SinkTaskDefinition sinkTask = JsonUtils.treeToValue(node, SinkTaskDefinition.class);
-      maskSecrets(node.at(SINK_CONFIG_POINTER), secretPointers(sinkTask));
+      changed = transformText(node.at(SINK_CONFIG_POINTER), secretPointers(sinkTask), transform);
     }
+    return changed;
   }
 
   private static Object maskVersion(Object version) {
     // EntityHistory.versions is an untyped List<Object> holding each version's entity JSON.
-    return version instanceof String json
-        ? JsonUtils.pojoToJson(mask(JsonUtils.readValue(json, WorkflowDefinition.class)))
-        : version;
+    Object masked = version;
+    if (version instanceof String json) {
+      JsonNode tree = JsonUtils.readTree(json);
+      transformSecrets(tree, MASK_SECRET);
+      masked = JsonUtils.pojoToJson(tree);
+    }
+    return masked;
   }
 
   private static void restoreSinkTask(SinkTaskDefinition updated, SinkTaskDefinition original) {
@@ -225,10 +298,18 @@ public final class WorkflowDefinitionMasker {
     }
   }
 
-  private static void maskSecrets(JsonNode sinkConfig, List<JsonPointer> pointers) {
-    pointers.stream()
-        .filter(pointer -> sinkConfig.at(pointer).isTextual())
-        .forEach(pointer -> replaceText(sinkConfig, pointer, PASSWORD_MASK));
+  private static boolean transformText(
+      JsonNode sinkConfig, List<JsonPointer> pointers, UnaryOperator<String> transform) {
+    boolean changed = false;
+    for (JsonPointer pointer : pointers) {
+      String value = sinkConfig.at(pointer).textValue();
+      String transformed = value == null ? null : transform.apply(value);
+      if (!Objects.equals(value, transformed)) {
+        replaceText(sinkConfig, pointer, transformed);
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   private static void replaceText(JsonNode root, JsonPointer pointer, String value) {

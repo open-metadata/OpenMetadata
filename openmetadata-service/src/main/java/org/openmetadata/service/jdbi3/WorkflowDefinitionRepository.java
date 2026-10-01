@@ -24,6 +24,7 @@ import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
+import org.openmetadata.service.secrets.WorkflowSinkSecrets;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -97,6 +98,9 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     if (operation != Operation.SOFT_DELETE) {
       WorkflowDefinitionMasker.requireNoMaskedSecrets(updated);
     }
+    // Encrypted before the diff, so the change description, the stored JSON and the BPMN that
+    // postUpdate deploys all carry the ciphertext.
+    WorkflowSinkSecrets.encrypt(updated);
     return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
   }
 
@@ -157,10 +161,22 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   @Override
   protected void storeEntity(WorkflowDefinition entity, boolean update) {
     if (!update) {
-      // The one point every creation passes; a PUT that creates runs prepare() as an update.
-      WorkflowDefinitionMasker.requireNoMaskedSecrets(entity);
+      // The one point every single creation passes; a PUT that creates runs prepare() as an
+      // update. An update was already encrypted in getUpdater.
+      prepareSecretsForCreate(entity);
     }
     store(entity, update);
+  }
+
+  @Override
+  protected void storeEntities(List<WorkflowDefinition> entities) {
+    entities.forEach(WorkflowDefinitionRepository::prepareSecretsForCreate);
+    super.storeEntities(entities);
+  }
+
+  private static void prepareSecretsForCreate(WorkflowDefinition entity) {
+    WorkflowDefinitionMasker.requireNoMaskedSecrets(entity);
+    WorkflowSinkSecrets.encrypt(entity);
   }
 
   @Override

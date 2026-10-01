@@ -60,15 +60,31 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
   }
 
   /**
-   * Records the end of an instance's process. The status is decided from the row as it is now, and
-   * only status, endedAt and exception are written, so a stop request recorded after this read
-   * stays on the instance instead of being overwritten by the whole document read here.
+   * Records the end of an instance's process. Only status, endedAt and exception are written, so a
+   * stop request is never overwritten by the document read here. A stop request recorded between
+   * that read and the end write still matched RUNNING; once the end is written no request can
+   * land, so the row read back afterwards holds every stop request the instance will ever get.
    */
   public void updateWorkflowInstance(
       UUID workflowInstanceId, Long endedAt, Map<String, Object> variables) {
-    WorkflowInstance workflowInstance =
-        JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
-    recordEnd(workflowInstanceId, endStateOf(workflowInstance, variables), endedAt);
+    WorkflowInstance beforeEnd = readInstance(workflowInstanceId);
+    recordEnd(workflowInstanceId, endStateOf(beforeEnd, variables), endedAt);
+    Optional<StopRequest> missedStopRequest =
+        stopRequestOf(readInstance(workflowInstanceId))
+            .filter(stopRequest -> isStopRequestMissed(beforeEnd));
+    missedStopRequest.ifPresent(
+        stopRequest ->
+            recordEnd(
+                workflowInstanceId, stoppedEndState(workflowInstanceId, stopRequest), endedAt));
+  }
+
+  private static boolean isStopRequestMissed(WorkflowInstance beforeEnd) {
+    return beforeEnd.getStatus() != WorkflowInstance.WorkflowStatus.SUPERSEDED
+        && stopRequestOf(beforeEnd).isEmpty();
+  }
+
+  private WorkflowInstance readInstance(UUID workflowInstanceId) {
+    return JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
   }
 
   /** How an instance ended; a {@code null} exception leaves the stored one as it is. */

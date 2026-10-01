@@ -57,12 +57,14 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class SinkTaskDelegateTest {
 
   private static final String TEST_SINK_TYPE = "testSink";
+  private static final String FERNET_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
 
   @Mock private DelegateExecution execution;
   @Mock private Expression sinkTypeExpr;
@@ -160,6 +162,40 @@ class SinkTaskDelegateTest {
     verify(execution).setVariable(eq("process_result"), eq("success"));
     verify(execution).setVariable(eq("process_syncedCount"), eq(1));
     verify(execution).setVariable(eq("process_failedCount"), eq(0));
+  }
+
+  @Test
+  void providerReceivesTheDecryptedSinkSecrets() {
+    Fernet.getInstance().setFernetKey(FERNET_KEY);
+    try {
+      String token = "ghp_plaintextForTheProvider";
+      List<Object> providerConfigs = new ArrayList<>();
+      SinkProviderRegistry.getInstance()
+          .register(
+              TEST_SINK_TYPE,
+              config -> {
+                providerConfigs.add(config);
+                return testProvider;
+              });
+      setupCommonExpressions(true);
+      setupEncryptedSinkConfig(token);
+      when(inputNamespaceMapExpr.getValue(execution))
+          .thenReturn(JsonUtils.pojoToJson(Map.of(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE)));
+      setupVariableAccess(List.of("<#E::table::test.fqn>"), false);
+      EntityInterface batchEntity = mock(EntityInterface.class);
+      when(batchEntity.getFullyQualifiedName()).thenReturn("test.fqn");
+      delegate.entityLoader = link -> batchEntity;
+
+      delegate.execute(execution);
+
+      assertEquals(1, providerConfigs.size());
+      assertEquals(
+          token,
+          JsonUtils.valueToTree(providerConfigs.getFirst()).at("/credentials/token").asText());
+      assertEquals(1, testProvider.getBatchWriteCallCount());
+    } finally {
+      Fernet.getInstance().setFernetKey((String) null);
+    }
   }
 
   @Test
@@ -799,6 +835,13 @@ class SinkTaskDelegateTest {
         IntStream.range(0, entityCount).mapToObj("<#E::table::svc.db.sch.t%d>"::formatted).toList(),
         false);
     delegate.execute(execution);
+  }
+
+  private void setupEncryptedSinkConfig(String token) {
+    when(sinkConfigExpr.getValue(execution))
+        .thenReturn(
+            JsonUtils.pojoToJson(
+                Map.of("credentials", Map.of("token", Fernet.getInstance().encrypt(token)))));
   }
 
   private void setupCommonExpressions(boolean batchMode) {

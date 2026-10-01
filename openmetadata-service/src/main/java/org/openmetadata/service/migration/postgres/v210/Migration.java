@@ -26,6 +26,7 @@ import static org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
+import static org.openmetadata.service.migration.utils.v210.WorkflowSinkSecretsMigration.encryptSinkSecrets;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -74,5 +75,8 @@ public class Migration extends MigrationProcessImpl {
     // children. That fires only on write, so features tagged before this upgrade would read back
     // as untagged from any FQN-prefix query. Idempotent. DB-agnostic, so it runs on both engines.
     backfillMlFeatureTags(collectionDAO);
+    // Fernet-encrypts plaintext sink secrets of stored workflow definitions and their versions, and
+    // redeploys the changed definitions so their Flowable BPMN carries the ciphertext. Idempotent.
+    encryptSinkSecrets(handle, POSTGRES, this::initializeWorkflowHandler);
   }
 }
