@@ -30,5 +30,25 @@
     .application-logo {
       filter: grayscale(1);
     }
+
+    // Card-wide opacity sinks text and the badge below contrast on dark
+    // surfaces, so dim only the logo and mute the text with tokens.
+    .dark-mode & {
+      opacity: 1;
+
+      .application-logo {
+        opacity: 0.65;
+      }
+
+      .ant-typography,
+      .ant-btn-link {
+        color: var(--om-color-text-tertiary);
+      }
+
+      .deleted-badge-button {
+        color: var(--om-color-text-error);
+        background-color: var(--om-color-bg-error);
+      }
+    }
   }
 }
