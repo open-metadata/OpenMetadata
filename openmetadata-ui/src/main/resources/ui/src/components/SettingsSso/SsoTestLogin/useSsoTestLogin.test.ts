@@ -26,8 +26,8 @@ import {
   TestLoginResult,
   testLoginValidateToken,
 } from '../../../rest/securityConfigAPI';
-import { getCandidateUserManagerConfig } from '../../../utils/AuthProvider.util';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
+import { getCandidateUserManagerConfig } from './candidateUserManagerConfig';
 import { SSO_TEST_LOGIN_CANDIDATE_KEY } from './ssoTestCallbackBootstrap';
 import { useSsoTestLogin } from './useSsoTestLogin';
 
@@ -43,9 +43,8 @@ jest.mock('../../../rest/securityConfigAPI', () => ({
   submitTestLoginCredentials: jest.fn(),
 }));
 
-jest.mock('../../../utils/AuthProvider.util', () => ({
+jest.mock('./candidateUserManagerConfig', () => ({
   getCandidateUserManagerConfig: jest.fn(() => ({})),
-  SSO_TEST_LOGIN_STORE_PREFIX: 'omSsoTestLogin.',
 }));
 
 jest.mock('../../../utils/SwTokenStorageUtils', () => ({

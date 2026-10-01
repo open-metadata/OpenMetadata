@@ -15,11 +15,7 @@ import type { AuthenticationResult, Configuration } from '@azure/msal-browser';
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
-import {
-  InMemoryWebStorage,
-  UserManagerSettings,
-  WebStorageStateStore,
-} from 'oidc-client';
+import type { WebStorageStateStore } from 'oidc-client';
 import {
   AuthenticationConfigurationWithScope,
   OidcUser,
@@ -41,7 +37,6 @@ import { isDev } from './EnvironmentUtils';
 import { getBasePath } from './HistoryUtils';
 import { t } from './i18next/LocalUtil';
 import { oidcTokenStorage } from './OidcTokenStorage';
-import { SSO_TEST_LOGIN_STORE_PREFIX } from './SsoTestLoginPopup';
 import { setOidcToken } from './SwTokenStorageUtils';
 
 export interface AuthFieldError {
@@ -54,7 +49,7 @@ export interface AuthFieldValidationResult {
   errors: AuthFieldError[];
 }
 
-const OIDC_SCOPE = 'openid email profile';
+export const OIDC_SCOPE = 'openid email profile';
 
 const cookieStorage = new CookieStorage();
 
@@ -104,43 +99,6 @@ export const getUserManagerConfig = (
     scope,
     userStore: oidcTokenStorage,
     stateStore: oidcTokenStorage,
-  };
-};
-
-/**
- * Build an isolated UserManager config used ONLY for the SSO "Test Login" popup.
- * Tokens land in a dedicated prefixed store (never the app's oidcTokenStorage),
- * but the popup uses the SAME configured callback URL the real login uses — so
- * the test exercises the actual registered redirect URI and never requires the
- * admin to register an extra one. Isolation is achieved by diverting the popup
- * at the callback (see isSsoTestLoginPopup), not by using a separate route.
- */
-export const getCandidateUserManagerConfig = (
-  authClient: AuthenticationConfigurationWithScope
-): UserManagerSettings => {
-  const {
-    authority = '',
-    clientId = '',
-    callbackUrl,
-    scope,
-    responseType,
-  } = authClient;
-
-  return {
-    authority,
-    client_id: clientId,
-    redirect_uri: getRedirectUri(callbackUrl),
-    response_type: responseType ?? 'id_token',
-    scope: scope || OIDC_SCOPE,
-    loadUserInfo: false,
-    monitorSession: false,
-    // Only this page reads the tested identity's tokens back, so they are never written to storage.
-    userStore: new WebStorageStateStore({ store: new InMemoryWebStorage() }),
-    // The same-origin popup finds its sign-in state here (see isSsoTestLoginPopup).
-    stateStore: new WebStorageStateStore({
-      store: globalThis.localStorage,
-      prefix: SSO_TEST_LOGIN_STORE_PREFIX,
-    }),
   };
 };
 

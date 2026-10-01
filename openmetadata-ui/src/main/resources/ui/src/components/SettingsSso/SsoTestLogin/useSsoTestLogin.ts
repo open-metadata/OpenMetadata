@@ -28,7 +28,6 @@ import {
   TestLoginResult,
   testLoginValidateToken,
 } from '../../../rest/securityConfigAPI';
-import { getCandidateUserManagerConfig } from '../../../utils/AuthProvider.util';
 import { t } from '../../../utils/i18next/LocalUtil';
 import { isPlaywrightBuild } from '../../../utils/isPlaywrightBuild';
 import {
@@ -37,6 +36,7 @@ import {
 } from '../../../utils/SsoTestLoginPopup';
 import { getErrorText } from '../../../utils/StringUtils';
 import { AuthenticationConfigurationWithScope } from '../../Auth/AuthProviders/AuthProvider.interface';
+import { getCandidateUserManagerConfig } from './candidateUserManagerConfig';
 import { SSO_TEST_LOGIN_CANDIDATE_KEY } from './ssoTestCallbackBootstrap';
 import {
   ConfigurationCheck,
