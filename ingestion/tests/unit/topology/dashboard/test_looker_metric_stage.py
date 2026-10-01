@@ -39,7 +39,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.barrier import Barrier
-from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest, OMetaLineageRequest
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
 from metadata.ingestion.source.dashboard.looker.measures import looker_metric_name
@@ -254,10 +254,26 @@ def _metrics(records) -> list[CreateMetricRequest]:
     return [r.right for r in records if isinstance(r.right, CreateMetricRequest)]
 
 
-def _metric_lineage(records) -> list[OMetaFQNLineageRequest]:
+def _metric_lineage_requests(records) -> list[OMetaLineageRequest]:
     return [
-        r.right for r in records if isinstance(r.right, OMetaFQNLineageRequest) and r.right.to_entity_type == "metric"
+        r.right
+        for r in records
+        if isinstance(r.right, OMetaLineageRequest)
+        and isinstance(r.right.lineage_request, OMetaFQNLineageRequest)
+        and r.right.lineage_request.to_entity_type == "metric"
     ]
+
+
+def _metric_lineage(records) -> list[OMetaFQNLineageRequest]:
+    return [request.lineage_request for request in _metric_lineage_requests(records)]
+
+
+def test_metric_lineage_honors_override_lineage():
+    """The sink caches the delete per target, so every edge into a metric survives the override."""
+    requests = _metric_lineage_requests(_run_bulk_stage({"includeMetrics": True, "overrideLineage": True}))
+
+    assert requests
+    assert all(request.override_lineage for request in requests)
 
 
 @pytest.fixture(name="records")

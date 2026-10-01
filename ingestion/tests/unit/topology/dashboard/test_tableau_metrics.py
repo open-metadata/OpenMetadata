@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.data.metric import Language, MetricType, T
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest, OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.tableau.metadata import TableauSource
 from metadata.ingestion.source.dashboard.tableau.metrics import (
@@ -187,6 +187,14 @@ def _run_lineage_stage(source: TableauSource) -> list:
         return [either.right for either in source.yield_dashboard_lineage(dashboard) if either.right is not None]
 
 
+def _metric_edges(outputs: list) -> list[OMetaLineageRequest]:
+    return [
+        output
+        for output in outputs
+        if isinstance(output, OMetaLineageRequest) and isinstance(output.lineage_request, OMetaFQNLineageRequest)
+    ]
+
+
 def test_calculated_measure_maps_to_metric():
     request = build_metric_request(SERVICE, PUBLISHED, TOTAL_SALES, datasource_dimensions(PUBLISHED))
 
@@ -228,7 +236,8 @@ def test_lineage_stage_emits_metrics_with_assets_and_lineage(make_source):
     assert [related.root for related in metrics[1].relatedMetrics] == [total_sales_name]
 
     edges = {
-        (edge.from_entity_fqn, edge.to_entity_fqn): edge for edge in outputs if isinstance(edge, OMetaFQNLineageRequest)
+        (edge.lineage_request.from_entity_fqn, edge.lineage_request.to_entity_fqn): edge.lineage_request
+        for edge in _metric_edges(outputs)
     }
     model_fqn = DATA_MODELS[PUBLISHED.id].fullyQualifiedName.root
     assert set(edges) == {
@@ -246,7 +255,16 @@ def test_lineage_stage_emits_metrics_with_assets_and_lineage(make_source):
 def test_metrics_disabled_by_default(make_source):
     outputs = _run_lineage_stage(make_source(includeMetrics=False))
 
-    assert not [output for output in outputs if isinstance(output, (CreateMetricRequest, OMetaFQNLineageRequest))]
+    assert not [output for output in outputs if isinstance(output, CreateMetricRequest)]
+    assert not _metric_edges(outputs)
+
+
+def test_metric_lineage_honors_override_lineage(make_source):
+    """The sink caches the delete per target, so every edge into a metric survives the override."""
+    edges = _metric_edges(_run_lineage_stage(make_source(overrideLineage=True)))
+
+    assert len(edges) == 3
+    assert all(edge.override_lineage for edge in edges)
 
 
 def test_missing_data_model_emits_no_metrics(make_source):

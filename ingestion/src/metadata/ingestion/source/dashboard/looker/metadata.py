@@ -976,7 +976,8 @@ class LookerSource(DashboardServiceSource):
 
                 metric_name = model_str(metric_request.name)
                 emitted.add(metric_name)
-                yield from self._yield_metric_lineage(candidate, metric_name, related)
+                for edge in self._yield_metric_lineage(candidate, metric_name, related):
+                    yield from self.yield_lineage_request(edge)
             except Exception as err:
                 yield Either(  # pyright: ignore[reportCallIssue]
                     left=StackTraceError(

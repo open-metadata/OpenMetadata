@@ -854,7 +854,8 @@ class TableauSource(DashboardServiceSource):
                     yield Either(right=metric_request)  # pyright: ignore[reportCallIssue]
                     metric_name = model_str(metric_request.name)
                     emitted.add(metric_name)
-                    yield from self._yield_metric_lineage(data_model_entity, field, metric_name, related)
+                    for edge in self._yield_metric_lineage(data_model_entity, field, metric_name, related):
+                        yield from self.yield_lineage_request(edge)
                 except Exception as err:
                     yield Either(  # pyright: ignore[reportCallIssue]
                         left=StackTraceError(
@@ -876,10 +877,6 @@ class TableauSource(DashboardServiceSource):
         A calculated measure is a field of its datasource, computed from the datasource's fields,
         never from the warehouse directly: the model is its source, and the model's own
         Table -> DataModel lineage carries the path on to the physical columns.
-
-        Not routed through `yield_lineage_request`: with `overrideLineage` the sink deletes every
-        DashboardLineage edge into the target before adding one, so a metric fed by a parent
-        metric and its model would keep only the last.
         """
         for parent_name in related:
             yield Either(  # pyright: ignore[reportCallIssue]
