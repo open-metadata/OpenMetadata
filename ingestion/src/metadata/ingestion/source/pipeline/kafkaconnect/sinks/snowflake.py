@@ -16,6 +16,10 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.type.schema import DataTypeTopic, SchemaType
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.kafkaconnect.constants import ConnectorConfigKeys
@@ -46,6 +50,9 @@ REGEX_META_CHARACTERS = frozenset("*+?[](){}|^$\\")
 # How every parser renders an array in dataTypeDisplay ("ARRAY<record>",
 # "UNION<null,ARRAY<record>>"), which is where a nullable array's arrayness survives.
 ARRAY_TYPE_DISPLAY = "ARRAY<"
+URL_SCHEME = re.compile(r"^[a-z][a-z0-9+.-]*://")
+SNOWFLAKE_HOST_SUFFIXES = (".snowflakecomputing.com", ".snowflakecomputing.cn")
+PRIVATELINK_SUFFIX = ".privatelink"
 
 
 @dataclass(frozen=True)
@@ -124,6 +131,24 @@ def snowflake_table_name(topic: str, sanitize: bool = True) -> str:
     return f"{''.join(result).upper()}_{hashed}"
 
 
+def snowflake_account_identifier(value: str | None) -> str | None:
+    """
+    The account a connector's snowflake.url.name or a service's `account` names, spelled the
+    one way both can be.
+
+    A service's `account` is documented as the URL host without its domain, so reducing the
+    URL to exactly that is what makes the two comparable. Account identifiers ignore case, and
+    a URL spells an account name's underscores as hyphens because hostnames cannot carry them.
+    An account locator and an organization-account name for the same account still differ, and
+    nothing in either value relates them.
+    """
+    host = URL_SCHEME.sub("", (value or "").strip().lower())
+    host = host.split("/", 1)[0].split(":", 1)[0]
+    for suffix in SNOWFLAKE_HOST_SUFFIXES:
+        host = host.removesuffix(suffix)
+    return host.removesuffix(PRIVATELINK_SUFFIX).replace("_", "-") or None
+
+
 class SnowflakeSinkResolver(SinkDatasetResolver):
     """
     Resolve the Snowflake tables a sink connector writes to.
@@ -136,6 +161,8 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
     class, so everything the key-list path could answer must still be answered
     here -- hence the key variations and the fallbacks below.
     """
+
+    target_service_type = DatabaseServiceType.Snowflake
 
     def resolve_datasets(
         self,
@@ -162,8 +189,8 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
                 logger.warning("Snowflake sink '%s' declares no topics; no lineage can be built", config.get("name"))
             return datasets
 
-        database = self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_DATABASE_KEYS)
-        schema = self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_SCHEMA_KEYS)
+        database = self._fold_identifier(self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_DATABASE_KEYS))
+        schema = self._fold_identifier(self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_SCHEMA_KEYS))
         self._warn_on_partial_qualification(config, database, schema)
 
         datasets = []
@@ -200,6 +227,30 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
             mapping.topic_pattern if mapping.is_regex else re.escape(mapping.topic_pattern)
             for mapping in self._topic2table_mappings(config) or []
         ]
+
+    def target_service_names(self, config: dict, services: list[DatabaseService], configured: list[str]) -> list[str]:
+        """
+        The Snowflake services holding the account this connector writes to.
+
+        Every service on that account is returned, never just the first, because one account
+        is routinely registered as several services (per database, per role) and only the exact
+        table lookup can tell them apart. dbServiceNames narrows them when it names one of them.
+        When no service's account matches, the account binds nothing, and the Snowflake
+        services dbServiceNames names are the only binding left.
+        """
+        pinned = super().target_service_names(config, services, configured)
+        account = snowflake_account_identifier(config.get("snowflake.url.name"))
+        same_account = [
+            model_str(service.name) for service in services if account and self._service_account(service) == account
+        ]
+        if same_account:
+            return [name for name in same_account if name in pinned] or same_account
+        logger.info(
+            "Snowflake sink '%s' writes to account '%s', which matches no Snowflake service's account",
+            config.get("name"),
+            account,
+        )
+        return pinned
 
     def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Any | None:
         if not dataset.source_topic:
@@ -362,6 +413,26 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
             if value:
                 return value
         return None
+
+    @staticmethod
+    def _fold_identifier(name: str | None) -> str | None:
+        """
+        A database or schema name as Snowflake resolves it.
+
+        The connector hands both to the driver unquoted, so Snowflake folds them to upper case
+        just as it folds a derived table name, and the database connector stores them folded.
+        Double quotes keep the case here, as they do in SQL.
+        """
+        if not name:
+            return name
+        if len(name) > 1 and name[0] == name[-1] == '"':
+            return name[1:-1]
+        return name.upper()
+
+    @staticmethod
+    def _service_account(service: DatabaseService) -> str | None:
+        config = service.connection.config if service.connection else None
+        return snowflake_account_identifier(getattr(config, "account", None))
 
     @staticmethod
     def _topic2table_mappings(config: dict) -> list[TopicTableMapping] | None:

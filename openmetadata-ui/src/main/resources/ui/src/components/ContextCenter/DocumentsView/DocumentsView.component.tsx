@@ -28,9 +28,11 @@ import {
   Check,
   ChevronRight,
   Eye,
+  Share07,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { compare } from 'fast-json-patch';
 import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -42,13 +44,24 @@ import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/tr
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
-import { moveFileToFolder, moveFileToRoot } from '../../../rest/assetAPI';
+import {
+  ShareConfig,
+  ShareRole,
+  ShareVisibility,
+} from '../../../generated/entity/context/contextMemory';
+import { EntityReference } from '../../../generated/entity/type';
+import {
+  moveFileToFolder,
+  moveFileToRoot,
+  updateContextFile,
+} from '../../../rest/assetAPI';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
+import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
@@ -155,6 +168,22 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
    Per-row actions dropdown (Share / Move to Folder / Delete)
 --------------------------------------------------------------- */
 
+const VisibilityOption: FC<{ label: string; description: string }> = ({
+  description,
+  label,
+}) => (
+  <Box direction="col">
+    <Typography size="text-sm" weight="medium">
+      {label}
+    </Typography>
+    <Typography
+      className="tw:whitespace-normal tw:text-tertiary"
+      size="text-xs">
+      {description}
+    </Typography>
+  </Box>
+);
+
 const FileActions: FC<FileActionsProps> = ({
   canDelete,
   canEdit,
@@ -164,10 +193,60 @@ const FileActions: FC<FileActionsProps> = ({
   isLoadingMoreFolders = false,
   onDeleteFile,
   onFileMoved,
+  onFileUpdated,
   onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [isSharePickerOpen, setIsSharePickerOpen] = useState(false);
+
+  const applyShareConfig = async (shareConfig: ShareConfig) => {
+    try {
+      setIsSharing(true);
+      const patch = compare(file, { ...file, shareConfig });
+      onFileUpdated?.(await updateContextFile(file.id, patch));
+      showSuccessToast(
+        t('message.entity-updated-successfully', {
+          entity: t('label.visibility'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  /**
+   * Shared without anybody named is indistinguishable from Private, so the two are set together:
+   * picking people IS the act of sharing.
+   */
+  const handleShareWithPeople = async (people: EntityReference[]) => {
+    await applyShareConfig({
+      visibility: ShareVisibility.Shared,
+      sharedWith: people.map((principal) => ({
+        principal,
+        role: ShareRole.Viewer,
+      })),
+    });
+    setIsSharePickerOpen(false);
+  };
+
+  const handleVisibilityAction = (visibility: ShareVisibility) => {
+    if (visibility === ShareVisibility.Shared) {
+      setIsSharePickerOpen(true);
+    } else {
+      applyShareConfig({ visibility });
+    }
+  };
+
+  const sharedPrincipals =
+    file.shareConfig?.sharedWith
+      ?.map((shared) => shared.principal)
+      .filter((principal): principal is EntityReference =>
+        Boolean(principal)
+      ) ?? [];
 
   const handleMoveToFolder = async (folderId: string) => {
     try {
@@ -201,86 +280,170 @@ const FileActions: FC<FileActionsProps> = ({
   }
 
   return (
-    <Dropdown.Root>
-      <ButtonUtility
-        color="tertiary"
-        data-testid="manage-button"
-        icon={<DotsVerticalIcon height={20} width={20} />}
-        size="sm"
-        tooltip={t('label.manage-entity', { entity: t('label.document') })}
-      />
-      <Dropdown.Popover className="tw:w-46">
-        <Dropdown.Menu
-          onAction={(key) => {
-            if (key === 'delete') {
-              onDeleteFile?.(file);
-            }
-          }}>
-          {canEdit && (
-            <SubmenuTrigger>
-              <Dropdown.Item
-                data-testid="move-btn"
-                isDisabled={isMoving || folders.length === 0}>
-                {() => (
-                  <Box align="center" justify="between">
-                    <Box align="center" gap={2}>
-                      <MoveFolderIcon
-                        className="tw:text-secondary"
-                        height={20}
-                        width={20}
-                      />
-                      <Typography
-                        ellipsis
-                        className="tw:grow tw:text-secondary">
-                        {t('label.move-to-folder')}
-                      </Typography>
-                    </Box>
-                    <ChevronRight
-                      aria-hidden="true"
-                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
-                      strokeWidth={2}
-                    />
-                  </Box>
-                )}
-              </Dropdown.Item>
-              <Dropdown.Popover
-                className="tw:w-52"
-                offset={-6}
-                placement="right top">
-                <FolderPickerMenu
-                  currentFolderId={file.folder?.id}
-                  folders={folders}
-                  hasMoreFolders={hasMoreFolders}
-                  isLoadingMoreFolders={isLoadingMoreFolders}
-                  onLoadMoreFolders={onLoadMoreFolders}
-                  onPick={handleMoveToFolder}
-                />
-              </Dropdown.Popover>
-            </SubmenuTrigger>
-          )}
+    // The people picker is a popover of its own, anchored where the menu was. It cannot live inside
+    // the menu: a press in a second overlay reads to the menu as a press outside, and closes both.
+    <UserSelectableList
+      multiSelect
+      hasPermission={!isSharing}
+      popoverProps={{
+        open: isSharePickerOpen,
+        placement: 'bottomRight',
+        // Opened by the menu's Shared option only; a press on the anchor opens the menu instead.
+        onOpenChange: (open) => !open && setIsSharePickerOpen(false),
+      }}
+      selectedUsers={sharedPrincipals}
+      onClose={() => setIsSharePickerOpen(false)}
+      onUpdate={handleShareWithPeople}>
+      <span className="tw:inline-flex">
+        <Dropdown.Root>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="manage-button"
+            icon={<DotsVerticalIcon height={20} width={20} />}
+            size="sm"
+            tooltip={t('label.manage-entity', { entity: t('label.document') })}
+          />
+          <Dropdown.Popover className="tw:w-46">
+            <Dropdown.Menu
+              onAction={(key) => {
+                if (key === 'delete') {
+                  onDeleteFile?.(file);
+                }
+              }}>
+              {canEdit && (
+                <SubmenuTrigger>
+                  <Dropdown.Item
+                    data-testid="visibility-btn"
+                    isDisabled={isSharing}>
+                    {() => (
+                      <Box align="center" justify="between">
+                        <Box align="center" gap={2}>
+                          <Share07
+                            className="tw:text-secondary"
+                            height={20}
+                            width={20}
+                          />
+                          <Typography
+                            ellipsis
+                            className="tw:grow tw:text-secondary">
+                            {t('label.visibility')}
+                          </Typography>
+                        </Box>
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          strokeWidth={2}
+                        />
+                      </Box>
+                    )}
+                  </Dropdown.Item>
+                  <Dropdown.Popover
+                    className="tw:w-80"
+                    offset={-6}
+                    placement="right top">
+                    <Dropdown.Menu
+                      aria-label={t('label.visibility')}
+                      onAction={(key) =>
+                        handleVisibilityAction(key as ShareVisibility)
+                      }>
+                      <Dropdown.Item
+                        data-testid="visibility-Private"
+                        id={ShareVisibility.Private}>
+                        <VisibilityOption
+                          description={t('message.visible-only-to-you')}
+                          label={t('label.private')}
+                        />
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        data-testid="visibility-Entity"
+                        id={ShareVisibility.Entity}>
+                        <VisibilityOption
+                          description={t(
+                            'message.visible-to-everyone-in-workspace'
+                          )}
+                          label={t('label.workspace')}
+                        />
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        data-testid="visibility-Shared"
+                        id={ShareVisibility.Shared}>
+                        <VisibilityOption
+                          description={t('message.visible-to-specific-people')}
+                          label={t('label.shared')}
+                        />
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </SubmenuTrigger>
+              )}
 
-          {canDelete && (
-            <Dropdown.Item data-testid="delete-btn" id="delete">
-              <Box align="center" gap={2}>
-                <TrashIcon
-                  aria-hidden="true"
-                  className="tw:shrink-0 tw:text-error-primary"
-                  height={20}
-                  width={20}
-                />
-                <Typography
-                  ellipsis
-                  className="tw:grow tw:text-error-primary"
-                  size="text-sm"
-                  weight="medium">
-                  {t('label.delete')}
-                </Typography>
-              </Box>
-            </Dropdown.Item>
-          )}
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown.Root>
+              {canEdit && (
+                <SubmenuTrigger>
+                  <Dropdown.Item
+                    data-testid="move-btn"
+                    isDisabled={isMoving || folders.length === 0}>
+                    {() => (
+                      <Box align="center" justify="between">
+                        <Box align="center" gap={2}>
+                          <MoveFolderIcon
+                            className="tw:text-secondary"
+                            height={20}
+                            width={20}
+                          />
+                          <Typography
+                            ellipsis
+                            className="tw:grow tw:text-secondary">
+                            {t('label.move-to-folder')}
+                          </Typography>
+                        </Box>
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          strokeWidth={2}
+                        />
+                      </Box>
+                    )}
+                  </Dropdown.Item>
+                  <Dropdown.Popover
+                    className="tw:w-52"
+                    offset={-6}
+                    placement="right top">
+                    <FolderPickerMenu
+                      currentFolderId={file.folder?.id}
+                      folders={folders}
+                      hasMoreFolders={hasMoreFolders}
+                      isLoadingMoreFolders={isLoadingMoreFolders}
+                      onLoadMoreFolders={onLoadMoreFolders}
+                      onPick={handleMoveToFolder}
+                    />
+                  </Dropdown.Popover>
+                </SubmenuTrigger>
+              )}
+
+              {canDelete && (
+                <Dropdown.Item data-testid="delete-btn" id="delete">
+                  <Box align="center" gap={2}>
+                    <TrashIcon
+                      aria-hidden="true"
+                      className="tw:shrink-0 tw:text-error-primary"
+                      height={20}
+                      width={20}
+                    />
+                    <Typography
+                      ellipsis
+                      className="tw:grow tw:text-error-primary"
+                      size="text-sm"
+                      weight="medium">
+                      {t('label.delete')}
+                    </Typography>
+                  </Box>
+                </Dropdown.Item>
+              )}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      </span>
+    </UserSelectableList>
   );
 };
 
@@ -450,6 +613,7 @@ const FileRow: FC<FileRowProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onFileUpdated,
   onOpenPreview,
   onPreview,
   onSelectFile,
@@ -619,6 +783,7 @@ const FileRow: FC<FileRowProps> = ({
           isLoadingMoreFolders={isLoadingMoreFolders}
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
+          onFileUpdated={onFileUpdated}
           onLoadMoreFolders={onLoadMoreFolders}
         />
       </Box>
@@ -656,6 +821,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onFileUpdated,
   onOpenPreview,
   onPreview,
   onSelectFile,
@@ -764,6 +930,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                     onDeleteFile={onDeleteFile}
                     onDownload={onDownload}
                     onFileMoved={onFileMoved}
+                    onFileUpdated={onFileUpdated}
                     onLoadMoreFolders={onLoadMoreFolders}
                     onOpenPreview={onOpenPreview}
                     onPreview={onPreview}
