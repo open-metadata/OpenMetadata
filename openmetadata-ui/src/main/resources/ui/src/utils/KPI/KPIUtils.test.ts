@@ -16,7 +16,10 @@ describe('buildKpiChartRows', () => {
   it('merges KPIs by day, sorted numerically, gaps as null', () => {
     expect(
       buildKpiChartRows({
-        a: [{ day: 900, count: 1 }, { day: 1000, count: 2 }],
+        a: [
+          { day: 900, count: 1 },
+          { day: 1000, count: 2 },
+        ],
         b: [{ day: 1000, count: 5 }],
       })
     ).toEqual([

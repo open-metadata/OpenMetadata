@@ -120,7 +120,9 @@ export const buildKpiChartRows = (
 ): KpiChartRow[] => {
   const names = Object.keys(kpiResults);
   const days = [
-    ...new Set(Object.values(kpiResults).flatMap((data) => data.map((d) => d.day))),
+    ...new Set(
+      Object.values(kpiResults).flatMap((data) => data.map((d) => d.day))
+    ),
   ].sort((a, b) => a - b);
 
   return days.map((day) => {
