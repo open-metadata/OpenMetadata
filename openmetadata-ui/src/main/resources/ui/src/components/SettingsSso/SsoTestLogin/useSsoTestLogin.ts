@@ -377,7 +377,9 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
       }
       if (popup) {
         // Cut the identity provider's way back to this page (reverse tabnabbing) while the popup is
-        // still blank. The test only polls, so it never needs the link.
+        // still blank. The test only polls, so it never needs the link. Without it, though, this
+        // page can close the popup only once the provider has sent it back to this origin: one
+        // abandoned at the provider stays open on whatever the provider last showed.
         popup.opener = null;
       }
       popupRef.current = popup;

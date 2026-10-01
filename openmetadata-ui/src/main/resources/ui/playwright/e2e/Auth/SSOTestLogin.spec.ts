@@ -263,24 +263,37 @@ test.describe('SSO Test Login', { tag: ['@sso', '@basic'] }, () => {
         requiresCredentials: false,
       })
     );
-    await page.route(
-      RESULT_URL,
-      fulfillJson({ ...SIGNED_IN_RESULT, protocol: 'oidc' })
+    // As on the server, the test settles only once the provider has sent the popup back.
+    let providerRedirectedBack = false;
+    await page.route(RESULT_URL, (route) =>
+      fulfillJson(
+        providerRedirectedBack
+          ? { ...SIGNED_IN_RESULT, protocol: 'oidc' }
+          : { status: 'pending', protocol: 'oidc' }
+      )(route)
     );
+    // Like a real provider, the fake one sends the popup back to OpenMetadata's callback. The page
+    // cut the popup's opener, so it can close the popup only once it is back on this origin.
+    const callbackUrl = new URL(
+      '/callback?state=omtest%3Ae2e-session&code=e2e-code',
+      page.url()
+    ).href;
     // The popup is a page of its own, so the identity provider is faked for the whole context.
-    await page
-      .context()
-      .route(`${FAKE_AUTHORIZATION_URL}**`, (route) =>
-        route.fulfill({ status: 200, contentType: 'text/html', body: '' })
-      );
+    await page.context().route(`${FAKE_AUTHORIZATION_URL}**`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: `<script>location.replace('${callbackUrl}')</script>`,
+      })
+    );
 
     await selectSSOProvider(page, 'google');
 
     const popupOpened = page.waitForEvent('popup');
-    const resultResponse = page.waitForResponse(RESULT_URL);
     await page.getByTestId('test-login-sso-configuration').click();
     const popup = await popupOpened;
-    await resultResponse;
+    await popup.waitForURL(/\/callback\?/);
+    providerRedirectedBack = true;
 
     const dialog = page.getByRole('dialog');
 
@@ -357,7 +370,9 @@ test.describe(
       );
       await redirectToHomePage(page);
       await navigateToSSOConfiguration(page);
-      await page.getByTestId('edit-sso-configuration').click();
+      // An existing Google configuration opens on its Overview tab; the form is under Configure.
+      await page.getByRole('tab', { name: 'Configure' }).click();
+      await expect(page.getByTestId('save-sso-configuration')).toBeVisible();
     });
 
     test('should gate an edit only when it changes how users sign in', async ({
