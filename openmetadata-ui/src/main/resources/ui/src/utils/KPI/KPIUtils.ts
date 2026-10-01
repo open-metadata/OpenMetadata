@@ -14,6 +14,8 @@ import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiR
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import i18n from '../i18next/LocalUtil';
 
+export type KpiChartRow = { day: number } & Record<string, number | null>;
+
 export enum KPIChartType {
   Description = 'description',
   Owner = 'owner',
@@ -111,4 +113,22 @@ export const getYAxisTicks = (
     domain: [0, roundedMax],
     ticks,
   };
+};
+
+export const buildKpiChartRows = (
+  kpiResults: Record<string, Array<{ day: number; count: number }>>
+): KpiChartRow[] => {
+  const names = Object.keys(kpiResults);
+  const days = [
+    ...new Set(Object.values(kpiResults).flatMap((data) => data.map((d) => d.day))),
+  ].sort((a, b) => a - b);
+
+  return days.map((day) => {
+    const row: KpiChartRow = { day };
+    names.forEach((name) => {
+      row[name] = kpiResults[name].find((d) => d.day === day)?.count ?? null;
+    });
+
+    return row;
+  });
 };
