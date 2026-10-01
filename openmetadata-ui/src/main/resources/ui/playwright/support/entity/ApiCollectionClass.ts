@@ -193,7 +193,11 @@ export class ApiCollectionClass extends EntityClass implements ParentNode {
     this.apiEndpoint.apiCollection = `${serviceName}.${this.entity.name}`;
   }
 
-  async create(apiContext: APIRequestContext) {
+  /**
+   * Creates the collection alone. As a test's parent override it must not
+   * seed its fixture endpoint: the caller's endpoint is the only child.
+   */
+  async createAsParent(apiContext: APIRequestContext) {
     const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'api',
@@ -211,6 +215,14 @@ export class ApiCollectionClass extends EntityClass implements ParentNode {
       fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
+    this.serviceResponseData = service;
+    this.entityResponseData = entity;
+
+    return { service, entity };
+  }
+
+  async create(apiContext: APIRequestContext) {
+    const { service, entity } = await this.createAsParent(apiContext);
     const apiEndpoint = await createOrFetch(apiContext, {
       label: 'ApiCollectionClass.create endpoint',
       createPath: '/api/v1/apiEndpoints',
@@ -218,8 +230,6 @@ export class ApiCollectionClass extends EntityClass implements ParentNode {
       data: this.apiEndpoint,
     });
 
-    this.serviceResponseData = service;
-    this.entityResponseData = entity;
     this.apiEndpointResponseData = apiEndpoint;
 
     return {

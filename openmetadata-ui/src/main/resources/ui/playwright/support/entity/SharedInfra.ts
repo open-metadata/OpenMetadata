@@ -83,6 +83,9 @@ export class SharedInfra {
     key = 'default'
   ): Promise<ParentSnapshot> {
     const id = slotId(kind, key);
+    if (!this.slots.has(id)) {
+      this.mergePersistedSlots();
+    }
     const cached = this.slots.get(id);
     if (cached) {
       if (await this.chainExists(apiContext, cached)) {
@@ -176,6 +179,21 @@ export class SharedInfra {
   /** Runs on import. A missing or unreadable file means "nothing seeded yet". */
   static loadResponseData(): void {
     this.slots = new Map(readSlots(outputFilePath()));
+  }
+
+  /**
+   * Playwright can import this module in a worker before the setup project
+   * writes the file (the race LineageDataClass.ensureLoaded() also handles),
+   * leaving the import-time load empty. Re-read on a miss so that worker uses
+   * the seeded chains instead of building its own; slots already in memory
+   * (including rebuilt ones) win.
+   */
+  private static mergePersistedSlots(): void {
+    for (const [id, slot] of readSlots(outputFilePath())) {
+      if (!this.slots.has(id)) {
+        this.slots.set(id, slot);
+      }
+    }
   }
 
   /**

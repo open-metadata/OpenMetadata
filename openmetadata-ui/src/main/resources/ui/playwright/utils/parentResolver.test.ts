@@ -12,14 +12,25 @@
  */
 import { APIRequestContext, expect, test } from '@playwright/test';
 import { randomUUID } from 'crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'fs';
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
 import { tmpdir } from 'os';
 import path from 'path';
+import { ApiCollectionClass } from '../support/entity/ApiCollectionClass';
+import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
+import { DatabaseClass } from '../support/entity/DatabaseClass';
 import { resolveParents } from '../support/entity/ParentResolver';
+import { ApiServiceClass } from '../support/entity/service/ApiServiceClass';
 import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../support/entity/service/MessagingServiceClass';
+import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 
 // Stand-in for the OpenMetadata endpoints the resolver touches: POST creates
@@ -232,6 +243,61 @@ test.describe('resolveParents', () => {
       '/api/v1/topics',
     ]);
     expect(topic.ownedRootPath).toContain('/services/messagingServices/name/');
+  });
+
+  test('a database override creates no fixture children of its own', async () => {
+    const table = new TableClass({
+      database: new DatabaseClass({ service: new DatabaseServiceClass() }),
+    });
+
+    await table.create(apiContext);
+
+    expect(api.posts).toEqual([
+      '/api/v1/services/databaseServices',
+      '/api/v1/databases',
+      '/api/v1/databaseSchemas',
+      '/api/v1/tables',
+    ]);
+  });
+
+  test('a collection override creates no fixture endpoint of its own', async () => {
+    const endpoint = new ApiEndpointClass({
+      collection: new ApiCollectionClass({ service: new ApiServiceClass() }),
+    });
+
+    await endpoint.create(apiContext);
+
+    expect(api.posts).toEqual([
+      '/api/v1/services/apiServices',
+      '/api/v1/apiCollections',
+      '/api/v1/apiEndpoints',
+    ]);
+  });
+
+  test('slots seeded after import are picked up on a miss', async () => {
+    const key = `unit-${randomUUID()}`;
+    const service = {
+      id: randomUUID(),
+      name: `pw-shared-messaging-service-${key}`,
+      fullyQualifiedName: `pw-shared-messaging-service-${key}`,
+    };
+    api.existing.add(service.fullyQualifiedName);
+    // afterAll may already have removed the dir in this worker (fullyParallel
+    // runs the file's hooks per test group).
+    mkdirSync(sharedInfraDir, { recursive: true });
+    writeFileSync(
+      path.join(sharedInfraDir, 'shared-infra.json'),
+      JSON.stringify({
+        [`messaging:${key}`]: { kind: 'messaging', parents: { service } },
+      })
+    );
+
+    const { parents } = await resolveParents(apiContext, 'messaging', {}, key);
+
+    expect(api.posts).toEqual([]);
+    expect(parents.service?.fullyQualifiedName).toBe(
+      service.fullyQualifiedName
+    );
   });
 
   test('passing two levels is rejected', async () => {

@@ -150,7 +150,11 @@ export class DatabaseClass extends EntityClass implements ParentNode {
     this.table.databaseSchema = `${serviceName}.${this.entity.name}.${this.schema.name}`;
   }
 
-  async create(apiContext: APIRequestContext) {
+  /**
+   * Creates the database alone. As a test's parent override it must not seed
+   * its fixture schema and table: the resolver creates the levels below it.
+   */
+  async createAsParent(apiContext: APIRequestContext) {
     const { parents, ownedRootPath, ownedOverride } = await resolveParents(
       apiContext,
       'database',
@@ -168,6 +172,14 @@ export class DatabaseClass extends EntityClass implements ParentNode {
       fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
+    this.serviceResponseData = service;
+    this.entityResponseData = entity;
+
+    return { service, entity };
+  }
+
+  async create(apiContext: APIRequestContext) {
+    const { service, entity } = await this.createAsParent(apiContext);
     const schema = await createOrFetch(apiContext, {
       label: 'DatabaseClass.create schema',
       createPath: '/api/v1/databaseSchemas',
@@ -186,8 +198,6 @@ export class DatabaseClass extends EntityClass implements ParentNode {
       data: this.table,
     });
 
-    this.serviceResponseData = service;
-    this.entityResponseData = entity;
     this.schemaResponseData = schema;
     this.tableResponseData = table;
 
