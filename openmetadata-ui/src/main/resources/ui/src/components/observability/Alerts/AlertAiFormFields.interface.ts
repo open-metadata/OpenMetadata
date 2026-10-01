@@ -14,6 +14,7 @@
 import { SelectItemType } from '@openmetadata/ui-core-components';
 import { ComponentProps, ReactNode } from 'react';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import {
   Destination,
@@ -47,14 +48,11 @@ export interface AlertAiFormFieldsProps {
   showBasicFields?: boolean;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
-  /**
-   * Classic alert forms only offer templates when `alertsClassBase` registers
-   * a template widget (Collate); OSS has none and cannot save one.
-   */
-  shouldShowTemplateSection?: boolean;
   supportedFilters?: EventFilterRule[];
   supportedTriggers?: EventFilterRule[];
+  templateResourcePermission?: OperationPermission;
   templates?: NotificationTemplate[];
+  templatesLoading?: boolean;
   validationErrors?: AlertAiFormValidationErrors;
   value: AlertAiFormValue;
 }
@@ -160,11 +158,4 @@ export interface AlertAiDestinationItemProps
   destination: ModifiedDestination;
   destinationsWithStatus?: Destination[];
   isDestinationStatusLoading?: boolean;
-}
-
-export interface AlertAiNotificationSectionProps {
-  isViewOnly?: boolean;
-  onChange?: AlertAiFormFieldsProps['onChange'];
-  templates?: NotificationTemplate[];
-  value: AlertAiFormValue;
 }

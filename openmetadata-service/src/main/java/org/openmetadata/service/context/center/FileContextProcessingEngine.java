@@ -5,6 +5,7 @@ import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ExtractionStats;
+import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -13,8 +14,8 @@ import org.openmetadata.service.jdbi3.ContextFileRepository;
 
 /**
  * {@link ContextProcessingEngine} for ContextFile sources. The source text is the current content
- * snapshot's canonical extracted text; the hash is that snapshot's stored checksum, so re-uploading
- * identical bytes is short-circuited by the hash gate.
+ * snapshot's canonical extracted text; the hash is that snapshot's stored checksum. An unchanged
+ * snapshot skips processing, and a new file with an already-extracted checksum reuses its memories.
  */
 public class FileContextProcessingEngine extends ContextProcessingEngine {
   private final ContextFileRepository fileRepository;
@@ -43,6 +44,33 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
       }
     }
     return source;
+  }
+
+  @Override
+  protected ExtractionOutcome reuseExisting(UUID fileId, Source source) {
+    if (loadStats(fileId) != null) {
+      return null;
+    }
+    for (ContextFile prior : fileRepository.listByExtractedSourceHash(source.hash(), fileId)) {
+      if (prior.getProcessingStatus() != ProcessingStatus.Processed
+          || prior.getExtractionStats() == null) {
+        continue;
+      }
+      ContextMemoryReconciler.ReconcileResult reused =
+          reconciler.reuseExtractedFrom(source.sourceRef(), prior.getEntityReference());
+      if (reused != null) {
+        ExtractionStats stats =
+            new ExtractionStats()
+                .withChunksTotal(prior.getExtractionStats().getChunksTotal())
+                .withChunksProcessed(prior.getExtractionStats().getChunksProcessed())
+                .withPillsCreated(0)
+                .withLastExtractedAt(System.currentTimeMillis())
+                .withSourceHash(source.hash());
+        stampStats(fileId, stats);
+        return ExtractionOutcome.processed(stats, reused);
+      }
+    }
+    return null;
   }
 
   @Override

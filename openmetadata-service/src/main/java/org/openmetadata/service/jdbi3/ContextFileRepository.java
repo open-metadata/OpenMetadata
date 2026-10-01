@@ -338,6 +338,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return contentId == null ? null : contentRepository.getById(contentId);
   }
 
+  public List<ContextFile> listByExtractedSourceHash(String sourceHash, UUID excludeId) {
+    return JsonUtils.readObjects(
+        contextFileDAO.listByExtractedSourceHash(sourceHash, excludeId.toString()),
+        ContextFile.class);
+  }
+
   public void validateNoDuplicateFileName(String fileName, EntityReference folder, UUID excludeId) {
     if (fileName == null || fileName.isBlank()) {
       return;
