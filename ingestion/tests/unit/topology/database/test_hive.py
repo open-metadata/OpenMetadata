@@ -362,11 +362,6 @@ class HiveUnitTest(TestCase):
         Delta + partitions is indistinguishable from Hive + partitions downstream. Pinned here
         so the Delta typing work does not silently change it.
         """
-        # The topology context is a class attribute shared by every source instance, so it is
-        # set here rather than inherited from whichever test happened to run first.
-        self.hive.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        self.hive.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.hive.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
         self.hive.inspector.get_columns = lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         partition = TablePartition(
             columns=[
@@ -377,7 +372,19 @@ class HiveUnitTest(TestCase):
                 )
             ]
         )
-        with patch.object(HiveSource, "get_table_partition_details", return_value=(True, partition)):
+        # The topology context is a class attribute shared by every source instance, so it is
+        # set here rather than inherited from whichever test happened to run first -- and set
+        # through patch.dict, which restores it on exit. Left behind, it reds out other test
+        # files that share the worker process under `pytest -n auto --dist loadfile`.
+        context = {
+            "database_service": MOCK_DATABASE_SERVICE.name.root,
+            "database": MOCK_DATABASE.name.root,
+            "database_schema": MOCK_DATABASE_SCHEMA.name.root,
+        }
+        with (
+            patch.dict(self.hive.context.get().__dict__, context),
+            patch.object(HiveSource, "get_table_partition_details", return_value=(True, partition)),
+        ):
             results = [either.right for either in self.hive.yield_table(("delta_sales", TableType.DeltaLake))]
 
         assert len(results) == 1
