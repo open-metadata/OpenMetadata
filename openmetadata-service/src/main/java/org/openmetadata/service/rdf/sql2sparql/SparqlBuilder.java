@@ -9,7 +9,7 @@ import org.openmetadata.service.exception.BadRequestException;
 
 /**
  * Builds SPARQL queries from SQL AST nodes using the visitor pattern. Supports nested/structured
- * fields (votes.upVotes, changeDescription.fieldsUpdated), property paths for transitive queries,
+ * fields (lifeCycle.created, columnsLineage.toColumn), property paths for transitive queries,
  * and PROV-O vocabulary for lineage.
  */
 @Slf4j

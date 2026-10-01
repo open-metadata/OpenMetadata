@@ -30,6 +30,7 @@ import {
   within,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import { AlertType } from '../../../generated/events/api/createEventSubscription';
 import {
@@ -48,18 +49,16 @@ import {
   ModifiedDestination,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
-import { validateNotificationTemplate } from '../../../rest/notificationtemplateAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import alertsClassBase from '../../../utils/AlertsClassBase';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
 import AlertAiForm from './AlertAiForm.component';
 import AlertAiFormFields from './AlertAiFormFields.component';
-import AlertAiNotificationSection from './AlertAiNotificationSection.component';
 import AlertAiRuleSection from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
-import { CUSTOM_TEMPLATE_VALUE } from './Template.constants';
 
 // The AI form's onChange is a functional updater (prev) => next; apply the latest updater to the
 // value the component rendered with to get the committed value the assertions check.
@@ -68,17 +67,6 @@ const applyLastUpdater = (
   prev: ModifiedCreateEventSubscription
 ): ModifiedCreateEventSubscription =>
   onChange.mock.calls[onChange.mock.calls.length - 1][0](prev);
-
-jest.mock('./NotificationTemplateUtils', () => ({
-  getTemplateValidationAlert: jest.fn((response) =>
-    response ? <div data-testid="template-validation-alert" /> : null
-  ),
-  getTemplateEntityRefObject: jest.fn((template) => ({
-    id: template.id,
-    name: template.name,
-    type: 'notificationTemplate',
-  })),
-}));
 
 jest.mock('../../../rest/alertsAPI', () => ({
   testAlertDestination: jest.fn().mockResolvedValue([]),
@@ -97,10 +85,6 @@ jest.mock('../../../rest/searchAPI', () => ({
       ],
     },
   }),
-}));
-
-jest.mock('../../../rest/notificationtemplateAPI', () => ({
-  validateNotificationTemplate: jest.fn().mockResolvedValue({ isValid: true }),
 }));
 
 jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () => ({
@@ -568,6 +552,7 @@ describe('AlertAi form field components', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
   const baseValue: ModifiedCreateEventSubscription = {
@@ -1330,252 +1315,6 @@ describe('AlertAi form field components', () => {
     );
   });
 
-  it('renders custom notification template fields and updates custom data', async () => {
-    const onChange = jest.fn();
-    const value = {
-      ...baseValue,
-      customNotificationTemplateData: {
-        displayName: 'Template',
-        templateBody: 'Body',
-        templateSubject: 'Subject',
-      },
-      notificationTemplate: CUSTOM_TEMPLATE_VALUE,
-    } as ModifiedCreateEventSubscription;
-
-    render(
-      <AlertAiNotificationSection
-        templates={[]}
-        value={value}
-        onChange={onChange}
-      />
-    );
-
-    expect(screen.getByTestId('custom-template-name-input')).toHaveValue(
-      'Template'
-    );
-    expect(
-      screen.getByText((content) =>
-        content.includes('label.template-field-name:label.name')
-      )
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('custom-template-subject-input')).toHaveValue(
-      'Subject'
-    );
-    expect(
-      screen.getByText((content) =>
-        content.includes('label.template-field-name:label.subject')
-      )
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('custom-template-body-input')).toHaveValue(
-      'Body'
-    );
-    expect(
-      screen.getByText((content) =>
-        content.includes('label.template-field-name:label.body')
-      )
-    ).toBeInTheDocument();
-    expect(screen.getAllByText('message.handlebar-helper-text')).toHaveLength(
-      2
-    );
-
-    const bodyEditorFooter = screen.getByTestId(
-      'custom-template-validate-container'
-    );
-
-    expect(bodyEditorFooter).not.toHaveTextContent(
-      'message.handlebar-helper-text'
-    );
-    expect(bodyEditorFooter).toHaveTextContent(
-      'label.validate-template-syntax'
-    );
-    expect(bodyEditorFooter).toHaveTextContent('label.validate');
-    expect(screen.getByTestId('custom-template-info-banner')).toHaveTextContent(
-      'message.notification-template-help-text label.view-documentation'
-    );
-    expect(
-      screen.getByRole('link', { name: 'label.view-documentation' })
-    ).toHaveAttribute(
-      'href',
-      'https://docs.getcollate.io/how-to-guides/data-quality-observability/alerts-notifications/notification-templates/index'
-    );
-    expect(
-      screen.getByRole('link', { name: 'label.view-documentation' })
-    ).toHaveAttribute('target', '_blank');
-    expect(
-      screen
-        .getByTestId('custom-template-name-input')
-        .closest('[data-field-doc]')
-    ).toHaveAttribute('data-field-doc', 'root/displayName');
-    expect(
-      screen
-        .getByTestId('custom-template-subject-input')
-        .closest('[data-field-doc]')
-    ).toHaveAttribute('data-field-doc', 'root/templateSubject');
-    expect(
-      screen
-        .getByTestId('custom-template-body-input')
-        .closest('[data-field-doc]')
-    ).toHaveAttribute('data-field-doc', 'root/templateBody');
-
-    fireEvent.change(screen.getByTestId('custom-template-subject-input'), {
-      target: { value: 'Updated subject' },
-    });
-
-    expect(applyLastUpdater(onChange, value)).toEqual(
-      expect.objectContaining({
-        customNotificationTemplateData: expect.objectContaining({
-          displayName: 'Template',
-          templateBody: 'Body',
-          templateSubject: 'Updated subject',
-        }),
-      })
-    );
-
-    fireEvent.click(screen.getByTestId('custom-template-validate-button'));
-
-    await waitFor(() =>
-      expect(validateNotificationTemplate).toHaveBeenCalledWith(
-        'Subject',
-        'Body'
-      )
-    );
-  });
-
-  it('shows required errors below custom notification template fields without hiding helper text', () => {
-    const value = {
-      ...baseValue,
-      customNotificationTemplateData: {
-        displayName: '',
-        templateBody: '',
-        templateSubject: '',
-      },
-      notificationTemplate: CUSTOM_TEMPLATE_VALUE,
-    } as ModifiedCreateEventSubscription;
-
-    render(<AlertAiNotificationSection templates={[]} value={value} />);
-
-    fireEvent.click(screen.getByTestId('custom-template-validate-button'));
-
-    expect(validateNotificationTemplate).not.toHaveBeenCalled();
-    expect(
-      screen.getByText(
-        'label.field-required:label.template-field-name:label.name'
-      )
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'label.field-required:label.template-field-name:label.subject'
-      )
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'label.field-required:label.template-field-name:label.body'
-      )
-    ).toBeInTheDocument();
-    expect(screen.getAllByText('message.handlebar-helper-text')).toHaveLength(
-      2
-    );
-    expect(
-      screen.getByTestId('custom-template-validate-container')
-    ).not.toHaveTextContent('message.handlebar-helper-text');
-  });
-
-  it('renders custom notification template fields as view-only fields', () => {
-    const value = {
-      ...baseValue,
-      customNotificationTemplateData: {
-        displayName: 'Template',
-        templateBody: '<p><strong>Testing harshit template</strong></p>',
-        templateSubject: 'Subject',
-      },
-      notificationTemplate: CUSTOM_TEMPLATE_VALUE,
-    } as ModifiedCreateEventSubscription;
-
-    render(
-      <AlertAiNotificationSection isViewOnly templates={[]} value={value} />
-    );
-
-    expect(screen.getByTestId('custom-template-name-input')).toHaveValue(
-      'Template'
-    );
-    expect(screen.getByTestId('custom-template-name-input')).toBeDisabled();
-    expect(screen.getByTestId('custom-template-subject-input')).toHaveValue(
-      'Subject'
-    );
-    expect(screen.getByTestId('custom-template-subject-input')).toBeDisabled();
-    expect(
-      screen.queryByTestId('custom-template-body-input')
-    ).not.toBeInTheDocument();
-    expect(screen.getByTestId('field-doc-preview')).toHaveTextContent(
-      'Testing harshit template'
-    );
-    expect(
-      screen.queryByText('<p><strong>Testing harshit template</strong></p>')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('custom-template-info-banner')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('custom-template-validate-container')
-    ).not.toBeInTheDocument();
-    expect(
-      screen
-        .getByTestId('custom-template-name-input')
-        .closest('[data-field-doc]')
-    ).not.toBeInTheDocument();
-  });
-
-  it('renders selected saved notification template fields as read-only fields', () => {
-    const template = {
-      displayName: 'Saved Template',
-      id: 'template-id',
-      name: 'saved_template',
-      templateBody: 'Saved body',
-      templateSubject: 'Saved subject',
-    } as NotificationTemplate;
-    const selectedTemplate = JSON.stringify({
-      id: template.id,
-      name: template.name,
-      type: 'notificationTemplate',
-    });
-    const value = {
-      ...baseValue,
-      notificationTemplate: selectedTemplate,
-    } as ModifiedCreateEventSubscription;
-
-    render(<AlertAiNotificationSection templates={[template]} value={value} />);
-
-    expect(screen.getByTestId('custom-template-name-input')).toHaveValue(
-      'Saved Template'
-    );
-    expect(screen.getByTestId('custom-template-name-input')).toBeDisabled();
-    expect(screen.getByTestId('custom-template-subject-input')).toHaveValue(
-      'Saved subject'
-    );
-    expect(screen.getByTestId('custom-template-subject-input')).toBeDisabled();
-    expect(screen.getByTestId('field-doc-preview')).toHaveTextContent(
-      'Saved body'
-    );
-    expect(
-      screen.queryByTestId('custom-template-body-input')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('custom-template-info-banner')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('custom-template-validate-container')
-    ).not.toBeInTheDocument();
-    // The fields are read-only because a saved template is selected, but the
-    // form itself is still editable, so the hints stay. Dropping them here
-    // left the panel showing whichever field was focused before, which reads
-    // as the hint being broken rather than deliberately absent.
-    expect(
-      screen
-        .getByTestId('custom-template-name-input')
-        .closest('[data-field-doc]')
-    ).toBeInTheDocument();
-  });
-
   it('resets dependent values when source changes', () => {
     const onChange = jest.fn();
     const value: ModifiedCreateEventSubscription = {
@@ -1759,37 +1498,69 @@ describe('AlertAi form field components', () => {
     ).toBeInTheDocument();
   });
 
-  it('hides the notification template section when templates are not supported', () => {
-    render(
-      <AlertAiFormFields
-        shouldShowActionsSection
-        shouldShowFiltersSection
-        filterResources={[{ name: 'table' }]}
-        shouldShowTemplateSection={false}
-        value={{} as ModifiedCreateEventSubscription}
-        onChange={jest.fn()}
-      />
-    );
+  describe('notification template section', () => {
+    it('renders none when no section is registered, as in OSS', () => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          filterResources={[{ name: 'table' }]}
+          value={{} as ModifiedCreateEventSubscription}
+          onChange={jest.fn()}
+        />
+      );
 
-    expect(screen.queryByTestId('template-select')).not.toBeInTheDocument();
-  });
+      expect(screen.queryByTestId('template-section')).not.toBeInTheDocument();
+      expect(
+        document.querySelector('[data-field-doc="alertNotificationTemplate"]')
+      ).toBeNull();
+    });
 
-  it('shows the notification template section when templates are supported', () => {
-    render(
-      <AlertAiFormFields
-        shouldShowActionsSection
-        shouldShowFiltersSection
-        shouldShowTemplateSection
-        filterResources={[{ name: 'table' }]}
-        value={{} as ModifiedCreateEventSubscription}
-        onChange={jest.fn()}
-      />
-    );
+    it('renders the registered section with the template state', () => {
+      const TemplateSection = jest.fn(() => (
+        <div data-testid="template-section" />
+      ));
+      jest
+        .spyOn(alertsClassBase, 'getAlertAiTemplateSection')
+        .mockReturnValue(TemplateSection);
+      const onChange = jest.fn();
+      const permission = { Create: true } as OperationPermission;
+      const templates = [{ id: 'template-id' }] as NotificationTemplate[];
+      const value = { name: 'alert' } as ModifiedCreateEventSubscription;
 
-    expect(screen.getByTestId('template-select')).toBeInTheDocument();
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          templatesLoading
+          filterResources={[{ name: 'table' }]}
+          templateResourcePermission={permission}
+          templates={templates}
+          value={value}
+          onChange={onChange}
+        />
+      );
+
+      expect(screen.getByTestId('template-section')).toBeInTheDocument();
+      expect(TemplateSection).toHaveBeenCalledWith(
+        {
+          isViewOnly: true,
+          loading: true,
+          onChange,
+          templateResourcePermission: permission,
+          templates,
+          value,
+        },
+        expect.anything()
+      );
+    });
   });
 
   it('registers a form hint doc for each main alert field', async () => {
+    jest
+      .spyOn(alertsClassBase, 'getAlertAiTemplateSection')
+      .mockReturnValue(() => null);
     render(
       <AlertAiFormFields
         shouldShowActionsSection

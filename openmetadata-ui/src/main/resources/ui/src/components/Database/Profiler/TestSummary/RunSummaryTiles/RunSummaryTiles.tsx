@@ -16,11 +16,8 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import { formatNumberWithComma } from '../../../../../utils/NumberUtils';
+import { NO_VALUE } from '../TestSummary.constants';
 import { getRunSummary } from './RunSummaryTiles.utils';
-
-// An em dash, as in the mock, rather than NO_DATA_PLACEHOLDER's '--': a rate
-// with nothing completed to rate is not missing data.
-const NO_RATE = '—';
 
 const TILE_CLASS =
   'tw:rounded-xl tw:bg-surface tw:px-3 tw:py-2.5 tw:outline-1 tw:-outline-offset-1 tw:outline-secondary';
@@ -63,7 +60,7 @@ const RunSummaryTiles = ({ results }: RunSummaryTilesProps) => {
         key: 'success-rate',
         label: t('label.success-rate'),
         value: isUndefined(summary.successRate)
-          ? NO_RATE
+          ? NO_VALUE
           : `${summary.successRate}%`,
       },
     ];
