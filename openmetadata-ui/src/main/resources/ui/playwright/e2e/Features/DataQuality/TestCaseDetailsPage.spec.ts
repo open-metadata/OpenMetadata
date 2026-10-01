@@ -508,25 +508,33 @@ test.describe(
 
       await expect(sql).toContainText('SELECT o.id');
 
-      const { clientHeight, scrollHeight } = await sql.evaluate((node) => ({
-        clientHeight: node.clientHeight,
-        scrollHeight: node.scrollHeight,
-      }));
-
       // The block stops at 320px (max-h-80) and scrolls the rest of the query.
-      expect(clientHeight).toBeLessThanOrEqual(320);
-      expect(scrollHeight).toBeGreaterThan(clientHeight);
+      await expect
+        .poll(() => sql.evaluate((node) => node.clientHeight))
+        .toBeLessThanOrEqual(320);
+      await expect
+        .poll(() =>
+          sql.evaluate((node) => node.scrollHeight - node.clientHeight)
+        )
+        .toBeGreaterThan(0);
 
       await test.step('A keyboard user can scroll to the end of the query', async () => {
         await sql.focus();
 
         await expect(sql).toBeFocused();
 
-        await page.keyboard.press('End');
+        // Pressed on the locator, so the key reaches the block even if
+        // something else took focus in between.
+        await sql.press('End');
 
+        // Keyboard scrolling animates, so wait for the block to reach its end.
         await expect
-          .poll(() => sql.evaluate((node) => node.scrollTop))
-          .toBeGreaterThan(0);
+          .poll(() =>
+            sql.evaluate(
+              (node) => node.scrollHeight - node.clientHeight - node.scrollTop
+            )
+          )
+          .toBeLessThanOrEqual(1);
       });
     });
   }
