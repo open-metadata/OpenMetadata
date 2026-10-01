@@ -87,7 +87,7 @@ describe('getCustomPropertyChanges', () => {
     });
   });
 
-  it('builds an entity reference config', () => {
+  it('adds newly picked entity reference types to the saved ones', () => {
     expect(
       getCustomPropertyChanges(entityRefProperty, {
         description: 'Data steward',
@@ -96,7 +96,16 @@ describe('getCustomPropertyChanges', () => {
           { id: 'team', label: 'Team' },
         ],
       }).customPropertyConfig
-    ).toEqual({ config: ['user', 'team'] });
+    ).toEqual({ config: ['user', 'unknownType', 'team'] });
+  });
+
+  it('keeps saved entity reference types that were dropped from the selection', () => {
+    expect(
+      getCustomPropertyChanges(entityRefProperty, {
+        description: 'Data steward',
+        entityReferenceConfig: [{ id: 'team', label: 'Team' }],
+      }).customPropertyConfig
+    ).toEqual({ config: ['user', 'unknownType', 'team'] });
   });
 
   it('leaves the config untouched for other types', () => {

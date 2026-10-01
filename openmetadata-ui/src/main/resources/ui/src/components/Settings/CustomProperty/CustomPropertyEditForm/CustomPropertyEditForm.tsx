@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import {
+  Badge,
+  BadgeWithButton,
   Box,
   FieldProp,
   FieldTypes,
@@ -38,6 +40,7 @@ import {
   getCustomPropertyChanges,
   getEditFormValues,
   getEnumConfig,
+  getSavedEntityReferences,
   isEntityReferenceProperty,
   isEnumProperty,
 } from './CustomPropertyEditForm.utils';
@@ -107,6 +110,11 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
     setEditorKey((key) => key + 1);
   }, [property, form]);
 
+  const savedEntityReferences = useMemo(
+    () => getSavedEntityReferences(property),
+    [property]
+  );
+
   const existingEnumItems = useMemo(
     () =>
       (getEnumConfig(property)?.values ?? []).map((value) => ({
@@ -130,7 +138,12 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
     name: 'enumConfig',
     label: t('label.enum-value-plural'),
     type: FieldTypes.MULTI_SELECT,
-    required: false,
+    required: true,
+    rules: {
+      required: t('label.field-required', {
+        field: t('label.enum-value-plural'),
+      }),
+    },
     placeholder: t('label.enum-value-plural'),
     doc: t('message.custom-property-enum-config-help'),
     props: {
@@ -154,15 +167,44 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
     name: 'entityReferenceConfig',
     label: t('label.entity-reference-types'),
     type: FieldTypes.MULTI_SELECT,
-    required: false,
+    required: true,
+    rules: {
+      required: t('label.field-required', {
+        field: t('label.entity-reference-types'),
+      }),
+    },
     placeholder: t('label.select-field', { field: t('label.type') }),
     doc: t('message.custom-property-entity-reference-config-help'),
+    helperText: t('message.updating-existing-not-possible-can-add-new-values'),
     props: {
       'data-testid': 'edit-custom-property-entity-ref-config',
       items: ENTITY_REFERENCE_OPTIONS.map((option) => ({
         id: option.value,
         label: option.label,
       })),
+      // Saved types can't be removed (stored references would break), so
+      // only newly picked ones get a remove button.
+      renderTag: (item, onRemove) =>
+        savedEntityReferences.includes(item.id) ? (
+          <Badge
+            color="gray"
+            data-testid="autocomplete-selected-item"
+            key={item.id}
+            size="lg"
+            type="modern">
+            {item.label}
+          </Badge>
+        ) : (
+          <BadgeWithButton
+            color="gray"
+            data-testid="autocomplete-selected-item"
+            key={item.id}
+            size="lg"
+            type="modern"
+            onButtonClick={onRemove}>
+            {item.label}
+          </BadgeWithButton>
+        ),
     },
   };
 

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ENUM_CONFIG_MAX_VISIBLE_VALUES } from '../../../../constants/CustomProperty.constants';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import EditCustomPropertyModal from './EditCustomPropertyModal';
@@ -92,5 +92,63 @@ describe('EditCustomPropertyModal', () => {
     fireEvent.click(screen.getByTestId('edit-custom-property-cancel'));
 
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('blocks saving an enum with no values', async () => {
+    const onSave = jest.fn();
+
+    render(
+      <EditCustomPropertyModal
+        customProperty={{
+          ...largeEnumProperty,
+          customPropertyConfig: {
+            config: { multiSelect: false, values: ['only'] },
+          },
+        }}
+        onCancel={jest.fn()}
+        onSave={onSave}
+      />
+    );
+
+    fireEvent.click(
+      within(screen.getByTestId('autocomplete-selected-item')).getByRole(
+        'button'
+      )
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-custom-property-save'));
+    });
+
+    expect(await screen.findByText('label.field-required')).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('shows saved entity reference types without a remove button', () => {
+    render(
+      <EditCustomPropertyModal
+        customProperty={{
+          name: 'steward',
+          description: 'Data steward',
+          propertyType: {
+            id: 'ref',
+            type: 'type',
+            name: 'entityReferenceList',
+          },
+          customPropertyConfig: { config: ['user'] },
+        }}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    const savedType = screen.getByTestId('autocomplete-selected-item');
+
+    expect(savedType).toHaveTextContent('User');
+    expect(within(savedType).queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'message.updating-existing-not-possible-can-add-new-values'
+      )
+    ).toBeInTheDocument();
   });
 });

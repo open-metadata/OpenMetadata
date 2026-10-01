@@ -52,13 +52,19 @@ export const getEnumConfig = (property: CustomProperty): Config | undefined => {
     : undefined;
 };
 
+export const getSavedEntityReferences = (
+  property: CustomProperty
+): string[] => {
+  const config = property.customPropertyConfig?.config;
+
+  return isEntityReferenceProperty(property) && isArray(config) ? config : [];
+};
+
 export const getEditFormValues = (
   property: CustomProperty
 ): EditCustomPropertyFormValues => {
   const enumConfig = getEnumConfig(property);
-  const config = property.customPropertyConfig?.config;
-  const entityReferences =
-    isEntityReferenceProperty(property) && isArray(config) ? config : [];
+  const entityReferences = getSavedEntityReferences(property);
 
   return {
     displayName: property.displayName ?? '',
@@ -90,8 +96,13 @@ export const getCustomPropertyChanges = (
     isEntityReferenceProperty(property) &&
     values.entityReferenceConfig
   ) {
+    // Types are additive: a saved type stays even if it was dropped from the
+    // selection, since removing it would orphan stored references.
     customPropertyConfig = {
-      config: values.entityReferenceConfig.map(({ id }) => id),
+      config: uniq([
+        ...getSavedEntityReferences(property),
+        ...values.entityReferenceConfig.map(({ id }) => id),
+      ]),
     };
   }
 

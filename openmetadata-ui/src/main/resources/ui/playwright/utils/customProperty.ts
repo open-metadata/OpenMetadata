@@ -1020,9 +1020,8 @@ export const editCreatedProperty = async (
       page.getByRole('option', { exact: true, name: 'Table' })
     );
 
-    // A multi-select listbox stays open after a pick and covers the footer;
-    // clicking elsewhere in the dialog closes it without closing the modal.
-    await modal.getByRole('heading').click();
+    // Multi-select keeps the listbox open over the footer.
+    await closeEditModalListbox(modal);
     await expect(page.getByRole('listbox')).toBeHidden();
   }
 
