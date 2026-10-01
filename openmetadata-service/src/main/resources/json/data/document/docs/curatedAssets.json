@@ -1,10 +1,10 @@
 {
   "name": "CuratedAssets",
   "displayName": "Curated Assets",
-  "description": "Allows admins to create customized lists of high-impact asset views by applying filters. Ideal for curating datasets relevant to specific user groups.",
+  "description": "A filtered list of high-impact assets. Ships with a certified Tier-1 rule and can be pointed at any saved filter from the persona editor.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.CuratedAssets",
   "data": {
-    "gridSizes": ["small"]
+    "gridSizes": ["small", "medium", "large"]
   }
 }

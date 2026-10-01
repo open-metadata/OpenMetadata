@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Card, Col, Row, Skeleton } from 'antd';
-import './my-data.less';
 
 /**
  * Widget-grid placeholder shown while persona / layout data loads.
@@ -24,7 +23,7 @@ import './my-data.less';
  * Match the eight-column grid used in `MyDataPage` so cards land in roughly
  * the same place a real widget would, avoiding layout shift on reveal.
  */
-export const MyDataPageSkeleton = () => {
+export const HomeLandingPageSkeleton = () => {
   return (
     <Row className="p-x-box" gutter={[16, 16]}>
       {[0, 1, 2, 3].map((i) => (
@@ -42,4 +41,4 @@ export const MyDataPageSkeleton = () => {
   );
 };
 
-export default MyDataPageSkeleton;
+export default HomeLandingPageSkeleton;

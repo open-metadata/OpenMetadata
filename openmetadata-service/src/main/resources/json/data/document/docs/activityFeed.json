@@ -1,10 +1,10 @@
 {
   "name": "ActivityFeed",
-  "displayName": "Activity Feed",
-  "description": "Aggregates platform activity including asset updates, comments, and task changes, keeping users informed.",
+  "displayName": "Team Activity",
+  "description": "Recent activity across the assets and domains the user owns, showing who changed what and when.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.ActivityFeed",
   "data": {
-    "gridSizes": ["large"]
+    "gridSizes": ["small", "medium", "large"]
   }
 }

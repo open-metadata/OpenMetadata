@@ -135,6 +135,8 @@ export const mockCustomizePageClassBase = {
   landingPageMaxGridSize: 4,
   landingPageWidgetMargin: 16,
   landingPageRowHeight: 200,
+  getExcludedWidgetFqns: () => [] as string[],
+  getPlatformHealthInsight: () => null,
   getWidgetsFromKey: (i: string) => {
     if (!widgetComponentCache[i]) {
       widgetComponentCache[i] = () => <div data-testid={i}>{i}</div>;

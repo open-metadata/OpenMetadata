@@ -21,6 +21,8 @@ export enum LandingPageWidgetKeys {
   ACTIVITY_FEED = 'KnowledgePanel.ActivityFeed',
   ANNOUNCEMENTS = 'KnowledgePanel.Announcements',
   CURATED_ASSETS = 'KnowledgePanel.CuratedAssets',
+  DATA_ESTATE = 'KnowledgePanel.DataEstate',
+  DATA_QUALITY = 'KnowledgePanel.DataQuality',
   DATA_ASSETS = 'KnowledgePanel.DataAssets',
   DATA_PRODUCTS = 'KnowledgePanel.DataProducts',
   DOMAINS = 'KnowledgePanel.Domains',
@@ -30,8 +32,10 @@ export enum LandingPageWidgetKeys {
   MY_DATA = 'KnowledgePanel.MyData',
   MY_TASK = 'KnowledgePanel.MyTask',
   PIPELINE = 'KnowledgePanel.Pipeline',
+  PLATFORM_HEALTH = 'KnowledgePanel.PlatformHealth',
   RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
   TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',
+  YOURS_AND_FOLLOWED = 'KnowledgePanel.YoursAndFollowed',
   KNOWLEDGE_CENTER = 'KnowledgePanel.KnowledgeCenter',
 }
 
