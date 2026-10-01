@@ -427,7 +427,6 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
         });
         if (runId === runIdRef.current) {
           setResult(data);
-          setCredentialsSessionId(undefined);
         }
       } catch (err) {
         if (runId === runIdRef.current) {
@@ -437,6 +436,8 @@ export const useSsoTestLogin = (): UseSsoTestLoginResult => {
         }
       } finally {
         if (runId === runIdRef.current) {
+          // The server allows one attempt per test, refused or not, so a retry needs a new test.
+          setCredentialsSessionId(undefined);
           setIsTesting(false);
         }
       }

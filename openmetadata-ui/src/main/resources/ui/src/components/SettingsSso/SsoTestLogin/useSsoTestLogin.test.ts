@@ -521,7 +521,7 @@ describe('useSsoTestLogin', () => {
       expect(result.current.isAwaitingCredentials).toBe(false);
     });
 
-    it('should show the server’s reason when the credentials are refused', async () => {
+    it('should end the credentials step with the server’s reason when the attempt is refused', async () => {
       mockStartTestLogin.mockResolvedValue(
         asResponse<TestLoginSession>({
           testSessionId: 'session-4',
@@ -543,7 +543,16 @@ describe('useSsoTestLogin', () => {
       });
 
       expect(result.current.error).toBe('Too many credential test logins.');
-      expect(result.current.isAwaitingCredentials).toBe(true);
+      expect(result.current.isAwaitingCredentials).toBe(false);
+
+      // The server allows one attempt per test: a resubmission must not reach it and
+      // replace the reason with "not waiting for credentials".
+      await act(async () => {
+        await result.current.submitCredentials('alice@example.com', 'again');
+      });
+
+      expect(mockSubmitCredentials).toHaveBeenCalledTimes(1);
+      expect(result.current.error).toBe('Too many credential test logins.');
     });
   });
 });
