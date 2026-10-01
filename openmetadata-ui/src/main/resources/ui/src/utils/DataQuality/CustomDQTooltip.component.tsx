@@ -10,12 +10,86 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import type { ChartTooltipItem } from '@openmetadata/ui-core-components/charts';
 import { startCase, uniqBy } from 'lodash';
-import { Surface } from 'recharts';
+import { ReactNode } from 'react';
 import { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
 import { getEntryFormattedValue } from '../DataInsightPureUtils';
 import { formatDate } from '../date-time/DateTimeUtils';
 
+export interface DQTooltipRow {
+  key: string;
+  name: string;
+  value: number | string;
+  color?: string;
+}
+
+export interface DQTooltipContentProps {
+  header: ReactNode;
+  rows: DQTooltipRow[];
+  transformLabel?: boolean;
+  isPercentage?: boolean;
+  valueFormatter?: DataInsightChartTooltipProps['valueFormatter'];
+}
+
+/**
+ * The Data Quality tooltip card. Plain markup, so core charts can render it
+ * through `tooltip.render` and recharts charts through `CustomDQTooltip`.
+ */
+export const DQTooltipContent = ({
+  header,
+  rows,
+  transformLabel = true,
+  isPercentage,
+  valueFormatter,
+}: DQTooltipContentProps) => (
+  <div className="tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:shadow-md tw:p-2.5">
+    <p className="tw:m-0 tw:text-primary tw:font-medium tw:text-xs">{header}</p>
+    <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
+    <div className="tw:flex tw:flex-col tw:gap-1">
+      {rows.map((row) => (
+        <div
+          className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm"
+          key={`item-${row.key}`}>
+          <span className="tw:flex tw:items-center">
+            <svg aria-hidden className="tw:mr-2" height={14} width={4}>
+              <rect fill={row.color} height="14" rx="2" width="4" />
+            </svg>
+            <span className="tw:text-tertiary tw:text-[11px]">
+              {transformLabel ? startCase(row.name) : row.name}
+            </span>
+          </span>
+          <span className="tw:font-medium tw:text-primary tw:text-[11px]">
+            {valueFormatter
+              ? valueFormatter(row.value, row.name)
+              : getEntryFormattedValue(row.value, isPercentage)}
+          </span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/**
+ * Core chart tooltip items as tooltip rows. Gaps are dropped, as the
+ * recharts tooltip dropped null values.
+ */
+export const chartTooltipRows = (items: ChartTooltipItem[]): DQTooltipRow[] =>
+  items.flatMap((item) =>
+    item.value === null
+      ? []
+      : [
+          {
+            key: item.seriesKey,
+            name: item.name,
+            value: item.value,
+            color: item.color,
+          },
+        ]
+  );
+
+/** recharts `content` adapter; remove once the last recharts chart moves (O3). */
 export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
   const {
     active,
@@ -28,53 +102,27 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
     displayDateInHeader = true,
   } = props;
 
-  if (active && payload?.length) {
-    const timestamp = displayDateInHeader
-      ? dateTimeFormatter(payload[0].payload[timeStampKey] || 0)
-      : payload[0].payload[timeStampKey];
-
-    const payloadValue = uniqBy(payload, 'dataKey');
-
-    return (
-      <div className="tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:shadow-md tw:p-2.5">
-        <p className="tw:m-0 tw:text-primary tw:font-medium tw:text-xs">
-          {timestamp}
-        </p>
-        <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
-        <div className="tw:flex tw:flex-col tw:gap-1">
-          {payloadValue.map((entry) => {
-            const value = entry.value;
-
-            return (
-              <div
-                className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm"
-                key={`item-${entry.name ?? entry.dataKey}`}>
-                <span className="tw:flex tw:items-center">
-                  <Surface
-                    className="tw:mr-2"
-                    height={14}
-                    version="1.1"
-                    width={4}>
-                    <rect fill={entry.color} height="14" rx="2" width="4" />
-                  </Surface>
-                  <span className="tw:text-tertiary tw:text-[11px]">
-                    {transformLabel
-                      ? startCase(entry.name ?? (entry.dataKey as string))
-                      : entry.name ?? (entry.dataKey as string)}
-                  </span>
-                </span>
-                <span className="tw:font-medium tw:text-primary tw:text-[11px]">
-                  {valueFormatter
-                    ? valueFormatter(value, entry.name ?? entry.dataKey)
-                    : getEntryFormattedValue(value, isPercentage)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
+  if (!active || !payload?.length) {
+    return null;
   }
 
-  return null;
+  const header = displayDateInHeader
+    ? dateTimeFormatter(payload[0].payload[timeStampKey] || 0)
+    : payload[0].payload[timeStampKey];
+  const rows = uniqBy(payload, 'dataKey').map((entry) => ({
+    key: String(entry.name ?? entry.dataKey),
+    name: String(entry.name ?? entry.dataKey),
+    value: entry.value as number | string,
+    color: entry.color,
+  }));
+
+  return (
+    <DQTooltipContent
+      header={header}
+      isPercentage={isPercentage}
+      rows={rows}
+      transformLabel={transformLabel}
+      valueFormatter={valueFormatter}
+    />
+  );
 };

@@ -476,7 +476,6 @@ export default [
       'src/interface/data-insight.interface.ts',
       'src/utils/ChartUtils.tsx',
       'src/utils/DataInsightChartUtils.tsx',
-      'src/utils/DataQuality/CustomDQTooltip.component.tsx',
       'src/utils/DataQuality/TestSummaryGraphUtils.ts',
     ],
     rules: {
