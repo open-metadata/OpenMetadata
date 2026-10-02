@@ -34,6 +34,16 @@ export interface OpenLineageResponse {
      * Summary of batch processing (for batch requests).
      */
     summary?: ProcessingSummary;
+    /**
+     * Datasets that could not be resolved to, or created as, OpenMetadata entities. No edge
+     * touching them was created.
+     */
+    unresolvedDatasets?: UnresolvedEntity[];
+    /**
+     * Jobs with no matching OpenMetadata Pipeline. Their edges were created without a pipeline
+     * reference.
+     */
+    unresolvedJobs?: UnresolvedEntity[];
 }
 
 /**
@@ -75,6 +85,10 @@ export interface ProcessingSummary {
      */
     failed?: number;
     /**
+     * Number of events that created lineage edges but left some datasets unresolved.
+     */
+    partial?: number;
+    /**
      * Total number of events received.
      */
     received?: number;
@@ -87,4 +101,42 @@ export interface ProcessingSummary {
      */
     successful?: number;
     [property: string]: any;
+}
+
+/**
+ * An OpenLineage dataset or job that could not be resolved to an OpenMetadata entity.
+ */
+export interface UnresolvedEntity {
+    /**
+     * Index of the event in a batch request. Not set for a single-event request.
+     */
+    eventIndex?: number;
+    /**
+     * Human-readable detail about why it could not be resolved.
+     */
+    message?: string;
+    /**
+     * OpenLineage name of the dataset or job.
+     */
+    name: string;
+    /**
+     * OpenLineage namespace of the dataset or job.
+     */
+    namespace: string;
+    reason:    UnresolvedReason;
+}
+
+/**
+ * Why an OpenLineage dataset or job could not be resolved to an OpenMetadata entity.
+ */
+export enum UnresolvedReason {
+    CreationDisabled = "creationDisabled",
+    InvalidEntity = "invalidEntity",
+    MissingColumns = "missingColumns",
+    MissingDatabase = "missingDatabase",
+    NamespaceNotMapped = "namespaceNotMapped",
+    NotFound = "notFound",
+    PipelineNotFound = "pipelineNotFound",
+    ServiceNotFound = "serviceNotFound",
+    UnparsableName = "unparsableName",
 }

@@ -47,8 +47,56 @@
         "skipped": {
           "description": "Number of events skipped (e.g., non-COMPLETE events).",
           "type": "integer"
+        },
+        "partial": {
+          "description": "Number of events that created lineage edges but left some datasets unresolved.",
+          "type": "integer"
         }
       }
+    },
+    "unresolvedReason": {
+      "description": "Why an OpenLineage dataset or job could not be resolved to an OpenMetadata entity.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason",
+      "enum": [
+        "unparsableName",
+        "namespaceNotMapped",
+        "serviceNotFound",
+        "missingDatabase",
+        "missingColumns",
+        "creationDisabled",
+        "notFound",
+        "invalidEntity",
+        "pipelineNotFound"
+      ]
+    },
+    "unresolvedEntity": {
+      "description": "An OpenLineage dataset or job that could not be resolved to an OpenMetadata entity.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.lineage.openlineage.UnresolvedEntity",
+      "properties": {
+        "eventIndex": {
+          "description": "Index of the event in a batch request. Not set for a single-event request.",
+          "type": "integer"
+        },
+        "namespace": {
+          "description": "OpenLineage namespace of the dataset or job.",
+          "type": "string"
+        },
+        "name": {
+          "description": "OpenLineage name of the dataset or job.",
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/definitions/unresolvedReason"
+        },
+        "message": {
+          "description": "Human-readable detail about why it could not be resolved.",
+          "type": "string"
+        }
+      },
+      "required": ["namespace", "name", "reason"],
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -75,6 +123,20 @@
     "lineageEdgesCreated": {
       "description": "Number of lineage edges created.",
       "type": "integer"
+    },
+    "unresolvedDatasets": {
+      "description": "Datasets that could not be resolved to, or created as, OpenMetadata entities. No edge touching them was created.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/unresolvedEntity"
+      }
+    },
+    "unresolvedJobs": {
+      "description": "Jobs with no matching OpenMetadata Pipeline. Their edges were created without a pipeline reference.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/unresolvedEntity"
+      }
     }
   },
   "required": ["status"],
