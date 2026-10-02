@@ -19,6 +19,7 @@ from functools import partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
 
+from databricks.sdk.errors import NotFound, PermissionDenied
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
 from sqlalchemy import text
@@ -130,6 +131,20 @@ UNITY_CATALOG_TAG_MAPPING = TagMappingConfig(
     valueless_classification=UNITY_CATALOG_VALUELESS_CLASSIFICATION,
     valueless_description=UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION,
 )
+
+
+def _is_workspace_wide_failure(exc: Exception) -> bool:
+    """Whether an Iceberg-listing failure will repeat for every other schema.
+
+    A denied grant or an absent endpoint is a property of the workspace, so
+    retrying it per schema only burns the SDK retry budget. Everything else
+    (throttling, a 5xx, a timeout) can succeed on the next schema.
+    """
+    if isinstance(exc, (PermissionDenied, NotFound)):
+        return True
+    if getattr(getattr(exc, "response", None), "status_code", None) in (403, 404):
+        return True
+    return str(getattr(exc, "error_code", "") or "").upper() in ("PERMISSION_DENIED", "NOT_FOUND")
 
 
 # pylint: disable=protected-access
@@ -487,9 +502,10 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         ``None`` (as opposed to an empty set) tells the caller it learned nothing, so
         it must not read DELTA as proof of Delta Lake.
 
-        A failure here is a property of the workspace (revoked permission, an older
-        Unity Catalog), not of the schema, and each attempt burns the full SDK retry
-        budget, so the first failure stands for the rest of the run.
+        A permission or missing-endpoint failure is a property of the workspace
+        (revoked grant, an older Unity Catalog), not of the schema, and each attempt
+        burns the full SDK retry budget, so that one stands for the rest of the run.
+        Any other failure is scoped to this schema and the next one is still tried.
         """
         if self._iceberg_lookup_unavailable:
             return None
@@ -525,14 +541,18 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     return names
                 query["page_token"] = page_token
         except Exception as exc:
-            self._iceberg_lookup_unavailable = True
-            logger.warning(
-                "Could not list Iceberg tables of schema [%s.%s] (%s); storage-format detection is skipped "
-                "for it and for every schema after it.",
-                catalog_name,
-                schema_name,
-                exc,
+            self._iceberg_lookup_unavailable = _is_workspace_wide_failure(exc)
+            scope = (
+                "for it and for every schema after it"
+                if self._iceberg_lookup_unavailable
+                else "for it; later schemas are still tried"
             )
+            msg = (
+                f"Could not list Iceberg tables of schema [{catalog_name}.{schema_name}] ({exc}); "
+                f"storage-format detection is skipped {scope}."
+            )
+            logger.warning(msg)
+            self.status.warning(f"{catalog_name}.{schema_name}", msg)
             logger.debug(traceback.format_exc())
             return None
 

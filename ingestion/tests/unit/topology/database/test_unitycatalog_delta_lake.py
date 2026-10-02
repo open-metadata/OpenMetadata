@@ -12,9 +12,11 @@
 
 import logging
 from threading import RLock
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from databricks.sdk.errors import NotFound, PermissionDenied
 from databricks.sdk.service.catalog import DataSourceFormat, TableInfo
 from databricks.sdk.service.catalog import TableType as SdkTableType
 
@@ -165,16 +167,47 @@ def test_iceberg_table_names_none_and_warns_on_error(caplog):
     with caplog.at_level(logging.WARNING):
         assert UnitycatalogSource._iceberg_table_names(source, "demo", "s") is None
     assert "boom" in caplog.text
+    # A log line alone leaves the workflow report claiming a clean run.
+    assert source.status.warning.call_count == 1
 
 
-def test_iceberg_lookup_not_retried_after_a_failure():
+def test_transient_failure_is_scoped_to_its_own_schema():
+    # A 500 or a timeout on one schema says nothing about the next one; latching on
+    # it would silently drop storage-format detection for the whole rest of the run.
+    source = _source_with_pages(RuntimeError("boom"), {"tables": REAL_LIST_ROWS})
+    assert UnitycatalogSource._iceberg_table_names(source, "demo", "s1") is None
+    assert UnitycatalogSource._iceberg_table_names(source, "demo", "s2") == {"managed_iceberg"}
+    assert source.client.api_client.do.call_count == 2
+
+
+def _error_with(**attrs):
+    error = RuntimeError("denied")
+    for name, value in attrs.items():
+        setattr(error, name, value)
+    return error
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        PermissionDenied("no access to the tables endpoint"),
+        NotFound("endpoint does not exist"),
+        _error_with(error_code="PERMISSION_DENIED"),
+        _error_with(error_code="NOT_FOUND"),
+        _error_with(response=SimpleNamespace(status_code=403)),
+        _error_with(response=SimpleNamespace(status_code=404)),
+    ],
+    ids=["sdk-403", "sdk-404", "code-denied", "code-missing", "http-403", "http-404"],
+)
+def test_permission_and_missing_endpoint_failures_latch(error):
     # A revoked permission or an older Unity Catalog fails for every schema, and each
     # attempt burns the full SDK retry budget, so the first failure stands for the run.
     source = _make_source()
-    source.client.api_client.do = Mock(side_effect=RuntimeError("boom"))
+    source.client.api_client.do = Mock(side_effect=error)
     assert UnitycatalogSource._iceberg_table_names(source, "demo", "s1") is None
     assert UnitycatalogSource._iceberg_table_names(source, "demo", "s2") is None
     assert source.client.api_client.do.call_count == 1
+    assert source.status.warning.call_count == 1
 
 
 @pytest.mark.parametrize(
