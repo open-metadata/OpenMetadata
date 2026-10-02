@@ -12,10 +12,11 @@
  */
 import {
   Box,
+  Divider,
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Checkbox, Col, Divider, List, Row, Space } from 'antd';
+import { Button, Checkbox, Col, List, Row, Space } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';

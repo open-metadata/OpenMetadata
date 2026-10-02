@@ -1300,6 +1300,7 @@ def test_selector_exports_direct_changed_specs_for_workflow_routing(tmp_path):
             "mode": "targeted",
             "selectors": [],
             "directChangedSpecs": ["playwright/e2e/Pages/Entity.spec.ts"],
+            "entityMatrix": "representative",
         },
     )
 
@@ -1307,18 +1308,55 @@ def test_selector_exports_direct_changed_specs_for_workflow_routing(tmp_path):
         'direct_changed_specs=["playwright/e2e/Pages/Entity.spec.ts"]'
         in github_output.read_text()
     )
-    assert "lineage_representative_only=true" in github_output.read_text()
+    assert github_output.read_text().endswith("entity_matrix=representative\n")
 
-    selector.write_github_output(
-        github_output,
-        {
-            "mode": "targeted",
-            "selectors": [],
-            "directChangedSpecs": [selector.LINEAGE_MATRIX_SPEC],
-        },
+
+@pytest.mark.parametrize(
+    ("event_name", "full_suite", "expected"),
+    [
+        ("pull_request", "false", "representative"),
+        ("pull_request_target", "false", "representative"),
+        ("merge_group", "false", "representative"),
+        ("schedule", "false", "full"),
+        ("workflow_dispatch", "true", "full"),
+        ("workflow_dispatch", "false", "full"),
+    ],
+)
+def test_only_gating_events_run_the_representative_entity_matrix(
+    tmp_path, monkeypatch, event_name, full_suite, expected
+):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts\n"
+    )
+    output = tmp_path / "selection.json"
+    github_output = tmp_path / "github-output.txt"
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            event_name,
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--full-suite",
+            full_suite,
+            "--output",
+            str(output),
+            "--github-output",
+            str(github_output),
+        ],
     )
 
-    assert github_output.read_text().endswith("lineage_representative_only=false\n")
+    selector.main()
+
+    assert json.loads(output.read_text())["entityMatrix"] == expected
+    assert f"entity_matrix={expected}\n" in github_output.read_text()
 
 
 def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries(

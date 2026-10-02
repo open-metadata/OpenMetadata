@@ -10,22 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { WebStorageStateStore } from 'oidc-client';
+import {
+  InMemoryWebStorage,
+  UserManagerSettings,
+  WebStorageStateStore,
+} from 'oidc-client';
 import { getRedirectUri, OIDC_SCOPE } from '../../../utils/AuthProvider.util';
 import { SSO_TEST_LOGIN_STORE_PREFIX } from '../../../utils/SsoTestLoginPopup';
 import { AuthenticationConfigurationWithScope } from '../../Auth/AuthProviders/AuthProvider.interface';
 
 /**
  * Build an isolated UserManager config used ONLY for the SSO "Test Login" popup.
- * Tokens land in a dedicated prefixed store (never the app's oidcTokenStorage),
- * but the popup uses the SAME configured callback URL the real login uses — so
+ * The tested identity's tokens stay in memory and its sign-in state goes to a
+ * dedicated prefixed store (never the app's oidcTokenStorage), but the popup
+ * uses the SAME configured callback URL the real login uses — so
  * the test exercises the actual registered redirect URI and never requires the
  * admin to register an extra one. Isolation is achieved by diverting the popup
  * at the callback (see isSsoTestLoginPopup), not by using a separate route.
  */
 export const getCandidateUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
-): Record<string, string | boolean | WebStorageStateStore> => {
+): UserManagerSettings => {
   const {
     authority = '',
     clientId = '',
@@ -33,10 +38,6 @@ export const getCandidateUserManagerConfig = (
     scope,
     responseType,
   } = authClient;
-  const testStore = new WebStorageStateStore({
-    store: globalThis.localStorage,
-    prefix: SSO_TEST_LOGIN_STORE_PREFIX,
-  });
 
   return {
     authority,
@@ -45,7 +46,13 @@ export const getCandidateUserManagerConfig = (
     response_type: responseType ?? 'id_token',
     scope: scope || OIDC_SCOPE,
     loadUserInfo: false,
-    userStore: testStore,
-    stateStore: testStore,
+    monitorSession: false,
+    // Only this page reads the tested identity's tokens back, so they are never written to storage.
+    userStore: new WebStorageStateStore({ store: new InMemoryWebStorage() }),
+    // The same-origin popup finds its sign-in state here (see isSsoTestLoginPopup).
+    stateStore: new WebStorageStateStore({
+      store: globalThis.localStorage,
+      prefix: SSO_TEST_LOGIN_STORE_PREFIX,
+    }),
   };
 };

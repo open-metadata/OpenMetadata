@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Divider } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementEntity } from '../../rest/announcementsAPI';
