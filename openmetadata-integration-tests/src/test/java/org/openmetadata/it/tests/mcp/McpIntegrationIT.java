@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -419,6 +421,31 @@ public class McpIntegrationIT extends McpTestBase {
     assertThat(hiddenNodeCount(restrictedResponse))
         .as("and the response must report the neighbour it removed, not read as complete")
         .isEqualTo(1);
+
+    // The REST endpoint shares the tool's implementation; it must hide the same neighbour.
+    JsonNode rest = getCompactLineage(root, token);
+    assertThat(rest.toString())
+        .as("the compact lineage endpoint must not name the denied neighbour either")
+        .contains(root.getFullyQualifiedName())
+        .doesNotContain(upstream.getFullyQualifiedName());
+    assertThat(rest.get("hiddenNodes").asInt()).isEqualTo(1);
+  }
+
+  private JsonNode getCompactLineage(Table root, String token) throws Exception {
+    String path =
+        "/api/v1/lineage/table/name/"
+            + URLEncoder.encode(root.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                .replace("+", "%20")
+            + "/compact?upstreamDepth=1&downstreamDepth=1";
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(TestSuiteBootstrap.getBaseUrl() + path))
+            .header("Authorization", token)
+            .GET()
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertThat(response.statusCode()).as("compact lineage must answer").isEqualTo(200);
+    return OBJECT_MAPPER.readTree(response.body());
   }
 
   /**

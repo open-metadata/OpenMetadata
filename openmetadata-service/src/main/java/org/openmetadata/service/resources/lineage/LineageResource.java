@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.CompactLineage;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageResponse;
@@ -77,6 +78,8 @@ import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.lineage.CompactLineageRequest;
+import org.openmetadata.service.lineage.CompactLineageService;
 import org.openmetadata.service.lineage.LineageHydrator;
 import org.openmetadata.service.lineage.LineageSceneResolver;
 import org.openmetadata.service.resources.Collection;
@@ -97,16 +100,22 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Collection(name = "lineage")
 public class LineageResource {
   static final String LINEAGE_FIELD = "lineage";
+
+  /** The serialized size one compact lineage page stays under; the same cap the MCP tool uses. */
+  private static final int COMPACT_LINEAGE_MAX_CHARS = 100_000;
+
   private final LineageRepository dao;
   private final Authorizer authorizer;
   private final LineageHydrator hydrator;
   private final LineageSceneResolver sceneResolver;
+  private final CompactLineageService compactLineageService;
 
   public LineageResource(Authorizer authorizer) {
     this.dao = Entity.getLineageRepository();
     this.authorizer = authorizer;
     this.hydrator = new LineageHydrator(authorizer);
     this.sceneResolver = new LineageSceneResolver(hydrator);
+    this.compactLineageService = new CompactLineageService(authorizer, dao);
   }
 
   private static void validateTemporalBounds(Long startTime, Long endTime) {
@@ -259,6 +268,92 @@ public class LineageResource {
         uriInfo,
         dao.getByName(
             entity, fqn, upstreamDepth, downStreamDepth, getSubjectContext(securityContext)));
+  }
+
+  @GET
+  @Path("/{entity}/name/{fqn}/compact")
+  @Operation(
+      operationId = "getCompactLineageByFQN",
+      summary = "Get one page of an entity's lineage, optionally for one column",
+      description =
+          "Lineage slimmed to identity and relationship info, authorized node by node, ordered"
+              + " nearest hop first and paged by edge offset. With `column`, only the edges that"
+              + " carry that column are returned, followed across renames. Markers say when a page"
+              + " is not the whole graph.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "One page of lineage",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CompactLineage.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid depth, offset, limit or column"),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {fqn} is not found")
+      })
+  public CompactLineage getCompactLineageByName(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type for which lineage is requested",
+              required = true,
+              schema = @Schema(type = "string", example = "table"))
+          @PathParam("entity")
+          String entity,
+      @Parameter(
+              description = "Fully qualified name of the entity",
+              required = true,
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Upstream hops to traverse; 0 skips upstream")
+          @DefaultValue("3")
+          @Min(0)
+          @Max(10)
+          @QueryParam("upstreamDepth")
+          int upstreamDepth,
+      @Parameter(description = "Downstream hops to traverse; 0 skips downstream")
+          @DefaultValue("3")
+          @Min(0)
+          @Max(10)
+          @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "FQN of one column of the entity; returns only the edges carrying that column")
+          @QueryParam("column")
+          String column,
+      @Parameter(description = "Include the column mappings on every edge")
+          @DefaultValue("false")
+          @QueryParam("includeColumnLineage")
+          boolean includeColumnLineage,
+      @Parameter(description = "Include each edge's transformation SQL")
+          @DefaultValue("false")
+          @QueryParam("includeSql")
+          boolean includeSql,
+      @Parameter(description = "Offset of the first edge to return, from a previous `nextFrom`")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Most edges to return; the response size cap may return fewer")
+          @DefaultValue("100")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit) {
+    return compactLineageService.getLineage(
+        new CompactLineageRequest(
+            entity,
+            fqn,
+            upstreamDepth,
+            downstreamDepth,
+            column,
+            includeColumnLineage,
+            includeSql,
+            from,
+            limit,
+            COMPACT_LINEAGE_MAX_CHARS),
+        securityContext);
   }
 
   @GET
