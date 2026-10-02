@@ -50,14 +50,9 @@ const CertificationWidget = () => {
       updatedEntity.certification = updateCertificationTag(newCertification);
       await onUpdate(updatedEntity);
     } catch {
-      // Swallow without toasting or rethrowing: the page-level updater
-      // (handleDomainUpdate / handleDataProductUpdate) already calls
-      // showErrorToast before rethrowing, so toasting here would duplicate
-      // it. Swallowing (not rejecting) lets Certification.updateCertificationData's
-      // `await onCertificationUpdate?.(certification)` resolve and run its
-      // setIsLoadingCertificationData(false) / popoverRef.current?.close()
-      // cleanup so the popover doesn't stay stuck in its loading state on
-      // reopen.
+      // The page-level updater already toasts before rethrowing, so toasting
+      // here would duplicate it. Swallow rather than rethrow so Certification's
+      // post-await cleanup runs and the popover doesn't stay stuck loading.
     } finally {
       setIsEditing(false);
     }

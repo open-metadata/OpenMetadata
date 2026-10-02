@@ -57,13 +57,9 @@ const TierWidget = () => {
       updatedEntity.tags = updatedTags;
       await onUpdate(updatedEntity);
     } catch {
-      // Swallow without toasting or rethrowing: the page-level updater
-      // (handleDomainUpdate / handleDataProductUpdate) already calls
-      // showErrorToast before rethrowing, so toasting here would duplicate
-      // it. Swallowing (not rejecting) lets TierCard.updateTierData's
-      // `await updateTier?.(tier)` resolve and run its
-      // setIsLoadingTierData(false) / handleOpenChange(false) cleanup so the
-      // popover doesn't stay stuck in its loading state on reopen.
+      // The page-level updater already toasts before rethrowing, so toasting
+      // here would duplicate it. Swallow rather than rethrow so TierCard's
+      // post-await cleanup runs and the popover doesn't stay stuck loading.
     } finally {
       setIsEditing(false);
     }
