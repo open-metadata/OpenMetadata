@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Retention Configuration",
   "type": "object",
   "description": "Configure retention policies for each entity.",
@@ -43,6 +42,13 @@
       "type": "integer",
       "default": 90,
       "minimum": 1
+    },
+    "workflowRetentionPeriod": {
+      "title": "Automation Workflow Retention Period (days)",
+      "description": "Enter the retention period in days for automation Workflows: the short-lived records left behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them forever.",
+      "type": "integer",
+      "default": 30,
+      "minimum": 0
     },
     "extensions": {
       "title": "Extension Retention Periods (days)",

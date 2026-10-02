@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import { parseInt } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../../assets/svg/ic-data-assets-coverage.svg';
@@ -43,12 +44,30 @@ const DataAssetsCoveragePieChartWidget = ({
   const { t } = useTranslation();
   const routerNavigate = useNavigate();
   const navigate = navigateProp ?? routerNavigate;
-  const [isLoading, setIsLoading] = useState(true);
-  const [dataAssetsCoverageStates, setDataAssetsCoverageStates] = useState<{
-    covered: number;
-    notCovered: number;
-    total: number;
-  }>(INITIAL_DATA_ASSETS_COVERAGE_STATES);
+  const {
+    data: dataAssetsCoverageStates = INITIAL_DATA_ASSETS_COVERAGE_STATES,
+    isLoading,
+  } = useQuery({
+    queryKey: ['dq-dashboard', 'data-assets-coverage', chartFilter],
+    queryFn: async () => {
+      const [{ data: coverageData }, { data: totalData }] = await Promise.all([
+        fetchEntityCoveredWithDQ(chartFilter, false),
+        fetchTotalEntityCount(chartFilter),
+      ]);
+      if (coverageData.length === 0 || totalData.length === 0) {
+        return INITIAL_DATA_ASSETS_COVERAGE_STATES;
+      }
+
+      const covered = parseInt(coverageData[0].originEntityFQN, 10);
+      let total = parseInt(totalData[0].fullyQualifiedName, 10);
+
+      if (covered > total) {
+        total = covered;
+      }
+
+      return { covered, notCovered: total - covered, total };
+    },
+  });
 
   const handleSegmentClick = useCallback(
     (_entry: CustomPieChartData, index: number) => {
@@ -86,42 +105,6 @@ const DataAssetsCoveragePieChartWidget = ({
     }),
     [dataAssetsCoverageStates]
   );
-
-  const fetchDataAssetsCoverage = async () => {
-    setIsLoading(true);
-    try {
-      const [{ data: coverageData }, { data: totalData }] = await Promise.all([
-        fetchEntityCoveredWithDQ(chartFilter, false),
-        fetchTotalEntityCount(chartFilter),
-      ]);
-      if (coverageData.length === 0 || totalData.length === 0) {
-        setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
-
-        return;
-      }
-
-      const covered = parseInt(coverageData[0].originEntityFQN, 10);
-      let total = parseInt(totalData[0].fullyQualifiedName, 10);
-
-      if (covered > total) {
-        total = covered;
-      }
-
-      setDataAssetsCoverageStates({
-        covered,
-        notCovered: total - covered,
-        total: total,
-      });
-    } catch {
-      setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDataAssetsCoverage();
-  }, [chartFilter]);
 
   if (isLoading) {
     return (

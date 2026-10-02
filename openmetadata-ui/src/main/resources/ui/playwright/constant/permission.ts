@@ -21,6 +21,15 @@ export const DEFAULT_POLICIES = {
   teamOnlyAccessPolicy: 'Team only access Policy',
 };
 
+// FQN-format names used when passing policies to the roles API.
+// The API resolves policies by name/FQN, not by display name.
+export const DEFAULT_POLICY_FQNS = {
+  dataConsumerPolicy: 'DataConsumerPolicy',
+  dataStewardPolicy: 'DataStewardPolicy',
+  organizationPolicy: 'OrganizationPolicy',
+  teamOnlyAccessPolicy: 'TeamOnlyAccessPolicy',
+};
+
 export const SYSTEM_POLICY_NAMES = {
   taskAuthorPolicy: 'TaskAuthorPolicy',
 };
@@ -368,6 +377,17 @@ export const SERVICE_CREATOR_RULES: PolicyRulesType[] = [
     operations: ['All'],
     effect: 'allow',
     condition: 'isOwner()',
+  },
+  // Creating a service surfaces the ingestion-runner picker, which lists
+  // runners from the permission-gated `ingestionRunner` resource. Without a
+  // view grant the dropdown never populates for this restricted user, so the
+  // Collate SaaS Runner option can't be selected. (Inert where the resource
+  // isn't registered — the rule only matches a registered resource.)
+  {
+    name: 'IngestionRunner-View-Rule',
+    resources: ['ingestionRunner'],
+    operations: ['ViewAll'],
+    effect: 'allow',
   },
 ];
 

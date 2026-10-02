@@ -59,7 +59,9 @@ class InternalActionTokenSignerTest {
   void missingSigningKeysIdentifyRequiredConfiguration() {
     final JWTTokenGenerator generator = newTokenGenerator();
     generator.init(
-        AuthenticationConfiguration.TokenValidationAlgorithm.RS_256,
+        new AuthenticationConfiguration()
+            .withTokenValidationAlgorithm(
+                AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
         new JWTTokenConfiguration()
             .withJwtissuer("openmetadata-test")
             .withKeyId("internal-action-test"));

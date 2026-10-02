@@ -30,7 +30,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock('../../common/Table/Table', () => {
+jest.mock('../../common/Table/TableV2', () => {
   return jest.fn();
 });
 

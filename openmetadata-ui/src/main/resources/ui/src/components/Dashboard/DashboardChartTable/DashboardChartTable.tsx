@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { groupBy, isUndefined, uniqBy } from 'lodash';
+import { groupBy, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,8 +27,8 @@ import {
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import type { TagLabel } from '../../../generated/entity/data/chart';
 import { TagSource } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
@@ -38,6 +38,7 @@ import { updateChart } from '../../../rest/chartAPI';
 import { fetchCharts } from '../../../utils/DashboardDetailsUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getChartDetailsPath } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -214,27 +215,32 @@ export const DashboardChartTable = ({
     >;
   }, [charts]);
 
-  const hasEditTagAccess = (record: ChartType) => {
-    const permissionsObject = chartsPermissionsArray?.find(
-      (chart) => chart.id === record.id
-    )?.permissions;
+  // Per-row bulk permission fetch (getAllChartsPermissions, above) intentionally left
+  // untouched — Task 8 documented-deferral precedent (DataQualityTab.tsx, Batch 3): out of
+  // scope for this batch. Only the three flagged raw reads convert, via one shared lookup +
+  // derivation. No `deleted` argument: the old expressions never gated on
+  // dashboardDetails?.deleted — that's passed to the consuming TableDescription/TableTags as
+  // a separate `isReadOnly` prop instead. A chart not yet present in chartsPermissionsArray
+  // falls back to DEFAULT_ENTITY_PERMISSION (all-false), reproducing the old
+  // `!isUndefined(permissionsObject) && ...` guard exactly.
+  const getChartPermissionFlags = useCallback(
+    (record: ChartType) => {
+      const permissionsObject = chartsPermissionsArray?.find(
+        (chart) => chart.id === record.id
+      )?.permissions;
 
-    return (
-      !isUndefined(permissionsObject) &&
-      (permissionsObject.EditTags || permissionsObject.EditAll)
-    );
-  };
+      return getDerivedPermissionFlags(
+        permissionsObject ?? DEFAULT_ENTITY_PERMISSION
+      );
+    },
+    [chartsPermissionsArray]
+  );
 
-  const hasEditGlossaryTermAccess = (record: ChartType) => {
-    const permissionsObject = chartsPermissionsArray?.find(
-      (chart) => chart.id === record.id
-    )?.permissions;
+  const hasEditTagAccess = (record: ChartType) =>
+    getChartPermissionFlags(record).canEditTags;
 
-    return (
-      !isUndefined(permissionsObject) &&
-      (permissionsObject.EditGlossaryTerms || permissionsObject.EditAll)
-    );
-  };
+  const hasEditGlossaryTermAccess = (record: ChartType) =>
+    getChartPermissionFlags(record).canEditGlossaryTerms;
 
   const chartTagUpdateHandler = async (
     chartId: string,
@@ -331,13 +337,8 @@ export const DashboardChartTable = ({
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => {
-          const permissionsObject = chartsPermissionsArray?.find(
-            (chart) => chart.id === record.id
-          )?.permissions;
-
           const editDescriptionPermissions =
-            !isUndefined(permissionsObject) &&
-            (permissionsObject.EditDescription || permissionsObject.EditAll);
+            getChartPermissionFlags(record).canEditDescription;
 
           return (
             <TableDescription
@@ -452,9 +453,7 @@ export const DashboardChartTable = ({
               data-testid="show-deleted"
               onClick={handleShowDeletedCharts}
             />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>
           </span>
         }
         loading={isChartsLoading}

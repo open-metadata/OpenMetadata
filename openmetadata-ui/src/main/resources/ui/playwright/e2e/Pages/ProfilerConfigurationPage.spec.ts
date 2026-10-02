@@ -34,13 +34,13 @@ const admin = new AdminClass();
 const test = base.extend<{ adminPage: Page; userPage: Page }>({
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await admin.login(page);
+    await admin.signIn(page);
     await use(page);
     await page.close();
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
@@ -103,7 +103,9 @@ test.describe('Profiler Configuration Page', () => {
       ).toHaveText(/Data Type is required/);
 
       await adminPage.click('[data-testid="cancel-button"]');
-      await adminPage.waitForURL('**/settings/preferences');
+      await adminPage.waitForURL('**/settings/preferences', {
+        waitUntil: 'domcontentloaded',
+      });
     });
 
     /**

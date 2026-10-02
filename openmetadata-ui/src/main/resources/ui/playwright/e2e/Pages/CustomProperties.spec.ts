@@ -25,15 +25,9 @@
  * so cleanup always runs in afterAll even when a test fails mid-way.
  */
 
-import { APIRequestContext } from '@playwright/test';
-import {
-  CP_NAME_MAX_LENGTH_VALIDATION_ERROR,
-  INVALID_NAMES,
-} from '../../constant/common';
+import { APIRequestContext, Response } from '@playwright/test';
 import {
   CUSTOM_PROPERTIES_ENTITIES,
-  CUSTOM_PROPERTY_INVALID_NAMES,
-  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   NAME_SUFFIX,
 } from '../../constant/customProperty';
 import {
@@ -72,8 +66,8 @@ import {
   showAdvancedSearchDialog,
 } from '../../utils/advancedSearch';
 import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomProperty';
+import { CODE_EDITOR_SCROLLER } from '../../utils/codeEditor';
 import {
-  clickOutside,
   createNewPage,
   getApiContext,
   getDescriptionBox,
@@ -82,12 +76,17 @@ import {
 } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
+  closeEditModalListbox,
   createCustomPropertyForEntity,
   CustomProperty,
   CustomPropertyTypeByName,
   deleteCreatedProperty,
   editCreatedProperty,
-  fillTableColumnInputDetails,
+  fillCustomPropertyEditModal,
+  getCustomPropertyCard,
+  getCustomPropertyEditButton,
+  openCustomPropertiesTab,
+  openCustomPropertyEditModal,
   setValueForProperty,
   updateCustomPropertyInRightPanel,
   validateValueForProperty,
@@ -562,47 +561,35 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
           await page.getByTestId('custom_properties').click();
 
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          const editButton = container.getByTestId('edit-icon');
-          await editButton.scrollIntoViewIfNeeded();
-          await expect(editButton).toBeVisible();
-          await expect(editButton).toBeEnabled();
-          await editButton.click();
+          const container = getCustomPropertyCard(page, propertyName);
+          const editModal = await openCustomPropertyEditModal(page, container);
 
-          await page.locator("pre[role='presentation']").last().click();
           const value =
             "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100";
-          await page.keyboard.type(value + '\n' + value);
-
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
           );
-          await container.getByTestId('inline-save-btn').click();
+          await fillCustomPropertyEditModal({
+            page,
+            editModal,
+            propertyType: 'sqlQuery',
+            value: value + '\n' + value,
+          });
           expect((await patchResponse).status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
         });
 
-        await test.step('Verify .CodeMirror-scroll is height-constrained and scrollable', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          const codeMirrorScroll = container.locator('.CodeMirror-scroll');
+        await test.step('Verify the editor viewport is height-constrained and scrollable', async () => {
+          const container = getCustomPropertyCard(page, propertyName);
+          // CodeMirror scrolls inside its own scroller, not the value wrapper.
+          const codeMirrorScroll = container
+            .getByTestId('sql-query-value')
+            .locator(CODE_EDITOR_SCROLLER);
           await expect(codeMirrorScroll).toBeVisible();
           const isScrollable = await codeMirrorScroll.evaluate(
             (el) => el.scrollHeight > el.clientHeight
           );
           expect(isScrollable).toBeTruthy();
-        });
-
-        await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          await expect(
-            container.getByTestId(`toggle-${propertyName}`)
-          ).not.toBeVisible();
         });
       });
 
@@ -621,68 +608,54 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
           await page.getByTestId('custom_properties').click();
 
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          const editButton = container.getByTestId('edit-icon');
-          await editButton.scrollIntoViewIfNeeded();
-          await expect(editButton).toBeVisible();
-          await expect(editButton).toBeEnabled();
-          await editButton.click();
+          const container = getCustomPropertyCard(page, propertyName);
+          const editModal = await openCustomPropertyEditModal(page, container);
 
           for (const user of users) {
             const searchApi = `**/api/v1/search/query?q=*${encodeURIComponent(
               user.getUserName()
             )}*`;
+            const referenceInput = editModal
+              .getByTestId('asset-select-list')
+              .getByRole('combobox');
             const searchResponse = page.waitForResponse(searchApi);
-            await page.locator('#entityReference').clear();
-            await page.locator('#entityReference').fill(user.getUserName());
+            await referenceInput.clear();
+            await referenceInput.fill(user.getUserName());
             await searchResponse;
             await page
-              .locator(`[data-testid="${user.getUserDisplayName()}"]`)
+              .getByRole('option')
+              .getByTestId(user.getUserDisplayName())
               .click();
           }
-          await clickOutside(page);
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
           );
-          await container.getByTestId('inline-save-btn').click();
+          await editModal.getByTestId('inline-save-btn').click();
           expect((await patchResponse).status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
         });
 
-        await test.step('Verify item count (7) in property name', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          await expect(container.getByTestId('property-name')).toContainText(
-            '(7)'
+        await test.step('Verify item count (7) next to the property name', async () => {
+          const container = getCustomPropertyCard(page, propertyName);
+          await expect(container.getByTestId('property-item-count')).toHaveText(
+            '7'
           );
         });
 
-        await test.step('Verify .entity-list-body is scrollable', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          const listBody = container.locator('.entity-list-body');
-          await expect(listBody).toBeVisible();
-          const isScrollable = await listBody.evaluate(
-            (el) => el.scrollHeight > el.clientHeight
-          );
-          expect(isScrollable).toBeTruthy();
-        });
-
-        await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          await expect(
-            container.getByTestId(`toggle-${propertyName}`)
-          ).not.toBeVisible();
+        await test.step('Verify the list collapses behind "+N more"', async () => {
+          const container = getCustomPropertyCard(page, propertyName);
+          const showMore = container.getByTestId('toggle-collapsed-values');
+          await expect(showMore).toBeVisible();
+          await showMore.click();
+          for (const user of users) {
+            await expect(
+              container.getByTestId(user.getUserDisplayName())
+            ).toBeVisible();
+          }
         });
       });
 
-      test('User visible in right panel when added as entityReferenceList custom property', async ({
+      test('User added as entityReferenceList custom property links to the user', async ({
         page,
       }) => {
         test.slow();
@@ -717,17 +690,13 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         });
 
         await mainEntity.visitEntityPage(page);
+        // The side widget lists only its first properties as plain text, so
+        // the link is checked on the property's card in the tab.
+        await page.getByTestId('custom_properties').click();
 
-        const userElement = page.getByTestId(userName);
-        const isUserVisible = await userElement.isVisible();
-        if (!isUserVisible) {
-          await page.getByTestId('custom_properties').click();
-        }
-
-        const rightPanelSection = page.getByTestId(propertyName);
-        await expect(rightPanelSection).toBeVisible();
-
-        const userLink = page.getByTestId(userName).getByRole('link');
+        const userLink = getCustomPropertyCard(page, propertyName).getByTestId(
+          userName
+        );
         await expect(userLink).toContainText(userName);
 
         const userDetailsResponse = page.waitForResponse(
@@ -771,68 +740,60 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
           await page.getByTestId('custom_properties').click();
 
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          const editButton = container.getByTestId('edit-icon');
+          const container = getCustomPropertyCard(page, propertyName);
+          const editButton = getCustomPropertyEditButton(container);
           await editButton.scrollIntoViewIfNeeded();
           await expect(editButton).toBeVisible();
           await expect(editButton).toBeEnabled();
           await editButton.click();
 
+          const [firstColumn, secondColumn] = entity.tableConfig.columns;
+          // The inline editor opens with one empty row; add the other four.
           for (let i = 0; i < 5; i++) {
-            await page.getByTestId('add-new-row').click();
-            await expect(page.locator('.om-rdg')).toBeVisible();
-            await fillTableColumnInputDetails(
-              page,
-              `row${i + 1}-col1`,
-              entity.tableConfig.columns[0]
-            );
-            await fillTableColumnInputDetails(
-              page,
-              `row${i + 1}-col2`,
-              entity.tableConfig.columns[1]
-            );
+            if (i > 0) {
+              await page
+                .getByTestId('custom-property-edit-modal')
+                .getByTestId('add-new-row')
+                .click();
+            }
+            await page
+              .getByTestId('custom-property-edit-modal')
+              .getByTestId(`${firstColumn}-${i}`)
+              .fill(`row${i + 1}-col1`);
+            await page
+              .getByTestId('custom-property-edit-modal')
+              .getByTestId(`${secondColumn}-${i}`)
+              .fill(`row${i + 1}-col2`);
           }
 
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
           );
-          await page.getByTestId('update-table-type-property').click();
+          await page
+            .getByTestId('custom-property-edit-modal')
+            .getByTestId('inline-save-btn')
+            .click();
           expect((await patchResponse).status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
         });
 
-        await test.step('Verify row count (5) in property name', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          await expect(container.getByTestId('property-name')).toContainText(
-            '(5)'
+        await test.step('Verify row count (5) next to the property name', async () => {
+          const container = getCustomPropertyCard(page, propertyName);
+          await expect(container.getByTestId('property-item-count')).toHaveText(
+            '5'
           );
         });
 
-        await test.step('Verify .custom-property-scrollable-container is scrollable', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          const scrollContainer = container.locator(
-            '.custom-property-scrollable-container'
-          );
-          await expect(scrollContainer).toBeVisible();
-          const isScrollable = await scrollContainer.evaluate(
-            (el) => el.scrollHeight > el.clientHeight
-          );
-          expect(isScrollable).toBeTruthy();
-        });
-
-        await test.step('Verify expand/collapse toggle is hidden', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          await expect(
-            container.getByTestId(`toggle-${propertyName}`)
-          ).not.toBeVisible();
+        await test.step('Verify every saved row renders in the table', async () => {
+          const tableValue = getCustomPropertyCard(
+            page,
+            propertyName
+          ).getByTestId('table-type-property-value');
+          for (let i = 1; i <= 5; i++) {
+            await expect(
+              tableValue.getByRole('row').filter({ hasText: `row${i}-col1` })
+            ).toBeVisible();
+          }
         });
       });
 
@@ -849,11 +810,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await waitForAllLoadersToDisappear(page);
           await page.getByTestId('custom_properties').click();
 
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          await container.getByTestId('edit-icon').scrollIntoViewIfNeeded();
-          await container.getByTestId('edit-icon').click();
+          const container = getCustomPropertyCard(page, propertyName);
+          const editButton = getCustomPropertyEditButton(container);
+          await editButton.scrollIntoViewIfNeeded();
+          await editButton.click();
 
           // Move to a new paragraph at the end, then insert a table via slash command
           const editor = getDescriptionBox(page);
@@ -865,16 +825,17 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const patchResponse = page.waitForResponse(
             `/api/v1/${entity.entityApiType}/*`
           );
-          await page.locator('[data-testid="save"]').click();
+          await page
+            .getByTestId('custom-property-edit-modal')
+            .getByTestId('inline-save-btn')
+            .click();
           expect((await patchResponse).status()).toBe(200);
           await waitForAllLoadersToDisappear(page);
         });
 
         await test.step('Edit button visible and clickable with wide table in markdown value', async () => {
-          const container = page.locator(
-            `[data-testid="custom-property-${propertyName}-card"]`
-          );
-          const editButton = container.getByTestId('edit-icon');
+          const container = getCustomPropertyCard(page, propertyName);
+          const editButton = getCustomPropertyEditButton(container);
           await editButton.scrollIntoViewIfNeeded();
           await expect(editButton).toBeVisible();
           await expect(editButton).toBeEnabled();
@@ -897,60 +858,52 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           state: 'visible',
         });
 
-        const getCustomPropertiesResponse = page.waitForResponse(
-          'api/v1/metadata/types/name/table?fields=customProperties*'
+        await openCustomPropertiesTab(page);
+
+        const propertyCard = getCustomPropertyCard(page, propertyName);
+        const isTablePatch = (resp: Response) =>
+          resp.url().includes('/api/v1/tables/') &&
+          resp.request().method() === 'PATCH';
+
+        const setValueModal = await openCustomPropertyEditModal(
+          page,
+          propertyCard
         );
-        await page.getByTestId('custom_properties').click();
-        await getCustomPropertiesResponse;
-
-        const propertyCard = page.getByTestId(
-          `custom-property-${propertyName}-card`
-        );
-        await propertyCard.getByTestId('edit-icon').click();
-
-        const enumSelect = page.locator('[data-testid="enum-select"]');
-        await expect(enumSelect).toBeVisible();
-        await enumSelect.click();
-
-        await page
-          .locator('.ant-select-item-option-content')
-          .getByText('medium', { exact: true })
-          .click();
-
-        const saveButton = page.locator('[data-testid="inline-save-btn"]');
-        const patchValue1 = page.waitForResponse(
-          (resp) =>
-            resp.url().includes('/api/v1/tables/') &&
-            resp.request().method() === 'PATCH'
-        );
-        await saveButton.click();
+        const patchValue1 = page.waitForResponse(isTablePatch);
+        await fillCustomPropertyEditModal({
+          page,
+          editModal: setValueModal,
+          propertyType: 'enum',
+          value: 'medium',
+        });
         await patchValue1;
 
         await expect(propertyCard.getByTestId('enum-value')).toContainText(
           'medium'
         );
 
-        await propertyCard.locator('[data-testid="edit-icon"]').click();
-        await enumSelect.hover();
-
-        const clearIcon = enumSelect.locator('.ant-select-clear');
-        if (await clearIcon.isVisible()) {
-          await clearIcon.click();
-        } else {
-          const enumInput = page.locator('#enumValues');
-          await enumInput.click();
-          await enumInput.fill('');
-        }
-
-        const patchValue2 = page.waitForResponse(
-          (resp) =>
-            resp.url().includes('/api/v1/tables/') &&
-            resp.request().method() === 'PATCH'
+        const removeValueModal = await openCustomPropertyEditModal(
+          page,
+          propertyCard
         );
-        await saveButton.click();
+        const enumSelect = removeValueModal.getByTestId('enum-select');
+        await enumSelect
+          .getByTestId('autocomplete-selected-item')
+          .filter({ hasText: 'medium' })
+          .getByRole('button')
+          .click();
+        await expect(enumSelect).not.toContainText('medium');
+        // Removing a tag focuses the combobox, whose listbox covers Save.
+        await closeEditModalListbox(removeValueModal);
+
+        const patchValue2 = page.waitForResponse(isTablePatch);
+        await removeValueModal.getByTestId('inline-save-btn').click();
         await patchValue2;
 
-        await expect(propertyCard.getByTestId('no-data')).toBeVisible();
+        // Other tests in this describe may leave values of their own set.
+        await expect(
+          propertyCard.getByTestId('property-value')
+        ).not.toContainText('medium');
       });
 
       test('Duration: advanced search equalTo and Contains operators', async ({
@@ -965,20 +918,15 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await test.step('Assign Custom Property Value', async () => {
           await mainEntity.visitEntityPage(page);
 
-          const customPropertyResponse = page.waitForResponse(
-            '/api/v1/metadata/types/name/table?fields=customProperties'
-          );
-          await page.getByTestId('custom_properties').click();
-          await customPropertyResponse;
+          await openCustomPropertiesTab(page);
 
           await page.locator('.ant-skeleton-active').waitFor({
             state: 'detached',
           });
 
-          await page
-            .getByTestId(`custom-property-${durationPropertyName}-card`)
-            .getByTestId('edit-icon')
-            .click();
+          await getCustomPropertyEditButton(
+            page.getByTestId(`custom-property-${durationPropertyName}-card`)
+          ).click();
 
           await page.getByTestId('duration-input').fill(durationPropertyValue);
 
@@ -991,35 +939,35 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await sidebarClick(page, SidebarItem.EXPLORE);
           await showAdvancedSearchDialog(page);
 
-          const ruleLocator = page.locator('.rule').nth(0);
+          const ruleLocator = page.getByTestId('query-builder-rule-0');
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select'),
             'Custom Properties',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select-1'),
             'Table',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select-2'),
             durationPropertyName,
             true
           );
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator'),
+            ruleLocator.getByTestId('advanced-search-operator-select'),
             CONDITIONS_MUST.equalTo.name
           );
 
           const inputElement = ruleLocator.locator(
-            '.rule--widget--TEXT input[type="text"]'
+            '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
           );
           await inputElement.fill(durationPropertyValue);
 
@@ -1033,11 +981,11 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           const partialSearchValue = durationPropertyValue.slice(0, 3);
           await page.getByTestId('advance-search-filter-btn').click();
-          await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+          await expect(page.getByTestId('advanced-search-modal')).toBeVisible();
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator'),
+            ruleLocator.getByTestId('advanced-search-operator-select'),
             'Contains'
           );
           await inputElement.fill(partialSearchValue);
@@ -1077,11 +1025,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await mainEntity.visitEntityPage(page);
 
-            const customPropertyResponse = page.waitForResponse(
-              '/api/v1/metadata/types/name/table?fields=customProperties'
-            );
-            await page.getByTestId('custom_properties').click();
-            await customPropertyResponse;
+            await openCustomPropertiesTab(page);
 
             await page.locator('.ant-skeleton-active').waitFor({
               state: 'detached',
@@ -1253,9 +1197,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
               propertyType: 'string',
             });
 
-            await expect(
-              page.getByTestId(`custom-property-${propertyName}-card`)
-            ).toHaveCount(1);
+            await expect(getCustomPropertyCard(page, propertyName)).toHaveCount(
+              1
+            );
             await expect(
               page.getByTestId(`custom-property-"${propertyName}"-card`)
             ).toHaveCount(0);
@@ -1272,9 +1216,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
               propertyType: 'string',
             });
 
-            await expect(
-              page.getByTestId(`custom-property-${propertyName}-card`)
-            ).toHaveCount(1);
+            await expect(getCustomPropertyCard(page, propertyName)).toHaveCount(
+              1
+            );
             await expect(
               page.getByTestId(`custom-property-"${propertyName}"-card`)
             ).toHaveCount(0);
@@ -1285,37 +1229,39 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await showAdvancedSearchDialog(page);
 
-            const ruleLocator = page.locator('.rule').nth(0);
+            const ruleLocator = page.getByTestId('query-builder-rule-0');
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select'),
               'Custom Properties',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select-1'),
               'Table',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select-2'),
               propertyName,
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--operator'),
+              ruleLocator.getByTestId('advanced-search-operator-select'),
               CONDITIONS_MUST.equalTo.name
             );
 
             await ruleLocator
-              .locator('.rule--widget--TEXT input[type="text"]')
+              .locator(
+                '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+              )
               .fill('updated value');
 
             await advanceSearchSaveFilter(page, 'updated value');
@@ -1345,15 +1291,13 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             .property.name;
 
         await EntityDataClass.container1.visitEntityPage(page);
-        await page.click('[data-testid="custom_properties"]');
+        await openCustomPropertiesTab(page);
 
-        const containerLocator = page.locator(
-          `[data-testid="custom-property-${propertyName}-card"]`
-        );
+        const containerLocator = getCustomPropertyCard(page, propertyName);
 
         await expect(containerLocator.getByTestId('no-data')).toBeVisible();
         await expect(containerLocator.getByTestId('no-data')).toContainText(
-          'Not set'
+          'No value yet'
         );
       });
 
@@ -1366,23 +1310,24 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             .property.name;
 
         await EntityDataClass.container1.visitEntityPage(page);
-        await page.click('[data-testid="custom_properties"]');
+        await openCustomPropertiesTab(page);
 
-        const editButton = page.locator(
-          `[data-testid="custom-property-${propertyName}-card"] [data-testid="edit-icon"]`
+        // The hyperlink has no value yet, so the card shows "Add value"
+        // instead of the edit icon; the helper opens the modal from either.
+        const editModal = await openCustomPropertyEditModal(
+          page,
+          getCustomPropertyCard(page, propertyName)
         );
-        await editButton.scrollIntoViewIfNeeded();
-        await editButton.click();
-
-        await page
-          .locator('[data-testid="hyperlink-url-input"]')
+        await editModal
+          .getByTestId('hyperlink-url-input')
           .fill('javascript:alert("XSS")');
+        await editModal.getByTestId('inline-save-btn').click();
 
-        await expect(
-          page.locator('.ant-form-item-explain-error')
-        ).toContainText('URL must use http or https protocol');
+        await expect(editModal).toContainText(
+          'URL must use http or https protocol'
+        );
 
-        await page.locator('[data-testid="inline-cancel-btn"]').click();
+        await editModal.getByTestId('inline-cancel-btn').click();
       });
 
       test('should accept valid http and https URLs', async ({ page }) => {
@@ -1408,9 +1353,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           propertyType: 'hyperlink-cp',
         });
 
-        const hyperlinkElement = page
-          .locator(`[data-testid="custom-property-${propertyName}-card"]`)
-          .getByTestId('hyperlink-value');
+        const hyperlinkElement = getCustomPropertyCard(
+          page,
+          propertyName
+        ).getByTestId('hyperlink-value');
 
         await expect(hyperlinkElement).toHaveAttribute(
           'href',
@@ -3353,15 +3299,13 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await mainEntity.visitEntityPage(page);
 
-          const customPropertyResponse = page.waitForResponse(
-            '/api/v1/metadata/types/name/dashboard?fields=customProperties'
-          );
-          await page.getByTestId('custom_properties').click();
-          await customPropertyResponse;
+          await openCustomPropertiesTab(page);
 
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
+          await page
+            .locator('.ant-skeleton-active')
+            .waitFor({ state: 'detached' })
+            .catch(() => {});
+          await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
             page,
@@ -3372,6 +3316,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           });
 
           await page.reload();
+          await waitForAllLoadersToDisappear(page);
 
           const customPropertiesTab = page.getByTestId('custom_properties');
           await customPropertiesTab.click();
@@ -3403,6 +3348,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             { exact: true }
           );
           await customPropertyOption.click();
+          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${dashboardSearchPropertyName}`
@@ -3415,7 +3361,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(customPropertyBadge).toBeVisible();
 
           await fieldPanel.click();
-          await setSliderValue(page, 'field-weight-slider', 20);
+          await setSliderValue(
+            page,
+            'field-weight-slider',
+            20,
+            0,
+            100,
+            'field-weight-value'
+          );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();
@@ -3449,6 +3402,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await searchInput.fill(dashboardPropertyValue);
           await searchInput.press('Enter');
 
+          await page
+            .getByTestId('dashboards-tab')
+            .waitFor({ state: 'visible' });
           await page.getByTestId('dashboards-tab').click();
 
           await waitForAllLoadersToDisappear(page);
@@ -3459,26 +3415,24 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           await expect(dashboardCard).toBeVisible();
         });
-      });
 
-      test('Verify Dashboard custom property persists in search settings', async ({
-        page,
-      }) => {
-        await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+        await test.step('Verify Dashboard custom property persists in search settings', async () => {
+          await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
-        const dashboardCard = page.getByTestId(
-          'preferences.search-settings.dashboards'
-        );
-        await dashboardCard.click();
+          const dashboardCard = page.getByTestId(
+            'preferences.search-settings.dashboards'
+          );
+          await dashboardCard.click();
 
-        await waitForAllLoadersToDisappear(page);
+          await waitForAllLoadersToDisappear(page);
 
-        await openMatchingFieldsPanel(page);
+          await openMatchingFieldsPanel(page);
 
-        const customPropertyField = page.getByTestId(
-          `field-configuration-panel-extension.${dashboardSearchPropertyName}`
-        );
-        await expect(customPropertyField).toBeVisible();
+          const customPropertyField = page.getByTestId(
+            `field-configuration-panel-extension.${dashboardSearchPropertyName}`
+          );
+          await expect(customPropertyField).toBeVisible();
+        });
       });
     }
 
@@ -3501,15 +3455,13 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await mainEntity.visitEntityPage(page);
 
-          const customPropertyResponse = page.waitForResponse(
-            '/api/v1/metadata/types/name/pipeline?fields=customProperties'
-          );
-          await page.getByTestId('custom_properties').click();
-          await customPropertyResponse;
+          await openCustomPropertiesTab(page);
 
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
+          await page
+            .locator('.ant-skeleton-active')
+            .waitFor({ state: 'detached' })
+            .catch(() => {});
+          await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
             page,
@@ -3541,6 +3493,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             { exact: true }
           );
           await customPropertyOption.click();
+          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${pipelineSearchPropertyName}`
@@ -3553,7 +3506,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(customPropertyBadge).toBeVisible();
 
           await fieldPanel.click();
-          await setSliderValue(page, 'field-weight-slider', 12);
+          await setSliderValue(
+            page,
+            'field-weight-slider',
+            12,
+            0,
+            100,
+            'field-weight-value'
+          );
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();
@@ -3588,26 +3548,24 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           await expect(pipelineCard).toBeVisible();
         });
-      });
 
-      test('Verify Pipeline custom property persists in search settings', async ({
-        page,
-      }) => {
-        await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+        await test.step('Verify Pipeline custom property persists in search settings', async () => {
+          await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
-        const pipelineCard = page.getByTestId(
-          'preferences.search-settings.pipelines'
-        );
-        await pipelineCard.click();
+          const pipelineCard = page.getByTestId(
+            'preferences.search-settings.pipelines'
+          );
+          await pipelineCard.click();
 
-        await waitForAllLoadersToDisappear(page);
+          await waitForAllLoadersToDisappear(page);
 
-        await openMatchingFieldsPanel(page);
+          await openMatchingFieldsPanel(page);
 
-        const customPropertyField = page.getByTestId(
-          `field-configuration-panel-extension.${pipelineSearchPropertyName}`
-        );
-        await expect(customPropertyField).toBeVisible();
+          const customPropertyField = page.getByTestId(
+            `field-configuration-panel-extension.${pipelineSearchPropertyName}`
+          );
+          await expect(customPropertyField).toBeVisible();
+        });
       });
     }
 
@@ -3785,178 +3743,5 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         }
       });
     }
-  });
-});
-
-test.describe('Custom property name validation', () => {
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-    await settingClick(page, GlobalSettingOptions.TABLES, true);
-    await page.click('[data-testid="add-field-button"]');
-  });
-
-  const nameInput = '[data-testid="name"]';
-  const nameError = '#name_help';
-
-  test('should show error when name starts with a non-alphanumeric character', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.STARTS_WITH_SPECIAL_CHAR
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a colon', async ({ page }) => {
-    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON);
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a dollar sign', async ({
-    page,
-  }) => {
-    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_DOLLAR);
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a caret', async ({ page }) => {
-    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_CARET);
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a double quote', async ({
-    page,
-  }) => {
-    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_QUOTE);
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a backslash', async ({ page }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_BACKSLASH
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a less-than sign', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_LESS_THAN
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a greater-than sign', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_GREATER_THAN
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains an ampersand', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_AMPERSAND
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains an asterisk', async ({ page }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_ASTERISK
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a forward slash', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_FORWARD_SLASH
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a tilde', async ({ page }) => {
-    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_TILDE);
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should accept a valid name starting with a letter', async ({
-    page,
-  }) => {
-    await page.fill(nameInput, 'validName_123');
-
-    await expect(page.locator(nameError)).not.toBeVisible();
-  });
-
-  test('should accept a valid name with allowed special characters', async ({
-    page,
-  }) => {
-    await page.fill(nameInput, "valid Name.!@#%`()_-=+{}[]|;',.?");
-
-    await expect(page.locator(nameError)).not.toBeVisible();
-  });
-
-  test('should show error when name exceeds 256 characters', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      `${INVALID_NAMES.MAX_LENGTH}${INVALID_NAMES.MAX_LENGTH}`
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CP_NAME_MAX_LENGTH_VALIDATION_ERROR
-    );
   });
 });

@@ -224,6 +224,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </Tag>
     )
   ),
+  Owner: jest.fn(({ owners }: { owners?: unknown[] }) => (
+    <div data-testid="owner-label">
+      {owners?.length ? `${owners.length} owner(s)` : 'No owners'}
+    </div>
+  )),
+  toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+    .toOwnerRefs,
+  toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
 }));
 
 jest.mock('../../../rest/contractAPI', () => ({
@@ -251,19 +259,9 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: function MockOwnerLabel({ owners }: { owners: unknown[] }) {
-    return (
-      <div data-testid="owner-label">
-        {owners?.length ? `${owners.length} owner(s)` : 'No owners'}
-      </div>
-    );
-  },
-}));
-
-jest.mock('../../AlertBar/AlertBar', () => {
-  return function MockAlertBar({ message }: { message?: React.ReactNode }) {
-    return <div data-testid="alert-bar">{message}</div>;
+jest.mock('../ContractStatusAlert/ContractStatusAlert', () => {
+  return function MockContractStatusAlert({ message }: { message?: string }) {
+    return <div data-testid="contract-status-alert">{message}</div>;
   };
 });
 
@@ -398,28 +396,6 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockImplementation(() => {
     return <div>RichTextEditorPreviewerV1</div>;
   });
-});
-
-jest.mock('../../common/Table/Table', () => {
-  return function MockTable({
-    dataSource,
-    loading,
-  }: {
-    dataSource?: Array<{ id: string; name: string }>;
-    loading?: boolean;
-  }) {
-    return (
-      <div data-testid="mock-table">
-        <div>Loading: {loading ? 'true' : 'false'}</div>
-        <div>Data Length: {dataSource?.length || 0}</div>
-        {dataSource?.map((item) => (
-          <div data-testid={`table-row-${item.id}`} key={item.id}>
-            {item.name}
-          </div>
-        ))}
-      </div>
-    );
-  };
 });
 
 jest.mock('react-i18next', () => ({
@@ -1406,9 +1382,9 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(await screen.findByTestId('alert-bar')).toHaveTextContent(
-        'Failure message'
-      );
+      expect(
+        await screen.findByTestId('contract-status-alert')
+      ).toHaveTextContent('Failure message');
     });
 
     it('should show alert bar when latest result has aborted status', async () => {
@@ -1438,9 +1414,9 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(await screen.findByTestId('alert-bar')).toHaveTextContent(
-        'Aborted message'
-      );
+      expect(
+        await screen.findByTestId('contract-status-alert')
+      ).toHaveTextContent('Aborted message');
     });
 
     it('should handle error when fetching latest contract results fails', async () => {

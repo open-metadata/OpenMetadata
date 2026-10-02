@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/pipelineService.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Pipeline Service",
   "description": "This schema defines the Pipeline Service entity, such as Airflow and Prefect.",
   "type": "object",
@@ -43,7 +43,8 @@
         "Mulesoft",
         "MicrosoftFabricPipeline",
         "Data360Pipeline",
-        "SapBw4HanaPipeline"
+        "SapBw4HanaPipeline",
+        "TableauPipeline"
       ],
       "javaEnums": [
         {
@@ -126,6 +127,9 @@
         },
         {
           "name": "SapBw4HanaPipeline"
+        },
+        {
+          "name": "TableauPipeline"
         }
       ]
     },
@@ -220,6 +224,9 @@
             },
             {
               "$ref": "./connections/pipeline/sapBw4HanaPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/tableauPipelineConnection.json"
             }
           ]
         }
@@ -279,6 +286,10 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "serviceAttributes": {
+      "description": "Deployment attributes of this service: environment, region and deployment. Set once here rather than tagged onto every asset this service ingests.",
+      "$ref": "./serviceAttributes.json"
     },
     "style": {
       "$ref": "../../type/basic.json#/definitions/style"

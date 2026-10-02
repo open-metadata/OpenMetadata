@@ -208,11 +208,53 @@ def parse_imports(path: Path) -> list[str]:
 
 
 def crawl(spec_path: Path, repo_root: Path) -> set[Path]:
-    """Return the set of resolved `src/**` files reachable from spec_path."""
+    """
+    Return the set of source files reachable from spec_path that should route
+    a change back to this spec:
+
+      * `src/**` product code (the browser bundle the spec exercises), and
+      * `playwright/**` helpers — utils/, support/, constant/, fixtures/,
+        PageObject/ … — that the spec imports DIRECTLY (depth 1 only).
+
+    The second class is what #32909 fell through. That PR edited
+    `playwright/utils/domain.ts`; `SampleDataDomainDataProduct.spec.ts`
+    imports `selectDomain` from it. `playwright/utils/**` is listed in the
+    hand-authored map's `sharedInfrastructure`, which routes to the canary
+    subset — not to the specs that import the helper. The PR's targeted run
+    (604 tests) never selected SDD, went green, was enqueued, and then failed
+    SDD identically in all 11 of its merge_group runs over 6.5 h, poisoning
+    every batch stacked behind it (37 of the 77 real merge_group test
+    failures that day). Recording helper imports as sources makes a helper
+    change select exactly the specs that depend on it. It composes with the
+    canary route (the selector adds both), so this only ever widens coverage.
+
+    Helpers are recorded at depth 1 only — the spec's own import list — not
+    transitively. The helper graph is hub-shaped (every spec imports
+    utils/common.ts, which imports support/fixtures/serverLoad.ts; utils/entity.ts
+    pulls EntityDataClass, which pulls every support class), so transitive reach
+    collapses to "everything": measured on the real tree, recording all depths
+    routed utils/domain.ts to 267 of 365 specs (73%) and eight helpers to 100%,
+    while direct imports route utils/domain.ts to 29 specs (7%) — still
+    including SampleDataDomainDataProduct — and 90% of helpers to ≤26 specs.
+    The residual gap is a spec that imports only a support class whose helper
+    changed underneath it; the support class itself is still direct evidence,
+    and the hand-authored canary still fires for utils/** via
+    sharedInfrastructure. The three helpers that nearly every spec imports
+    directly (utils/common.ts, support/fixtures/base.ts, utils/entity.ts) will
+    route to most of the suite — correctly: they are real dependencies of
+    every spec, unlike a shared testId, so no fan-out cap is applied here.
+
+    src/** product code keeps its existing transitive crawl — the browser
+    bundle is not hub-shaped the same way and MAX_HOPS already bounds it.
+
+    Specs themselves are not recorded as sources: a spec that imports another
+    spec is already selected by the direct-change rule in the selector.
+    """
     visited: set[Path] = {spec_path}
     frontier: list[tuple[Path, int]] = [(spec_path, 0)]
-    src_hits: set[Path] = set()
+    hits: set[Path] = set()
     src_root_abs = (repo_root / SRC_ROOT).resolve()
+    playwright_root_abs = (repo_root / UI_ROOT / "playwright").resolve()
 
     while frontier:
         current, depth = frontier.pop()
@@ -226,16 +268,30 @@ def crawl(spec_path: Path, repo_root: Path) -> set[Path]:
             try:
                 resolved.relative_to(src_root_abs)
             except ValueError:
+                # Not under src/. A Playwright helper the SPEC ITSELF imports
+                # (depth 1) is evidence; deeper helpers and specs are not (see
+                # docstring). Either way keep crawling through it for src/ reach.
+                if depth == 0 and _is_playwright_helper(resolved, playwright_root_abs):
+                    hits.add(resolved)
                 frontier.append((resolved, depth + 1))
-                continue  # not under src/ — keep crawling but don't record it
+                continue
             # Under src/. Only record it as evidence for this spec if it is
             # product code — Jest tests and mocks colocated with components
             # would otherwise cause a unit-test edit to schedule an E2E.
             if is_product_source(resolved.as_posix()):
-                src_hits.add(resolved)
+                hits.add(resolved)
             frontier.append((resolved, depth + 1))
 
-    return src_hits
+    return hits
+
+
+def _is_playwright_helper(path: Path, playwright_root_abs: Path) -> bool:
+    """True for a non-spec file under playwright/ (utils, support, constant, …)."""
+    try:
+        path.relative_to(playwright_root_abs)
+    except ValueError:
+        return False
+    return not path.name.endswith(".spec.ts")
 
 
 def extract_spec_testids(spec_path: Path) -> set[str]:

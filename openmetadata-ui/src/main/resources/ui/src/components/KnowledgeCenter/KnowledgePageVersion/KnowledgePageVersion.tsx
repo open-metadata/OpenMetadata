@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useMemo, type FC } from 'react';
@@ -19,7 +20,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import Loader from '../../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -34,6 +34,7 @@ import {
 } from '../../../utils/EntityDiffPureUtils';
 import { getRichTextDiff } from '../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -42,7 +43,8 @@ import {
 } from '../../../utils/EntityVersionUtilsPure';
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
   loading: boolean;
@@ -117,18 +119,22 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
         <Row gutter={[16, 16]} justify="space-between" wrap={false}>
           <Col className="m-r-md knowledge-version-title-col" flex="auto">
             <Space className="w-full" direction="vertical" size={32}>
-              <Typography.Text
+              <Typography
                 className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
                 data-testid="entity-header-display-name">
-                {stringToHTML(displayName || knowledgePage.name)}
-              </Typography.Text>
+                {renderHighlightedText(displayName || knowledgePage.name)}
+              </Typography>
               <Row align="middle" gutter={[16, 16]}>
                 <Col>
                   <Space size={4}>
                     <Space direction="vertical" size={0}>
-                      <OwnerLabel
+                      <Owner
+                        isCompactView={false}
                         ownerDisplayName={ownerDisplayName}
-                        owners={knowledgePage?.owners ?? ownerRef}
+                        owners={toOwnerRefs(
+                          knowledgePage?.owners ?? ownerRef ?? []
+                        )}
+                        showLabel={false}
                       />
                       <span
                         className="self-center text-grey-muted"
@@ -149,12 +155,12 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
               data-testid="version-button"
               icon={<Icon component={VersionIcon} />}
               onClick={handleVersionClick}>
-              <Typography.Text
+              <Typography
                 className={classNames('', {
                   'text-primary': version,
                 })}>
                 {toString(version)}
-              </Typography.Text>
+              </Typography>
             </Button>
           </Col>
         </Row>
@@ -163,9 +169,9 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
         <Row gutter={[0, 16]}>
           <Col span={24}>
             <Space align="center" className="w-full knowledge-page-tags">
-              <Typography.Text className="text-grey-muted">
+              <Typography color="secondary">
                 {`${t('label.tag-plural')}:`}
-              </Typography.Text>
+              </Typography>
               <TagsContainerV2
                 layoutType={LayoutType.HORIZONTAL}
                 permission={false}
@@ -177,9 +183,9 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
           </Col>
           <Col span={24}>
             <Space align="center" className="w-full knowledge-page-tags">
-              <Typography.Text className="text-grey-muted">
+              <Typography color="secondary">
                 {`${t('label.glossary-term-plural')}:`}
-              </Typography.Text>
+              </Typography>
               <TagsContainerV2
                 layoutType={LayoutType.HORIZONTAL}
                 permission={false}

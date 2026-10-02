@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -25,6 +30,10 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
   TABLE_SCROLL_VALUE,
@@ -49,6 +58,7 @@ import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -150,19 +160,28 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [currentVersionData, isVersionView, topicDetails]
   );
 
+  // Consumer via useGenericContext() (Task 8 rule 2). Ungated: `isReadOnly` above
+  // (currentVersionData or topicDetails.deleted) is passed separately to each
+  // TableDescription/TableTags render site below, never folded into these edit
+  // flags in the old code — same isReadOnly-vs-deleted separation as the sibling
+  // SearchIndexFieldsTab/SchemaTable family. All 3 raw `EditAll || EditField`
+  // OR-expressions are explicit-deny-wins fixes.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+
   const {
     hasDescriptionEditAccess,
     hasTagEditAccess,
     hasGlossaryTermEditAccess,
   } = useMemo(
     () => ({
-      hasDescriptionEditAccess:
-        permissions.EditAll || permissions.EditDescription,
-      hasTagEditAccess: permissions.EditAll || permissions.EditTags,
-      hasGlossaryTermEditAccess:
-        permissions.EditAll || permissions.EditGlossaryTerms,
+      hasDescriptionEditAccess: flags.canEditDescription,
+      hasTagEditAccess: flags.canEditTags,
+      hasGlossaryTermEditAccess: flags.canEditGlossaryTerms,
     }),
-    [permissions]
+    [flags]
   );
 
   const schemaAllRowKeys = useMemo(() => {
@@ -302,7 +321,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderDataType = useCallback(
     (dataType: DataTypeTopic, record: Field) => (
-      <Typography.Text>
+      <Typography className="tw:text-primary">
         {isVersionView ? (
           <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
@@ -310,7 +329,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         ) : (
           record.dataTypeDisplay ?? dataType
         )}
-      </Typography.Text>
+      </Typography>
     ),
     [isVersionView]
   );
@@ -469,7 +488,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
     return (
       <Col>
-        <Typography.Text type="secondary">{t('label.schema')}</Typography.Text>
+        <Typography color="secondary">{t('label.schema')}</Typography>
         {schemaTypePlaceholder ?? (
           <Tag className="ml-4">{messageSchema.schemaType}</Tag>
         )}
@@ -484,12 +503,26 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
     return (
       <Col span={24}>
-        <Segmented
-          className="segment-toggle"
-          options={viewTypeOptions}
-          value={viewType}
-          onChange={(value) => setViewType(value as SchemaViewType)}
-        />
+        <ButtonGroup
+          disallowEmptySelection
+          className={SEGMENT_TOGGLE_GROUP_CLASS}
+          selectedKeys={[viewType]}
+          size="sm"
+          onSelectionChange={(keys) => {
+            const selected = [...keys][0];
+            if (selected) {
+              setViewType(selected as SchemaViewType);
+            }
+          }}>
+          {viewTypeOptions.map(({ label, value }) => (
+            <ButtonGroupItem
+              className={SEGMENT_TOGGLE_ITEM_CLASS}
+              id={value}
+              key={value}>
+              {label}
+            </ButtonGroupItem>
+          ))}
+        </ButtonGroup>
       </Col>
     );
   };

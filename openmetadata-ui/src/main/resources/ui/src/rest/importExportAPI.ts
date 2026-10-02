@@ -12,9 +12,9 @@
  */
 import { AxiosResponse } from 'axios';
 import { EntityType } from '../enums/entity.enum';
-import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+import { CSVImportAsyncResponse } from '../interface/entity/csv.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const MIME_TEXT_PLAIN = 'text/plain';
 

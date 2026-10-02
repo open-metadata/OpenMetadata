@@ -14,7 +14,11 @@
 import { expect } from '@playwright/test';
 import { toLower } from 'lodash';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { clickOutside, redirectToHomePage } from '../../utils/common';
+import {
+  clickOutside,
+  redirectToHomePage,
+  waitForAntdPopupToSettle,
+} from '../../utils/common';
 import {
   followEntity,
   validateFollowedEntityToWidget,
@@ -28,6 +32,11 @@ test.describe('Verify RTL Layout for landing page', () => {
     await redirectToHomePage(page);
 
     await page.getByTestId('language-selector-button').click();
+    // The language menu is long enough that Ant's scaleY(0.8)->scaleY(1) entry
+    // shifts every item; clicking mid-animation computes the point against the
+    // scaled menu and lands on the option above Hebrew, so the handler never
+    // runs and the `load` below waits out the hook.
+    await waitForAntdPopupToSettle(page);
     await Promise.all([
       page.waitForEvent('load'),
       page.locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]').click(),
@@ -55,17 +64,16 @@ test.describe('Verify RTL Layout for landing page', () => {
 
     await quickFilterResponse;
 
-    await expect(
-      page.getByRole('button', { name: 'סוג השירות : (1)' })
-    ).toBeAttached();
+    await expect(page.getByTestId('search-dropdown-סוג השירות')).toBeAttached();
+    await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 
     await expect(
       page
         .getByTestId('explore-tree')
-        .locator('span')
+        .getByRole('row')
         .filter({ hasText: serviceType })
         .first()
-    ).toHaveClass(/ant-tree-node-selected/);
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   test('Verify Following widget functionality', async ({ page }) => {

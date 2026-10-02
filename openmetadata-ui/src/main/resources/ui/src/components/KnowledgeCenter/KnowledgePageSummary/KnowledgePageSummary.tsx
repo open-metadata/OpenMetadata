@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Divider, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -22,15 +23,8 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import i18n, { t } from '../../../utils/i18next/LocalUtil';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../../../components/common/OwnerLabel/OwnerLabel.component').then(
-      (module) => ({ default: module.OwnerLabel })
-    )
-  )
-);
 
 const SummaryPanelSkeleton = withSuspenseFallback(
   lazy(
@@ -74,7 +68,7 @@ const KnowledgePageSummary = ({
     return [
       {
         name: i18n.t('label.owner-plural'),
-        value: <OwnerLabel hasPermission={false} owners={owners} />,
+        value: <Owner hasPermission={false} owners={owners} />,
       },
     ];
   }, [entityDetails]);
@@ -103,17 +97,17 @@ const KnowledgePageSummary = ({
               data-testid="quick-link-data"
               gutter={[0, 8]}>
               <Col span={24}>
-                <Typography.Text
+                <Typography
                   className="summary-panel-section-title"
                   data-testid="tags-header">
                   {t('label.link')}
-                </Typography.Text>
+                </Typography>
               </Col>
               <Col span={24}>
                 <Link
                   className="text-primary"
                   target="_blank"
-                  to={quickLinkData.url}>
+                  to={getSafeHttpUrl(quickLinkData.url) ?? '#'}>
                   {quickLinkData.url}
                 </Link>
               </Col>

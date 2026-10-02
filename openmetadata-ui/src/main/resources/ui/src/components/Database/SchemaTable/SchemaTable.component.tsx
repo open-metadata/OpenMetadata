@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 
-import { Label } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Row,
-  Select,
-  TableProps,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Label, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Dropdown, Row, Select, TableProps, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -79,9 +70,10 @@ import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import {
   highlightSearchArrayElement,
   highlightSearchText,
+  renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   findColumnByEntityLink,
@@ -208,25 +200,20 @@ const SchemaTable = () => {
     [fqn]
   );
 
+  // Named-flag derivation (Task 8): `tablePermissions` is the raw OperationPermission read
+  // off useGenericContext(). Every field below was a raw `(EditX || EditAll) && !deleted` OR
+  // — kept under its original local name (consumed throughout this file) but now sourced from
+  // the prioritized named flag, a documented explicit-deny-wins fix (Task 6 Finding 1 /
+  // Task 8 Batch 2 precedent): an explicit `EditX: false` now wins over a bare
+  // `EditAll: true` grant, where the old raw OR granted regardless.
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editDisplayNamePermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditDescription: editDescriptionPermission,
+    canEditDisplayName: editDisplayNamePermission,
+    canEditAll,
   } = useMemo(
-    () => ({
-      editTagsPermission:
-        (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
-      editDescriptionPermission:
-        (tablePermissions.EditDescription || tablePermissions.EditAll) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
-        !deleted,
-      editDisplayNamePermission:
-        (tablePermissions.EditDisplayName || tablePermissions.EditAll) &&
-        !deleted,
-    }),
+    () => getDerivedPermissionFlags(tablePermissions, deleted),
     [tablePermissions, deleted]
   );
 
@@ -546,11 +533,12 @@ const SchemaTable = () => {
         }
 
         return (
-          <Typography.Paragraph
-            className="cursor-pointer"
+          <Typography
+            as="p"
+            className="cursor-pointer tw:mb-3.5! tw:text-primary"
             ellipsis={{ tooltip: displayValue, rows: 3 }}>
             {highlightSearchArrayElement(dataTypeDisplay, searchText)}
-          </Typography.Paragraph>
+          </Typography>
         );
       },
       [searchText]
@@ -724,13 +712,13 @@ const SchemaTable = () => {
                 columnConstraint: record.constraint,
                 tableConstraints,
               })}
-              <Typography.Text
+              <Typography
                 className={classNames(
                   'm-b-0 d-block break-word cursor-pointer text-link-color'
                 )}
                 data-testid="column-name">
-                {stringToHTML(highlightSearchText(name, searchText))}
-              </Typography.Text>
+                {renderHighlightedText(highlightSearchText(name, searchText))}
+              </Typography>
             </div>
             <div className="d-flex items-center">
               {editDisplayNamePermission && (
@@ -763,13 +751,13 @@ const SchemaTable = () => {
             </div>
           </div>
           {isEmpty(displayName) ? null : (
-            <Typography.Text
+            <Typography
               className="m-b-0 d-block break-word"
               data-testid="column-display-name">
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchText)
               )}
-            </Typography.Text>
+            </Typography>
           )}
         </div>
       );
@@ -1033,10 +1021,7 @@ const SchemaTable = () => {
                   {t('label.sort')}
                 </Button>
               </Dropdown>
-              {getBulkEditButton(
-                tablePermissions.EditAll && !deleted,
-                handleEditTable
-              )}
+              {getBulkEditButton(canEditAll, handleEditTable)}
             </div>
           }
           loading={columnsLoading}

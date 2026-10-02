@@ -112,7 +112,7 @@ const verifyLastExecutionStatus = async (page: Page) => {
     )
     .toEqual(expect.stringMatching(SUCCESSFUL_RUN_STATUS));
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   await page.getByTestId('app-run-history-table').waitFor();
 
@@ -318,7 +318,13 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .getByRole('combobox')
         .fill('Table');
 
-      const tableTitle = page.getByRole('tree').getByTitle('Table');
+      // Exact: the entity list is server-driven now, and rc-tree-select filters on the node value
+      // (treeNodeFilterProp defaults to 'value'), so typing "Table" also leaves `tableColumn` —
+      // rendered as "Table Column" — visible. A substring getByTitle would match both and break
+      // strict mode.
+      const tableTitle = page
+        .getByRole('tree')
+        .getByTitle('Table', { exact: true });
 
       // Wait for the filtered tree result to render
       await tableTitle.waitFor({ state: 'visible' });
@@ -375,7 +381,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           !response.url().includes('/status') &&
           response.request().method() === 'GET'
       );
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await appResponse;
 
       await page.click('[data-testid="manage-button"]');
@@ -418,7 +424,7 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const statusAPI = page.waitForResponse(
           '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
         );
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         const statusResponse = await statusAPI;
 
         expect(statusResponse.status()).toBe(200);

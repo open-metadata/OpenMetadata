@@ -21,6 +21,8 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -69,6 +71,7 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.api.services.CreateApiService;
@@ -81,6 +84,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.APICollection;
@@ -102,6 +106,7 @@ import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
@@ -1903,6 +1908,348 @@ public class WorkflowDefinitionResourceIT {
           return null;
         },
         operationName);
+  }
+
+  /**
+   * #28433: Verify the checkEntityAttributesTask evaluates {@code assetsCount > 0} as true for a
+   * DataProduct that has at least one asset.
+   */
+  @Test
+  void test_CheckEntityAttributes_DataProductAssetCount(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    // Create domain and a data product
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("dpac_domain"))
+                    .withDescription("Domain for asset count test")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    org.openmetadata.schema.entity.domains.DataProduct dpWithAssets =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("dp_with_assets"))
+                    .withDescription("DP with assets")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    // Create a table in the same domain and add it as an asset
+    CreateDatabaseService createSvc = createDatabaseServiceRequest(ns.prefix("dpac_svc"));
+    createSvc.withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createSvc);
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("dpac_db"))
+                    .withDescription("DB")
+                    .withService(service.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("dpac_schema"))
+                    .withDescription("Schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("dpac_table"))
+                    .withDescription("Table for asset")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("id")
+                                .withDataType(ColumnDataType.INT)
+                                .withDescription("Primary key"))));
+    client
+        .dataProducts()
+        .bulkAddAssets(
+            dpWithAssets.getFullyQualifiedName(),
+            new org.openmetadata.schema.type.api.BulkAssets()
+                .withAssets(List.of(table.getEntityReference())));
+
+    // Build workflow: checkEntityAttributes with assetsCount > 0. The workflow is created AFTER
+    // the DP has its asset so the Updated event fired below evaluates against assetsCount = 1.
+    String workflowName = "dpAssetWF_" + ns.uniqueShortId();
+    String workflowJson =
+        String.format(
+            """
+        {
+          "name": "%s",
+          "displayName": "DP Asset Count Check",
+          "description": "Tests assetsCount enrichment on DataProduct",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["dataProduct"],
+              "events": ["Updated"]
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "start"},
+            {
+              "type": "automatedTask",
+              "subType": "checkEntityAttributesTask",
+              "name": "checkAssets",
+              "displayName": "Check Assets > 0",
+              "config": {"rules": "{\\">\\":[{\\"var\\":\\"assetsCount\\"},0]}"},
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {"relatedEntity": "global"},
+              "output": ["result"],
+              "branches": ["true", "false"]
+            },
+            {"type": "endEvent", "subType": "endEvent", "name": "endTrue"},
+            {"type": "endEvent", "subType": "endEvent", "name": "endFalse"}
+          ],
+          "edges": [
+            {"from": "start", "to": "checkAssets"},
+            {"from": "checkAssets", "to": "endTrue", "condition": "true"},
+            {"from": "checkAssets", "to": "endFalse", "condition": "false"}
+          ],
+          "config": {"storeStageStatus": true}
+        }
+        """,
+            workflowName);
+
+    Map<String, Object> workflowRequest = MAPPER.readValue(workflowJson, Map.class);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflowRequest, RequestOptions.builder().build());
+    assertNotNull(response);
+    LOG.debug("Created DP asset count workflow: {}", workflowName);
+
+    try {
+      waitForWorkflowDeployment(client, workflowName);
+
+      // Fire the Updated event on the DP (which already has an asset) to run the workflow
+      JsonNode dpPatch =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/description\","
+                  + "\"value\":\"DP with assets - updated to fire workflow\"}]");
+      client.dataProducts().patch(dpWithAssets.getId(), dpPatch);
+
+      // Wait for the workflow run and verify the checkAssets node evaluated true
+      awaitStageResultTrue(client, workflowName, "checkAssets_result");
+    } finally {
+      safeDeleteWorkflow(client, workflowName);
+    }
+  }
+
+  /**
+   * #28433: Verify the checkEntityAttributesTask evaluates {@code outputPortsCount > 0} as true for
+   * a DataProduct that has output ports.
+   */
+  @Test
+  void test_CheckEntityAttributes_DataProductOutputPortCount(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("dpop_domain"))
+                    .withDescription("Domain for output port count test")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    org.openmetadata.schema.entity.domains.DataProduct dpWithPorts =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("dp_with_ports"))
+                    .withDescription("DP with output ports")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    // Create a table in the same domain, add as asset first, then as output port
+    CreateDatabaseService createSvc = createDatabaseServiceRequest(ns.prefix("dpop_svc"));
+    createSvc.withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createSvc);
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("dpop_db"))
+                    .withDescription("DB")
+                    .withService(service.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("dpop_schema"))
+                    .withDescription("Schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("dpop_table"))
+                    .withDescription("Table for output port")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("id")
+                                .withDataType(ColumnDataType.INT)
+                                .withDescription("Primary key"))));
+    org.openmetadata.schema.type.api.BulkAssets bulkAssets =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    client.dataProducts().bulkAddAssets(dpWithPorts.getFullyQualifiedName(), bulkAssets);
+    client.dataProducts().bulkAddOutputPorts(dpWithPorts.getFullyQualifiedName(), bulkAssets);
+
+    // The workflow is created AFTER the DP has its output port so the Updated event fired
+    // below evaluates against outputPortsCount = 1.
+    String workflowName = "dpOpWF_" + ns.uniqueShortId();
+    String workflowJson =
+        String.format(
+            """
+        {
+          "name": "%s",
+          "displayName": "DP Output Port Count Check",
+          "description": "Tests outputPortsCount enrichment on DataProduct",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["dataProduct"],
+              "events": ["Updated"]
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "start"},
+            {
+              "type": "automatedTask",
+              "subType": "checkEntityAttributesTask",
+              "name": "checkOutputPorts",
+              "displayName": "Check Output Ports > 0",
+              "config": {"rules": "{\\">\\":[{\\"var\\":\\"outputPortsCount\\"},0]}"},
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {"relatedEntity": "global"},
+              "output": ["result"],
+              "branches": ["true", "false"]
+            },
+            {"type": "endEvent", "subType": "endEvent", "name": "endTrue"},
+            {"type": "endEvent", "subType": "endEvent", "name": "endFalse"}
+          ],
+          "edges": [
+            {"from": "start", "to": "checkOutputPorts"},
+            {"from": "checkOutputPorts", "to": "endTrue", "condition": "true"},
+            {"from": "checkOutputPorts", "to": "endFalse", "condition": "false"}
+          ],
+          "config": {"storeStageStatus": true}
+        }
+        """,
+            workflowName);
+
+    Map<String, Object> workflowRequest = MAPPER.readValue(workflowJson, Map.class);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflowRequest, RequestOptions.builder().build());
+    assertNotNull(response);
+    LOG.debug("Created DP output port count workflow: {}", workflowName);
+
+    try {
+      waitForWorkflowDeployment(client, workflowName);
+
+      // Fire the Updated event on the DP (which already has an output port) to run the workflow
+      JsonNode dpPatch =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/description\","
+                  + "\"value\":\"DP with output ports - updated to fire workflow\"}]");
+      client.dataProducts().patch(dpWithPorts.getId(), dpPatch);
+
+      // Wait for the workflow run and verify the checkOutputPorts node evaluated true
+      awaitStageResultTrue(client, workflowName, "checkOutputPorts_result");
+    } finally {
+      safeDeleteWorkflow(client, workflowName);
+    }
+  }
+
+  /**
+   * Polls until the given workflow has at least one instance whose recorded stage carries {@code
+   * <nodeName>_result = true} (written by the node's stage listeners when storeStageStatus=true).
+   */
+  private void awaitStageResultTrue(
+      OpenMetadataClient client, String workflowDefinitionName, String resultKey) {
+    await()
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(3))
+        .untilAsserted(
+            () -> {
+              String instancesPath =
+                  "/v1/governance/workflowInstances?workflowDefinitionName="
+                      + workflowDefinitionName
+                      + "&startTs=0&endTs="
+                      + System.currentTimeMillis()
+                      + "&limit=100";
+              String instancesJson =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, instancesPath, null, RequestOptions.builder().build());
+              JsonNode instances = MAPPER.readTree(instancesJson).path("data");
+              assertTrue(instances.size() > 0, "Workflow should have at least one instance");
+              assertTrue(
+                  anyInstanceStageHasTrueResult(
+                      client, workflowDefinitionName, instances, resultKey),
+                  "At least one workflow instance should have a stage with " + resultKey + "=true");
+            });
+  }
+
+  private boolean anyInstanceStageHasTrueResult(
+      OpenMetadataClient client,
+      String workflowDefinitionName,
+      JsonNode instances,
+      String resultKey)
+      throws Exception {
+    boolean found = false;
+    for (JsonNode instance : instances) {
+      String instanceId = instance.path("id").asText(null);
+      if (instanceId == null) {
+        continue;
+      }
+      String statesPath =
+          "/v1/governance/workflowInstanceStates/"
+              + workflowDefinitionName
+              + "/"
+              + instanceId
+              + "?startTs=0&endTs="
+              + System.currentTimeMillis()
+              + "&limit=100";
+      String statesJson =
+          client
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, statesPath, null, RequestOptions.builder().build());
+      for (JsonNode state : MAPPER.readTree(statesJson).path("data")) {
+        if (state.path("stage").path("variables").path(resultKey).asBoolean(false)) {
+          found = true;
+        }
+      }
+    }
+    return found;
   }
 
   private void safeDeleteWorkflow(OpenMetadataClient client, String workflowName) {
@@ -11144,5 +11491,197 @@ public class WorkflowDefinitionResourceIT {
         current.getDisplayName(),
         "Excluded term must not be touched by workflow, but displayName changed to "
             + current.getDisplayName());
+  }
+
+  @Test
+  @Order(211)
+  void test_ColumnCustomPropertyChange_TriggersWorkflow(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureTierTagExists();
+    ensureWorkflowEventConsumerIsActive(client);
+    String propName = ns.prefix("wfTriggerCp");
+    String columnTypeName = "tableColumn";
+    UUID workflowId = null;
+
+    try {
+      addColumnCustomProperty(client, columnTypeName, propName);
+
+      CreateDatabaseService createService =
+          createDatabaseServiceRequest(ns.prefix("colcp_wf_service"));
+      DatabaseService service = client.databaseServices().create(createService);
+      CreateDatabase createDatabase =
+          new CreateDatabase().withName("colcp_wf_db").withService(service.getFullyQualifiedName());
+      Database database = client.databases().create(createDatabase);
+      CreateDatabaseSchema createSchema =
+          new CreateDatabaseSchema()
+              .withName("colcp_wf_schema")
+              .withDatabase(database.getFullyQualifiedName());
+      DatabaseSchema schema = client.databaseSchemas().create(createSchema);
+      CreateTable createTable =
+          new CreateTable()
+              .withName("colcp_wf_table")
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+      Table table = client.tables().create(createTable);
+
+      // Scope the trigger to THIS table only. `columns` is a trigger field with an EMPTY include
+      // (the default), so this workflow would otherwise fire on every table update in the cluster
+      // and tag other concurrent tests' tables. The exclusion filter is TRUE for every table except
+      // this one, so only this table can trigger it while it is deployed.
+      String tableScopeFilter =
+          MAPPER.writeValueAsString(
+              MAPPER.writeValueAsString(
+                  Map.of(
+                      "!=",
+                      List.of(
+                          Map.of("var", "fullyQualifiedName"), table.getFullyQualifiedName()))));
+
+      String workflowName = ns.prefix("colCpTrigger");
+      String workflowJson =
+          """
+          {
+            "name": "%s",
+            "displayName": "Column CP Trigger",
+            "description": "Fires when a table column custom property changes (empty include)",
+            "trigger": {
+              "type": "eventBasedEntity",
+              "config": {
+                "entityTypes": ["table"],
+                "events": ["Updated"],
+                "include": [],
+                "exclude": [],
+                "filter": {"table": %s}
+              },
+              "output": ["relatedEntity", "updatedBy"]
+            },
+            "nodes": [
+              {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "start"},
+              {
+                "type": "automatedTask",
+                "subType": "setEntityAttributeTask",
+                "name": "setTier",
+                "displayName": "Set Tier",
+                "config": {"fieldName": "tags", "fieldValue": "Tier.Tier1"},
+                "input": ["relatedEntity", "updatedBy"],
+                "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
+                "output": []
+              },
+              {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "end"}
+            ],
+            "edges": [
+              {"from": "start", "to": "setTier"},
+              {"from": "setTier", "to": "end"}
+            ],
+            "config": {"storeStageStatus": true}
+          }
+          """
+              .formatted(workflowName, tableScopeFilter);
+
+      CreateWorkflowDefinition workflowRequest =
+          MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class);
+      String createResponse =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.POST, BASE_PATH, workflowRequest, RequestOptions.builder().build());
+      workflowId = UUID.fromString(MAPPER.readTree(createResponse).get("id").asText());
+      waitForWorkflowDeployment(client, workflowName);
+      waitForEntityIndexedInSearch(client, "table_search_index", table.getFullyQualifiedName());
+
+      // Setting a column custom property emits a table Updated event carrying
+      // columns."id".extension. With an empty include, `columns` triggers by default (it is a
+      // trigger field, not opt-in), so the workflow runs and sets Tier.Tier1 on the table.
+      // Asserting the tier proves the column change fired the workflow. This is the regression
+      // guard for the filter fix: before it, an empty-include workflow ignored column changes.
+      String columnFQN = table.getFullyQualifiedName() + ".id";
+      Map<String, Object> extension = new HashMap<>();
+      extension.put(propName, "trigger-me");
+      setColumnExtension(client, columnFQN, extension);
+
+      await()
+          .atMost(Duration.ofSeconds(180))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Table updated = client.tables().get(table.getId().toString(), "tags");
+                boolean hasTier1 =
+                    updated.getTags() != null
+                        && updated.getTags().stream()
+                            .anyMatch(tag -> "Tier.Tier1".equals(tag.getTagFQN()));
+                assertTrue(
+                    hasTier1,
+                    "a column custom-property change must trigger the empty-include workflow");
+              });
+    } finally {
+      if (workflowId != null) {
+        try {
+          client.workflowDefinitions().delete(workflowId);
+        } catch (Exception ignored) {
+          // best-effort cleanup so the empty-include workflow cannot affect other tests
+        }
+      }
+      deleteColumnCustomProperty(client, columnTypeName, propName);
+    }
+  }
+
+  private void addColumnCustomProperty(
+      OpenMetadataClient client, String columnTypeName, String propName) throws Exception {
+    Type columnType = getColumnType(client, columnTypeName);
+    Type stringType =
+        MAPPER.readValue(
+            client
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, "/v1/metadata/types/name/string", null),
+            Type.class);
+    CustomProperty customProperty =
+        new CustomProperty()
+            .withName(propName)
+            .withDescription("Workflow trigger test property: " + propName)
+            .withPropertyType(stringType.getEntityReference());
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metadata/types/" + columnType.getId().toString(),
+            customProperty,
+            Type.class);
+  }
+
+  private Type getColumnType(OpenMetadataClient client, String columnTypeName) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/metadata/types/name/" + columnTypeName + "?fields=customProperties",
+                null);
+    return MAPPER.readValue(response, Type.class);
+  }
+
+  private void setColumnExtension(
+      OpenMetadataClient client, String columnFQN, Map<String, Object> extension) throws Exception {
+    UpdateColumn updateColumn = new UpdateColumn();
+    updateColumn.setExtension(extension);
+    String encodedFqn = URLEncoder.encode(columnFQN, StandardCharsets.UTF_8).replace("+", "%20");
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/columns/name/" + encodedFqn + "?entityType=table", updateColumn);
+  }
+
+  private void deleteColumnCustomProperty(
+      OpenMetadataClient client, String columnTypeName, String propName) {
+    try {
+      Type columnType = getColumnType(client, columnTypeName);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.DELETE,
+              "/v1/metadata/types/" + columnType.getId().toString() + "/" + propName,
+              null,
+              Void.class);
+    } catch (Exception e) {
+      LOG.warn("Failed to clean up column custom property {}: {}", propName, e.getMessage());
+    }
   }
 }

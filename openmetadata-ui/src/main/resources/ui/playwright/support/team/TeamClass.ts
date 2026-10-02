@@ -12,7 +12,11 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
@@ -75,7 +79,10 @@ export class TeamClass {
     }
 
     const fetchOrganizationResponse = page.waitForResponse(
-      `/api/v1/teams/name/Organization?fields=users%2CuserCount%2CdefaultRoles%2CdefaultPersona%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
+      (response) =>
+        response.url().includes('/api/v1/teams/name/Organization') &&
+        response.url().includes('include=all') &&
+        response.url().includes('defaultPersona')
     );
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.TEAMS);
@@ -111,9 +118,13 @@ export class TeamClass {
     return data;
   }
 
-  async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
-      `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=false`
+  async delete(
+    apiContext: APIRequestContext,
+    { recursive = false }: { recursive?: boolean } = {}
+  ) {
+    const response = await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=${recursive}`
     );
 
     return await response.json();

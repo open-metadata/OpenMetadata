@@ -16,7 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { CreateIntakeForm } from '../generated/api/governance/createIntakeForm';
 import { IntakeForm } from '../generated/governance/intakeForm';
 import { Paging } from '../generated/type/paging';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/governance/intakeForms';
 

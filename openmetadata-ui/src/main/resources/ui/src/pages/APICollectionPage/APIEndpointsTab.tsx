@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -21,8 +21,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import TableAntd from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
+import TableAntd from '../../components/common/Table/TableV2';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
 import { INITIAL_PAGING_VALUE, NO_DATA } from '../../constants/constants';
@@ -47,10 +47,12 @@ import {
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -173,7 +175,7 @@ function APIEndpointsTab({
                   EntityType.API_ENDPOINT,
                   record.fullyQualifiedName as string
                 )}>
-                {stringToHTML(
+                {renderHighlightedText(
                   highlightSearchText(getEntityName(record), searchValue)
                 )}
               </Link>
@@ -187,7 +189,11 @@ function APIEndpointsTab({
         key: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
 
         render: (requestMethod: APIEndpoint['requestMethod']) => {
-          return <Typography.Text>{requestMethod ?? NO_DATA}</Typography.Text>;
+          return (
+            <Typography className="tw:text-primary">
+              {requestMethod ?? NO_DATA}
+            </Typography>
+          );
         },
       },
       ...descriptionTableObject(),
@@ -295,9 +301,7 @@ function APIEndpointsTab({
               data-testid="show-deleted"
               onClick={handleDeleteAction}
             />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>{' '}
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>{' '}
           </span>
         )
       }

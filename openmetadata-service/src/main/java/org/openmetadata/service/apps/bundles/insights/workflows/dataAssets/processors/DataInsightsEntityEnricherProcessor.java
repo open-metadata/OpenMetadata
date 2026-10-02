@@ -30,8 +30,10 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.IdentityProjectionStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.OwnerNameStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.OwnerTeamStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.RecursiveColumnStatsStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TagAndTierSourcesStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TierStep;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.workflows.interfaces.Processor;
@@ -79,6 +81,7 @@ public class DataInsightsEntityEnricherProcessor
               new OwnerNameStep(),
               new TierStep(),
               new DescriptionStatsStep(),
+              new RecursiveColumnStatsStep(),
               new CustomPropertiesStep()));
 
   private final VersionResolver versionResolver = new VersionResolver();
@@ -188,13 +191,22 @@ public class DataInsightsEntityEnricherProcessor
    */
   private List<Map<String, Object>> enrichEntityToSnapshots(
       EntityInterface entity, EnrichmentContext context) {
-    List<Map<String, Object>> snapshots = new ArrayList<>();
-    for (VersionedWindow window : versionResolver.resolve(entity, context)) {
-      EnrichmentTarget target = buildTarget(window, context);
-      enrichEntity(target);
-      snapshots.addAll(snapshotMaterializer.materialize(window, target.entityMap()));
+    try {
+      List<Map<String, Object>> snapshots = new ArrayList<>();
+      for (VersionedWindow window : versionResolver.resolve(entity, context)) {
+        EnrichmentTarget target = buildTarget(window, context);
+        enrichEntity(target);
+        snapshots.addAll(snapshotMaterializer.materialize(window, target.entityMap()));
+      }
+      return snapshots;
+    } catch (EntityNotFoundException e) {
+      // The asset was hard-deleted between the source listing it and this enrichment — routine
+      // under concurrent deletes (e.g. a recursive service delete). Skip it: a vanished entity has
+      // no snapshots to produce, and letting the exception escape would fail the whole Data
+      // Insights source and abort dependent extensions such as completeness scoring.
+      LOG.debug("[DataInsights enricher] skipping entity deleted mid-run: {}", entity.getId());
+      return List.of();
     }
-    return snapshots;
   }
 
   private EnrichmentTarget buildTarget(VersionedWindow window, EnrichmentContext context) {

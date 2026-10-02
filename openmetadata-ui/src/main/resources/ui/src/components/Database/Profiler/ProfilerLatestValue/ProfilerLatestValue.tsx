@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { getStatisticsDisplayValue } from '../../../../utils/NumberUtils';
 import '../ProfilerDashboard/profiler-dashboard.less';
@@ -35,8 +36,8 @@ const ProfilerLatestValue = ({
   };
 
   return (
-    <div
-      className="tw:flex tw:items-center tw:rounded-[10px] tw:bg-gray-50 tw:px-7.5 tw:py-4"
+    <Card
+      className="tw:flex tw:items-center tw:px-7.5 tw:py-4"
       data-testid="data-summary-container">
       <div className="tw:flex tw:grow tw:gap-20">
         {information.map((info) => (
@@ -66,7 +67,7 @@ const ProfilerLatestValue = ({
         ))}
       </div>
       {extra && <div className="tw:flex tw:justify-end">{extra}</div>}
-    </div>
+    </Card>
   );
 };
 

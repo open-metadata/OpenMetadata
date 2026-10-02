@@ -28,6 +28,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -69,6 +70,8 @@ public class GlossaryTermRelationIT {
   private static GlossaryTerm customerTerm;
   private static GlossaryTerm clientTerm;
 
+  private static boolean enabledServerRdf;
+
   @BeforeAll
   public static void setup() throws Exception {
     assumeTrue(
@@ -83,7 +86,7 @@ public class GlossaryTermRelationIT {
       rdfConfig.setUsername("admin");
       rdfConfig.setPassword("test-admin");
       rdfConfig.setDataset("openmetadata");
-      RdfUpdater.initialize(rdfConfig);
+      enabledServerRdf = RdfTestUtils.enableServerRdf(rdfConfig);
     }
 
     client = SdkClients.adminClient();
@@ -388,6 +391,6 @@ public class GlossaryTermRelationIT {
 
   @AfterAll
   static void disableRdf() {
-    RdfUpdater.disable();
+    RdfTestUtils.disableServerRdf(enabledServerRdf);
   }
 }

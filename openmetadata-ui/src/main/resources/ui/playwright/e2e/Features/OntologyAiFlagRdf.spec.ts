@@ -27,7 +27,7 @@ const GENERATED_QUERY =
 const aiGlossary = new Glossary();
 
 const enabledStatus: RDFStatus = {
-  askCollateEnabled: true,
+  aiEnabled: true,
   baseUri: 'https://open-metadata.org/',
   enabled: true,
   inference: {
@@ -42,8 +42,8 @@ const enabledStatus: RDFStatus = {
 const isRdfStatus = (value: unknown): value is RDFStatus =>
   typeof value === 'object' &&
   value !== null &&
-  'askCollateEnabled' in value &&
-  typeof value.askCollateEnabled === 'boolean' &&
+  'aiEnabled' in value &&
+  typeof value.aiEnabled === 'boolean' &&
   'baseUri' in value &&
   typeof value.baseUri === 'string' &&
   'enabled' in value &&
@@ -99,7 +99,7 @@ test.describe('Ontology AI effective flag', { tag: ['@ontology-rdf'] }, () => {
         throw new Error('RDF status response is not valid');
       }
 
-      expect(statusBody.askCollateEnabled).toBe(false);
+      expect(statusBody.aiEnabled).toBe(false);
       await expect(page.getByTestId('mode-tab-ai')).toBeHidden();
       await expect(page.getByTestId('ontology-explorer')).toBeVisible();
       expect(aiRequestCount).toBe(0);

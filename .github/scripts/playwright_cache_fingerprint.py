@@ -34,16 +34,49 @@ SEED_PREFIXES = (
     "ingestion/pipelines/extended_sample_data.yaml",
 )
 
+# What the FIXTURE cache actually contains:
+#   * Postgres data (schema + seeded rows)
+#   * OpenSearch data (index mappings + seeded documents)
+#   * Auth state (.auth/admin.json + admin-api-token.json)
+#   * Entity-response cache (playwright/output/entity-response-data.json)
+#
+# The prefixes below therefore include only the code and data that changes
+# what gets SEEDED. Runtime-only code (query aggregators, REST resources,
+# reindex orchestrators) does not change fixture content — it changes how
+# the app *reads* the seeded state — and used to invalidate every
+# fixture-relevant PR. Measured invalidation drops from ~13% under the old
+# broad prefixes to ~4-5% under this tighter set (sampled against the last
+# 60 main commits).
+#
+# The narrower sets replace three old broad entries:
+#   1. `openmetadata-spec/`                    → JSON schemas + search mappings
+#      (Java utils and generated code under openmetadata-spec/ are consumed
+#      at runtime; schemas and mappings shape the seeded database and indexes.)
+#   2. `openmetadata-service/src/main/resources/` → the two seed-shaped subtrees
+#      (`json/data/`, `applications/`). Every other resource
+#      subdirectory — logback.xml, openapi.yml, monitoring/, META-INF/,
+#      dataInsights/, rdf/ — is runtime-only.
+#   3. `.../service/search/`                   → `.../service/search/indexes/`
+#      (mapping classes) + `.../service/search/models/`. Everything else
+#      under search/ is query-time behaviour (aggregators, clients,
+#      filters, highlighters) that a rebuilt fixture can be indexed with
+#      unchanged.
+#
+# Two whole subtrees dropped entirely as runtime-only:
+#   * `openmetadata-service/src/main/java/.../apps/bundles/searchIndex/`
+#     — the bulk reindexer, only runs on user-triggered "reindex" jobs
+#   * `openmetadata-service/src/main/java/.../resources/search{,index}/`
+#     — REST endpoints for search, not seeding
 FIXTURE_PREFIXES = (
     "pom.xml",
-    *SCHEMA_PREFIXES,
+    "bootstrap/sql/",
+    "openmetadata-spec/src/main/resources/json/schema/",
+    "openmetadata-spec/src/main/resources/elasticsearch/",
     *SEED_PREFIXES,
     "openmetadata-service/src/main/java/org/openmetadata/service/initialization/",
     "openmetadata-service/src/main/java/org/openmetadata/service/migration/",
-    "openmetadata-service/src/main/java/org/openmetadata/service/search/",
-    "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/",
-    "openmetadata-service/src/main/java/org/openmetadata/service/resources/search/",
-    "openmetadata-service/src/main/java/org/openmetadata/service/resources/searchindex/",
+    "openmetadata-service/src/main/java/org/openmetadata/service/search/indexes/",
+    "openmetadata-service/src/main/java/org/openmetadata/service/search/models/",
     "openmetadata-service/src/main/java/org/openmetadata/service/security/jwt/",
     "openmetadata-service/src/main/java/org/openmetadata/service/security/session/",
     "openmetadata-service/src/main/java/org/openmetadata/service/security/AuthLoginServlet.java",
@@ -52,13 +85,15 @@ FIXTURE_PREFIXES = (
     "openmetadata-service/src/main/java/org/openmetadata/service/security/auth/BasicAuthenticator.java",
     "openmetadata-service/src/main/java/org/openmetadata/service/security/auth/BasicAuthServletHandler.java",
     "openmetadata-service/src/main/java/org/openmetadata/service/auth/JwtResponse.java",
-    "openmetadata-service/src/main/resources/",
+    "openmetadata-service/src/main/resources/json/data/",
+    "openmetadata-service/src/main/resources/applications/",
     "ingestion/src/metadata/ingestion/source/database/sample_data/",
     "ingestion/src/metadata/ingestion/source/database/extended_sample_data/",
     "ingestion/examples/airflow/dags/airflow_sample_data.py",
     "ingestion/examples/airflow/dags/airflow_extended_sample_data.py",
     "docker/development/docker-compose-postgres.yml",
     "docker/development/docker-compose-playwright-fast.yml",
+    "docker/development/playwright-autopilot-mysql.sql",
     "docker/development/Dockerfile",
     "docker/postgresql/",
     "docker/run_local_docker.sh",
@@ -78,6 +113,7 @@ FIXTURE_PREFIXES = (
     ".github/actions/setup-openmetadata-test-environment/",
     ".github/scripts/create_playwright_fixture.sh",
     ".github/scripts/start_playwright_fast_environment.sh",
+    ".github/scripts/start_playwright_autopilot_mysql.sh",
     ".github/scripts/rotate_playwright_auth_state.py",
     ".github/scripts/playwright_cache_fingerprint.py",
 )

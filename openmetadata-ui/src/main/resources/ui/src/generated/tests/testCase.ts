@@ -37,6 +37,12 @@ export interface TestCase {
      */
     dataProducts?: EntityReference[];
     /**
+     * Data quality dimension this test case belongs to. When not set at creation time, it
+     * defaults to the dimension of the test definition. Any dimension registered in Settings >
+     * Preferences > Data Quality can be used, system and custom alike.
+     */
+    dataQualityDimension?: EntityReference;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -246,6 +252,10 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Data quality dimension this test case belongs to. When not set at creation time, it
+ * defaults to the dimension of the test definition. Any dimension registered in Settings >
+ * Preferences > Data Quality can be used, system and custom alike.
  *
  * Test case reference
  *
@@ -708,6 +718,14 @@ export interface TestCaseResult {
      */
     dimensionResults?: TestCaseDimensionResult[];
     /**
+     * Wall-clock time the test case run took, in milliseconds.
+     */
+    duration?: number;
+    /**
+     * Structured error details when the run was aborted by an error.
+     */
+    errorDetails?: TestCaseErrorDetails;
+    /**
      * Number of rows that failed.
      */
     failedRows?: number;
@@ -883,6 +901,26 @@ export interface TestResultValue {
      */
     value?: string;
     [property: string]: any;
+}
+
+/**
+ * Structured error details when the run was aborted by an error.
+ *
+ * Structured details of the error that aborted a test case run.
+ */
+export interface TestCaseErrorDetails {
+    /**
+     * Type of the error, e.g. the exception class name.
+     */
+    errorType?: string;
+    /**
+     * Human-readable error message.
+     */
+    message?: string;
+    /**
+     * Formatted stack trace of the error.
+     */
+    stackTrace?: string;
 }
 
 /**

@@ -373,6 +373,7 @@ test.describe('Task Creation and Resolution - Dashboard Entity', () => {
         {
           data: {
             resolutionType: 'Rejected',
+            comment: 'Rejecting via automated test',
           },
         }
       );

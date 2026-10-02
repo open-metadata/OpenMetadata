@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import type {
+  RDFIndexFailure as RdfIndexFailure,
+  RDFReindexFailuresResponse as RdfReindexFailuresResponse,
+} from '../generated/api/rdf/rdfReindexFailuresResponse';
 import { RDFStatus } from '../generated/api/rdf/rdfStatus';
 import {
   SavedSparqlQueries as SavedSparqlQueriesResponse,
@@ -26,7 +30,7 @@ import {
   SparqlQuerySettings,
 } from '../generated/configuration/sparqlQuerySettings';
 import { SettingType } from '../generated/settings/settings';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   EntityGraphExportFormat,
   EntityGraphParams,
@@ -409,6 +413,34 @@ export const exportGlossaryAsOntology = async (
       Accept: acceptHeader,
     },
   });
+
+  return response.data;
+};
+
+export type RdfIndexFailureRecord = RdfIndexFailure;
+export type { RdfReindexFailuresResponse };
+
+export interface GetRdfReindexFailuresParams {
+  offset?: number;
+  limit?: number;
+  entityType?: string;
+}
+
+export const getRdfReindexFailures = async (
+  params: GetRdfReindexFailuresParams = {}
+): Promise<RdfReindexFailuresResponse> => {
+  const { offset = 0, limit = 50, entityType } = params;
+
+  const response = await APIClient.get<RdfReindexFailuresResponse>(
+    '/rdf/reindex/failures',
+    {
+      params: {
+        offset,
+        limit,
+        entityType: entityType || undefined,
+      },
+    }
+  );
 
   return response.data;
 };

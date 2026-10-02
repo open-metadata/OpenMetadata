@@ -1,0 +1,1115 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect, Page, Response, test } from '@playwright/test';
+import { performAdminLogin } from '../../utils/admin';
+import { getAuthContext } from '../../utils/common';
+import { auth0ProviderFixture } from '../../utils/sso-providers/auth0';
+import { basicProviderFixture } from '../../utils/sso-providers/basic';
+import type { SsoProviderFixture } from '../../utils/sso-providers/fixture';
+import { keycloakOidcConfidentialProviderFixture } from '../../utils/sso-providers/keycloak-oidc';
+import { keycloakOidcPublicProviderFixture } from '../../utils/sso-providers/keycloak-oidc-public';
+import { keycloakSamlProviderFixture } from '../../utils/sso-providers/keycloak-saml';
+import { ldapProviderFixture } from '../../utils/sso-providers/ldap';
+import { msalMockProviderFixture } from '../../utils/sso-providers/msal-mock';
+import { oktaProviderFixture } from '../../utils/sso-providers/okta';
+import {
+  fetchSecurityConfig,
+  mintAdminRestoreToken,
+  restoreSecurityConfig,
+  SecurityConfigSnapshot,
+} from '../../utils/ssoAuth';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
+
+// Every fixture the AuthCoordinator scenario matrix runs against. Scenarios 1–6
+// covered here; commit 10 layers scenarios 7–9 (misconfig, self-signup) on top.
+// The suite is written against the SsoProviderFixture interface only — no
+// per-provider `if` branches — so adding a new provider is one push into this
+// array plus its fixture module.
+const FIXTURES: SsoProviderFixture[] = [
+  basicProviderFixture,
+  ldapProviderFixture,
+  keycloakSamlProviderFixture,
+  keycloakOidcConfidentialProviderFixture,
+  keycloakOidcPublicProviderFixture,
+  oktaProviderFixture,
+  msalMockProviderFixture,
+  auth0ProviderFixture,
+];
+
+const AUTH_REFRESH_PATH = '/api/v1/auth/refresh';
+const APP_BAR_HOME_TESTID = 'app-bar-item-my-data';
+// A protected page whose query string the app keeps in the URL, so landing
+// back on it proves both the path and the search survived the IdP round trip.
+const SILENT_REAUTH_DEEP_LINK = '/explore/tables?sortOrder=asc';
+const SILENT_REAUTH_DEEP_LINK_URL = /\/explore\/tables\?(.*&)?sortOrder=asc/;
+
+// Every main-frame path the page visits from here on, including client-side
+// (history API) navigations, so a scenario can prove /signin never showed.
+const trackVisitedPaths = (page: Page): string[] => {
+  const paths: string[] = [];
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) {
+      paths.push(new URL(frame.url()).pathname);
+    }
+  });
+
+  return paths;
+};
+
+// Reads the coordinator's canonical stored token (`app_state.primary`)
+// with two independent paths: the service worker's postMessage protocol
+// (what SwTokenStorageUtils uses at runtime), and a direct IndexedDB
+// read as fallback for the window between `navigator.serviceWorker`
+// existing and `controller` being set. Returning null from EITHER path
+// masks silent-refresh regressions as "login didn't write anything";
+// the fallback keeps the invariant honest.
+const readStoredPrimaryToken = (page: Page): Promise<string | null> =>
+  page.evaluate(async () => {
+    const parsePrimary = (raw: unknown): string | null => {
+      if (typeof raw !== 'string') {
+        return null;
+      }
+      try {
+        const parsed = JSON.parse(raw) as { primary?: string };
+        return parsed.primary ?? null;
+      } catch {
+        return null;
+      }
+    };
+
+    const viaServiceWorker = async (): Promise<string | null> => {
+      const controller = navigator.serviceWorker?.controller;
+      if (!controller) {
+        return null;
+      }
+      return new Promise<string | null>((resolve) => {
+        const mc = new MessageChannel();
+        const timer = setTimeout(() => resolve(null), 5000);
+        mc.port1.onmessage = (e) => {
+          clearTimeout(timer);
+          resolve(parsePrimary(e.data?.result));
+        };
+        controller.postMessage(
+          { type: 'get', key: 'app_state', requestId: `read_${Date.now()}` },
+          [mc.port2]
+        );
+      });
+    };
+
+    const viaIndexedDB = async (): Promise<string | null> =>
+      new Promise<string | null>((resolve) => {
+        const req = indexedDB.open('AppDataStore');
+        req.onerror = () => resolve(null);
+        req.onsuccess = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('keyValueStore')) {
+            db.close();
+            resolve(null);
+            return;
+          }
+          const tx = db.transaction(['keyValueStore'], 'readonly');
+          const get = tx.objectStore('keyValueStore').get('app_state');
+          get.onerror = () => {
+            db.close();
+            resolve(null);
+          };
+          get.onsuccess = () => {
+            db.close();
+            resolve(parsePrimary(get.result));
+          };
+        };
+      });
+
+    return (await viaServiceWorker()) ?? (await viaIndexedDB());
+  });
+
+// Concurrent refresh attempts against the backend lose the server-side lease
+// and get 503 + Retry-After (see AuthCoordinator + SSORenewal spec). Only 200s
+// represent an actual token roll — that's what the coalescing lock guarantees
+// happens exactly once across N tabs.
+const trackSuccessfulRefreshes = (
+  target: {
+    on: (evt: 'response', h: (r: Response) => void) => void;
+    off: (evt: 'response', h: (r: Response) => void) => void;
+  },
+  calls: string[]
+): (() => void) => {
+  const handler = (response: Response): void => {
+    if (
+      response.url().includes(AUTH_REFRESH_PATH) &&
+      response.status() === 200
+    ) {
+      calls.push(response.url());
+    }
+  };
+  target.on('response', handler);
+
+  return () => target.off('response', handler);
+};
+
+for (const fixture of FIXTURES) {
+  // Skip the whole leg at module-load time when the fixture reports the
+  // env is not shaped for it (e.g. Okta with no OKTA_CLIENT_ID, Keycloak
+  // with no KEYCLOAK_SAML_BASE_URL). Filtering here — instead of a
+  // `test.skip()` inside `beforeAll` — keeps the report free of noise
+  // "skipped" rows and satisfies `playwright/no-skipped-test`. The
+  // reason is emitted so a missing IdP env var still shows up in the CI
+  // log rather than disappearing silently.
+  if (!fixture.isAvailable()) {
+    process.stderr.write(
+      `[SsoScenarios] Skipping ${fixture.slug}: ${
+        fixture.unavailableReason?.() ??
+        'fixture reports isAvailable() === false'
+      }\n`
+    );
+    continue;
+  }
+
+  test.describe(
+    `SSO / ${fixture.name} [${fixture.slug}]`,
+    { tag: [`@${fixture.slug}`, '@sso-matrix', '@sso'] },
+    () => {
+      // A test failure must NOT retry: retries re-run beforeAll, but the
+      // backend is now on this fixture's provider and /api/v1/auth/login no
+      // longer accepts the seeded admin creds → the retry fails at setup
+      // and masks the real failure. Each matrix leg starts with a fresh
+      // backend anyway, so retries never bought us anything here.
+      test.describe.configure({ retries: 0 });
+
+      let restoreConfig: (() => Promise<void>) | undefined;
+      // Describe-scoped admin session. `configureBackend`'s returned
+      // restore closure captures the apiContext it received, so disposing
+      // early (in a beforeAll finally) makes the afterAll restore hit a
+      // dead context with "apiRequestContext.put: Target page, context or
+      // browser has been closed". `sharedAfterAction` keeps that context
+      // alive for the whole describe; dispose only from afterAll AFTER
+      // restore runs.
+      let sharedAfterAction: (() => Promise<void>) | undefined;
+
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        sharedAfterAction = afterAction;
+        try {
+          // Mint a PAT and snapshot BEFORE the provider swap. The current
+          // admin session is provider-bound (JwtFilter rejects it once the
+          // provider is swapped); a PAT carries no `sessionId` claim and
+          // stays verifiable across the swap — see `mintAdminRestoreToken`
+          // in ssoAuth.ts. Without this, afterAll's restore hits 401 on
+          // every non-Basic leg and fails the whole describe.
+          let restoreToken: string | undefined;
+          let snapshot: SecurityConfigSnapshot | undefined;
+          try {
+            restoreToken = await mintAdminRestoreToken(apiContext);
+            snapshot = await fetchSecurityConfig(apiContext);
+          } catch {
+            // Non-fatal: fall back to the fixture-owned restore below. Some
+            // legs (e.g. LDAP mounted on a fresh backend) may not have PAT
+            // minting wired yet — better to try the fixture's own restore
+            // than to bail on setup.
+          }
+
+          const configured = await fixture.configureBackend(apiContext);
+          restoreConfig = async () => {
+            if (restoreToken && snapshot) {
+              const patContext = await getAuthContext(restoreToken);
+              try {
+                await restoreSecurityConfig(patContext, snapshot);
+
+                return;
+              } finally {
+                await patContext.dispose();
+              }
+            }
+            // Fallback: fixture's own restore uses the (now provider-bound)
+            // apiContext. Works for Basic; expected to 401 for other legs
+            // but the next matrix leg starts with a fresh backend anyway.
+            await configured.restore();
+          };
+        } catch (err) {
+          // If configureBackend failed, we still own the admin session —
+          // release it so the leg fails fast without leaking the worker.
+          await afterAction();
+          sharedAfterAction = undefined;
+          throw err;
+        }
+      });
+
+      test.afterAll(async () => {
+        // Swallow restore failures — a failed teardown must not mask the
+        // real test result, and each matrix leg starts with a fresh
+        // backend so lingering non-Basic config never leaks between legs.
+        try {
+          await restoreConfig?.();
+        } catch {
+          // Intentionally silent — see comment above.
+        } finally {
+          await sharedAfterAction?.();
+        }
+      });
+
+      // Scenario 1 — the plain login handshake resolves into the authenticated
+      // shell. `performLogin` already waits for the sidebar, but re-assert here
+      // so a fixture with a too-permissive internal wait fails loudly instead
+      // of leaking a half-booted app into downstream tests.
+      test('login', async ({ page }) => {
+        test.slow();
+
+        await fixture.performLogin(page);
+
+        await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+          timeout: 30_000,
+        });
+      });
+
+      // Scenario 1a — every fixture with `usesPkce: true` MUST request
+      // its OIDC /authorize with `code_challenge` + `code_challenge_method=S256`.
+      // Regressing to the implicit flow (no `code_challenge`) or
+      // dropping S256 for `plain` silently downgrades security on
+      // every browser-driven OIDC flow — public clients have no
+      // `client_secret` to bind the code exchange, so PKCE is the
+      // only proof-of-possession the token endpoint has. Gated on a
+      // dedicated `usesPkce` capability rather than
+      // `expectedResponseType` (which only keycloak-oidc-public
+      // declares) so Auth0 / Okta / MSAL SDK paths are also covered
+      // (gitar-bot r4084334634).
+      if (fixture.usesPkce) {
+        test('public OIDC /authorize request carries PKCE code_challenge + S256', async ({
+          page,
+        }) => {
+          test.slow();
+
+          // Snapshot every navigation to a URL whose path looks like an
+          // OIDC /authorize endpoint. Provider fixtures redirect to
+          // various IdP hosts (Keycloak, mock-oidc, Okta) so match on
+          // the path pattern rather than a fixed host.
+          const authorizeUrls: string[] = [];
+          page.on('request', (req) => {
+            const url = req.url();
+            // Match a REAL IdP authorization endpoint. Keycloak
+            // exposes it as `/realms/{realm}/protocol/openid-connect/auth`,
+            // Auth0 / Okta / most others as `.../authorize`. Exclude
+            // URLs on the OM host's `/api/` prefix so OM's own
+            // `/api/v1/system/config/auth` config endpoint isn't
+            // mis-matched (gitar-bot r4101190852).
+            const path = new URL(url).pathname;
+            if (
+              !path.startsWith('/api/') &&
+              /\/authorize(\?|$)|\/openid-connect\/auth(\?|$)/i.test(path)
+            ) {
+              authorizeUrls.push(url);
+            }
+          });
+
+          await fixture.performLogin(page);
+
+          const authorizeWithPkce = authorizeUrls
+            .map((u) => new URL(u).searchParams)
+            .find((params) => params.get('code_challenge') !== null);
+
+          expect(
+            authorizeWithPkce,
+            `no /authorize navigation carried a code_challenge — saw ${JSON.stringify(
+              authorizeUrls
+            )}`
+          ).toBeDefined();
+          expect(authorizeWithPkce?.get('code_challenge_method')).toBe('S256');
+          // The verifier itself must NEVER be on the wire on the
+          // authorize step — only on the token exchange. Belt-and-braces
+          // so a client that mistakenly sent both wouldn't slip past.
+          expect(authorizeWithPkce?.get('code_verifier')).toBeNull();
+        });
+      }
+
+      // Scenario 2 — logout clears storage and returns to /signin. Tokens
+      // live in the SW/IndexedDB `app_state` JSON (see `SwTokenStorageUtils`,
+      // keys `primary` / `secondary`), with a `localStorage['app_state']`
+      // fallback for browsers without SW+IndexedDB. Assert on the union of
+      // both so a leftover token is caught regardless of which storage the
+      // fixture's browser context uses. A stale legacy `oidcIdToken` key is
+      // also checked as belt-and-braces — nothing should write it anymore,
+      // but a rogue reintroduction would silently re-auth the next tab.
+      test('logout', async ({ page }) => {
+        test.slow();
+
+        await fixture.performLogin(page);
+        await fixture.performLogout(page);
+
+        await expect(page).toHaveURL(/\/signin$/);
+
+        const remainingTokens = await page.evaluate(async () => {
+          const legacy = localStorage.getItem('oidcIdToken');
+          const localFallback = localStorage.getItem('app_state');
+          let idb: string | null = null;
+          try {
+            // Same store path the SW writes to (`AppDataStore` DB,
+            // `keyValueStore` object store, key `app_state` — see
+            // `public/app-worker.js`) — read directly so we don't depend on
+            // the SW being registered in the test browser context.
+            idb = await new Promise<string | null>((resolve) => {
+              const req = indexedDB.open('AppDataStore');
+              req.onerror = () => resolve(null);
+              req.onsuccess = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains('keyValueStore')) {
+                  db.close();
+                  resolve(null);
+
+                  return;
+                }
+                const tx = db.transaction('keyValueStore', 'readonly');
+                const get = tx.objectStore('keyValueStore').get('app_state');
+                get.onerror = () => {
+                  db.close();
+                  resolve(null);
+                };
+                get.onsuccess = () => {
+                  db.close();
+                  const v = get.result;
+                  resolve(typeof v === 'string' ? v : null);
+                };
+              };
+            });
+          } catch {
+            idb = null;
+          }
+
+          const parseHasPrimary = (raw: string | null): boolean => {
+            if (!raw) {
+              return false;
+            }
+            try {
+              const parsed = JSON.parse(raw) as { primary?: unknown };
+
+              return (
+                typeof parsed.primary === 'string' && parsed.primary !== ''
+              );
+            } catch {
+              return false;
+            }
+          };
+
+          return {
+            legacy,
+            fallbackHasToken: parseHasPrimary(localFallback),
+            idbHasToken: parseHasPrimary(idb),
+          };
+        });
+
+        expect(remainingTokens.legacy).toBeNull();
+        expect(remainingTokens.fallbackHasToken).toBe(false);
+        expect(remainingTokens.idbHasToken).toBe(false);
+      });
+
+      // Scenario 2a — SDK-driven public providers (Auth0 memory-mode,
+      // MSAL sessionStorage, oidc-client via the OM ServiceWorker /
+      // IndexedDB) must NEVER surface a refresh_token in
+      // window.localStorage. A regression flipping Auth0's
+      // `cacheLocation` to `localstorage` or MSAL's `cacheLocation` to
+      // `localStorage` is a silent exfil risk on any XSS bug — this
+      // scenario is the tripwire. Gated to public + SDK-driven:
+      // backend-refresh providers keep their refresh_token in an
+      // HttpOnly cookie the browser can't see, so localStorage is a
+      // non-issue for them (Scenario 3c covers the cookie flags).
+      //
+      // Detection: EITHER the literal `refresh_token` substring
+      // (SDK's structured JSON dumps) OR a known OM-owned key
+      // (`app_state`, `oidcIdToken`) — the OM SW/IndexedDB fallback
+      // serialises tokens as `{"primary":"<opaque>","secondary":"<opaque>"}`
+      // where the opaque strings contain no `refresh_token` substring
+      // (greptile P2 r4084367161). The tripwire has to catch the
+      // structural presence, not just the string.
+      if (fixture.clientType === 'public' && !fixture.usesBackendRefresh) {
+        test('SDK-driven public providers do not leak refresh_token into localStorage', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+
+          const localStorageDump = await page.evaluate(() => {
+            const dump: Record<string, string> = {};
+            for (let i = 0; i < localStorage.length; i += 1) {
+              const key = localStorage.key(i);
+              if (key) {
+                dump[key] = localStorage.getItem(key) ?? '';
+              }
+            }
+
+            return dump;
+          });
+
+          // OM's SwTokenStorageUtils falls back to `localStorage['app_state']`
+          // when SW+IDB aren't available; that key holds `{primary, secondary}`
+          // where either slot can be a refresh_token. Legacy `oidcIdToken`
+          // is on the same list — nothing should write it anymore.
+          const OM_TOKEN_KEYS = new Set(['app_state', 'oidcIdToken']);
+          const offenders = Object.entries(localStorageDump).filter(
+            ([key, value]) =>
+              OM_TOKEN_KEYS.has(key) || /refresh_?token/i.test(value)
+          );
+
+          expect(
+            offenders,
+            `token-shaped values surfaced in localStorage keys: ${offenders
+              .map(([k]) => k)
+              .join(', ')}. Full dump keys: ${Object.keys(
+              localStorageDump
+            ).join(', ')}`
+          ).toEqual([]);
+        });
+      }
+
+      // Scenario 3 — silent refresh recovers an expired token. `forceTokenExpiry`
+      // mangles the stored JWT's `exp` claim; the coordinator's boot path (or
+      // its axios 401 interceptor) must detect the expired token and drive a
+      // /auth/refresh handshake, then land the user back on the authenticated
+      // shell without ever bouncing through /signin.
+      //
+      // Only Basic/LDAP/SAML/confidential-OIDC drive their Renewer through
+      // OM's `/api/v1/auth/refresh` — MSAL/Auth0/OIDC-public/Okta run silent
+      // refresh entirely inside the browser SDK, so the `waitForResponse` on
+      // `/auth/refresh` below would hang for those fixtures. Gate at
+      // registration time (rather than a runtime `test.skip()`) so
+      // SDK-driven fixtures never enrol this scenario in the first place.
+      if (fixture.usesBackendRefresh) {
+        test('silent refresh recovers an expired token', async ({ page }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+          await fixture.forceTokenExpiry(page);
+
+          const refreshPromise = waitForResponseWithStatus(
+            page,
+            (resp) => resp.url().includes(AUTH_REFRESH_PATH),
+            200,
+            { timeout: 30_000 }
+          );
+
+          // Reload rather than a same-URL goto: reload guarantees the coordinator
+          // reinstalls and inspects the stored token, which is what the "expired
+          // token on cold-load" contract actually exercises.
+          await page.reload({ waitUntil: 'domcontentloaded' });
+
+          await refreshPromise;
+
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: 30_000,
+          });
+          expect(page.url()).not.toContain('/signin');
+        });
+
+        // Scenario 3c — after login, the OM-issued session/refresh
+        // cookie MUST be HttpOnly + SameSite (Lax|Strict). Regressing
+        // either flag silently ships an XSS / CSRF hole. Gated at
+        // registration time on `hasBackendIssuedRefreshCookie` (a
+        // stricter subset of `usesBackendRefresh` — providers that
+        // carry the session inside the JWT body without a cookie opt
+        // out here rather than needing a runtime `test.skip`).
+        //
+        // Assertion runs against `context.cookies()` (Playwright's
+        // context-level API surfaces HttpOnly cookies that
+        // `document.cookie` would hide by definition). Watching the
+        // /auth/refresh response's Set-Cookie header would false-fail
+        // here because OM issues the session cookie ONCE on the
+        // initial login and refresh returns only the new access
+        // token in the body — the cookie is already sitting in the
+        // browser jar.
+        //
+        // `Secure` is intentionally NOT asserted because the dev
+        // Playwright stack runs over plain HTTP (the browser drops
+        // Secure cookies under HTTP anyway, so the assertion would
+        // fail even on a correctly-flagged prod build).
+        if (fixture.hasBackendIssuedRefreshCookie) {
+          test('backend session cookie is HttpOnly + SameSite after login', async ({
+            page,
+          }) => {
+            test.slow();
+
+            await fixture.performLogin(page);
+
+            const cookies = await page.context().cookies();
+            // Filter to the exact OM-emitted cookie name (see
+            // SessionCookieUtil.COOKIE_NAME on the backend — only
+            // `OM_SESSION` today; `OM_*` reserved for the future).
+            // An earlier permissive `/session/i` filter picked up
+            // unrelated cookies like `__session` (docker seed / test
+            // infra) and false-failed on those third-party flags.
+            const omAuthCookies = cookies.filter((c) => /^OM_/.test(c.name));
+
+            expect(
+              omAuthCookies.length,
+              `${
+                fixture.slug
+              } declares hasBackendIssuedRefreshCookie:true but no OM_* cookie in the jar after login. Cookies seen: ${JSON.stringify(
+                cookies.map((c) => c.name)
+              )}`
+            ).toBeGreaterThan(0);
+
+            for (const cookie of omAuthCookies) {
+              expect(cookie.httpOnly, `${cookie.name} must be HttpOnly`).toBe(
+                true
+              );
+              expect(
+                cookie.sameSite,
+                `${cookie.name} must be SameSite Lax or Strict (got ${cookie.sameSite})`
+              ).toMatch(/^(Lax|Strict)$/);
+            }
+          });
+        }
+      }
+
+      // Scenario 3b — persistent server-side 401 stops looping within a
+      // bounded request budget. Regression: the fast-path used to
+      // short-circuit refresh when the stored token's `exp` was still
+      // fresh, looping ~2 req/s on /loggedInUser without ever hitting
+      // /auth/refresh (147 calls in 45s per the HAR). The coordinator's
+      // per-request retry cap must now stop that loop. SDK-driven
+      // providers don't use /api/v1/auth/refresh, so opt out.
+      if (fixture.usesBackendRefresh) {
+        test('persistent server-side 401 stops looping within a bounded request budget', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+
+          const loggedInUserCalls: string[] = [];
+          const authRefreshCalls: string[] = [];
+          page.on('request', (req) => {
+            const u = req.url();
+            if (u.includes(AUTH_REFRESH_PATH)) {
+              authRefreshCalls.push(u);
+            } else if (/\/api\/v1\/users\/loggedInUser/.test(u)) {
+              loggedInUserCalls.push(u);
+            }
+          });
+
+          // Fault-inject the exact 401 body OM's JwtFilter emits after a
+          // signing-key rotation. Scoped to /loggedInUser (the endpoint
+          // the HAR looped on) so the app boots normally and only the
+          // session probe is broken.
+          await page.route(/\/api\/v1\/users\/loggedInUser/, (route) =>
+            route.fulfill({
+              status: 401,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                code: 401,
+                message:
+                  'Not Authorized! Token signing key not found in configured public keys',
+              }),
+            })
+          );
+
+          await page.goto('/', { waitUntil: 'load' });
+          // Wait for the /loggedInUser count to hold steady across 3
+          // consecutive 2s samples — proof the storm has stopped. A
+          // regressed fast-path would keep firing ~2 req/s and the
+          // count would never stabilise before the poll timeout.
+          let previousCount = -1;
+          let stableSamples = 0;
+          await expect
+            .poll(
+              () => {
+                if (loggedInUserCalls.length === previousCount) {
+                  stableSamples += 1;
+                } else {
+                  stableSamples = 0;
+                  previousCount = loggedInUserCalls.length;
+                }
+
+                return stableSamples;
+              },
+              { timeout: 30_000, intervals: [2_000] }
+            )
+            .toBeGreaterThanOrEqual(3);
+
+          // Loose ceilings — well under the ~150 /loggedInUser calls in
+          // the runaway HAR. Both counts must be finite and small.
+          expect(loggedInUserCalls.length).toBeLessThan(15);
+          expect(authRefreshCalls.length).toBeLessThan(10);
+        });
+      }
+
+      // Scenario 4 — a second tab in the same browser context inherits the
+      // authenticated session via shared localStorage without a second IdP
+      // handshake. Fixtures whose auth is per-page (Basic, LDAP) opt out via
+      // supportsCrossTab. Gate at registration time so the runtime
+      // `test.skip()` is never needed.
+      if (fixture.supportsCrossTab) {
+        test('multi-tab shares auth state after login in one tab', async ({
+          browser,
+        }) => {
+          test.slow();
+
+          const context = await browser.newContext();
+          try {
+            const tabA = await context.newPage();
+            await fixture.performLogin(tabA);
+
+            const tabB = await context.newPage();
+            await tabB.goto('/', { waitUntil: 'domcontentloaded' });
+
+            await expect(tabB.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+              timeout: 20_000,
+            });
+          } finally {
+            await context.close();
+          }
+        });
+      }
+
+      // Scenario 5 — CrossTabLock (Web Locks + BroadcastChannel) coalesces
+      // concurrent refresh attempts to exactly one 200. The follower tab does
+      // NOT retry against the server: it resolves off the leader's broadcast,
+      // so only one 200 hits the network across both tabs.
+      // Only meaningful when BOTH capabilities hold: the CrossTabLock
+      // presumes cross-tab shared storage, and the "single 200 hits the
+      // network" assertion presumes /auth/refresh is observable. Gate at
+      // registration time so SDK-refresh or per-tab fixtures never enrol.
+      if (fixture.supportsCrossTab && fixture.usesBackendRefresh) {
+        test('cross-tab refresh coalesces to a single /auth/refresh call', async ({
+          browser,
+        }) => {
+          test.slow();
+
+          const context = await browser.newContext();
+          try {
+            const tabA = await context.newPage();
+            await fixture.performLogin(tabA);
+
+            const tabB = await context.newPage();
+            await tabB.goto('/', { waitUntil: 'domcontentloaded' });
+            await expect(tabB.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+              timeout: 20_000,
+            });
+
+            const refreshCalls: string[] = [];
+            const stopA = trackSuccessfulRefreshes(tabA, refreshCalls);
+            const stopB = trackSuccessfulRefreshes(tabB, refreshCalls);
+
+            try {
+              // Force both stored tokens expired before either tab is asked to
+              // do anything auth-gated, so the race is between their coordinator
+              // boots — which is what the CrossTabLock is meant to serialize.
+              await Promise.all([
+                fixture.forceTokenExpiry(tabA),
+                fixture.forceTokenExpiry(tabB),
+              ]);
+
+              // Reload both tabs simultaneously — each coordinator wakes with an
+              // expired token and races for the Web Lock.
+              await Promise.all([
+                tabA.reload({ waitUntil: 'domcontentloaded' }),
+                tabB.reload({ waitUntil: 'domcontentloaded' }),
+              ]);
+
+              await Promise.all([
+                expect(tabA.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+                  timeout: 30_000,
+                }),
+                expect(tabB.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+                  timeout: 30_000,
+                }),
+              ]);
+
+              // The follower resolves off a BroadcastChannel notification, not
+              // the leader's own response, so poll briefly for the counter to
+              // settle instead of asserting on the instant the leader completes.
+              await expect
+                .poll(() => refreshCalls.length, { timeout: 10_000 })
+                .toBeGreaterThan(0);
+            } finally {
+              stopA();
+              stopB();
+            }
+
+            // Design permits a single follower-timeout recovery per cycle:
+            // when the leader's /auth/refresh takes longer than the follower's
+            // `DEFAULT_WAIT_TIMEOUT_MS` (10s), CrossTabLock's
+            // `MAX_RECOVERY_ATTEMPTS = 1` (AuthCoordinator.ts) lets the
+            // follower re-acquire the lock and drive its own refresh — 2 calls
+            // total. That's the correctness boundary the coordinator commits
+            // to, not 1 — asserting `toHaveLength(1)` here flakes under slow
+            // shared CI where the IdP round-trip pushes past the follower's
+            // wait budget. `<=2` still catches the regression the scenario
+            // exists to prevent (N-tab refresh storm hitting the IdP N times).
+            expect(refreshCalls.length).toBeLessThanOrEqual(2);
+            expect(tabA.url()).not.toContain('/signin');
+            expect(tabB.url()).not.toContain('/signin');
+          } finally {
+            await context.close();
+          }
+        });
+      }
+
+      // Scenario 6 — cold-load with an expired stored token must render the
+      // authenticated shell within budget. Real IdPs vary, so the ceiling is
+      // 15s soft (the coordinator's own timeouts sit well under this); regress
+      // means someone added a synchronous roundtrip to the boot path.
+      //
+      // Gated at registration time on `supportsColdLoadRefresh`. Providers
+      // whose SDK caches the refresh_token durably (Basic/LDAP/SAML via
+      // /auth/refresh, keycloak-oidc-public via oidc-client's IndexedDB
+      // store, Okta via localStorage, msal-mock via the pre-seeded shim)
+      // recover cleanly. The auth0-mock fixture is opt-out because
+      // @auth0/auth0-react ships with `cacheLocation: "memory"` (OM's
+      // production default) — the reload wipes the SDK's refresh_token
+      // and its silent-authorize fallback needs an IdP session cookie
+      // that Playwright's cross-site-cookie blocking eats. Documented on
+      // the fixture where the flag is set.
+      if (fixture.supportsColdLoadRefresh) {
+        test('cold-load with an expired stored token renders authenticated within budget', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+          await fixture.forceTokenExpiry(page);
+
+          const start = Date.now();
+          await page.reload({ waitUntil: 'domcontentloaded' });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: 15_000,
+          });
+          const elapsed = Date.now() - start;
+
+          expect(elapsed).toBeLessThan(15_000);
+          expect(page.url()).not.toContain('/signin');
+        });
+      }
+
+      // Scenario 11 — silent renewal fails while the IdP session is alive
+      // (blocked third-party cookies, an ended OpenMetadata session, Entra's
+      // 24h SPA refresh-token limit). The app must recover with exactly one
+      // top-level prompt=none redirect and land back on the page the user was
+      // on, never showing /signin. Fixtures without a prompt=none flow (Basic,
+      // LDAP, SAML) opt out via supportsSilentReauth.
+      const { breakSilentRenewal, killIdpSession, trackSilentReauth } = fixture;
+      if (
+        fixture.supportsSilentReauth &&
+        breakSilentRenewal &&
+        trackSilentReauth
+      ) {
+        test('silent re-auth restores the deep link without /signin', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+          await page.goto(SILENT_REAUTH_DEEP_LINK, {
+            waitUntil: 'domcontentloaded',
+          });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: 30_000,
+          });
+
+          const visitedPaths = trackVisitedPaths(page);
+          const silentReauthCount = trackSilentReauth(page);
+          await breakSilentRenewal(page);
+          await fixture.forceTokenExpiry(page);
+
+          await page.reload({ waitUntil: 'domcontentloaded' });
+
+          // The reload itself lands on the deep link, so wait for the round
+          // trip to the IdP before checking where it ended up.
+          await expect
+            .poll(silentReauthCount, { timeout: 60_000 })
+            .toBeGreaterThanOrEqual(1);
+          await expect(page).toHaveURL(SILENT_REAUTH_DEEP_LINK_URL, {
+            timeout: 60_000,
+          });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: 30_000,
+          });
+          expect(await silentReauthCount()).toBe(1);
+          expect(visitedPaths).not.toContain('/signin');
+        });
+      }
+
+      // Scenario 12 — once the IdP session itself is gone the single
+      // prompt=none redirect comes back with login_required. The user must
+      // land on /signin signed out after exactly that one attempt: a second
+      // redirect would be the start of a loop.
+      if (
+        fixture.supportsSilentReauth &&
+        breakSilentRenewal &&
+        killIdpSession &&
+        trackSilentReauth
+      ) {
+        test('dead IdP session signs out after one silent re-auth, no loop', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+          await page.goto(SILENT_REAUTH_DEEP_LINK, {
+            waitUntil: 'domcontentloaded',
+          });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: 30_000,
+          });
+
+          const silentReauthCount = trackSilentReauth(page);
+          await breakSilentRenewal(page);
+          await killIdpSession(page);
+          await fixture.forceTokenExpiry(page);
+
+          await page.reload({ waitUntil: 'domcontentloaded' });
+
+          await expect(page).toHaveURL(/\/signin$/, { timeout: 60_000 });
+
+          // Hold the count steady across 3 consecutive 2s samples: a loop
+          // would keep redirecting to the IdP and never settle.
+          let previousCount = -1;
+          let stableSamples = 0;
+          await expect
+            .poll(
+              async () => {
+                const count = await silentReauthCount();
+                if (count === previousCount) {
+                  stableSamples += 1;
+                } else {
+                  stableSamples = 0;
+                  previousCount = count;
+                }
+
+                return stableSamples;
+              },
+              { timeout: 30_000, intervals: [2_000] }
+            )
+            .toBeGreaterThanOrEqual(3);
+
+          expect(await silentReauthCount()).toBe(1);
+          await expect(page).toHaveURL(/\/signin$/);
+          expect(await readStoredPrimaryToken(page)).toBeFalsy();
+        });
+      }
+
+      // Scenario 7 — the /silent-callback iframe route is a bare oidc-client
+      // handoff and MUST NOT boot the full app. If AppRoot ever mounted here
+      // (regression: someone re-adds it under AuthProvider), a >2 MB main
+      // chunk would load and the sidebar shell would attach — this test
+      // catches both. Only OIDC-public exercises this route; every other
+      // provider either never issues a silent-refresh iframe (Basic/LDAP)
+      // or renews via its own SDK (MSAL/Auth0/Okta/SAML), so registration
+      // is gated at the fixture level.
+      if (fixture.supportsSilentCallback) {
+        test('silent-callback iframe does not load the full app', async ({
+          page,
+        }) => {
+          // Track each `resp.body()` promise so we can wait on the
+          // batch BEFORE asserting. Without this, a large-bundle load
+          // whose body-read resolves AFTER `goto` returns can slip
+          // past the check silently (greptile P2 r4084367151).
+          const responses: Array<{ url: string; size: number }> = [];
+          const bodyReads: Promise<void>[] = [];
+          page.on('response', (resp) => {
+            const url = resp.url();
+            if (
+              !url.endsWith('.js') &&
+              !url.endsWith('.js.map') &&
+              !url.endsWith('.css')
+            ) {
+              return;
+            }
+            bodyReads.push(
+              resp
+                .body()
+                .then((body) => {
+                  responses.push({ url, size: body?.length ?? 0 });
+                })
+                .catch(() => undefined)
+            );
+          });
+
+          // `waitUntil: 'load'` fires once every top-level resource — the
+          // entry chunk plus every `<link rel=modulepreload>` sibling the
+          // built index.html emits — has settled. That is the exact
+          // response set the bundle-size assertion below inspects, so it
+          // is the correct synchronization point (no wall-clock sleep, no
+          // banned `networkidle`). oidc-client's own async work is fire-
+          // and-forget inside a hidden iframe and is not asserted on.
+          // This scenario asserts what the silent-callback entry actually loads,
+          // so it has to wait for `load` rather than short-circuit at
+          // domcontentloaded.
+
+          await page.goto('/silent-callback', { waitUntil: 'load' });
+
+          // Full-app shell markers MUST NOT be present in the iframe DOM.
+          await expect(
+            page.getByTestId(APP_BAR_HOME_TESTID)
+          ).not.toBeAttached();
+          await expect(page.locator('#appbar')).not.toBeAttached();
+
+          await Promise.all(bodyReads);
+
+          // Bundle-size budget: no single JS chunk larger than 500 KB should
+          // load for this route. The full-app bundle is >2 MB, so exceeding
+          // 500 KB means AppRoot mounted. Threshold picked to be loose enough
+          // for oidc-client itself and to survive Vite's hot-reload wrappers
+          // in dev; tighten if it proves too permissive.
+          const largeChunks = responses.filter((r) => r.size > 500_000);
+
+          expect(largeChunks).toEqual([]);
+        });
+
+        // Scenario 10 — real signinSilent → /silent-callback iframe end
+        // to end. Scenario 7 above proves the iframe route is small (no
+        // full-app shell). This scenario proves the flow WORKS: after
+        // login, force-expire the stored token, drive the coordinator's
+        // Renewer via the PW_E2E-only `__omTestAuthCoordinator` hook.
+        // For OIDC-public the Renewer is `userManager.signinSilent()`
+        // (see OidcAuthenticator.getRenewer) which mounts a hidden iframe
+        // pointing at `/silent-callback`; silentCallbackEntry.ts runs
+        // `new UserManager({}).signinSilentCallback()` inside it and
+        // posts the resulting user back over oidc-client's IFrameWindow
+        // protocol. Success = the parent's promise resolves with a
+        // fresh id_token AND storage carries that token in
+        // `app_state.primary`. Direct observable evidence for Copilot
+        // review #1 that the default UserManager in silentCallbackEntry
+        // works end-to-end against a live IdP — we assert on the
+        // observable OUTCOME (a fresh, different token in storage) not
+        // on transient iframe request URLs, which are timing-fragile
+        // with hidden-frame renders. The renewer path is the ONLY way
+        // OIDC-public's ensureFreshToken can produce a token that
+        // differs from the pre-refresh one, so the outcome check implies
+        // the iframe path fired.
+        test('silent refresh through signinSilent renews the stored token', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+
+          const priorToken = await readStoredPrimaryToken(page);
+          expect(priorToken, 'login must have written a token').toBeTruthy();
+
+          // Force-expire the stored token so the coordinator's fast-path
+          // sees it as inside the pre-expiry buffer and falls through to
+          // the Renewer (which for OIDC-public is signinSilent → iframe).
+          await fixture.forceTokenExpiry(page);
+
+          const renewedToken = await page.evaluate(async () => {
+            const coord = (
+              window as unknown as {
+                __omTestAuthCoordinator?: {
+                  ensureFreshToken: () => Promise<string>;
+                };
+              }
+            ).__omTestAuthCoordinator;
+            if (!coord) {
+              throw new Error(
+                '__omTestAuthCoordinator missing — PW_E2E_BUILD gate never fired'
+              );
+            }
+            return coord.ensureFreshToken();
+          });
+
+          expect(renewedToken).toBeTruthy();
+          // Renewing MUST produce a different token; if this fails the
+          // fast-path short-circuited (`forceTokenExpiry` didn't take)
+          // and the iframe path never ran.
+          expect(renewedToken).not.toBe(priorToken);
+
+          // And the renewed token MUST be persisted — proves the
+          // coordinator applied the signinSilent result, not just
+          // resolved a promise into the void.
+          const storedAfter = await readStoredPrimaryToken(page);
+          expect(storedAfter).toBe(renewedToken);
+        });
+
+        // Scenario 11 (deferred) — silent-refresh failure must land on
+        // /signin, not spin on the iframe. The first attempt at this
+        // scenario fault-injected the /silent-callback response, but
+        // oidc-client's UserManager can bypass the iframe entirely when
+        // a cached refresh_token is available (its refresh_token grant
+        // path — CI leg observed the renewer resolving successfully
+        // instead of hitting the mocked callback). Fault-injecting at
+        // the /authorize URL with prompt=none or invalidating the
+        // IdP-side session is the correct hook and needs a follow-up.
+        // Coordinator-side rejection handling is fully covered by the
+        // unit tests in AuthCoordinator.test.ts; the missing coverage
+        // here is only the end-to-end propagation of an IdP-side
+        // silent-refresh failure into /signin.
+      }
+
+      // Scenario 7a — mirror of scenario 7 for confidential clients.
+      // Confidential OIDC doesn't use the /silent-callback iframe at
+      // all (refresh runs through OM's server-side /auth/refresh),
+      // so navigating there must render an empty stub. A regression
+      // that mounts AppRoot under a shared route would silently boot
+      // the full app inside a hidden iframe for confidential builds
+      // too; catch it symmetrically with the public case.
+      if (fixture.clientType === 'confidential') {
+        test('confidential /silent-callback route does not mount the full app', async ({
+          page,
+        }) => {
+          test.slow();
+
+          // Track each `resp.body()` promise and wait on the batch
+          // BEFORE asserting on `responses`, so a large-bundle load
+          // that resolves after `goto` returns can't slip past the
+          // check (greptile P2 r4084367151 — the same pattern lives
+          // in Scenario 7; fixing both together in follow-up work).
+          const responses: Array<{ url: string; size: number }> = [];
+          const bodyReads: Promise<void>[] = [];
+          page.on('response', (resp) => {
+            const url = resp.url();
+            if (
+              !url.endsWith('.js') &&
+              !url.endsWith('.js.map') &&
+              !url.endsWith('.css')
+            ) {
+              return;
+            }
+            bodyReads.push(
+              resp
+                .body()
+                .then((body) => {
+                  responses.push({ url, size: body?.length ?? 0 });
+                })
+                .catch(() => undefined)
+            );
+          });
+
+          await page.goto('/silent-callback', { waitUntil: 'load' });
+
+          await expect(
+            page.getByTestId(APP_BAR_HOME_TESTID)
+          ).not.toBeAttached();
+          await expect(page.locator('#appbar')).not.toBeAttached();
+
+          await Promise.all(bodyReads);
+
+          const largeChunks = responses.filter((r) => r.size > 500_000);
+          expect(largeChunks).toEqual([]);
+        });
+      }
+
+      // Scenarios 8 & 9 previously asserted a ConfigErrorPage short-circuit
+      // that hard-blocked the whole UI on any missing top-level field. Per
+      // conductor review the block was replaced with a toast that lets the
+      // SPA render normally, so those page-render + no-IdP-redirect
+      // assertions no longer apply. Coverage now lives in:
+      //   - src/utils/AuthProvider.util.test.ts — asserts the validator
+      //     returns the missing-field list and emits an
+      //     `[AuthConfig] Missing config value: <field>` console.warn per
+      //     field (the surface an admin tails logs with).
+      //   - src/components/Auth/AuthProviders/AuthProvider.test.tsx —
+      //     asserts the AuthProvider mount calls `showErrorToast` with the
+      //     joined field names when the fetched config fails validation
+      //     (the surface the user sees).
+      // Neither needs a full docker-compose Playwright leg.
+    }
+  );
+}

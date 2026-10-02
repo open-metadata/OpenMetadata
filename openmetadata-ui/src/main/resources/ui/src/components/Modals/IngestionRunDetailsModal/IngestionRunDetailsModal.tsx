@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Modal, Row } from 'antd';
 import { isArray, startCase } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,11 +24,11 @@ import {
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import Table from '../../common/Table/Table';
 import {
   ColumnType,
   ExpandableConfig,
 } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import ConnectionStepCard from '../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRunDetailsModalProps } from './IngestionRunDetailsModal.interface';
 
@@ -70,9 +71,11 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
         title: t('label.step'),
         dataIndex: 'name',
         render: (_, record: StepSummary) => (
-          <Typography.Text data-testid={`step-summary-name-${record.name}`}>
+          <Typography
+            className="tw:text-primary"
+            data-testid={`step-summary-name-${record.name}`}>
             {getEntityName(record)}
-          </Typography.Text>
+          </Typography>
         ),
       },
       {

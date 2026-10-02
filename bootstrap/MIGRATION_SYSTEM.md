@@ -49,6 +49,21 @@ Detailed SQL execution logs:
 - `checksum`: Hash of the SQL statement (PRIMARY KEY)
 - `executedAt`: Timestamp of SQL execution
 
+This table also records Java data migrations. A migration class that overrides
+`runDataMigration()` is identified by a fingerprint of its compiled code: the class itself plus
+every class in the version's `migration/utils/vXYZ` package. The fingerprint is written here as a
+marker row once the migration returns without throwing. That is what lets the workflow add
+Java-only work to a version that is already in `SERVER_CHANGE_LOG`: the version is reprocessed
+while its fingerprint is unrecorded, and dropped again afterwards. Adding a step to the
+migration, or changing one of its helpers, changes the fingerprint, so deployments that already
+ran it run the whole `runDataMigration()` once more — keep it safe to re-run. A toolchain change
+that alters the bytecode (a JDK or Lombok upgrade) causes one extra run the same way.
+
+This applies to the current release train's latest version only. The previous train's latest
+version is reprocessed for appended SQL alone: its data migration was written against that
+train's schema, so it never runs again on a database that has moved to a newer train. Ship Java
+work that newer-train deployments need in the current train's version instead.
+
 ## Migration Logic
 
 The migration workflow follows this decision tree:

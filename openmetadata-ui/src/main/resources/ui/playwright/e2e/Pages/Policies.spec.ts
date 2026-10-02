@@ -78,10 +78,20 @@ const addRule = async (
   // Click on condition combobox
   await page.locator('[data-testid="condition"]').click();
 
-  // Select condition
+  // Select condition. The listener goes up first because typing the condition validates it too,
+  // so the response can arrive before the option is clicked.
   const conditionResponse = page.waitForResponse(
     '/api/v1/policies/validation/condition/*'
   );
+
+  // Type the condition to filter the list. The options are built from every policy function's
+  // examples and the dropdown is virtualized, so an option far enough down the list is not in the
+  // DOM to be clicked - which is what happens whenever a new function is added.
+  await page
+    .locator(
+      '[data-testid="condition"] > .ant-select-selector .ant-select-selection-search-input'
+    )
+    .fill(RULE_DETAILS.condition);
   await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
   await conditionResponse;
 
@@ -147,7 +157,7 @@ test.describe(
           POLICY_NAME
         );
 
-        await page.getByText(RULE_NAME, { exact: true }).isVisible();
+        await expect(page.getByText(RULE_NAME, { exact: true })).toBeVisible();
 
         // Verify policy description
         await expect(
@@ -226,7 +236,7 @@ test.describe(
         await addRule(page, NEW_RULE_NAME, NEW_RULE_DESCRIPTION, 0);
 
         // Validate added rule
-        await page.getByText(RULE_NAME, { exact: true }).isVisible();
+        await expect(page.getByText(RULE_NAME, { exact: true })).toBeVisible();
 
         // Verify other details
         await page.getByText(RULE_NAME, { exact: true }).click();
@@ -267,7 +277,9 @@ test.describe(
         await expect(page).toHaveURL(new RegExp(POLICY_NAME));
 
         // Verify the rule name is updated
-        await page.getByText(UPDATED_RULE_NAME, { exact: true }).isVisible();
+        await expect(
+          page.getByText(UPDATED_RULE_NAME, { exact: true })
+        ).toBeVisible();
       });
 
       await test.step('Delete new rule', async () => {
@@ -377,6 +389,12 @@ test.describe(
     test('Delete policy action from manage button options', async ({
       page,
     }) => {
+      // API-create + full page reload + paginated list scan + manage/delete
+      // confirmation is 6+ heavy ops in one test. Under merge-queue load a
+      // single reload can eat 20 s alone, pushing total past the 60 s default.
+      // test.slow() triples the budget so a slow shard finishes cleanly.
+      test.slow();
+
       const { apiContext, afterAction } = await getApiContext(page);
 
       const policy = new PolicyClass();
@@ -396,7 +414,7 @@ test.describe(
 
       await policy.create(apiContext, policyRules);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 

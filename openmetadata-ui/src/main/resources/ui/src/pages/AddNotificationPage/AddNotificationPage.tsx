@@ -10,17 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Form,
-  Input,
-  Row,
-  Skeleton,
-  Typography,
-} from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Divider, Form, Input, Row, Skeleton } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,16 +40,13 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import {
   NotificationTemplate,
   ProviderType,
 } from '../../generated/entity/events/notificationTemplate';
-import { Operation } from '../../generated/entity/policies/policy';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -77,10 +65,8 @@ import {
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -275,7 +261,7 @@ const AddNotificationPage = () => {
 
       setTemplateResourcePermission(permission);
 
-      if (getPrioritizedViewPermission(permission, Operation.ViewAll)) {
+      if (getDerivedPermissionFlags(permission).canViewAll) {
         const { data } = await getAllNotificationTemplates({
           limit: PAGE_SIZE_LARGE,
           provider: ProviderType.User,
@@ -315,11 +301,12 @@ const AddNotificationPage = () => {
   if (isSystemProvider) {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph
+        <Typography
+          as="p"
           className="tw-max-w-md"
           style={{ marginBottom: '0' }}>
           {t('message.system-alert-edit-message')}
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }
@@ -339,14 +326,12 @@ const AddNotificationPage = () => {
               </Col>
 
               <Col span={24}>
-                <Typography.Title level={5}>
+                <Typography as="h5" size="text-md" weight="semibold">
                   {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
                     entity: t('label.alert'),
                   })}
-                </Typography.Title>
-                <Typography.Text>
-                  {t('message.alerts-description')}
-                </Typography.Text>
+                </Typography>
+                <Typography>{t('message.alerts-description')}</Typography>
               </Col>
               <Col span={24}>
                 <Form<ModifiedCreateEventSubscription>

@@ -58,7 +58,7 @@ class EntityLifecycleEventDispatcherTest {
     dispatcher = EntityLifecycleEventDispatcher.getInstance();
 
     // Clear any existing handlers from previous tests
-    clearHandlers();
+    dispatcher.clearHandlers();
 
     // Setup mock entity with actual UUID to avoid circular dependencies
     UUID entityId = UUID.randomUUID();
@@ -72,17 +72,6 @@ class EntityLifecycleEventDispatcherTest {
     syncHandler = new TestHandler("SyncHandler", 100, false, Set.of());
     asyncHandler = new TestHandler("AsyncHandler", 200, true, Set.of());
     specificEntityHandler = new TestHandler("SpecificHandler", 50, false, Set.of(Entity.TABLE));
-  }
-
-  private void clearHandlers() {
-    // Clear handlers by accessing the private handlers field
-    try {
-      var handlersField = EntityLifecycleEventDispatcher.class.getDeclaredField("handlers");
-      handlersField.setAccessible(true);
-      ((java.util.List<?>) handlersField.get(dispatcher)).clear();
-    } catch (Exception e) {
-      // Ignore - this is just cleanup
-    }
   }
 
   @Test
@@ -133,6 +122,96 @@ class EntityLifecycleEventDispatcherTest {
     boolean notFound = dispatcher.unregisterHandler("NonExistentHandler");
     assertFalse(notFound);
     assertEquals(1, dispatcher.getHandlerCount());
+  }
+
+  @Test
+  void testReplaceHandlerSwapsTheInstanceHeldUnderOneName() {
+    TestHandler stale = new TestHandler("SwappableHandler", 100, false, Set.of());
+    TestHandler fresh = new TestHandler("SwappableHandler", 5, false, Set.of());
+    dispatcher.registerHandler(syncHandler);
+    dispatcher.registerHandler(stale);
+    assertEquals(2, dispatcher.getHandlerCount());
+
+    dispatcher.replaceHandler(fresh);
+
+    assertEquals(2, dispatcher.getHandlerCount());
+    assertFalse(dispatcher.getHandlers().contains(stale));
+    // re-sorted to the replacement's own priority, not left where the stale one sat
+    assertSame(fresh, dispatcher.getHandlers().getFirst());
+
+    dispatcher.onEntityCreated(createAsyncSafeEntity(), mockSubjectContext);
+    assertTrue(fresh.createdCalled);
+    assertFalse(stale.createdCalled);
+  }
+
+  @Test
+  void testReplaceHandlerRegistersWhenNoneIsHeldUnderThatName() {
+    dispatcher.replaceHandler(syncHandler);
+    assertEquals(1, dispatcher.getHandlerCount());
+    assertSame(syncHandler, dispatcher.getHandlers().getFirst());
+  }
+
+  @Test
+  void testReplaceNullHandlerIsIgnored() {
+    dispatcher.registerHandler(syncHandler);
+    dispatcher.replaceHandler(null);
+    assertEquals(1, dispatcher.getHandlerCount());
+  }
+
+  /**
+   * A dispatch walking the handler list must not observe a slot vacated by a concurrent
+   * unregister. {@code ArrayList#removeIf} shrinks {@code size} first and then nulls the vacated
+   * tail slot, so an in-flight stream whose fence is already bound to the pre-removal size reads
+   * that slot back as a null handler and fails the write with an NPE on {@code
+   * getSupportedEntityTypes()}. Reproduces the parallel-CI failure where one integration test
+   * re-registering {@code VectorEmbeddingHandler} broke unrelated entity writes (issue #33711).
+   */
+  @Test
+  void testUnregisterDuringDispatchNeverExposesANullHandler() throws InterruptedException {
+    CountDownLatch dispatchInsideHandlerList = new CountDownLatch(1);
+    CountDownLatch unregisterApplied = new CountDownLatch(1);
+
+    // Priority 10 pins this handler ahead of the doomed one, so the dispatch parks mid-walk with
+    // the slot that the unregister is about to vacate still ahead of it.
+    TestHandler gate =
+        new TestHandler("GateHandler", 10, false, Set.of()) {
+          @Override
+          public Set<String> getSupportedEntityTypes() {
+            dispatchInsideHandlerList.countDown();
+            try {
+              unregisterApplied.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+            return Set.of();
+          }
+        };
+    dispatcher.registerHandler(gate);
+    dispatcher.registerHandler(new TestHandler("TailHandler", 200, false, Set.of()));
+
+    AtomicReference<Throwable> dispatchFailure = new AtomicReference<>();
+    Thread dispatchThread =
+        new Thread(
+            () -> {
+              try {
+                dispatcher.onEntityCreated(createAsyncSafeEntity(), mockSubjectContext);
+              } catch (Throwable t) {
+                dispatchFailure.set(t);
+              }
+            },
+            "lifecycle-dispatch");
+    dispatchThread.start();
+
+    assertTrue(
+        dispatchInsideHandlerList.await(10, TimeUnit.SECONDS),
+        "dispatch never reached the handler list");
+    assertTrue(dispatcher.unregisterHandler("TailHandler"));
+    unregisterApplied.countDown();
+    dispatchThread.join(TimeUnit.SECONDS.toMillis(10));
+
+    if (dispatchFailure.get() != null) {
+      fail("dispatch failed while a handler was unregistered concurrently", dispatchFailure.get());
+    }
   }
 
   @Test
