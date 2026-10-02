@@ -59,7 +59,7 @@ const SampleDataWithMessages: FC<{
     return <Loader />;
   }
 
-  if (isUndefined(data)) {
+  if (isUndefined(data) || !data.messages?.length) {
     return (
       <div
         className="border-default border-radius-sm p-y-lg"
