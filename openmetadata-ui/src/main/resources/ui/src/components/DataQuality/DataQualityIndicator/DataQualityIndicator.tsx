@@ -10,8 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
-import { ArrowUp } from '@openmetadata/ui-core-components/icons';
+import {
+  Divider,
+  FeaturedIcon,
+  HoverCard,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ArrowRight,
+  ArrowUp,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import QueryString from 'qs';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,26 +28,109 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as AlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { ProfilerTabPath } from '../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import { DataQualityIndicatorProps } from './DataQualityIndicator.types';
+import {
+  DataQualityIndicatorCounts,
+  DataQualityIndicatorLevel,
+  DataQualityIndicatorProps,
+} from './DataQualityIndicator.types';
 import {
   getDataQualityIndicatorLevel,
   hasMultipleDataQualityConditions,
 } from './DataQualityIndicator.utils';
 
-export const DataQualityIndicator = ({
-  counts,
-  tableFqn,
-}: DataQualityIndicatorProps) => {
+const UpstreamBadge = ({ className }: { className: string }) => (
+  <span
+    aria-hidden
+    className={`tw:grid tw:place-items-center tw:rounded-full tw:bg-warning-solid tw:text-fg-white ${className}`}
+    data-testid="dq-indicator-upstream-badge">
+    <ArrowUp className="tw:size-2.5" />
+  </span>
+);
+
+const pluralKey = (key: string, count: number) =>
+  count === 1 ? key : `${key}-plural`;
+
+const TONE_CLASSES = {
+  error: {
+    icon: 'tw:text-fg-error-primary',
+    trigger: 'tw:hover:bg-error-primary',
+  },
+  warning: {
+    icon: 'tw:text-fg-warning-primary',
+    trigger: 'tw:hover:bg-warning-primary',
+  },
+} as const;
+
+const ConditionList = ({ counts }: { counts: DataQualityIndicatorCounts }) => {
+  const rows = [
+    {
+      count: counts.failingTests,
+      icon: <XCircle className="tw:size-4 tw:text-fg-error-primary" />,
+      i18nKey: 'message.dq-failing-tests-count',
+    },
+    {
+      count: counts.unresolvedIncidents,
+      icon: (
+        <AlertIcon
+          className="tw:text-fg-warning-primary"
+          height={16}
+          width={16}
+        />
+      ),
+      i18nKey: 'message.dq-unresolved-incidents-count',
+    },
+    {
+      count: counts.upstreamIssues,
+      icon: <UpstreamBadge className="tw:size-4" />,
+      i18nKey: 'message.dq-upstream-issues-count',
+    },
+  ].filter((row) => row.count > 0);
+
+  return (
+    <ul className="tw:flex tw:flex-col tw:gap-2">
+      {rows.map((row) => (
+        <li
+          className="tw:flex tw:items-center tw:gap-2.5 tw:text-sm tw:text-secondary"
+          key={row.i18nKey}>
+          <span className="tw:grid tw:size-5 tw:shrink-0 tw:place-items-center">
+            {row.icon}
+          </span>
+          <span>
+            <Transi18next
+              i18nKey={pluralKey(row.i18nKey, row.count)}
+              renderElement={
+                <strong className="tw:font-semibold tw:text-primary" />
+              }
+              values={{ count: row.count }}
+            />
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+interface IndicatorContent {
+  title: string;
+  description: ReactNode;
+  actionLabel: string;
+  to: string | { pathname: string; search: string };
+}
+
+const useIndicatorContent = (
+  level: DataQualityIndicatorLevel,
+  counts: DataQualityIndicatorCounts,
+  tableFqn: string
+): IndicatorContent | null => {
   const { t } = useTranslation();
-  const level = getDataQualityIndicatorLevel(counts);
 
   if (level === 'none') {
     return null;
   }
 
-  const isMultiple = hasMultipleDataQualityConditions(counts);
   const profilerPath = (subTab: ProfilerTabPath) =>
     getEntityDetailsPath(
       EntityType.TABLE,
@@ -47,52 +139,47 @@ export const DataQualityIndicator = ({
       subTab
     );
 
-  let title: string;
-  let description: ReactNode;
-  let to: string | { pathname: string; search: string };
+  if (hasMultipleDataQualityConditions(counts)) {
+    return {
+      title: t('label.data-quality-needs-attention'),
+      description: <ConditionList counts={counts} />,
+      actionLabel: t('label.view-data-quality'),
+      to: profilerPath(ProfilerTabPath.DATA_QUALITY),
+    };
+  }
 
-  if (isMultiple) {
-    title = t('label.data-quality-needs-attention');
-    description = (
-      <ul>
-        {counts.failingTests > 0 && (
-          <li>
-            {t('message.dq-failing-tests-count', {
-              count: counts.failingTests,
-            })}
-          </li>
-        )}
-        {counts.unresolvedIncidents > 0 && (
-          <li>
-            {t('message.dq-unresolved-incidents-count', {
-              count: counts.unresolvedIncidents,
-            })}
-          </li>
-        )}
-        {counts.upstreamIssues > 0 && (
-          <li>
-            {t('message.dq-upstream-issues-count', {
-              count: counts.upstreamIssues,
-            })}
-          </li>
-        )}
-      </ul>
-    );
-    to = profilerPath(ProfilerTabPath.DATA_QUALITY);
-  } else if (level === 'failing') {
-    title = t('label.data-quality-test-failing');
-    description = t('message.dq-failing-tests-count', {
-      count: counts.failingTests,
-    });
-    to = profilerPath(ProfilerTabPath.DATA_QUALITY);
-  } else if (level === 'incident') {
-    title = t('label.data-quality-incident-still-open');
-    description = t('message.dq-incident-open-tests-passing');
-    to = profilerPath(ProfilerTabPath.INCIDENTS);
-  } else {
-    title = t('label.upstream-data-quality-issue');
-    description = t('message.dq-upstream-failing-test');
-    to = {
+  if (level === 'failing') {
+    return {
+      title: t('label.data-quality-test-failing'),
+      description: t(
+        pluralKey('message.dq-failing-tests-description', counts.failingTests),
+        { count: counts.failingTests }
+      ),
+      actionLabel: t(pluralKey('label.view-failing-test', counts.failingTests)),
+      to: profilerPath(ProfilerTabPath.DATA_QUALITY),
+    };
+  }
+
+  if (level === 'incident') {
+    return {
+      title: t('label.data-quality-incident-still-open'),
+      description: t(
+        pluralKey(
+          'message.dq-incident-open-tests-passing',
+          counts.unresolvedIncidents
+        ),
+        { count: counts.unresolvedIncidents }
+      ),
+      actionLabel: t('label.view-incident'),
+      to: profilerPath(ProfilerTabPath.INCIDENTS),
+    };
+  }
+
+  return {
+    title: t('label.upstream-data-quality-issue'),
+    description: t('message.dq-upstream-failing-test'),
+    actionLabel: t('label.view-upstream-issue'),
+    to: {
       pathname: getEntityDetailsPath(
         EntityType.TABLE,
         tableFqn,
@@ -101,41 +188,78 @@ export const DataQualityIndicator = ({
       search: QueryString.stringify({
         layers: [LineageLayer.DataObservability],
       }),
-    };
+    },
+  };
+};
+
+export const DataQualityIndicator = ({
+  counts,
+  tableFqn,
+}: DataQualityIndicatorProps) => {
+  const level = getDataQualityIndicatorLevel(counts);
+  const content = useIndicatorContent(level, counts, tableFqn);
+
+  if (!content) {
+    return null;
   }
 
-  const isError = level === 'failing';
+  const { title, description, actionLabel, to } = content;
+  const tone = level === 'failing' ? 'error' : 'warning';
+  const isUpstream = level === 'upstream';
+  const isList = hasMultipleDataQualityConditions(counts);
+
+  const card = (
+    <div className="tw:flex tw:w-80 tw:flex-col tw:gap-3">
+      <div className="tw:flex tw:items-start tw:gap-3">
+        <span className="tw:relative tw:shrink-0">
+          <FeaturedIcon
+            color={tone}
+            icon={<AlertIcon height={16} width={16} />}
+            shape="square"
+            size="sm"
+          />
+          {isUpstream && (
+            <UpstreamBadge className="tw:absolute tw:-right-1 tw:-bottom-1 tw:size-3.5" />
+          )}
+        </span>
+        <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1 tw:pt-1">
+          <Typography as="p" size="text-sm" weight="semibold">
+            {title}
+          </Typography>
+          {!isList && (
+            <Typography as="p" className="tw:text-tertiary" size="text-sm">
+              {description}
+            </Typography>
+          )}
+        </div>
+      </div>
+      {isList && description}
+      <Divider />
+      <Link
+        className="tw:inline-flex tw:items-center tw:gap-1 tw:self-start tw:text-sm tw:font-semibold tw:text-brand-secondary"
+        data-testid="dq-indicator-action"
+        to={to}>
+        {actionLabel}
+        <ArrowRight aria-hidden className="tw:size-4" />
+      </Link>
+    </div>
+  );
 
   return (
-    <Tooltip
-      excludeTriggerFromTabOrder
-      description={description}
-      placement="right"
-      title={title}
-      triggerClassName="tw:inline-flex">
+    <HoverCard content={card} placement="bottom start">
       <Link
         aria-label={title}
-        className="tw:relative tw:inline-flex"
+        className={`tw:relative tw:inline-flex tw:rounded-lg tw:p-2 ${TONE_CLASSES[tone].trigger}`}
         data-level={level}
         data-testid="dq-indicator"
         to={to}>
         {/* Colour sits on the svg, not the link: antd's global a:hover/a:focus
             colour would otherwise turn the icon primary blue. */}
-        <AlertIcon
-          className={
-            isError ? 'tw:text-fg-error-primary' : 'tw:text-fg-warning-primary'
-          }
-          height={24}
-          width={24}
-        />
-        {level === 'upstream' && (
-          <ArrowUp
-            aria-hidden
-            className="tw:absolute tw:-right-1 tw:-bottom-1 tw:size-3 tw:rounded-full tw:bg-warning-solid tw:text-fg-white"
-            data-testid="dq-indicator-upstream-badge"
-          />
+        <AlertIcon className={TONE_CLASSES[tone].icon} height={24} width={24} />
+        {isUpstream && (
+          <UpstreamBadge className="tw:absolute tw:right-1 tw:bottom-1 tw:size-3.5" />
         )}
       </Link>
-    </Tooltip>
+    </HoverCard>
   );
 };

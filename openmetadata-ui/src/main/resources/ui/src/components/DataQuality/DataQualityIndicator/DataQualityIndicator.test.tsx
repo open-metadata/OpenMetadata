@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   TestCaseResolutionStatus,
@@ -42,6 +42,25 @@ const incident = (testCaseId: string, status: TestCaseResolutionStatusTypes) =>
   } as TestCaseResolutionStatus);
 
 describe('DataQualityIndicator', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    // Establish pointer modality so react-aria accepts hover events.
+    fireEvent.mouseMove(document);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const openCard = () => {
+    const trigger = screen.getByTestId('dq-indicator').parentElement;
+
+    fireEvent.mouseEnter(trigger as HTMLElement, { pointerType: 'mouse' });
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+  };
+
   it('renders nothing when there are no failures, incidents or upstream issues', () => {
     renderIndicator({});
 
@@ -59,11 +78,19 @@ describe('DataQualityIndicator', () => {
       'classname',
       'tw:text-fg-error-primary'
     );
-    expect(indicator).toHaveAttribute(
-      'aria-label',
-      'label.data-quality-test-failing'
-    );
     expect(indicator.getAttribute('href')).toContain('profiler/data-quality');
+
+    openCard();
+
+    expect(
+      screen.getByText('label.data-quality-test-failing')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.dq-failing-tests-description-plural')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('dq-indicator-action')).toHaveTextContent(
+      'label.view-failing-test-plural'
+    );
   });
 
   it('stays visible in amber while an incident is open even if tests pass', () => {
@@ -76,10 +103,20 @@ describe('DataQualityIndicator', () => {
       'classname',
       'tw:text-fg-warning-primary'
     );
-    expect(indicator.getAttribute('href')).toContain('profiler/incidents');
     expect(
       screen.queryByTestId('dq-indicator-upstream-badge')
     ).not.toBeInTheDocument();
+
+    openCard();
+
+    expect(
+      screen.getByText('message.dq-incident-open-tests-passing')
+    ).toBeInTheDocument();
+
+    const action = screen.getByTestId('dq-indicator-action');
+
+    expect(action).toHaveTextContent('label.view-incident');
+    expect(action.getAttribute('href')).toContain('profiler/incidents');
   });
 
   it('shows amber with the upstream badge and links to lineage for upstream-only issues', () => {
@@ -92,6 +129,12 @@ describe('DataQualityIndicator', () => {
       screen.getByTestId('dq-indicator-upstream-badge')
     ).toBeInTheDocument();
     expect(indicator.getAttribute('href')).toContain('lineage');
+
+    openCard();
+
+    expect(screen.getByTestId('dq-indicator-action')).toHaveTextContent(
+      'label.view-upstream-issue'
+    );
   });
 
   it('summarises multiple conditions under the highest-priority level', () => {
@@ -107,6 +150,13 @@ describe('DataQualityIndicator', () => {
     expect(indicator).toHaveAttribute(
       'aria-label',
       'label.data-quality-needs-attention'
+    );
+
+    openCard();
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.getByTestId('dq-indicator-action')).toHaveTextContent(
+      'label.view-data-quality'
     );
   });
 });
