@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -36,6 +35,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
@@ -393,14 +393,14 @@ class VectorDocBuilderChunkTest {
   @Test
   void chunkDocs_carryTheMemoryStatusOnEveryChunk() {
     ContextMemory memory =
-        memory(MemoryVisibility.ENTITY).withStatus(ContextMemoryStatus.SUPERSEDED);
+        memory(MemoryVisibility.ENTITY).withEntityStatus(EntityStatus.SUPERSEDED);
     memory.withDescription("revenue ".repeat(900));
 
     List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
 
     assertTrue(docs.size() > 1);
     for (Map<String, Object> doc : docs) {
-      assertEquals(ContextMemoryStatus.SUPERSEDED.value(), doc.get("status"));
+      assertEquals(EntityStatus.SUPERSEDED.value(), doc.get("entityStatus"));
     }
   }
 
@@ -412,7 +412,7 @@ class VectorDocBuilderChunkTest {
 
     assertTrue(docs.size() > 1);
     for (Map<String, Object> doc : docs) {
-      assertEquals(ContextMemoryStatus.ACTIVE.value(), doc.get("status"));
+      assertEquals(EntityStatus.APPROVED.value(), doc.get("entityStatus"));
     }
   }
 
@@ -430,7 +430,7 @@ class VectorDocBuilderChunkTest {
                 + "|");
 
     assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
-    memory.setStatus(ContextMemoryStatus.SUPERSEDED);
+    memory.setEntityStatus(EntityStatus.SUPERSEDED);
     memory.setPrimaryEntity(new EntityReference().withId(UUID.randomUUID()).withType("table"));
     assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
   }

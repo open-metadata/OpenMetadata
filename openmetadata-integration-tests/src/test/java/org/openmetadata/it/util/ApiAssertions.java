@@ -7,17 +7,25 @@ import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 
-/** Assertions on how the server rejects a request made through the SDK. */
+/**
+ * Assertions on how the server rejects a request made through the SDK. The SDK's entity update
+ * wraps the server's error in its own, so the status may be on the cause.
+ */
 public final class ApiAssertions {
   private ApiAssertions() {}
 
-  /**
-   * Asserts the server rejected the request as forbidden. The SDK's entity update wraps the
-   * server's error in its own, so the status may be on the cause.
-   */
   public static OpenMetadataException assertForbidden(Executable request, String message) {
+    return assertRejected(Response.Status.FORBIDDEN, request, message);
+  }
+
+  public static OpenMetadataException assertBadRequest(Executable request, String message) {
+    return assertRejected(Response.Status.BAD_REQUEST, request, message);
+  }
+
+  private static OpenMetadataException assertRejected(
+      Response.Status status, Executable request, String message) {
     OpenMetadataException failure = assertThrows(OpenMetadataException.class, request, message);
-    assertEquals(Response.Status.FORBIDDEN.getStatusCode(), statusCodeOf(failure), message);
+    assertEquals(status.getStatusCode(), statusCodeOf(failure), message);
     return failure;
   }
 

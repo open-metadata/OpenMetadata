@@ -24,9 +24,9 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
@@ -47,10 +47,10 @@ class ContextMemoryLifecycleTest {
   @Test
   void leavingSupersededDropsTheSuccessorAndStaleReason() {
     ContextMemory original =
-        memory(ContextMemoryStatus.SUPERSEDED)
+        memory(EntityStatus.SUPERSEDED)
             .withSupersededBy(memoryRef())
             .withStatusReason("Duplicate of the keeper");
-    ContextMemory updated = copyOf(original).withStatus(ContextMemoryStatus.ACTIVE);
+    ContextMemory updated = copyOf(original).withEntityStatus(EntityStatus.APPROVED);
 
     ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
 
@@ -60,10 +60,10 @@ class ContextMemoryLifecycleTest {
 
   @Test
   void aStatusChangeKeepsItsNewReason() {
-    ContextMemory original = memory(ContextMemoryStatus.ACTIVE);
+    ContextMemory original = memory(EntityStatus.APPROVED);
     ContextMemory updated =
         copyOf(original)
-            .withStatus(ContextMemoryStatus.INVALIDATED)
+            .withEntityStatus(EntityStatus.INVALIDATED)
             .withStatusReason("Anchor table was deleted");
 
     ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
@@ -73,7 +73,7 @@ class ContextMemoryLifecycleTest {
 
   @Test
   void supersedingResolvesTheNewSuccessor() {
-    ContextMemory original = memory(ContextMemoryStatus.ACTIVE);
+    ContextMemory original = memory(EntityStatus.APPROVED);
     EntityReference keeper = memoryRef();
 
     ContextMemory updated = supersededBy(original, keeper);
@@ -85,7 +85,7 @@ class ContextMemoryLifecycleTest {
   @Test
   void anUnchangedSuccessorKeepsTheStoredReference() {
     EntityReference stored = memoryRef().withName("keeper");
-    ContextMemory original = memory(ContextMemoryStatus.SUPERSEDED).withSupersededBy(stored);
+    ContextMemory original = memory(EntityStatus.SUPERSEDED).withSupersededBy(stored);
     ContextMemory updated =
         copyOf(original)
             .withSupersededBy(
@@ -98,14 +98,14 @@ class ContextMemoryLifecycleTest {
 
   @Test
   void supersededNeedsASuccessorAndOnlySupersededMayHaveOne() {
-    ContextMemory active = memory(ContextMemoryStatus.ACTIVE);
+    ContextMemory active = memory(EntityStatus.APPROVED);
 
     BadRequestException missing =
         assertThrows(
             BadRequestException.class,
             () ->
                 ContextMemoryLifecycle.applyUpdate(
-                    active, copyOf(active).withStatus(ContextMemoryStatus.SUPERSEDED), RESOLVE));
+                    active, copyOf(active).withEntityStatus(EntityStatus.SUPERSEDED), RESOLVE));
     BadRequestException stray =
         assertThrows(
             BadRequestException.class,
@@ -119,7 +119,7 @@ class ContextMemoryLifecycleTest {
 
   @Test
   void aSuccessorMustBeAnotherContextMemory() {
-    ContextMemory active = memory(ContextMemoryStatus.ACTIVE);
+    ContextMemory active = memory(EntityStatus.APPROVED);
     EntityReference table = new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
     EntityReference self =
         new EntityReference().withId(active.getId()).withType(Entity.CONTEXT_MEMORY);
@@ -136,7 +136,7 @@ class ContextMemoryLifecycleTest {
   void onlyNewDisputesAreResolved() {
     MemoryDispute existing = new MemoryDispute().withMemory(memoryRef()).withReason("Says Q3");
     MemoryDispute added = new MemoryDispute().withMemory(memoryRef()).withReason("Says Q4");
-    ContextMemory original = memory(ContextMemoryStatus.ACTIVE).withDisputes(List.of(existing));
+    ContextMemory original = memory(EntityStatus.APPROVED).withDisputes(List.of(existing));
     ContextMemory updated =
         copyOf(original)
             .withDisputes(List.of(JsonUtils.deepCopy(existing, MemoryDispute.class), added));
@@ -154,7 +154,7 @@ class ContextMemoryLifecycleTest {
 
   @Test
   void disputesNeedAnOtherMemoryAndANonBlankReason() {
-    ContextMemory active = memory(ContextMemoryStatus.ACTIVE);
+    ContextMemory active = memory(EntityStatus.APPROVED);
     MemoryDispute blankReason = new MemoryDispute().withMemory(memoryRef()).withReason("  ");
     MemoryDispute noMemory = new MemoryDispute().withReason("Contradicts glossary");
     MemoryDispute self =
@@ -172,73 +172,26 @@ class ContextMemoryLifecycleTest {
   }
 
   @Test
-  void invalidTransitionFailsBeforeLookup() {
-    ContextMemory draft = memory(ContextMemoryStatus.DRAFT);
-
-    BadRequestException error =
-        assertThrows(
-            BadRequestException.class,
-            () ->
-                ContextMemoryLifecycle.applyUpdate(
-                    draft, supersededBy(draft, memoryRef()), NO_LOOKUP));
-
-    assertTrue(error.getMessage().contains("Invalid memory status transition"));
-  }
-
-  @Test
-  void aStatusCannotBeRemoved() {
-    ContextMemory active = memory(ContextMemoryStatus.ACTIVE);
-
-    BadRequestException error =
-        assertThrows(
-            BadRequestException.class,
-            () ->
-                ContextMemoryLifecycle.applyUpdate(
-                    active, copyOf(active).withStatus(null), NO_LOOKUP));
-
-    assertTrue(error.getMessage().contains("requires a status"));
-  }
-
-  @Test
-  void legacyStatusIsNormalizedOnAnUnchangedUpdate() {
-    ContextMemory original = memory(null);
-    ContextMemory updated = copyOf(original).withAnswer("Updated answer");
-
-    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
-
-    assertEquals(ContextMemoryStatus.ACTIVE, updated.getStatus());
-  }
-
-  @Test
-  void legacyStatusUsesActiveTransitionRules() {
-    ContextMemory original = memory(null);
-    ContextMemory invalidated = copyOf(original).withStatus(ContextMemoryStatus.INVALIDATED);
-
-    ContextMemoryLifecycle.applyUpdate(original, invalidated, NO_LOOKUP);
-
-    assertEquals(ContextMemoryStatus.INVALIDATED, invalidated.getStatus());
-    BadRequestException error =
-        assertThrows(
-            BadRequestException.class,
-            () ->
-                ContextMemoryLifecycle.applyUpdate(
-                    original, copyOf(original).withStatus(ContextMemoryStatus.DRAFT), NO_LOOKUP));
-    assertTrue(error.getMessage().contains("Invalid memory status transition"));
+  void aMissingStoredStageIsTreatedAsApprovedOnReads() {
+    assertEquals(EntityStatus.APPROVED, ContextMemoryLifecycle.effectiveStatus(null));
   }
 
   @Test
   void createCannotBeSupersededWithoutASuccessor() {
     assertThrows(
         BadRequestException.class,
-        () -> ContextMemoryLifecycle.applyCreate(memory(ContextMemoryStatus.SUPERSEDED), RESOLVE));
+        () -> ContextMemoryLifecycle.applyCreate(memory(EntityStatus.SUPERSEDED), RESOLVE));
   }
 
-  private static ContextMemory memory(ContextMemoryStatus status) {
-    return new ContextMemory().withId(UUID.randomUUID()).withName("memory").withStatus(status);
+  private static ContextMemory memory(EntityStatus status) {
+    return new ContextMemory()
+        .withId(UUID.randomUUID())
+        .withName("memory")
+        .withEntityStatus(status);
   }
 
   private static ContextMemory supersededBy(ContextMemory original, EntityReference successor) {
-    return copyOf(original).withStatus(ContextMemoryStatus.SUPERSEDED).withSupersededBy(successor);
+    return copyOf(original).withEntityStatus(EntityStatus.SUPERSEDED).withSupersededBy(successor);
   }
 
   private static EntityReference memoryRef() {

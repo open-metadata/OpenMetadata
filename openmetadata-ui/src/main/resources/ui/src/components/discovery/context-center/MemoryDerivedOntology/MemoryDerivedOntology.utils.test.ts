@@ -79,21 +79,27 @@ describe('canProposeFromMemory', () => {
     ).toBe(false);
   });
 
-  it('blocks proposals from non-Active memories', () => {
+  it('blocks proposals from memories outside Approved', () => {
     for (const status of [
-      MemoryStatus.Draft,
-      MemoryStatus.Archived,
-      MemoryStatus.Superseded,
-      MemoryStatus.Invalidated,
+      EntityStatus.Draft,
+      EntityStatus.Archived,
+      EntityStatus.Superseded,
+      EntityStatus.Invalidated,
     ]) {
-      const retired = { ...memory(ShareVisibility.Public), status };
+      const retired = {
+        ...memory(ShareVisibility.Public),
+        entityStatus: status,
+      };
 
       expect(canProposeFromMemory(retired, idle, viewer)).toBe(false);
     }
   });
 
   it('allows proposals from legacy memories without a stored status', () => {
-    const legacy = { ...memory(ShareVisibility.Public), status: undefined };
+    const legacy = {
+      ...memory(ShareVisibility.Public),
+      entityStatus: undefined,
+    };
 
     expect(canProposeFromMemory(legacy, idle, viewer)).toBe(true);
   });

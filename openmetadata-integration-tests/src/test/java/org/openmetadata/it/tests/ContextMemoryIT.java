@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
@@ -355,7 +356,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
 
     InvalidRequestException exception =
         assertThrows(InvalidRequestException.class, () -> createEntity(request));
-    assertTrue(exception.getMessage().contains("Invalid memory status"));
+    assertTrue(exception.getMessage().contains("is not a lifecycle stage of contextMemory"));
   }
 
   @Test

@@ -64,7 +64,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
   ContextMemory,
-  MemoryStatus,
+  EntityStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
@@ -100,11 +100,11 @@ const getSortLabel = (
 ): string => options.find((option) => option.id === sortBy)?.label ?? '';
 
 const MEMORY_STATUSES = [
-  MemoryStatus.Active,
-  MemoryStatus.Draft,
-  MemoryStatus.Superseded,
-  MemoryStatus.Invalidated,
-  MemoryStatus.Archived,
+  EntityStatus.Approved,
+  EntityStatus.Draft,
+  EntityStatus.Superseded,
+  EntityStatus.Invalidated,
+  EntityStatus.Archived,
 ];
 const CREATED_BY_ME_FILTER = 'created-by-me' as const;
 
@@ -155,7 +155,7 @@ const getMemoriesViewFlags = ({
   selectedAsset?: DataAssetOption;
   selectedAuthor?: MemoryFilterOption;
   activeFilter: MemoryFilterTab;
-  selectedStatuses: MemoryStatus[];
+  selectedStatuses: EntityStatus[];
   debouncedSearch: string;
   isMemoriesLoading: boolean;
   memoriesLength: number;
@@ -164,7 +164,7 @@ const getMemoriesViewFlags = ({
     selectedAsset ||
       selectedAuthor ||
       selectedStatuses.length !== 1 ||
-      selectedStatuses[0] !== MemoryStatus.Active
+      selectedStatuses[0] !== EntityStatus.Approved
   );
   const isMemoriesSearching = Boolean(debouncedSearch.trim());
   const isMemoriesFilteredOnly = Boolean(
@@ -303,8 +303,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [activeFilter, setActiveFilter] = useState<MemoryFilterTab>('all');
-  const [selectedStatuses, setSelectedStatuses] = useState<MemoryStatus[]>([
-    MemoryStatus.Active,
+  const [selectedStatuses, setSelectedStatuses] = useState<EntityStatus[]>([
+    EntityStatus.Approved,
   ]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
@@ -565,7 +565,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleClearFilters = useCallback(() => {
     setSelectedAsset(undefined);
     setSelectedAuthor(undefined);
-    setSelectedStatuses([MemoryStatus.Active]);
+    setSelectedStatuses([EntityStatus.Approved]);
     setActiveFilter('all');
     setCurrentPage(1);
   }, []);
@@ -584,7 +584,7 @@ const ContextCenterMemoriesPage: FC = () => {
     setCurrentPage(1);
   }, []);
 
-  const handleStatusChange = useCallback((status: MemoryStatus) => {
+  const handleStatusChange = useCallback((status: EntityStatus) => {
     setSelectedStatuses((current) => {
       if (current.includes(status)) {
         return current.length > 1
@@ -929,7 +929,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         selectedKeys={selectedStatuses}
                         selectionMode="multiple"
                         onAction={(key) =>
-                          handleStatusChange(key as MemoryStatus)
+                          handleStatusChange(key as EntityStatus)
                         }>
                         {MEMORY_STATUSES.map((status) => (
                           <Dropdown.Item

@@ -37,7 +37,7 @@ import { MEMORY_STATUS_LABEL_KEYS } from '../../../constants/ContextCenter.const
 import {
   ContextMemory,
   EntityReference,
-  MemoryStatus,
+  EntityStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -281,18 +281,18 @@ interface MemoryRowProps {
   isPinningMemoryId?: string;
 }
 
-const MemoryStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
+const EntityStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
   const { t } = useTranslation();
-  const status = memory.status;
+  const status = memory.entityStatus;
 
-  if (!status || status === MemoryStatus.Active) {
+  if (!status || status === EntityStatus.Approved) {
     return null;
   }
 
   let color: 'error' | 'warning' | 'gray' = 'gray';
-  if (status === MemoryStatus.Invalidated) {
+  if (status === EntityStatus.Invalidated) {
     color = 'error';
-  } else if (status === MemoryStatus.Superseded) {
+  } else if (status === EntityStatus.Superseded) {
     color = 'warning';
   }
 
@@ -307,10 +307,10 @@ const MemoryStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
   );
 };
 
-const MemoryStatusReason: FC<{ memory: ContextMemory }> = ({ memory }) => {
+const EntityStatusReason: FC<{ memory: ContextMemory }> = ({ memory }) => {
   const { t } = useTranslation();
 
-  if (!memory.statusReason || memory.status === MemoryStatus.Active) {
+  if (!memory.statusReason || memory.entityStatus === EntityStatus.Approved) {
     return null;
   }
 
@@ -402,7 +402,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
             <Typography ellipsis weight="medium">
               {memory.title || memory.name}
             </Typography>
-            <MemoryStatusBadge memory={memory} />
+            <EntityStatusBadge memory={memory} />
           </Box>
 
           <Typography
@@ -411,7 +411,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
             {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
 
-          <MemoryStatusReason memory={memory} />
+          <EntityStatusReason memory={memory} />
 
           <MemoryLinkedEntities
             hiddenLinkedEntitiesCount={hiddenLinkedEntitiesCount}

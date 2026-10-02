@@ -20,10 +20,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
@@ -36,8 +36,8 @@ class ContextMemorySchemaTest {
     assertEquals(
         ContextMemorySourceType.CONVERSATION_EXTRACTION,
         ContextMemorySourceType.fromValue("ConversationExtraction"));
-    assertEquals(ContextMemoryStatus.SUPERSEDED, ContextMemoryStatus.fromValue("Superseded"));
-    assertEquals(ContextMemoryStatus.INVALIDATED, ContextMemoryStatus.fromValue("Invalidated"));
+    assertEquals(EntityStatus.SUPERSEDED, EntityStatus.fromValue("Superseded"));
+    assertEquals(EntityStatus.INVALIDATED, EntityStatus.fromValue("Invalidated"));
   }
 
   @Test
@@ -53,7 +53,7 @@ class ContextMemorySchemaTest {
         new ContextMemory()
             .withId(UUID.randomUUID())
             .withName("superseded-memory")
-            .withStatus(ContextMemoryStatus.SUPERSEDED)
+            .withEntityStatus(EntityStatus.SUPERSEDED)
             .withSupersededBy(keeper)
             .withStatusReason("Duplicate of the keeper")
             .withDisputes(List.of(dispute));

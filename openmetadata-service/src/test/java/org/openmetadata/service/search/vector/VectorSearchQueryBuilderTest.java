@@ -11,10 +11,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -85,7 +85,7 @@ class VectorSearchQueryBuilderTest {
   @Test
   void testMemoryStatusFilterReachesBothVectorEngines() throws Exception {
     Map<String, List<String>> filters =
-        Map.of("status", List.of(ContextMemoryStatus.ACTIVE.value()));
+        Map.of("entityStatus", List.of(EntityStatus.APPROVED.value()));
     float[] vector = {0.1f, 0.2f};
 
     JsonNode openSearchMust =
@@ -105,8 +105,8 @@ class VectorSearchQueryBuilderTest {
             .path("bool")
             .path("must");
 
-    assertTrue(termClauseExists(openSearchMust, "status", ContextMemoryStatus.ACTIVE.value()));
-    assertTrue(termClauseExists(elasticMust, "status", ContextMemoryStatus.ACTIVE.value()));
+    assertTrue(termClauseExists(openSearchMust, "entityStatus", EntityStatus.APPROVED.value()));
+    assertTrue(termClauseExists(elasticMust, "entityStatus", EntityStatus.APPROVED.value()));
     JsonNode openSearchScope =
         memoryVisibilityClause(
             MAPPER
@@ -116,12 +116,12 @@ class VectorSearchQueryBuilderTest {
         memoryVisibilityClause(
             MAPPER.readTree(
                 VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, Map.of())));
-    assertTrue(openSearchScope.toString().contains("\"status\":\"Active\""));
-    assertTrue(elasticScope.toString().contains("\"status\":\"Active\""));
+    assertTrue(openSearchScope.toString().contains("\"entityStatus\":\"Approved\""));
+    assertTrue(elasticScope.toString().contains("\"entityStatus\":\"Approved\""));
   }
 
   @Test
-  void testCallerStatusFilterCannotBypassActiveMemoryConstraint() throws Exception {
+  void testCallerStatusFilterCannotBypassApprovedMemoryConstraint() throws Exception {
     JsonNode query =
         MAPPER.readTree(
             VectorSearchQueryBuilder.build(
@@ -129,7 +129,7 @@ class VectorSearchQueryBuilderTest {
                 10,
                 0,
                 100,
-                Map.of("status", List.of(ContextMemoryStatus.SUPERSEDED.value())),
+                Map.of("entityStatus", List.of(EntityStatus.SUPERSEDED.value())),
                 0.0));
 
     assertTrue(
@@ -141,10 +141,12 @@ class VectorSearchQueryBuilderTest {
                 .path("filter")
                 .path("bool")
                 .path("must"),
-            "status",
-            ContextMemoryStatus.SUPERSEDED.value()));
+            "entityStatus",
+            EntityStatus.SUPERSEDED.value()));
     assertTrue(
-        memoryVisibilityClause(query.path("query")).toString().contains("\"status\":\"Active\""));
+        memoryVisibilityClause(query.path("query"))
+            .toString()
+            .contains("\"entityStatus\":\"Approved\""));
   }
 
   private static boolean termClauseExists(JsonNode mustClauses, String field, String value) {
@@ -1305,13 +1307,13 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
-  void testAdminSubjectStillGetsActiveMemoryClause() throws Exception {
+  void testAdminSubjectStillGetsApprovedMemoryClause() throws Exception {
     String query =
         VectorSearchQueryBuilder.buildQuery(new float[] {0.1f}, 10, Map.of(), 0.0, adminSubject());
 
     JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
     assertNotNull(clause, "admin search must also exclude retired memories");
-    assertTrue(clause.toString().contains("\"status\":\"Active\""));
+    assertTrue(clause.toString().contains("\"entityStatus\":\"Approved\""));
     assertFalse(clause.toString().contains("visibility"), "admins bypass visibility");
   }
 

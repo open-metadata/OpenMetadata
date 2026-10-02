@@ -3039,6 +3039,40 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertEquals(stage, getEntity(created.getId().toString()).getEntityStatus());
   }
 
+  @Test
+  void entityStatus_moveOutsideTheTypesLifecycleIsRejected(TestNamespace ns) {
+    Assumptions.assumeTrue(
+        supportsEntityStatus && supportsPatch, getEntityType() + " stage cannot be patched");
+    EntityTypeLifecycle lifecycle = entityTypeLifecycle().orElseThrow();
+    T created = createEntity(createMinimalRequest(ns));
+    EntityStatus stage = created.getEntityStatus();
+    assertTrue(
+        lifecycle.getStages().contains(stage),
+        "A new " + getEntityType() + " starts in a stage of its lifecycle");
+    Optional<EntityStatus> outside = stageNotReachableFrom(lifecycle, stage);
+    Assumptions.assumeTrue(
+        outside.isPresent(), getEntityType() + " can move from " + stage + " to any stage");
+    T entity = getEntity(created.getId().toString());
+    entity.setEntityStatus(outside.get());
+
+    ApiAssertions.assertBadRequest(
+        () -> patchEntity(created.getId().toString(), entity),
+        "The " + getEntityType() + " lifecycle has no move from " + stage + " to " + outside.get());
+    assertEquals(stage, getEntity(created.getId().toString()).getEntityStatus());
+  }
+
+  private static Optional<EntityStatus> stageNotReachableFrom(
+      EntityTypeLifecycle lifecycle, EntityStatus stage) {
+    List<EntityStatus> reachable =
+        lifecycle.getTransitions().stream()
+            .filter(move -> move.getFrom() == stage)
+            .flatMap(move -> move.getTo().stream())
+            .toList();
+    return Arrays.stream(EntityStatus.values())
+        .filter(candidate -> candidate != stage && !reachable.contains(candidate))
+        .findFirst();
+  }
+
   private T moveToEntityStatus(T entity, EntityStatus stage) {
     T moved = entity;
     if (entity.getEntityStatus() != stage) {

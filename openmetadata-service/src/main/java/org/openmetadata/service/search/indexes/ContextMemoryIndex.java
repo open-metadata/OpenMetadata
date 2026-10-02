@@ -32,7 +32,7 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 public class ContextMemoryIndex implements TaggableIndex {
 
-  public static final String FIELD_STATUS = "status";
+  public static final String FIELD_STATUS = "entityStatus";
   public static final String FIELD_ANCHOR_ID = "anchorId";
   public static final String UNANCHORED = "unanchored";
 
@@ -74,6 +74,7 @@ public class ContextMemoryIndex implements TaggableIndex {
     doc.put("memoryType", memory.getMemoryType() != null ? memory.getMemoryType().value() : null);
     doc.put(
         "memoryScope", memory.getMemoryScope() != null ? memory.getMemoryScope().value() : null);
+    doc.put(FIELD_STATUS, statusValue(memory));
     doc.put("pinned", Boolean.TRUE.equals(memory.getPinned()));
     doc.put("sourceType", memory.getSourceType() != null ? memory.getSourceType().value() : null);
     doc.put(
@@ -96,7 +97,7 @@ public class ContextMemoryIndex implements TaggableIndex {
   }
 
   public static String statusValue(ContextMemory memory) {
-    return effectiveStatus(memory.getStatus()).value();
+    return effectiveStatus(memory.getEntityStatus()).value();
   }
 
   private void applyShareConfig(Map<String, Object> doc) {

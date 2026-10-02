@@ -31,7 +31,10 @@ import org.openmetadata.service.util.EntityUtil;
  * rollback, or the glossary-term status task. While such a workflow applies to an entity, only the
  * workflow may change that entity's stage.
  */
-public final class EntityStatusWorkflows {
+public final class EntityStatusWorkflows implements StageOwnership {
+  /** Stage ownership as decided by the workflows active on this server. */
+  public static final EntityStatusWorkflows ACTIVE = new EntityStatusWorkflows();
+
   private static final String SET_ENTITY_ATTRIBUTE_NODE = "setEntityAttributeTask";
   private static final Set<String> STAGE_SETTING_NODES =
       Set.of("userApprovalTask", "rollbackEntityTask", "setGlossaryTermStatusTask");
@@ -50,8 +53,8 @@ public final class EntityStatusWorkflows {
 
   private EntityStatusWorkflows() {}
 
-  /** Names of the active workflows that own the stage of entities of this type, sorted. */
-  public static List<String> owningStageOf(String entityType) {
+  @Override
+  public List<String> owningStageOf(String entityType) {
     return ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY).stream()
         .filter(workflow -> startsOn(workflow, entityType))
         .map(WorkflowDefinition::getName)
@@ -59,8 +62,8 @@ public final class EntityStatusWorkflows {
         .toList();
   }
 
-  /** The active workflow that owns this entity's stage, honouring each workflow's filter. */
-  public static Optional<String> owningStageOf(String entityType, EntityInterface entity) {
+  @Override
+  public Optional<String> owningStageOf(String entityType, EntityInterface entity) {
     return ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY).stream()
         .filter(workflow -> appliesTo(workflow, entityType, entity))
         .map(WorkflowDefinition::getName)

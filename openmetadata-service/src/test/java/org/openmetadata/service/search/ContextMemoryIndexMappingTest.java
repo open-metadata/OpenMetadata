@@ -28,12 +28,13 @@ class ContextMemoryIndexMappingTest {
 
   private static final List<String> LANGUAGES = List.of("en", "jp", "ru", "zh");
   private static final List<String> INDEX_FIELDS =
-      List.of("status", "statusReason", "supersededBy", "disputes", "anchorId");
+      List.of("entityStatus", "statusReason", "supersededBy", "disputes", "anchorId");
 
   @Test
   void lifecycleFieldsAreMappedInEveryLanguage() throws IOException {
     for (String language : LANGUAGES) {
       JsonNode properties = loadProperties(language);
+      assertEquals("keyword", properties.at("/entityStatus/type").asText(), language);
       assertEquals("keyword", properties.at("/anchorId/type").asText(), language);
       assertEquals("text", properties.at("/statusReason/type").asText(), language);
       assertEquals("keyword", properties.at("/supersededBy/properties/id/type").asText(), language);

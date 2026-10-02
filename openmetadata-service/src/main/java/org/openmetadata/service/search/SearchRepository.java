@@ -118,7 +118,6 @@ import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
@@ -136,6 +135,7 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -4206,7 +4206,7 @@ public class SearchRepository {
       SearchSortFilter searchSortFilter,
       String q,
       SubjectContext subjectContext,
-      List<ContextMemoryStatus> statuses)
+      List<EntityStatus> statuses)
       throws IOException {
     IndexMapping index = entityIndexMap.get(Entity.CONTEXT_MEMORY);
     return searchClient.listContextMemoriesWithStatuses(

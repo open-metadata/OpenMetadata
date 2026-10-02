@@ -56,7 +56,7 @@ test.describe(
         invalidated = await createMemory('invalidated');
 
         await patchMemory(apiContext, superseded.id, [
-          { op: 'replace', path: '/status', value: 'Superseded' },
+          { op: 'replace', path: '/entityStatus', value: 'Superseded' },
           {
             op: 'add',
             path: '/supersededBy',
@@ -65,7 +65,7 @@ test.describe(
           { op: 'add', path: '/statusReason', value: supersededReason },
         ]);
         await patchMemory(apiContext, invalidated.id, [
-          { op: 'replace', path: '/status', value: 'Invalidated' },
+          { op: 'replace', path: '/entityStatus', value: 'Invalidated' },
           { op: 'add', path: '/statusReason', value: invalidatedReason },
         ]);
       } finally {
@@ -95,7 +95,7 @@ test.describe(
       test.slow();
       await navigateToMemories(page);
       await expect(page.getByTestId('memory-status-filter')).toContainText(
-        'Active'
+        'Approved'
       );
       await expect(
         await searchAndGetMemoryRow(page, successor.title, successor.id)

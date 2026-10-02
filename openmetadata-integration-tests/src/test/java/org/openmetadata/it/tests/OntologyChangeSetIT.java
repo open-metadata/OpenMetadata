@@ -46,10 +46,10 @@ import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.OntologyMemoryProposalStatus;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
@@ -203,7 +203,7 @@ public class OntologyChangeSetIT {
     memories.patch(
         memory.getId().toString(),
         JsonUtils.readTree(
-            "[{\"op\":\"replace\",\"path\":\"/status\",\"value\":\"Invalidated\"}]"));
+            "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Invalidated\"}]"));
     assertEquals(
         Set.of(memory.getId()), client.glossaryTerms().get(termId.toString()).getSourceMemoryIds());
     assertEquals(
@@ -244,7 +244,7 @@ public class OntologyChangeSetIT {
     memories.patch(
         memory.getId().toString(),
         JsonUtils.readTree(
-            "[{\"op\":\"replace\",\"path\":\"/status\",\"value\":\"Invalidated\"}]"));
+            "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Invalidated\"}]"));
     OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("retiredSourceEditor"));
 
     assertThrows(
@@ -257,7 +257,7 @@ public class OntologyChangeSetIT {
         OntologyChangeSetState.DRAFT,
         client.ontologyChangeSets().get(changeSet.getId()).getState());
     assertEquals(
-        ContextMemoryStatus.INVALIDATED, memories.get(memory.getId().toString()).getStatus());
+        EntityStatus.INVALIDATED, memories.get(memory.getId().toString()).getEntityStatus());
   }
 
   @Test

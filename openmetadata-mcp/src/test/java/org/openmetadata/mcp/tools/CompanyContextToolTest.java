@@ -33,12 +33,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -218,7 +218,7 @@ class CompanyContextToolTest {
       assertEquals(subjectContext, subject.getValue());
       assertEquals(List.of("FileExtraction"), filters.getValue().get("sourceType"));
       assertEquals(List.of("Shared"), filters.getValue().get("visibility"));
-      assertEquals(List.of("Active"), filters.getValue().get("status"));
+      assertEquals(List.of("Approved"), filters.getValue().get("entityStatus"));
     }
   }
 
@@ -292,7 +292,7 @@ class CompanyContextToolTest {
         "legacy-pill",
         sharedWith(
             memory("legacy-pill", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
-                .withStatus(null),
+                .withEntityStatus(null),
             "bob"));
     CatalogSecurityContext securityContext = securityContextFor("bob");
 
@@ -313,7 +313,7 @@ class CompanyContextToolTest {
         "pill-fqn",
         sharedWith(
             memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
-                .withStatus(ContextMemoryStatus.SUPERSEDED),
+                .withEntityStatus(EntityStatus.SUPERSEDED),
             "bob"));
     Map<String, Object> result =
         tool.execute(
@@ -463,7 +463,7 @@ class CompanyContextToolTest {
         .withFullyQualifiedName(fqn)
         .withQuestion("Q")
         .withAnswer("A")
-        .withStatus(ContextMemoryStatus.ACTIVE)
+        .withEntityStatus(EntityStatus.APPROVED)
         .withSourceType(sourceType)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }

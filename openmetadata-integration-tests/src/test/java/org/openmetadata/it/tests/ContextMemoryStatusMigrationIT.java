@@ -20,7 +20,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /**
- * The 2.1.0 migration moves context memories from their own Draft/Active/Archived {@code status}
+ * The 2.1.0 migration moves context memories from their own {@code status}
  * onto {@code entityStatus}, in the memory table and in its version history. Runs the shipped
  * statements against copies of those tables, twice, to prove they are complete and idempotent.
  */
@@ -88,10 +88,19 @@ class ContextMemoryStatusMigrationIT {
     insert(handle, memoryTable, connectionType, "active", "{\"status\":\"Active\"}");
     insert(handle, memoryTable, connectionType, "draft", "{\"status\":\"Draft\"}");
     insert(handle, memoryTable, connectionType, "archived", "{\"status\":\"Archived\"}");
+    insert(handle, memoryTable, connectionType, "superseded", "{\"status\":\"Superseded\"}");
+    insert(handle, memoryTable, connectionType, "invalidated", "{\"status\":\"Invalidated\"}");
     insert(handle, memoryTable, connectionType, "nullStatus", "{\"status\":null}");
     insert(handle, memoryTable, connectionType, "noStatus", "{\"name\":\"noStatus\"}");
     insert(handle, memoryTable, connectionType, "staged", "{\"entityStatus\":\"Deprecated\"}");
     insertVersion(handle, extensionTable, connectionType, "memoryVersion", MEMORY_SCHEMA);
+    insertVersion(
+        handle,
+        extensionTable,
+        connectionType,
+        "memoryRetiredVersion",
+        MEMORY_SCHEMA,
+        "Superseded");
     insertVersion(handle, extensionTable, connectionType, "termVersion", "glossaryTerm");
   }
 
@@ -107,6 +116,16 @@ class ContextMemoryStatusMigrationIT {
 
   private static void insertVersion(
       Handle handle, String table, ConnectionType connectionType, String id, String jsonSchema) {
+    insertVersion(handle, table, connectionType, id, jsonSchema, "Draft");
+  }
+
+  private static void insertVersion(
+      Handle handle,
+      String table,
+      ConnectionType connectionType,
+      String id,
+      String jsonSchema,
+      String status) {
     handle
         .createUpdate(
             "INSERT INTO "
@@ -116,7 +135,7 @@ class ContextMemoryStatusMigrationIT {
                 + ")")
         .bind("id", id)
         .bind("jsonSchema", jsonSchema)
-        .bind("json", "{\"status\":\"Draft\"}")
+        .bind("json", "{\"status\":\"" + status + "\"}")
         .execute();
   }
 
@@ -136,6 +155,8 @@ class ContextMemoryStatusMigrationIT {
     assertEquals("Approved", stage(memories, "active"));
     assertEquals("Draft", stage(memories, "draft"));
     assertEquals("Archived", stage(memories, "archived"));
+    assertEquals("Superseded", stage(memories, "superseded"));
+    assertEquals("Invalidated", stage(memories, "invalidated"));
     assertEquals("Approved", stage(memories, "nullStatus"), "a memory without status was Active");
     assertEquals("Approved", stage(memories, "noStatus"), "a memory without status was Active");
     assertEquals("Deprecated", stage(memories, "staged"), "an existing stage is left alone");
@@ -144,7 +165,9 @@ class ContextMemoryStatusMigrationIT {
 
   private static void assertVersionHistory(Map<String, JsonNode> versions) {
     assertEquals("Draft", stage(versions, "memoryVersion"));
+    assertEquals("Superseded", stage(versions, "memoryRetiredVersion"));
     assertFalse(versions.get("memoryVersion").has("status"));
+    assertFalse(versions.get("memoryRetiredVersion").has("status"));
     assertTrue(versions.get("termVersion").has("status"), "other entities' history is untouched");
     assertFalse(versions.get("termVersion").has("entityStatus"));
   }

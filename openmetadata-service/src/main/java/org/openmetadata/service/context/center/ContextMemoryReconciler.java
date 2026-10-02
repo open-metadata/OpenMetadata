@@ -1,7 +1,5 @@
 package org.openmetadata.service.context.center;
 
-import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

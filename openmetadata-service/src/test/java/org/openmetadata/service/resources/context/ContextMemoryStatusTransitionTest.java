@@ -1,124 +1,60 @@
 package org.openmetadata.service.resources.context;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import jakarta.ws.rs.BadRequestException;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 class ContextMemoryStatusTransitionTest {
+  private static final EntityLifecycle MEMORY = ContextMemoryRepository.LIFECYCLE;
 
   @Test
-  void testValidStatusTransitionsAreAccepted() {
-    ContextMemoryRepository.validateStatusTransition(EntityStatus.DRAFT, EntityStatus.APPROVED);
-    ContextMemoryRepository.validateStatusTransition(EntityStatus.DRAFT, EntityStatus.ARCHIVED);
-    ContextMemoryRepository.validateStatusTransition(EntityStatus.APPROVED, EntityStatus.ARCHIVED);
-    ContextMemoryRepository.validateStatusTransition(EntityStatus.ARCHIVED, EntityStatus.APPROVED);
-  }
-
-  @Test
-  void testNoOpStatusTransitionIsAccepted() {
-    ContextMemoryRepository.validateStatusTransition(EntityStatus.APPROVED, EntityStatus.APPROVED);
-    ContextMemoryRepository.validateStatusTransition(EntityStatus.DRAFT, EntityStatus.DRAFT);
-  }
-
-  @Test
-  void testApprovedToDraftIsRejected() {
-    BadRequestException exception =
-        assertThrows(
-            BadRequestException.class,
-            () ->
-                ContextMemoryRepository.validateStatusTransition(
-                    EntityStatus.APPROVED, EntityStatus.DRAFT));
-    assertTrue(exception.getMessage().contains("Invalid memory status transition"));
+  void memoryIsDraftApprovedOrArchived() {
+    assertEquals(
+        Set.of(
+            EntityStatus.DRAFT,
+            EntityStatus.APPROVED,
+            EntityStatus.SUPERSEDED,
+            EntityStatus.INVALIDATED,
+            EntityStatus.ARCHIVED),
+        MEMORY.stages());
   }
 
   @Test
-  void testArchivedToDraftIsRejected() {
-    assertThrows(
-        BadRequestException.class,
-        () ->
-            ContextMemoryRepository.validateStatusTransition(
-                EntityStatus.ARCHIVED, EntityStatus.DRAFT));
+  void memoryMovesForwardAndCanBeRestoredFromTheArchive() {
+    assertTrue(MEMORY.allows(EntityStatus.DRAFT, EntityStatus.APPROVED));
+    assertTrue(MEMORY.allows(EntityStatus.DRAFT, EntityStatus.ARCHIVED));
+    assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.ARCHIVED));
+    assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.SUPERSEDED));
+    assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.INVALIDATED));
+    assertTrue(MEMORY.allows(EntityStatus.ARCHIVED, EntityStatus.APPROVED));
+    assertTrue(MEMORY.allows(EntityStatus.SUPERSEDED, EntityStatus.APPROVED));
+    assertTrue(MEMORY.allows(EntityStatus.INVALIDATED, EntityStatus.APPROVED));
   }
 
   @Test
-  void testMemorySavedWithoutAStageMayTakeAnyMemoryStage() {
-    ContextMemoryRepository.validateStatusTransition(null, EntityStatus.DRAFT);
-    ContextMemoryRepository.validateStatusTransition(null, EntityStatus.ARCHIVED);
+  void memoryNeverGoesBackToDraft() {
+    assertFalse(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.DRAFT));
+    assertFalse(MEMORY.allows(EntityStatus.ARCHIVED, EntityStatus.DRAFT));
   }
 
   @Test
-  void testMemoryIsCreatedOnlyInItsOwnStages() {
-    ContextMemoryRepository.validateMemoryStage(null);
-    ContextMemoryRepository.validateMemoryStage(EntityStatus.DRAFT);
-    ContextMemoryRepository.validateMemoryStage(EntityStatus.APPROVED);
-    ContextMemoryRepository.validateMemoryStage(EntityStatus.ARCHIVED);
-
-    BadRequestException inReview =
-        assertThrows(
-            BadRequestException.class,
-            () -> ContextMemoryRepository.validateMemoryStage(EntityStatus.IN_REVIEW));
-    assertTrue(inReview.getMessage().contains("Invalid memory status"));
+  void memorySavedWithoutAStageMayTakeAnyMemoryStage() {
+    assertTrue(MEMORY.allows(null, EntityStatus.DRAFT));
+    assertTrue(MEMORY.allows(null, EntityStatus.ARCHIVED));
+    assertFalse(MEMORY.allows(null, EntityStatus.IN_REVIEW));
   }
 
   @Test
-  void testSharedStagesOutsideTheMemoryLifecycleAreRejected() {
-    BadRequestException toDeprecated =
-        assertThrows(
-            BadRequestException.class,
-            () ->
-                ContextMemoryRepository.validateStatusTransition(
-                    EntityStatus.APPROVED, EntityStatus.DEPRECATED));
-    assertTrue(toDeprecated.getMessage().contains("Invalid memory status transition"));
-
-    BadRequestException fromInReview =
-        assertThrows(
-            BadRequestException.class,
-            () ->
-                ContextMemoryRepository.validateStatusTransition(
-                    EntityStatus.IN_REVIEW, EntityStatus.APPROVED));
-    assertTrue(fromInReview.getMessage().contains("No transitions defined"));
-  }
-
-  @Test
-  void testLifecycleTransitionsFromActiveAreAccepted() {
-    ContextMemoryRepository.validateStatusTransition(
-        ContextMemoryStatus.ACTIVE, ContextMemoryStatus.SUPERSEDED);
-    ContextMemoryRepository.validateStatusTransition(
-        ContextMemoryStatus.ACTIVE, ContextMemoryStatus.INVALIDATED);
-  }
-
-  @ParameterizedTest
-  @CsvSource({
-    "Superseded,Active",
-    "Superseded,Archived",
-    "Invalidated,Active",
-    "Invalidated,Archived"
-  })
-  void testSupersededAndInvalidatedCanBeRestoredOrArchived(String from, String to) {
-    ContextMemoryRepository.validateStatusTransition(
-        ContextMemoryStatus.fromValue(from), ContextMemoryStatus.fromValue(to));
-  }
-
-  @ParameterizedTest
-  @CsvSource({
-    "Draft,Superseded",
-    "Draft,Invalidated",
-    "Archived,Superseded",
-    "Archived,Invalidated",
-    "Superseded,Invalidated",
-    "Invalidated,Superseded",
-    "Superseded,Draft",
-    "Invalidated,Draft"
-  })
-  void testTransitionsOutsideTheLifecycleTableAreRejected(String from, String to) {
-    assertThrows(
-        BadRequestException.class,
-        () ->
-            ContextMemoryRepository.validateStatusTransition(
-                ContextMemoryStatus.fromValue(from), ContextMemoryStatus.fromValue(to)));
+  void retiredMemoriesCannotSkipBetweenRetiredStagesOrReturnToDraft() {
+    assertFalse(MEMORY.allows(EntityStatus.SUPERSEDED, EntityStatus.INVALIDATED));
+    assertFalse(MEMORY.allows(EntityStatus.INVALIDATED, EntityStatus.SUPERSEDED));
+    assertFalse(MEMORY.allows(EntityStatus.SUPERSEDED, EntityStatus.DRAFT));
+    assertFalse(MEMORY.allows(EntityStatus.INVALIDATED, EntityStatus.DRAFT));
   }
 }

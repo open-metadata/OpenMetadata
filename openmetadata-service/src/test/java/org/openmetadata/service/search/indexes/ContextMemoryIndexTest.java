@@ -14,7 +14,6 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -82,9 +81,7 @@ class ContextMemoryIndexTest {
     assertEquals("Filter the Explore page by the Certification tag.", doc.get("answer"));
     assertEquals(ContextMemoryType.FAQ.value(), doc.get("memoryType"));
     assertEquals(ContextMemoryScope.USER_GLOBAL.value(), doc.get("memoryScope"));
-    assertFalse(
-        doc.containsKey("status"),
-        "the memory's stage is indexed through the shared entityStatus field, not its own status");
+    assertEquals(EntityStatus.APPROVED.value(), doc.get("entityStatus"));
     assertEquals(true, doc.get("pinned"));
     assertEquals(ContextMemorySourceType.CHAT_PROMOTION.value(), doc.get("sourceType"));
     assertEquals(7, doc.get("usageCount"));
@@ -268,12 +265,14 @@ class ContextMemoryIndexTest {
   void statusValue_treatsLegacyMissingStatusAsActive() {
     assertEquals(
         "Superseded",
-        ContextMemoryIndex.statusValue(baseMemory().withStatus(ContextMemoryStatus.SUPERSEDED)));
-    ContextMemory legacy = baseMemory().withStatus(null);
-    assertEquals(ContextMemoryStatus.ACTIVE.value(), ContextMemoryIndex.statusValue(legacy));
+        ContextMemoryIndex.statusValue(baseMemory().withEntityStatus(EntityStatus.SUPERSEDED)));
+    ContextMemory legacy = baseMemory().withEntityStatus(null);
+    assertEquals(EntityStatus.APPROVED.value(), ContextMemoryIndex.statusValue(legacy));
     assertEquals(
-        ContextMemoryStatus.ACTIVE.value(),
-        new ContextMemoryIndex(legacy).buildSearchIndexDocInternal(new HashMap<>()).get("status"));
+        EntityStatus.APPROVED.value(),
+        new ContextMemoryIndex(legacy)
+            .buildSearchIndexDocInternal(new HashMap<>())
+            .get("entityStatus"));
   }
 
   @Test

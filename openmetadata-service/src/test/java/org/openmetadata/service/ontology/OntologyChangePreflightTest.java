@@ -22,11 +22,11 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
@@ -40,7 +40,7 @@ class OntologyChangePreflightTest {
         createOperation(storedTerm(glossaryId, null)).withSourceMemoryIds(Set.of(memoryId));
     final OntologyChangePreflight preflight =
         new OntologyChangePreflight(
-            (entityType, id) -> new ContextMemory().withId(id).withStatus(null));
+            (entityType, id) -> new ContextMemory().withId(id).withEntityStatus(null));
 
     assertDoesNotThrow(() -> preflight.validate(changeSet(glossaryId), List.of(proposal)));
   }
@@ -52,11 +52,10 @@ class OntologyChangePreflightTest {
     final OntologyChangeOperation proposal =
         createOperation(storedTerm(glossaryId, null)).withSourceMemoryIds(Set.of(memoryId));
 
-    for (final ContextMemoryStatus status :
-        List.of(ContextMemoryStatus.SUPERSEDED, ContextMemoryStatus.INVALIDATED)) {
+    for (final EntityStatus status : List.of(EntityStatus.SUPERSEDED, EntityStatus.INVALIDATED)) {
       final OntologyChangePreflight preflight =
           new OntologyChangePreflight(
-              (entityType, id) -> new ContextMemory().withId(id).withStatus(status));
+              (entityType, id) -> new ContextMemory().withId(id).withEntityStatus(status));
 
       assertThrows(
           BadRequestException.class,

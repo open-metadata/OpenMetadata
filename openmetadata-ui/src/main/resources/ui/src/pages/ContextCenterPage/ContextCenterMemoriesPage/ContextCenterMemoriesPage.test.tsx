@@ -194,7 +194,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
 
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({ statuses: 'Active', offset: 0 })
+        expect.objectContaining({ statuses: 'Approved', offset: 0 })
       );
     });
 
@@ -203,11 +203,11 @@ describe('ContextCenterMemoriesPage — permissions', () => {
 
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({ statuses: 'Active,Invalidated', offset: 0 })
+        expect.objectContaining({ statuses: 'Approved,Invalidated', offset: 0 })
       );
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Active,Invalidated',
+          statuses: 'Approved,Invalidated',
           limit: 0,
           offset: 0,
         })
@@ -218,7 +218,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Active,Invalidated',
+          statuses: 'Approved,Invalidated',
           author: 'user-1',
         })
       );
@@ -231,7 +231,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Active,Invalidated',
+          statuses: 'Approved,Invalidated',
           q: 'missing glossary fact',
           assets: 'asset-1',
           author: 'user-1',
@@ -244,7 +244,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Active,Invalidated',
+          statuses: 'Approved,Invalidated',
           q: 'missing glossary fact',
           assets: 'asset-1',
           author: 'user-1',
@@ -279,7 +279,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Active,Invalidated',
+          statuses: 'Approved,Invalidated',
           author: 'other-user',
         })
       );

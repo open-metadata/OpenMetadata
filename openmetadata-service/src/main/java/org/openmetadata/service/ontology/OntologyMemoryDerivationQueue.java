@@ -1,7 +1,5 @@
 package org.openmetadata.service.ontology;
 
-import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;

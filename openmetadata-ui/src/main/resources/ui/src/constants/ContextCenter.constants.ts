@@ -14,7 +14,7 @@
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import {
-  MemoryStatus,
+  EntityStatus,
   MemoryType,
   ShareVisibility,
 } from '../generated/entity/context/contextMemory';
@@ -137,12 +137,12 @@ export const MEMORIES_PER_PAGE = 10;
 export const MEMORY_FIELDS =
   'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
 
-export const MEMORY_STATUS_LABEL_KEYS: Record<MemoryStatus, string> = {
-  [MemoryStatus.Active]: 'label.active',
-  [MemoryStatus.Archived]: 'label.archived',
-  [MemoryStatus.Draft]: 'label.draft',
-  [MemoryStatus.Invalidated]: 'label.invalidated',
-  [MemoryStatus.Superseded]: 'label.superseded',
+export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
+  [EntityStatus.Approved]: 'label.approved',
+  [EntityStatus.Archived]: 'label.archived',
+  [EntityStatus.Draft]: 'label.draft',
+  [EntityStatus.Invalidated]: 'label.invalidated',
+  [EntityStatus.Superseded]: 'label.superseded',
 };
 
 export const FILTER_TABS = [

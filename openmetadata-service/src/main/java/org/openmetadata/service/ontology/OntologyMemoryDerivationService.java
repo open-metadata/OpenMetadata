@@ -314,7 +314,7 @@ public final class OntologyMemoryDerivationService {
     INACTIVE(
         "Memory is not active",
         Response.Status.BAD_REQUEST,
-        (memory, user) -> memory.getEntityStatus() != EntityStatus.APPROVED),
+        (memory, user) -> effectiveStatus(memory.getEntityStatus()) != EntityStatus.APPROVED),
     RESTRICTED(
         "Restricted memory requires an owner-initiated job",
         Response.Status.BAD_REQUEST,

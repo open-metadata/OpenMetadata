@@ -18,10 +18,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
@@ -54,7 +54,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * OMQueryBuilder} clauses; {@link org.openmetadata.service.search.vector.VectorSearchQueryBuilder}
  * renders it as raw JSON (it serves both engines from a {@code StringBuilder}); {@link
  * org.openmetadata.service.resources.context.ContextMemoryVisibility#isVisibleToUser} decides it
- * in-memory for the REST read paths. Normal search additionally requires Active status; direct
+ * in-memory for the REST read paths. Normal search additionally requires Approved status; direct
  * REST reads can still inspect a retired memory and its history.
  *
  * <p>Search cannot evaluate an anchor's policy per document. An anchored {@code Entity} memory is
@@ -76,17 +76,17 @@ public class ContextMemorySearchVisibility {
   }
 
   /**
-   * Returns a filter constraining context memory documents to Active memories visible to the
-   * subject. Admins bypass visibility but still get the Active constraint. A missing subject
+   * Returns a filter constraining context memory documents to Approved memories visible to the
+   * subject. Admins bypass visibility but still get the Approved constraint. A missing subject
    * returns {@code null} so the caller can apply the org-wide fallback.
    */
   public OMQueryBuilder buildVisibilityFilter(SubjectContext subjectContext) {
-    return buildVisibilityFilter(subjectContext, List.of(ContextMemoryStatus.ACTIVE));
+    return buildVisibilityFilter(subjectContext, List.of(EntityStatus.APPROVED));
   }
 
   /** Status-aware visibility is used only by the authenticated Context Center list endpoint. */
   public OMQueryBuilder buildVisibilityFilter(
-      SubjectContext subjectContext, List<ContextMemoryStatus> statuses) {
+      SubjectContext subjectContext, List<EntityStatus> statuses) {
     OMQueryBuilder filter = null;
     if (isVisibilityEnforced(subjectContext)) {
       User user = subjectContext.user();
@@ -101,14 +101,14 @@ public class ContextMemorySearchVisibility {
   }
 
   /**
-   * Returns a filter admitting only Active, unanchored org-wide memories and org-wide files when
+   * Returns a filter admitting only Approved, unanchored org-wide memories and org-wide files when
    * no {@link SubjectContext} is available. Documents without per-entity visibility rules pass.
    */
   public OMQueryBuilder buildOrgWideOnlyFilter() {
     OMQueryBuilder orgWideFile =
         queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value());
     return scopeGovernedTypes(
-        statusMemoryClause(unanchoredOrgWideClause(), List.of(ContextMemoryStatus.ACTIVE)),
+        statusMemoryClause(unanchoredOrgWideClause(), List.of(EntityStatus.APPROVED)),
         queryBuilderFactory.boolQuery().should(List.of(unstamped(), orgWideFile)));
   }
 
@@ -126,7 +126,7 @@ public class ContextMemorySearchVisibility {
         readable =
             (MemoryVisibility.ENTITY.value().equals(visibility)
                     || MemoryVisibility.PUBLIC.value().equals(visibility))
-                && ContextMemoryStatus.ACTIVE
+                && EntityStatus.APPROVED
                     .value()
                     .equals(document.get(ContextMemoryIndex.FIELD_STATUS))
                 && ContextMemoryIndex.UNANCHORED.equals(
@@ -185,8 +185,7 @@ public class ContextMemorySearchVisibility {
   }
 
   /** Applies the selected status constraint and optional visibility clause only to memories. */
-  private OMQueryBuilder scopeMemoriesTo(
-      OMQueryBuilder memoryClause, List<ContextMemoryStatus> statuses) {
+  private OMQueryBuilder scopeMemoriesTo(OMQueryBuilder memoryClause, List<EntityStatus> statuses) {
     OMQueryBuilder nonMemory =
         queryBuilderFactory
             .boolQuery()
@@ -198,7 +197,7 @@ public class ContextMemorySearchVisibility {
   }
 
   private OMQueryBuilder statusMemoryClause(
-      OMQueryBuilder memoryClause, List<ContextMemoryStatus> statuses) {
+      OMQueryBuilder memoryClause, List<EntityStatus> statuses) {
     List<OMQueryBuilder> clauses = new ArrayList<>();
     if (memoryClause != null) {
       clauses.add(memoryClause);
@@ -209,7 +208,7 @@ public class ContextMemorySearchVisibility {
                 ContextMemoryIndex.FIELD_STATUS, statuses.getFirst().value())
             : queryBuilderFactory.termsQuery(
                 ContextMemoryIndex.FIELD_STATUS,
-                statuses.stream().map(ContextMemoryStatus::value).toList()));
+                statuses.stream().map(EntityStatus::value).toList()));
     return queryBuilderFactory.boolQuery().must(clauses);
   }
 

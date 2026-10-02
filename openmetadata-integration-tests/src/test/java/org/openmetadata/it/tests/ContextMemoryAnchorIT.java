@@ -275,7 +275,7 @@ public class ContextMemoryAnchorIT {
         .patch(
             owned.getId().toString(),
             JsonUtils.readTree(
-                "[{\"op\":\"replace\",\"path\":\"/status\",\"value\":\"Invalidated\"}]"));
+                "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Invalidated\"}]"));
     Awaitility.await()
         .atMost(Duration.ofSeconds(120))
         .ignoreExceptions()

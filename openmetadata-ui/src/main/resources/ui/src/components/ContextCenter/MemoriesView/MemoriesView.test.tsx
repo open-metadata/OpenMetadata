@@ -13,7 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import {
   ContextMemory,
-  MemoryStatus,
+  EntityStatus,
 } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
 
@@ -146,7 +146,7 @@ describe('MemoriesView', () => {
         data={[
           {
             ...mockMemories[0],
-            status: MemoryStatus.Superseded,
+            entityStatus: EntityStatus.Superseded,
             statusReason: 'The replacement has the corrected definition.',
           },
         ]}

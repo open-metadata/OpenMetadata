@@ -390,7 +390,8 @@ public class ODCSConverter {
       case APPROVED -> ODCSDataContract.OdcsStatus.ACTIVE;
       case ARCHIVED -> ODCSDataContract.OdcsStatus.RETIRED;
       case DEPRECATED -> ODCSDataContract.OdcsStatus.DEPRECATED;
-      case DRAFT, IN_REVIEW, REJECTED, UNPROCESSED -> ODCSDataContract.OdcsStatus.DRAFT;
+      case DRAFT, IN_REVIEW, REJECTED, UNPROCESSED, SUPERSEDED, INVALIDATED -> ODCSDataContract
+          .OdcsStatus.DRAFT;
     };
   }
 

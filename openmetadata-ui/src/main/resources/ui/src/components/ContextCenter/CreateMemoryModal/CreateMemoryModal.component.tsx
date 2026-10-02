@@ -80,7 +80,7 @@ import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ContextMemory,
-  MemoryStatus,
+  EntityStatus,
   MemoryType,
   ShareVisibility,
   TagLabel,
@@ -642,13 +642,13 @@ const MemoryTagsRow: FC<{
   </div>
 );
 
-const getMemoryStatusColor = (
-  status: MemoryStatus
+const getEntityStatusColor = (
+  status: EntityStatus
 ): 'error' | 'warning' | 'gray' => {
-  if (status === MemoryStatus.Invalidated) {
+  if (status === EntityStatus.Invalidated) {
     return 'error';
   }
-  if (status === MemoryStatus.Superseded) {
+  if (status === EntityStatus.Superseded) {
     return 'warning';
   }
 
@@ -660,7 +660,7 @@ const MemoryLifecycleRows: FC<{
   t: TFunc;
 }> = ({ memoryToEdit, t }) => (
   <>
-    {memoryToEdit?.status && (
+    {memoryToEdit?.entityStatus && (
       <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
         <div className="tw:basis-[30%]">
           <Typography className="tw:text-quaternary tw:w-28" size="text-sm">
@@ -668,11 +668,11 @@ const MemoryLifecycleRows: FC<{
           </Typography>
         </div>
         <Badge
-          color={getMemoryStatusColor(memoryToEdit.status)}
+          color={getEntityStatusColor(memoryToEdit.entityStatus)}
           data-testid="memory-lifecycle-status"
           size="sm"
           type="color">
-          {t(MEMORY_STATUS_LABEL_KEYS[memoryToEdit.status])}
+          {t(MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus])}
         </Badge>
       </div>
     )}
@@ -691,7 +691,7 @@ const MemoryLifecycleRows: FC<{
         </Typography>
       </div>
     )}
-    {memoryToEdit?.status === MemoryStatus.Superseded &&
+    {memoryToEdit?.entityStatus === EntityStatus.Superseded &&
       memoryToEdit.supersededBy && (
         <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
           <div className="tw:basis-[30%]">

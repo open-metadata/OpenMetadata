@@ -23,9 +23,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -36,7 +36,7 @@ class OpenSearchVectorServiceTest {
 
   @Test
   void memoryFilterChangesRestampChunksWithoutChangingContent() {
-    ContextMemory memory = new ContextMemory().withStatus(ContextMemoryStatus.ACTIVE);
+    ContextMemory memory = new ContextMemory().withEntityStatus(EntityStatus.APPROVED);
     assertFalse(OpenSearchVectorService.memoryFilterChanged(memory, "Active", "unanchored"));
     assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, null, null));
     assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, "Superseded", "unanchored"));
@@ -632,7 +632,7 @@ class OpenSearchVectorServiceTest {
     method.setAccessible(true);
     JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
 
-    assertEquals("keyword", body.path("properties").path("status").path("type").asText());
+    assertEquals("keyword", body.path("properties").path("entityStatus").path("type").asText());
   }
 
   @Test

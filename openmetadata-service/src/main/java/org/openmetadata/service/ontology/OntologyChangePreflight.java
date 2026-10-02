@@ -25,11 +25,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
@@ -65,7 +65,7 @@ public final class OntologyChangePreflight {
         final ContextMemory memory =
             (ContextMemory) entityLoader.load(Entity.CONTEXT_MEMORY, memoryId);
         if (Boolean.TRUE.equals(memory.getDeleted())
-            || effectiveStatus(memory.getStatus()) != ContextMemoryStatus.ACTIVE) {
+            || effectiveStatus(memory.getEntityStatus()) != EntityStatus.APPROVED) {
           throw new BadRequestException(
               "Ontology operation '"
                   + operation.getId()

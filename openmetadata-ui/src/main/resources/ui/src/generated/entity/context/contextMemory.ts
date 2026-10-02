@@ -48,10 +48,9 @@ export interface ContextMemory {
      */
     domains?: EntityReference[];
     /**
-     * Lifecycle stage of the memory: Draft, Approved (in use) or Archived. Any of these may be
-     * set at creation, for example when importing an already-archived memory; the Draft ->
-     * Approved -> Archived transition rules are enforced on later updates. When omitted at
-     * creation, the memory starts Approved.
+     * Lifecycle stage of the memory: Draft, Approved (in use), Superseded, Invalidated or
+     * Archived. A Superseded memory requires supersededBy. When omitted at creation, the memory
+     * starts Approved.
      */
     entityStatus?: EntityStatus;
     /**
@@ -147,7 +146,7 @@ export interface ContextMemory {
      */
     summary?: string;
     /**
-     * The memory that replaced this one. Set if and only if status is Superseded.
+     * The memory that replaced this one. Set if and only if entityStatus is Superseded.
      */
     supersededBy?: EntityReference;
     /**
@@ -271,7 +270,7 @@ export interface FieldChange {
  *
  * Deprecated: use sourceEntity. The Context Center file this memory was extracted from.
  *
- * The memory that replaced this one. Set if and only if status is Superseded.
+ * The memory that replaced this one. Set if and only if entityStatus is Superseded.
  */
 export interface EntityReference {
     /**
@@ -317,10 +316,27 @@ export interface EntityReference {
 }
 
 /**
- * Lifecycle stage of the memory: Draft, Approved (in use) or Archived. Any of these may be
- * set at creation, for example when importing an already-archived memory; the Draft ->
- * Approved -> Archived transition rules are enforced on later updates. When omitted at
- * creation, the memory starts Approved.
+ * A memory owned by someone else whose claim contradicts this one. Both stay Active.
+ */
+export interface MemoryDispute {
+    /**
+     * When the contradiction was detected.
+     */
+    detectedAt?: number;
+    /**
+     * The contradicting context memory.
+     */
+    memory: EntityReference;
+    /**
+     * Why the two memories contradict each other.
+     */
+    reason: string;
+}
+
+/**
+ * Lifecycle stage of the memory: Draft, Approved (in use), Superseded, Invalidated or
+ * Archived. A Superseded memory requires supersededBy. When omitted at creation, the memory
+ * starts Approved.
  *
  * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
  * property. Entity types without that property have no lifecycle. When a create request
@@ -332,7 +348,9 @@ export enum EntityStatus {
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
+    Invalidated = "Invalidated",
     Rejected = "Rejected",
+    Superseded = "Superseded",
     Unprocessed = "Unprocessed",
 }
 

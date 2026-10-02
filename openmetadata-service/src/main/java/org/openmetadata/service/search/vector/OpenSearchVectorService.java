@@ -1296,7 +1296,7 @@ public class OpenSearchVectorService implements VectorIndexService {
                     source.path("fingerprint").asText(null),
                     source.path("chunkCount").asInt(0),
                     source.path("docVersion").asInt(0),
-                    source.path("status").asText(null),
+                    source.path(ContextMemoryIndex.FIELD_STATUS).asText(null),
                     source.path("anchorId").asText(null));
           }
         }

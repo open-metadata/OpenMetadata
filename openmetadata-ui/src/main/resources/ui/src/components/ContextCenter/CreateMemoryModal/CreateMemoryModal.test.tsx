@@ -29,7 +29,7 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import {
   ContextMemory,
-  MemoryStatus,
+  EntityStatus,
 } from '../../../generated/entity/context/contextMemory';
 import {
   getMemoryOntologyProposalStatus,
@@ -444,7 +444,7 @@ describe('CreateMemoryModal', () => {
     const memory = {
       id: 'memory-id',
       name: 'inactive-customer',
-      status: MemoryStatus.Active,
+      entityStatus: EntityStatus.Approved,
       owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
       shareConfig: { visibility: 'Shared' },
       derivedEntities: [],
@@ -566,16 +566,15 @@ describe('CreateMemoryModal', () => {
   });
 
   it.each([
-    MemoryStatus.Draft,
-    MemoryStatus.Archived,
-    MemoryStatus.Superseded,
-    MemoryStatus.Invalidated,
-    undefined,
+    EntityStatus.Draft,
+    EntityStatus.Archived,
+    EntityStatus.Superseded,
+    EntityStatus.Invalidated,
   ])('hides proposal action for status %s', async (status) => {
     const memory = {
       id: 'memory-id',
       name: 'retired-memory',
-      status,
+      entityStatus: status,
       owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
       shareConfig: { visibility: 'Entity' },
       derivedEntities: [],
@@ -751,7 +750,7 @@ describe('CreateMemoryModal', () => {
           memoryToEdit={{
             id: 'old-memory',
             name: 'old-memory',
-            status: MemoryStatus.Superseded,
+            entityStatus: EntityStatus.Superseded,
             statusReason: 'The replacement has the corrected definition.',
             supersededBy: {
               id: 'new-memory',

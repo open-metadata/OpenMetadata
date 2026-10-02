@@ -52,9 +52,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -280,7 +280,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       UUID sourceFileId,
       UUID sourceEntityId,
       UUID primaryEntityId,
-      List<ContextMemoryStatus> statuses)
+      List<EntityStatus> statuses)
       throws IOException {
     validateSearchBackedListParams(before, after, sourceFileId, sourceEntityId, primaryEntityId);
     SearchListFilter searchListFilter =
@@ -324,11 +324,14 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
             statuses));
   }
 
-  private static List<ContextMemoryStatus> parseStatuses(String statuses) {
-    List<ContextMemoryStatus> parsed = new ArrayList<>();
+  private static List<EntityStatus> parseStatuses(String statuses) {
+    List<EntityStatus> parsed = new ArrayList<>();
     for (String value : statuses.split(",", -1)) {
       try {
-        ContextMemoryStatus status = ContextMemoryStatus.fromValue(value.trim());
+        EntityStatus status = EntityStatus.fromValue(value.trim());
+        if (!ContextMemoryRepository.LIFECYCLE.includes(status)) {
+          throw new IllegalArgumentException("Stage is not in the memory lifecycle");
+        }
         if (!parsed.contains(status)) {
           parsed.add(status);
         }

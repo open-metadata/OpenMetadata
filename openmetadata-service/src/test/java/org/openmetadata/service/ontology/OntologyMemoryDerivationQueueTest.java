@@ -45,7 +45,8 @@ class OntologyMemoryDerivationQueueTest {
 
   @Test
   void legacyPublishedMemoryWithoutStoredStatusIsEligible() {
-    ContextMemory legacy = memory(UUID.randomUUID(), MemoryVisibility.ENTITY).withStatus(null);
+    ContextMemory legacy =
+        memory(UUID.randomUUID(), MemoryVisibility.ENTITY).withEntityStatus(null);
 
     assertTrue(OntologyMemoryDerivationQueue.isPublished(legacy));
   }

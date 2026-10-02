@@ -42,6 +42,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
@@ -96,6 +97,17 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     ContextMemoryBodyTextContributor.INSTANCE.register();
   }
 
+  /** Memory-specific stages and transitions; the shared repository validates every stage change. */
+  public static final EntityLifecycle LIFECYCLE =
+      new EntityLifecycle(
+          Map.of(
+              EntityStatus.DRAFT, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+              EntityStatus.APPROVED,
+                  Set.of(EntityStatus.ARCHIVED, EntityStatus.SUPERSEDED, EntityStatus.INVALIDATED),
+              EntityStatus.SUPERSEDED, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+              EntityStatus.INVALIDATED, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+              EntityStatus.ARCHIVED, Set.of(EntityStatus.APPROVED)));
+
   public ContextMemoryRepository() {
     super(
         ContextMemoryResource.COLLECTION_PATH,
@@ -105,6 +117,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    entityLifecycle = LIFECYCLE;
   }
 
   public ResultList<ContextMemory> listContextMemoriesWithStatuses(
@@ -474,7 +487,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       entity.setParentMemory(parentMemory.getEntityReference());
     }
     validateSharedPrincipals(entity);
-    validateMemoryStage(entity.getEntityStatus());
     setCreatorAsDefaultOwner(entity, update);
     prepareLifecycle(entity, update);
     inheritAnchorDomains(entity, update);
@@ -639,19 +651,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   // ------------------------------------------------------------------
 
   @Override
-  protected void validateEntityStatusTransition(EntityStatus from, EntityStatus to) {
-    validateStatusTransition(from, to);
-  }
-
-  public static void validateMemoryStage(EntityStatus stage) {
-    ContextMemoryLifecycle.validateMemoryStage(stage);
-  }
-
-  public static void validateStatusTransition(EntityStatus from, EntityStatus to) {
-    ContextMemoryLifecycle.validateTransition(from, to);
-  }
-
-  @Override
   public EntityUpdater getUpdater(
       ContextMemory original, ContextMemory updated, Operation operation, ChangeSource source) {
     return new ContextMemoryUpdater(original, updated, operation);
@@ -661,6 +660,28 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     public ContextMemoryUpdater(
         ContextMemory original, ContextMemory updated, Operation operation) {
       super(original, updated, operation);
+      if (original.getEntityStatus() == null && updated.getEntityStatus() == null) {
+        updated.setEntityStatus(EntityStatus.APPROVED);
+      }
+    }
+
+    @Override
+    void updateEntityStatus(boolean consolidatingChanges) {
+      if (operation == Operation.PATCH
+          && original.getEntityStatus() != null
+          && updated.getEntityStatus() == null) {
+        throw new BadRequestException("A context memory requires an entityStatus");
+      }
+      if (original.getEntityStatus() == null) {
+        EntityStatus target =
+            Objects.requireNonNullElse(updated.getEntityStatus(), EntityStatus.APPROVED);
+        if (target != EntityStatus.APPROVED && !LIFECYCLE.allows(EntityStatus.APPROVED, target)) {
+          throw new BadRequestException(
+              "Invalid memory status transition from Approved to " + target.value());
+        }
+        updated.setEntityStatus(target);
+      }
+      super.updateEntityStatus(consolidatingChanges);
     }
 
     @Override

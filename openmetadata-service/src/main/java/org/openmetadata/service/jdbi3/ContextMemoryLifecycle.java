@@ -18,13 +18,11 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 
 /** Lifecycle rules for status changes, supersession, and disputes. */
@@ -32,22 +30,6 @@ public final class ContextMemoryLifecycle {
 
   static final String FIELD_SUPERSEDED_BY = "supersededBy";
   static final String FIELD_DISPUTES = "disputes";
-
-  private static final Map<EntityStatus, Set<EntityStatus>> VALID_TRANSITIONS =
-      Map.of(
-          EntityStatus.DRAFT,
-          Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
-          EntityStatus.APPROVED,
-          Set.of(
-              EntityStatus.ARCHIVED,
-              EntityStatus.SUPERSEDED,
-              EntityStatus.INVALIDATED),
-          EntityStatus.SUPERSEDED,
-          Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
-          EntityStatus.INVALIDATED,
-          Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
-          EntityStatus.ARCHIVED,
-          Set.of(EntityStatus.APPROVED));
 
   @FunctionalInterface
   interface MemoryResolver {
@@ -58,27 +40,6 @@ public final class ContextMemoryLifecycle {
 
   public static EntityStatus effectiveStatus(EntityStatus status) {
     return status == null ? EntityStatus.APPROVED : status;
-  }
-
-  static void validateMemoryStage(EntityStatus stage) {
-    if (stage != null && !VALID_TRANSITIONS.containsKey(stage)) {
-      throw new BadRequestException("Invalid memory status " + stage.value());
-    }
-  }
-
-  static void validateTransition(EntityStatus from, EntityStatus to) {
-    if (to == null) {
-      throw new BadRequestException("A context memory requires a status");
-    }
-    EntityStatus current = effectiveStatus(from);
-    validateMemoryStage(to);
-    Set<EntityStatus> allowed = VALID_TRANSITIONS.get(current);
-    if (allowed == null || (current != to && !allowed.contains(to))) {
-      throw new BadRequestException(
-          String.format(
-              "Invalid memory status transition from %s to %s. Allowed transitions from %s: %s",
-              current.value(), to.value(), current.value(), allowed));
-    }
   }
 
   static void applyUpdate(ContextMemory original, ContextMemory updated, MemoryResolver resolver) {
@@ -93,7 +54,8 @@ public final class ContextMemoryLifecycle {
   }
 
   private static void applyStatusChange(ContextMemory original, ContextMemory updated) {
-    boolean statusChanged = effectiveStatus(original.getEntityStatus()) != updated.getEntityStatus();
+    boolean statusChanged =
+        effectiveStatus(original.getEntityStatus()) != updated.getEntityStatus();
     if (statusChanged && original.getEntityStatus() == EntityStatus.SUPERSEDED) {
       updated.setSupersededBy(null);
     }

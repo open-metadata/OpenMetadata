@@ -7,9 +7,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import lombok.experimental.UtilityClass;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
@@ -250,7 +250,7 @@ public class VectorSearchQueryBuilder {
       appendVisibleToUserClause(sb, enforceVisibility ? subjectContext : null, true);
       sb.append(',');
     }
-    sb.append(termClause(ContextMemoryIndex.FIELD_STATUS, ContextMemoryStatus.ACTIVE.value()));
+    sb.append(termClause(ContextMemoryIndex.FIELD_STATUS, EntityStatus.APPROVED.value()));
     sb.append("]}}");
     // Branch 3: a context file this subject may see. A file with no visibility stamped is not
     // restricted — unlike a memory, which is written with one — so it gets its own branch.
