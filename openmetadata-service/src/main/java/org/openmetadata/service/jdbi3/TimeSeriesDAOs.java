@@ -2000,6 +2000,16 @@ public interface TimeSeriesDAOs {
         @Bind("timestamp") long timestamp,
         @Bind("recordId") String recordId);
 
+    // Keeps the incident row's denormalized severity in step with a severity edited on the
+    // record that row points at; an edit on any older record of the chain leaves it alone.
+    @SqlUpdate(
+        "UPDATE test_case_incident SET severity = :severity "
+            + "WHERE stateId = :stateId AND latestRecordId = :recordId")
+    void updateIncidentSeverity(
+        @Bind("stateId") String stateId,
+        @Bind("recordId") String recordId,
+        @Bind("severity") String severity);
+
     @SqlQuery(
         "SELECT json FROM "
             + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
@@ -2162,6 +2172,10 @@ public interface TimeSeriesDAOs {
             + "MIN(i.createdAt) AS firstSeen, "
             + "MAX(i.updatedAt) AS lastSeen, "
             + "<createdAtAgg> AS incidentCreatedAt, "
+            + "COUNT(DISTINCT <tableFqn>) AS tableCount, "
+            + "<tablesAgg> AS tables, "
+            + "COUNT(DISTINCT tdr.fromId) AS testDefinitionCount, "
+            + "<testDefinitionsAgg> AS testDefinitions, "
             + "COUNT(*) OVER () AS totalGroups "
             + INCIDENT_GROUPS_FROM
             + "GROUP BY <groupByCols> "
@@ -2174,6 +2188,9 @@ public interface TimeSeriesDAOs {
         @Define("statusCounts") String statusCounts,
         @Define("assigneesExpr") String assigneesExpr,
         @Define("createdAtAgg") String createdAtAgg,
+        @Define("tableFqn") String tableFqn,
+        @Define("tablesAgg") String tablesAgg,
+        @Define("testDefinitionsAgg") String testDefinitionsAgg,
         @Define("groupKey") String groupKey,
         @Define("groupType") String groupType,
         @Define("groupByCols") String groupByCols,
@@ -2236,6 +2253,9 @@ public interface TimeSeriesDAOs {
           String.format(
               "MIN(CASE i.testCaseResolutionStatusType %s ELSE %d END)",
               String.join(" ", statusRankWhens), OPEN_STATUSES.size() + 1);
+      // Every test case has exactly one test definition, so this join neither drops nor
+      // multiplies incident rows; it is what lets a group of any dimension name its definitions.
+      String joins = dimension.join() + " " + TEST_DEFINITION_JOIN;
       List<TestCaseIncidentGroupCount> counts =
           listIncidentGroups(
               openStatuses,
@@ -2243,10 +2263,13 @@ public interface TimeSeriesDAOs {
               String.join(", ", statusCountExprs),
               assigneesExpr(),
               createdAtAggExpr(),
+              tableFqnExpr(),
+              jsonArrayAgg(tableFqnExpr()),
+              jsonArrayAgg("tdr.fromId"),
               dimension.groupKey(),
               dimension.groupType(),
               dimension.groupByCols(),
-              dimension.join(),
+              joins,
               condition,
               sortOrder,
               params,
@@ -2260,9 +2283,7 @@ public interface TimeSeriesDAOs {
       } else if (offset == 0) {
         total = 0;
       } else {
-        total =
-            countIncidentGroups(
-                openStatuses, dimension.groupKey(), dimension.join(), condition, params);
+        total = countIncidentGroups(openStatuses, dimension.groupKey(), joins, condition, params);
       }
       return new IncidentGroupPage(counts, total);
     }
@@ -2271,16 +2292,35 @@ public interface TimeSeriesDAOs {
     // default would truncate an assignee-dense group mid-name. MySQL's JSON_ARRAYAGG cannot take
     // DISTINCT, so the array may carry nulls and duplicates — the repository dedupes on parse.
     private static String assigneesExpr() {
-      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-          ? "JSON_ARRAYAGG(i.assignee)"
-          : "JSON_AGG(i.assignee)";
+      return jsonArrayAgg("i.assignee");
     }
 
     private static String createdAtAggExpr() {
-      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-          ? "JSON_ARRAYAGG(i.createdAt)"
-          : "JSON_AGG(i.createdAt)";
+      return jsonArrayAgg("i.createdAt");
     }
+
+    // One element per incident row, duplicates kept: the repository ranks the related entities
+    // of a group by how many of its incidents they carry.
+    private static String jsonArrayAgg(String expression) {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? String.format("JSON_ARRAYAGG(%s)", expression)
+          : String.format("JSON_AGG(%s)", expression);
+    }
+
+    // test_case.entityFQN is column-level for column test cases, so the origin table FQN is
+    // extracted from the entityLink (<#E::table::fqn> or <#E::table::fqn::columns::col>)
+    // instead.
+    private static String tableFqnExpr() {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? "TRIM(TRAILING '>' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(tc.entityLink, '::', 3), '::', -1))"
+          : "TRIM(TRAILING '>' FROM SPLIT_PART(tc.entityLink, '::', 3))";
+    }
+
+    String TEST_DEFINITION_JOIN =
+        String.format(
+            "INNER JOIN entity_relationship tdr ON tdr.toId = tc.id AND tdr.relation = %d "
+                + "AND tdr.fromEntity = '%s' AND tdr.toEntity = '%s'",
+            CONTAINS.ordinal(), Entity.TEST_DEFINITION, Entity.TEST_CASE);
 
     record IncidentGroupPage(List<TestCaseIncidentGroupCount> counts, int total) {}
 
@@ -2295,14 +2335,8 @@ public interface TimeSeriesDAOs {
         };
       }
 
-      // test_case.entityFQN is column-level for column test cases, so the origin table FQN is
-      // extracted from the entityLink (<#E::table::fqn> or <#E::table::fqn::columns::col>)
-      // instead.
       private static IncidentGroupDimension forTable() {
-        String tableFqn =
-            Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-                ? "TRIM(TRAILING '>' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(tc.entityLink, '::', 3), '::', -1))"
-                : "TRIM(TRAILING '>' FROM SPLIT_PART(tc.entityLink, '::', 3))";
+        String tableFqn = tableFqnExpr();
         return new IncidentGroupDimension(
             tableFqn, String.format("'%s'", Entity.TABLE), tableFqn, "");
       }
@@ -2588,6 +2622,10 @@ public interface TimeSeriesDAOs {
       long firstSeen,
       long lastSeen,
       String incidentCreatedAt,
+      int tableCount,
+      String tables,
+      int testDefinitionCount,
+      String testDefinitions,
       int totalGroups) {}
 
   class TestCaseIncidentGroupCountMapper implements RowMapper<TestCaseIncidentGroupCount> {
@@ -2612,6 +2650,10 @@ public interface TimeSeriesDAOs {
           rs.getLong("firstSeen"),
           rs.getLong("lastSeen"),
           rs.getString("incidentCreatedAt"),
+          rs.getInt("tableCount"),
+          rs.getString("tables"),
+          rs.getInt("testDefinitionCount"),
+          rs.getString("testDefinitions"),
           rs.getInt("totalGroups"));
     }
   }

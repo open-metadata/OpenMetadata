@@ -16,13 +16,16 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -74,6 +77,8 @@ public class TestCaseResolutionStatusRepository
   public static final String INCIDENT_SORT_TYPE_ASC = "asc";
   public static final String INCIDENT_SORT_TYPE_DESC = "desc";
   private static final int TREND_BUCKET_COUNT = 8;
+  // Related tables and test definitions a group names inline; its counts carry the full number.
+  private static final int INCIDENT_GROUP_RELATED_LIMIT = 5;
 
   // Open statuses from the most actionable to the least. Shared with the query rather than
   // restated here, so the breakdown order, the statusRank expression and the set of statuses a
@@ -178,9 +183,67 @@ public class TestCaseResolutionStatusRepository
     validatePatchFields(updated, original);
 
     timeSeriesDao.update(JsonUtils.pojoToJson(updated), id);
+    syncIncidentSeverity(updated);
     setInheritedFields(updated);
     postUpdate(updated);
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
+  }
+
+  // The incident groups read severity off the denormalized incident row, which is only written
+  // when a record is created; a severity edited afterwards has to be carried over by hand.
+  private void syncIncidentSeverity(TestCaseResolutionStatus record) {
+    if (record.getStateId() != null) {
+      ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+          .updateIncidentSeverity(
+              record.getStateId().toString(),
+              record.getId().toString(),
+              record.getSeverity() != null ? record.getSeverity().value() : null);
+    }
+  }
+
+  /**
+   * Applies one entry of a bulk status change. An entry that keeps the open incident's status as
+   * it is only edits its severity; one that would change nothing at all — or that sends an open
+   * incident back to New, which the status flow ignores — is rejected, so the bulk result reports
+   * it instead of counting it as applied.
+   */
+  public void applyBulkStatus(TestCaseResolutionStatus incoming, String testCaseFqn) {
+    TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
+    boolean isOpen = Boolean.TRUE.equals(unresolvedIncident(latest));
+    if (isOpen && isSameStatus(incoming, latest)) {
+      if (incoming.getSeverity() == null || incoming.getSeverity() == latest.getSeverity()) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Incident is already %s", latest.getTestCaseResolutionStatusType().value()));
+      }
+      updateSeverity(latest, incoming.getSeverity(), incoming.getUpdatedBy());
+    } else if (isOpen
+        && incoming.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.New) {
+      throw new IllegalArgumentException("An open incident cannot be moved back to New");
+    } else {
+      createNewRecord(incoming, testCaseFqn);
+    }
+  }
+
+  private static boolean isSameStatus(
+      TestCaseResolutionStatus incoming, TestCaseResolutionStatus latest) {
+    return incoming.getTestCaseResolutionStatusType() == latest.getTestCaseResolutionStatusType()
+        && Objects.equals(extractAssigneeName(incoming), extractAssigneeName(latest));
+  }
+
+  // Same write as a PATCH of the severity: the stored record, without its inherited test case.
+  private void updateSeverity(
+      TestCaseResolutionStatus latest, Severity severity, EntityReference updatedBy) {
+    TestCaseResolutionStatus stored =
+        JsonUtils.readValue(timeSeriesDao.getById(latest.getId()), entityClass);
+    stored
+        .withSeverity(severity)
+        .withUpdatedAt(System.currentTimeMillis())
+        .withUpdatedBy(updatedBy);
+    timeSeriesDao.update(JsonUtils.pojoToJson(stored), stored.getId());
+    syncIncidentSeverity(stored);
+    setInheritedFields(stored);
+    postUpdate(stored);
   }
 
   @Override
@@ -862,15 +925,35 @@ public class TestCaseResolutionStatusRepository
     CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage page =
         dao.listIncidentGroups(groupBy, filter, incidentGroupSortOrder(sortType), limit, offsetInt);
     Map<String, EntityReference> references = resolveIncidentGroupEntities(page.counts());
+    Map<String, EntityReference> tables =
+        findReferences(
+            Entity.TABLE,
+            page.counts().stream()
+                .flatMap(count -> rankByOccurrence(count.tables()).stream())
+                .collect(Collectors.toSet()));
+    Map<String, EntityReference> testDefinitions =
+        findReferences(
+            Entity.TEST_DEFINITION,
+            page.counts().stream()
+                .flatMap(count -> rankByOccurrence(count.testDefinitions()).stream())
+                .collect(Collectors.toSet()));
     List<TestCaseIncidentGroup> groups =
         page.counts().stream()
             .map(
                 count ->
                     toIncidentGroup(
-                        groupBy,
-                        count,
-                        parseIncidentCreatedAt(count),
-                        references.get(count.groupKey())))
+                            groupBy,
+                            count,
+                            parseIncidentCreatedAt(count),
+                            references.get(count.groupKey()))
+                        .withTableCount(count.tableCount())
+                        .withTables(relatedTables(count, tables))
+                        .withTestDefinitionCount(count.testDefinitionCount())
+                        .withTestDefinitions(
+                            rankByOccurrence(count.testDefinitions()).stream()
+                                .map(testDefinitions::get)
+                                .filter(Objects::nonNull)
+                                .toList()))
             .toList();
     return new ResultList<>(
         groups,
@@ -1002,6 +1085,65 @@ public class TestCaseResolutionStatusRepository
     return result;
   }
 
+  // The related keys of a group (table FQNs or test definition ids), one per incident row, ranked
+  // by how many of the group's incidents carry them and capped to what the group names inline.
+  private static List<String> rankByOccurrence(String keysJson) {
+    List<String> result = List.of();
+    if (!nullOrEmpty(keysJson)) {
+      Map<String, Long> occurrences =
+          Arrays.stream(JsonUtils.readValue(keysJson, String[].class))
+              .filter(key -> !nullOrEmpty(key))
+              .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+      result =
+          occurrences.entrySet().stream()
+              .sorted(
+                  Map.Entry.<String, Long>comparingByValue()
+                      .reversed()
+                      .thenComparing(Map.Entry.comparingByKey()))
+              .limit(INCIDENT_GROUP_RELATED_LIMIT)
+              .map(Map.Entry::getKey)
+              .toList();
+    }
+    return result;
+  }
+
+  // A table can be gone while incidents raised on it are still open; it is then named after its
+  // FQN, the way a table group whose table is gone is.
+  private static List<EntityReference> relatedTables(
+      CollectionDAO.TestCaseIncidentGroupCount count, Map<String, EntityReference> tables) {
+    return rankByOccurrence(count.tables()).stream()
+        .map(
+            fqn ->
+                tables.getOrDefault(
+                    fqn,
+                    new EntityReference()
+                        .withType(Entity.TABLE)
+                        .withName(List.of(FullyQualifiedName.split(fqn)).getLast())
+                        .withFullyQualifiedName(fqn)))
+        .toList();
+  }
+
+  // Tables are keyed by FQN — that is what an incident row knows them by — everything else by id.
+  private static Map<String, EntityReference> findReferences(
+      String entityType, Collection<String> keys) {
+    Map<String, EntityReference> result = new HashMap<>();
+    if (!keys.isEmpty()) {
+      EntityDAO<?> entityDAO = Entity.getEntityRepository(entityType).getDao();
+      if (Entity.TABLE.equals(entityType)) {
+        for (EntityReference reference :
+            entityDAO.findReferencesByFqns(List.copyOf(keys), Include.ALL)) {
+          result.put(reference.getFullyQualifiedName(), reference);
+        }
+      } else {
+        List<UUID> ids = keys.stream().map(UUID::fromString).toList();
+        for (EntityReference reference : entityDAO.findReferencesByIds(ids, Include.ALL)) {
+          result.put(reference.getId().toString(), reference);
+        }
+      }
+    }
+    return result;
+  }
+
   private static Map<String, EntityReference> resolveIncidentGroupEntities(
       List<CollectionDAO.TestCaseIncidentGroupCount> counts) {
     Map<String, EntityReference> result = new HashMap<>();
@@ -1016,20 +1158,7 @@ public class TestCaseResolutionStatusRepository
                     Collectors.mapping(
                         CollectionDAO.TestCaseIncidentGroupCount::groupKey, Collectors.toList())));
     keysByType.forEach(
-        (groupType, groupKeys) -> {
-          EntityDAO<?> entityDAO = Entity.getEntityRepository(groupType).getDao();
-          if (Entity.TABLE.equals(groupType)) {
-            for (EntityReference reference :
-                entityDAO.findReferencesByFqns(groupKeys, Include.ALL)) {
-              result.put(reference.getFullyQualifiedName(), reference);
-            }
-          } else {
-            List<UUID> ids = groupKeys.stream().map(UUID::fromString).toList();
-            for (EntityReference reference : entityDAO.findReferencesByIds(ids, Include.ALL)) {
-              result.put(reference.getId().toString(), reference);
-            }
-          }
-        });
+        (groupType, groupKeys) -> result.putAll(findReferences(groupType, groupKeys)));
     return result;
   }
 

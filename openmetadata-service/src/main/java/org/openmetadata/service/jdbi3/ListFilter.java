@@ -94,6 +94,8 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getTestDefinitionCondition());
     conditions.add(getTestCaseOwnerCondition());
+    conditions.add(getTestCaseUnownedCondition());
+    conditions.add(getIncidentListDateRangeCondition());
     conditions.add(getIncidentAssigneeCondition());
     conditions.add(getIncidentDomainCondition());
     conditions.add(getIncidentDateRangeCondition());
@@ -670,6 +672,36 @@ public class ListFilter extends Filter<ListFilter> {
     return result;
   }
 
+  // Scopes the test_case_resolution_status_time_series listing to the test cases with no direct
+  // user or team owner, which is what the owner dimension's "No Owner" incident group holds;
+  // testCaseUnowned is only set by TestCaseResolutionStatusResource#list.
+  private String getTestCaseUnownedCondition() {
+    String result = "";
+    if (Boolean.parseBoolean(queryParams.get("testCaseUnowned"))) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT uotc.fqnHash FROM test_case uotc WHERE NOT EXISTS ("
+                  + "SELECT 1 FROM entity_relationship uoer WHERE uoer.toId = uotc.id "
+                  + "AND uoer.fromEntity IN ('%s', '%s') AND uoer.toEntity = '%s' "
+                  + "AND uoer.relation = %d))",
+              Entity.USER, Entity.TEAM, Entity.TEST_CASE, Relationship.OWNS.ordinal());
+    }
+    return result;
+  }
+
+  // The flat listing's take on getIncidentDateRangeCondition: the range applies to the incident a
+  // record belongs to, so a drill-down from a group lists the incidents that group counted.
+  private String getIncidentListDateRangeCondition() {
+    String column = "tli." + getIncidentDateColumn(queryParams.get("incidentListDateField"));
+    String clauses =
+        getIncidentDateClauses(
+            column, queryParams.get("incidentListStartTs"), queryParams.get("incidentListEndTs"));
+    return clauses.isEmpty()
+        ? ""
+        : String.format(
+            "stateId IN (SELECT tli.stateId FROM test_case_incident tli WHERE %s)", clauses);
+  }
+
   // The incident grouping query (TestCaseResolutionStatusRepository#listIncidentGroups) reduces
   // test_case_resolution_status_time_series records to one latest row per stateId in a CTE
   // aliased {@code i} (createdAt/updatedAt are the chain's first/last record timestamps) and
@@ -696,17 +728,19 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getIncidentDateRangeCondition() {
-    String start = queryParams.get("incidentStartTs");
-    String end = queryParams.get("incidentEndTs");
+    return getIncidentDateClauses(
+        "i." + getIncidentDateColumn(queryParams.get("incidentDateField")),
+        queryParams.get("incidentStartTs"),
+        queryParams.get("incidentEndTs"));
+  }
+
+  private static String getIncidentDateClauses(String column, String start, String end) {
     List<String> clauses = new ArrayList<>();
-    if (!nullOrEmpty(start) || !nullOrEmpty(end)) {
-      String column = getIncidentDateColumn(queryParams.get("incidentDateField"));
-      if (!nullOrEmpty(start)) {
-        clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
-      }
-      if (!nullOrEmpty(end)) {
-        clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
-      }
+    if (!nullOrEmpty(start)) {
+      clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+    }
+    if (!nullOrEmpty(end)) {
+      clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
     }
     return String.join(" AND ", clauses);
   }
@@ -717,8 +751,8 @@ public class ListFilter extends Filter<ListFilter> {
             ? TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT
             : dateField;
     return switch (defaulted) {
-      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT -> "i.createdAt";
-      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT -> "i.updatedAt";
+      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT -> "createdAt";
+      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT -> "updatedAt";
       default -> throw new IllegalArgumentException(
           String.format(
               "Invalid dateField '%s'. Must be one of [%s, %s]",

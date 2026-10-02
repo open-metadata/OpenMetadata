@@ -115,6 +115,28 @@
     "trendDirection": {
       "description": "Direction of the incident-creation trend for the group.",
       "$ref": "#/definitions/incidentTrendDirection"
+    },
+    "tableCount": {
+      "description": "Number of distinct tables the group's open incidents were raised on.",
+      "type": "integer"
+    },
+    "tables": {
+      "description": "Tables the group's open incidents were raised on, the one with the most open incidents first. Capped at a handful; `tableCount` holds the full count.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/entityReference.json"
+      }
+    },
+    "testDefinitionCount": {
+      "description": "Number of distinct test definitions across the group's open incidents.",
+      "type": "integer"
+    },
+    "testDefinitions": {
+      "description": "Test definitions of the group's open incidents, the one with the most open incidents first. Capped at a handful; `testDefinitionCount` holds the full count.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/entityReference.json"
+      }
     }
   },
   "required": ["groupBy", "name", "incidentCount"],
