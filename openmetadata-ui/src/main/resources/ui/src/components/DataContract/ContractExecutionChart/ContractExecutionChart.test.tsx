@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { BarChartProps } from '@openmetadata/ui-core-components/charts';
+import { BarChart } from '@openmetadata/ui-core-components/charts';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -19,8 +21,6 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { BarChart } from '@openmetadata/ui-core-components/charts';
-import type { BarChartProps } from '@openmetadata/ui-core-components/charts';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
@@ -28,8 +28,8 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import { getAllContractResults } from '../../../rest/contractAPI';
 import { processContractExecutionData } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { DataContractProcessedResultCharts } from './ContractExecutionChart.interface';
 import ContractExecutionChart from './ContractExecutionChart.component';
+import { DataContractProcessedResultCharts } from './ContractExecutionChart.interface';
 
 type Row = DataContractProcessedResultCharts;
 

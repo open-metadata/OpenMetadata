@@ -10,21 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
-import { isEqual, pick, sortBy } from 'lodash';
-import { DateRangeObject } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   BarChart,
+  chartColor,
   ChartSeries,
   ChartStatus,
   ChartTooltipRenderProps,
   ChartXAxisProps,
   ChartYAxisProps,
-  chartColor,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
+import { AxiosError } from 'axios';
+import { isEqual, pick, sortBy } from 'lodash';
+import { DateRangeObject } from 'Models';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import {
   CONTRACT_EXECUTION_CHART_HEIGHT,
