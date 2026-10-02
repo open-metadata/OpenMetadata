@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { User } from '../../../../generated/entity/teams/user';
 import { AuthProvider } from '../../../../generated/settings/settings';
@@ -81,14 +81,16 @@ jest.mock('./components/InlineEditCard', () => ({
     renderEdit,
     onEnterEdit,
     onSave,
+    testId,
   }: {
     canEdit: boolean;
     view: ReactNode;
     renderEdit: () => ReactNode;
     onEnterEdit: () => void;
     onSave: () => Promise<void>;
+    testId?: string;
   }) => (
-    <div data-testid="inline-edit-card">
+    <div data-testid={testId}>
       {view}
       {canEdit && (
         <>
@@ -140,7 +142,9 @@ describe('ProfileDetailsPanel', () => {
     expect(screen.getByTestId('profile-picture')).toHaveTextContent(
       'harsh vador'
     );
-    expect(screen.getByText('Harsh Vador')).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('preferred-name')).getByText('harsh vador')
+    ).toBeInTheDocument();
     expect(screen.getByText('harsh@example.com')).toBeInTheDocument();
     expect(screen.getByText('label.success')).toBeInTheDocument();
     expect(screen.getByTestId('profile-section-security')).toBeInTheDocument();
@@ -208,5 +212,48 @@ describe('ProfileDetailsPanel', () => {
     expect(screen.getAllByTestId('row-skeleton')).toHaveLength(3);
     expect(screen.queryByTestId('persona-row')).not.toBeInTheDocument();
     expect(screen.queryByTestId('domains-row')).not.toBeInTheDocument();
+  });
+
+  it.each(['José', 'Søren', 'Éowyn', 'François', 'Müller', 'Renée'])(
+    'renders the displayName "%s" verbatim, preserving its diacritics',
+    (name) => {
+      renderPanel({ displayName: name });
+
+      const nameRow = screen.getByTestId('preferred-name');
+
+      expect(within(nameRow).getByText(name)).toBeInTheDocument();
+    }
+  );
+
+  it.each(['McDonald', "O'Brien", 'van der Berg', 'mary-jane'])(
+    'renders the displayName "%s" verbatim, without re-tokenizing or re-casing',
+    (name) => {
+      renderPanel({ displayName: name });
+
+      const nameRow = screen.getByTestId('preferred-name');
+
+      expect(within(nameRow).getByText(name)).toBeInTheDocument();
+    }
+  );
+
+  it('shows the same raw value in the read-only view and the edit input (no view/edit mismatch)', () => {
+    renderPanel({ displayName: 'Søren' });
+
+    const nameRow = screen.getByTestId('preferred-name');
+
+    expect(within(nameRow).getByText('Søren')).toBeInTheDocument();
+
+    const input = nameRow.querySelector('input') as HTMLInputElement;
+
+    expect(input.value).toBe('Søren');
+  });
+
+  it('still humanizes the username slug with startCase when no displayName is set', () => {
+    renderPanel({ displayName: undefined, name: 'john.doe' });
+
+    const nameRow = screen.getByTestId('preferred-name');
+
+    expect(within(nameRow).getByText('John Doe')).toBeInTheDocument();
+    expect(within(nameRow).queryByText('john.doe')).not.toBeInTheDocument();
   });
 });
