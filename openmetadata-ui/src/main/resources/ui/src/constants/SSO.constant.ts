@@ -131,11 +131,14 @@ export const COMMON_UI_FIELDS = {
   oidcClientAuthenticationMethod: {
     'ui:title': 'OIDC Client Authentication Method',
   },
-  oidcTokenValidity: { 'ui:title': 'OIDC Token Validity' },
+  oidcTokenValidity: { 'ui:title': 'OpenMetadata Access Token Validity' },
   oidcCustomParameters: { 'ui:title': 'OIDC Custom Parameters' },
   oidcMaxAge: { 'ui:title': 'OIDC Max Age' },
   oidcPrompt: { 'ui:title': 'OIDC Prompt' },
   oidcSessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
+  oidcEndSessionWithProvider: {
+    'ui:title': 'End Session With Identity Provider',
+  },
   // Common non-OIDC fields
   authority: {
     'ui:title': 'Authority',
@@ -406,6 +409,7 @@ export const OIDC_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   // Hide LDAP/SAML specific fields for OIDC
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -444,6 +448,7 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
@@ -480,6 +485,7 @@ export const AZURE_OAUTH_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
@@ -516,6 +522,7 @@ export const OKTA_OAUTH_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
@@ -544,7 +551,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
     clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
     tokenValidity: {
-      'ui:title': 'OIDC Token Validity',
+      'ui:title': 'OpenMetadata Access Token Validity',
       'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.tokenValidity}`,
     },
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
@@ -561,6 +568,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
       'ui:title': 'OIDC Session Expiry',
       'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.sessionExpiry}`,
     },
+    endSessionWithProvider: COMMON_UI_FIELDS.oidcEndSessionWithProvider,
   },
   authority: {
     'ui:title': 'Authority',
@@ -606,6 +614,21 @@ export const COMMON_FIELD_TITLES = {
   },
   enableSelfSignup: { 'ui:title': ENABLE_SELF_SIGNUP_TITLE },
   enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
+  emailClaim: {
+    'ui:title': 'Email Claim',
+    'ui:placeholder': 'e.g. email',
+    'ui:help':
+      "JWT/SAML/LDAP attribute containing the user's email. " +
+      'When configured, enables email-first identity resolution. ' +
+      'Replaces jwtPrincipalClaims for simpler configuration.',
+  },
+  displayNameClaim: {
+    'ui:title': 'Display Name Claim',
+    'ui:placeholder': 'e.g. name',
+    'ui:help':
+      "JWT/SAML/LDAP attribute containing the user's display name. " +
+      'Only used when Email Claim is configured.',
+  },
   clientType: {
     'ui:title': 'Client Type',
     'ui:widget': 'radio',
@@ -643,6 +666,24 @@ export const AUTHORIZER_FIELD_TITLES = {
     'ui:title': 'Allowed Email Registration Domains',
     'ui:placeholder':
       'Enter domain (e.g. example.com) and press ENTER. Use "all" to allow all domains.',
+  },
+  adminEmails: {
+    'ui:title': 'Admin Emails',
+    'ui:placeholder': 'Enter email (e.g. admin@company.com) and press ENTER',
+    'ui:help':
+      'Preferred over Admin Principals. Uses full email addresses for admin designation.',
+  },
+  allowedEmailDomains: {
+    'ui:title': 'Allowed Email Domains',
+    'ui:placeholder': 'Enter domain (e.g. company.com) and press ENTER',
+    'ui:help':
+      'Restrict authentication to users from these email domains. If empty, all domains are allowed.',
+  },
+  botDomain: {
+    'ui:title': 'Bot Domain',
+    'ui:placeholder': 'e.g. openmetadata.org',
+    'ui:help':
+      'Email domain for system-created bots (e.g. ingestion-bot@{botDomain}).',
   },
 };
 
@@ -834,6 +875,7 @@ export interface AuthenticationConfiguration {
   enableSelfSignup: boolean;
   enableAutoRedirect?: boolean;
   clientType?: ClientType;
+  responseType?: string;
   secret?: string;
   ldapConfiguration?: Record<string, unknown>;
   samlConfiguration?: Record<string, unknown>;

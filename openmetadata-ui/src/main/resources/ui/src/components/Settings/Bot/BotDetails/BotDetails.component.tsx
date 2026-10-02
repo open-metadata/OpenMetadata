@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Tag, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Input, Row, Tag, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -25,6 +26,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Role } from '../../../../generated/entity/teams/role';
 import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Description from '../../../common/EntityDescription/Description';
@@ -56,15 +58,19 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const { t } = useTranslation();
 
-  const { editAllPermission, displayNamePermission, descriptionPermission } =
-    useMemo(
-      () => ({
-        editAllPermission: botPermission.EditAll,
-        displayNamePermission: botPermission.EditDisplayName,
-        descriptionPermission: botPermission.EditDescription,
-      }),
-      [botPermission]
-    );
+  // Consumer via the `botPermission: OperationPermission` prop (raw contract kept per Task 8
+  // rule 2). No `deleted` argument — bots aren't soft-deletable through this page and the old
+  // expressions never referenced a deleted concept. Both call sites below OR'd a raw
+  // field-specific flag with the raw `botPermission.EditAll` (displayNamePermission ||
+  // editAllPermission, descriptionPermission || editAllPermission) — each now reads
+  // canEditDisplayName/canEditDescription directly (explicit-deny-wins fix, Task 6 Finding 1);
+  // the prioritized flag already folds in the EditAll fallback, so the separate EditAll term
+  // isn't lost, just no longer spelled out raw. The old `editAllPermission` (bare EditAll-only)
+  // local is now unused and dropped (Task 7/8 dead-code precedent).
+  const { canEditDisplayName, canEditDescription } = useMemo(
+    () => getDerivedPermissionFlags(botPermission),
+    [botPermission]
+  );
 
   const initLimits = async () => {
     if (!config?.enable) {
@@ -124,8 +130,6 @@ const BotDetails: FC<BotsDetailProps> = ({
   };
 
   const fetchLeftPanel = () => {
-    const canEditDisplayName = displayNamePermission || editAllPermission;
-
     return (
       <Row gutter={[0, 20]}>
         <Col span={24}>
@@ -168,15 +172,20 @@ const BotDetails: FC<BotsDetailProps> = ({
                   ) : (
                     <>
                       {displayName ? (
-                        <Typography.Title ellipsis className="m-0" level={5}>
+                        <Typography
+                          ellipsis
+                          as="h5"
+                          className="m-0"
+                          size="text-md"
+                          weight="semibold">
                           {displayName}
-                        </Typography.Title>
+                        </Typography>
                       ) : (
-                        <Typography.Text className="text-grey-muted">
+                        <Typography color="secondary">
                           {t('label.add-entity', {
                             entity: t('label.display-name'),
                           })}
-                        </Typography.Text>
+                        </Typography>
                       )}
                       {canEditDisplayName && (
                         <div>
@@ -208,7 +217,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                   description={botData.description}
                   entityName={getEntityName(botData)}
                   entityType={EntityType.BOT}
-                  hasEditAccess={descriptionPermission || editAllPermission}
+                  hasEditAccess={canEditDescription}
                   showCommentsIcon={false}
                   onDescriptionUpdate={handleDescriptionChange}
                 />
@@ -275,12 +284,12 @@ const BotDetails: FC<BotsDetailProps> = ({
       rightPanel={
         <Card className="h-full m-b-box" data-testid="right-panel">
           <div className="d-flex flex-col">
-            <Typography.Text className="mb-2 text-lg">
+            <Typography className="mb-2 text-lg">
               {t('label.token-security')}
-            </Typography.Text>
-            <Typography.Text className="mb-2">
+            </Typography>
+            <Typography className="mb-2">
               {t('message.token-security-description')}
-            </Typography.Text>
+            </Typography>
           </div>
         </Card>
       }

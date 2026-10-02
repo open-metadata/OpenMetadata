@@ -3,7 +3,20 @@
 -- UNIQUE (id, usageDate), which is unusable for that predicate, so every run full-scans
 -- the table once per subquery. A composite (entityType, usageDate) index turns the
 -- percentile subqueries into range scans.
-CREATE INDEX idx_entity_usage_entitytype_usagedate ON entity_usage (entityType, usageDate);
+SET @entity_usage_percentile_index_ddl = (
+  SELECT IF(
+    COUNT(*) = 0,
+    'CREATE INDEX idx_entity_usage_entitytype_usagedate ON entity_usage (entityType, usageDate)',
+    'SELECT 1'
+  )
+  FROM information_schema.statistics
+  WHERE table_schema = DATABASE()
+    AND table_name = 'entity_usage'
+    AND index_name = 'idx_entity_usage_entitytype_usagedate'
+);
+PREPARE entity_usage_percentile_index_stmt FROM @entity_usage_percentile_index_ddl;
+EXECUTE entity_usage_percentile_index_stmt;
+DEALLOCATE PREPARE entity_usage_percentile_index_stmt;
 -- Incident Manager grouped incidents - OpenMetadata 2.1.0
 
 -- Index the stateId partition used by the incident grouping endpoint (/testCaseIncidentStatus/incidentGroups)
@@ -22,13 +35,6 @@ ALTER TABLE test_case ADD INDEX idx_test_case_id (id);
 -- The incident list's assignee filter compares the generated assignee column, which had no
 -- index and full-scanned the timeline at scale.
 ALTER TABLE test_case_resolution_status_time_series ADD INDEX idx_test_case_resolution_status_assignee (assignee, timestamp);
-
--- Column extension keys hash every FQN segment separately and join the hashes with dots.
--- A fourth-level nested table column has eight segments and needs 263 characters.
--- VARCHAR(512) supports eleven column levels after the four-part table FQN while keeping
--- extension usable in the composite primary key; MySQL cannot fully index a TEXT value.
-ALTER TABLE entity_extension
-  MODIFY COLUMN extension VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
 
 -- Incident summary table: one row per incident (stateId chain), maintained at write time so
 -- state-shaped reads (incidentGroups) are O(open incidents) instead of folding full history.
@@ -49,6 +55,26 @@ CREATE TABLE IF NOT EXISTS test_case_incident (
     INDEX idx_tci_updated (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Metric hierarchy is stored as CONTAINS rows in entity_relationship. Metric Group
+-- membership is stored as HAS relationships so deleting a group leaves metrics intact.
+CREATE TABLE IF NOT EXISTS metric_group_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.id'))) STORED NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedAt'))) VIRTUAL NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedBy'))) VIRTUAL NOT NULL,
+    deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(`json`, '$.deleted')) VIRTUAL,
+    fqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.name'))) VIRTUAL NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY metric_group_entity_fqn_hash (fqnHash),
+    KEY metric_group_entity_name_index (name),
+    KEY idx_metric_group_entity_deleted_name_id (deleted, name, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- A Metric can belong to only one Metric Group. The generated key is NULL for every other
+-- relationship shape, so the unique index constrains only metricGroup --HAS--> metric rows.
+-- Guard both operations because MySQL 8.0 versions do not consistently support IF NOT EXISTS
+-- for ADD COLUMN and ADD INDEX.
 -- Ontology Studio: governed relationship types, OWL annex, drafts, and edit locks.
 CREATE TABLE IF NOT EXISTS relationship_type_entity (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
@@ -247,6 +273,43 @@ PREPARE drop_conversation_activity_timestamp_stmt
   FROM @drop_conversation_activity_timestamp_ddl;
 EXECUTE drop_conversation_activity_timestamp_stmt;
 DEALLOCATE PREPARE drop_conversation_activity_timestamp_stmt;
+
+-- Only active Metric Group HAS edges participate in the single-membership constraint so a
+-- soft-deleted membership does not block reassignment.
+SET @metric_group_membership_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'entity_relationship'
+        AND column_name = 'metricGroupMetricId'
+    ),
+    'SELECT 1',
+    'ALTER TABLE entity_relationship ADD COLUMN metricGroupMetricId VARCHAR(36) GENERATED ALWAYS AS (CASE WHEN fromEntity = ''metricGroup'' AND toEntity = ''metric'' AND relation = 10 AND deleted = FALSE THEN toId ELSE NULL END) STORED'
+  )
+);
+PREPARE metric_group_membership_column_stmt FROM @metric_group_membership_column_ddl;
+EXECUTE metric_group_membership_column_stmt;
+DEALLOCATE PREPARE metric_group_membership_column_stmt;
+
+SET @metric_group_membership_index_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'entity_relationship'
+        AND index_name = 'uq_metric_group_single_membership'
+    ),
+    'SELECT 1',
+    'ALTER TABLE entity_relationship ADD UNIQUE INDEX uq_metric_group_single_membership (metricGroupMetricId)'
+  )
+);
+PREPARE metric_group_membership_index_stmt FROM @metric_group_membership_index_ddl;
+EXECUTE metric_group_membership_index_stmt;
+DEALLOCATE PREPARE metric_group_membership_index_stmt;
+
 -- Pipeline-backed lineage is the only relationship lookup whose selective identifier lives in JSON.
 -- Pairing it with relation serves every pipeline lineage path without widening the generic table schema.
 CREATE INDEX idx_entity_relationship_pipeline_relation
@@ -261,9 +324,217 @@ SET json = JSON_SET(json, '$.connection.config.scheme', 'oracle+oracledb')
 WHERE serviceType = 'Oracle'
   AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'oracle+cx_oracle';
 
+-- Data quality dimensions become first class entities (issue #30362): test definitions and test
+-- cases point at them by relationship so that a dimension can be renamed, recoloured or added
+-- without touching the tests that use it. System dimensions are seeded from
+-- json/data/dataQualityDimension on startup.
+-- An earlier revision of this (unreleased) migration declared `id` as a plain column. Because
+-- EntityDAO.insert only writes fqnHash and json, MySQL rejected every insert with "Field 'id'
+-- doesn't have a default value". The table is dropped unconditionally rather than patched: it is
+-- new in this unreleased version, so any existing copy is either empty (the broken shape could not
+-- be inserted into) or holds nothing but the system dimensions, which are re-seeded from
+-- json/data/dataQualityDimension on the next startup.
+DROP TABLE IF EXISTS data_quality_dimension;
+CREATE TABLE data_quality_dimension (
+    -- EntityDAO.insert only writes fqnHash and json, so every other column has to be derived
+    -- from the json document, id included.
+    id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+    json json NOT NULL,
+    fqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+    provider varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.provider'))) STORED,
+    updatedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+    deleted tinyint(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_data_quality_dimension_fqn_hash (fqnHash),
+    KEY idx_data_quality_dimension_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   name varchar(64) NOT NULL,
   json json NOT NULL,
   updatedAt bigint unsigned NOT NULL,
   PRIMARY KEY (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Restore the audit log full-text index where it is missing.
+-- 1.12.1 created it, but the ALTER TABLE that precedes it in that script has no IF NOT EXISTS, so
+-- on any deployment where search_text already existed the script aborted before reaching the index
+-- and every `q=` audit search has been a full table scan since.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_log_event'
+        AND index_name = 'idx_audit_log_search_text'
+    ),
+    'SELECT 1',
+    'CREATE FULLTEXT INDEX idx_audit_log_search_text ON audit_log_event (search_text)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- event_type and entity_type are filterable on their own and pair with the event_ts ordering every
+-- list query uses; without them a filtered page scans every row in the time window.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_log_event'
+        AND index_name = 'idx_audit_log_event_type_ts'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_audit_log_event_type_ts ON audit_log_event (event_type, event_ts DESC)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_log_event'
+        AND index_name = 'idx_audit_log_entity_type_ts'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_audit_log_entity_type_ts ON audit_log_event (entity_type, event_ts DESC)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Index automations_workflow.updatedAt for the DataRetention app's workflow cleanup, which
+-- selects the oldest expired rows with `WHERE updatedAt < ? ORDER BY updatedAt LIMIT ?` once per
+-- batch. Without it that is a full scan plus a top-k sort of a table that grows unbounded with
+-- test connection, query runner and reverse ingestion runs. MySQL has no
+-- `CREATE INDEX IF NOT EXISTS`, so guard via information_schema.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'automations_workflow'
+        AND index_name = 'idx_automations_workflow_updated_at'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_automations_workflow_updated_at ON automations_workflow (updatedAt)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- audit_log_event.entity_fqn stores the raw FQN. For lineage events that FQN is two
+-- entity FQNs joined by the relationship marker, so ordinary deeply-nested entities
+-- push it past 768 characters; the insert then fails and AuditLogRepository drops the
+-- row with only a WARN, losing audit history silently. Nothing indexes entity_fqn --
+-- lookups go through entity_fqn_hash (idx_audit_log_event_entity_hash_ts), an
+-- MD5-per-segment digest that stays far inside its own bound -- so the column has no
+-- reason to be length-capped.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_log_event'
+        AND column_name = 'entity_fqn'
+        AND data_type = 'text'
+    ),
+    'SELECT 1',
+    'ALTER TABLE audit_log_event MODIFY COLUMN entity_fqn TEXT NULL'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Announcement type: stored generated column so the list API can filter by type. Rows written
+-- before the field existed have no $.type and read back as the Information default.
+SET @announcement_type_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND column_name = 'type'
+    ),
+    'SELECT 1',
+    'ALTER TABLE announcement_entity ADD COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Information'')) STORED'
+  )
+);
+PREPARE announcement_type_column_stmt FROM @announcement_type_column_ddl;
+EXECUTE announcement_type_column_stmt;
+DEALLOCATE PREPARE announcement_type_column_stmt;
+
+SET @announcement_type_index_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND index_name = 'idx_announcement_type'
+    ),
+    'SELECT 1',
+    'ALTER TABLE announcement_entity ADD INDEX idx_announcement_type (type)'
+  )
+);
+PREPARE announcement_type_index_stmt FROM @announcement_type_index_ddl;
+EXECUTE announcement_type_index_stmt;
+DEALLOCATE PREPARE announcement_type_index_stmt;
+
+-- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
+-- that already exists, so existing installs get the rule here. The rule is only added while an allow
+-- rule of the policy still lists ViewAll, since the grant is acceptable only where Data Consumers can
+-- already view everything. Deny rules in other policies are not visible to this statement.
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule',
+        'description', 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.',
+        'resources', JSON_ARRAY('all'),
+        'operations', JSON_ARRAY('ExecuteSparqlQuery'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'), '$.rules')
+  AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('ViewAll')), '$.rules');
+
+-- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
+-- the result polls, the credentials) that can reach different servers, so its state lives here
+-- rather than in one server's memory. pending_state holds the candidate configuration with its
+-- secrets, Fernet-encrypted, and is cleared when the test completes; rows expire minutes later.
+CREATE TABLE IF NOT EXISTS sso_test_login_session (
+    test_session_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    admin_principal VARCHAR(256) NOT NULL,
+    protocol VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    pending_state MEDIUMTEXT,
+    result MEDIUMTEXT,
+    credentials_submitted_at BIGINT,
+    expires_at BIGINT NOT NULL,
+    PRIMARY KEY (test_session_id),
+    INDEX idx_sso_test_login_session_admin (admin_principal, credentials_submitted_at),
+    INDEX idx_sso_test_login_session_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Flowable schema upgrades run after this migration and inherit the database default. Existing
+-- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

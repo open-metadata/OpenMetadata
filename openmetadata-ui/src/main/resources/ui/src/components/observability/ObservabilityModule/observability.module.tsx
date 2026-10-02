@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { ReactComponent as AlertsActiveIcon } from '../../../assets/svg/alerts-active.svg';
@@ -26,7 +26,7 @@ import { ReactComponent as PipelineActiveIcon } from '../../../assets/svg/pipeli
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-default.svg';
 import { ReactComponent as TestLibraryActiveIcon } from '../../../assets/svg/test-library-active.svg';
 import { ReactComponent as TestLibraryIcon } from '../../../assets/svg/test-library-default.svg';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { AppModule, Intent } from '../../platform/ai-shell/AppModule.types';

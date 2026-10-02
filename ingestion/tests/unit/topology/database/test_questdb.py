@@ -214,6 +214,19 @@ def test_get_columns_falls_back_to_nulltype_for_unknown_type():
     assert type(columns[0]["type"]).__name__ == "NullType"
 
 
+def test_get_columns_binds_catalog_table_name():
+    connection = MagicMock()
+    connection.execute.return_value = []
+    table_name = "orders'); DROP TABLE secret; --"
+
+    _get_columns(connection, table_name)
+
+    statement, parameters = connection.execute.call_args.args
+    assert str(statement) == "SELECT * FROM table_columns(:table_name)"
+    assert table_name not in str(statement)
+    assert parameters == {"table_name": table_name}
+
+
 # ── utils: query_tables ──────────────────────────────────────────────────────
 
 

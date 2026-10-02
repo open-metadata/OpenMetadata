@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/tests/testCaseIncidentGroup.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TestCaseIncidentGroup",
   "description": "Aggregated count of open test case incidents for a given grouping dimension.",
   "javaType": "org.openmetadata.schema.tests.type.TestCaseIncidentGroup",
@@ -16,6 +16,23 @@
         {"name": "TestDefinition"},
         {"name": "Owner"}
       ]
+    },
+    "incidentStatusCount": {
+      "description": "Number of the group's open incidents currently sitting in one status.",
+      "javaType": "org.openmetadata.schema.tests.type.IncidentStatusCount",
+      "type": "object",
+      "properties": {
+        "status": {
+          "description": "Current status the incidents are in.",
+          "$ref": "./testCaseResolutionStatus.json#/definitions/testCaseResolutionStatusTypes"
+        },
+        "count": {
+          "description": "Number of the group's open incidents in that status.",
+          "type": "integer"
+        }
+      },
+      "required": ["status", "count"],
+      "additionalProperties": false
     },
     "incidentTrendDirection": {
       "description": "Direction of the group's incident-creation trend, comparing the second half of the `trend` buckets against the first half.",
@@ -61,6 +78,13 @@
     "status": {
       "description": "Most actionable current status across the group's open incidents, in the order Assigned > Ack > New.",
       "$ref": "./testCaseResolutionStatus.json#/definitions/testCaseResolutionStatusTypes"
+    },
+    "statusCounts": {
+      "description": "Number of the group's open incidents in each current status, most actionable first. A status no incident sits in is left out, and `Resolved` never appears — a resolved incident leaves the group.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/incidentStatusCount"
+      }
     },
     "assignees": {
       "description": "Distinct names of the current assignees of the group's open incidents.",

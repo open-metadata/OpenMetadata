@@ -15,8 +15,8 @@ import { OperationPermission } from '../../../../context/PermissionProvider/Perm
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { EntityReference } from '../../../../generated/entity/type';
+import { QueryVote } from '../../../../interface/entity/vote.interface';
 import { DataAssetWithDomains } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../../Database/TableQueries/TableQueries.interface';
 
 export interface DataModelDetailsProps {
   updateDataModelDetailsState?: (data: DataAssetWithDomains) => void;

@@ -28,6 +28,14 @@ import org.junit.jupiter.api.Test;
 class RdfGraphServiceTest {
 
   @Test
+  void graphRequestSupportsRootOnlyTraversal() {
+    final RdfGraphService.GraphRequest request =
+        RdfGraphService.GraphRequest.from(UUID.randomUUID(), "table", 0, null, null);
+
+    assertEquals(0, request.depth());
+  }
+
+  @Test
   void graphRequestNormalizesTypeDepthAndFilters() {
     RdfGraphService.GraphRequest request =
         RdfGraphService.GraphRequest.from(
@@ -83,8 +91,8 @@ class RdfGraphServiceTest {
             "https://metadata.example/api");
 
     assertTrue(query.contains("<https://metadata.example/api/entity/table/" + entityId + ">"));
-    assertTrue(query.contains("(prov:wasDerivedFrom|^om:UPSTREAM)+"));
-    assertTrue(query.contains("(om:UPSTREAM|^prov:wasDerivedFrom)+"));
+    assertTrue(query.contains("(om:upstream|^om:downstream|prov:wasDerivedFrom|^om:UPSTREAM)+"));
+    assertTrue(query.contains("(om:downstream|^om:upstream|^prov:wasDerivedFrom|om:UPSTREAM)+"));
   }
 
   @Test

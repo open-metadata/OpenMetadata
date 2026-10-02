@@ -443,19 +443,19 @@ describe('ContractExecutionChart', () => {
       await waitFor(() => {
         expect(screen.getByTestId('bar-success')).toHaveAttribute(
           'data-fill',
-          '#039855'
+          'var(--om-color-visualization-green-4)'
         );
         expect(screen.getByTestId('bar-failed')).toHaveAttribute(
           'data-fill',
-          '#f24822'
+          'var(--om-color-visualization-red-3)'
         );
         expect(screen.getByTestId('bar-aborted')).toHaveAttribute(
           'data-fill',
-          '#f79009'
+          'var(--om-color-warning-500)'
         );
         expect(screen.getByTestId('bar-running')).toHaveAttribute(
           'data-fill',
-          '#175cd3'
+          'var(--om-color-brand-700)'
         );
       });
     });

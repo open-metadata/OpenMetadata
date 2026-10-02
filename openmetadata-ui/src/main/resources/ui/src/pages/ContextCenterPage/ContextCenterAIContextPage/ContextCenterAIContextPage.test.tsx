@@ -62,6 +62,19 @@ const personas: Persona[] = [
   } as Persona,
 ];
 
+const disabledDefinitionPersonas: Persona[] = [
+  {
+    contextDefinition: {
+      enabled: false,
+      rules: [{ entityType: 'table', filteredInSearch: true, name: 'Finance' }],
+    },
+    description: 'Disabled persona',
+    fullyQualifiedName: 'Disabled',
+    id: '22222222-2222-4222-8222-222222222222',
+    name: 'Disabled',
+  } as Persona,
+];
+
 describe('ContextCenterAIContextPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -79,6 +92,24 @@ describe('ContextCenterAIContextPage', () => {
     expect(
       screen.getByText('label.entity-count-filtered-in-search')
     ).toBeVisible();
+  });
+
+  it('does not render the scoped-rule badge when the definition is disabled', async () => {
+    // The served scope is empty for a switched-off definition, so the badge would report search as
+    // narrowed by rules the backend never applies.
+    (getAllPersonas as jest.Mock).mockResolvedValue({
+      data: disabledDefinitionPersonas,
+    });
+
+    render(<ContextCenterAIContextPage />);
+
+    expect(
+      await screen.findByTestId('ai-context-persona-Disabled')
+    ).toBeInTheDocument();
+    expect(screen.getByText('label.entity-count-rule-plural')).toBeVisible();
+    expect(
+      screen.queryByText('label.entity-count-filtered-in-search')
+    ).not.toBeInTheDocument();
   });
 
   it('navigates to the persona AI context on click', async () => {

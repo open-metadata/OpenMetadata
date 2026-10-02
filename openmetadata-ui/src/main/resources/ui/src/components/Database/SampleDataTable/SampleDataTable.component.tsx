@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Select, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Select, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -40,12 +41,13 @@ import {
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import TableComponent from '../../common/Table/Table';
+import TableComponent from '../../common/Table/TableV2';
 import { RowData } from './RowData';
 import './sample-data-table.less';
 import {
@@ -91,12 +93,21 @@ const SampleDataTable: FC<SampleDataProps> = ({
     return owners?.some((owner) => owner.id === currentUser?.id);
   }, [owners, currentUser]);
 
+  // Consumer via the `permissions: OperationPermission` prop (raw contract kept per Task 8
+  // rule 2). No `deleted` argument: isTableDeleted is a separate prop gating a different
+  // concern (the fetch effect below) — the old `hasPermission` expression never referenced
+  // it. N-term raw OR containing a bare `EditAll` term (Task 8 Batch 2 KnowledgeCard
+  // precedent): naively dropping the EditAll term in favor of just canEditSampleData would
+  // regress the case where EditAll=true but EditSampleData is explicitly false (old code's
+  // bare `EditAll ||` wins unconditionally) — so canEditAll is kept as its own explicit
+  // OR-term alongside the prioritized canEditSampleData, restoring byte-for-byte equivalence.
+  const { canEditAll, canEditSampleData } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
   const hasPermission = useMemo(
-    () =>
-      permissions.EditAll ||
-      permissions.EditSampleData ||
-      isCurrentUserTableOwner,
-    [isCurrentUserTableOwner, permissions]
+    () => canEditAll || canEditSampleData || isCurrentUserTableOwner,
+    [canEditAll, canEditSampleData, isCurrentUserTableOwner]
   );
 
   const handleDeleteModal = useCallback(
@@ -139,11 +150,13 @@ const SampleDataTable: FC<SampleDataProps> = ({
         name: column,
         title: (
           <div className="d-flex flex-column">
-            <Typography.Text> {column}</Typography.Text>
+            <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
-              <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
+              <Typography
+                className="text-xs font-normal"
+                color="secondary">{`(${lowerCase(
                 matchedColumn?.dataType ?? ''
-              )})`}</Typography.Text>
+              )})`}</Typography>
             )}
           </div>
         ),
@@ -282,7 +295,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
       <ErrorPlaceHolder className="error-placeholder">
-        <Typography.Paragraph>
+        <Typography as="p" className="tw:mb-3.5!">
           <Transi18next
             i18nKey="message.view-sample-data-entity"
             renderElement={
@@ -298,7 +311,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
               entity: t('label.auto-classification'),
             }}
           />
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }
@@ -312,9 +325,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       id="sampleDataDetails">
       <Space className="m-y-xss justify-between w-full">
         <Space>
-          <Typography.Text className="text-grey-muted">
-            {t('label.row-limit')}:
-          </Typography.Text>
+          <Typography color="secondary">{t('label.row-limit')}:</Typography>
           <Select
             className="w-28"
             data-testid="row-limit-select"
@@ -360,7 +371,13 @@ const SampleDataTable: FC<SampleDataProps> = ({
         dataSource={slicedRows}
         pagination={false}
         rowKey={ROW_KEY}
-        scroll={{ y: 'calc(100vh - 160px)' }}
+        // Each column is a fixed 250px; give the table an explicit horizontal
+        // extent so TableV2 keeps those widths and lets the wrapper scroll,
+        // instead of collapsing every column into a share of the viewport.
+        scroll={{
+          x: (sampleData?.columns?.length ?? 0) * 250,
+          y: 'calc(100vh - 160px)',
+        }}
         size="small"
       />
 

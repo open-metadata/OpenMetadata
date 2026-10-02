@@ -20,9 +20,7 @@ export const INBOX_OPEN_TASK_COUNT_QUERY_KEY = [
   'inbox-open-task-count',
 ] as const;
 
-export const INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY = [
-  'inbox-unread-activity-count',
-] as const;
+export { INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY } from '../../../constants/Inbox.constants';
 
 /**
  * Evaluated `feed` resource permission for the current user (Inbox comment

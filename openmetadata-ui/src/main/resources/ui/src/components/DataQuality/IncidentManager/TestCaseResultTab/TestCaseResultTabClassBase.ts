@@ -28,6 +28,20 @@ class TestCaseResultTabClassBase {
   public getAlertBanner(): React.FC | null {
     return null;
   }
+
+  /**
+   * Whether the tab renders the shared `TestSummary` chart for this test case.
+   *
+   * A downstream build can plot a test type the shared chart reads wrongly — a
+   * freshness result stores signed slack rather than a delay, so the shared
+   * chart draws it as a descending line into negative durations. Returning
+   * `false` here unmounts that chart so a replacement supplied through
+   * {@link getAdditionalComponents} stands in its place, rather than sitting
+   * beside it and paying for the same `getListTestCaseResults` twice.
+   */
+  public shouldRenderDefaultGraph(_testCaseData?: TestCase): boolean {
+    return true;
+  }
 }
 
 const testCaseResultTabClassBase = new TestCaseResultTabClassBase();

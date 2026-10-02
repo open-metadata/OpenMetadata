@@ -43,7 +43,7 @@ import {
   Passport,
   Plus,
   Rss01,
-  SearchLg,
+  Search,
   Server05,
   Shield01,
   ShoppingBag01,
@@ -54,7 +54,7 @@ import {
   UserEdit,
   Users01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { IconDefinition } from './IconPicker.interface';
 
 export const DEFAULT_ICON_NAME = 'Cube01';
@@ -66,6 +66,11 @@ export const DEFAULT_DOMAIN_ICON: IconDefinition = {
 export const DEFAULT_DATA_PRODUCT_ICON: IconDefinition = {
   name: 'Cube01',
   component: Cube01,
+  category: 'default',
+};
+export const DEFAULT_GLOSSARY_TERM_ICON: IconDefinition = {
+  name: 'File01',
+  component: File01,
   category: 'default',
 };
 export const DEFAULT_TAG_ICON: IconDefinition = {
@@ -81,7 +86,7 @@ export const AVAILABLE_ICONS: IconDefinition[] = [
   { name: 'Globe01', component: Globe01, category: 'icons' },
   { name: 'Users01', component: Users01, category: 'icons' },
   { name: 'Tag01', component: Tag01, category: 'icons' },
-  { name: 'SearchLg', component: SearchLg, category: 'icons' },
+  { name: 'Search', component: Search, category: 'icons' },
   { name: 'Grid01', component: Grid01, category: 'icons' },
   { name: 'Menu01', component: Menu01, category: 'icons' },
   { name: 'Plus', component: Plus, category: 'icons' },

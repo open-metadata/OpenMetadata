@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -38,13 +39,13 @@ import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  stringToHTML,
-} from '../../../../utils/StringUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -52,8 +53,8 @@ import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterT
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';
@@ -283,11 +284,11 @@ const BotListV1 = ({
 
           return (
             <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
-              <Typography.Text
-                className="text-ellipsis bot-link"
+              <Typography
+                className="text-ellipsis bot-link tw:text-primary"
                 ellipsis={{ tooltip: true }}>
-                {stringToHTML(highlightSearchText(name, searchTerm))}
-              </Typography.Text>
+                {renderHighlightedText(highlightSearchText(name, searchTerm))}
+              </Typography>
             </Link>
           );
         },

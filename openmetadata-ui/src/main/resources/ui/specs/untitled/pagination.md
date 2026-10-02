@@ -38,6 +38,7 @@ Parts: **`Pagination.Root`** (nav + top border), **`Pagination.PrevTrigger`** /
 | Part | `tw:` utility |
 | --- | --- |
 | Root divider | `tw:border-t tw:border-secondary` `tw:pt-4` |
+| Card root | `tw:bg-surface tw:border-subtle tw:shadow-card` |
 | Page item | `tw:size-10` `tw:p-3` `tw:text-sm tw:font-medium tw:text-quaternary` |
 | Item radius | `tw:rounded-lg` (`tw:rounded-full` when `rounded`) |
 | Hover / current | `tw:hover:bg-primary_hover tw:hover:text-secondary` |

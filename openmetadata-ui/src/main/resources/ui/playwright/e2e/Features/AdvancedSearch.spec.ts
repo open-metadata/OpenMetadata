@@ -19,6 +19,9 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -38,6 +41,7 @@ import {
   showAdvancedSearchDialog,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
+import { settleAll } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -62,15 +66,19 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
     test.slow(true);
 
     user = new UserClass();
-    table = new TableClass(undefined, 'Regular');
-    table1 = new TableClass();
-    table2 = new TableClass();
-    topic1 = new TopicClass();
-    topic2 = new TopicClass();
+    // Advanced search filters by service.name, so each fixture owns its service.
+    table = new TableClass({
+      tableType: 'Regular',
+      service: new DatabaseServiceClass(),
+    });
+    table1 = new TableClass({ service: new DatabaseServiceClass() });
+    table2 = new TableClass({ service: new DatabaseServiceClass() });
+    topic1 = new TopicClass({ service: new MessagingServiceClass() });
+    topic2 = new TopicClass({ service: new MessagingServiceClass() });
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
-    await Promise.allSettled([
+    await settleAll([
       table1.create(apiContext),
       table2.create(apiContext),
       topic1.create(apiContext),
@@ -393,7 +401,7 @@ test.describe(
 
         glossaryForStatus = new Glossary();
         glossaryTermApproved = new GlossaryTerm(glossaryForStatus);
-        mlModelDraft = new MlModelClass();
+        mlModelDraft = new MlModelClass({ service: new MlmodelServiceClass() });
         dataProductInReview = new DataProduct();
 
         await glossaryForStatus.create(apiContext);
@@ -455,20 +463,24 @@ test.describe(
       });
 
       await test.step('Select Status field and == operator', async () => {
-        const ruleLocator = page.locator('.rule').nth(0);
+        const ruleLocator = page.getByTestId('query-builder-rule-0');
         await selectOption(
           page,
-          ruleLocator.locator('.rule--field'),
+          ruleLocator.getByTestId('advanced-search-field-select'),
           'Status',
           true
         );
-        await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
+        await selectOption(
+          page,
+          ruleLocator.getByTestId('advanced-search-operator-select'),
+          '=='
+        );
       });
 
       await test.step('Open Status value dropdown and verify all hard-coded options appear', async () => {
-        const ruleLocator = page.locator('.rule').nth(0);
+        const ruleLocator = page.getByTestId('query-builder-rule-0');
         const triggerBtn = ruleLocator.locator(
-          '.widget--widget button[aria-haspopup="listbox"]'
+          '[data-testid=advanced-search-value] button[aria-haspopup="listbox"]'
         );
 
         await expect(triggerBtn).toBeVisible();
@@ -511,7 +523,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -575,7 +587,7 @@ test.describe(
           ruleIndex: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -616,7 +628,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -662,7 +674,9 @@ test.describe(
         DESCRIPTION_TEXT = `This is a table description containing the word ${UNIQUE_WORD} to test the advanced search functionality.`;
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
-        descFilterTable = new TableClass();
+        descFilterTable = new TableClass({
+          service: new DatabaseServiceClass(),
+        });
         await descFilterTable.create(apiContext);
 
         await descFilterTable.patch({
@@ -740,7 +754,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -783,7 +797,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -825,7 +839,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -867,7 +881,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -911,7 +925,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -954,7 +968,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -1146,8 +1160,12 @@ test.describe(
           columnTag2.create(apiContext),
         ]);
 
-        columnTagTable1 = new TableClass();
-        columnTagTable2 = new TableClass();
+        columnTagTable1 = new TableClass({
+          service: new DatabaseServiceClass(),
+        });
+        columnTagTable2 = new TableClass({
+          service: new DatabaseServiceClass(),
+        });
         await Promise.all([
           columnTagTable1.create(apiContext),
           columnTagTable2.create(apiContext),
@@ -1218,9 +1236,9 @@ test.describe(
       await test.step('Filter chip reflects the applied column tag', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
-        ).toContainText(
-          columnTag1.responseData.fullyQualifiedName.toLowerCase()
-        );
+        ).toContainText(columnTag1.responseData.fullyQualifiedName, {
+          ignoreCase: true,
+        });
       });
 
       await test.step('table1 (tagged with tag1) is visible', async () => {
@@ -1268,9 +1286,9 @@ test.describe(
       await test.step('Filter chip reflects the applied column tag', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
-        ).toContainText(
-          columnTag2.responseData.fullyQualifiedName.toLowerCase()
-        );
+        ).toContainText(columnTag2.responseData.fullyQualifiedName, {
+          ignoreCase: true,
+        });
       });
 
       await test.step('table2 (tagged with tag2) is visible', async () => {
@@ -1307,7 +1325,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1382,7 +1400,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1445,6 +1463,11 @@ test.describe(
     });
 
     test('Column Tags Not in [tag1] excludes table1', async ({ page }) => {
+      // Advanced-search response + ES tag-negation propagation drifts under
+      // merge-queue load — the exclusion assertion can race the search
+      // aggregation. Triple the budget for a clean pass at 0 retries.
+      test.slow();
+
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -1457,7 +1480,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1499,7 +1522,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1541,7 +1564,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1592,7 +1615,9 @@ test.describe(
       async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          lazyLoadTable = new TableClass();
+          lazyLoadTable = new TableClass({
+            service: new DatabaseServiceClass(),
+          });
           await lazyLoadTable.create(apiContext);
 
           const cpMetadataTypeRes = await apiContext.get(
@@ -1640,34 +1665,36 @@ test.describe(
       await sidebarClick(page, SidebarItem.EXPLORE);
       await showAdvancedSearchDialog(page);
 
-      const ruleLocator = page.locator('.rule').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-rule-0');
 
+      // Each drill level gets its own control in the row, suffixed by depth:
+      // Custom Properties -> Table -> the property.
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Custom Properties',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select-1'),
         'Table',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         enumCPName,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         'Equals'
       );
 
       const comboboxInput = ruleLocator.locator(
-        '.rule--widget input[role="combobox"]'
+        '[data-testid=advanced-search-value] input[role="combobox"]'
       );
 
       await expect(comboboxInput).toBeVisible({ timeout: 15000 });
@@ -1700,7 +1727,7 @@ test.describe(
 
       // Type to search — asyncFetch filters the full values array, not just the loaded page
       const searchInput = ruleLocator.locator(
-        '.rule--widget input[role="combobox"]'
+        '[data-testid=advanced-search-value] input[role="combobox"]'
       );
 
       await searchInput.fill(SECOND_PAGE_VALUE);

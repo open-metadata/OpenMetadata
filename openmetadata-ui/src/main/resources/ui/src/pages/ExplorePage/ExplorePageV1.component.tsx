@@ -30,7 +30,6 @@ import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider
 import {
   ExploreProps,
   ExploreQuickFilterField,
-  ExploreSearchIndex,
   SearchHitCounts,
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
@@ -54,6 +53,7 @@ import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../hooks/useExploreCache';
 import { useSearchStore } from '../../hooks/useSearchStore';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
@@ -94,17 +94,11 @@ const ExplorePageV1: FC<unknown> = () => {
   const defaultPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(globalPageSize)
     ? globalPageSize
     : PAGE_SIZE_BASE;
+  // Handed to usePaging rather than corrected afterwards: correcting wrote the size back to the
+  // shared URL, and this page stays mounted in app mode (KeepAliveRoutes), so it overwrote the
+  // selection of whichever page the user was actually on.
   const { currentPage, handlePageChange, handlePageSizeChange, pageSize } =
-    usePaging(defaultPageSize);
-  const currentPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(pageSize)
-    ? pageSize
-    : defaultPageSize;
-
-  useEffect(() => {
-    if (!EXPLORE_PAGE_SIZE_OPTIONS.includes(pageSize)) {
-      handlePageSizeChange(defaultPageSize);
-    }
-  }, [defaultPageSize, handlePageSizeChange, pageSize]);
+    usePaging(defaultPageSize, EXPLORE_PAGE_SIZE_OPTIONS);
 
   const { tab } = useRequiredParams<UrlParams>();
 
@@ -320,21 +314,41 @@ const ExplorePageV1: FC<unknown> = () => {
       : (SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex);
   }, [autoSelectedSearchIndex, tab, searchHitCounts, searchQueryParam]);
 
+  // parseSearchParams defaults the sort to INITIAL_SORT_FIELD regardless of tab, but each
+  // tab exposes its own sortingFields. When the URL sort is not selectable on the active tab
+  // (e.g. 'totalVotes' on the Columns tab), fall back to that tab's default so the sort sent
+  // to the search request and the label shown in the dropdown stay in agreement.
+  const effectiveSortValue = useMemo(() => {
+    const sortingFields = tabsInfo[searchIndex]?.sortingFields ?? [];
+    const isSupported = sortingFields.some(
+      (field) => field.value === sortValue
+    );
+
+    return isSupported
+      ? sortValue
+      : tabsInfo[searchIndex]?.sortField ?? sortValue;
+  }, [tabsInfo, searchIndex, sortValue]);
+
   // Use the utility function to generate tab items
   const tabItems = useMemo(() => {
-    const items = generateTabItems(tabsInfo, searchHitCounts, searchIndex);
+    const items = generateTabItems(tabsInfo, searchHitCounts);
 
+    // Keep the active tab even at zero hits: react-aria Tabs auto-select the
+    // first tab (and fire onSelectionChange) when the selected key is missing.
     return searchQueryParam
-      ? items.filter((tabItem) => {
-          return tabItem.count > 0 || tabItem.key === searchCriteria;
-        })
+      ? items.filter(
+          (tabItem) =>
+            tabItem.count > 0 ||
+            tabItem.key === searchCriteria ||
+            tabItem.key === searchIndex
+        )
       : items;
   }, [
     tabsInfo,
     searchHitCounts,
-    searchIndex,
     searchQueryParam,
     searchCriteria,
+    searchIndex,
   ]);
 
   const getAdvancedSearchQuickFilters = useCallback(() => {
@@ -376,11 +390,11 @@ const ExplorePageV1: FC<unknown> = () => {
       browsePath: parsedSearch.browsePath,
       queryFilter,
       searchQueryParam,
-      sortValue,
+      sortValue: effectiveSortValue,
       sortOrder,
       showDeleted,
       page: currentPage,
-      size: currentPageSize,
+      size: pageSize,
       searchIndex: tab
         ? searchIndex
         : (SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex),
@@ -391,11 +405,11 @@ const ExplorePageV1: FC<unknown> = () => {
     parsedSearch.browsePath,
     queryFilter,
     searchQueryParam,
-    sortValue,
+    effectiveSortValue,
     sortOrder,
     showDeleted,
     currentPage,
-    currentPageSize,
+    pageSize,
     searchIndex,
     tab,
     showRankingDetails,
@@ -411,6 +425,14 @@ const ExplorePageV1: FC<unknown> = () => {
     latestFetchDepsRef.current = fetchDependencies;
   }, [fetchDependencies]);
 
+  // Counts on screen and the count scope they belong to. A cache miss starts from them so that a
+  // failed count request keeps the other badges, but only within that scope: a tab, page or sort
+  // change leaves every tab's count as is, while a new query, filter or deleted flag does not.
+  const shownCountsRef = useRef<{
+    scope: string;
+    hitCounts?: SearchHitCounts;
+  }>();
+
   const performFetch = async () => {
     // Tab-switch on Explore (Tables → Dashboards → …) re-runs the same shape of search-fetch
     // with a different `searchIndex`. Within a session most users flip back and forth without
@@ -425,6 +447,17 @@ const ExplorePageV1: FC<unknown> = () => {
     };
     const cacheKey = fetchDependencies;
     const cached = getCached<CachedSearchState>(cacheKey);
+    const countScope = JSON.stringify({
+      quickFilter: parsedSearch.quickFilter,
+      browsePath: parsedSearch.browsePath,
+      queryFilter,
+      searchQueryParam,
+      showDeleted,
+      isNLPRequestEnabled,
+    });
+    const shownCounts = shownCountsRef.current;
+    const sameScopeShownCounts =
+      shownCounts?.scope === countScope ? shownCounts.hitCounts : undefined;
 
     // Single injection point for the browse-tree location: pre-combining here
     // scopes the tab counts, search and NLQ queries inside fetchEntityData
@@ -444,7 +477,9 @@ const ExplorePageV1: FC<unknown> = () => {
       hitCounts?: SearchHitCounts;
       autoSelectedSearchIndex?: ExploreSearchIndex;
       indexNotFound?: boolean;
-    } = {};
+    } = {
+      hitCounts: cached ? cached.data.hitCounts : sameScopeShownCounts,
+    };
     const isStale = () => latestFetchDepsRef.current !== cacheKey;
     const handleNlqAppliedFilters = (
       appliedQuickFilters?: QueryFilterInterface
@@ -458,6 +493,11 @@ const ExplorePageV1: FC<unknown> = () => {
           appliedQuickFilters
         )
       );
+    };
+    const finishResultsLoading = () => {
+      if (!isStale()) {
+        setIsLoading(false);
+      }
     };
     const captureSetSearchResults: typeof setSearchResults = (value) => {
       if (isStale()) {
@@ -477,13 +517,17 @@ const ExplorePageV1: FC<unknown> = () => {
         typeof value === 'function' ? value(captured.aggregations) : value;
       setUpdatedAggregations(value);
     };
+    const showHitCounts = (hitCounts?: SearchHitCounts) => {
+      shownCountsRef.current = { scope: countScope, hitCounts };
+      setSearchHitCounts(hitCounts);
+    };
     const captureSetSearchHitCounts: typeof setSearchHitCounts = (value) => {
       if (isStale()) {
         return;
       }
       captured.hitCounts =
         typeof value === 'function' ? value(captured.hitCounts) : value;
-      setSearchHitCounts(value);
+      showHitCounts(captured.hitCounts);
     };
     const captureSetAutoSelectedSearchIndex: typeof setAutoSelectedSearchIndex =
       (value) => {
@@ -531,7 +575,7 @@ const ExplorePageV1: FC<unknown> = () => {
       // cache hit — the user sees no spinner.
       setSearchResults(cached.data.searchResults);
       setUpdatedAggregations(cached.data.aggregations);
-      setSearchHitCounts(cached.data.hitCounts);
+      showHitCounts(cached.data.hitCounts);
       setAutoSelectedSearchIndex(cached.data.autoSelectedSearchIndex);
       setShowIndexNotFoundAlert(cached.data.indexNotFound);
       setIsLoading(false);
@@ -545,10 +589,10 @@ const ExplorePageV1: FC<unknown> = () => {
         queryFilter,
         searchIndex,
         showDeleted,
-        sortValue,
+        sortValue: effectiveSortValue,
         sortOrder,
         page: currentPage,
-        size: currentPageSize,
+        size: pageSize,
         isNLPRequestEnabled,
         tab,
         TABS_SEARCH_INDEXES,
@@ -562,6 +606,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
         onNlqAppliedFilters: handleNlqAppliedFilters,
+        onResultsSettled: finishResultsLoading,
         showRankingDetails,
       }).then(commitCacheIfFresh);
 
@@ -577,10 +622,10 @@ const ExplorePageV1: FC<unknown> = () => {
         queryFilter,
         searchIndex,
         showDeleted,
-        sortValue,
+        sortValue: effectiveSortValue,
         sortOrder,
         page: currentPage,
-        size: currentPageSize,
+        size: pageSize,
         isNLPRequestEnabled,
         tab,
         TABS_SEARCH_INDEXES,
@@ -594,6 +639,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
         onNlqAppliedFilters: handleNlqAppliedFilters,
+        onResultsSettled: finishResultsLoading,
         showRankingDetails,
       });
       commitCacheIfFresh();
@@ -627,14 +673,14 @@ const ExplorePageV1: FC<unknown> = () => {
       currentPage={currentPage}
       isElasticSearchIssue={showIndexNotFoundAlert}
       loading={isLoading && !isTourOpen}
-      pageSize={currentPageSize}
+      pageSize={pageSize}
       quickFilters={advancedSearchQuickFilters}
       searchIndex={searchIndex}
       searchResults={isTourOpen ? tourMockSearchResults : searchResults}
       showDeleted={showDeleted}
       showRankingDetails={showRankingDetails}
       sortOrder={sortOrder}
-      sortValue={sortValue}
+      sortValue={effectiveSortValue}
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
       onChangePage={handlePageChange}
@@ -660,14 +706,14 @@ const ExplorePageV1WithLayout = withPageLayout(
 // AI-mode presentation: an AI search header rendered above the shared Explore
 // page, with layout overrides that keep the embedded page in the AI flow.
 const EXPLORE_MODE_PAGE_CLASS_NAME =
-  'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary';
+  'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary tw:dark:bg-secondary';
 
 const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME =
-  'tw:mx-2 tw:mt-2 tw:shrink-0';
+  'tw:mt-2 tw:w-full tw:shrink-0 tw:px-2';
 
 const EXPLORE_MODE_CONTENT_CLASS_NAME = classNames(
-  'tw:flex tw:h-full tw:flex-col tw:bg-primary',
-  'tw:[&_.explore-page]:!bg-primary',
+  'tw:flex tw:h-full tw:flex-col tw:bg-primary tw:dark:bg-secondary',
+  'tw:[&_.explore-page]:!bg-primary tw:dark:[&_.explore-page]:!bg-secondary',
   'tw:[&_.page-layout-v1-vertical-scroll]:!overflow-visible',
   "tw:[&_[data-testid='page-layout-v1']]:!overflow-visible",
   "tw:[&>[data-testid='loader']]:tw:m-auto"

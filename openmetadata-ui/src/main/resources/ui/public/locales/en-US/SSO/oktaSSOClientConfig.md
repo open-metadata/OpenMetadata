@@ -74,6 +74,30 @@ $$section
 $$
 
 $$section
+### Email Claim $(id="emailClaim")
+
+- **Definition:** Name of the JWT claim containing the user's email address.
+- **Default:** "email"
+- **Example:** email
+- **Why it matters:** Enables the simplified email-first identity flow. When configured, replaces the complex `jwtPrincipalClaims` resolution with a straightforward email-based lookup.
+- **Note:**
+  - When set, users are identified by email instead of username-based claim resolution
+  - Usernames are auto-generated from the email prefix (e.g., `john.doe@company.com` -> `john.doe`)
+  - If two users share the same email prefix across domains, a random suffix is appended (e.g., `john.doe_x7k2`)
+  - Falls back to legacy `jwtPrincipalClaims` flow if this claim is not found in the token
+$$
+
+$$section
+### Display Name Claim $(id="displayNameClaim")
+
+- **Definition:** Name of the JWT claim containing the user's display name.
+- **Default:** "name"
+- **Example:** name, given_name, displayName
+- **Why it matters:** Used to populate the user's display name in OpenMetadata when using the email-first flow.
+- **Note:** Only used when Email Claim is configured. Falls back to the email prefix if not found.
+$$
+
+$$section
 ### JWT Principal Claims $(id="principals")
 
 > ⚠️ **CRITICAL WARNING**: Incorrect claims will **lock out ALL users including admins**!
@@ -213,13 +237,14 @@ $$section
 $$
 
 $$section
-### OIDC Token Validity $(id="tokenValidity")
+### OpenMetadata Access Token Validity $(id="tokenValidity")
 
-- **Definition:** How long (in seconds) the issued tokens remain valid.
-- **Default:** 0 (use provider default)
+- **Definition:** How long (in seconds) the OpenMetadata access JWT remains valid.
+- **Default:** 3600 (1 hour)
+- **Minimum:** 1 second
 - **Example:** 3600 (1 hour)
-- **Why it matters:** Controls token lifetime and security vs usability balance.
-- **Note:** Use 0 to inherit Okta's default token lifetime
+- **Why it matters:** Controls the lifetime of the token used for OpenMetadata API requests.
+- **Note:** This value is not inherited from the Okta token lifetime, but while **End Session With Identity Provider** is on it is an upper bound: OpenMetadata tokens never outlive Okta's access token, so each refresh can renew the Okta tokens in time.
 $$
 
 $$section
@@ -250,7 +275,9 @@ $$section
 - **Definition:** Maximum authentication age (in seconds) before re-authentication is required.
 - **Example:** 3600
 - **Why it matters:** Controls how often users must re-authenticate.
-- **Note:** Leave empty for no specific max age requirement
+- **Note:**
+  - Leave empty (recommended) so users who are still signed in at Okta get straight back in.
+  - `0` is treated as empty: it would make Okta ask for credentials on every sign-in, including the silent re-authentication OpenMetadata performs when its own session ends. To force a fresh login every time, set **OIDC Prompt** to `login` instead.
 $$
 
 $$section
@@ -261,6 +288,7 @@ $$section
 - **Example:** login
 - **Why it matters:** Affects user experience during authentication.
 - **Note:**
+  - Leave empty (recommended): OpenMetadata sends `none` by itself when it re-authenticates a user in the background, so a value set here only changes interactive sign-ins.
   - `login`: Always prompt for credentials
   - `consent`: Prompt for permissions
   - `none`: Don't show prompts (SSO only)
@@ -274,8 +302,55 @@ $$section
 - **Example:** 604800
 - **Why it matters:** Controls how often users need to re-authenticate.
 - **Note:** Only applies to confidential clients
+$$
+
+$$section
+### End Session With Identity Provider $(id="endSessionWithProvider")
+
+- **Definition:** Ends the OpenMetadata session when Okta stops renewing the user's tokens.
+- **Default:** Off
+- **Why it matters:** When on, OpenMetadata renews the Okta tokens on Okta's schedule while the user is active, and signs the user out once Okta rejects its refresh token, for example after the token expires or is revoked, or the user is disabled. When off, a session lasts the configured session expiry whatever happens at Okta.
+- **Note:**
+  - Only applies to confidential clients
+  - Needs an Okta refresh token: add `offline_access` to OIDC Request Scopes and allow the Refresh Token grant for the app.
+  - While on, OpenMetadata access tokens never outlive Okta's access tokens, so browsers refresh them more often.
 
 ## Authorizer Configuration
+$$
+
+$$section
+### Admin Emails $(id="adminEmails")
+
+- **Definition:** List of email addresses that should be granted admin privileges.
+- **Example:** ["admin@company.com", "security-lead@company.com"]
+- **Why it matters:** Preferred replacement for Admin Principals. Uses full email addresses for unambiguous admin designation.
+- **Note:**
+  - Takes precedence over Admin Principals if both are configured
+  - Case-insensitive matching (admin@Company.com matches admin@company.com)
+  - If a matching user already exists, they are promoted to admin
+  - If no user exists, a new admin account is created with a username derived from the email
+$$
+
+$$section
+### Allowed Email Domains $(id="allowedEmailDomains")
+
+- **Definition:** List of email domains allowed to authenticate.
+- **Example:** ["company.com", "subsidiary.com"]
+- **Why it matters:** Restricts which email domains can log in. If empty, all domains are allowed.
+- **Note:**
+  - Takes precedence over the legacy Enforce Principal Domain / Allowed Domains settings
+  - Users with email addresses outside these domains will be rejected at login
+  - Case-insensitive domain matching
+$$
+
+$$section
+### Bot Domain $(id="botDomain")
+
+- **Definition:** Email domain used for system-created bot accounts.
+- **Default:** "openmetadata.org"
+- **Example:** openmetadata.org
+- **Why it matters:** Separates bot email domain from user email domain. Bots get emails like `ingestion-bot@{botDomain}`.
+- **Note:** Replaces the use of Principal Domain for bot email construction.
 $$
 
 $$section

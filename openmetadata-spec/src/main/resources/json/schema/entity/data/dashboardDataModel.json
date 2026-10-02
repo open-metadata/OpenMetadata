@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/dashboardDataModel.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DashboardDataModel",
   "$comment": "@om-entity-type",
   "description": "Dashboard Data Model entity definition. Data models are the schemas used to build dashboards, charts, or other data assets.",
@@ -22,6 +22,7 @@
         "TableauEmbeddedDatasource",
         "SupersetDataModel",
         "MetabaseDataModel",
+        "ModeDataModel",
         "LookMlView",
         "LookMlExplore",
         "PowerBIDataModel",
@@ -34,6 +35,8 @@
         "ThoughtSpotDataModel",
         "SapS4HanaCdsView",
         "SsrsDataModel",
+        "RillModel",
+        "RillMetricsView",
         "OmniDataModel"
       ],
       "javaEnums": [
@@ -51,6 +54,9 @@
         },
         {
           "name": "MetabaseDataModel"
+        },
+        {
+          "name": "ModeDataModel"
         },
         {
           "name": "LookMlView"
@@ -87,6 +93,12 @@
         },
         {
           "name": "SsrsDataModel"
+        },
+        {
+          "name": "RillModel"
+        },
+        {
+          "name": "RillMetricsView"
         },
         {
           "name": "OmniDataModel"

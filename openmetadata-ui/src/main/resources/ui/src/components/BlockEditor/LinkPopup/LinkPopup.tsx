@@ -44,6 +44,7 @@ const LinkPopup: FC<LinkPopupProps> = ({
         data-testid="link-popup-open"
         href={href}
         icon={<ExternalLinkIcon width={iconSize + 2} />}
+        rel="noopener noreferrer"
         target="_blank"
         type="link"
       />

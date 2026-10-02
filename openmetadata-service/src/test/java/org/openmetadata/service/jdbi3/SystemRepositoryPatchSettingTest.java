@@ -20,8 +20,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -34,6 +36,7 @@ import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.security.TokenValidityResolver;
 
 class SystemRepositoryPatchSettingTest {
   private static final String SETTING_NAME = SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value();
@@ -299,6 +302,24 @@ class SystemRepositoryPatchSettingTest {
     Settings responseSettings = (Settings) response.getEntity();
     SmtpSettings responseConfig = (SmtpSettings) responseSettings.getConfigValue();
     assertEquals(PasswordEntityMasker.PASSWORD_MASK, responseConfig.getPassword());
+  }
+
+  @Test
+  void putAuthenticationSettingRejectsInvalidOidcTokenValidityAsBadRequest() {
+    Settings update =
+        new Settings()
+            .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(
+                new AuthenticationConfiguration()
+                    .withOidcConfiguration(new OidcClientConfig().withTokenValidity(0)));
+
+    BadRequestException failure =
+        assertThrows(BadRequestException.class, () -> systemRepository.createOrUpdate(update));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), failure.getResponse().getStatus());
+    assertEquals(TokenValidityResolver.VALIDATION_MESSAGE, failure.getMessage());
+    verify(systemDAO, never()).insertSettings(anyString(), anyString());
+    settingsCacheMock.verifyNoInteractions();
   }
 
   private JsonPatch appendRelationTypePatch() {

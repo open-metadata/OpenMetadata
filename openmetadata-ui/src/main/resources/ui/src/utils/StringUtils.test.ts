@@ -29,20 +29,23 @@ jest.mock('./i18next/LocalUtil', () => ({
 }));
 
 import { AxiosError } from 'axios';
+import { stringToHTML, stripMarkdown } from './RichTextStringUtils';
 import {
   decodeHtmlEntities,
   escapeESReservedCharacters,
   formatJsonString,
+  getBase64EncodedString,
   getDecodedFqn,
   getEncodedFqn,
   getPermissionErrorText,
+  getQueryWithSlash,
+  getSafeHttpUrl,
   getTrimmedContent,
   jsonToCSV,
   ordinalize,
   removeAttachmentsWithoutUrl,
   replaceCallback,
   slugify,
-  stripMarkdown,
 } from './StringUtils';
 
 describe('StringUtils', () => {
@@ -388,6 +391,19 @@ describe('StringUtils', () => {
     it('should trim surrounding whitespace', () => {
       expect(stripMarkdown('  **hello world**  ')).toBe('hello world');
     });
+
+    it('should keep words apart across HTML block boundaries', () => {
+      expect(stripMarkdown('<p>First.</p><p>Second.</p>')).toBe(
+        'First. Second.'
+      );
+      expect(stripMarkdown('<ul><li>a</li><li>b</li></ul>')).toBe('a b');
+    });
+
+    it('should not pad inline HTML formatting', () => {
+      expect(stripMarkdown('<p><strong>Bold</strong> then more</p>')).toBe(
+        'Bold then more'
+      );
+    });
   });
 
   describe('getPermissionErrorText', () => {
@@ -454,6 +470,93 @@ describe('StringUtils', () => {
     });
   });
 
+  describe('stringToHTML (XSS sanitization — GHSA-59gm-6h39-397f)', () => {
+    // Helper: stringify the parse() output to a comparable HTML string.
+    // parse() returns a React node for real HTML input, or the raw string
+    // when the sanitized output has no tags — both need normalizing.
+    const toHtml = (result: string | JSX.Element | JSX.Element[]): string => {
+      if (typeof result === 'string') {
+        return result;
+      }
+      const nodes = Array.isArray(result) ? result : [result];
+
+      return nodes
+        .map((node) => {
+          if (typeof node === 'string') {
+            return node;
+          }
+          const { type, props } = node;
+          const tag =
+            typeof type === 'string' ? type : (type as { name?: string }).name;
+          const attrs = Object.entries(props ?? {})
+            .filter(([k]) => k !== 'children')
+            .map(([k, v]) => `${k}="${String(v)}"`)
+            .join(' ');
+          const children = (props as { children?: unknown })?.children ?? '';
+
+          return `<${tag}${attrs ? ' ' + attrs : ''}>${
+            typeof children === 'string' ? children : ''
+          }</${tag}>`;
+        })
+        .join('');
+    };
+
+    it('returns falsy input untouched', () => {
+      expect(stringToHTML('')).toBe('');
+    });
+
+    it('strips <iframe> (GHSA-59gm-6h39-397f PoC)', () => {
+      const payload =
+        '<iframe src="javascript:alert(document.domain)"></iframe>';
+      const html = toHtml(stringToHTML(payload));
+
+      expect(html).not.toContain('<iframe');
+      expect(html).not.toContain('javascript:');
+    });
+
+    it('strips <script> tags', () => {
+      const payload = '<script>alert(1)</script>hello';
+      const html = toHtml(stringToHTML(payload));
+
+      expect(html).not.toContain('<script');
+      expect(html).toContain('hello');
+    });
+
+    it('strips inline event-handler attributes (onerror, onclick)', () => {
+      const payload = '<img src=x onerror="alert(1)">';
+      const html = toHtml(stringToHTML(payload));
+
+      expect(html).not.toMatch(/onerror=/i);
+    });
+
+    it('strips <form><button formaction=javascript:...> (GHSA-h5rm-p8r9-gpv3 PoC)', () => {
+      const payload =
+        '<form><button formaction="javascript:alert(document.cookie)">team_test</button></form>';
+      const html = toHtml(stringToHTML(payload));
+
+      expect(html).not.toMatch(/formaction=["']?javascript:/i);
+    });
+
+    it('preserves the highlightSearchText <span> wrapper', () => {
+      const highlighted =
+        '<span data-highlight="true" class="text-highlighter">foo</span>';
+      const html = toHtml(stringToHTML(highlighted));
+
+      expect(html).toContain('foo');
+      expect(html).toContain('text-highlighter');
+    });
+
+    it('preserves benign diff/highlight tags (<mark>, <ins>, <del>, <em>)', () => {
+      const payload = '<mark>m</mark><ins>i</ins><del>d</del><em>e</em>';
+      const html = toHtml(stringToHTML(payload));
+
+      expect(html).toContain('m');
+      expect(html).toContain('i');
+      expect(html).toContain('d');
+      expect(html).toContain('e');
+    });
+  });
+
   describe('escapeESReservedCharacters', () => {
     it('should return an empty string for undefined and empty input', () => {
       expect(escapeESReservedCharacters()).toBe('');
@@ -503,6 +606,115 @@ describe('StringUtils', () => {
       expect(escapeESReservedCharacters('name:value')).toBe(
         String.raw`name\:value`
       );
+    });
+  });
+
+  describe('getQueryWithSlash', () => {
+    it.each([['&'], ['\\'], ['&&'], ['\\\\'], ['\\&'], ['  &  ']])(
+      'should return an empty string for a query made only of %j',
+      (query) => {
+        expect(getQueryWithSlash(query)).toBe('');
+      }
+    );
+
+    // The last two cases cover backslash parity: two raw backslashes resolve
+    // to one literal backslash (quote is NOT already escaped), while three
+    // resolve to one literal backslash plus one escaping backslash (quote
+    // IS already escaped) -- so they land on opposite sides of the check.
+    it.each<[string, string, string]>([
+      ['escapes a single quote', "it's", String.raw`it\'s`],
+      [
+        'leaves a plain query untouched',
+        'sample_data orders',
+        'sample_data orders',
+      ],
+      [
+        'escapes a raw double quote from a caller that skips escapeESReservedCharacters (e.g. TagsUtils#fetchGlossaryList)',
+        '*"customer"*',
+        String.raw`*\"customer\"*`,
+      ],
+      [
+        'escapes a leading raw double quote but leaves a trailing already-escaped one alone',
+        String.raw`"customer\"`,
+        String.raw`\"customer\"`,
+      ],
+      [
+        'escapes both single and double quotes in the same query',
+        String.raw`o'brien "test"`,
+        String.raw`o\'brien \"test\"`,
+      ],
+      [
+        'does not re-escape a double quote already escaped by escapeESReservedCharacters',
+        String.raw`\"customer`,
+        String.raw`\"customer`,
+      ],
+      [
+        'escapes a quote preceded by an even (already-literal) run of backslashes',
+        String.raw`\\"customer`,
+        String.raw`\\\"customer`,
+      ],
+      [
+        'leaves a quote preceded by an odd run of backslashes alone',
+        String.raw`\\\"customer`,
+        String.raw`\\\"customer`,
+      ],
+    ])('should %s', (_description, input, expected) => {
+      expect(getQueryWithSlash(input)).toBe(expected);
+    });
+  });
+
+  describe('getBase64EncodedString', () => {
+    // Regression: `btoa` treats each character as a Latin-1 byte, so non-ASCII
+    // passwords reached the server corrupted and login failed — issue #28694.
+    it.each([
+      ['plainAscii123', 'cGxhaW5Bc2NpaTEyMw=='],
+      ['Test\u00a7123\u00a3', 'VGVzdMKnMTIzwqM='],
+      ['P\u00e4ssw\u00f6rd1!', 'UMOkc3N3w7ZyZDEh'],
+      ['\u5bc6\u78012024', '5a+G56CBMjAyNA=='],
+      ['pw\ud83d\udd12key', 'cHfwn5SSa2V5'],
+      ['', ''],
+    ])('should base64 encode the UTF-8 bytes of %j', (input, expected) => {
+      expect(getBase64EncodedString(input)).toBe(expected);
+    });
+
+    it('should round-trip through a UTF-8 base64 decode', () => {
+      const password = 'Test\u00a7123\u00a3 \u5bc6\u7801 \ud83d\udd12';
+
+      expect(
+        new TextDecoder().decode(
+          Uint8Array.from(atob(getBase64EncodedString(password)), (char) =>
+            char.charCodeAt(0)
+          )
+        )
+      ).toBe(password);
+    });
+
+    it('should not emit the Latin-1 encoding btoa would produce', () => {
+      expect(getBase64EncodedString('Test\u00a7123\u00a3')).not.toBe(
+        btoa('Test\u00a7123\u00a3')
+      );
+    });
+  });
+
+  describe('getSafeHttpUrl', () => {
+    it.each(['https://example.com/a?b=c', 'http://example.com'])(
+      'should return http(s) URL %s unchanged',
+      (url) => {
+        expect(getSafeHttpUrl(url)).toBe(url);
+      }
+    );
+
+    it.each([
+      undefined,
+      '',
+      'javascript:alert(1)',
+      ' JavaScript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'ftp://example.com',
+      's3://bucket/model',
+      'not a url',
+    ])('should return undefined for unsafe or invalid URL %s', (url) => {
+      expect(getSafeHttpUrl(url)).toBeUndefined();
     });
   });
 });

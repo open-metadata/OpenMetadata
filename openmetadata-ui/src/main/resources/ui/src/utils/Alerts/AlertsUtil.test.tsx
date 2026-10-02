@@ -65,13 +65,6 @@ import {
   normalizeDestinationConfig,
 } from './AlertsUtilPure';
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: {
-    Button: jest.fn().mockImplementation(() => <div>Skeleton.Button</div>),
-  },
-}));
-
 jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
@@ -535,10 +528,10 @@ describe('getFieldByArgumentType tests', () => {
     expect(await screen.findByTitle('Thread Created')).toBeInTheDocument();
 
     fireEvent.change(select.querySelector('input') as HTMLElement, {
-      target: { value: 'Suggestion' },
+      target: { value: 'Entity Deleted' },
     });
 
-    expect(screen.queryByTitle('Suggestion Created')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Entity Deleted')).not.toBeInTheDocument();
   });
 
   it('should fall back to every event type when the resource declares none', async () => {
@@ -551,10 +544,10 @@ describe('getFieldByArgumentType tests', () => {
     );
 
     fireEvent.change(select.querySelector('input') as HTMLElement, {
-      target: { value: 'Suggestion' },
+      target: { value: 'Ontology' },
     });
 
-    expect(await screen.findByTitle('Suggestion Created')).toBeInTheDocument();
+    expect(await screen.findByTitle('Ontology Imported')).toBeInTheDocument();
   });
 
   it('should return correct fields for argumentType entityIdList', async () => {
@@ -951,11 +944,12 @@ describe('getAlertExtraInfo', () => {
   it('should return skeletons when alertEventCountsLoading is true', () => {
     const alertExtraInfo = getAlertExtraInfo(true);
 
-    render(alertExtraInfo);
+    const { container } = render(alertExtraInfo);
 
-    const skeletons = screen.getAllByText('Skeleton.Button');
-
-    expect(skeletons).toHaveLength(3);
+    expect(screen.getAllByRole('separator')).toHaveLength(3);
+    expect(container.querySelectorAll('span[aria-hidden="true"]')).toHaveLength(
+      3
+    );
   });
 
   it('should return correct extra info when alertEventCountsLoading is false', () => {

@@ -15,8 +15,10 @@ package org.openmetadata.service.security.saml;
 
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.settings.SettingsBuilder;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -31,20 +33,17 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.TokenValidityResolver;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class SamlSettingsHolder {
+  private static final String DEFAULT_DOMAIN = "openmetadata.org";
   private static volatile Saml2Settings saml2Settings;
   private static final Object lock = new Object();
-  private Map<String, Object> samlData;
-  private SettingsBuilder builder;
   @Getter private String relayState;
 
-  private SamlSettingsHolder() {
-    samlData = new HashMap<>();
-    builder = new SettingsBuilder();
-  }
+  private SamlSettingsHolder() {}
 
   public static SamlSettingsHolder getInstance() {
     return new SamlSettingsHolder();
@@ -54,12 +53,18 @@ public class SamlSettingsHolder {
       throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
     SamlSSOClientConfig samlConfig =
         SecurityConfigurationManager.getCurrentAuthConfig().getSamlConfiguration();
-    if (samlData == null) {
-      samlData = new HashMap<>();
-    }
-    if (builder == null) {
-      builder = new SettingsBuilder();
-    }
+    relayState = samlConfig.getSp().getCallback();
+    saml2Settings = buildSettings(samlConfig);
+  }
+
+  /**
+   * Builds OneLogin settings for a SAML configuration without touching the process-wide settings.
+   * Login installs the result for the live configuration; the Test Login dry-run builds a throwaway
+   * one for a candidate, which must never replace the live settings.
+   */
+  public static Saml2Settings buildSettings(SamlSSOClientConfig samlConfig)
+      throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    Map<String, Object> samlData = new HashMap<>();
     // Lib Setting
     samlData.put(SettingsBuilder.DEBUG_PROPERTY_KEY, samlConfig.getDebugMode());
 
@@ -75,7 +80,6 @@ public class SamlSettingsHolder {
         SettingsBuilder.SP_SINGLE_LOGOUT_SERVICE_BINDING_PROPERTY_KEY,
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect");
     samlData.put(SettingsBuilder.SP_NAMEIDFORMAT_PROPERTY_KEY, samlConfig.getIdp().getNameId());
-    relayState = samlConfig.getSp().getCallback();
 
     // Idp Info
     samlData.put(SettingsBuilder.IDP_ENTITYID_PROPERTY_KEY, samlConfig.getIdp().getEntityId());
@@ -117,10 +121,10 @@ public class SamlSettingsHolder {
       if (!CommonUtil.nullOrEmpty(securityConfig.getKeyStoreFilePath())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStorePassword())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStoreAlias())) {
-        KeyStore keyStore = KeyStore.getInstance("JKS");
-        keyStore.load(
-            new FileInputStream(securityConfig.getKeyStoreFilePath()),
-            securityConfig.getKeyStorePassword().toCharArray());
+        KeyStore keyStore =
+            loadKeyStore(
+                securityConfig.getKeyStoreFilePath(),
+                securityConfig.getKeyStorePassword().toCharArray());
         samlData.put(SettingsBuilder.KEYSTORE_KEY, keyStore);
         samlData.put(SettingsBuilder.KEYSTORE_ALIAS, securityConfig.getKeyStoreAlias());
         samlData.put(SettingsBuilder.KEYSTORE_KEY_PASSWORD, securityConfig.getKeyStorePassword());
@@ -136,7 +140,21 @@ public class SamlSettingsHolder {
       }
     }
     samlData.put(SettingsBuilder.UNIQUE_ID_PREFIX_PROPERTY_KEY, "OPENMETADATA_");
-    saml2Settings = builder.fromValues(samlData).build();
+    return new SettingsBuilder().fromValues(samlData).build();
+  }
+
+  static KeyStore loadKeyStore(String filePath, char[] password)
+      throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    return loadKeyStore(Files.newInputStream(Path.of(filePath)), password);
+  }
+
+  static KeyStore loadKeyStore(InputStream inputStream, char[] password)
+      throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    try (inputStream) {
+      KeyStore keyStore = KeyStore.getInstance("JKS");
+      keyStore.load(inputStream, password);
+      return keyStore;
+    }
   }
 
   public static void setSaml2Settings(Saml2Settings settings) {
@@ -161,7 +179,7 @@ public class SamlSettingsHolder {
 
       if (authConfig == null) {
         LOG.error("AuthenticationConfiguration is null in getTokenValidity()");
-        return 3600; // Default fallback
+        return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
       }
 
       SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
@@ -169,7 +187,7 @@ public class SamlSettingsHolder {
 
       if (samlConfig == null) {
         LOG.error("SamlConfiguration is null in getTokenValidity()");
-        return 3600; // Default fallback
+        return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
       }
 
       SamlSecurityConfig securityConfig = samlConfig.getSecurity();
@@ -178,16 +196,20 @@ public class SamlSettingsHolder {
       if (securityConfig == null) {
         LOG.error(
             "SAML SecurityConfig is null in getTokenValidity() - this should not happen if config is in DB");
-        return 3600; // Default fallback
+        return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
       }
 
-      long tokenValidity = securityConfig.getTokenValidity();
-      LOG.debug("Retrieved token validity: {}", tokenValidity);
-      return tokenValidity;
+      Integer configuredTokenValidity = securityConfig.getTokenValidity();
+      if (!TokenValidityResolver.isValid(configuredTokenValidity)) {
+        LOG.warn(
+            "SAML token validity must be positive; using the {} second default",
+            TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS);
+      }
+      return TokenValidityResolver.resolveOrDefault(configuredTokenValidity);
 
     } catch (Exception e) {
       LOG.error("Error retrieving token validity dynamically", e);
-      return 3600; // Default fallback
+      return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
     }
   }
 
@@ -198,16 +220,21 @@ public class SamlSettingsHolder {
 
       if (authzConfig == null) {
         LOG.error("AuthorizerConfiguration is null in getDomain()");
-        return "openmetadata.org"; // Default fallback
       }
-
-      String domain = authzConfig.getPrincipalDomain();
-      LOG.debug("Retrieved principal domain: {}", domain);
-      return domain != null ? domain : "openmetadata.org";
+      return domainFor(authzConfig);
 
     } catch (Exception e) {
       LOG.error("Error retrieving domain dynamically", e);
-      return "openmetadata.org"; // Default fallback
+      return DEFAULT_DOMAIN;
     }
+  }
+
+  /**
+   * The domain appended to a NameID that is not an email. Shared with the Test Login dry-run, which
+   * must derive it from the candidate configuration rather than the live one.
+   */
+  public static String domainFor(AuthorizerConfiguration authzConfig) {
+    String domain = authzConfig == null ? null : authzConfig.getPrincipalDomain();
+    return domain != null ? domain : DEFAULT_DOMAIN;
   }
 }

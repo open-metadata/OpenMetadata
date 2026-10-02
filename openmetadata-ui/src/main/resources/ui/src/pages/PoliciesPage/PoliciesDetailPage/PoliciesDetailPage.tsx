@@ -13,18 +13,8 @@
 
 import { EllipsisOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  Modal,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Dropdown, Modal, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -47,15 +37,12 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   getPolicyByName,
@@ -79,7 +66,6 @@ const PoliciesDetailPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -88,8 +74,27 @@ const PoliciesDetailPage = () => {
     attribute: Attribute;
     record: EntityReference;
   }>();
-  const [policyPermission, setPolicyPermission] =
-    useState<OperationPermission | null>(null);
+
+  // Fetch-owner, by fqn. Ungated: Policy carries a `deleted` field per its generated type, but
+  // the old raw expressions here never referenced it (policies aren't soft-deleted through
+  // this page) — matching the ungated-site rule (TagPage.tsx/StoredProcedurePage.tsx
+  // precedent, RolesDetailPage.tsx sibling), not passing `deleted` here.
+  // canEditDisplayName is also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
+  const {
+    error: permissionsError,
+    canEditDisplayName: editDisplayNamePermission,
+    canDelete: hasDeletePermission,
+    hasViewAccess: viewBasicPermission,
+  } = useEntityPermissions(ResourceEntity.POLICY, fqn, {
+    enabled: Boolean(fqn),
+  });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -110,39 +115,6 @@ const PoliciesDetailPage = () => {
       },
     ],
     [policyName, policiesPath]
-  );
-
-  const {
-    editDisplayNamePermission,
-    hasDeletePermission,
-    viewBasicPermission,
-  } = useMemo(() => {
-    const editDisplayNamePermission =
-      policyPermission?.EditAll || policyPermission?.EditDisplayName;
-    const hasDeletePermission = policyPermission?.Delete;
-    const viewBasicPermission =
-      policyPermission?.ViewAll || policyPermission?.ViewBasic;
-
-    return {
-      editDisplayNamePermission,
-      hasDeletePermission,
-      viewBasicPermission,
-    };
-  }, [policyPermission]);
-
-  const fetchPolicyPermission = useCallback(
-    async (fqn: string) => {
-      try {
-        const response = await getEntityPermissionByFqn(
-          ResourceEntity.POLICY,
-          fqn
-        );
-        setPolicyPermission(response);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [getEntityPermissionByFqn, setPolicyPermission]
   );
 
   const fetchPolicy = async () => {
@@ -360,16 +332,6 @@ const PoliciesDetailPage = () => {
     [policy]
   );
 
-  const init = async () => {
-    if (!fqn) {
-      return;
-    }
-    await fetchPolicyPermission(fqn);
-    if (viewBasicPermission) {
-      fetchPolicy();
-    }
-  };
-
   const rulesTab = useMemo(() => {
     return (
       <Card>
@@ -395,11 +357,11 @@ const PoliciesDetailPage = () => {
                     align="baseline"
                     className="w-full justify-between p-b-lg"
                     direction="horizontal">
-                    <Typography.Text
+                    <Typography
                       className="font-medium text-base text-grey-body"
                       data-testid="rule-name">
                       {rule.name}
-                    </Typography.Text>
+                    </Typography>
                     {getRuleActionElement(rule)}
                   </Space>
 
@@ -407,9 +369,9 @@ const PoliciesDetailPage = () => {
                     {rule.description && (
                       <Row data-testid="description">
                         <Col span={2}>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.description')}:`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col span={22}>
                           <RichTextEditorPreviewerV1
@@ -421,49 +383,49 @@ const PoliciesDetailPage = () => {
 
                     <Row data-testid="resources">
                       <Col span={2}>
-                        <Typography.Text className="text-grey-muted m-b-0">
+                        <Typography className="m-b-0" color="secondary">
                           {`${t('label.resource-plural')}:`}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography.Text className="text-grey-body">
+                        <Typography className="text-grey-body">
                           {rule.resources
                             ?.map((resource) => startCase(resource))
                             ?.join(', ')}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
 
                     <Row data-testid="operations">
                       <Col span={2}>
-                        <Typography.Text className="text-grey-muted">
+                        <Typography color="secondary">
                           {`${t('label.operation-plural')}:`}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography.Text className="text-grey-body">
+                        <Typography className="text-grey-body">
                           {rule.operations?.join(', ')}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
                     <Row data-testid="effect">
                       <Col span={2}>
-                        <Typography.Text className="text-grey-muted">
+                        <Typography color="secondary">
                           {`${t('label.effect')}:`}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                       <Col span={22}>
-                        <Typography.Text className="text-grey-body">
+                        <Typography className="text-grey-body">
                           {startCase(rule.effect)}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
                     {rule.condition && (
                       <Row data-testid="condition">
                         <Col span={2}>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.condition')}:`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col span={22}>
                           <code>{rule.condition}</code>
@@ -514,9 +476,16 @@ const PoliciesDetailPage = () => {
     ];
   }, [rulesTab, policy]);
 
+  // Permission fetching now lives in useEntityPermissions (above); this effect keeps the
+  // old init()'s "only fetch the policy once view access is known" gate, reactive to the
+  // hook's resolved viewBasicPermission instead of a same-tick local variable (which also
+  // drops the old code's redundant re-fetch-permission-on-every-effect-run side effect —
+  // same shape as RolesDetailPage.tsx's sibling conversion).
   useEffect(() => {
-    init();
-  }, [fqn, policyPermission]);
+    if (fqn && viewBasicPermission) {
+      fetchPolicy();
+    }
+  }, [fqn, viewBasicPermission]);
 
   if (isLoading) {
     return <Loader />;
@@ -553,8 +522,8 @@ const PoliciesDetailPage = () => {
             </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
-              <Row className="flex justify-between">
-                <Col span={23}>
+              <Box justify="between">
+                <div className="tw:min-w-0 tw:flex-1">
                   <EntityHeaderTitle
                     className="w-max-full"
                     displayName={policy.displayName}
@@ -568,8 +537,8 @@ const PoliciesDetailPage = () => {
                     name={policy?.name ?? ''}
                     serviceName="policy"
                   />
-                </Col>
-                <Col span={1}>
+                </div>
+                <div>
                   <ManageButton
                     isRecursiveDelete
                     afterDeleteAction={() => navigate(policiesPath)}
@@ -583,8 +552,8 @@ const PoliciesDetailPage = () => {
                     entityType={EntityType.POLICY}
                     onEditDisplayName={handleDisplayNameUpdate}
                   />
-                </Col>
-              </Row>
+                </div>
+              </Box>
               <Description
                 hasEditAccess
                 className="m-y-md"
@@ -595,11 +564,23 @@ const PoliciesDetailPage = () => {
                 onDescriptionUpdate={handleDescriptionUpdate}
               />
 
-              <Tabs
-                className="tabs-new"
-                defaultActiveKey="rules"
-                items={tabItems}
-              />
+              <Tabs className="tw:gap-3" defaultSelectedKey="rules">
+                <Tabs.List size="sm" type="underline" variant="card">
+                  {tabItems.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabItems.map(({ key, children }) => (
+                  <Tabs.Panel
+                    className="tw:rounded-xl tw:bg-primary"
+                    id={key}
+                    key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
             </div>
           )}
         </>
@@ -623,12 +604,12 @@ const PoliciesDetailPage = () => {
               );
               setEntity(undefined);
             }}>
-            <Typography.Text>
+            <Typography>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
                 parent: policyName,
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         )}
       </div>

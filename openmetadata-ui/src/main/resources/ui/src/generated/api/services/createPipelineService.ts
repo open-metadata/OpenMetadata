@@ -51,8 +51,13 @@ export interface CreatePipelineService {
      * Scheduler Interval for the pipeline in cron format.
      */
     scheduleInterval?: string;
-    serviceType:       PipelineServiceType;
-    style?:            Style;
+    /**
+     * Deployment attributes of this service: environment, region and deployment. Set once here
+     * rather than tagged onto every asset this service ingests.
+     */
+    serviceAttributes?: ServiceAttributes;
+    serviceType:        PipelineServiceType;
+    style?:             Style;
     /**
      * Tags for this Pipeline Service.
      */
@@ -116,7 +121,11 @@ export interface PipelineConnection {
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
  *
+ * Salesforce Data 360 Pipeline Connection Config
+ *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
+ *
+ * Tableau Pipeline Connection Config
  */
 export interface Connection {
     /**
@@ -146,12 +155,16 @@ export interface Connection {
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      *
      * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
+     *
+     * Tableau Server URL.
      */
     hostPort?: string;
     /**
      * Pipeline Service Number Of Status
      *
      * Number of past flow run statuses to ingest per flow.
+     *
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -162,6 +175,8 @@ export interface Connection {
      * Regex to only include/exclude pipelines that matches the pattern.
      *
      * Regex to only include/exclude Process Chains that match the pattern.
+     *
+     * Regex exclude or include pipelines that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -197,6 +212,8 @@ export interface Connection {
     messagingServiceName?: string;
     /**
      * Airbyte API version.
+     *
+     * Tableau API version. If not provided, the version will be used from the tableau server.
      */
     apiVersion?: string;
     /**
@@ -288,6 +305,8 @@ export interface Connection {
      * Choose between different authentication types for Databricks.
      *
      * Choose between Prefect Cloud or a self-hosted Prefect Server.
+     *
+     * Types of methods used to authenticate to the tableau instance
      */
     authType?:            Authentication;
     connectionArguments?: { [key: string]: any };
@@ -420,6 +439,45 @@ export interface Connection {
      */
     workspaceId?: string;
     /**
+     * Consumer key provided when you setup your Salesforce connected app
+     */
+    consumerKey?: string;
+    /**
+     * Consumer secret provided when you setup your Salesforce connected app
+     */
+    consumerSecret?: string;
+    /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
+     */
+    paginationLimit?: number;
+    /**
+     * API version of the Salesforce instance
+     */
+    salesforceApiVersion?: string;
+    /**
+     * Domain of Salesforce instance
+     */
+    salesforceDomain?: string;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?:            string;
+    supportsLineageExtraction?: boolean;
+    supportsUsageExtraction?:   boolean;
+    /**
      * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
      */
@@ -432,6 +490,16 @@ export interface Connection {
      * HANA database username with access to BW metadata tables.
      */
     username?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
+    /**
+     * Tableau Site Name.
+     */
+    siteName?: string;
     [property: string]: any;
 }
 
@@ -495,6 +563,12 @@ export interface PurpleAuthentication {
  *
  * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
  * empty if the server has no auth enabled.
+ *
+ * Types of methods used to authenticate to the tableau instance
+ *
+ * Basic Auth Credentials
+ *
+ * Access Token Auth Credentials
  */
 export interface Authentication {
     /**
@@ -541,6 +615,22 @@ export interface Authentication {
      * 'user:password'. Leave empty if the server has no auth enabled.
      */
     authString?: string;
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Personal Access Token Name.
+     */
+    personalAccessTokenName?: string;
+    /**
+     * Personal Access Token Secret.
+     */
+    personalAccessTokenSecret?: string;
 }
 
 /**
@@ -1224,6 +1314,8 @@ export interface AuthConfigurationType {
  * Regex to only include/exclude pipelines that matches the pattern.
  *
  * Regex to only include/exclude Process Chains that match the pattern.
+ *
+ * Regex exclude or include pipelines that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1395,14 +1487,21 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
+    /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
     /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
@@ -1443,7 +1542,9 @@ export interface DatabaseConnectionClass {
     tableFilterPattern?: FilterPattern;
     /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**
@@ -1572,6 +1673,7 @@ export enum PipelineServiceType {
     CustomPipeline = "CustomPipeline",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
     DomoPipeline = "DomoPipeline",
@@ -1592,6 +1694,7 @@ export enum PipelineServiceType {
     Spline = "Spline",
     Ssis = "SSIS",
     Stitch = "Stitch",
+    TableauPipeline = "TableauPipeline",
     Wherescape = "Wherescape",
 }
 
@@ -1706,6 +1809,42 @@ export interface AccessDetails {
      * Timestamp of data asset accessed for creation, update, read.
      */
     timestamp: number;
+}
+
+/**
+ * Deployment attributes of this service: environment, region and deployment. Set once here
+ * rather than tagged onto every asset this service ingests.
+ *
+ * Deployment attributes of a service, set once on the service rather than tagged onto each
+ * asset it ingests. Policy conditions can match on them to control who sees a service's
+ * assets.
+ */
+export interface ServiceAttributes {
+    /**
+     * Deployment or cluster identifier the source system belongs to, for example
+     * `prod-cluster-01`.
+     */
+    deployment?:  string;
+    environment?: Environment;
+    /**
+     * Geographic region the source system is hosted in, for example `us-east-1` or
+     * `europe-west2`.
+     */
+    region?: string;
+}
+
+/**
+ * Environment the source system runs in. A closed set so policies and filters can rely on
+ * it; use tags on the service for anything outside it.
+ */
+export enum Environment {
+    Development = "Development",
+    Other = "Other",
+    Production = "Production",
+    QA = "QA",
+    Sandbox = "Sandbox",
+    Staging = "Staging",
+    UAT = "UAT",
 }
 
 /**

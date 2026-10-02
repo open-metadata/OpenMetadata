@@ -64,6 +64,34 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     isOpen: boolean;
   }) => (isOpen ? <>{children}</> : null),
+  PageLayout: {
+    PageHeader: ({
+      actions,
+      badge,
+      breadcrumb,
+      icon,
+      subtitle,
+      title,
+      'data-testid': dataTestId,
+    }: {
+      actions?: React.ReactNode;
+      badge?: React.ReactNode;
+      breadcrumb?: React.ReactNode;
+      icon?: React.ReactNode;
+      subtitle?: React.ReactNode;
+      title?: React.ReactNode;
+      'data-testid'?: string;
+    }) => (
+      <div data-testid={dataTestId}>
+        {breadcrumb}
+        {icon}
+        {title}
+        {badge}
+        {subtitle}
+        {actions}
+      </div>
+    ),
+  },
   Tooltip: ({
     children,
     title,
@@ -85,36 +113,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     [key: string]: unknown;
   }) => <span {...rest}>{children}</span>,
-}));
-
-jest.mock('../../common/HeaderShell/HeaderShell.component', () => ({
-  __esModule: true,
-  default: ({
-    breadcrumb,
-    leading,
-    title,
-    subtitle,
-    badge,
-    actions,
-    'data-testid': dataTestId,
-  }: {
-    breadcrumb?: React.ReactNode;
-    leading?: React.ReactNode;
-    title?: React.ReactNode;
-    subtitle?: React.ReactNode;
-    badge?: React.ReactNode;
-    actions?: React.ReactNode;
-    'data-testid'?: string;
-  }) => (
-    <div data-testid={dataTestId}>
-      {breadcrumb}
-      {leading}
-      {title}
-      {badge}
-      {subtitle}
-      {actions}
-    </div>
-  ),
 }));
 
 jest.mock('../../../assets/svg/edit-new.svg', () => ({

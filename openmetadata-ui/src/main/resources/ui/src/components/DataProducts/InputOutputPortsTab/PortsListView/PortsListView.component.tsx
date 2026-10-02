@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Dropdown, Row, Skeleton } from 'antd';
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Button, Col, Dropdown, Row } from 'antd';
 import { AxiosError } from 'axios';
 import {
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +35,7 @@ import {
   removeOutputPortsFromDataProduct,
 } from '../../../../rest/dataProductAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -52,6 +55,15 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [portToDelete, setPortToDelete] = useState<SourceType>();
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Consumer via prop (Task 8 rule 2): `permissions` is the raw OperationPermission
+    // fed straight through from InputOutputPortsTab (same DataProductUtils.tsx-owned
+    // `dataProductPermission` as the sibling file). No `deleted` argument: the old
+    // `permissions.EditAll` read was never gated on `deleted`.
+    const { canEditAll } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
 
     const {
       currentPage,
@@ -176,7 +188,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             <Row gutter={[16, 16]}>
               {[1, 2, 3].map((key) => (
                 <Col key={key} span={24}>
-                  <Skeleton active paragraph={{ rows: 2 }} />
+                  <SkeletonParagraph rows={2} />
                 </Col>
               ))}
             </Row>
@@ -208,7 +220,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                 <ExploreSearchCard
                   showEntityIcon
                   actionPopoverContent={
-                    permissions.EditAll ? (
+                    canEditAll ? (
                       <Dropdown
                         menu={{
                           items: [

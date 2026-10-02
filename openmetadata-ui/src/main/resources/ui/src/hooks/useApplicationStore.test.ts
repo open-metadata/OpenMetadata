@@ -12,7 +12,42 @@
  */
 
 import { act } from 'react';
+import { authCoordinator } from '../utils/Auth/AuthCoordinator/AuthCoordinator';
+import { ReauthRequiredError } from '../utils/Auth/AuthCoordinator/ReauthRequiredError';
+import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { useApplicationStore } from './useApplicationStore';
+
+jest.mock('../utils/SwTokenStorageUtils', () => ({
+  getOidcToken: jest.fn(),
+  setOidcToken: jest.fn(),
+  getRefreshToken: jest.fn(),
+  setRefreshToken: jest.fn(),
+  clearOidcToken: jest.fn(),
+  isServiceWorkerAvailable: jest.fn().mockReturnValue(false),
+}));
+
+// Builds a structurally-valid (unsigned) JWT so `extractDetailsFromToken`'s
+// jwt-decode call can read a real `exp` claim out of the payload segment.
+// Mirrors the helper in BasicAuthAuthenticator.test.tsx.
+const buildFakeJwt = (expSeconds: number) => {
+  const encode = (payload: Record<string, unknown>) =>
+    Buffer.from(JSON.stringify(payload)).toString('base64');
+
+  return `${encode({ alg: 'none' })}.${encode({ exp: expSeconds })}.signature`;
+};
+
+// Mirrors the payload the OpenMetadata backend emits for the ingestion-bot
+// (and every other JWTTokenExpiry.Unlimited bot): a valid JWT with claims
+// but no `exp` at all. See JWTTokenGenerator.getExpiryDate — the Unlimited
+// case returns null which becomes .withExpiresAt(null).
+const buildFakeJwtWithoutExp = () => {
+  const encode = (payload: Record<string, unknown>) =>
+    Buffer.from(JSON.stringify(payload)).toString('base64');
+
+  return `${encode({ alg: 'none' })}.${encode({
+    sub: 'ingestion-bot',
+  })}.signature`;
+};
 
 // Focused coverage for `applicationsLoaded` — the gate that downstream
 // effects (e.g. Collate's AI-mode register/unregister) rely on to avoid
@@ -59,5 +94,249 @@ describe('useApplicationStore.applicationsLoaded', () => {
     // ApplicationsProvider is the only writer that gets to flip it after
     // the fetch finally resolves.
     expect(useApplicationStore.getState().applicationsLoaded).toBe(false);
+  });
+});
+
+// Bug 1 fix (auth-coordinator-refactor Task 13): a cold-load token that is
+// present but already expired (or within the 60s buffer) used to be accepted
+// as authenticated — `isAuthenticated: Boolean(token)` — which let the app
+// render with a dead token and fail its first API call with a 401 that never
+// triggered a silent refresh. `initializeAuthState` now decodes the token and
+// routes an expired one through `authCoordinator.ensureFreshToken()` before
+// ever flipping `isAuthenticated` true.
+describe('useApplicationStore.initializeAuthState (Bug 1 — cold-load refresh)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // `initializeAuthState` only calls `getOidcToken` via the
+    // serviceWorker+indexedDB-aware branch. Neither exists in this jsdom
+    // environment by default, so stub both to exercise that branch.
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: {},
+    });
+    Object.defineProperty(window, 'indexedDB', {
+      configurable: true,
+      value: {},
+    });
+
+    act(() => {
+      useApplicationStore.setState({
+        isAuthenticated: false,
+        isAuthenticating: true,
+      });
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    delete (navigator as { serviceWorker?: unknown }).serviceWorker;
+    delete (window as { indexedDB?: unknown }).indexedDB;
+  });
+
+  it('refreshes an expired token before flipping isAuthenticated', async () => {
+    const expiredToken = buildFakeJwt(Math.floor(Date.now() / 1000) - 60);
+    (getOidcToken as jest.Mock).mockResolvedValue(expiredToken);
+    const ensureFreshToken = jest
+      .spyOn(authCoordinator, 'ensureFreshToken')
+      .mockResolvedValue('fresh');
+
+    await act(async () => {
+      await useApplicationStore.getState().initializeAuthState();
+    });
+
+    expect(ensureFreshToken).toHaveBeenCalledTimes(1);
+    expect(useApplicationStore.getState().isAuthenticated).toBe(true);
+    expect(useApplicationStore.getState().isAuthenticating).toBe(false);
+  });
+
+  it('routes to signin if refresh fails on cold load', async () => {
+    const expiredToken = buildFakeJwt(Math.floor(Date.now() / 1000) - 60);
+    (getOidcToken as jest.Mock).mockResolvedValue(expiredToken);
+    jest
+      .spyOn(authCoordinator, 'ensureFreshToken')
+      .mockRejectedValue(new Error('no'));
+
+    await act(async () => {
+      await useApplicationStore.getState().initializeAuthState();
+    });
+
+    expect(useApplicationStore.getState().isAuthenticated).toBe(false);
+    expect(useApplicationStore.getState().isAuthenticating).toBe(false);
+  });
+
+  it('skips the refresh for a valid, non-expired token', async () => {
+    const validToken = buildFakeJwt(Math.floor(Date.now() / 1000) + 3600);
+    (getOidcToken as jest.Mock).mockResolvedValue(validToken);
+    const ensureFreshToken = jest.spyOn(authCoordinator, 'ensureFreshToken');
+
+    await act(async () => {
+      await useApplicationStore.getState().initializeAuthState();
+    });
+
+    expect(ensureFreshToken).not.toHaveBeenCalled();
+    expect(useApplicationStore.getState().isAuthenticated).toBe(true);
+    expect(useApplicationStore.getState().isAuthenticating).toBe(false);
+  });
+
+  // Regression guard for the Playwright IngestionBot cold-load failure:
+  // the ingestion-bot's JWTTokenExpiry.Unlimited token has no `exp` claim
+  // at all. The original `!exp || …` guard treated that as expired and
+  // sent it through ensureFreshToken(), which then hung waiting for a
+  // renewer that never registers (no login flow ran — the token was
+  // seeded straight into IndexedDB), leaving the app on the sign-in page.
+  it('treats an exp-less token (Unlimited bot JWT) as authenticated without refreshing', async () => {
+    (getOidcToken as jest.Mock).mockResolvedValue(buildFakeJwtWithoutExp());
+    const ensureFreshToken = jest.spyOn(authCoordinator, 'ensureFreshToken');
+
+    await act(async () => {
+      await useApplicationStore.getState().initializeAuthState();
+    });
+
+    expect(ensureFreshToken).not.toHaveBeenCalled();
+    expect(useApplicationStore.getState().isAuthenticated).toBe(true);
+    expect(useApplicationStore.getState().isAuthenticating).toBe(false);
+  });
+
+  it('sets isAuthenticated false without attempting a refresh when no token is present', async () => {
+    (getOidcToken as jest.Mock).mockResolvedValue('');
+    const ensureFreshToken = jest.spyOn(authCoordinator, 'ensureFreshToken');
+
+    await act(async () => {
+      await useApplicationStore.getState().initializeAuthState();
+    });
+
+    expect(ensureFreshToken).not.toHaveBeenCalled();
+    expect(useApplicationStore.getState().isAuthenticated).toBe(false);
+    expect(useApplicationStore.getState().isAuthenticating).toBe(false);
+  });
+
+  // Without this the proactive timer is only armed by a completed refresh,
+  // so the first renewal after a cold load always waited for a 401.
+  it('arms the proactive renewal timer for a valid, non-expired token', async () => {
+    const validToken = buildFakeJwt(Math.floor(Date.now() / 1000) + 3600);
+    (getOidcToken as jest.Mock).mockResolvedValue(validToken);
+    const syncFromStoredToken = jest
+      .spyOn(authCoordinator, 'syncFromStoredToken')
+      .mockResolvedValue(undefined);
+
+    await act(async () => {
+      await useApplicationStore.getState().initializeAuthState();
+    });
+
+    expect(syncFromStoredToken).toHaveBeenCalledTimes(1);
+  });
+
+  // AuthProvider's refresh-failed handler owns what follows a
+  // ReauthRequiredError: a top-level redirect to the identity provider, with
+  // the loader kept up so /signin never flashes, or a sign-out that settles
+  // isAuthenticating itself.
+  it('keeps the loader up when the refresh failure hands over to a silent re-authentication', async () => {
+    const expiredToken = buildFakeJwt(Math.floor(Date.now() / 1000) - 60);
+    (getOidcToken as jest.Mock).mockResolvedValue(expiredToken);
+    jest
+      .spyOn(authCoordinator, 'ensureFreshToken')
+      .mockRejectedValue(new ReauthRequiredError('needs the IdP'));
+
+    await act(async () => {
+      await useApplicationStore.getState().initializeAuthState();
+    });
+
+    expect(useApplicationStore.getState().isAuthenticated).toBe(false);
+    expect(useApplicationStore.getState().isAuthenticating).toBe(true);
+  });
+
+  // Regression guard for the OAuth-callback / isAuthenticating deadlock:
+  // AppRouter's top-level `if (isAuthenticating) return <Loader />` gate
+  // sits above the /auth/callback route, and `handleSuccessfulLogin`
+  // never clears `isAuthenticating` — so any code path that leaves
+  // `isAuthenticating: true` on a callback route strands the login on
+  // <Loader /> forever. Every callback route must flow through the full
+  // token check so the loader lifts.
+  describe('OAuth-callback routes must clear isAuthenticating', () => {
+    const setPath = (path: string) => {
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { ...window.location, pathname: path },
+      });
+    };
+
+    it.each([['/callback'], ['/auth/callback'], ['/silent-callback']])(
+      'runs the token check and flips isAuthenticating false on %s',
+      async (path) => {
+        setPath(path);
+        (getOidcToken as jest.Mock).mockResolvedValue('');
+
+        await act(async () => {
+          await useApplicationStore.getState().initializeAuthState();
+        });
+
+        expect(getOidcToken).toHaveBeenCalled();
+        // isAuthenticated stays false — the authenticator will flip it in
+        // its callback-processing effect. What matters is that
+        // isAuthenticating is CLEARED so AppRouter can mount the
+        // callback route (SamlCallback for /auth/callback,
+        // OidcCallbackWrapper for /callback).
+        expect(useApplicationStore.getState().isAuthenticating).toBe(false);
+        expect(useApplicationStore.getState().isAuthenticated).toBe(false);
+      }
+    );
+
+    // After a silent re-authentication the stored token is still the stale
+    // one that sent the user to the identity provider. Refreshing it here
+    // would race the callback storing the fresh token, and a second failure
+    // right after the redirect reads as a dead session.
+    it.each([['/callback'], ['/auth/callback']])(
+      'leaves an expired token to the login callback on %s instead of refreshing it',
+      async (path) => {
+        setPath(path);
+        (getOidcToken as jest.Mock).mockResolvedValue(
+          buildFakeJwt(Math.floor(Date.now() / 1000) - 60)
+        );
+        const ensureFreshToken = jest.spyOn(
+          authCoordinator,
+          'ensureFreshToken'
+        );
+
+        await act(async () => {
+          await useApplicationStore.getState().initializeAuthState();
+        });
+
+        expect(ensureFreshToken).not.toHaveBeenCalled();
+        expect(useApplicationStore.getState().isAuthenticating).toBe(false);
+        expect(useApplicationStore.getState().isAuthenticated).toBe(false);
+      }
+    );
+
+    // The server can reject the stale token (a revoked or ended session)
+    // while its exp is still ahead. Signing in on it would render the
+    // authenticated routes, which have no Okta, Auth0 or /auth/callback
+    // callback, so the fresh token would never be stored.
+    it.each([['/callback'], ['/auth/callback']])(
+      'never signs in on %s with an unexpired token left from before the redirect',
+      async (path) => {
+        setPath(path);
+        (getOidcToken as jest.Mock).mockResolvedValue(
+          buildFakeJwt(Math.floor(Date.now() / 1000) + 1_800)
+        );
+        const ensureFreshToken = jest.spyOn(
+          authCoordinator,
+          'ensureFreshToken'
+        );
+        const syncFromStoredToken = jest.spyOn(
+          authCoordinator,
+          'syncFromStoredToken'
+        );
+
+        await act(async () => {
+          await useApplicationStore.getState().initializeAuthState();
+        });
+
+        expect(useApplicationStore.getState().isAuthenticated).toBe(false);
+        expect(useApplicationStore.getState().isAuthenticating).toBe(false);
+        expect(ensureFreshToken).not.toHaveBeenCalled();
+        expect(syncFromStoredToken).not.toHaveBeenCalled();
+      }
+    );
   });
 });

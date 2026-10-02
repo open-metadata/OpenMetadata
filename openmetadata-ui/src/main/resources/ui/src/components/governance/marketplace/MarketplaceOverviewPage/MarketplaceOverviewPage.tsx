@@ -17,7 +17,7 @@ import MarketplaceOverviewHeader from '../MarketplaceOverviewHeader/MarketplaceO
 
 /**
  * Marketplace overview route. In AI mode the classic greeting-banner + search
- * hero is replaced by the shared `HeaderShell` page header (breadcrumb, title,
+ * hero is replaced by the shared `PageHeader` (breadcrumb, title,
  * subtitle, search + Add New); classic mode keeps the default overview chrome.
  */
 const MarketplaceOverviewPage = () => {

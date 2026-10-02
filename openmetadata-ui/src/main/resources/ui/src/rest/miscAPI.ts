@@ -13,23 +13,23 @@
 
 import { AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
-import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { PAGE_SIZE } from '../constants/constants';
-import { AsyncDeleteJob } from '../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { AggregationRequest } from '../generated/search/aggregationRequest';
 import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
+import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
+import { AsyncDeleteJob } from '../interface/entity/asyncDelete.interface';
+import { Edge } from '../interface/lineage.interface';
 import { SearchResponse } from '../interface/search.interface';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -267,6 +267,17 @@ export const postAggregateFieldOptions = ({
     body
   );
 };
+
+/** Posts the body as given — no `.*` wrapping, which would break an alternation of exact terms. */
+export const postExactAggregateFieldOptions = (
+  body: AggregationRequest,
+  signal?: AbortSignal
+) =>
+  APIClient.post<SearchResponse<ExploreSearchIndex>>(
+    '/search/aggregate',
+    body,
+    { signal }
+  );
 
 export const getEntityCount = async (
   path: string,

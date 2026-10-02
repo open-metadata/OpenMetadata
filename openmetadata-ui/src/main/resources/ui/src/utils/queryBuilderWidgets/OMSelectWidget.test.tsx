@@ -126,10 +126,22 @@ describe('OMSelectWidget', () => {
       expect(screen.getByTestId('options').children).toHaveLength(2)
     );
 
-    // Selecting an item pushes its label into the input, which narrows the list
-    // down to just that option (the reported bug).
+    // React Aria echoes the selected item's label back through onInputChange
+    // when the popup opens. Refetching on that echo searches for the value
+    // already chosen, which collapsed the list to that one option and left the
+    // user unable to switch. The echo must not refetch.
+    const callsAfterSeed = asyncFetch.mock.calls.length;
+
     fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'Option 1' },
+    });
+
+    expect(screen.getByTestId('options').children).toHaveLength(2);
+    expect(asyncFetch).toHaveBeenCalledTimes(callsAfterSeed);
+
+    // A genuine search still narrows.
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Option 2' },
     });
     await waitFor(() =>
       expect(screen.getByTestId('options').children).toHaveLength(1)
@@ -145,6 +157,38 @@ describe('OMSelectWidget', () => {
 
     expect(screen.getByTestId('options').children).toHaveLength(2);
     expect(asyncFetch).toHaveBeenCalledTimes(callsBeforeReopen);
-    expect(asyncFetch).toHaveBeenLastCalledWith('Option 1');
+  });
+
+  it('still searches when the user types something other than the selection', async () => {
+    const allOptions = [
+      { value: 'opt1', title: 'Option 1' },
+      { value: 'opt2', title: 'Option 2' },
+    ];
+    const asyncFetch = jest.fn().mockImplementation((search: string) =>
+      Promise.resolve({
+        values: search
+          ? allOptions.filter((option) => option.title === search)
+          : allOptions,
+      })
+    );
+    render(
+      <OMSelectWidget
+        {...baseProps}
+        useAsyncSearch
+        asyncFetch={asyncFetch}
+        listValues={undefined}
+        value="opt1"
+      />
+    );
+
+    await waitFor(() => expect(asyncFetch).toHaveBeenCalledWith(''));
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Option 2' },
+    });
+
+    await waitFor(() =>
+      expect(asyncFetch).toHaveBeenLastCalledWith('Option 2')
+    );
   });
 });

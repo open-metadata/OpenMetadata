@@ -25,21 +25,34 @@ jest.mock('./tabs/PermissionsTab', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('./tabs/access-control/AccessControlPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('./tabs/bots/BotsPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('../../../../assets/svg/entity/bot.svg', () => ({
+  ReactComponent: () => null,
+}));
 
 import {
   DEFAULT_PROFILE_NAV_ID,
   getProfileNavItem,
+  PROFILE_NAV_GROUP_LABEL,
+  PROFILE_NAV_GROUP_ORDER,
   PROFILE_NAV_ITEMS,
 } from './profileNavConfig';
 
 describe('profileNavConfig', () => {
-  // "My Connections" is not in the static config — the Query Runner plugin
-  // contributes it through the `profile.tabs` extension point.
-  it('exposes exactly the 3 built-in nav items in order', () => {
+  it('exposes exactly the 5 built-in nav items in order', () => {
     expect(PROFILE_NAV_ITEMS.map((i) => i.id)).toEqual([
       'profile',
       'permissions',
       'access-token',
+      'access-control',
+      'bots',
     ]);
   });
 
@@ -56,10 +69,10 @@ describe('profileNavConfig', () => {
       expect(typeof item.render).toBe('function');
     });
 
-    expect(ids.size).toBe(3);
+    expect(ids.size).toBe(5);
   });
 
-  it('groups profile/permissions under account, credentials otherwise', () => {
+  it('places access-control under administration group, not credentials', () => {
     const groupById = Object.fromEntries(
       PROFILE_NAV_ITEMS.map((i) => [i.id, i.group])
     );
@@ -68,7 +81,23 @@ describe('profileNavConfig', () => {
       profile: 'account',
       permissions: 'account',
       'access-token': 'credentials',
+      'access-control': 'administration',
+      bots: 'administration',
     });
+  });
+
+  it('includes administration in the group label map', () => {
+    expect(PROFILE_NAV_GROUP_LABEL.administration).toBe('label.administration');
+  });
+
+  it('renders groups in account → administration → workspace → credentials order', () => {
+    expect(PROFILE_NAV_GROUP_ORDER).toEqual([
+      'account',
+      'administration',
+      'workspace',
+      'application',
+      'credentials',
+    ]);
   });
 
   it('resolves the default id and falls back to the first item on miss', () => {

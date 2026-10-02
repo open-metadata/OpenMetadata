@@ -25,7 +25,11 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlertCircle, InfoCircle, LinkExternal01 } from '@untitledui/icons';
+import {
+  AlertCircle,
+  InfoCircle,
+  LinkExternal01,
+} from '@openmetadata/ui-core-components/icons';
 import {
   FC,
   ReactNode,
@@ -60,6 +64,7 @@ import {
   getPersonaContextSections,
   getRuleExplorePath,
   isKnowledgeContextRule,
+  isSearchScopedRule,
 } from '../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
@@ -303,7 +308,7 @@ export const ContextRuleEditor = ({
 
         return;
       }
-      const scoped = Boolean(data.filteredInSearch);
+      const scoped = isSearchScopedRule(data);
       await onSubmit({
         ...data,
         alwaysInContext: scoped ? false : data.alwaysInContext,

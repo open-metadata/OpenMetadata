@@ -109,11 +109,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
     children?: React.ReactNode;
   } & Record<string, unknown>) => <span {...rest}>{children}</span>;
 
-  return { Input, SelectPopover, Typography };
+  const Tooltip = ({
+    children,
+  }: {
+    children?: React.ReactNode;
+  } & Record<string, unknown>) => <>{children}</>;
+
+  return { Input, SelectPopover, Tooltip, Typography };
 });
 
-jest.mock('@untitledui/icons', () => ({
-  SearchLg: () => <span data-testid="search-icon">search</span>,
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Search: () => <span data-testid="search-icon">search</span>,
 }));
 
 const mockDataProducts = [
@@ -213,20 +219,12 @@ describe('MarketplaceSearchBar', () => {
     const toggleBtn = screen.getByTestId('marketplace-nlq-toggle');
 
     expect(toggleBtn).not.toHaveClass('active');
-    expect(toggleBtn).toHaveAttribute(
-      'title',
-      'label.use-natural-language-search'
-    );
 
     await act(async () => {
       fireEvent.click(toggleBtn);
     });
 
     expect(toggleBtn).toHaveClass('active');
-    expect(toggleBtn).toHaveAttribute(
-      'title',
-      'message.natural-language-search-active'
-    );
 
     await act(async () => {
       fireEvent.click(toggleBtn);
@@ -255,7 +253,7 @@ describe('MarketplaceSearchBar', () => {
     });
   });
 
-  it('calls nlqSearch when NLQ is active and NLP is enabled', async () => {
+  it('calls nlqSearch only on Enter when NLQ is active and NLP is enabled', async () => {
     useSearchStore.setState({ isNLPEnabled: true, isNLPActive: true });
     (nlqSearch as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
 
@@ -265,13 +263,37 @@ describe('MarketplaceSearchBar', () => {
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'revenue data' } });
+      // Past the typing debounce, so a per-keystroke NLQ call would have fired.
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(nlqSearch).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' });
     });
 
     await waitFor(() => {
+      expect(nlqSearch).toHaveBeenCalledTimes(1);
       expect(nlqSearch).toHaveBeenCalledWith(
         expect.objectContaining({ query: 'revenue data' })
       );
     });
+  });
+
+  it('does not run a pending keyword search as NLQ when the toggle is switched on', async () => {
+    renderComponent();
+
+    const input = screen.getByTestId('marketplace-search-input');
+
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'revenue' } });
+      fireEvent.click(screen.getByTestId('marketplace-nlq-toggle'));
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(nlqSearch).not.toHaveBeenCalled();
+    expect(searchQuery).not.toHaveBeenCalled();
   });
 
   it('does not open popover when input is empty', async () => {

@@ -18,7 +18,11 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Announcement02, ChevronLeft, ChevronRight } from '@untitledui/icons';
+import {
+  Announcement02,
+  ChevronLeft,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,7 +48,7 @@ const AnnouncementsWidgetV3Body = ({
     return (
       <div
         className={classNames(
-          'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-blue-50 tw:to-bg-primary tw:px-4 tw:py-3.5',
+          'tw:rounded-[10px] tw:border tw:border-utility-gray-blue-100 tw:bg-linear-to-b tw:from-utility-blue-50 tw:to-bg-primary tw:px-4 tw:py-3.5',
           className
         )}
         data-testid={testId}>
@@ -84,7 +88,7 @@ const AnnouncementsWidgetV3Body = ({
   return (
     <div
       className={classNames(
-        'tw:rounded-[10px] tw:border tw:border-gray-blue-100 tw:bg-linear-to-b tw:from-blue-50 tw:to-bg-primary tw:px-4 tw:py-3.5',
+        'tw:rounded-[10px] tw:border tw:border-utility-gray-blue-100 tw:bg-linear-to-b tw:from-utility-blue-50 tw:to-bg-primary tw:px-4 tw:py-3.5',
         className
       )}
       data-testid={testId}>

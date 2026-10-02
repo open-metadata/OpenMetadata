@@ -12,14 +12,14 @@
  */
 
 import { ProjectionState } from '../generated/api/rdf/rdfStatus';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   fetchRdfConfig,
   runGlossarySparqlQuery,
   runSparqlQuery,
 } from './rdfAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   get: jest.fn(),
   post: jest.fn(),
 }));
@@ -60,7 +60,7 @@ describe('rdfAPI SPARQL routing', () => {
 
   it('loads the effective RDF and Ontology AI capability status', async () => {
     const status = {
-      askCollateEnabled: true,
+      aiEnabled: true,
       baseUri: 'https://open-metadata.org/',
       enabled: true,
       inference: {

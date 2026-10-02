@@ -44,7 +44,7 @@ test.describe('Language Override Tests', () => {
     await germanLocalePage.getByText('English - EN').click();
 
     // navigate(0) triggers a full page reload when language changes
-    await germanLocalePage.waitForLoadState('load');
+    await germanLocalePage.waitForLoadState('domcontentloaded');
     await germanLocalePage
       .getByTestId('language-selector-button')
       .waitFor({ state: 'visible' });

@@ -17,18 +17,10 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Dropdown, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -619,12 +611,15 @@ const AppDetails = () => {
     return (
       <div className="flex-center gap-2">
         <Icon component={IconExternalLink} style={ICON_DIMENSION} />
-        <Typography.Link
-          className="text-xs"
-          href={appData?.developerUrl}
-          target="_blank">
-          <Space>{t('label.visit-developer-website')}</Space>
-        </Typography.Link>
+        <Typography>
+          <a
+            className="text-xs"
+            href={appData?.developerUrl}
+            rel="noopener noreferrer"
+            target="_blank">
+            <Space>{t('label.visit-developer-website')}</Space>
+          </a>
+        </Typography>
       </div>
     );
   };
@@ -638,11 +633,22 @@ const AppDetails = () => {
     // Render default tabs interface
     return (
       <Tabs
-        destroyInactiveTabPane
-        className="tabs-new"
+        className="tw:gap-3"
         data-testid="tabs"
-        items={tabs}
-      />
+        defaultSelectedKey={tabs[0]?.key}>
+        <Tabs.List size="sm" type="underline" variant="card">
+          {tabs.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabs.map(({ key, children }) => (
+          <Tabs.Panel id={key} key={key}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     );
   };
 
@@ -654,20 +660,20 @@ const AppDetails = () => {
     <PageLayoutV1
       className="app-details-page-layout"
       pageTitle={getEntityName(appData) || t('label.application-plural')}>
-      <Row>
-        <Col className="d-flex" flex="auto">
+      <Box>
+        <div className="d-flex tw:min-w-0 tw:flex-auto">
           <Button
             className="p-0"
             icon={<LeftOutlined />}
             size="small"
             type="text"
             onClick={onBrowseAppsClick}>
-            <Typography.Text className="font-medium">
+            <Typography className="font-medium">
               {t('label.browse-app-plural')}
-            </Typography.Text>
+            </Typography>
           </Button>
-        </Col>
-        <Col flex="360px">
+        </div>
+        <div className="tw:flex-[0_0_360px]">
           <div className="d-flex gap-2 justify-end">
             <Dropdown
               align={{ targetOffset: [-12, 0] }}
@@ -697,47 +703,43 @@ const AppDetails = () => {
               </Tooltip>
             </Dropdown>
           </div>
-        </Col>
-      </Row>
-      <Row>
-        <Col span={24}>
+        </div>
+      </Box>
+      <Box direction="col">
+        <div>
           <Space className="app-details-header w-full" size={24}>
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
-              <Typography.Title level={4}>
-                {getEntityName(appData)}
-              </Typography.Title>
+              <Typography as="h4">{getEntityName(appData)}</Typography>
               {renderRuntimeDisabledBadge()}
 
               <div className="d-flex items-center flex-wrap gap-6">
                 <Space size={8}>
                   <ClockCircleOutlined />
-                  <Typography.Text className="text-xs text-grey-muted">
+                  <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
-                  </Typography.Text>
+                  </Typography>
                 </Space>
 
                 <Space size={8}>
                   <UserOutlined />
-                  <Typography.Text className="text-xs text-grey-muted">
+                  <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}
-                  </Typography.Text>
+                  </Typography>
                 </Space>
 
                 {renderDeveloperUrl()}
               </div>
             </div>
           </Space>
-        </Col>
-        <Col className="app-details-page-tabs" span={24}>
-          {renderAppDetailsBody()}
-        </Col>
-      </Row>
+        </div>
+        <div>{renderAppDetailsBody()}</div>
+      </Box>
 
       <ConfirmationModal
         bodyText={t('message.are-you-sure-action-property', {

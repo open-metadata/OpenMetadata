@@ -120,6 +120,18 @@ describe('TestCaseResultTabClassBase', () => {
     });
   });
 
+  describe('shouldRenderDefaultGraph', () => {
+    it('should render the shared graph by default', () => {
+      expect(testCaseResultTabClassBase.shouldRenderDefaultGraph()).toBe(true);
+      expect(
+        testCaseResultTabClassBase.shouldRenderDefaultGraph(undefined)
+      ).toBe(true);
+      expect(
+        testCaseResultTabClassBase.shouldRenderDefaultGraph(mockTestCase)
+      ).toBe(true);
+    });
+  });
+
   describe('extended class functionality', () => {
     it('should allow extending the class to add custom components', () => {
       const MockComponent = () => null;
@@ -165,6 +177,29 @@ describe('TestCaseResultTabClassBase', () => {
       const result = extendedInstance.getAlertBanner();
 
       expect(result).toBe(MockBanner);
+    });
+
+    it('should allow extending the class to suppress the default graph per test type', () => {
+      class ExtendedClass extends TestCaseResultTabClassBase {
+        public shouldRenderDefaultGraph(testCaseData?: TestCase): boolean {
+          return testCaseData?.testDefinition?.name !== 'tableDataToBeFresh';
+        }
+      }
+
+      const extendedInstance = new ExtendedClass();
+
+      expect(extendedInstance.shouldRenderDefaultGraph(mockTestCase)).toBe(
+        true
+      );
+      expect(
+        extendedInstance.shouldRenderDefaultGraph({
+          ...mockTestCase,
+          testDefinition: {
+            ...mockTestCase.testDefinition,
+            name: 'tableDataToBeFresh',
+          },
+        })
+      ).toBe(false);
     });
 
     it('should allow extending the class with conditional banner logic', () => {

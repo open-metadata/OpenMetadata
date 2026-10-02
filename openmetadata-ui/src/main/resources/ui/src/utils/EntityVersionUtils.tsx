@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Space, Typography } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { get, isEmpty, isObject, startCase, toString } from 'lodash';
 import type { ReactNode } from 'react';
 import { Fragment, lazy } from 'react';
@@ -47,14 +48,6 @@ const BulkImportVersionSummary = withSuspenseFallback(
     import(
       '../components/Entity/EntityVersionTimeLine/BulkImportVersionSummary/BulkImportVersionSummary.component'
     ).then((m) => ({ default: m.BulkImportVersionSummary }))
-  )
-);
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/OwnerLabel/OwnerLabel.component').then(
-      (m) => ({ default: m.OwnerLabel })
-    )
   )
 );
 
@@ -124,7 +117,7 @@ export const getSummary = ({
   return (
     <Fragment>
       {isDeleteUpdated?.length > 0 ? (
-        <Typography.Paragraph>
+        <Typography as="p">
           {isDeleteUpdated
             .map((field) => {
               return field.newValue
@@ -136,20 +129,20 @@ export const getSummary = ({
                   });
             })
             .join(', ')}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
       {fieldsAdded?.length > 0 ? (
-        <Typography.Paragraph>
+        <Typography as="p">
           {Pure.getSummaryText({
             isPrefix,
             fieldsChanged: fieldsAdded,
             actionType: t('label.added'),
             actionText: t('label.added-lowercase'),
           })}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
       {fieldsUpdated?.length ? (
-        <Typography.Paragraph>
+        <Typography as="div">
           {bulkImportSummary ? (
             <>
               {t('message.bulk-import-completed')}
@@ -164,17 +157,17 @@ export const getSummary = ({
               isGlossaryTerm,
             })
           )}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
       {fieldsDeleted?.length ? (
-        <Typography.Paragraph>
+        <Typography as="p">
           {Pure.getSummaryText({
             isPrefix,
             fieldsChanged: fieldsDeleted,
             actionType: t('label.removed'),
             actionText: t('label.deleted-lowercase'),
           })}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
     </Fragment>
   );
@@ -232,20 +225,23 @@ export const getParameterValueDiffDisplay = (
         className="parameter-value-container parameter-value"
         size={6}>
         {otherParamDiffs.length === 0 ? (
-          <Typography.Text type="secondary">
+          <Typography color="secondary">
             {t('label.no-parameter-available')}
-          </Typography.Text>
+          </Typography>
         ) : (
           otherParamDiffs.map((diff, index) => (
             <Space data-testid={diff.name} key={diff.name} size={4}>
-              <Typography.Text className="parameter-label">
+              <Typography className="parameter-label">
                 {`${diff.name}:`}
-              </Typography.Text>
-              <Typography.Text className="parameter-value-text">
+              </Typography>
+              <Typography className="parameter-value-text">
                 {getDiffDisplayValue(diff)}
-              </Typography.Text>
+              </Typography>
               {otherParamDiffs.length - 1 !== index && (
-                <Divider type="vertical" />
+                <Divider
+                  className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                  orientation="vertical"
+                />
               )}
             </Space>
           ))
@@ -254,9 +250,9 @@ export const getParameterValueDiffDisplay = (
       {/* Render sqlExpression parameter separately, using inline diff in a code-style block */}
       {sqlParamDiff && (
         <div className="m-t-md">
-          <Typography.Text className="right-panel-label">
+          <Typography className="right-panel-label">
             {startCase(sqlParamDiff.name)}
-          </Typography.Text>
+          </Typography>
 
           <div className="m-t-sm version-sql-expression-container">
             {getDiffDisplayValue(sqlParamDiff)}
@@ -322,7 +318,14 @@ export const getOwnerVersionLabel = (
     );
 
     if (!isEmpty(owners)) {
-      return <OwnerLabel ownerDisplayName={ownerDisplayName} owners={owners} />;
+      return (
+        <Owner
+          isCompactView={false}
+          ownerDisplayName={ownerDisplayName}
+          owners={owners}
+          showLabel={false}
+        />
+      );
     }
   }
 
@@ -340,15 +343,11 @@ export const getOwnerVersionLabel = (
     });
 
     return (
-      <OwnerLabel
+      <Owner
+        isCompactView={false}
         ownerDisplayName={ownerDisplayName}
         owners={defaultItems}
-        {...(ownerField === TabSpecificField.OWNERS
-          ? {
-              isCompactView: false,
-              showLabel: false,
-            }
-          : {})}
+        showLabel={false}
       />
     );
   }

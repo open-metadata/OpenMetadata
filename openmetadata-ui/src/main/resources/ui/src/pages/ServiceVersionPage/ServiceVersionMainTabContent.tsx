@@ -19,19 +19,19 @@ import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Description from '../../components/common/EntityDescription/Description';
-import Table from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
+import Table from '../../components/common/Table/TableV2';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { PAGE_SIZE } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { ServicePageData } from '../../interface/platform/service.interface';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtilsPure';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
 import { getCountLabel } from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage.interface';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
 
 function ServiceVersionMainTabContent({

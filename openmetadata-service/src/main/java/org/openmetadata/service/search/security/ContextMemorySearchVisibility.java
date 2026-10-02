@@ -82,25 +82,43 @@ public class ContextMemorySearchVisibility {
   }
 
   /**
-   * Returns a filter admitting only org-wide ({@link MemoryVisibility#ENTITY}) memories. This is the
-   * fail-closed default for search paths that carry no {@link SubjectContext} and therefore cannot
-   * decide who a restricted memory belongs to — they get the memories everyone may read and nothing
-   * else. Like {@link #buildVisibilityFilter}, non-memory documents always pass.
+   * Returns a filter admitting only org-wide memories and files. This is the fail-closed default for
+   * search paths that carry no {@link SubjectContext} and therefore cannot decide who a restricted
+   * document belongs to. Documents without per-entity visibility rules always pass.
    */
   public OMQueryBuilder buildOrgWideOnlyFilter() {
-    return scopeMemoriesTo(
-        queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    OMQueryBuilder orgWideMemory =
+        queryBuilderFactory
+            .boolQuery()
+            .should(
+                List.of(
+                    queryBuilderFactory.termQuery(
+                        FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()),
+                    queryBuilderFactory.termQuery(
+                        FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value())));
+    OMQueryBuilder orgWideFile =
+        queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value());
+    return scopeGovernedTypes(
+        orgWideMemory, queryBuilderFactory.boolQuery().should(List.of(unstamped(), orgWideFile)));
   }
 
   /**
    * The document-level equivalent of {@link #buildOrgWideOnlyFilter}, for fetch-by-id paths that
-   * run no query to filter. Returns false only for a restricted (non-org-wide) context memory;
-   * every other document passes.
+   * run no query to filter. Returns false for restricted memories and files; documents without
+   * per-entity visibility rules pass.
    */
   public static boolean isOrgWideReadable(Map<String, Object> document) {
     boolean readable = true;
-    if (document != null && Entity.CONTEXT_MEMORY.equals(document.get(FIELD_ENTITY_TYPE))) {
-      readable = MemoryVisibility.ENTITY.value().equals(document.get(FIELD_VISIBILITY));
+    if (document != null) {
+      Object entityType = document.get(FIELD_ENTITY_TYPE);
+      Object visibility = document.get(FIELD_VISIBILITY);
+      if (Entity.CONTEXT_MEMORY.equals(entityType)) {
+        readable =
+            MemoryVisibility.ENTITY.value().equals(visibility)
+                || MemoryVisibility.PUBLIC.value().equals(visibility);
+      } else if (Entity.CONTEXT_FILE.equals(entityType)) {
+        readable = visibility == null || MemoryVisibility.ENTITY.value().equals(visibility);
+      }
     }
     return readable;
   }
@@ -127,29 +145,63 @@ public class ContextMemorySearchVisibility {
   }
 
   private OMQueryBuilder buildFilter(User user) {
-    return scopeMemoriesTo(buildVisibleToUserClause(user));
+    return scopeGovernedTypes(buildVisibleToUserClause(user, true), buildVisibleFileClause(user));
   }
 
-  /** Applies {@code memoryClause} to context memory documents only, letting every other type pass. */
-  private OMQueryBuilder scopeMemoriesTo(OMQueryBuilder memoryClause) {
-    OMQueryBuilder nonMemory =
+  /**
+   * Applies each type's clause to that type's documents, letting every other type pass.
+   *
+   * <p>Memories and files are governed by the same {@code shareConfig} but not by the same default:
+   * a memory is written with one, so an unstamped memory is withheld, while a file predates the
+   * field and an unstamped file is an ordinary file. Hence a clause each rather than one shared.
+   */
+  private OMQueryBuilder scopeGovernedTypes(
+      OMQueryBuilder memoryClause, OMQueryBuilder fileClause) {
+    OMQueryBuilder ungoverned =
         queryBuilderFactory
             .boolQuery()
             .mustNot(
-                List.of(queryBuilderFactory.termQuery(FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY)));
-    OMQueryBuilder memoryVisible =
-        queryBuilderFactory
-            .boolQuery()
-            .must(
                 List.of(
-                    queryBuilderFactory.termQuery(FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY),
-                    memoryClause));
-    return queryBuilderFactory.boolQuery().should(List.of(nonMemory, memoryVisible));
+                    queryBuilderFactory.termsQuery(
+                        FIELD_ENTITY_TYPE, List.of(Entity.CONTEXT_MEMORY, Entity.CONTEXT_FILE))));
+    return queryBuilderFactory
+        .boolQuery()
+        .should(
+            List.of(
+                ungoverned,
+                scopedTo(Entity.CONTEXT_MEMORY, memoryClause),
+                scopedTo(Entity.CONTEXT_FILE, fileClause)));
   }
 
-  private OMQueryBuilder buildVisibleToUserClause(User user) {
+  private OMQueryBuilder scopedTo(String entityType, OMQueryBuilder clause) {
+    return queryBuilderFactory
+        .boolQuery()
+        .must(List.of(queryBuilderFactory.termQuery(FIELD_ENTITY_TYPE, entityType), clause));
+  }
+
+  /**
+   * A file is visible on the same terms as a memory, plus one: a file with no visibility stamped on
+   * it is not restricted. Every file uploaded before sharing existed is in that state, and hiding
+   * them would empty the Context Center's document search rather than protect anything.
+   */
+  private OMQueryBuilder buildVisibleFileClause(User user) {
+    return queryBuilderFactory
+        .boolQuery()
+        .should(List.of(unstamped(), buildVisibleToUserClause(user, false)));
+  }
+
+  private OMQueryBuilder unstamped() {
+    return queryBuilderFactory
+        .boolQuery()
+        .mustNot(List.of(queryBuilderFactory.existsQuery(FIELD_VISIBILITY)));
+  }
+
+  private OMQueryBuilder buildVisibleToUserClause(User user, boolean allowPublic) {
     List<OMQueryBuilder> clauses = new ArrayList<>();
     clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    if (allowPublic) {
+      clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()));
+    }
     clauses.add(
         queryBuilderFactory.nestedQuery(
             FIELD_OWNERS, queryBuilderFactory.termQuery(FIELD_OWNERS_ID, user.getId().toString())));

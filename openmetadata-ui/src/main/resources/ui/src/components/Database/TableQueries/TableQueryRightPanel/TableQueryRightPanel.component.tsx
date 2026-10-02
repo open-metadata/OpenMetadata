@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Col, Drawer, Row, Space, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Drawer, Row, Space } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -22,12 +23,12 @@ import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
@@ -41,17 +42,13 @@ const TableQueryRightPanel = ({
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.TABLE);
-  const { EditAll, EditDescription, EditOwners, EditTags } = permission;
-
-  const canEditOwners = useMemo(
-    () => EditAll || EditOwners,
-    [EditAll, EditOwners]
+  // Derive named flags instead of destructuring raw EditAll/EditOwners/etc.
+  // off `permission` — canEditOwners/canEditDescription/canEditTags already
+  // fold the "field permission wins over EditAll" prioritization in.
+  const { canEditOwners, canEditDescription, canEditTags } = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
   );
-  const canEditDescription = useMemo(
-    () => EditDescription || EditAll,
-    [EditDescription, EditAll]
-  );
-  const canEditTags = useMemo(() => EditAll || EditTags, [EditAll, EditTags]);
 
   const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
@@ -97,9 +94,9 @@ const TableQueryRightPanel = ({
               cardProps={{
                 title: (
                   <Space align="center" className="w-full" size={0}>
-                    <Typography.Text className="right-panel-label">
+                    <Typography className="right-panel-label">
                       {t('label.owner-plural')}
-                    </Typography.Text>
+                    </Typography>
 
                     {canEditOwners && (
                       <UserTeamSelectableList
@@ -124,7 +121,7 @@ const TableQueryRightPanel = ({
                   </Space>
                 ),
               }}>
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
                 owners={query.owners}
@@ -158,11 +155,9 @@ const TableQueryRightPanel = ({
             <ExpandableCard
               cardProps={{
                 title: (
-                  <Typography.Text
-                    className="right-panel-label"
-                    data-testid="users">
+                  <Typography className="right-panel-label" data-testid="users">
                     {t('label.user-plural')}
-                  </Typography.Text>
+                  </Typography>
                 ),
               }}>
               {query.users && query.users.length ? (
@@ -181,11 +176,11 @@ const TableQueryRightPanel = ({
                   ))}
                 </Space>
               ) : (
-                <Typography.Paragraph className="m-b-0 text-grey-muted">
+                <Typography as="p" className="m-b-0" color="secondary">
                   {t('label.no-entity', {
                     entity: t('label.user-plural'),
                   })}
-                </Typography.Paragraph>
+                </Typography>
               )}
             </ExpandableCard>
           </Col>
@@ -193,11 +188,11 @@ const TableQueryRightPanel = ({
             <ExpandableCard
               cardProps={{
                 title: (
-                  <Typography.Text
+                  <Typography
                     className="right-panel-label"
                     data-testid="used-by">
                     {t('label.used-by')}
-                  </Typography.Text>
+                  </Typography>
                 ),
               }}>
               {query.usedBy && query.usedBy.length ? (
@@ -210,11 +205,11 @@ const TableQueryRightPanel = ({
                   ))}
                 </Space>
               ) : (
-                <Typography.Paragraph className="m-b-0 text-grey-muted">
+                <Typography as="p" className="m-b-0" color="secondary">
                   {t('label.no-entity', {
                     entity: t('label.used-by'),
                   })}
-                </Typography.Paragraph>
+                </Typography>
               )}
             </ExpandableCard>
           </Col>

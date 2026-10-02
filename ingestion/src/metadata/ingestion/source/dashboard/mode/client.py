@@ -12,9 +12,10 @@
 REST Auth & Client for Mode
 """
 
+import json
 import traceback
 from base64 import b64encode
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
 
@@ -31,7 +32,7 @@ logger = utils_logger()
 
 
 EMBEDDED = "_embedded"
-COLLECTIONS = "collections"
+SPACES = "spaces"
 TOKEN = "token"
 REPORTS = "reports"
 QUERIES = "queries"
@@ -45,6 +46,14 @@ DESCRIPTION = "description"
 LINKS = "_links"
 SHARE = "share"
 HREF = "href"
+
+
+def _report_key(report: dict[str, Any]) -> str:
+    """Identify a report for de-duplication, tolerating a missing token."""
+    token = report.get(TOKEN)
+    if token:
+        return str(token)
+    return json.dumps(report, sort_keys=True, default=str)
 
 
 class ModeApiClient:
@@ -74,48 +83,63 @@ class ModeApiClient:
         )
         self.client = TrackedREST(client_config, source_name="mode")
 
-    def fetch_all_reports(self, workspace_name: str, filter: str | None = "all") -> list | None:
+    def fetch_all_reports(self, workspace_name: str, filter: str | None = "all") -> list[dict[str, Any]]:
         """Method to fetch all reports for Mode
+
+        Mode neither documents a stable report page size nor guarantees an empty page
+        past the last one: an out-of-range page may be clamped back to the last page,
+        and a page parameter the API ignores repeats page one indefinitely. Pagination
+        therefore stops once a page carries no unseen report, which terminates in all
+        of those cases without assuming how many records a full page holds.
+
         Args:
             workspace_name:
             filter:
         Returns:
-            dict
+            the report records of every visible space
         """
         if filter not in ["custom", "all"]:
-            logger.warning("Invalid value for filter. Should be one of ['custom', 'all']")
-            return  # noqa: RET502
+            raise ValueError(f"Invalid Mode filter [{filter}]. Expected one of ['custom', 'all']")
 
-        all_reports = []
+        all_reports: list[dict[str, Any]] = []
         filter_param = f"?filter={filter}"
-        response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}{filter_param}")
-        collections = response_collections[EMBEDDED]["spaces"]
-        for collection in collections:
-            response_reports = self.get_all_reports_for_collection(
-                workspace_name=workspace_name,
-                collection_token=collection.get(TOKEN),
-            )
-            if response_reports:
+        response_spaces = cast(
+            "dict[str, Any]",
+            self.client.get(f"/{workspace_name}/{SPACES}{filter_param}"),
+        )
+        spaces = response_spaces[EMBEDDED][SPACES]
+        for space in spaces:
+            seen_reports = set()
+            page = 1
+            while True:
+                response_reports = self.get_reports_for_space(
+                    workspace_name=workspace_name,
+                    space_token=space[TOKEN],
+                    page=page,
+                )
                 reports = response_reports[EMBEDDED][REPORTS]
-                all_reports.extend(reports)
+                new_reports = [report for report in reports if _report_key(report) not in seen_reports]
+                if not new_reports:
+                    break
+                seen_reports.update(_report_key(report) for report in new_reports)
+                all_reports.extend(new_reports)
+                page += 1
         return all_reports
 
-    def get_all_reports_for_collection(self, workspace_name: str, collection_token: str) -> dict | None:
-        """Method to fetch all reports for a collection
+    def get_reports_for_space(self, workspace_name: str, space_token: str, page: int) -> dict[str, Any]:
+        """Fetch one page of reports for a space.
+
         Args:
             workspace_name:
-            collection_token:
+            space_token:
+            page:
         Returns:
             dict
         """
-        try:
-            response = self.client.get(f"/{workspace_name}/{COLLECTIONS}/{collection_token}/{REPORTS}")
-            return response  # noqa: RET504, TRY300
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching charts: {exc}")
-
-        return None
+        return cast(
+            "dict[str, Any]",
+            self.client.get(f"/{workspace_name}/{SPACES}/{space_token}/{REPORTS}?page={page}"),
+        )
 
     def get_all_queries(self, workspace_name: str, report_token: str) -> dict | None:
         """Method to fetch all queries

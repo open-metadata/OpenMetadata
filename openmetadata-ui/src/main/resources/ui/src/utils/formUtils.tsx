@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 import {
+  Divider,
   Input as UTInput,
   Select as UTSelect,
   SelectItemType,
   Toggle,
   ToggleProps,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Checkbox,
-  Divider,
   Form,
   FormItemProps,
   Input,
@@ -28,7 +29,6 @@ import {
   Select,
   Switch,
   TooltipProps,
-  Typography,
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
@@ -38,7 +38,6 @@ import { isString, startCase, toString } from 'lodash';
 import React, { ComponentProps, Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
-import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
@@ -51,9 +50,6 @@ import { RichTextEditorProp } from '../components/common/RichTextEditor/RichText
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
-import TagSuggestion, {
-  TagSuggestionProps,
-} from '../components/common/TagSuggestion/TagSuggestion';
 import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -142,13 +138,6 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       <AntDTagSuggestion
         {...(props as unknown as AntDTagSuggestionProps)}
         newLook
-      />
-    ),
-  }),
-  [FieldTypes.TREE_ASYNC_SELECT_LIST]: ({ props }) => ({
-    element: (
-      <TreeAsyncSelectList
-        {...(props as unknown as Omit<AsyncSelectListProps, 'fetchOptions'>)}
       />
     ),
   }),
@@ -271,29 +260,6 @@ const renderUtSelectField = ({
   );
 };
 
-const renderUtTagSuggestionField = ({
-  formProps,
-  props,
-  placeholder,
-  label,
-  fieldRules,
-}: FieldRenderContext) => {
-  const isRequired = (fieldRules ?? []).some(
-    (rule) => (rule as RuleObject).required
-  );
-
-  return (
-    <Form.Item {...formProps}>
-      <TagSuggestion
-        {...(props as unknown as TagSuggestionProps)}
-        label={typeof label === 'string' ? label : undefined}
-        placeholder={placeholder}
-        required={isRequired}
-      />
-    </Form.Item>
-  );
-};
-
 const renderUtSwitchField = ({
   formProps,
   props,
@@ -322,7 +288,6 @@ const CUSTOM_FIELD_RENDERERS: Partial<
 > = {
   [FieldTypes.UT_TEXT]: renderUtTextField,
   [FieldTypes.UT_SELECT]: renderUtSelectField,
-  [FieldTypes.UT_TAG_SUGGESTION]: renderUtTagSuggestionField,
   [FieldTypes.UT_SWITCH]: renderUtSwitchField,
 };
 
@@ -422,7 +387,7 @@ export const getField = (field: FieldProp) => {
         <Form.Item className="m-b-0" {...formProps}>
           <Switch />
         </Form.Item>
-        <Typography.Text className="font-medium">{labelValue}</Typography.Text>
+        <Typography className="font-medium">{labelValue}</Typography>
       </div>
     );
   }
@@ -450,7 +415,7 @@ export const getField = (field: FieldProp) => {
         />
       )}
 
-      {hasSeparator && <Divider />}
+      {hasSeparator && <Divider className="tw:my-6" />}
     </Fragment>
   );
 };

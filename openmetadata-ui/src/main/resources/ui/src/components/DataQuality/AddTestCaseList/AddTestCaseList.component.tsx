@@ -10,17 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
-  Button,
-  Checkbox,
-  Col,
+  Box,
   Divider,
-  List,
-  Row,
-  Space,
+  EmptyPlaceholder,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Button, Checkbox, Col, List, Row, Space } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -51,6 +47,7 @@ import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import {
+  AddTestCaseListFilter,
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
@@ -65,6 +62,7 @@ import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { isNearScrollBottom } from '../../../utils/ScrollUtils';
 import { replacePlus } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -265,10 +263,6 @@ export const AddTestCaseList = ({
     return normalized;
   }, [selectedTest]);
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-  };
-
   const fetchTableData = useCallback(async (search = WILD_CARD_CHAR) => {
     setIsTableOptionsLoading(true);
     try {
@@ -404,11 +398,34 @@ export const AddTestCaseList = ({
     ]
   );
 
+  // Snapshot of the active search/filter, shaped for the bulk `selectAll` payload so
+  // the backend resolves "all N" to the filtered subset (not every test case). Mirrors
+  // the mapping in buildTestCaseSearchParams.
+  const activeFilter = useMemo<AddTestCaseListFilter>(() => {
+    const filterTable = filterTables[0];
+    const entityLink = filterTable ? `<#E::table::${filterTable}>` : undefined;
+    const columnName =
+      filterColumns.length > 0
+        ? getColumnNameFromColumnFilterKey(filterColumns[0]) || undefined
+        : undefined;
+
+    return {
+      ...(searchTerm && { q: searchTerm }),
+      ...(filterStatus && { testCaseStatus: filterStatus }),
+      ...(filterTestType !== TestCaseType.all && {
+        testCaseType: filterTestType,
+      }),
+      ...(entityLink && { entityLink, includeAllTests: true }),
+      ...(columnName && { columnName }),
+    };
+  }, [searchTerm, filterStatus, filterTestType, filterTables, filterColumns]);
+
   const buildSubmitPayload = useCallback((): {
     selectAll: boolean;
     includeIds: string[];
     excludeIds: string[];
     testCases: TestCase[];
+    filter?: AddTestCaseListFilter;
   } => {
     if (selectAll) {
       return {
@@ -416,6 +433,7 @@ export const AddTestCaseList = ({
         includeIds: [],
         excludeIds: [...excludedIds],
         testCases: [],
+        filter: activeFilter,
       };
     }
     const cases = [...(selectedItems?.values() ?? [])];
@@ -426,7 +444,7 @@ export const AddTestCaseList = ({
       excludeIds: [],
       testCases: cases,
     };
-  }, [selectAll, excludedIds, selectedItems]);
+  }, [selectAll, excludedIds, selectedItems, activeFilter]);
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -434,17 +452,15 @@ export const AddTestCaseList = ({
       selectAll: sa,
       includeIds,
       excludeIds: excl,
+      filter,
     } = buildSubmitPayload();
-    await onSubmit?.({ selectAll: sa, includeIds, excludeIds: excl });
+    await onSubmit?.({ selectAll: sa, includeIds, excludeIds: excl, filter });
     setIsLoading(false);
   };
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
-      if (
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500 &&
-        items.length < totalCount
-      ) {
+      if (isNearScrollBottom(e.currentTarget) && items.length < totalCount) {
         !isLoading &&
           fetchTestCases({
             searchText: searchTerm,
@@ -475,10 +491,29 @@ export const AddTestCaseList = ({
         includeIds: [],
         excludeIds: [...excluded],
         testCases: [],
+        filter: activeFilter,
       });
     },
-    [onChange]
+    [onChange, activeFilter]
   );
+
+  // A global "select all" means "all of the current filter". When the search or
+  // filters change it must not silently carry over — reset it so the emitted
+  // selection stays consistent with what the list shows (matters for the
+  // create-suite flow, which persists the emitted payload).
+  const resetGlobalSelection = useCallback(() => {
+    if (!selectAll) {
+      return;
+    }
+    setSelectAll(false);
+    setExcludedIds(new Set());
+    emitPartialSelection(selectedItems);
+  }, [selectAll, selectedItems, emitPartialSelection]);
+
+  const handleSearch = (value: string) => {
+    resetGlobalSelection();
+    setSearchTerm(value);
+  };
 
   const loadedItemIds = useMemo(
     () => items.map((i) => i.id).filter(Boolean) as string[],
@@ -572,12 +607,7 @@ export const AddTestCaseList = ({
           nextExcluded.add(id);
         }
         setExcludedIds(nextExcluded);
-        onChange?.({
-          selectAll: true,
-          includeIds: [],
-          excludeIds: [...nextExcluded],
-          testCases: [],
-        });
+        emitFullSelection(nextExcluded);
       } else if (selectedItems.has(id)) {
         const selectedItemMap = new Map<string, TestCase>();
         selectedItems.forEach(
@@ -608,7 +638,7 @@ export const AddTestCaseList = ({
         });
       }
     },
-    [selectAll, selectedItems, items, excludedIds, onChange]
+    [selectAll, selectedItems, items, excludedIds, onChange, emitFullSelection]
   );
 
   useEffect(() => {
@@ -700,16 +730,17 @@ export const AddTestCaseList = ({
 
                 return (
                   <Space
-                    className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
+                    className="m-b-md border rounded-4 p-sm cursor-pointer tw:bg-primary"
                     direction="vertical"
                     onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">
-                      <Typography.Paragraph
-                        className="m-0 font-medium text-base w-max-500"
+                      <Typography
+                        as="p"
+                        className="m-0 font-medium text-base w-max-500 tw:text-primary"
                         data-testid={test.name}
                         ellipsis={{ tooltip: true }}>
                         {getEntityName(test)}
-                      </Typography.Paragraph>
+                      </Typography>
 
                       <Checkbox
                         checked={
@@ -720,12 +751,13 @@ export const AddTestCaseList = ({
                         data-testid={`checkbox-${test.name}`}
                       />
                     </Space>
-                    <Typography.Paragraph
-                      className="m-0 w-max-500"
+                    <Typography
+                      as="p"
+                      className="m-0 w-max-500 tw:text-primary"
                       ellipsis={{ tooltip: true }}>
                       {getEntityName(test.testDefinition)}
-                    </Typography.Paragraph>
-                    <Typography.Paragraph className="m-0">
+                    </Typography>
+                    <Typography as="p" className="m-0 tw:text-primary">
                       <Link
                         data-testid="table-link"
                         to={getEntityDetailsPath(
@@ -736,17 +768,17 @@ export const AddTestCaseList = ({
                         onClick={(e) => e.stopPropagation()}>
                         {tableName}
                       </Link>
-                    </Typography.Paragraph>
+                    </Typography>
                     {isColumn && (
                       <Space>
-                        <Typography.Text className="font-medium text-xs">{`${t(
+                        <Typography className="font-medium text-xs tw:text-primary">{`${t(
                           'label.column'
-                        )}:`}</Typography.Text>
-                        <Typography.Text className="text-grey-muted text-xs">
+                        )}:`}</Typography>
+                        <Typography className="text-xs" color="secondary">
                           {replacePlus(
                             getColumnNameFromEntityLink(test.entityLink)
                           ) ?? '--'}
-                        </Typography.Text>
+                        </Typography>
                       </Space>
                     )}
                   </Space>
@@ -771,6 +803,7 @@ export const AddTestCaseList = ({
 
   const handleFilterChange = useCallback(
     (values: SearchDropdownOption[], searchKey: AddTestCaseListFilterKey) => {
+      resetGlobalSelection();
       switch (searchKey) {
         case AddTestCaseListFilterKey.Status: {
           setFilterStatus(values[0]?.key as TestCaseStatus | undefined);
@@ -796,7 +829,7 @@ export const AddTestCaseList = ({
         }
       }
     },
-    []
+    [resetGlobalSelection]
   );
 
   const filterOptions = useMemo(
@@ -866,7 +899,7 @@ export const AddTestCaseList = ({
               data-testid="select-all-test-cases"
               onChange={handlePageSelectAllCheckbox}
             />
-            <Typography.Text>
+            <Typography className="tw:text-primary">
               {loadedSelectedCount > 0 || selectAll
                 ? t('label.n-selected', {
                     count: selectAll
@@ -874,12 +907,10 @@ export const AddTestCaseList = ({
                       : loadedSelectedCount,
                   })
                 : `${t('label.select-all')} (${items.length})`}
-            </Typography.Text>
+            </Typography>
             {showSelectAllTotalLink && (
               <>
-                <Typography.Text className="text-grey-muted" type="secondary">
-                  |
-                </Typography.Text>
+                <Typography color="secondary">|</Typography>
                 <Button
                   className="h-auto p-0 font-normal"
                   data-testid="select-all-total-test-cases"
