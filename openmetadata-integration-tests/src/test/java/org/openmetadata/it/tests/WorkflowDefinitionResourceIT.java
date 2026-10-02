@@ -123,7 +123,6 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.APIRequestMethod;
 import org.openmetadata.schema.type.ApiConnection;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -133,7 +132,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
-import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -4804,47 +4802,6 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(1, requests.size());
     assertEquals("Pending", requests.get(0).get("status").asText());
     assertTrue(result.getImportResultsCsv().contains(requests.get(0).get("id").asText()));
-  }
-
-  @Test
-  void test_bulkDomainAssignmentHoldsGatedAssetsAsChangeRequests(TestNamespace ns)
-      throws Exception {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    Table table = gatedTable(admin, ns, "bulkdomain");
-    Domain domain =
-        admin
-            .domains()
-            .create(
-                new CreateDomain()
-                    .withName(ns.prefix("bulk_gate_domain"))
-                    .withDescription("Domain for bulk asset holds")
-                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
-    String path = "/v1/domains/%s/assets/add".formatted(domain.getFullyQualifiedName());
-
-    BulkOperationResult dryRun =
-        bulkAssets(
-            admin,
-            path,
-            new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true));
-    assertEquals(1, dryRun.getNumberOfRowsPendingApproval());
-    assertEquals(0, dryRun.getNumberOfRowsFailed());
-    assertEquals("Pending approval", dryRun.getSuccessRequest().get(0).getMessage());
-    assertEquals(0, changeRequestsOn(table).size(), "a dry run never submits");
-
-    BulkOperationResult result =
-        bulkAssets(admin, path, new BulkAssets().withAssets(List.of(table.getEntityReference())));
-    assertEquals(ApiStatus.SUCCESS, result.getStatus());
-    assertEquals(1, result.getNumberOfRowsPendingApproval());
-    assertEquals(0, result.getNumberOfRowsFailed());
-    JsonNode requests = changeRequestsOn(table);
-    assertEquals(1, requests.size());
-    assertEquals("Pending", requests.get(0).get("status").asText());
-    assertEquals(
-        "Pending approval: change request " + requests.get(0).get("id").asText(),
-        result.getSuccessRequest().get(0).getMessage());
-    assertTrue(
-        listOrEmpty(admin.tables().get(table.getId().toString(), "domains").getDomains()).isEmpty(),
-        "the domain assignment is held");
   }
 
   @Test

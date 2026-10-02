@@ -29,6 +29,8 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -103,7 +105,7 @@ class ChangeRequestImportAndBulkIT {
   }
 
   @Test
-  void bulkDomainAssignmentOfGatedAssetIsRefused(TestNamespace ns) {
+  void bulkDomainAssignmentOfGatedAssetIsHeld(TestNamespace ns) {
     Glossary glossary = gatedGlossary(ns, "dn");
     deployHookWorkflow(ns, "\"domains\"", "", filterScopedTo(glossary.getFullyQualifiedName()));
     Domain domain =
@@ -116,21 +118,38 @@ class ChangeRequestImportAndBulkIT {
                         .withName(ns.shortPrefix("crdom"))
                         .withDomainType(CreateDomain.DomainType.AGGREGATE)
                         .withDescription("domain")));
-    BulkOperationResult result =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .execute(
-                HttpMethod.PUT,
-                "/v1/domains/%s/assets/add".formatted(domain.getName()),
-                new BulkAssets().withAssets(List.of(glossary.getEntityReference())),
-                BulkOperationResult.class);
-    assertEquals(1, result.getFailedRequest().size());
-    assertEquals(403, result.getFailedRequest().get(0).getStatus());
+    String path = "/v1/domains/%s/assets/add".formatted(domain.getName());
+
+    BulkOperationResult dryRun = bulkAssign(path, glossary, true);
+    assertEquals(1, dryRun.getNumberOfRowsPendingApproval());
+    assertTrue(dryRun.getFailedRequest().isEmpty());
+    assertEquals(PENDING_DETAIL, dryRun.getSuccessRequest().get(0).getMessage());
+    assertTrue(requestsFor(glossary.getId()).isEmpty(), "a dry run never submits");
+
+    BulkOperationResult result = bulkAssign(path, glossary, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsPendingApproval());
+    assertTrue(result.getFailedRequest().isEmpty());
+    ChangeRequest request = onlyPendingRequest(glossary.getId());
+    assertEquals(
+        "%s: change request %s".formatted(PENDING_DETAIL, request.getId()),
+        result.getSuccessRequest().get(0).getMessage());
     assertTrue(
         SdkClients.adminClient()
             .glossaries()
             .get(glossary.getId().toString(), "domains")
             .getDomains()
-            .isEmpty());
+            .isEmpty(),
+        "the domain assignment is held");
+  }
+
+  private BulkOperationResult bulkAssign(String path, Glossary glossary, boolean dryRun) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            path,
+            new BulkAssets().withAssets(List.of(glossary.getEntityReference())).withDryRun(dryRun),
+            BulkOperationResult.class);
   }
 }
