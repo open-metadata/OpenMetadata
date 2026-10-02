@@ -143,12 +143,16 @@ public interface SearchClient
       "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn);" + TAG_RESEPARATION_SCRIPT;
 
   /**
-   * Drops references to {@code params.ids} from custom-property values: {@code extension} entries
-   * (a single reference or a list), {@code customPropertiesTyped}, and the same fields on every
-   * column and nested child column. A property left without references is removed.
+   * Drops references to {@code params.ids} (lowercase UUIDs) from custom-property values: {@code
+   * extension} entries (a single reference or a list), {@code customPropertiesTyped}, and the same
+   * fields on every column and nested child column. A property left without references is removed.
+   * Ids are compared in lower case, since documents written before 2.1 may hold them as sent.
    */
   String REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT =
       """
+      boolean isDead(def id, List ids) {
+        return id != null && ids.contains(id.toString().toLowerCase());
+      }
       boolean dropRefs(Map holder, List ids) {
         boolean changed = false;
         def ext = holder.get('extension');
@@ -157,11 +161,11 @@ public interface SearchClient
           for (def key : ext.keySet()) {
             def value = ext.get(key);
             if (value instanceof List) {
-              if (value.removeIf(r -> r instanceof Map && ids.contains(r.get('id')))) {
+              if (value.removeIf(r -> r instanceof Map && isDead(r.get('id'), ids))) {
                 changed = true;
                 if (value.isEmpty()) { emptied.add(key); }
               }
-            } else if (value instanceof Map && ids.contains(value.get('id'))) {
+            } else if (value instanceof Map && isDead(value.get('id'), ids)) {
               emptied.add(key);
               changed = true;
             }
@@ -170,7 +174,7 @@ public interface SearchClient
         }
         def typed = holder.get('customPropertiesTyped');
         if (typed instanceof List
-            && typed.removeIf(e -> e instanceof Map && ids.contains(e.get('refId')))) {
+            && typed.removeIf(e -> e instanceof Map && isDead(e.get('refId'), ids))) {
           changed = true;
         }
         for (def nestedKey : ['columns', 'children']) {

@@ -3702,11 +3702,18 @@ public class SearchRepository {
           holders.stream().map(UUID::toString).toList(),
           List.of("customPropertiesTyped", "columns.customPropertiesTyped"),
           "refId",
-          ids,
+          withUppercase(ids),
           new ImmutablePair<>(REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT, Map.of("ids", ids)));
     } catch (IOException | RuntimeException e) {
       LOG.error("Failed to remove custom-property references to {} from search", ids, e);
     }
+  }
+
+  /** Documents written before 2.1 may hold a reference id as the client sent it. */
+  private static List<String> withUppercase(List<String> ids) {
+    List<String> values = new ArrayList<>(ids);
+    ids.forEach(id -> values.add(id.toUpperCase(Locale.ROOT)));
+    return values;
   }
 
   public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping)
