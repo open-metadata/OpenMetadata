@@ -232,7 +232,10 @@ public class TestCaseResolutionStatusResource
     filter.addQueryParam("incidentAssignee", assignee);
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
-    filter.addQueryParam("domain", domain);
+    UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
+    if (domainId != null) {
+      filter.addQueryParam("incidentListDomainId", domainId.toString());
+    }
     UUID testDefinitionId = resolveFilterEntityId(Entity.TEST_DEFINITION, testDefinition);
     if (testDefinitionId != null) {
       filter.addQueryParam("testDefinitionId", testDefinitionId.toString());

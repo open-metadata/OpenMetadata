@@ -98,6 +98,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getIncidentListDateRangeCondition());
     conditions.add(getIncidentAssigneeCondition());
     conditions.add(getIncidentDomainCondition());
+    conditions.add(getIncidentListDomainCondition());
     conditions.add(getIncidentDateRangeCondition());
     conditions.add(getDirectoryCondition(tableName));
     conditions.add(getSpreadsheetCondition(tableName));
@@ -714,17 +715,34 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getIncidentDomainCondition() {
-    String domainId = queryParams.get("incidentDomainId");
-    String result = "";
-    if (!nullOrEmpty(domainId)) {
-      result =
-          String.format(
-              "EXISTS (SELECT 1 FROM entity_relationship dr WHERE dr.fromId = :incidentDomainId "
-                  + "AND dr.fromEntity = 'domain' AND dr.relation = %d "
-                  + "AND dr.toId = tc.id AND dr.toEntity = 'testCase')",
-              Relationship.HAS.ordinal());
-    }
-    return result;
+    return nullOrEmpty(queryParams.get("incidentDomainId"))
+        ? ""
+        : testCaseInDomainCondition("tc", "incidentDomainId");
+  }
+
+  // The flat listing's take on getIncidentDomainCondition, so a drill-down from a group in a
+  // domain lists the incidents that group counted.
+  private String getIncidentListDomainCondition() {
+    return nullOrEmpty(queryParams.get("incidentListDomainId"))
+        ? ""
+        : "entityFQNHash IN (SELECT dtc.fqnHash FROM test_case dtc WHERE "
+            + testCaseInDomainCondition("dtc", "incidentListDomainId")
+            + ")";
+  }
+
+  // A test case is in the domain it has itself or, as is usual, the one its table has: inherited
+  // domains are resolved at read time and leave no relationship on the test case. The table's
+  // fqnHash is the first four segments, 131 characters, of the test case's.
+  private static String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
+    return String.format(
+        "(EXISTS (SELECT 1 FROM entity_relationship dr WHERE dr.fromId = :%1$s "
+            + "AND dr.fromEntity = 'domain' AND dr.relation = %2$d "
+            + "AND dr.toId = %3$s.id AND dr.toEntity = 'testCase') "
+            + "OR EXISTS (SELECT 1 FROM table_entity dte INNER JOIN entity_relationship dtr "
+            + "ON dtr.toId = dte.id AND dtr.toEntity = 'table' "
+            + "WHERE dte.fqnHash = LEFT(%3$s.fqnHash, 131) AND dtr.fromId = :%1$s "
+            + "AND dtr.fromEntity = 'domain' AND dtr.relation = %2$d))",
+        domainParam, Relationship.HAS.ordinal(), testCaseAlias);
   }
 
   private String getIncidentDateRangeCondition() {
