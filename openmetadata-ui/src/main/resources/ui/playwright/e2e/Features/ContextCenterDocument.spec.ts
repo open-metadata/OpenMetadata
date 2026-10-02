@@ -211,9 +211,7 @@ test.describe('Context Center - Documents Page', () => {
     page,
   }) => {
     await navigateToDocuments(page);
-    await page.getByTestId('document-row-skeleton').first().waitFor({
-      state: 'detached',
-    });
+    await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
     const view = page.getByTestId('documents-view');
     const rows = view.locator('[data-testid^="document-row-"]');
     const countBefore = await rows.count();
@@ -238,9 +236,7 @@ test.describe('Context Center - Documents Page', () => {
     const loadMoreRes = await loadMoreResPromise;
     expect(loadMoreRes.status()).toBe(200);
 
-    await page.getByTestId('document-row-skeleton').last().waitFor({
-      state: 'hidden',
-    });
+    await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
 
     const countAfter = await rows.count();
     expect(countAfter).toBeGreaterThan(countBefore);

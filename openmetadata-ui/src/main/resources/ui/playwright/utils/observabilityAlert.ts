@@ -647,16 +647,11 @@ export const createCommonObservabilityAlert = async ({
     // Select action
     await page.click(`[data-testid="trigger-select-${actionNumber}"]`);
 
-    // Adding the dropdown visibility check to avoid flakiness here
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
+    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
     await page.click(
       `.ant-select-dropdown:visible [data-testid="${action.name}-filter-option"]:visible`
     );
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'hidden',
-    });
+    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
 
     if (action.inputs && action.inputs.length > 0) {
       for (const input of action.inputs) {

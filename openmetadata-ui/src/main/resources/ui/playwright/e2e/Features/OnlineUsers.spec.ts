@@ -137,13 +137,10 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await navigateToOnlineUsersPage(page);
 
     // Verify bot users are not shown (ingestion-bot should not be visible)
-    const tableRows = page.locator('tbody tr');
-    const rowCount = await tableRows.count();
+    const rowTexts = await page.locator('tbody tr').allTextContents();
 
     // Check each row doesn't contain bot users
-    for (let i = 0; i < rowCount; i++) {
-      const rowText = await tableRows.nth(i).textContent();
-
+    for (const rowText of rowTexts) {
       expect(rowText).not.toContain('ingestion-bot');
     }
   });
@@ -220,9 +217,9 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     }
 
     // Check first few activity times
-    for (let i = 0; i < Math.min(count, 3); i++) {
-      const text = await activityCells.nth(i).textContent();
+    const activityTexts = (await activityCells.allTextContents()).slice(0, 3);
 
+    for (const text of activityTexts) {
       // Should contain either "Online now" or time format like "51 minutes ago"
       expect(text).toMatch(/(Online now|\d+\s+(minutes?|hours?|days?)\s+ago)/);
     }

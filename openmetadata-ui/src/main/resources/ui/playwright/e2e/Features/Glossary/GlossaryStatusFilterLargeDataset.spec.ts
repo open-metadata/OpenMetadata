@@ -123,12 +123,14 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     allowedStatuses: string[],
     maxRows?: number
   ) => {
-    const rows = page.locator('tbody > tr:not([aria-hidden="true"])');
-    const rowCount = await rows.count();
-    const checkCount = maxRows ? Math.min(rowCount, maxRows) : rowCount;
+    const allRows = await page
+      .locator('tbody > tr:not([aria-hidden="true"])')
+      .all();
+    const rowCount = allRows.length;
+    const rowsToCheck = maxRows ? allRows.slice(0, maxRows) : allRows;
 
-    for (let i = 0; i < checkCount; i++) {
-      const statusCell = rows.nth(i).locator('td:nth-child(3)');
+    for (const row of rowsToCheck) {
+      const statusCell = row.locator('td:nth-child(3)');
       const statusText = await statusCell.textContent();
       if (statusText?.trim()) {
         const hasValidStatus = allowedStatuses.some((s) =>

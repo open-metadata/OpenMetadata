@@ -355,9 +355,8 @@ export const selectTestCasesByCheckbox = async (
   );
   await expect(rows.first()).toBeVisible();
 
-  for (let i = 0; i < count; i++) {
-    const checkboxLabel = rows.nth(i).locator('label[slot="selection"]');
-    await checkboxLabel.click();
+  for (const row of (await rows.all()).slice(0, count)) {
+    await row.locator('label[slot="selection"]').click();
   }
 };
 

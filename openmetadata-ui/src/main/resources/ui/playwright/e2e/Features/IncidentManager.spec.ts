@@ -151,12 +151,12 @@ const expectIncidentTableRowsToContain = async (page: Page, text: string) => {
   const rows = page.locator(
     '[data-testid="test-case-incident-manager-table"] tbody tr'
   );
-  const rowCount = await rows.count();
+  const allRows = await rows.all();
 
-  expect(rowCount).toBeGreaterThan(0);
+  expect(allRows.length).toBeGreaterThan(0);
 
-  for (let index = 0; index < rowCount; index++) {
-    await expect(rows.nth(index)).toContainText(text);
+  for (const row of allRows) {
+    await expect(row).toContainText(text);
   }
 };
 
