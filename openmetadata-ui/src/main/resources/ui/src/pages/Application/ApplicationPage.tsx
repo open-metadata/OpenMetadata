@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row, Skeleton, Space, Switch } from 'antd';
+import { Toggle } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -168,10 +169,10 @@ const ApplicationPage = () => {
         <Col className="d-flex justify-end" span={8}>
           <Space size="middle">
             <div className="flex-center gap-2">
-              <Switch
-                checked={showDisabled}
+              <Toggle
                 data-testid="show-disabled"
-                onClick={onShowDisabledAppsChange}
+                isSelected={showDisabled}
+                onChange={onShowDisabledAppsChange}
               />
               <span>{t('label.disabled')}</span>
             </div>

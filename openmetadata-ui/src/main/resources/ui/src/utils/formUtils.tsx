@@ -27,7 +27,6 @@ import {
   Input,
   InputNumber,
   Select,
-  Switch,
   TooltipProps,
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
@@ -110,10 +109,17 @@ const FIELD_ELEMENT_RENDERERS: Partial<
   [FieldTypes.FILTER_PATTERN]: ({ props }) => ({
     element: <FilterPattern {...(props as unknown as FilterPatternProps)} />,
   }),
-  [FieldTypes.SWITCH]: ({ props, id }) => ({
-    element: <Switch {...props} id={id} />,
-    formPropsPatch: { valuePropName: 'checked' },
-  }),
+  [FieldTypes.SWITCH]: ({ props, id }) => {
+    // Callers still pass antd's `disabled`; map it so they need no change.
+    const { disabled, ...rest } = props as ToggleProps & {
+      disabled?: boolean;
+    };
+
+    return {
+      element: <Toggle isDisabled={disabled} {...rest} id={id} />,
+      formPropsPatch: { valuePropName: 'isSelected' },
+    };
+  },
   [FieldTypes.CHECK_BOX]: ({ props, id }) => ({
     element: <Checkbox {...props} id={id} />,
     formPropsPatch: { valuePropName: 'checked' },
@@ -385,7 +391,7 @@ export const getField = (field: FieldProp) => {
     return (
       <div className="d-flex gap-2 form-switch-container">
         <Form.Item className="m-b-0" {...formProps}>
-          <Switch />
+          <Toggle />
         </Form.Item>
         <Typography className="font-medium">{labelValue}</Typography>
       </div>

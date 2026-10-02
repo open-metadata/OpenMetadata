@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Col, Collapse, Divider, Row, Space, Spin, Tag } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Collapse, Divider, Row, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -91,9 +91,13 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
       <Space className="w-full" direction="vertical">
         <Space>
           <Typography weight="semibold">{rule.name}</Typography>
-          <Tag color={rule.effect === 'ALLOW' ? 'success' : 'error'}>
+          <Badge
+            className="tw:inline-flex tw:mr-2 tw:mb-1"
+            color={rule.effect === 'ALLOW' ? 'success' : 'error'}
+            size="sm"
+            type="color">
             {rule.effect}
-          </Tag>
+          </Badge>
         </Space>
         {!isEmpty(rule.operations) && (
           <div>
@@ -101,9 +105,14 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
               {t('label.operation-plural')}:{' '}
             </Typography>
             {rule.operations.map((op) => (
-              <Tag className="m-r-xs" key={op}>
+              <Badge
+                className="tw:inline-flex tw:mb-1 m-r-xs"
+                color="gray"
+                key={op}
+                size="sm"
+                type="color">
                 {op}
-              </Tag>
+              </Badge>
             ))}
           </div>
         )}
@@ -113,9 +122,14 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
               {t('label.resource-plural')}:{' '}
             </Typography>
             {rule.resources.map((res) => (
-              <Tag className="m-r-xs" key={res}>
+              <Badge
+                className="tw:inline-flex tw:mb-1 m-r-xs"
+                color="gray"
+                key={res}
+                size="sm"
+                type="color">
                 {res}
-              </Tag>
+              </Badge>
             ))}
           </div>
         )}
@@ -148,7 +162,13 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                 )}>
                 {getEntityName(policy.policy)}
               </Link>
-              <Tag color={policyTagColor}>{policy.effect}</Tag>
+              <Badge
+                className="tw:inline-flex tw:mr-2"
+                color={policyTagColor}
+                size="sm"
+                type="color">
+                {policy.effect}
+              </Badge>
               <Typography color="secondary">
                 <span>{policy.rules.length}</span>
                 {t('label.rule-lowercase-plural')}
@@ -210,7 +230,13 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             {getEntityName(rolePermission.role)}
           </Link>
           {rolePermission.isDefaultRole && (
-            <Tag color="blue">{t('label.default-role')}</Tag>
+            <Badge
+              className="tw:inline-flex tw:mr-2"
+              color="blue"
+              size="sm"
+              type="color">
+              {t('label.default-role')}
+            </Badge>
           )}
         </Space>
         <Typography color="secondary">
@@ -246,14 +272,24 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                     )}>
                     {getEntityName(teamPermission.team)}
                   </Link>
-                  <Tag>{teamPermission.teamType}</Tag>
+                  <Badge
+                    className="tw:inline-flex tw:mr-2"
+                    color="gray"
+                    size="sm"
+                    type="color">
+                    {teamPermission.teamType}
+                  </Badge>
                   {teamPermission.hierarchyLevel > 0 && (
                     <>
-                      <Tag color="orange">
+                      <Badge
+                        className="tw:inline-flex tw:mr-2"
+                        color="warning"
+                        size="sm"
+                        type="color">
                         {t('label.level')}{' '}
                         <span>{teamPermission.hierarchyLevel}</span>
                         {t('label.inherited')}
-                      </Tag>
+                      </Badge>
                     </>
                   )}
                 </Space>
@@ -332,10 +368,14 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                   <Typography weight="semibold">
                     {t('label.type') + ': '}
                   </Typography>
-                  <Tag color="purple">
+                  <Badge
+                    className="tw:inline-flex tw:mr-2"
+                    color="purple"
+                    size="sm"
+                    type="color">
                     {t(`label.${inherited.permissionType.toLowerCase()}`) ||
                       inherited.permissionType}
-                  </Tag>
+                  </Badge>
                 </Space>
                 <Typography>{inherited.description}</Typography>
                 {inherited.source && (
@@ -418,9 +458,14 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             </Typography>
             <div className="m-t-xs">
               {summary.effectiveOperations.map((op) => (
-                <Tag className="m-r-xs m-b-xs" color="success" key={op}>
+                <Badge
+                  className="tw:inline-flex m-r-xs m-b-xs"
+                  color="success"
+                  key={op}
+                  size="sm"
+                  type="color">
                   {op}
-                </Tag>
+                </Badge>
               ))}
             </div>
           </div>
@@ -433,9 +478,14 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             </Typography>
             <div className="m-t-xs">
               {summary.deniedOperations.map((op) => (
-                <Tag className="m-r-xs m-b-xs" color="error" key={op}>
+                <Badge
+                  className="tw:inline-flex m-r-xs m-b-xs"
+                  color="error"
+                  key={op}
+                  size="sm"
+                  type="color">
                   {op}
-                </Tag>
+                </Badge>
               ))}
             </div>
           </div>

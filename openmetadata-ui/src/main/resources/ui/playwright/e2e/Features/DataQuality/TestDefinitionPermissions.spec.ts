@@ -345,7 +345,7 @@ test.describe(
         `enable-switch-${stewardDefinitionName}`
       );
 
-      await expect(stewardSwitch).toBeEnabled();
+      await expect(stewardSwitch.getByRole('switch')).toBeEnabled();
 
       // Wait for API call
       const response = dataStewardPage.waitForResponse(
@@ -359,10 +359,7 @@ test.describe(
       await response;
 
       // Verify switch state changed
-      await expect(stewardSwitch).toHaveAttribute(
-        'aria-checked',
-        String('false')
-      );
+      await expect(stewardSwitch.getByRole('switch')).not.toBeChecked();
 
       const response2 = dataStewardPage.waitForResponse(
         (response) =>
@@ -430,7 +427,7 @@ test.describe(
       );
 
       await expect(enabledSwitch).toBeVisible();
-      await expect(enabledSwitch).toBeEnabled();
+      await expect(enabledSwitch.getByRole('switch')).toBeEnabled();
     });
   }
 );

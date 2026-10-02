@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -295,11 +298,11 @@ function APIEndpointsTab({
       defaultVisibleColumns={DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS}
       extraTableFilters={
         !isVersionView && (
-          <span>
-            <Switch
-              checked={filters.showDeletedEndpoints}
+          <span className="tw:inline-flex tw:items-center">
+            <Toggle
               data-testid="show-deleted"
-              onClick={handleDeleteAction}
+              isSelected={filters.showDeletedEndpoints}
+              onChange={handleDeleteAction}
             />
             <Typography className="m-l-xs">{t('label.deleted')}</Typography>{' '}
           </span>

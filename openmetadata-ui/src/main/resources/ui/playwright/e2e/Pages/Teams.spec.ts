@@ -1080,7 +1080,7 @@ test.describe('Teams Page', () => {
         );
 
         await deletedToggle.click();
-        await expect(deletedToggle).toHaveAttribute('aria-checked', 'true');
+        await expect(deletedToggle).toBeChecked();
 
         const teamsResponse = await teamsResponsePromise;
         expect(teamsResponse.status()).toBe(200);

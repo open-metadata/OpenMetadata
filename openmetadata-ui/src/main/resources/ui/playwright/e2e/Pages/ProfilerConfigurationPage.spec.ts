@@ -234,11 +234,11 @@ test.describe('Profiler Configuration Page', () => {
       ).toBeVisible();
 
       await expect(
-        adminPage.getByTestId('store-sample-data-switch')
+        adminPage.getByTestId('store-sample-data-switch').getByRole('switch')
       ).toBeChecked();
 
       await expect(
-        adminPage.getByTestId('read-sample-data-switch')
+        adminPage.getByTestId('read-sample-data-switch').getByRole('switch')
       ).toBeChecked();
     });
 
@@ -252,22 +252,22 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.getByTestId('read-sample-data-switch').click();
 
       await expect(
-        adminPage.getByTestId('store-sample-data-switch')
+        adminPage.getByTestId('store-sample-data-switch').getByRole('switch')
       ).not.toBeChecked();
 
       await expect(
-        adminPage.getByTestId('read-sample-data-switch')
+        adminPage.getByTestId('read-sample-data-switch').getByRole('switch')
       ).not.toBeChecked();
 
       // Turn store ON — read should auto-enable
       await adminPage.getByTestId('store-sample-data-switch').click();
 
       await expect(
-        adminPage.getByTestId('store-sample-data-switch')
+        adminPage.getByTestId('store-sample-data-switch').getByRole('switch')
       ).toBeChecked();
 
       await expect(
-        adminPage.getByTestId('read-sample-data-switch')
+        adminPage.getByTestId('read-sample-data-switch').getByRole('switch')
       ).toBeChecked();
     });
 
@@ -280,11 +280,11 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.getByTestId('store-sample-data-switch').click();
 
       await expect(
-        adminPage.getByTestId('store-sample-data-switch')
+        adminPage.getByTestId('store-sample-data-switch').getByRole('switch')
       ).not.toBeChecked();
 
       await expect(
-        adminPage.getByTestId('read-sample-data-switch')
+        adminPage.getByTestId('read-sample-data-switch').getByRole('switch')
       ).toBeChecked();
 
       // Re-enable store, then turn off read
@@ -292,11 +292,11 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.getByTestId('read-sample-data-switch').click();
 
       await expect(
-        adminPage.getByTestId('store-sample-data-switch')
+        adminPage.getByTestId('store-sample-data-switch').getByRole('switch')
       ).toBeChecked();
 
       await expect(
-        adminPage.getByTestId('read-sample-data-switch')
+        adminPage.getByTestId('read-sample-data-switch').getByRole('switch')
       ).not.toBeChecked();
     });
 
