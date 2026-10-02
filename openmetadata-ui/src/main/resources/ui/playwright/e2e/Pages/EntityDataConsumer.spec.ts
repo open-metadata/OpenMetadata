@@ -33,11 +33,11 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { pickEntityMatrix } from '../../utils/entityMatrix';
 import {
   waitForAllLoadersToDisappear,
   waitForWidgetsToRender,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 const user = new UserClass();
 
