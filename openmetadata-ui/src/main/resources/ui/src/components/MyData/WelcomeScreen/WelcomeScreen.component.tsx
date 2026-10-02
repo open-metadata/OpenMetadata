@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Divider, Row, Space } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row, Space } from 'antd';
 import { split } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

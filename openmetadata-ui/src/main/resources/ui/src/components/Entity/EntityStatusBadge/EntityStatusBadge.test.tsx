@@ -19,15 +19,16 @@ describe('EntityStatusBadge', () => {
     render(<EntityStatusBadge status={EntityStatus.Approved} />);
 
     expect(screen.getByText(EntityStatus.Approved)).toBeInTheDocument();
+    expect(screen.getByRole('separator')).toBeInTheDocument();
   });
 
   it('should render status badge without divider when showDivider is false', () => {
-    const { container } = render(
+    render(
       <EntityStatusBadge showDivider={false} status={EntityStatus.Draft} />
     );
 
     expect(screen.getByText(EntityStatus.Draft)).toBeInTheDocument();
-    expect(container.querySelector('.ant-divider')).not.toBeInTheDocument();
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
   });
 
   it('should render all entity status types', () => {
