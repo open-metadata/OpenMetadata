@@ -56,20 +56,28 @@ final class ContextMemoryLifecycle {
 
   private ContextMemoryLifecycle() {}
 
+  static ContextMemoryStatus effectiveStatus(ContextMemoryStatus status) {
+    return status == null ? ContextMemoryStatus.ACTIVE : status;
+  }
+
   static void validateTransition(ContextMemoryStatus from, ContextMemoryStatus to) {
     if (to == null) {
       throw new BadRequestException("A context memory requires a status");
     }
-    Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.getOrDefault(from, Set.of());
-    if (from != to && !allowed.contains(to)) {
+    ContextMemoryStatus current = effectiveStatus(from);
+    Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.get(current);
+    if (current != to && !allowed.contains(to)) {
       throw new BadRequestException(
           String.format(
               "Invalid memory status transition from %s to %s. Allowed transitions from %s: %s",
-              from.value(), to.value(), from.value(), allowed));
+              current.value(), to.value(), current.value(), allowed));
     }
   }
 
   static void applyUpdate(ContextMemory original, ContextMemory updated, MemoryResolver resolver) {
+    if (original.getStatus() == null && updated.getStatus() == null) {
+      updated.setStatus(ContextMemoryStatus.ACTIVE);
+    }
     validateTransition(original.getStatus(), updated.getStatus());
     applyStatusChange(original, updated);
     validateSupersession(updated);
@@ -82,7 +90,7 @@ final class ContextMemoryLifecycle {
   }
 
   private static void applyStatusChange(ContextMemory original, ContextMemory updated) {
-    boolean statusChanged = original.getStatus() != updated.getStatus();
+    boolean statusChanged = effectiveStatus(original.getStatus()) != updated.getStatus();
     if (statusChanged && original.getStatus() == ContextMemoryStatus.SUPERSEDED) {
       updated.setSupersededBy(null);
     }

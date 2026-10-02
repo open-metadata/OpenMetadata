@@ -200,6 +200,33 @@ class ContextMemoryLifecycleTest {
   }
 
   @Test
+  void legacyStatusIsNormalizedOnAnUnchangedUpdate() {
+    ContextMemory original = memory(null);
+    ContextMemory updated = copyOf(original).withAnswer("Updated answer");
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertEquals(ContextMemoryStatus.ACTIVE, updated.getStatus());
+  }
+
+  @Test
+  void legacyStatusUsesActiveTransitionRules() {
+    ContextMemory original = memory(null);
+    ContextMemory invalidated = copyOf(original).withStatus(ContextMemoryStatus.INVALIDATED);
+
+    ContextMemoryLifecycle.applyUpdate(original, invalidated, NO_LOOKUP);
+
+    assertEquals(ContextMemoryStatus.INVALIDATED, invalidated.getStatus());
+    BadRequestException error =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                ContextMemoryLifecycle.applyUpdate(
+                    original, copyOf(original).withStatus(ContextMemoryStatus.DRAFT), NO_LOOKUP));
+    assertTrue(error.getMessage().contains("Invalid memory status transition"));
+  }
+
+  @Test
   void createCannotBeSupersededWithoutASuccessor() {
     assertThrows(
         BadRequestException.class,

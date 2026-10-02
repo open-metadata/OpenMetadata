@@ -758,11 +758,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     private void updateLifecycle(boolean consolidatingChanges) {
       if (operation == Operation.PUT) {
         if (updated.getStatus() == null) {
-          updated.setStatus(original.getStatus());
+          updated.setStatus(ContextMemoryLifecycle.effectiveStatus(original.getStatus()));
         }
         updated.setStatusReason(original.getStatusReason());
         updated.setSupersededBy(original.getSupersededBy());
         updated.setDisputes(original.getDisputes());
+      }
+      // Consolidated PATCHes skip validation but must still persist the legacy default.
+      if (original.getStatus() == null && updated.getStatus() == null) {
+        updated.setStatus(ContextMemoryStatus.ACTIVE);
       }
       if (!consolidatingChanges) {
         ContextMemoryLifecycle.applyUpdate(
