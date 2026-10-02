@@ -376,6 +376,40 @@ public class IncidentGroupsIT {
   }
 
   @Test
+  void testLatestOpenTotalLeavesResolvedIncidentsOut() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_latest_total_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_latest_total_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase open =
+        createTestCase("incident_groups_open_case", tableLink(table), definition, List.of());
+    TestCase resolved =
+        createTestCase("incident_groups_resolved_case", tableLink(table), definition, List.of());
+    createStatus(open, TestCaseResolutionStatusTypes.New, null);
+    createStatus(resolved, TestCaseResolutionStatusTypes.New, null);
+    createStatus(
+        resolved,
+        TestCaseResolutionStatusTypes.Resolved,
+        new Resolved()
+            .withTestCaseFailureReason(TestCaseFailureReasonType.FalsePositive)
+            .withTestCaseFailureComment("Resolved in the latest-total IT")
+            .withResolvedBy(userA.getEntityReference()));
+
+    ListResponse<TestCaseResolutionStatus> response =
+        client
+            .testCaseResolutionStatuses()
+            .list(
+                latestOpenParams().addFilter("testDefinition", definition.getFullyQualifiedName()));
+
+    assertEquals(1, response.getData().size());
+    assertEquals(
+        1,
+        response.getPaging().getTotal(),
+        "the pager counts the open incidents the page lists, not the resolved one's New record");
+  }
+
+  @Test
   void testSortTypeOrdersByIncidentCount() throws Exception {
     Map<String, String> ascParams = groupParams(GROUP_BY_TABLE);
     ascParams.put("sortType", "asc");
