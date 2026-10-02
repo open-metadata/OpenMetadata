@@ -79,6 +79,12 @@ class CollidingDigitLeadingColumns(Base):
     underscored_id = Column("_123_id", Integer)
 
 
+class MixedCaseColumns(Base):
+    __tablename__ = "mixed_case_columns"
+    id = Column(Integer, primary_key=True)
+    user_id = Column("UserId", Integer, key="userid")
+
+
 @patch.object(SQASampler, "build_table_orm", return_value=User)
 class SampleTest(TestCase):
     @classmethod
@@ -371,4 +377,25 @@ class SampleTest(TestCase):
         table_data = sampler.fetch_sample_data(columns=[DigitLeadingColumns.__table__.c["2024_revenue"]])
 
         assert table_data.columns == [ColumnName("2024_revenue")]
+        assert table_data.rows == [[42]]
+
+    def test_fetch_sample_data_preserves_physical_column_name(self, sampler_mock):
+        """ORM lookup keys must not replace mixed-case physical column names."""
+        sampler = object.__new__(SQASampler)
+        sampler._table = MixedCaseColumns
+        sampler.partition_details = None
+        sampler.sample_query = None
+        sampler.sample_config = None
+        sampler.sample_limit = 100
+        sampler._handle_array_column = lambda column: False
+        sampler.get_dataset = lambda: sampler.raw_dataset
+
+        session = MagicMock()
+        session.__enter__.return_value = session
+        session.query.return_value.select_from.return_value.limit.return_value.all.return_value = [(42,)]
+        sampler.session_factory = lambda: session
+
+        table_data = sampler.fetch_sample_data(columns=[MixedCaseColumns.__table__.c.userid])
+
+        assert table_data.columns == [ColumnName("UserId")]
         assert table_data.rows == [[42]]

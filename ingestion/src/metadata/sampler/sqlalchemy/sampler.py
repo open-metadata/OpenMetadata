@@ -53,6 +53,7 @@ from metadata.utils.ssl_manager import get_ssl_connection
 logger = profiler_interface_registry_logger()
 
 RANDOM_LABEL = "random"
+ORIGINAL_COLUMN_NAME = "openmetadata_original_column_name"
 
 # Default maximum number of elements to extract from array columns to prevent OOM
 DEFAULT_MAX_ARRAY_ELEMENTS = 10
@@ -347,7 +348,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.partition_details and not sqa_sample:
             self._warn_empty_partition()
         return TableData(
-            columns=[column.key for column in sqa_columns],
+            columns=[column.info.get(ORIGINAL_COLUMN_NAME, column.name) for column in sqa_columns],
             rows=processed_rows,
         )
 
@@ -455,6 +456,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         cte = select(*inner_columns).where(partition_filter).cte(cte_name)
         for column, logical_name in zip(cte.c, column_names, strict=True):
             column.key = logical_name
+            if column.name != logical_name:
+                column.info[ORIGINAL_COLUMN_NAME] = logical_name
         return cte
 
     @classmethod
