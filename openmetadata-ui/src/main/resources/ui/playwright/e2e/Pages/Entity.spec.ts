@@ -99,13 +99,13 @@ const test = base.extend<{
 }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage({ storageState: undefined });
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage({ storageState: undefined });
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -1539,8 +1539,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           }
 
           // Verify Overview tab is active by default
-          await expect(page.getByTestId('overview-tab')).toHaveClass(
-            /selected/
+          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+            'aria-selected',
+            'true'
           );
 
           // Update description via panel
@@ -1581,15 +1582,17 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           if (entity.type === 'Table') {
             await page.getByTestId('data-quality-tab').click();
 
-            await expect(page.getByTestId('data-quality-tab')).toHaveClass(
-              /ant-menu-item-selected/
+            await expect(page.getByTestId('data-quality-tab')).toHaveAttribute(
+              'aria-selected',
+              'true'
             );
           }
 
           await page.getByTestId('overview-tab').click();
 
-          await expect(page.getByTestId('overview-tab')).toHaveClass(
-            /ant-menu-item-selected/
+          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+            'aria-selected',
+            'true'
           );
 
           // Test column navigation with arrow buttons and verify nested column counting

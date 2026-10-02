@@ -218,7 +218,7 @@
   }
 
   /* Inline elements */
-  &:where(a:not(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a)) {
+  &:where(a:not(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a, .prose-typography a)) {
     font-weight: 400;
     text-decoration: underline;
     text-underline-offset: 3px;
@@ -402,7 +402,7 @@
     }
 
     /* Inline elements */
-    &:where(a:not(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a)) {
+    &:where(a:not(h1 a, h2 a, h3 a, h4 a, h5 a, h6 a, .prose-typography a)) {
       font-weight: 400;
       text-decoration: underline;
       text-underline-offset: 3px;
