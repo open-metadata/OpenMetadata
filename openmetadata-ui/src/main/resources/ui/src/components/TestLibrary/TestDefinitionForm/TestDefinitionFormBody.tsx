@@ -79,13 +79,13 @@ const TEST_PLATFORM_OPTIONS = toOptions(Object.values(TestPlatform));
 // matches no real table and silently vanishes from the picker. Filter only these two —
 // every other enum member (including wizard-"unsupported" real connectors like `Dremio`
 // or `Synapse`) has a connection schema and may legitimately host tables a test targets.
-const NON_SERVICE_TYPES: DatabaseServiceType[] = [
+const NON_SERVICE_TYPES = new Set<DatabaseServiceType>([
   DatabaseServiceType.Dbt,
   DatabaseServiceType.QueryLog,
-];
+]);
 const SUPPORTED_SERVICE_OPTIONS = toOptions(
-  (Object.values(DatabaseServiceType) as DatabaseServiceType[]).filter(
-    (type) => !NON_SERVICE_TYPES.includes(type)
+  Object.values(DatabaseServiceType).filter(
+    (type) => !NON_SERVICE_TYPES.has(type)
   )
 );
 const SUPPORTED_DATA_TYPE_OPTIONS = toOptions(Object.values(DataType));
