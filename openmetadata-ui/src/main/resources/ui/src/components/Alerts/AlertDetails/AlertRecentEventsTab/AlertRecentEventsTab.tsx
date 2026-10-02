@@ -14,10 +14,11 @@
 import {
   Box,
   EmptyPlaceholder,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Bell01 } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Collapse, Dropdown, Row, Skeleton, Tooltip } from 'antd';
+import { Button, Col, Collapse, Dropdown, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -140,7 +141,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           ).map((skeletonKey) => (
             <Panel
               data-testid="skeleton-loading-panel"
-              header={<Skeleton active paragraph={false} />}
+              header={<Skeleton height={16} width="100%" />}
               key={skeletonKey}
             />
           ))}
