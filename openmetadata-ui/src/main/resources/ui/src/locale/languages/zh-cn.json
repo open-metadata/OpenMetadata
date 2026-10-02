@@ -4502,6 +4502,8 @@
     "no-filter-patterns-available": "此连接器没有可用的过滤模式。",
     "no-folders-yet-create-one": "暂无文件夹,创建一个以按主题或团队整理文档。",
     "no-glossary-term": "目前似乎还没有定义术语库术语, 要创建新的术语库术语, 只需使用“添加术语”按钮即可",
+    "no-glossary-term-relation-yet": "暂无术语表术语关系",
+    "no-glossary-term-relation-yet-description": "创建关系类型以定义术语表术语之间的语义关系。",
     "no-glossary-terms-found": "未找到术语表术语。请创建术语表并添加术语，以可视化您的业务概念。",
     "no-glossary-to-export": "没有可导出的术语表。",
     "no-hierarchical-relations-found": "未找到层级关系。",

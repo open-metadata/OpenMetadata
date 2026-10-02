@@ -4502,6 +4502,8 @@
     "no-filter-patterns-available": "Inga filtermönster är tillgängliga för denna anslutning.",
     "no-folders-yet-create-one": "Inga mappar än, skapa en för att organisera dokument efter ämne eller team.",
     "no-glossary-term": "Det verkar som att det inte finns några ordlisetermer definierade just nu. För att skapa en ny ordlisteterm, använd bara knappen 'Lägg till term'.",
+    "no-glossary-term-relation-yet": "Inga relationer mellan ordlistetermer ännu",
+    "no-glossary-term-relation-yet-description": "Skapa en relationstyp för att definiera semantiska relationer mellan ordlistetermer.",
     "no-glossary-terms-found": "Inga ordlisetermer hittades. Skapa en ordlista och lägg till termer för att visualisera dina affärsbegrepp.",
     "no-glossary-to-export": "Ingen ordlista tillgänglig att exportera.",
     "no-hierarchical-relations-found": "Inga hierarkiska relationer hittades.",

@@ -4502,6 +4502,8 @@
     "no-filter-patterns-available": "هیچ الگوی فیلتری برای این رابط موجود نیست.",
     "no-folders-yet-create-one": "هنوز پوشه‌ای وجود ندارد، یکی بسازید تا مستندات را بر اساس موضوع یا تیم سازمان‌دهی کنید.",
     "no-glossary-term": "به نظر می‌رسد که در حال حاضر هیچ واژه‌نامه‌ای تعریف نشده است. برای ایجاد یک واژه‌نامه جدید، از دکمه 'افزودن واژه' استفاده کنید.",
+    "no-glossary-term-relation-yet": "Nay glossary term relations yet, matey",
+    "no-glossary-term-relation-yet-description": "Forge a relation type to chart the meanin' betwixt yer glossary terms.",
     "no-glossary-terms-found": "اصطلاحی در واژه‌نامه یافت نشد. یک واژه‌نامه ایجاد کنید و اصطلاحات را برای تجسم مفاهیم کسب‌وکار خود اضافه کنید.",
     "no-glossary-to-export": "واژه‌نامه‌ای برای خروجی موجود نیست.",
     "no-hierarchical-relations-found": "هیچ رابطه سلسله‌مراتبی یافت نشد.",

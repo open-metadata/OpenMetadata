@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-export const PROFILE_NAV_IDS = new Set([
-  'profile',
-  'permissions',
-  'access-token',
-  'my-connections',
-  'access-control',
-  'custom-properties',
-  'notification',
-  'governance',
-]);
+import { TargetEntityType } from '../../../../../../generated/governance/intakeForm';
+
+export type GovernanceView =
+  | { type: 'landing' }
+  | { type: 'glossary-list' }
+  | { type: 'glossary-add' }
+  | { type: 'glossary-edit'; name: string }
+  | { type: 'intake-list' }
+  | { type: 'intake-add'; entityType: TargetEntityType }
+  | { type: 'intake-edit'; id: string };

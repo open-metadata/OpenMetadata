@@ -4502,6 +4502,8 @@
     "no-filter-patterns-available": "Non hai patróns de filtro dispoñibles para este conector.",
     "no-folders-yet-create-one": "Aínda non hai cartafoles; crea un para organizar os documentos por tema ou equipo.",
     "no-glossary-term": "Parece que aínda non hai Termos de Glosario definidos. Para crear un novo Termo de Glosario, simplemente usa o botón 'Engadir Termo'.",
+    "no-glossary-term-relation-yet": "Aínda non hai relacións de termos do glosario",
+    "no-glossary-term-relation-yet-description": "Cree un tipo de relación para definir relacións semánticas entre os termos do glosario.",
     "no-glossary-terms-found": "Non se atoparon termos do glosario. Cree un glosario e engada termos para visualizar os seus conceptos de negocio.",
     "no-glossary-to-export": "Non hai glosarios dispoñibles para exportar.",
     "no-hierarchical-relations-found": "Non se atoparon relacións xerárquicas.",
