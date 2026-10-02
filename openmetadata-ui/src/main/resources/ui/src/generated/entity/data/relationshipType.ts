@@ -24,13 +24,17 @@ export interface RelationshipType {
     /**
      * Relationship types declared property-disjoint with this type.
      */
-    disjointWith?:                 EntityReference[];
-    displayName:                   string;
-    domain?:                       SemanticReference[];
-    entityStatus?:                 EntityStatus;
-    fullyQualifiedName:            string;
-    href?:                         string;
-    id:                            string;
+    disjointWith?:      EntityReference[];
+    displayName:        string;
+    domain?:            SemanticReference[];
+    entityStatus?:      EntityStatus;
+    fullyQualifiedName: string;
+    href?:              string;
+    id:                 string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?:               string;
     incrementalChangeDescription?: ChangeDescription;
     /**
      * Inverse relationship type. Symmetric types reference themselves.

@@ -63,6 +63,10 @@ export interface ContextMemory {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Incremental change that led to this version.
      */
     incrementalChangeDescription?: ChangeDescription;

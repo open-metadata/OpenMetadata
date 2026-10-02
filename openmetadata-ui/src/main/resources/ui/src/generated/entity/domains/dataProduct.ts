@@ -82,8 +82,8 @@ export interface DataProduct {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
-     * Deprecated: use entityStatus, the lifecycle stage every entity type shares. Kept only so
-     * ODPS imports and exports keep round-tripping.
+     * Current lifecycle stage of the data product. Driven by the governance workflow — not
+     * directly user-editable.
      */
     lifecycleStage?: LifecycleStage;
     /**
@@ -514,8 +514,8 @@ export enum EntityStatus {
 }
 
 /**
- * Deprecated: use entityStatus, the lifecycle stage every entity type shares. Kept only so
- * ODPS imports and exports keep round-tripping.
+ * Current lifecycle stage of the data product. Driven by the governance workflow — not
+ * directly user-editable.
  *
  * Lifecycle stage of the data product
  */
