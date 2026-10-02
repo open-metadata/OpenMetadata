@@ -58,6 +58,7 @@ jest.mock('../../../../rest/searchAPI', () => ({
 
 jest.mock('../../../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest.fn(),
+  getTableProfilerConfig: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({

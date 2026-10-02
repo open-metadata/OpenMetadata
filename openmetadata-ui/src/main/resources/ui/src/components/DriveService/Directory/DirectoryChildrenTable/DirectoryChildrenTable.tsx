@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from 'antd';
 import { toLower } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,8 +27,8 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 
 function DirectoryChildrenTable() {
@@ -72,9 +72,9 @@ function DirectoryChildrenTable() {
               textAlign: 'center',
             }}
             title={toLower(type)}>
-            <Typography.Text ellipsis className="cursor-pointer">
+            <Typography ellipsis className="cursor-pointer tw:text-primary">
               {type ?? record.type}
-            </Typography.Text>
+            </Typography>
           </Tooltip>
         ),
       },

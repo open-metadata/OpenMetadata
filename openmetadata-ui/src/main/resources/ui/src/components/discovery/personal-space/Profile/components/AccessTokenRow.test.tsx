@@ -29,7 +29,7 @@ jest.mock('rest/userAPI', () => ({
   updateUserAccessToken: (...a: unknown[]) => mockUpdateUserAccessToken(...a),
 }));
 
-jest.mock('rest/index', () => ({
+jest.mock('rest/axiosClient', () => ({
   __esModule: true,
   default: { put: (...a: unknown[]) => mockPut(...a) },
 }));
@@ -77,7 +77,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Copy01: () => <span />,
   Eye: () => <span />,
   EyeOff: () => <span />,

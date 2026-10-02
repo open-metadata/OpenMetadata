@@ -30,7 +30,13 @@ const map = require('./token-map');
 const STYLES_ROOT = path.resolve(__dirname, '../../src');
 const TOKENS_CSS = path.resolve(STYLES_ROOT, 'styles/tokens.css');
 const SIDECAR = path.resolve(__dirname, 'legacy-colors.json');
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'target', 'output']);
+const SKIP_DIRS = new Set([
+  'node_modules',
+  'dist',
+  'build',
+  'target',
+  'output',
+]);
 const BEGIN = '/* @tokens:generated-begin';
 const END = '/* @tokens:generated-end */';
 const OM_USAGE_RE = /var\(\s*(--om-[\w-]+)/g;
@@ -147,17 +153,21 @@ function main() {
   const r = map.registry;
   process.stdout.write(
     `tokens.css regenerated:\n` +
-      `  palette (full upstream): ${Object.keys(map.constants.UPSTREAM).length}\n` +
+      `  palette passthrough:     ${
+        Object.keys(map.constants.UPSTREAM).length -
+        map.constants.MANUAL_ABSOLUTE_COLOR_TOKENS.size
+      }\n` +
       `  legacy colors:           ${r.legacyColors.size}\n` +
       `  extended spacing:        ${
-        [...r.spacing.keys()].filter((px) => !map.constants.CORE_SPACING.has(px))
-          .length
+        [...r.spacing.keys()].filter(
+          (px) => !map.constants.CORE_SPACING.has(px)
+        ).length
       }\n` +
       `  extended radius:         ${
-        [...r.radius.keys()].filter((k) => /^\d+$/.test(k)).length
+        [...r.radius.keys()].filter(map.isNumericSlug).length
       }\n` +
       `  extended font-size:      ${
-        [...r.fontSize.keys()].filter((k) => /^\d+$/.test(k)).length
+        [...r.fontSize.keys()].filter(map.isNumericSlug).length
       }\n` +
       `  z-index tokens:          ${r.zIndex.size}\n` +
       `  duration tokens:         ${r.duration.size}\n`

@@ -13,8 +13,10 @@
 
 import { findByTestId, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { getMlModelByFQN } from '../../rest/mlModelAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import MlModelPageComponent from './MlModelPage.component';
 
 const mockData = {
@@ -156,68 +158,45 @@ jest.mock(
   }
 );
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    permissions: {},
-    getEntityPermission: jest.fn().mockResolvedValue({
-      Create: true,
-      Delete: true,
-      EditAll: true,
-      EditCustomFields: true,
-      EditDataProfile: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditLineage: true,
-      EditOwners: true,
-      EditQueries: true,
-      EditSampleData: true,
-      EditTags: true,
-      EditTests: true,
-      EditTier: true,
-      ViewAll: true,
-      ViewDataProfile: true,
-      ViewQueries: true,
-      ViewSampleData: true,
-      ViewTests: true,
-      ViewUsage: true,
-    }),
-  })),
-}));
-
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn(() => ({
     entityFqn: 'eta_predictions',
   })),
 }));
 
-jest.mock('../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: {
-    Create: true,
-    Delete: true,
-    EditAll: true,
-    EditCustomFields: true,
-    EditDataProfile: true,
-    EditDescription: true,
-    EditDisplayName: true,
-    EditLineage: true,
-    EditOwners: true,
-    EditQueries: true,
-    EditSampleData: true,
-    EditTags: true,
-    EditTests: true,
-    EditTier: true,
-    ViewAll: true,
-    ViewDataProfile: true,
-    ViewQueries: true,
-    ViewSampleData: true,
-    ViewTests: true,
-    ViewUsage: true,
-  },
-  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
-  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
+// Permissions now come from useEntityPermissions (Task 8 Batch 10) rather than an
+// imperative usePermissionProvider().getEntityPermissionByFqn call — mock the hook
+// directly, mirroring DataModelPage.test.tsx's approach.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 describe('Test MlModel Entity Page', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({ ViewAll: true, ViewBasic: true, ViewUsage: true });
+  });
+
   it('Should render component', async () => {
     const { container } = renderWithQueryClient(
       <MemoryRouter>
@@ -253,5 +232,22 @@ describe('Test MlModel Entity Page', () => {
     const errorComponent = await findByTestId(container, 'no-data-placeholder');
 
     expect(errorComponent).toBeInTheDocument();
+  });
+
+  it('Should render permission placeholder when view access is denied', async () => {
+    setMockPermissions({});
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <MlModelPageComponent />
+      </MemoryRouter>
+    );
+
+    const permissionPlaceholder = await findByTestId(
+      container,
+      'permission-error-placeholder'
+    );
+
+    expect(permissionPlaceholder).toBeInTheDocument();
   });
 });

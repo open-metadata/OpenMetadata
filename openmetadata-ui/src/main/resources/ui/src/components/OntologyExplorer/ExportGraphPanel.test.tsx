@@ -30,6 +30,7 @@ const FORMAT_LABELS: Record<ExportFormat, string> = {
   [ExportFormat.JSONLD]: 'label.json-ld',
   [ExportFormat.TURTLE]: 'label.skos-turtle',
   [ExportFormat.RDFXML]: 'label.owl-rdf-xml',
+  [ExportFormat.CSV]: 'label.csv',
 };
 
 const resolved = (): jest.Mock<Promise<void>, []> =>
@@ -67,6 +68,7 @@ describe('ExportGraphPanel', () => {
   it('renders every optional format when all callbacks are provided and supportedExports is undefined', async () => {
     render(
       <ExportGraphPanel
+        onExportCsv={resolved()}
         onExportJsonLd={resolved()}
         onExportPng={resolved()}
         onExportRdfXml={resolved()}

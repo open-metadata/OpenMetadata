@@ -145,6 +145,12 @@ describe('DomainClassBase', () => {
     });
   });
 
+  describe('getReviewersField', () => {
+    it('returns null so OSS never renders the Collate-only reviewers field', () => {
+      expect(instance.getReviewersField()).toBeNull();
+    });
+  });
+
   describe('singleton export', () => {
     it('default export is an instance of DomainClassBase', () => {
       expect(domainClassBase).toBeInstanceOf(DomainClassBase);

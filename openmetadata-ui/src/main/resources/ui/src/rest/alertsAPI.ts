@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import axiosClient from '.';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import { Destination } from '../generated/events/api/testEventSubscriptionDestination';
 import {
@@ -29,6 +28,7 @@ import {
 import { FilterResourceDescriptor } from '../generated/events/filterResourceDescriptor';
 import { Function } from '../generated/type/function';
 import { getEncodedFqn } from '../utils/StringUtils';
+import axiosClient from './axiosClient';
 
 const BASE_URL = '/events/subscriptions';
 
@@ -39,6 +39,7 @@ interface ListAlertsRequestParams {
   after?: string;
   include?: string;
   limit?: number;
+  fields?: string;
 }
 
 export const getAlertsFromId = async (
@@ -60,7 +61,7 @@ export const getAlertsFromId = async (
 
 export const getAlertsFromName = async (
   name: string,
-  params?: Pick<ListAlertsRequestParams, 'include'>
+  params?: Pick<ListAlertsRequestParams, 'include' | 'fields'>
 ) => {
   const response = await axiosClient.get<EventSubscription>(
     `${BASE_URL}/name/${getEncodedFqn(name)}`,

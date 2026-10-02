@@ -22,29 +22,27 @@ export interface AddTestCaseListFilterContext {
   waitAfterFilterUpdate: () => Promise<void>;
 }
 
-export function waitForAddTestCaseListTableSearchQuery(
+// The filter dropdown is a popover rendered outside the Add Test Cases modal
+// and can close again right after it opens (timing-dependent). Reopen and
+// retype until the searched option is shown instead of racing that close.
+async function searchAddTestCaseListFilterOption(
   page: Page,
-  tableEntityName: string
+  searchKey: string,
+  searchText: string,
+  optionTestId: string
 ) {
-  return page.waitForResponse((res) => {
-    const u = res.url();
-    if (res.request().method() !== 'GET') {
-      return false;
+  const menu = page.getByTestId('drop-down-menu');
+  const option = menu.getByTestId(optionTestId);
+
+  await expect(async () => {
+    if (!(await menu.isVisible())) {
+      await page.getByTestId(`search-dropdown-${searchKey}`).click();
     }
-    if (!u.includes('/api/v1/search/query')) {
-      return false;
-    }
-    if (!/[?&]index=table(?:&|$)/.test(u)) {
-      return false;
-    }
-    if (!tableEntityName) {
-      return false;
-    }
-    return (
-      u.includes(encodeURIComponent(tableEntityName)) ||
-      u.includes(tableEntityName)
-    );
-  });
+    await menu.getByTestId('search-input').fill(searchText, { timeout: 5_000 });
+    await expect(option).toBeVisible({ timeout: 10_000 });
+  }).toPass({ timeout: 60_000 });
+
+  return option;
 }
 
 export async function addTestCaseListFilterByTestType(
@@ -57,7 +55,7 @@ export async function addTestCaseListFilterByTestType(
   await page.getByTestId('search-dropdown-Test Type').click();
   await page
     .getByTestId('drop-down-menu')
-    .getByRole('menuitem', { name: label })
+    .getByRole('menuitemradio', { name: label })
     .click();
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await listResponse;
@@ -73,7 +71,7 @@ export async function addTestCaseListFilterByStatus(
   await page.getByTestId('search-dropdown-Status').click();
   await page
     .getByTestId('drop-down-menu')
-    .getByRole('menuitem', { name: label })
+    .getByRole('menuitemradio', { name: label })
     .click();
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await listResponse;
@@ -84,19 +82,12 @@ export async function addTestCaseListFilterByTable(
   tableEntityName: string,
   tableFqn: string
 ) {
-  const tableSearchResponse = waitForAddTestCaseListTableSearchQuery(
+  const tableOption = await searchAddTestCaseListFilterOption(
     page,
-    tableEntityName
+    'Table',
+    tableEntityName,
+    tableFqn
   );
-  await page.getByTestId('search-dropdown-Table').click();
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId('search-input')
-    .fill(tableEntityName);
-  await tableSearchResponse;
-
-  const tableOption = page.getByTestId('drop-down-menu').getByTestId(tableFqn);
-  await tableOption.waitFor({ state: 'visible' });
   await tableOption.click();
 
   // Table filter must pair entityLink with includeAllTests=true so column
@@ -111,20 +102,27 @@ export async function addTestCaseListFilterByTable(
   await testCaseByTableResponse;
 }
 
-export async function addTestCaseListFilterByFirstColumn(page: Page) {
-  await page.getByTestId('search-dropdown-Column').click();
-
-  const firstColumnOption = page
-    .getByTestId('drop-down-menu')
-    .getByRole('menuitem')
-    .first();
-  await firstColumnOption.waitFor({ state: 'visible' });
-  await firstColumnOption.click();
+// The Column options aggregate `columns.name.keyword` over every data asset,
+// not the table picked in the Table filter, so their order depends on what
+// else the shard has ingested. Search for a known column instead of taking
+// whichever lands first: TableClass suffixes each column with a uuid, so the
+// search yields exactly one option.
+export async function addTestCaseListFilterByColumn(
+  page: Page,
+  columnName: string
+) {
+  const columnOption = await searchAddTestCaseListFilterOption(
+    page,
+    'Column',
+    columnName,
+    columnName
+  );
+  await columnOption.click();
 
   const testCaseByColumnResponse = page.waitForResponse(
     (url) =>
       url.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-      url.url().includes('columnName')
+      url.url().includes(`columnName=${encodeURIComponent(columnName)}`)
   );
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await testCaseByColumnResponse;
@@ -132,7 +130,8 @@ export async function addTestCaseListFilterByFirstColumn(page: Page) {
 
 export async function addTestCaseListResetFilters(
   page: Page,
-  tableFqn: string
+  tableFqn: string,
+  columnName: string
 ) {
   await addTestCaseListFilterByTestType(page, 'All');
 
@@ -148,11 +147,7 @@ export async function addTestCaseListResetFilters(
     '/api/v1/dataQuality/testCases/search/list*'
   );
   await page.getByTestId('search-dropdown-Column').click();
-  await page
-    .getByTestId('drop-down-menu')
-    .getByRole('menuitem')
-    .first()
-    .click();
+  await page.getByTestId('drop-down-menu').getByTestId(columnName).click();
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await clearColumnResponse;
 
@@ -162,7 +157,7 @@ export async function addTestCaseListResetFilters(
   await page.getByTestId('search-dropdown-Status').click();
   await page
     .getByTestId('drop-down-menu')
-    .getByRole('menuitem', { name: 'Success' })
+    .getByRole('menuitemradio', { name: 'Success' })
     .click();
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await clearStatusResponse;
@@ -197,17 +192,19 @@ export async function addTestCaseListFilterByTableInAddTestCasesDialog(
   return addTestCaseListFilterByTable(page, tableEntityName, tableFqn);
 }
 
-export async function addTestCaseListFilterByFirstColumnInAddTestCasesDialog(
-  page: Page
+export async function addTestCaseListFilterByColumnInAddTestCasesDialog(
+  page: Page,
+  columnName: string
 ) {
-  return addTestCaseListFilterByFirstColumn(page);
+  return addTestCaseListFilterByColumn(page, columnName);
 }
 
 export async function addTestCaseListResetFiltersInAddTestCasesDialog(
   page: Page,
-  tableFqn: string
+  tableFqn: string,
+  columnName: string
 ) {
-  return addTestCaseListResetFilters(page, tableFqn);
+  return addTestCaseListResetFilters(page, tableFqn, columnName);
 }
 
 export async function addTestCaseListToggleSelectAllInAddTestCasesDialog(

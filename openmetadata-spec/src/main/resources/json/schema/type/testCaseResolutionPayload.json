@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/testCaseResolutionPayload.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TestCaseResolutionPayload",
   "description": "Payload for Test Case Resolution tasks. Links to the TestCaseResolutionStatus workflow via stateId.",
   "javaType": "org.openmetadata.schema.type.TestCaseResolutionPayload",

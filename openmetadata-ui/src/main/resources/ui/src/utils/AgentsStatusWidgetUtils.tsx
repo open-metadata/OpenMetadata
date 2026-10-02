@@ -29,7 +29,8 @@ import { ReactComponent as MetadataIcon } from '../assets/svg/ic-empty-doc.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-stack-quality.svg';
 import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.svg';
 
-import { Skeleton, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Skeleton } from 'antd';
 import { isEmpty, isUndefined, reduce } from 'lodash';
 import type { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
 import type {
@@ -163,9 +164,10 @@ export const getFormattedAgentsList = (
 export const getFormattedAgentsListFromAgentsLiveInfo = (
   agentsLiveInfo: AgentsLiveInfo[],
   collateAIagentsLiveInfo: CollateAgentLiveInfo[],
-  // Terminal frames (stream completed, or an error fetching chart data) carry no
-  // payload, so keep the agents already on screen instead of blanking them as the
-  // run finishes.
+  // The server folds a failed or partial automation lookup into an empty app status, so on a live
+  // frame an empty one cannot be told apart from "none left". Keep the Collate agents already on
+  // screen rather than wipe them for one frame. Frames that close the stream never get here — the
+  // caller drops them.
   preservedCollateAgents: AgentsInfo[] = []
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(
@@ -292,11 +294,12 @@ export const getAgentRunningStatusMessage = (
     <div className="flex items-center gap-1">
       <Icon className={status} height={14} width={14} />
 
-      <Typography.Text
-        className="text-grey-muted text-sm"
+      <Typography
+        className="text-sm"
+        color="secondary"
         data-testid="agents-status-message">
         {message}
-      </Typography.Text>
+      </Typography>
     </div>
   );
 };

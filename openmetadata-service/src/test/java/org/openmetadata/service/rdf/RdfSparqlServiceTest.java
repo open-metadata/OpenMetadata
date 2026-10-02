@@ -107,6 +107,32 @@ class RdfSparqlServiceTest {
   }
 
   @Test
+  void rejectsMultipleWhereBearingUpdateOperationsBeforeRepositoryExecution() {
+    RdfRepository repository = mock(RdfRepository.class);
+    String update =
+        "DELETE WHERE { <urn:first> ?predicate ?object }; "
+            + "DELETE WHERE { <urn:second> ?predicate ?object }";
+
+    IllegalArgumentException exception =
+        assertThrows(IllegalArgumentException.class, () -> service(repository).update(update));
+
+    assertTrue(exception.getMessage().contains("at most one WHERE-bearing operation"));
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void allowsOneWhereBearingOperationWithDataOnlyOperations() {
+    RdfRepository repository = mock(RdfRepository.class);
+    String update =
+        "DELETE WHERE { <urn:first> ?predicate ?object }; "
+            + "INSERT DATA { <urn:first> <urn:predicate> <urn:object> }";
+
+    service(repository).update(update);
+
+    verify(repository).executeSparqlUpdate(update);
+  }
+
+  @Test
   void ownsFormatAndInferenceValidationForEveryTransport() {
     RdfRepository repository = mock(RdfRepository.class);
     String graphQuery =

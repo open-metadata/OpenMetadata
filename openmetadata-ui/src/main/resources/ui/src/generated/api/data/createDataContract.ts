@@ -210,6 +210,11 @@ export interface OdcsAuthoritativeDefinition {
  */
 export interface OdcsQualityRule {
     /**
+     * Arguments of a library metric (ODCS 3.1.0), e.g. the valid values or the pattern of an
+     * `invalidValues` check.
+     */
+    arguments?: OdcsQualityRuleArguments;
+    /**
      * External rule documentation.
      */
     authoritativeDefinitions?: OdcsAuthoritativeDefinition[];
@@ -237,6 +242,12 @@ export interface OdcsQualityRule {
      * Vendor name (soda, greatExpectations, etc.).
      */
     engine?: string;
+    /**
+     * Stable identifier of the rule (ODCS 3.1.0). When the rule is turned into an OpenMetadata
+     * test case, the id becomes the test case name, so re-importing the same rule updates that
+     * test case instead of creating another one.
+     */
+    id?: string;
     /**
      * Vendor-specific configuration.
      */
@@ -315,6 +326,34 @@ export interface OdcsQualityRule {
     unit?: string;
     /**
      * Static value list.
+     */
+    validValues?: string[];
+    [property: string]: any;
+}
+
+/**
+ * Arguments of a library metric (ODCS 3.1.0), e.g. the valid values or the pattern of an
+ * `invalidValues` check.
+ *
+ * Arguments of an ODCS 3.1.0 library metric. Open, because each metric defines its own
+ * arguments.
+ */
+export interface OdcsQualityRuleArguments {
+    /**
+     * Values that count as missing on top of null (`missingValues` metric).
+     */
+    missingValues?: string[];
+    /**
+     * Regex a property must match (`invalidValues` metric).
+     */
+    pattern?: string;
+    /**
+     * Properties a table-level check applies to, e.g. the columns of a composite
+     * `duplicateValues` check.
+     */
+    properties?: string[];
+    /**
+     * Values a property may take (`invalidValues` metric).
      */
     validValues?: string[];
     [property: string]: any;

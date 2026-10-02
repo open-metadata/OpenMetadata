@@ -12,6 +12,7 @@
  */
 
 import {
+  AlertType,
   ArgumentsInput,
   Effect,
   EventFilterRule,
@@ -19,12 +20,15 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
+import { EventType } from '../../../generated/type/changeEvent';
 import { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
+import { AlertAiFormValue } from './AlertAiFormFields.interface';
 import {
   getAlertAiSectionVisibility,
   getDestinationTypeUpdate,
   getDestinationWithNotifyDownstream,
+  getRuleEventTypes,
   getRuleItems,
   getRulesWithAddedRule,
   getRulesWithEffect,
@@ -32,6 +36,8 @@ import {
   getRulesWithoutIndex,
   getRuntimeArguments,
   hasExternalDestinationConfig,
+  setValueAtPath,
+  updateAlertAiValue,
 } from './AlertAiFormFieldsPureUtils';
 
 describe('AlertAiFormFieldsPureUtils', () => {
@@ -243,5 +249,111 @@ describe('AlertAiFormFieldsPureUtils', () => {
         } as ModifiedDestination,
       ])
     ).toBe(false);
+  });
+
+  describe('getRuleEventTypes (per-flow classic parity)', () => {
+    const resource = {
+      name: 'table',
+      supportedEventTypes: [EventType.EntityCreated],
+    };
+
+    it('narrows event types for notification alerts, like Settings → Notifications', () => {
+      expect(getRuleEventTypes(AlertType.Notification, resource)).toEqual([
+        EventType.EntityCreated,
+      ]);
+    });
+
+    it('never narrows observability alerts, like Observability → Alerts', () => {
+      expect(
+        getRuleEventTypes(AlertType.Observability, resource)
+      ).toBeUndefined();
+    });
+  });
+});
+
+describe('setValueAtPath', () => {
+  const asValue = (obj: unknown) => obj as AlertAiFormValue;
+  const asRecord = (value: AlertAiFormValue) =>
+    value as unknown as Record<string, unknown>;
+
+  it('sets a nested path and returns a new root', () => {
+    const source = asValue({ input: {}, destinations: [] });
+    const result = setValueAtPath(source, ['input', 'foo'], 'bar');
+
+    expect(result).not.toBe(source);
+    expect(asRecord(result).input).toEqual({ foo: 'bar' });
+  });
+
+  it('preserves off-path sibling references (structural sharing)', () => {
+    const source = asValue({
+      input: { a: 1 },
+      destinations: [{ id: 'a' }, { id: 'b' }],
+    });
+    const result = setValueAtPath(source, ['destinations', 0, 'id'], 'z');
+    const record = asRecord(result);
+    const destinations = record.destinations as Array<{ id: string }>;
+    const sourceDestinations = asRecord(source).destinations as Array<{
+      id: string;
+    }>;
+
+    // Changed node is a fresh copy...
+    expect(destinations[0]).not.toBe(sourceDestinations[0]);
+    expect(destinations[0].id).toBe('z');
+    // ...but the untouched sibling and off-path branch keep their reference, so React skips them.
+    expect(destinations[1]).toBe(sourceDestinations[1]);
+    expect(record.input).toBe(asRecord(source).input);
+  });
+
+  it('creates a missing container as array or object based on the next segment', () => {
+    expect(asRecord(setValueAtPath(asValue({}), ['a', 0], 'x')).a).toEqual([
+      'x',
+    ]);
+    expect(asRecord(setValueAtPath(asValue({}), ['a', 'b'], 'x')).a).toEqual({
+      b: 'x',
+    });
+  });
+
+  it('returns nextValue for an empty path', () => {
+    expect(setValueAtPath(asValue({ a: 1 }), [], 'replaced')).toBe('replaced');
+  });
+});
+
+describe('updateAlertAiValue', () => {
+  it('dispatches a functional updater, not a value', () => {
+    const onChange = jest.fn();
+
+    updateAlertAiValue({} as AlertAiFormValue, onChange, ['input', 'x'], 1);
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(typeof onChange.mock.calls[0][0]).toBe('function');
+  });
+
+  it('composes rapid successive writes so neither clobbers the other', () => {
+    const onChange = jest.fn();
+    const prev = { input: {}, destinations: [{ config: { headers: [{}] } }] };
+
+    // Two quick writes both captured before any re-render — the empty-header-key 400 scenario.
+    updateAlertAiValue(
+      prev as unknown as AlertAiFormValue,
+      onChange,
+      ['destinations', 0, 'config', 'headers', 0, 'key'],
+      'k'
+    );
+    updateAlertAiValue(
+      prev as unknown as AlertAiFormValue,
+      onChange,
+      ['destinations', 0, 'config', 'headers', 0, 'value'],
+      'v'
+    );
+
+    const applied = onChange.mock.calls.reduce(
+      (state, [updater]) => updater(state),
+      prev as unknown
+    );
+
+    expect(applied).toEqual({
+      input: {},
+      destinations: [{ config: { headers: [{ key: 'k', value: 'v' }] } }],
+    });
   });
 });

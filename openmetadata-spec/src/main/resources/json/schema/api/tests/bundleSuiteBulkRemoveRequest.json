@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tests/bundleSuiteBulkRemoveRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BundleSuiteBulkRemoveRequest",
+  "description": "Request object for bulk-removing test cases from a logical (bundle) test suite.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.tests.BundleSuiteBulkRemoveRequest",
+  "properties": {
+    "testSuiteId": {
+      "description": "TestSuite ID from which we will be removing the test cases.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "testCaseIds": {
+      "description": "Ids of the test cases to remove from the test suite.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      }
+    }
+  },
+  "required": ["testSuiteId", "testCaseIds"],
+  "additionalProperties": false
+}

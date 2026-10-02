@@ -171,19 +171,30 @@ def _test_discover_servers(manager: McpConnectionManager) -> None:
 
 
 def _test_connect_to_servers(manager: McpConnectionManager) -> None:
-    """Test step: Connect to at least one MCP server"""
-    servers = manager.discover_servers()
-    connected = False
+    """Test step: Connect to at least one connectable MCP server.
 
-    for server in servers[:3]:
+    Stdio servers are cataloging-only: the transport is not supported, so they are
+    no longer connection targets. If every
+    discovered server is Stdio there is nothing to connect to and the step passes
+    - the servers are still cataloged by the ingestion step.
+    """
+    servers = manager.discover_servers()
+    connectable = [server for server in servers if server.transport.lower() != "stdio"]
+
+    if not connectable:
+        logger.warning(
+            "Only Stdio MCP servers were discovered. Stdio transport is no longer supported; "
+            "these servers will be cataloged but not connected. Use an HTTP (SSE / StreamableHTTP) URL to connect."
+        )
+        return
+
+    for server in connectable[:3]:
         if manager.test_server_connection(server):
             logger.info(f"Successfully connected to MCP server '{server.name}'")
-            connected = True
-            break
+            return
         logger.warning(f"Could not connect to MCP server '{server.name}'")
 
-    if not connected:
-        raise SourceConnectionException("Could not connect to any discovered MCP servers")
+    raise SourceConnectionException("Could not connect to any discovered MCP servers")
 
 
 def test_connection(

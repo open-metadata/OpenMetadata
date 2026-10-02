@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { WorkflowTriggerFields } from '../../../../../generated/type/workflowTriggerFields';
 import type { ConditionFieldDefinition } from './ConditionBuilder.interface';
 import {
   fetchCertificationOptions,
@@ -25,43 +24,70 @@ import {
   fetchTagOptions,
 } from './conditionBuilderValueFetchers';
 
+// Fields a JSON Logic value-condition can be written against — the entity-attribute surface (a
+// curated subset of the common workflow trigger fields). Structural fields such as `columns` are
+// intentionally absent: they resolve to arrays of objects and cannot be value-compared.
+const WORKFLOW_TRIGGER_CONDITION_FIELDS: string[] = [
+  'name',
+  'displayName',
+  'fullyQualifiedName',
+  'description',
+  'owners',
+  'reviewers',
+  'tags',
+  'certification',
+  'domains',
+  'dataProducts',
+  'extension',
+  'deleted',
+  'synonyms',
+  'relatedTerms',
+  'references',
+  'glossary',
+  'parent',
+  'children',
+  'experts',
+  'style',
+  'glossaryTerms',
+];
+
 const WORKFLOW_TRIGGER_FIELD_LABELS: Record<string, string> = {
-  [WorkflowTriggerFields.Certification]: 'label.certification',
-  [WorkflowTriggerFields.Children]: 'label.children',
-  [WorkflowTriggerFields.DataProducts]: 'label.data-product-plural',
-  [WorkflowTriggerFields.Deleted]: 'label.deleted',
-  [WorkflowTriggerFields.Description]: 'label.description',
-  [WorkflowTriggerFields.DisplayName]: 'label.display-name',
-  [WorkflowTriggerFields.Domains]: 'label.domain-plural',
-  [WorkflowTriggerFields.Experts]: 'label.expert-plural',
-  [WorkflowTriggerFields.Extension]: 'label.extension',
-  [WorkflowTriggerFields.Glossary]: 'label.glossary',
-  [WorkflowTriggerFields.Name]: 'label.name',
-  [WorkflowTriggerFields.Owners]: 'label.owner-plural',
-  [WorkflowTriggerFields.Parent]: 'label.parent',
-  [WorkflowTriggerFields.References]: 'label.reference-plural',
-  [WorkflowTriggerFields.RelatedTerms]: 'label.related-term-plural',
-  [WorkflowTriggerFields.Reviewers]: 'label.reviewer-plural',
-  [WorkflowTriggerFields.Synonyms]: 'label.synonym-plural',
-  [WorkflowTriggerFields.Tags]: 'label.tag-plural',
+  certification: 'label.certification',
+  children: 'label.children',
+  dataProducts: 'label.data-product-plural',
+  deleted: 'label.deleted',
+  description: 'label.description',
+  displayName: 'label.display-name',
+  domains: 'label.domain-plural',
+  experts: 'label.expert-plural',
+  extension: 'label.extension',
+  glossary: 'label.glossary',
+  name: 'label.name',
+  owners: 'label.owner-plural',
+  parent: 'label.parent',
+  references: 'label.reference-plural',
+  relatedTerms: 'label.related-term-plural',
+  reviewers: 'label.reviewer-plural',
+  synonyms: 'label.synonym-plural',
+  tags: 'label.tag-plural',
 };
 
 type FetchOptionsFn = (
   s: string
 ) => Promise<{ value: string; label: string }[]>;
 
-/** Dropdown fields that use API to fetch options (only a subset of WorkflowTriggerFields). */
+/** Dropdown fields that use API to fetch options (only a subset of trigger fields). */
 const DROPDOWN_FIELDS: Partial<Record<string, FetchOptionsFn>> = {
-  [WorkflowTriggerFields.Certification]: fetchCertificationOptions,
-  [WorkflowTriggerFields.DataProducts]: fetchDataProductOptions,
-  [WorkflowTriggerFields.Domains]: fetchDomainOptions,
-  [WorkflowTriggerFields.Experts]: fetchExpertOptions,
-  [WorkflowTriggerFields.Glossary]: fetchGlossaryOptions,
-  [WorkflowTriggerFields.Owners]: fetchOwnerOptions,
-  [WorkflowTriggerFields.Reviewers]: fetchExpertOptions,
-  [WorkflowTriggerFields.RelatedTerms]: fetchRelatedTermsOptions,
-  [WorkflowTriggerFields.Synonyms]: fetchSynonymsOptions,
-  [WorkflowTriggerFields.Tags]: fetchTagOptions,
+  certification: fetchCertificationOptions,
+  dataProducts: fetchDataProductOptions,
+  domains: fetchDomainOptions,
+  experts: fetchExpertOptions,
+  glossary: fetchGlossaryOptions,
+  owners: fetchOwnerOptions,
+  reviewers: fetchExpertOptions,
+  relatedTerms: fetchRelatedTermsOptions,
+  synonyms: fetchSynonymsOptions,
+  tags: fetchTagOptions,
 };
 
 const BOOLEAN_OPTIONS: ConditionFieldDefinition['values'] = [
@@ -70,10 +96,10 @@ const BOOLEAN_OPTIONS: ConditionFieldDefinition['values'] = [
 ];
 
 export const CONDITION_BUILDER_WORKFLOW_TRIGGER_FIELDS: ConditionFieldDefinition[] =
-  Object.values(WorkflowTriggerFields).map((fieldValue) => {
+  WORKFLOW_TRIGGER_CONDITION_FIELDS.map((fieldValue) => {
     const fetchOptions = DROPDOWN_FIELDS[fieldValue];
     const isDropdown = Boolean(fetchOptions);
-    const isBoolean = fieldValue === WorkflowTriggerFields.Deleted;
+    const isBoolean = fieldValue === 'deleted';
     let valueType: ConditionFieldDefinition['valueType'] = 'text';
     if (isBoolean) {
       valueType = 'boolean';
@@ -81,8 +107,7 @@ export const CONDITION_BUILDER_WORKFLOW_TRIGGER_FIELDS: ConditionFieldDefinition
       valueType = 'dropdown';
     }
 
-    const supportsSearch =
-      !fetchOptions || fieldValue !== WorkflowTriggerFields.Certification;
+    const supportsSearch = !fetchOptions || fieldValue !== 'certification';
 
     return {
       value: fieldValue,

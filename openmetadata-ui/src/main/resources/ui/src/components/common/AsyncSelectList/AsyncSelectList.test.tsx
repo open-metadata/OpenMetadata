@@ -34,9 +34,15 @@ jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
-  jest.fn().mockImplementation(() => <div>TagsV1</div>)
-);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest
+    .fn()
+    .mockImplementation(({ label }) => <div title={label}>{label}</div>),
+  GlossaryTag: jest
+    .fn()
+    .mockImplementation(({ label }) => <div title={label}>{label}</div>),
+}));
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -44,7 +50,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../utils/TagsUtils', () => ({
   getTagDisplay: jest.fn().mockReturnValue('tags'),
-  tagRender: jest.fn().mockReturnValue(<p>Tags Render</p>),
 }));
 
 const mockOnChange = jest.fn();

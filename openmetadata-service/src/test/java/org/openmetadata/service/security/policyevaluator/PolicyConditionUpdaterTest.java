@@ -16,9 +16,11 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.ROLE_FUNCTIONS;
+import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.SERVICE_FUNCTIONS;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.TAG_FUNCTIONS;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.TEAM_FUNCTIONS;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PolicyConditionUpdaterTest {
@@ -329,19 +331,164 @@ class PolicyConditionUpdaterTest {
 
   @Test
   void extractArgs_singleArg() {
-    assertEquals(
-        java.util.List.of("A.B"), PolicyConditionUpdater.extractArgs("matchAnyTag('A.B')"));
+    assertEquals(List.of("A.B"), PolicyConditionUpdater.extractArgs("matchAnyTag('A.B')"));
   }
 
   @Test
   void extractArgs_multipleArgs() {
     assertEquals(
-        java.util.List.of("A.B", "C.D"),
-        PolicyConditionUpdater.extractArgs("matchAnyTag('A.B', 'C.D')"));
+        List.of("A.B", "C.D"), PolicyConditionUpdater.extractArgs("matchAnyTag('A.B', 'C.D')"));
   }
 
   @Test
   void extractArgs_noArgs() {
-    assertEquals(java.util.List.of(), PolicyConditionUpdater.extractArgs("isOwner()"));
+    assertEquals(List.of(), PolicyConditionUpdater.extractArgs("isOwner()"));
+  }
+
+  // ===================================================================
+  // SERVICE CONDITION TESTS
+  // ===================================================================
+
+  /**
+   * matchAnyServiceTag takes a tag FQN, so a classification or tag rename has to rewrite it — a
+   * condition left pointing at the old FQN resolves to no service, and the Deny rule that was
+   * hiding a service's assets silently starts granting access.
+   */
+  @Test
+  void renameInCondition_serviceTagIsRewrittenWithTheOtherTagFunctions() {
+    assertEquals(
+        "matchAnyServiceTag('Environment.Dev')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceTag('Env.Dev')", "Env.Dev", "Environment.Dev", TAG_FUNCTIONS));
+  }
+
+  @Test
+  void renamePrefixInCondition_serviceTagFollowsAClassificationRename() {
+    assertEquals(
+        "matchAnyServiceTag('Environment.Development') && isOwner()",
+        PolicyConditionUpdater.renamePrefixInCondition(
+            "matchAnyServiceTag('Env.Development') && isOwner()",
+            "Env",
+            "Environment",
+            TAG_FUNCTIONS));
+  }
+
+  @Test
+  void removeFromCondition_serviceTagIsDroppedWhenTheTagIsDeleted() {
+    assertEquals(
+        "matchAnyServiceTag('Environment.Staging')",
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAnyServiceTag('Environment.Development', 'Environment.Staging')",
+            "Environment.Development",
+            TAG_FUNCTIONS));
+  }
+
+  /** A service rename must follow the condition, for the same fail-open reason. */
+  @Test
+  void renameInCondition_serviceName() {
+    assertEquals(
+        "matchAnyServiceName('snowflake-production')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceName('snowflake-prod')",
+            "snowflake-prod",
+            "snowflake-production",
+            SERVICE_FUNCTIONS));
+  }
+
+  /** A tag rename must not reach into a service-name argument, or vice versa. */
+  @Test
+  void renameInCondition_serviceFunctionsAreScopedToTheirOwnArguments() {
+    String condition = "matchAnyServiceName('prod') && matchAnyServiceTag('prod')";
+
+    assertEquals(
+        "matchAnyServiceName('prod') && matchAnyServiceTag('staging')",
+        PolicyConditionUpdater.renameInCondition(condition, "prod", "staging", TAG_FUNCTIONS));
+    assertEquals(
+        "matchAnyServiceName('staging') && matchAnyServiceTag('prod')",
+        PolicyConditionUpdater.renameInCondition(condition, "prod", "staging", SERVICE_FUNCTIONS));
+  }
+
+  // ===================================================================
+  // SpEL ESCAPED-APOSTROPHE TESTS
+  // ===================================================================
+
+  /**
+   * SpEL writes an apostrophe inside a string literal as {@code ''}. Read as two arguments it would
+   * rewrite into names that exist nowhere, disarming the rule — so the escape has to survive a
+   * round trip.
+   */
+  @Test
+  void extractArgs_readsAnEscapedApostropheAsOneArgument() {
+    assertEquals(
+        List.of("bob's-db"),
+        PolicyConditionUpdater.extractArgs("matchAnyServiceName('bob''s-db')"));
+  }
+
+  @Test
+  void extractArgs_keepsEscapedAndPlainArgumentsApart() {
+    assertEquals(
+        List.of("bob's-db", "plain"),
+        PolicyConditionUpdater.extractArgs("matchAnyServiceName('bob''s-db', 'plain')"));
+  }
+
+  @Test
+  void renameInCondition_renamesAServiceWhoseNameHasAnApostrophe() {
+    assertEquals(
+        "matchAnyServiceName('renamed')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceName('bob''s-db')", "bob's-db", "renamed", SERVICE_FUNCTIONS));
+  }
+
+  /** The new name has to be re-escaped, or the rewritten condition no longer parses as SpEL. */
+  @Test
+  void renameInCondition_reEscapesAnApostropheInTheNewName() {
+    assertEquals(
+        "matchAnyServiceName('bob''s-db')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceName('plain')", "plain", "bob's-db", SERVICE_FUNCTIONS));
+  }
+
+  @Test
+  void renameInCondition_leavesAnUnrelatedEscapedArgumentIntact() {
+    assertEquals(
+        "matchAnyServiceName('bob''s-db', 'renamed')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceName('bob''s-db', 'plain')", "plain", "renamed", SERVICE_FUNCTIONS));
+  }
+
+  @Test
+  void removeFromCondition_removesAnEscapedArgumentAndKeepsTheRest() {
+    assertEquals(
+        "matchAnyServiceName('plain')",
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAnyServiceName('bob''s-db', 'plain')", "bob's-db", SERVICE_FUNCTIONS));
+  }
+
+  @Test
+  void removeFromCondition_keepsAnEscapedArgumentWhenAnotherIsRemoved() {
+    assertEquals(
+        "matchAnyServiceName('bob''s-db')",
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAnyServiceName('bob''s-db', 'plain')", "plain", SERVICE_FUNCTIONS));
+  }
+
+  /** A hard delete of the only referenced service drops the condition entirely. */
+  @Test
+  void removeFromCondition_dropsTheConditionWhenTheEscapedNameWasTheOnlyArgument() {
+    assertNull(
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAnyServiceName('bob''s-db')", "bob's-db", SERVICE_FUNCTIONS));
+  }
+
+  /** Tag FQNs carry the same hazard — a glossary term such as {@code Men's Wear}. */
+  @Test
+  void renameInCondition_renamesATagFqnContainingAnApostrophe() {
+    assertEquals(
+        "matchAnyTag('Glossary.Menswear')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyTag('Glossary.Men''s Wear')",
+            "Glossary.Men's Wear",
+            "Glossary.Menswear",
+            TAG_FUNCTIONS));
   }
 }

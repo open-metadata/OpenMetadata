@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Tabs } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus, Upload01 } from '@untitledui/icons';
+import {
+  Button,
+  Dropdown,
+  PageLayout,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  Plus,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { ComponentType, lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -29,7 +38,6 @@ import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import Loader from '../../common/Loader/Loader';
 import TestCaseFormDrawer from '../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import BundleSuiteFormDrawer from '../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
@@ -276,7 +284,7 @@ const DataQualityPage = () => {
     <DataQualityProvider createActions={createActions} isActive={ownsTheUrl}>
       <ObservabilityPageShell
         header={
-          <HeaderShell
+          <PageLayout.PageHeader
             actions={trailing}
             badge={
               <LearningIcon
@@ -318,7 +326,6 @@ const DataQualityPage = () => {
                 </Tabs.List>
               </Tabs>
             }
-            padding="comfortable"
             subtitle={t('message.page-sub-header-for-data-quality')}
             title={t('label.data-quality')}
             variant="gradient"

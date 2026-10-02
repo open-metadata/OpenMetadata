@@ -11,6 +11,18 @@
  *  limitations under the License.
  */
 
+import { normalizeHexColor } from '@/colors/colorValidation';
+import {
+  ENTITY_PALETTE_HEX,
+  getEntityPalettePresentationColor,
+} from '@/colors/entityPalette';
+import { Tabs } from '@/components/application/tabs/tabs';
+import { Box } from '@/components/base/box/box';
+import { Button } from '@/components/base/buttons/button';
+import { Input } from '@/components/base/input/input';
+import { Typography } from '@/components/foundations/typography';
+import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
 import type { FC, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import {
   createElement,
@@ -20,15 +32,6 @@ import {
   useState,
 } from 'react';
 import type { Key } from 'react-aria-components';
-import { normalizeHexColor } from '@/colors/colorValidation';
-import { ENTITY_PALETTE_HEX } from '@/colors/entityPalette';
-import { Tabs } from '@/components/application/tabs/tabs';
-import { Box } from '@/components/base/box/box';
-import { Button } from '@/components/base/buttons/button';
-import { Input } from '@/components/base/input/input';
-import { Typography } from '@/components/foundations/typography';
-import { cx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
 import type {
   FormSelectItem,
   IconPickerFieldLabels,
@@ -105,9 +108,14 @@ export const IconPickerField = ({
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'icons' | 'url'>('icons');
   const selectedItem = items.find((item) => item.id === value);
-  const backgroundColor =
+  const normalizedBackgroundColor =
     (backgroundColorProp ? normalizeHexColor(backgroundColorProp) : null) ??
-    ENTITY_PALETTE_HEX[6];
+    // Index 0 (blue) is the established default when no color is picked yet
+    // (glossary terms, tags, domains pass an undefined color until selection).
+    ENTITY_PALETTE_HEX[0];
+  const backgroundColor = getEntityPalettePresentationColor(
+    normalizedBackgroundColor
+  );
   const hasCustomImage = allowUrl && value !== '' && !selectedItem;
   const onBlurRef = useRef(onBlur);
   onBlurRef.current = onBlur;

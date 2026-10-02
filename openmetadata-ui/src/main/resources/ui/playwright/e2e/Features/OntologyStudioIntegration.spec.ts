@@ -199,6 +199,7 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
   const spiralTable = new TableClass();
 
   test.beforeAll(async ({ browser }) => {
+    test.setTimeout(120_000);
     const { page, apiContext } = await createApiContext(browser);
     await spiralGlossary.create(apiContext);
     await spiralTerm.create(apiContext);
@@ -219,15 +220,48 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
       ],
     });
     const glossaryFqn = spiralGlossary.responseData.fullyQualifiedName;
-    const termFqn = spiralTerm.responseData.fullyQualifiedName;
-    await expect(async () => {
-      const response = await apiContext.get(
-        '/api/v1/glossaryTerms/assets/counts',
-        { params: { parent: glossaryFqn } }
-      );
-      const counts = (await response.json()) as Record<string, number>;
-      expect(counts[termFqn] ?? 0).toBeGreaterThan(0);
-    }).toPass({ timeout: 60000, intervals: [2000] });
+    const termId = spiralTerm.responseData.id;
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            '/api/v1/glossaryTerms/ontology/data',
+            {
+              params: {
+                parent: glossaryFqn,
+                limit: '12',
+                offset: '0',
+                assetPreviewSize: '4',
+                connectedTermLimit: '25',
+                edgeLimit: '50',
+                lineageEdgeLimit: '25',
+              },
+            }
+          );
+          if (!response.ok()) {
+            throw new Error(
+              `Ontology data request failed (${response.status()}): ${await response.text()}`
+            );
+          }
+          const body = (await response.json()) as {
+            clusters?: {
+              term?: { id?: string };
+              assets?: { id?: string }[];
+            }[];
+          };
+          const cluster = (body.clusters ?? []).find(
+            (c) => c.term?.id === termId
+          );
+          return cluster?.assets?.length ?? 0;
+        },
+        {
+          message:
+            'The ontology preview must contain indexed assets for the tagged term',
+          timeout: 60_000,
+          intervals: [1_000, 2_000, 5_000],
+        }
+      )
+      .toBeGreaterThan(0);
 
     await disposeApiContext(page, apiContext);
   });
@@ -257,19 +291,44 @@ test.describe('Ontology Studio - Data Mode Asset Cards', () => {
       );
     });
     await page.getByRole('tab', { name: 'Data' }).click();
-    expect((await ontologyDataResponse).ok()).toBe(true);
+    const response = await ontologyDataResponse;
+    expect(response.ok()).toBe(true);
+    const body = (await response.json()) as {
+      clusters: {
+        term: { id: string };
+        assetCount: number;
+        assets: { id: string; type: string; fullyQualifiedName: string }[];
+      }[];
+    };
+    const preview = body.clusters.find(
+      (item) => item.term.id === spiralTerm.responseData.id
+    );
+    const assets = preview?.assets ?? [];
+    expect(assets.length).toBeGreaterThan(0);
+    expect(assets).toHaveLength(Math.min(preview?.assetCount ?? 0, 4));
     await waitForGraphLoaded(page);
 
     const cluster = page.getByTestId(
       `ontology-data-cluster-${spiralTerm.responseData.id}`
     );
     await expect(cluster).toBeVisible();
-    await expect(cluster).toContainText(/[1-9]\d*\s+assets?/i);
     await expect(
-      cluster.getByTestId(
-        `ontology-data-asset-${spiralTable.entityResponseData.id}`
-      )
+      cluster.getByText(new RegExp(`^${preview?.assetCount}\\s+assets?$`, 'i'))
     ).toBeVisible();
+    // Tags also classify table columns, so a bounded preview can legitimately
+    // contain four columns and exclude the parent table. Verify every card.
+    const tableFqn = spiralTable.entityResponseData.fullyQualifiedName;
+    for (const asset of assets) {
+      expect(['table', 'tableColumn']).toContain(asset.type);
+      expect(
+        asset.fullyQualifiedName === tableFqn ||
+          asset.fullyQualifiedName.startsWith(`${tableFqn}.`),
+        `Preview asset ${asset.fullyQualifiedName} must belong to the tagged fixture`
+      ).toBe(true);
+      await expect(
+        cluster.getByTestId(`ontology-data-asset-${asset.id}`)
+      ).toBeVisible();
+    }
   });
 });
 

@@ -22,6 +22,7 @@ import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { KnowledgeCenterResponseDataType } from '../support/entity/KnowledgeCenter.interface';
 import { UserClass } from '../support/user/UserClass';
+import { deleteFixtureEntity, okJson } from './apiResponse';
 import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { executeSlashCommand } from './KnowledgeCenter';
@@ -278,6 +279,7 @@ export const navigateToArticles = async (page: Page) => {
     .getByTestId('context-center-articles-page')
     .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page, 'knowledge-page-skeleton');
 };
 
 export const navigateToDocuments = async (page: Page) => {
@@ -387,7 +389,7 @@ export const selectFolderInSidebar = async (
 
 export const openUploadModal = async (page: Page): Promise<void> => {
   await page
-    .getByTestId('header-shell')
+    .getByTestId('page-header')
     .getByRole('button', { name: /upload file/i })
     .click();
   await expect(
@@ -460,7 +462,7 @@ export const loginAsUser = async (
   user: UserClass
 ): Promise<Page> => {
   const page = await browser.newPage();
-  await user.login(page);
+  await user.signIn(page);
 
   return page;
 };
@@ -716,19 +718,21 @@ export const deleteArticleByFqn = async (
     `/api/v1/contextCenter/pages/name/${encodeURIComponent(fqn)}?fields=id`
   );
 
-  if (!res.ok()) {
+  if (res.status() === 404) {
     return;
   }
 
-  const data = await res.json();
-
-  if (data.id) {
-    await apiContext
-      .delete(
-        `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
-      )
-      .catch(() => undefined);
+  const data = await okJson<{ id: string }>(
+    res,
+    `Find article ${fqn} for cleanup`
+  );
+  if (!data.id) {
+    throw new Error(`Article ${fqn} cleanup response has no ID`);
   }
+  await deleteFixtureEntity(
+    apiContext,
+    `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
+  );
 };
 
 export const createArticleViaApi = async (
@@ -921,11 +925,16 @@ export const verifyArticleSearch = async (page: Page, searchTerm: string) => {
   const searchInput = header
     .getByTestId('search-input')
     .getByLabel('Search Articles');
-  const searchResPromise = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.url().includes('index=page')
-  );
+  const searchResPromise = page.waitForResponse((res) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname.includes('/api/v1/search/query') &&
+      url.searchParams.get('index') === 'page' &&
+      url.searchParams.get('q') ===
+        searchTerm.replaceAll(/["']/g, String.raw`\$&`)
+    );
+  });
 
   await searchInput.fill(searchTerm);
   const searchRes = await searchResPromise;

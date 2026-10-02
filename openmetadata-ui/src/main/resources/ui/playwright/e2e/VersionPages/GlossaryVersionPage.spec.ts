@@ -67,13 +67,11 @@ test('Glossary', async ({ page }) => {
       ).toBeVisible();
 
       await expect(
-        page.locator(
-          '.diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
-        )
+        page.locator('[data-testid="tag-PersonalData.SpecialCategory"]')
       ).toBeVisible();
 
       await expect(
-        page.locator('.diff-added [data-testid="tag-PII.Sensitive"]')
+        page.locator('[data-testid="tag-PII.Sensitive"]')
       ).toBeVisible();
     });
 
@@ -92,7 +90,7 @@ test('Glossary', async ({ page }) => {
         type: 'Users',
       });
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       const versionPageResponse = page.waitForResponse(
         `/api/v1/glossaries/${glossary.responseData.id}/versions/0.2`
       );
@@ -122,7 +120,7 @@ test('Glossary', async ({ page }) => {
         type: 'Users',
       });
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       const versionPageResponse2 = page.waitForResponse(
         `/api/v1/glossaries/${glossary.responseData.id}/versions/0.2`
       );
@@ -163,17 +161,15 @@ test('GlossaryTerm', async ({ page }) => {
     ).toBeVisible();
 
     await expect(
-      page.locator(
-        '.diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
-      )
+      page.locator('[data-testid="tag-PersonalData.SpecialCategory"]')
     ).toBeVisible();
 
     await expect(
-      page.locator('.diff-added [data-testid="tag-PII.Sensitive"]')
+      page.locator('[data-testid="tag-PII.Sensitive"]')
     ).toBeVisible();
 
     await expect(
-      page.locator('[data-testid="test-synonym"].diff-added')
+      page.locator('[data-testid="test-synonym"][data-diff="added"]')
     ).toBeVisible();
 
     await expect(
@@ -181,7 +177,9 @@ test('GlossaryTerm', async ({ page }) => {
     ).toBeVisible();
 
     await expect(
-      page.locator('.diff-added [data-testid="reference-link-reference1"]')
+      page.locator(
+        '[data-testid="reference-link-reference1"][data-diff="added"]'
+      )
     ).toBeVisible();
   });
 
@@ -200,7 +198,7 @@ test('GlossaryTerm', async ({ page }) => {
       type: 'Users',
     });
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     const versionPageResponse = page.waitForResponse(
       `/api/v1/glossaryTerms/${term2.responseData.id}/versions/0.2`
     );
@@ -230,7 +228,7 @@ test('GlossaryTerm', async ({ page }) => {
       type: 'Users',
     });
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
     // Verify the reviewer was actually added before checking version diff
     await expect(
@@ -239,11 +237,7 @@ test('GlossaryTerm', async ({ page }) => {
         .getByTestId(reviewer.getUserDisplayName())
     ).toBeVisible();
 
-    const versionPageResponse2 = page.waitForResponse(
-      `/api/v1/glossaryTerms/${term2.responseData.id}/versions/0.2`
-    );
     await page.click('[data-testid="version-button"]');
-    await versionPageResponse2;
 
     // Wait for the version dialog to be fully loaded
     await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
@@ -376,7 +370,9 @@ test('Version diff shows synonym changes', async ({ page }) => {
     await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
 
     // Check for synonym diff
-    const synonymDiff = page.locator('[data-testid="test-synonym"].diff-added');
+    const synonymDiff = page.locator(
+      '[data-testid="test-synonym"][data-diff="added"]'
+    );
 
     await expect(synonymDiff).toBeVisible();
   } finally {
@@ -398,7 +394,7 @@ test('Version diff shows reference changes', async ({ page }) => {
 
     // Check for reference diff
     const referenceDiff = page.locator(
-      '.diff-added [data-testid="reference-link-reference1"]'
+      '[data-testid="reference-link-reference1"][data-diff="added"]'
     );
 
     await expect(referenceDiff).toBeVisible();

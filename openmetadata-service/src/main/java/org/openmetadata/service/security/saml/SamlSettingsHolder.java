@@ -15,8 +15,10 @@ package org.openmetadata.service.security.saml;
 
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.settings.SettingsBuilder;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -31,6 +33,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.TokenValidityResolver;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
@@ -117,10 +120,10 @@ public class SamlSettingsHolder {
       if (!CommonUtil.nullOrEmpty(securityConfig.getKeyStoreFilePath())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStorePassword())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStoreAlias())) {
-        KeyStore keyStore = KeyStore.getInstance("JKS");
-        keyStore.load(
-            new FileInputStream(securityConfig.getKeyStoreFilePath()),
-            securityConfig.getKeyStorePassword().toCharArray());
+        KeyStore keyStore =
+            loadKeyStore(
+                securityConfig.getKeyStoreFilePath(),
+                securityConfig.getKeyStorePassword().toCharArray());
         samlData.put(SettingsBuilder.KEYSTORE_KEY, keyStore);
         samlData.put(SettingsBuilder.KEYSTORE_ALIAS, securityConfig.getKeyStoreAlias());
         samlData.put(SettingsBuilder.KEYSTORE_KEY_PASSWORD, securityConfig.getKeyStorePassword());
@@ -137,6 +140,20 @@ public class SamlSettingsHolder {
     }
     samlData.put(SettingsBuilder.UNIQUE_ID_PREFIX_PROPERTY_KEY, "OPENMETADATA_");
     saml2Settings = builder.fromValues(samlData).build();
+  }
+
+  static KeyStore loadKeyStore(String filePath, char[] password)
+      throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    return loadKeyStore(Files.newInputStream(Path.of(filePath)), password);
+  }
+
+  static KeyStore loadKeyStore(InputStream inputStream, char[] password)
+      throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    try (inputStream) {
+      KeyStore keyStore = KeyStore.getInstance("JKS");
+      keyStore.load(inputStream, password);
+      return keyStore;
+    }
   }
 
   public static void setSaml2Settings(Saml2Settings settings) {
@@ -161,7 +178,7 @@ public class SamlSettingsHolder {
 
       if (authConfig == null) {
         LOG.error("AuthenticationConfiguration is null in getTokenValidity()");
-        return 3600; // Default fallback
+        return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
       }
 
       SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
@@ -169,7 +186,7 @@ public class SamlSettingsHolder {
 
       if (samlConfig == null) {
         LOG.error("SamlConfiguration is null in getTokenValidity()");
-        return 3600; // Default fallback
+        return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
       }
 
       SamlSecurityConfig securityConfig = samlConfig.getSecurity();
@@ -178,16 +195,20 @@ public class SamlSettingsHolder {
       if (securityConfig == null) {
         LOG.error(
             "SAML SecurityConfig is null in getTokenValidity() - this should not happen if config is in DB");
-        return 3600; // Default fallback
+        return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
       }
 
-      long tokenValidity = securityConfig.getTokenValidity();
-      LOG.debug("Retrieved token validity: {}", tokenValidity);
-      return tokenValidity;
+      Integer configuredTokenValidity = securityConfig.getTokenValidity();
+      if (!TokenValidityResolver.isValid(configuredTokenValidity)) {
+        LOG.warn(
+            "SAML token validity must be positive; using the {} second default",
+            TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS);
+      }
+      return TokenValidityResolver.resolveOrDefault(configuredTokenValidity);
 
     } catch (Exception e) {
       LOG.error("Error retrieving token validity dynamically", e);
-      return 3600; // Default fallback
+      return TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS;
     }
   }
 

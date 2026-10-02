@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Col, Row } from 'antd';
+import { AvatarStack } from '@openmetadata/ui-core-components';
+import { Button, Col, Row } from 'antd';
 import classNames from 'classnames';
-import { min, noop } from 'lodash';
+import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
@@ -23,6 +24,9 @@ import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
+
+const MAX_VISIBLE_AVATARS = 3;
+const AVATAR_SIZE = 20;
 
 function FeedCardFooterNew({
   conversation,
@@ -38,26 +42,20 @@ function FeedCardFooterNew({
     [conversation?.replyCount]
   );
 
-  const { repliedUniqueUsersList } = useMemo(() => {
-    const repliedUsers = [
+  const repliedUsers = useMemo(() => {
+    return [
       ...new Set(
         (conversation?.replies ?? [])
           .map((item) => item.author.name ?? item.author.fullyQualifiedName)
           .filter((name): name is string => Boolean(name))
       ),
     ];
-
-    const repliedUniqueUsersList = repliedUsers.slice(
-      0,
-      min([3, repliedUsers.length])
-    );
-
-    return { repliedUniqueUsersList };
   }, [conversation?.replies]);
 
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
       const target = reply ?? conversation;
+
       if (!target) {
         return;
       }
@@ -71,6 +69,7 @@ function FeedCardFooterNew({
     },
     [updateReactions, reply, conversation, conversationId, isReply]
   );
+
   const showReplies = useCallback(() => {
     if (conversation) {
       showDrawer(conversation);
@@ -86,32 +85,22 @@ function FeedCardFooterNew({
         <div>
           <div className="flex items-center gap-2 w-full rounded-8">
             {postLength > 0 && !isReply && (
-              <Avatar.Group
-                className="feed-avatar-group"
-                maxCount={3}
-                maxPopoverPlacement="top"
-                maxStyle={{
-                  color: '#f56a00',
-                  backgroundColor: '#fde3cf',
-                }}>
-                {repliedUniqueUsersList.map((user, index) => (
+              <AvatarStack
+                avatarSize={AVATAR_SIZE}
+                items={repliedUsers.map((user) => (
                   <Button
                     className="p-0"
                     key={user}
-                    style={{
-                      marginLeft: index === 0 ? '0px' : '-8px',
-                      zIndex: repliedUniqueUsersList.length - index,
-                    }}
                     type="text"
                     onClick={isForFeedTab ? showReplies : undefined}>
                     <UserPopOverCard userName={user}>
-                      <div className="d-flex items-center">
-                        <ProfilePicture name={user} width="20" />
-                      </div>
+                      <ProfilePicture name={user} width="20" />
                     </UserPopOverCard>
                   </Button>
                 ))}
-              </Avatar.Group>
+                maxCount={MAX_VISIBLE_AVATARS}
+                onOverflowClick={isForFeedTab ? showReplies : undefined}
+              />
             )}
 
             {!isReply && (

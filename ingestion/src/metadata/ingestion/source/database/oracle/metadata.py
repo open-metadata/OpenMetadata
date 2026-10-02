@@ -15,10 +15,11 @@
 import traceback
 import types
 from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
-from sqlalchemy.engine import Inspector
+from sqlalchemy.engine import Inspector, Row
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -48,10 +49,7 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.oracle.models import (
-    FetchObjectList,
-    OracleStoredObject,
-)
+from metadata.ingestion.source.database.oracle.models import OracleStoredObject
 from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_STORED_PACKAGES,
     ORACLE_GET_STORED_PROCEDURES,
@@ -163,7 +161,7 @@ class OracleSource(CommonDbSourceService):
 
         return regular_tables + material_tables
 
-    def process_result(self, data: FetchObjectList):
+    def process_result(self, data: Iterable[Row[Any]]):
         """Process data as per our stored procedure format"""
         result_dict = {}
 
@@ -185,7 +183,7 @@ class OracleSource(CommonDbSourceService):
             schema = schema.upper()
         prefix = getattr(self.engine.dialect, "table_prefix", "DBA")
         with self.engine.connect() as conn:
-            results: FetchObjectList = conn.execute(text(query.format(schema=schema, prefix=prefix))).all()
+            results = conn.execute(text(query.format(prefix=prefix)), {"schema": schema}).all()
         results = self.process_result(data=results)
         for row in results.items():
             stored_procedure = OracleStoredObject(

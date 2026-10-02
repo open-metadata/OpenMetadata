@@ -14,11 +14,11 @@
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataInsightChartResult } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartAggregateParam } from '../interface/data-insight.interface';
+import APIClient from './axiosClient';
 import {
   StartChartDataStreamConnectionResponse,
   StopChartDataStreamConnectionResponse,
 } from './DataInsightAPI.interface';
-import APIClient from './index';
 
 export interface DataInsightCustomChartResult {
   results: Array<{

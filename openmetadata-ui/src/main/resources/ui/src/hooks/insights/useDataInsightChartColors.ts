@@ -19,11 +19,8 @@ import {
 } from '../../constants/DataInsight.constants';
 import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import { resolveCssColor } from '../../utils/common/cssColor.utils';
+import { useChartColors } from '../useChartColors';
 
-const AXIS_COLOR = 'var(--om-color-text-tertiary, #535862)';
-const GRID_COLOR = 'var(--om-color-border-secondary, #E9EAEB)';
-const ACTIVE_DOT_BORDER_COLOR = 'var(--om-color-bg-primary, #FFFFFF)';
-const INACTIVE_COLOR = 'var(--om-color-text-disabled, #717680)';
 const PROGRESS_COLOR = 'var(--om-color-brand-200, #B3D4F4)';
 
 const resolveColorTokens = (
@@ -32,6 +29,7 @@ const resolveColorTokens = (
 
 export const useDataInsightChartColors = () => {
   const { brandColors, theme } = useTheme();
+  const chartColors = useChartColors();
 
   return useMemo(() => {
     // SVG presentation attributes need concrete values, so resolve them again
@@ -40,14 +38,11 @@ export const useDataInsightChartColors = () => {
     void theme;
 
     return {
-      activeDotBorder: resolveCssColor(ACTIVE_DOT_BORDER_COLOR, '#FFFFFF'),
-      axis: resolveCssColor(AXIS_COLOR, '#535862'),
+      ...chartColors,
       dataInsightSeries: resolveColorTokens(DATA_INSIGHT_GRAPH_COLOR_TOKENS),
-      grid: resolveCssColor(GRID_COLOR, '#E9EAEB'),
-      inactive: resolveCssColor(INACTIVE_COLOR, '#717680'),
       kpiBackgrounds: resolveColorTokens(KPI_WIDGET_GRAPH_BG_COLOR_TOKENS),
       kpiSeries: resolveColorTokens(KPI_WIDGET_GRAPH_COLOR_TOKENS),
       progress: resolveCssColor(PROGRESS_COLOR, '#B3D4F4'),
     };
-  }, [brandColors, theme]);
+  }, [brandColors, chartColors, theme]);
 };

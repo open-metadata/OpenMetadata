@@ -18,8 +18,8 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { CheckCircle, Inbox01 } from '@openmetadata/ui-core-components/icons';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle, Inbox01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { DateRangeObject } from 'Models';
 import React, {
@@ -332,7 +332,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       <Badge
         className={
           status === id
-            ? 'tw:border tw:border-blue-200 tw:bg-white tw:text-blue-700'
+            ? 'tw:border tw:border-blue-200 tw:bg-white tw:text-blue-700 tw:dark:bg-brand-950 tw:dark:border-brand-800'
             : ''
         }
         color="gray"

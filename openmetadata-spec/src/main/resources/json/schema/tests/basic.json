@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/tests/basic.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Basic",
   "description": "This schema defines basic types that are used by other test schemas.",
   "definitions": {
@@ -106,6 +106,26 @@
         }
       ]
     },
+    "testCaseErrorDetails": {
+      "description": "Structured details of the error that aborted a test case run.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseErrorDetails",
+      "type": "object",
+      "properties": {
+        "errorType": {
+          "description": "Type of the error, e.g. the exception class name.",
+          "type": "string"
+        },
+        "message": {
+          "description": "Human-readable error message.",
+          "type": "string"
+        },
+        "stackTrace": {
+          "description": "Formatted stack trace of the error.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
     "testCaseResult": {
       "description": "Schema to capture test case result.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
@@ -186,6 +206,14 @@
           "items": {
             "$ref": "#/definitions/testCaseDimensionResult"
           }
+        },
+        "duration": {
+          "description": "Wall-clock time the test case run took, in milliseconds.",
+          "type": "number"
+        },
+        "errorDetails": {
+          "description": "Structured error details when the run was aborted by an error.",
+          "$ref": "#/definitions/testCaseErrorDetails"
         }
       },
       "required": ["timestamp"]

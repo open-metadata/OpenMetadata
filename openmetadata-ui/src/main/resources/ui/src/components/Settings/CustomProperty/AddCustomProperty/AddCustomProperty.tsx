@@ -75,6 +75,13 @@ interface AddCustomPropertyProps {
   onClose?: () => void;
 }
 
+/**
+ * Column name the earlier table-type custom property editor used as its
+ * internal row key and stripped on save. It stays reserved so a user column
+ * never takes that name and loses its data to an older client.
+ */
+const RESERVED_TABLE_COLUMN_NAMES = ['__row_id__'];
+
 const AddCustomProperty = ({
   formRef,
   onSubmit,
@@ -461,6 +468,15 @@ const AddCustomProperty = ({
                   throw t('message.maximum-count-allowed', {
                     count: 3,
                     label: t('label.column-plural'),
+                  });
+                }
+                if (
+                  value.some((c: string) =>
+                    RESERVED_TABLE_COLUMN_NAMES.includes(c)
+                  )
+                ) {
+                  throw t('message.reserved-column-name', {
+                    name: RESERVED_TABLE_COLUMN_NAMES.join(', '),
                   });
                 }
               } else {

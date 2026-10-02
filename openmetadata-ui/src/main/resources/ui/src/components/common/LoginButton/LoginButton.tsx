@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button } from 'antd';
-
+import { Button } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import './login-button.style.less';
 
 interface LoginButtonProps {
   ssoBrandName: string;
@@ -29,26 +26,23 @@ const LoginButton = ({
   onClick,
 }: LoginButtonProps) => {
   const { t } = useTranslation();
-  const getImageElement = () => (
-    <img
-      alt={`${ssoBrandName} Logo`}
-      height="30px"
-      src={ssoBrandLogo}
-      width="30px"
-    />
-  );
-
-  const svgIcon = ssoBrandLogo ? (
-    <Icon
-      alt={`${ssoBrandName} Logo`}
-      className="align-middle"
-      component={getImageElement}
-    />
-  ) : null;
 
   return (
-    <Button className="signin-button m-x-auto" icon={svgIcon} onClick={onClick}>
-      <span className="font-medium text-grey-muted text-xl m-l-0">
+    <Button
+      className="tw:w-full tw:justify-center"
+      color="secondary"
+      data-testid="sso-login-button"
+      size="lg"
+      onPress={onClick}>
+      {ssoBrandLogo && (
+        <img
+          aria-hidden
+          alt={`${ssoBrandName} Logo`}
+          className="tw:mr-2 tw:h-6 tw:w-6"
+          src={ssoBrandLogo}
+        />
+      )}
+      <span className="tw:text-md tw:font-medium">
         {t('label.sign-in-with-sso', { sso: ssoBrandName })}
       </span>
     </Button>

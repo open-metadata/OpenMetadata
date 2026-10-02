@@ -12,12 +12,14 @@
 Base workflow definition.
 """
 
+import json
 import traceback
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
+from pathlib import Path
 from statistics import mean
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from metadata.__version__ import get_client_version
 from metadata.config.common import WorkflowExecutionError
@@ -40,12 +42,15 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
+    OpenMetadataWorkflowConfig,
+    SourceConfig,
     WorkflowConfig,
 )
 from metadata.generated.schema.tests.testSuite import ServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion import diagnostics
 from metadata.ingestion.api.step import Step, Summary
+from metadata.ingestion.models.custom_pydantic import BaseModel as OpenMetadataBaseModel
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.timer.repeated_timer import RepeatedTimer
@@ -262,13 +267,17 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
     def workflow_steps(self) -> list[Step]:
         """Steps to report status from"""
 
+    def _step_meets_success_threshold(self, step: Step) -> bool:
+        """True iff the step has no failures or its success ratio meets the workflow's successThreshold."""
+        status = step.get_status()
+        if not status.failures:
+            return True
+        return status.calculate_success() >= self.workflow_config.successThreshold  # pyright: ignore[reportOperatorIssue]
+
     def raise_from_status_internal(self, raise_warnings=False) -> None:
         """Based on the internal workflow status, raise a WorkflowExecutionError"""
         for step in self.workflow_steps():
-            if (
-                step.get_status().failures
-                and step.get_status().calculate_success() < self.workflow_config.successThreshold
-            ):
+            if not self._step_meets_success_threshold(step):
                 raise WorkflowExecutionError(f"{step.name} reported errors: {Summary.from_step(step)}")
 
             if raise_warnings and step.status.warnings:
@@ -367,6 +376,19 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         return self._run_id
 
+    def _source_config_with_explicit_type(self) -> SourceConfig:
+        workflow_config = cast("OpenMetadataWorkflowConfig", self.config)
+        source_config = workflow_config.source.sourceConfig
+        config = source_config.config
+        if not isinstance(config, OpenMetadataBaseModel):
+            return source_config
+
+        config_type = getattr(config, "type", None)
+        if config_type is None:
+            return source_config
+
+        return source_config.model_copy(update={"config": config.model_copy(update={"type": config_type})})
+
     def get_or_create_ingestion_pipeline(self) -> IngestionPipeline | None:
         """
         If we get the `ingestionPipelineFqn` from the `workflowConfig`, it means we want to
@@ -404,7 +426,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                             type=get_reference_type_from_service_type(self.service_type),
                         ),
                         pipelineType=get_pipeline_type_from_source_config(self.config.source.sourceConfig),
-                        sourceConfig=self.config.source.sourceConfig,
+                        sourceConfig=self._source_config_with_explicit_type(),
                         airflowConfig=AirflowConfig(),
                         enableStreamableLogs=self.config.enableStreamableLogs,
                     )
@@ -491,3 +513,21 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             start_time,
             self._is_debug_enabled(),
         )
+
+    def write_status_file(self, path: Path) -> None:
+        """Write per-step status as JSON to `path`.
+
+        `success` is True iff every step meets its success threshold.
+        `source_type` identifies the configured source or application class.
+        Shape: {"source_type": str | None, "ingestion_pipeline_fqn": str | None, "success": bool, "steps": list}
+        """
+        ingestion_status = self.build_ingestion_status()
+        success = all(self._step_meets_success_threshold(step) for step in self.workflow_steps())
+        source = getattr(self.config, "source", None)
+        payload = {
+            "source_type": getattr(source, "type", None) or getattr(self.config, "sourcePythonClass", None),
+            "ingestion_pipeline_fqn": getattr(self.config, "ingestionPipelineFQN", None),
+            "success": success,
+            "steps": ingestion_status.model_dump(),
+        }
+        path.write_text(json.dumps(payload, indent=2, default=str))

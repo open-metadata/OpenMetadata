@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "StitchConnection",
   "description": "Stitch Connection",
   "type": "object",

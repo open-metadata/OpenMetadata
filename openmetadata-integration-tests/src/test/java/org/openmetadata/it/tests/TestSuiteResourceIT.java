@@ -975,6 +975,51 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     }
   }
 
+  /**
+   * An update to a logical suite whose search doc is missing (e.g. dropped by an earlier reindex)
+   * creates the doc from the update's upsert. That upsert used to serialize every field as {@code
+   * {}}, and the relationship-preserving script kept {@code tests: {}}, so search/list failed with
+   * a 400 deserializing {@code TestSuite["tests"]} (#33492).
+   */
+  @Test
+  void test_updateLogicalSuiteWithMissingSearchDocKeepsTestsList(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTableForBasicTestSuite(ns, "missing_doc");
+    UUID testCaseId = createTestCases(client, ns, table, 1).getFirst().getId();
+    TestSuite logicalSuite =
+        createEntity(new CreateTestSuite().withName(ns.prefix("logical_missing_doc")));
+    addTestCasesToLogicalTestSuite(logicalSuite.getId(), List.of(testCaseId));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("logical suite indexed with its test case")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      queryTestSuiteSearchIndex(searchClient, logicalSuite.getId())
+                          .contains(testCaseId.toString())));
+      deleteTestSuiteSearchDoc(searchClient, logicalSuite.getId());
+
+      TestSuite toPatch = getEntity(logicalSuite.getId().toString());
+      toPatch.setDescription("edited while its search doc is missing");
+      patchEntity(logicalSuite.getId().toString(), toPatch);
+
+      Awaitility.await("search doc recreated with tests as a list")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                JsonNode tests =
+                    testSuiteSearchSource(searchClient, logicalSuite.getId()).path("tests");
+                assertTrue(tests.isArray(), "tests must be indexed as a list, was: " + tests);
+                assertEquals(testCaseId.toString(), tests.path(0).path("id").asText());
+              });
+    }
+    assertTrue(searchTestSuiteNames(logicalSuite.getName()).contains(logicalSuite.getName()));
+  }
+
   // ===================================================================
   // TEST SUITE FILTERING AND LISTING TESTS
   // ===================================================================
@@ -1462,6 +1507,24 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   private void refreshTestSuiteSearchIndex(Rest5Client searchClient) throws Exception {
     Request request = new Request("POST", "/" + getTestSuiteSearchIndexName() + "/_refresh");
     searchClient.performRequest(request);
+  }
+
+  private void deleteTestSuiteSearchDoc(Rest5Client searchClient, UUID testSuiteId)
+      throws Exception {
+    Request request =
+        new Request("DELETE", "/" + getTestSuiteSearchIndexName() + "/_doc/" + testSuiteId);
+    request.addParameter("refresh", "true");
+    searchClient.performRequest(request);
+  }
+
+  private JsonNode testSuiteSearchSource(Rest5Client searchClient, UUID testSuiteId)
+      throws Exception {
+    JsonNode hits =
+        JsonUtils.readTree(queryTestSuiteSearchIndex(searchClient, testSuiteId))
+            .path("hits")
+            .path("hits");
+    assertEquals(1, hits.size(), "expected the test suite doc to be indexed");
+    return hits.path(0).path("_source");
   }
 
   private String queryTestSuiteSearchIndex(Rest5Client searchClient, UUID testSuiteId)

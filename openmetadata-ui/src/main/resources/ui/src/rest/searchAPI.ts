@@ -24,7 +24,7 @@ import {
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
 import { getQueryWithSlash } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const getSearchIndexParam: (
   si: SearchIndex | SearchIndex[] | undefined
@@ -248,6 +248,29 @@ export const searchPreview = async (payload: PreviewSearchRequest) => {
   return response.data;
 };
 
+export const searchEntityTypeCounts = async (
+  request: Pick<
+    SearchRequest<SearchIndex[]>,
+    'query' | 'searchIndex' | 'queryFilter' | 'postFilter' | 'includeDeleted'
+  > & { includeTopHit?: boolean }
+) => {
+  const response = await APIClient.get<SearchResponse<SearchIndex>>(
+    '/search/entityTypeCounts',
+    {
+      params: {
+        q: request.query,
+        index: request.searchIndex?.join(','),
+        query_filter: JSON.stringify(request.queryFilter),
+        post_filter: JSON.stringify(request.postFilter),
+        deleted: request.includeDeleted,
+        include_top_hit: request.includeTopHit,
+      },
+    }
+  );
+
+  return formatSearchQueryResponse(response.data);
+};
+
 export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
   const {
     pageNumber = 1,
@@ -368,6 +391,16 @@ export interface OrphanCleanupResponse {
 export const getSearchStats = async (): Promise<SearchStatsResponse> => {
   const response: AxiosResponse<SearchStatsResponse> = await APIClient.get(
     '/search/stats'
+  );
+
+  return response.data;
+};
+
+// Entity types that have a search index in this deployment, sorted. Server-driven so the
+// entity picker also lists distribution-specific (e.g. Collate-only) entity types.
+export const getSearchEntityTypes = async (): Promise<string[]> => {
+  const response: AxiosResponse<string[]> = await APIClient.get(
+    '/search/entityTypes'
   );
 
   return response.data;

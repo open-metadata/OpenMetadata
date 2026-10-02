@@ -12,7 +12,8 @@
  */
 
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Progress, Row, Space, Tooltip } from 'antd';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,30 +80,30 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                 }}>
                 {isTargetMet ? (
                   <>
-                    <Typography.Text
+                    <Typography
                       className="days-remaining"
                       data-testid="kpi-success">
                       <CheckCircleOutlined style={{ fontSize: '20px' }} />
-                    </Typography.Text>
+                    </Typography>
                   </>
                 ) : (
                   <>
-                    <Typography.Text
+                    <Typography
                       className="days-remaining"
                       data-testid="kpi-days-remaining">
                       {daysLeft <= 0 ? 0 : daysLeft}
-                    </Typography.Text>
-                    <Typography.Text className="days-left">
+                    </Typography>
+                    <Typography className="days-left">
                       {t('label.day-left', { day: 'days' })}
-                    </Typography.Text>
+                    </Typography>
                   </>
                 )}
               </div>
               <div className="m-l-sm flex-1">
                 <Space className="w-full justify-between">
-                  <Typography.Text className="text-xs">
+                  <Typography className="text-xs">
                     {resultData.displayName ?? name}
-                  </Typography.Text>
+                  </Typography>
                   {daysLeft <= 0 || isTargetMet ? (
                     <Tooltip
                       placement="bottom"
@@ -123,16 +124,16 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                 />
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
-                    <Typography.Text className="text-xs">
+                    <Typography className="text-xs">
                       {targetPercentValue}
                       {suffix}
-                    </Typography.Text>
+                    </Typography>
                   </div>
                   <div>
-                    <Typography.Text className="text-xs">
+                    <Typography className="text-xs">
                       {targetMetPercentValue}
                       {suffix}
-                    </Typography.Text>
+                    </Typography>
                   </div>
                 </div>
               </div>

@@ -91,7 +91,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
   });
 
   test('assignee should see approve/reject buttons', async ({ page }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     // Stay on the default "All" activity-feed view (do NOT switch to the
@@ -115,13 +115,15 @@ test.describe('Task Resolution - Approve/Reject', () => {
   test('non-assignee should NOT see approve/reject buttons', async ({
     page,
   }) => {
-    await nonAssigneeUser.login(page);
+    await nonAssigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -160,13 +162,15 @@ test.describe('Task Resolution - Approve/Reject', () => {
     const task = await taskResponse.json();
     await afterAction();
 
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -240,7 +244,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
       const task = await taskResponse.json();
       feedbackTaskId = task.id;
 
-      await assigneeUser.login(page);
+      await assigneeUser.signIn(page);
       const {
         apiContext: assigneeApiContext,
         afterAction: afterAssigneeAction,
@@ -252,6 +256,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
           data: {
             resolutionType: 'Rejected',
             newValue: 'rejected',
+            comment: 'Rejecting via automated test',
           },
         }
       );
@@ -342,13 +347,15 @@ test.describe('Task Resolution - Team Assignee', () => {
   test('team member should be able to approve task assigned to team', async ({
     page,
   }) => {
-    await teamMember.login(page);
+    await teamMember.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -367,13 +374,15 @@ test.describe('Task Resolution - Team Assignee', () => {
   test('non-team member should NOT see approve button for team task', async ({
     page,
   }) => {
-    await nonTeamMember.login(page);
+    await nonTeamMember.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    const tasksTab = page
+      .getByTestId('global-setting-left-panel')
+      .getByRole('button', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -593,6 +602,7 @@ test.describe('Task Resolution - Close by Creator', () => {
           data: {
             resolutionType: 'Rejected',
             newValue: '',
+            comment: 'Rejecting via automated test',
           },
         }
       );

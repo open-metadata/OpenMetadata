@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -47,7 +48,6 @@ import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
@@ -107,7 +107,7 @@ const MyDataWidgetInternal = ({
       extraInfo.push({
         key: 'Owner',
         value: (
-          <OwnerLabel
+          <Owner
             isCompactView={false}
             owners={(item.owners as EntityReference[]) ?? []}
             showLabel={false}
@@ -213,17 +213,17 @@ const MyDataWidgetInternal = ({
                       type="text">
                       <div className="d-flex w-max-full w-min-0 flex-column">
                         {'serviceType' in item && item.serviceType && (
-                          <Typography.Text
+                          <Typography
                             className="text-left text-xs font-regular text-grey-600"
                             ellipsis={{ tooltip: true }}>
                             {item.serviceType}
-                          </Typography.Text>
+                          </Typography>
                         )}
-                        <Typography.Text
+                        <Typography
                           className="text-left text-sm font-regular text-grey-800"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
-                        </Typography.Text>
+                        </Typography>
                       </div>
                     </Button>
                   </Link>

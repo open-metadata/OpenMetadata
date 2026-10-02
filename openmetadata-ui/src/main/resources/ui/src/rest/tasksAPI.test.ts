@@ -24,7 +24,7 @@ let mockCapturedRequest: InternalAxiosRequestConfig | undefined;
 // have run. This exercises the real interceptor → transform ordering instead of
 // hand-invoking transformRequest, so a regression that reintroduces the 415
 // (e.g. interceptor ordering) fails here.
-jest.mock('./index', () => {
+jest.mock('./axiosClient', () => {
   const axios = jest.requireActual('axios');
   const client = axios.create();
 

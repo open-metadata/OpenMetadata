@@ -376,6 +376,58 @@ class SetApprovalAssigneesImplTest {
         "Glossary reviewers should be used when glossary terms inherit reviewers");
   }
 
+  /**
+   * The reason the repository-level reviewer→task-assignee sync was removed (#31692): an approval
+   * task's assignees are chosen by the userApprovalTask rule, not by the entity's reviewers. When
+   * the rule is owners-only, the entity's reviewers must NOT leak into the task's assignees — the
+   * exact case the removed sync would have corrupted.
+   */
+  @Test
+  void testOwnersOnlyRule_ignoresReviewers() {
+    when(mockEntity.getOwners())
+        .thenReturn(
+            List.of(new EntityReference().withType("user").withFullyQualifiedName("ownerUser")));
+    when(mockEntity.getReviewers())
+        .thenReturn(
+            List.of(new EntityReference().withType("user").withFullyQualifiedName("reviewerUser")));
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":false,\"addOwners\":true,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(
+        assigneesJson.contains("ownerUser"),
+        "Owner must be assigned when the userApprovalTask rule adds owners");
+    assertFalse(
+        assigneesJson.contains("reviewerUser"),
+        "Reviewers must not be assigned to an owners-only approval task");
+  }
+
+  /**
+   * A userApprovalTask configured with an explicit user list assigns exactly those users; the
+   * entity's reviewers have no bearing on the task's assignees.
+   */
+  @Test
+  void testExplicitUsersRule_ignoresReviewers() {
+    when(mockEntity.getReviewers())
+        .thenReturn(
+            List.of(new EntityReference().withType("user").withFullyQualifiedName("reviewerUser")));
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":false,\"addOwners\":false,\"users\":[\"fixedUser\"],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertNotNull(assigneesJson);
+    assertTrue(assigneesJson.contains("fixedUser"), "Explicit user must be assigned");
+    assertFalse(
+        assigneesJson.contains("reviewerUser"),
+        "Reviewers must not leak into a task with an explicit user list");
+  }
+
   @Test
   void testAdminFallbackAssignsAdminsWhenNoReviewersOrOwnersAndStrategyAssignAdmins() {
     when(mockEntity.getReviewers()).thenReturn(List.of());

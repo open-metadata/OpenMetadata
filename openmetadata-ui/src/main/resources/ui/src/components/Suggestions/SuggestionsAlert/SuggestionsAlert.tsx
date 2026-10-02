@@ -11,17 +11,18 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
+import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import { SuggestionType } from '../../../types/taskSuggestion';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
-import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 import './suggestions-alert.less';
 import { SuggestionsAlertProps } from './SuggestionsAlert.interface';
 
@@ -61,9 +62,9 @@ const SuggestionsAlert = ({
           {showSuggestedBy && (
             <>
               <StarIcon width={14} />
-              <Typography.Text className="text-grey-muted font-italic">
+              <Typography className="font-italic" color="secondary">
                 {t('label.suggested-by')}
-              </Typography.Text>
+              </Typography>
               <UserPopOverCard userName={userName}>
                 <span>
                   <ProfilePicture

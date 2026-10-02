@@ -55,6 +55,10 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.custom_pydantic import _CustomSecretStr
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    DEFAULT_ACCOUNT_USAGE_SCHEMA,
+    quote_account_usage_schema,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_ACCESS_HISTORY_PROBE,
     SNOWFLAKE_GET_DATABASES,
@@ -79,10 +83,6 @@ if TYPE_CHECKING:
     from metadata.core.connections.test_connection.classifier import Matcher
 
 logger = ingestion_logger()
-
-# Default value of the ``accountUsageSchema`` connection field, used to key the
-# account_usage-denial diagnosis when no custom schema is configured.
-DEFAULT_ACCOUNT_USAGE_SCHEMA = "SNOWFLAKE.ACCOUNT_USAGE"
 
 # The Snowflake driver connects to ``<account>.snowflakecomputing.com:443``; the
 # SQLAlchemy URL only carries the bare account as its host, so the shared TCP
@@ -119,7 +119,7 @@ def _init_database(engine_wrapper: SnowflakeEngineWrapper):
         engine_wrapper.database_name = engine_wrapper.service_connection.database
 
 
-def probe_access_history_available(engine: Engine, account_usage_schema: str) -> bool:
+def probe_access_history_available(engine: Engine, account_usage_schema: str | None) -> bool:
     """
     Check whether the configured Snowflake role can read ACCOUNT_USAGE.ACCESS_HISTORY.
 
@@ -131,7 +131,13 @@ def probe_access_history_available(engine: Engine, account_usage_schema: str) ->
     """
     try:
         with engine.connect() as conn:
-            conn.execute(text(SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage=account_usage_schema)))
+            conn.execute(
+                text(
+                    SNOWFLAKE_ACCESS_HISTORY_PROBE.format(
+                        account_usage=quote_account_usage_schema(account_usage_schema)
+                    )
+                )
+            )
     except Exception as exc:
         logger.info(
             f"ACCESS_HISTORY probe failed (will fall back to legacy lineage path): {exc}. "
@@ -382,17 +388,23 @@ class SnowflakeChecks:
 
     @check(DatabaseStep.GetTags)
     def get_tags(self) -> Evidence:
-        statement = SNOWFLAKE_TEST_FETCH_TAG.format(account_usage=self.service_connection.accountUsageSchema)
+        statement = SNOWFLAKE_TEST_FETCH_TAG.format(
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema)
+        )
         return run_sql(self._db.client, statement, lambda _: "tags accessible")
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
-        statement = SNOWFLAKE_TEST_GET_QUERIES.format(account_usage=self.service_connection.accountUsageSchema)
+        statement = SNOWFLAKE_TEST_GET_QUERIES.format(
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema)
+        )
         return run_sql(self._db.client, statement, lambda _: "query history accessible")
 
     @check(DatabaseStep.GetAccessHistory)
     def get_access_history(self) -> Evidence:
-        statement = SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage=self.service_connection.accountUsageSchema)
+        statement = SNOWFLAKE_ACCESS_HISTORY_PROBE.format(
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema)
+        )
         return run_sql(self._db.client, statement, lambda _: "access history accessible")
 
 
@@ -488,11 +500,13 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         if keep_alive := self._get_client_session_keep_alive():
             connect_args["client_session_keep_alive"] = keep_alive
 
-        # Bound the Snowflake socket so a silently-severed TCP connection
-        # (NAT/LB idle reaping in K8s/hybrid runners) surfaces as a network
-        # error within 10 minutes instead of hanging the worker indefinitely.
-        # User-supplied connectionArguments win via setdefault.
-        connect_args.setdefault("network_timeout", 600)
+        # No client-side timeout is set on purpose. The driver arms `network_timeout`
+        # as a cancel timer on every statement it executes, so any value kills a
+        # query that legitimately runs longer, with `000604 (57014): SQL execution
+        # was cancelled by the client due to a timeout`. A severed socket is already
+        # bounded without it: when `socket_timeout` is unset the driver applies its
+        # own 60-second read timeout to every request. Users who want a hard cap can
+        # still pass either key in `connectionArguments`.
 
         session_parameters = dict(connect_args.get("session_parameters") or {})
         if connection.queryTag:

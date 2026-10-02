@@ -21,7 +21,9 @@ describe('IngestionRunDetailsModal', () => {
   it('should show no data placeholder when no step summary is not present', () => {
     render(<IngestionRunDetailsModal handleCancel={mockHandleCancel} />);
 
-    expect(screen.getByText('No data')).toBeInTheDocument();
+    // The suite runs without i18n, so TableV2's empty state renders its raw
+    // translation key — AntD's built-in "No data" needed no translation.
+    expect(screen.getByText('label.no-data')).toBeInTheDocument();
   });
 
   it('should show proper data in the table when step summary is present', () => {

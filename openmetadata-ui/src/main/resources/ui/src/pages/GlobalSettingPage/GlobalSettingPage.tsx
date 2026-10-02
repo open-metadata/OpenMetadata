@@ -25,6 +25,7 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import globalSettingsClassBase from '../../utils/GlobalSettingsClassBase';
 import {
   getGlobalSettingMenuItem,
@@ -39,11 +40,18 @@ const GlobalSettingPage = () => {
 
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
+  const authProvider = useApplicationStore(
+    (state) => state.authConfig?.provider
+  );
 
   const settingItems = useMemo(
     () =>
       globalSettingsClassBase
-        .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+        .getGlobalSettingsMenuWithPermission(
+          permissions,
+          isAdminUser,
+          authProvider
+        )
         .filter((curr: SettingMenuItem) => {
           const menuItem = getGlobalSettingMenuItem(curr);
 
@@ -57,7 +65,7 @@ const GlobalSettingPage = () => {
 
           return false;
         }),
-    [permissions, isAdminUser]
+    [permissions, isAdminUser, authProvider]
   );
 
   const handleSettingItemClick = useCallback((category: string) => {

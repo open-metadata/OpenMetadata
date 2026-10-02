@@ -12,16 +12,36 @@
 """Test Redshift Utils"""
 
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.redshift.utils import (
     _get_all_relation_info,
     _get_args_and_kwargs,
+    _get_schema_column_info,
     _update_coltype,
     get_view_definition,
     ischema_names,
 )
+
+
+def test_schema_column_info_binds_catalog_schema_name():
+    dialect = SimpleNamespace()
+    connection = MagicMock()
+    result = MagicMock()
+    result.__iter__.return_value = iter([])
+    connection.execute.return_value = result
+    schema = "sales' OR 1=1 --"
+
+    assert _get_schema_column_info(dialect, connection, schema=schema) == {}
+
+    statement, parameters = connection.execute.call_args.args
+    assert schema not in str(statement)
+    assert "{schema_clause}" not in str(statement)
+    assert str(statement).count(":schema") == 3
+    assert parameters == {"schema": schema}
+    result.close.assert_called_once_with()
 
 
 class TestGetViewDefinition(unittest.TestCase):

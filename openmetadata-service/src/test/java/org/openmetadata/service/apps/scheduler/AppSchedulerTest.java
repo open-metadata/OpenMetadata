@@ -108,6 +108,21 @@ class AppSchedulerTest {
     return appScheduler;
   }
 
+  @Test
+  void testOnDemandDispatchFailureIsReturnedToTheCaller() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    SchedulerException unavailable = new SchedulerException("job store unavailable");
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenThrow(unavailable);
+
+    UnhandledServerException failure =
+        assertThrows(
+            UnhandledServerException.class,
+            () -> appScheduler.triggerOnDemandApplication(testApp, Map.of()));
+
+    assertTrue(failure.getMessage().contains("Could not queue application " + testApp.getName()));
+    assertEquals(unavailable, failure.getCause());
+  }
+
   // --- Tests for getUniqueJobIdentifier ---
 
   @Test
@@ -188,6 +203,48 @@ class AppSchedulerTest {
         String.format("QueryRunner-%s-%s", AppScheduler.ON_DEMAND_JOB, workflowId);
     assertEquals(expectedIdentity, jobCaptor.getValue().getKey().getName());
     assertEquals(expectedIdentity, triggerCaptor.getValue().getKey().getName());
+  }
+
+  @Test
+  void onDemandRunCarriesTheTriggeringPrincipalToTheJob() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App concurrentApp = concurrentApp();
+    Map<String, Object> config = new HashMap<>();
+    config.put("workflowName", UUID.randomUUID().toString());
+
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class))).thenReturn(null);
+
+    appScheduler.triggerOnDemandApplication(concurrentApp, config, "alice");
+
+    ArgumentCaptor<JobDetail> jobCaptor = ArgumentCaptor.forClass(JobDetail.class);
+    verify(mockScheduler).scheduleJob(jobCaptor.capture(), any(Trigger.class));
+    assertEquals("alice", jobCaptor.getValue().getJobDataMap().get(AppScheduler.TRIGGERED_BY_KEY));
+  }
+
+  @Test
+  void runsWithNoRequestingPrincipalLeaveTheJobUnstamped() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App concurrentApp = concurrentApp();
+    Map<String, Object> config = new HashMap<>();
+    config.put("workflowName", UUID.randomUUID().toString());
+
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class))).thenReturn(null);
+
+    appScheduler.triggerOnDemandApplication(concurrentApp, config);
+
+    ArgumentCaptor<JobDetail> jobCaptor = ArgumentCaptor.forClass(JobDetail.class);
+    verify(mockScheduler).scheduleJob(jobCaptor.capture(), any(Trigger.class));
+    assertNull(jobCaptor.getValue().getJobDataMap().get(AppScheduler.TRIGGERED_BY_KEY));
+  }
+
+  private static App concurrentApp() {
+    return new App()
+        .withId(UUID.randomUUID())
+        .withName("QueryRunner")
+        .withFullyQualifiedName("QueryRunner")
+        .withClassName("org.openmetadata.service.resources.apps.TestApp")
+        .withAllowConcurrentExecution(true)
+        .withRuntime(new ScheduledExecutionContext().withEnabled(true));
   }
 
   @Test

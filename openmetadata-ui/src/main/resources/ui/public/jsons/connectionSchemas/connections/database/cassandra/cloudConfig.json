@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Cloud Config",
   "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
   "javaType": "org.openmetadata.schema.services.connections.database.cassandra.CloudConfig",
@@ -23,7 +22,8 @@
         "token": {
           "title": "Token",
           "description": "The Astra DB application token used for authentication.",
-          "type": "string"
+          "type": "string",
+          "format": "password"
         },
         "secureConnectBundle": {
           "title": "Secure Connect Bundle",

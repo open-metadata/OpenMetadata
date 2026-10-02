@@ -74,8 +74,12 @@ from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
     parse_validation_err,
 )
+from openmetadata_managed_apis.utils.pipeline_run_id import pipeline_run_id
 
 logger = workflow_logger()
+
+PIPELINE_RUN_ID_PARAM = "pipelineRunId"
+SOURCE_CONFIG_OVERRIDE_PARAM = "sourceConfigOverride"
 
 ENTITY_CLASS_MAP = {
     "apiService": ApiService,
@@ -260,10 +264,22 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     # Determine start_date based on schedule_interval using croniter
     schedule_interval = ingestion_pipeline.airflowConfig.scheduleInterval
     if is_airflow_3_or_higher():
-        # Use timezone-aware `now` to avoid Airflow auto-scheduling an immediate first run.
-        # Setting the start_date in the past (previous cron) causes Airflow 3 to fire a run
-        # right after deployment even with catchup disabled.
-        start_date = timezone.utcnow()
+        # We want start_date to be close to "now" (not in the past) so Airflow 3
+        # doesn't immediately fire a catch-up run on creation even with catchup
+        # disabled. But `build_dag_configs` runs on every DAG-processor reparse,
+        # and `timezone.utcnow()` recomputes to a new "now" each time — so the
+        # cron interval measured from start_date never elapses and the DAG never
+        # fires on its own schedule (#32505). Anchor on the pipeline's own
+        # `updatedAt` instead: it only changes when the pipeline is actually
+        # (re)configured (a no-op redeploy leaves version/updatedAt untouched),
+        # so start_date stays stable across routine reparses/redeploys while
+        # still resetting close to "now" whenever the schedule is genuinely
+        # edited — preserving the original intent without the instability.
+        start_date = (
+            timezone.from_timestamp(ingestion_pipeline.updatedAt.root / 1000)
+            if ingestion_pipeline.updatedAt
+            else timezone.utcnow()
+        )
     else:
         now = datetime.now()
 
@@ -315,7 +331,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     return dag_kwargs
 
 
-def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_, **__):
+def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *args, **kwargs):
     """
     Airflow on_failure_callback to update workflow status if something unexpected
     happens or if the DAG is externally killed.
@@ -332,6 +348,22 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
     Here the workflow_config is already properly shaped, otherwise
     the DAG deployment would fail.
 
+    Run id resolution priority (highest first):
+      1. `dag_run.conf.pipelineRunId` — server-triggered runs. The server names
+         the DagRun `manual__<timestamp>` and stashes the real UUID it recorded
+         under `conf.pipelineRunId`; we must use that so the failure status
+         updates the same run the server queued.
+      2. `pipeline_run_id(dag_run.dag_id, dag_run.run_id)` — scheduled runs (and
+         any manual run whose run_id is itself a UUID). Same helper the response
+         layer `format_dag_run_state` uses, so both halves converge on the same
+         UUID/UUIDv5.
+      3. `workflow_config.pipelineRunId.root` — fallback for callers that pass
+         no Airflow context.
+
+    Airflow 2.x's callback context is `airflow.utils.context.Context`, a
+    `collections.abc.MutableMapping` that is NOT a `dict` subclass — so we
+    duck-type on `.get` rather than `isinstance(..., dict)`.
+
     More info on context variables here
     https://airflow.apache.org/docs/apache-airflow/stable/templates-ref.html#templates-variables
     """
@@ -344,9 +376,34 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
         if workflow_config.ingestionPipelineFQN:
             logger.info(f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN}")
 
+            # Airflow calls on_failure_callback with a task/context dict as the
+            # 2nd positional arg (or as `context=`); production may also pass
+            # nothing when the caller has already substituted the id explicitly.
+            context = kwargs.get("context") or (args[0] if args else None)
+            dag_run = context.get("dag_run") if hasattr(context, "get") else None
+            conf_run_id = None
+            if dag_run is not None:
+                conf = getattr(dag_run, "conf", None) or {}
+                conf_run_id = conf.get(PIPELINE_RUN_ID_PARAM) if hasattr(conf, "get") else None
+            run_id = (
+                conf_run_id
+                if conf_run_id is not None
+                else pipeline_run_id(dag_run.dag_id, dag_run.run_id)
+                if dag_run is not None
+                else workflow_config.pipelineRunId.root
+                if workflow_config.pipelineRunId is not None
+                else None
+            )
+            if run_id is None:
+                logger.info(
+                    "No pipelineRunId available (no dag_run in context and workflow_config carries none)."
+                    " Skipping the failed-status callback."
+                )
+                return
+
             pipeline_status = metadata.get_pipeline_status(
                 workflow_config.ingestionPipelineFQN,
-                str(workflow_config.pipelineRunId.root),
+                str(run_id),
             )
             pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
             pipeline_status.pipelineState = PipelineState.failed
@@ -359,7 +416,73 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
         logger.error(f"Failed to send failed status callback: {exc}", exc_info=True)
 
 
+def send_failed_run_status_callback(workflow_config: OpenMetadataWorkflowConfig, context) -> None:
+    """
+    DAG-level on_failure_callback. A task that fails before it starts - its runner killed, or
+    unable to reach the API server - never runs the task-level callback, so a run the server
+    recorded as queued would stay pending until the queued timeout, blocking on-demand runs of the
+    pipeline until then. Airflow still fails the DAG run and calls this, so report the failure
+    under the run id the trigger conf carried. Scheduled runs carry no run id and are left to the
+    task-level callback.
+    """
+    dag_run_conf = getattr(context.get("dag_run"), "conf", None) or {}
+    run_id = dag_run_conf.get(PIPELINE_RUN_ID_PARAM) or (context.get("params") or {}).get(PIPELINE_RUN_ID_PARAM)
+    if run_id:
+        send_failed_status_callback(workflow_config.model_copy(update={"pipelineRunId": Uuid(run_id)}))
+
+
+def apply_source_config_override(
+    workflow_config: OpenMetadataWorkflowConfig, source_config_override: dict | None
+) -> None:
+    """
+    Lay a run's source config override over the config the DAG was deployed with. Airflow bakes a
+    DAG's config at deploy time, so what applies to one run only - the test case a scoped test suite
+    run executes, the filters narrowing a profiler or metadata run to one table - can reach it only
+    through the trigger conf. Top-level keys of the override replace the deployed ones.
+
+    The result is validated through the source config union, not the deployed config's class: a
+    sparse deployed config can fit several variants - an auto classification config with no database
+    fields parses as the messaging one - and only the fields the override adds settle which it is.
+    Empty fields are left out of the deployed side, so one variant's empty fields cannot rule out
+    another.
+    """
+    if not source_config_override:
+        return
+    source_config = workflow_config.source.sourceConfig
+    deployed = source_config.config.model_dump(mode="json", exclude_none=True)
+    overridden = {**deployed, **source_config_override}
+    workflow_config.source.sourceConfig = type(source_config).model_validate({"config": overridden})
+
+
 class CustomPythonOperator(PythonOperator):
+    def execute(self, context):
+        """
+        A run triggered from the server carries the run id the server already recorded as queued.
+        Reporting under that id, instead of the one minted when the DAG was parsed, makes the
+        workflow's statuses - and the failure callback's, which shares this config - update the
+        queued run rather than show up as a separate one. It may also carry a source config
+        override that applies to this run alone; see apply_source_config_override.
+
+        For scheduled runs (which carry no `params.pipelineRunId`), derive the run id from
+        `dag_run.run_id` using the same `pipeline_run_id()` helper the response layer uses
+        (`format_dag_run_state` in api/response.py). Without this, the parse-time random UUID
+        from `build_dag` diverges from the deterministic UUIDv5 the status API reports for the
+        same run, and the server tracks two separate runs (one from the response layer, one
+        from the worker's status callback).
+        """
+        params = context.get("params") or {}
+        workflow_config = self.op_kwargs.get("workflow_config")
+        if workflow_config:
+            run_id = params.get(PIPELINE_RUN_ID_PARAM)
+            if run_id:
+                workflow_config.pipelineRunId = Uuid(run_id)
+            else:
+                dag_run = context.get("dag_run")
+                if dag_run is not None:
+                    workflow_config.pipelineRunId = Uuid(pipeline_run_id(dag_run.dag_id, dag_run.run_id))
+            apply_source_config_override(workflow_config, params.get(SOURCE_CONFIG_OVERRIDE_PARAM))
+        return super().execute(context)
+
     def on_kill(self) -> None:
         """
         Override this method to clean up subprocesses when a task instance
@@ -406,7 +529,10 @@ def build_dag(
     # DAG files are parsed concurrently in the same process and raises a KeyError on
     # __exit__ (see issue #28500). The DAG is registered into the module globals
     # explicitly by WorkflowFactory.register_dag, so autoregister is not needed here.
-    dag = DAG(**build_dag_configs(ingestion_pipeline))
+    dag = DAG(
+        **build_dag_configs(ingestion_pipeline),
+        on_failure_callback=partial(send_failed_run_status_callback, workflow_config),
+    )
 
     # Initialize with random UUID4. Will be used by the callback instead of
     # generating it inside the Workflow itself.
@@ -426,7 +552,8 @@ def build_dag(
         owner=ingestion_pipeline.owners.root[0].name
         if (ingestion_pipeline.owners and ingestion_pipeline.owners.root)
         else "openmetadata",
-        params=params,
+        # Declared so the trigger conf can override it; see CustomPythonOperator.execute
+        params={PIPELINE_RUN_ID_PARAM: None, SOURCE_CONFIG_OVERRIDE_PARAM: None, **(params or {})},
         dag=dag,
     )
 

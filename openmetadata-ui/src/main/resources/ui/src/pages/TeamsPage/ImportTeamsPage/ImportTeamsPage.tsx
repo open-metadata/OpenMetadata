@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import QueryString from 'qs';
@@ -25,15 +26,12 @@ import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { TeamImportResult } from '../../../components/Settings/Team/TeamImportResult/TeamImportResult.component';
 import { UserImportResult } from '../../../components/Settings/Team/UserImportResult/UserImportResult.component';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Team, TeamType } from '../../../generated/entity/teams/team';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   getTeamByName,
@@ -50,7 +48,21 @@ const ImportTeamsPage = () => {
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  // Full fetch-owner conversion (TeamsPage.tsx / useTestSuiteDetailsPage.tsx precedent). No
+  // `deleted` option — the old raw reads were never gated on the team's own `deleted` either.
+  const {
+    canCreate,
+    canEditAll,
+    isLoading: permissionsLoading,
+    error: permissionsError,
+  } = useEntityPermissions(ResourceEntity.TEAM, fqn);
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const { type } = useMemo(() => {
     const param = location.search;
@@ -62,7 +74,6 @@ const ImportTeamsPage = () => {
   }, [location.search]);
 
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
-  const [permission, setPermission] = useState<OperationPermission>();
   const [csvImportResult, setCsvImportResult] = useState<CSVImportResult>();
   const [team, setTeam] = useState<Team>();
 
@@ -95,20 +106,6 @@ const ImportTeamsPage = () => {
     setCsvImportResult(result);
   };
 
-  const fetchPermissions = async (entityFqn: string) => {
-    setIsPageLoading(true);
-    try {
-      const perms = await getEntityPermissionByFqn(
-        ResourceEntity.TEAM,
-        entityFqn
-      );
-      setPermission(perms);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPageLoading(false);
-    }
-  };
   const fetchTeamByFqn = async (name: string) => {
     setIsPageLoading(true);
     try {
@@ -144,25 +141,29 @@ const ImportTeamsPage = () => {
     }
   };
 
+  // Reactive replacement for the old fetchPermissions()-then-fetchTeamByFqn() sequence
+  // (TeamsPage.tsx precedent): fetchTeamByFqn already manages isPageLoading internally via
+  // its own try/finally, matching the granted-permission path exactly. The denied path needs
+  // the separate effect below since nothing else would otherwise flip isPageLoading back to
+  // false (also covers the old `!fqn` early-exit — with no fqn, useEntityPermissions never
+  // fetches, so permissionsLoading resolves to `false` immediately with denied flags).
   useEffect(() => {
-    if (fqn) {
-      fetchPermissions(fqn);
-    } else {
-      setIsPageLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (permission?.Create || permission?.EditAll) {
+    if (canCreate || canEditAll) {
       fetchTeamByFqn(fqn);
     }
-  }, [permission]);
+  }, [canCreate, canEditAll, fqn]);
+
+  useEffect(() => {
+    if (!permissionsLoading && !canCreate && !canEditAll) {
+      setIsPageLoading(false);
+    }
+  }, [permissionsLoading, canCreate, canEditAll]);
 
   if (isPageLoading) {
     return <Loader />;
   }
   // it will fetch permission 1st, if its not allowed will show no permission placeholder
-  if (!permission?.Create || !permission?.EditAll) {
+  if (!canCreate || !canEditAll) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -187,9 +188,9 @@ const ImportTeamsPage = () => {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <div className="m-t-sm text-center text-sm font-normal">
-          <Typography.Paragraph className="w-80">
+          <Typography as="p" className="w-80">
             {t('message.group-type-team-not-allowed-to-have-sub-team')}
-          </Typography.Paragraph>
+          </Typography>
         </div>
       </ErrorPlaceHolder>
     );
@@ -211,14 +212,18 @@ const ImportTeamsPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumb} />
         </Col>
         <Col span={24}>
-          <Typography.Title data-testid="title" level={5}>
+          <Typography
+            as="h5"
+            data-testid="title"
+            size="text-md"
+            weight="semibold">
             {t('label.import-entity', {
               entity:
                 type === ImportType.USERS
                   ? t('label.user-plural')
                   : t('label.team-plural'),
             })}
-          </Typography.Title>
+          </Typography>
         </Col>
         <Col span={24}>
           <EntityImport

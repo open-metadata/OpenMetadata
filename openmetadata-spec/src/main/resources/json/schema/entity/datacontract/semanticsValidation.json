@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/datacontract/semanticsValidation.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SemanticsValidation",
   "description": "Semantics validation details for data contract.",
   "type": "object",
@@ -16,6 +16,10 @@
     },
     "total": {
       "description": "Total number of semantics rules.",
+      "type": "integer"
+    },
+    "skipped": {
+      "description": "Number of semantics rules not evaluated because they are disabled or do not apply to the entity's type.",
       "type": "integer"
     },
     "failedRules": {

@@ -101,3 +101,43 @@ def test_the_publisher_copy_cannot_drift_from_the_renderer_copy():
     """The trusted publisher keeps its own copy so it stays self-contained; pin
     the two implementations together so a fix to one is a fix to both."""
     assert read_redaction_block(RENDERER) == read_redaction_block(PUBLISHER)
+
+
+def test_summary_gates_on_every_event_that_actually_runs_the_shard_matrix():
+    """
+    `testsRequired` decides whether the summary evaluates the shard matrix or
+    early-exits with "not required for this PR". Every event that reaches this
+    workflow with a shard matrix that ran must be listed here — otherwise the
+    summary reports success on a red matrix.
+
+    Regression guard for PR #32857 (run 34121906853): the chromium-01 shard
+    hard-failed under `pull_request_target` (fork PR path). `testsRequired`
+    was missing `pull_request_target`, so the check dropped into the early
+    return, printed "not required for this PR (no relevant paths changed)",
+    and reported success even though PLAYWRIGHT_RESULT was `failure`.
+    """
+    source = RENDERER.read_text(encoding="utf-8")
+    # Anchor to the destination variable name plus one line up to the closing
+    # semicolon; the shape is a chain of `context.eventName === '<event>' ||`.
+    match = re.search(
+        r"const testsRequired = ([\s\S]*?);",
+        source,
+    )
+    assert match, "renderPlaywrightSummary no longer defines testsRequired"
+    block = match.group(1)
+    # Every event that triggers `playwright-postgresql-e2e.yml` (which reuses
+    # `playwright-e2e-reusable.yml` to run the shard matrix) belongs here.
+    # If a new event is added to that workflow's `on:` block, add it here too
+    # or the summary will silently green-light a red matrix under it.
+    for event in (
+        "pull_request",
+        "pull_request_target",
+        "merge_group",
+        "schedule",
+        "workflow_dispatch",
+    ):
+        assert f"'{event}'" in block, (
+            f"testsRequired must include {event!r} — the shard matrix runs "
+            "under this event, so the summary has to gate on shard results "
+            "instead of returning early. See PR #32857 for the failure mode."
+        )
