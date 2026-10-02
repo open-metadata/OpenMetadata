@@ -101,6 +101,34 @@ class OutboundUrlPolicyTest {
   }
 
   @Test
+  void nat64LiteralWrappingLoopbackOrPrivateIsRejected() {
+    // A NAT64 prefix (64:ff9b::/96) wrapping 127.0.0.1 / 10.x / 172.16.x / 192.168.x is an address
+    // literal that leads to an internal destination, so it must keep "the rule it has always had".
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://[64:ff9b::7f00:1]/"));
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://[64:ff9b::a00:1]/"));
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://[64:ff9b::ac10:1]/"));
+    assertThrows(BadRequestException.class, () -> policy.checkForSave("http://[64:ff9b::c0a8:1]/"));
+  }
+
+  @Test
+  void nat64LiteralWrappingPublicIpv4IsAllowed() {
+    // Only the embedded private/loopback range is refused; a public embedding stays allowed, so the
+    // WKP remains usable as written for ordinary destinations.
+    assertDoesNotThrow(() -> policy.checkForSave("http://[64:ff9b::5db8:d822]/"));
+  }
+
+  @Test
+  void nat64LiteralInternalRejectionAppliesAtConnectToo() {
+    // The connect-time tier uses the same classification, so the see-through must hold there too.
+    assertThrows(
+        OutboundUrlBlockedException.class,
+        () -> policy.checkForConnect(URI.create("http://[64:ff9b::a00:1]/")));
+    assertThrows(
+        OutboundUrlBlockedException.class,
+        () -> policy.checkForConnect(URI.create("http://[64:ff9b::7f00:1]/")));
+  }
+
+  @Test
   void carrierGradeNatIsNotRefusedAsARange() {
     // 100.64.0.0/10 is also where Tailscale puts tailnet addresses; only the metadata address in
     // that range is refused.
