@@ -29,6 +29,7 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.operations.OperationalConfiguration;
+import org.openmetadata.service.exception.SystemSettingsException;
 
 class DefaultOperationalConfigProviderTest {
 
@@ -209,5 +210,75 @@ class DefaultOperationalConfigProviderTest {
 
     assertEquals(email, provider.getEmailSettings());
     assertEquals(serverUrl, provider.getServerUrl());
+  }
+
+  @Test
+  void applyConfigurationRejectsSchemelessServerUrl() {
+    // A non-null but scheme-less openMetadataUrl (e.g. "localhost:8585") is the exact shape that
+    // the OpenMetadataBaseUrlValidator rejects on the admin write paths. applyConfiguration is
+    // the parse-boundary defense-in-depth that must fail fast on it too, before it reaches
+    // SettingsCache and is seeded verbatim into the DB.
+    DefaultOperationalConfigProvider provider =
+        new DefaultOperationalConfigProvider(new OpsConfig().withEnable(false));
+
+    OperationalConfiguration configuration =
+        new OperationalConfiguration()
+            .withEmail(new SmtpSettings())
+            .withServerUrl(
+                new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl("localhost:8585"));
+
+    IllegalStateException ex =
+        assertThrows(IllegalStateException.class, () -> provider.applyConfiguration(configuration));
+    assertTrue(
+        ex.getMessage().contains("openMetadataUrl"),
+        "error should identify the invalid openMetadataUrl field: " + ex.getMessage());
+    assertTrue(
+        ex.getCause() instanceof SystemSettingsException,
+        "should chain the underlying SystemSettingsException");
+  }
+
+  @Test
+  void applyConfigurationRejectsBlankServerUrl() {
+    DefaultOperationalConfigProvider provider =
+        new DefaultOperationalConfigProvider(new OpsConfig().withEnable(false));
+
+    OperationalConfiguration configuration =
+        new OperationalConfiguration()
+            .withEmail(new SmtpSettings())
+            .withServerUrl(new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(""));
+
+    IllegalStateException ex =
+        assertThrows(IllegalStateException.class, () -> provider.applyConfiguration(configuration));
+    assertTrue(
+        ex.getMessage().contains("openMetadataUrl"),
+        "error should identify the invalid openMetadataUrl field: " + ex.getMessage());
+  }
+
+  @Test
+  void applyConfigurationRejectsNotAUrlServerUrl() {
+    DefaultOperationalConfigProvider provider =
+        new DefaultOperationalConfigProvider(new OpsConfig().withEnable(false));
+
+    OperationalConfiguration configuration =
+        new OperationalConfiguration()
+            .withEmail(new SmtpSettings())
+            .withServerUrl(new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl("not-a-url"));
+
+    assertThrows(IllegalStateException.class, () -> provider.applyConfiguration(configuration));
+  }
+
+  @Test
+  void applyConfigurationAcceptsLocalhostBaseUrl() {
+    DefaultOperationalConfigProvider provider =
+        new DefaultOperationalConfigProvider(new OpsConfig().withEnable(false));
+
+    OpenMetadataBaseUrlConfiguration serverUrl =
+        new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl("http://localhost:8585");
+    OperationalConfiguration configuration =
+        new OperationalConfiguration().withEmail(new SmtpSettings()).withServerUrl(serverUrl);
+
+    provider.applyConfiguration(configuration);
+
+    assertEquals("http://localhost:8585", provider.getServerUrl().getOpenMetadataUrl());
   }
 }
