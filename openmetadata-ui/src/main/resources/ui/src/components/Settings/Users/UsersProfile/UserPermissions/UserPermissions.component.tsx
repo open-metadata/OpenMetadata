@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Col, Collapse, Divider, Row, Space, Spin, Tag } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Collapse, Row, Space, Spin, Tag } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -303,7 +303,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                   </div>
                 )}
               </Space>
-              <Divider />
+              <Divider className="team-permission-divider tw:my-6" />
             </div>
           )
         )}

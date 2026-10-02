@@ -73,17 +73,22 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
         return None
 
     try:
-        return (
-            res.group(0)  # Get the first match
-            .strip()  # Remove whitespace
-            .lower()  # Replace all the lowercase variants of the procedure name prefixes
-            # Drop the identifier delimiters. StoredProcedure entity names are stored
-            # undelimited, and the caller matches on `procedure.name.root.lower()`, so a name
-            # kept as `"my proc"` would never match the entity it names.
-            .replace("`", "")
-            .replace('"', "")
-            .split(".")[-1]
-        )
+        # Split only on dots that are NOT inside a "..." segment. A double-quoted
+        # identifier (Snowflake/Oracle) may hold a literal `.` as one of its
+        # characters; splitting on it would drop the head of the name and miss
+        # the lineage join, since the StoredProcedure entity is keyed by the real,
+        # undelimited name (e.g. Snowflake's `PROCEDURE_NAME` carries it verbatim
+        # and the query-history row supplies only `QUERY_TEXT`). Backtick blobs
+        # (BigQuery's `project.dataset.routine` path) have no double-quotes, so
+        # their internal dots are split here too — exactly the separator role
+        # BigQuery assigns them — then the backticks are stripped below.
+        name = res.group(0).strip()
+        parts = re.split(r"""\.(?=(?:[^"]*"[^"]*")*[^"]*$)""", name)
+        # Take the last segment and drop its identifier delimiters. StoredProcedure
+        # entity names are stored undelimited, and the caller matches on
+        # `procedure.name.root.lower()`, so a name kept as `"my proc"` would never
+        # match the entity it names.
+        return parts[-1].strip().lower().replace("`", "").replace('"', "")
     except Exception as exc:
         logger.warning(f"Error trying to get the procedure name in [{query_text}] due to [{exc}]")
         return None

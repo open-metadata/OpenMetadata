@@ -889,7 +889,7 @@ export const settingPageOperationPermissionCheck = async (page: Page) => {
       await apiResponse;
     }
 
-    await expect(page.locator('.ant-skeleton-button')).not.toBeVisible();
+    await expect(page.locator('.button-skeleton')).not.toBeVisible();
     await expect(page.getByTestId(id.button)).not.toBeVisible();
   }
 

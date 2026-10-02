@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Divider, Space } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
@@ -44,7 +44,10 @@ export const VersionExtraInfoLink = ({
   href?: string;
 }) => (
   <>
-    <Divider className="self-center m-x-sm" type="vertical" />
+    <Divider
+      className="self-center m-x-sm tw:h-[0.9em]"
+      orientation="vertical"
+    />
     <div className="d-flex items-center text-xs">
       <Typography>
         <a href={href} style={{ fontSize: '12px' }}>
@@ -65,7 +68,10 @@ export const VersionExtraInfoLabel = ({
   dataTestId?: string;
 }) => (
   <>
-    <Divider className="self-center m-x-sm" type="vertical" />
+    <Divider
+      className="self-center m-x-sm tw:h-[0.9em]"
+      orientation="vertical"
+    />
     <Space align="center" data-testid={dataTestId}>
       <Typography className="self-center text-xs whitespace-nowrap">
         {!isEmpty(label) && (
@@ -104,7 +110,10 @@ export const getExtraInfoSourceUrl = (
     <>
       {isUndefined(changedEntityName) ? (
         <>
-          <Divider className="self-center m-x-sm" type="vertical" />
+          <Divider
+            className="self-center m-x-sm tw:h-[0.9em]"
+            orientation="vertical"
+          />
           <div className="d-flex items-center text-xs">
             <Typography>
               <a href={pipelineDetails.sourceUrl} style={{ fontSize: '12px' }}>
