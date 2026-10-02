@@ -31,6 +31,7 @@ import {
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import Loader from '../../../common/Loader/Loader';
@@ -100,6 +101,7 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
   const isInitialLoading = isLoading && isEmpty(incidentGroups);
 
   const [previewGroup, setPreviewGroup] = useState<TestCaseIncidentGroup>();
+  const isRouteVisible = useIsRouteVisible();
   // The row the user drilled in from, to hand focus back to on the way out.
   const [returnFocusKey, setReturnFocusKey] = useState<string>();
 
@@ -350,7 +352,10 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
       )}
       <IncidentGroupDrawer
         filters={filters}
-        group={previewGroup}
+        // The app keeps this page mounted, hidden, while another route shows,
+        // but the drawer is portaled above everything: it waits for the page to
+        // come back, as open as it was left.
+        group={isRouteVisible ? previewGroup : undefined}
         onClose={() => setPreviewGroup(undefined)}
         onViewAll={handleOpenGroup}
       />

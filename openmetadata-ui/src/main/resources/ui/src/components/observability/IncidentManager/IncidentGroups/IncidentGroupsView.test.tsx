@@ -21,6 +21,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
+import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import {
   IncidentGroupBy,
   IncidentTrendDirection,
@@ -1366,5 +1367,32 @@ describe('IncidentGroupsView filters and paging', () => {
     expect(
       screen.getByTestId('incident-group-detail-missing')
     ).toBeInTheDocument();
+  });
+
+  it('should hide the drawer while the page is kept hidden behind another route', async () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/observability/incident-manager']}>
+        {viewTree()}
+      </MemoryRouter>
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByTestId('preview-first-group'));
+
+    expect(screen.getByTestId('incident-group-drawer')).toBeInTheDocument();
+
+    rerender(
+      <MemoryRouter initialEntries={['/observability/incident-manager']}>
+        <RouteVisibilityProvider isVisible={false}>
+          {viewTree()}
+        </RouteVisibilityProvider>
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.queryByTestId('incident-group-drawer')
+    ).not.toBeInTheDocument();
   });
 });
