@@ -58,6 +58,13 @@ const CodeEditor = withSuspenseFallback(
 const toOptions = (values: string[]): FormSelectItem[] =>
   values.map((value) => ({ id: value, label: value }));
 
+// Dbt and QueryLog are pseudo-types with no connection schema, so no table can live under
+// them; restricting a definition to one hides it from the Add Test Case picker.
+const NON_SERVICE_TYPES = new Set<DatabaseServiceType>([
+  DatabaseServiceType.Dbt,
+  DatabaseServiceType.QueryLog,
+]);
+
 const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
   form,
   isEditMode,
@@ -278,7 +285,11 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       props: {
         'data-testid': 'supported-services',
         isDisabled: isReadOnlyField,
-        options: toOptions(Object.values(DatabaseServiceType)),
+        options: toOptions(
+          Object.values(DatabaseServiceType).filter(
+            (type) => !NON_SERVICE_TYPES.has(type)
+          )
+        ),
       } as FieldProp['props'],
     },
     {
