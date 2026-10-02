@@ -87,6 +87,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   static final String LDAP_ERR_MSG = "[LDAP] Issue in creating a LookUp Connection ";
   private static final int MAX_RETRIES = 3;
   private static final int BASE_DELAY_MS = 500;
+  private static final String DEFAULT_EMAIL_ATTRIBUTE = "mail";
+  private static final String DEFAULT_DISPLAY_NAME_ATTRIBUTE = "displayName";
   private RoleRepository roleRepository;
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
@@ -257,23 +259,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     BindResult bindingResult = null;
     LDAPConnection userConnection = null;
     try {
-      // Create a new connection for user authentication with proper SSL/TLS support
-      if (Boolean.TRUE.equals(ldapConfiguration.getSslEnabled())) {
-        // LDAPS (LDAP over SSL) - same configuration as connection pool
-        LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
-        LdapUtil ldapUtil = new LdapUtil();
-        SSLUtil sslUtil =
-            new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
-        userConnection =
-            new LDAPConnection(
-                sslUtil.createSSLSocketFactory(),
-                connectionOptions,
-                ldapConfiguration.getHost(),
-                ldapConfiguration.getPort());
-      } else {
-        userConnection =
-            new LDAPConnection(ldapConfiguration.getHost(), ldapConfiguration.getPort());
-      }
+      userConnection = openConnection(ldapConfiguration, new LDAPConnectionOptions());
 
       // Perform the bind operation
       bindingResult = userConnection.bind(userDn, reqPassword);
@@ -339,19 +325,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   private LdapUserInfo performLdapUserSearch(String email) {
     AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
-
-    String emailAttribute = authConfig.getEmailClaim();
-    if (nullOrEmpty(emailAttribute)) {
-      emailAttribute = ldapConfiguration.getMailAttributeName();
-    }
-    if (nullOrEmpty(emailAttribute)) {
-      emailAttribute = "mail";
-    }
-
-    String displayNameAttribute = authConfig.getDisplayNameClaim();
-    if (nullOrEmpty(displayNameAttribute)) {
-      displayNameAttribute = "displayName";
-    }
+    String emailAttribute = emailAttributeFor(authConfig, ldapConfiguration);
+    String displayNameAttribute = displayNameAttributeFor(authConfig);
 
     try {
       Filter emailFilter = Filter.createEqualityFilter(emailAttribute, email);
@@ -518,6 +493,44 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           user.getName(),
           ex.getMessage());
     }
+  }
+
+  /**
+   * Opens a connection to the directory the configuration names, over LDAPS when it asks for SSL.
+   * Shared with the Test Login dry-run so a candidate directory is reached exactly the way login
+   * reaches the live one.
+   */
+  static LDAPConnection openConnection(
+      LdapConfiguration ldapConfiguration, LDAPConnectionOptions connectionOptions)
+      throws LDAPException, GeneralSecurityException {
+    if (Boolean.TRUE.equals(ldapConfiguration.getSslEnabled())) {
+      SSLUtil sslUtil =
+          new SSLUtil(new LdapUtil().getLdapSSLConnection(ldapConfiguration, connectionOptions));
+      return new LDAPConnection(
+          sslUtil.createSSLSocketFactory(),
+          connectionOptions,
+          ldapConfiguration.getHost(),
+          ldapConfiguration.getPort());
+    }
+    return new LDAPConnection(
+        connectionOptions, ldapConfiguration.getHost(), ldapConfiguration.getPort());
+  }
+
+  /** The attribute login matches the entered email against: emailClaim, else mailAttributeName. */
+  static String emailAttributeFor(
+      AuthenticationConfiguration authConfig, LdapConfiguration ldapConfiguration) {
+    String emailAttribute = authConfig.getEmailClaim();
+    if (nullOrEmpty(emailAttribute)) {
+      emailAttribute = ldapConfiguration.getMailAttributeName();
+    }
+    return nullOrEmpty(emailAttribute) ? DEFAULT_EMAIL_ATTRIBUTE : emailAttribute;
+  }
+
+  static String displayNameAttributeFor(AuthenticationConfiguration authConfig) {
+    String displayNameAttribute = authConfig.getDisplayNameClaim();
+    return nullOrEmpty(displayNameAttribute)
+        ? DEFAULT_DISPLAY_NAME_ATTRIBUTE
+        : displayNameAttribute;
   }
 
   static Filter buildGroupMemberFilter(LdapConfiguration ldapConfiguration, String userDn) {
