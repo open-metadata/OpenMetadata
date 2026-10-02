@@ -24,6 +24,8 @@ import { listIncidentGroups } from '../../../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   IncidentGroupByDropdownProps,
+  IncidentGroupDetailProps,
+  IncidentGroupDrawerProps,
   IncidentGroupsFiltersProps,
   IncidentGroupsTableProps,
 } from './IncidentGroups.types';
@@ -79,7 +81,13 @@ jest.mock('./IncidentGroupsTable', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ groups, sortType, onSortTypeChange }: IncidentGroupsTableProps) => (
+      ({
+        groups,
+        sortType,
+        onSortTypeChange,
+        onGroupPreview,
+        onGroupOpen,
+      }: IncidentGroupsTableProps) => (
         <div data-testid="incident-groups-table">
           <span data-testid="table-group-count">{groups.length}</span>
           <span data-testid="table-sort-type">{sortType}</span>
@@ -88,9 +96,53 @@ jest.mock('./IncidentGroupsTable', () =>
             onClick={() => onSortTypeChange('asc')}>
             asc
           </button>
+          <button
+            data-testid="preview-first-group"
+            onClick={() => onGroupPreview(groups[0])}>
+            preview
+          </button>
+          <button
+            data-testid={`group-open-${groups[0]?.name}`}
+            onClick={() => onGroupOpen(groups[0])}>
+            open
+          </button>
         </div>
       )
     )
+);
+
+jest.mock('./IncidentGroupDrawer', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ group, onClose, onViewAll }: IncidentGroupDrawerProps) =>
+        group ? (
+          <div data-testid="incident-group-drawer">
+            <span data-testid="drawer-group">{group.name}</span>
+            <button data-testid="drawer-close" onClick={onClose}>
+              close
+            </button>
+            <button
+              data-testid="drawer-view-all"
+              onClick={() => onViewAll(group)}>
+              view all
+            </button>
+          </div>
+        ) : null
+    )
+);
+
+jest.mock('./IncidentGroupDetail', () =>
+  jest
+    .fn()
+    .mockImplementation(({ group, onBack }: IncidentGroupDetailProps) => (
+      <div data-testid="incident-group-detail">
+        <span data-testid="detail-group">{`${group.name}:${group.incidentCount}`}</span>
+        <button data-testid="detail-back" onClick={onBack}>
+          back
+        </button>
+      </div>
+    ))
 );
 
 jest.mock('./IncidentGroupsFilters', () =>
@@ -1090,5 +1142,116 @@ describe('IncidentGroupsView filters and paging', () => {
     } finally {
       useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
     }
+  });
+
+  it('should preview a group in the drawer and close it again', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    expect(
+      screen.queryByTestId('incident-group-drawer')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('preview-first-group'));
+
+    expect(screen.getByTestId('drawer-group')).toHaveTextContent(
+      'columnValuesToBeUnique'
+    );
+
+    fireEvent.click(screen.getByTestId('drawer-close'));
+
+    expect(
+      screen.queryByTestId('incident-group-drawer')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should drill into a group in place of the groups and come back to them', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    fireEvent.click(screen.getByTestId('group-open-columnValuesToBeUnique'));
+
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeUnique:5'
+    );
+    expect(
+      screen.queryByTestId('incident-groups-table')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('filters-state')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('detail-back'));
+
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('group-open-columnValuesToBeUnique')
+    ).toHaveFocus();
+  });
+
+  it('should keep the groups page across a drill-down', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: mockGroups,
+      paging: { total: 25, after: 'cursor-2' },
+    });
+
+    await act(async () => {
+      renderView();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('next'));
+    });
+
+    fireEvent.click(screen.getByTestId('group-open-columnValuesToBeUnique'));
+    fireEvent.click(screen.getByTestId('detail-back'));
+
+    expect(screen.getByRole('textbox', { name: 'Current page' })).toHaveValue(
+      '2'
+    );
+  });
+
+  it('should open the drill-down from the drawer', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    fireEvent.click(screen.getByTestId('preview-first-group'));
+    fireEvent.click(screen.getByTestId('drawer-view-all'));
+
+    expect(
+      screen.queryByTestId('incident-group-drawer')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeUnique'
+    );
+  });
+
+  it('should show the drilled-into group as the latest read has it', async () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/observability/incident-manager']}>
+        {viewTree(0)}
+      </MemoryRouter>
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByTestId('group-open-columnValuesToBeUnique'));
+    mockListIncidentGroups.mockResolvedValue({
+      data: [{ ...mockGroups[0], incidentCount: 7 }, ...mockGroups.slice(1)],
+      paging: { total: 5 },
+    });
+
+    await act(async () => {
+      rerender(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeUnique:7'
+    );
   });
 });

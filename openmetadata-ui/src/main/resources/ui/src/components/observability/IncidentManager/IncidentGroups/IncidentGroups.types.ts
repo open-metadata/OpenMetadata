@@ -20,10 +20,10 @@ import {
   TestCaseIncidentGroup,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
+import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   IncidentSortType,
   OpenIncidentStatus,
-  TestCaseIncidentStatusParams,
 } from '../../../../rest/incidentManagerAPI';
 
 export interface IncidentGroupByOption {
@@ -41,9 +41,7 @@ export interface IncidentGroupByDropdownProps {
  * Incident timestamp a date range applies to, in the vocabulary the URL already
  * speaks for the incident listing: `timestamp` is when the incident was opened.
  */
-export type IncidentListDateField = NonNullable<
-  TestCaseIncidentStatusParams['dateField']
->;
+export type IncidentListDateField = 'timestamp' | 'updatedAt';
 
 /**
  * Filters of the grouped view. Each key is also its query string param, shared
@@ -63,6 +61,31 @@ export interface IncidentGroupsFiltersProps {
   onChange: (changes: Partial<IncidentGroupFilters>) => void;
 }
 
+export interface IncidentListProps {
+  incidents: TestCaseResolutionStatus[];
+  isLoading: boolean;
+}
+
+export interface IncidentGroupDrawerProps {
+  /** The group to preview; the drawer is open while there is one. */
+  group?: TestCaseIncidentGroup;
+  filters: IncidentGroupFilters;
+  onClose: () => void;
+  onViewAll: (group: TestCaseIncidentGroup) => void;
+}
+
+export interface IncidentGroupDetailProps {
+  group: TestCaseIncidentGroup;
+  filters: IncidentGroupFilters;
+  onBack: () => void;
+}
+
+export interface IncidentGroupStatProps {
+  label: string;
+  value: ReactNode;
+  testId: string;
+}
+
 export interface IncidentGroupsViewProps {
   /**
    * Bumped by the page when an incident it lists below changes status: the
@@ -77,6 +100,10 @@ export interface IncidentGroupsTableProps {
   groupBy: IncidentGroupBy;
   sortType: IncidentSortType;
   onSortTypeChange: (sortType: IncidentSortType) => void;
+  /** Pressing a row previews its group in the drawer. */
+  onGroupPreview: (group: TestCaseIncidentGroup) => void;
+  /** The row's open affordance drills into the group. */
+  onGroupOpen: (group: TestCaseIncidentGroup) => void;
 }
 
 /** One status' slice of the breakdown bar, already sized against the group. */

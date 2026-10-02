@@ -42,18 +42,12 @@ import {
   parseIncidentGroupBy,
   parseIncidentGroupFilters,
 } from './IncidentGroups.utils';
-
-interface IncidentGroupsPage {
-  /** The query the page belongs to; a page of another query is page 1. */
-  queryKey: string;
-  currentPage: number;
-}
+import { useIncidentPaging } from './useIncidentPaging';
 
 /**
  * Owns the grouped incident listing: the grouping dimension and the filters are
  * read from and written to the URL, and every change to them refires the fetch
- * from the first page. Pages are walked with the cursors the server hands back,
- * passed straight back as `offset` and never decoded.
+ * from the first page, which the server is asked for by number.
  *
  * `refreshKey` is the caller's way of saying the groups it is showing are out
  * of date — a new value refires the fetch once, which is how an incident
@@ -107,20 +101,10 @@ export const useIncidentGroups = ({
   const [sortType, setSortType] = useState<IncidentSortType>(
     DEFAULT_INCIDENT_SORT_TYPE
   );
-  const [pageSize, setPageSize] = useState(INCIDENT_GROUPS_PAGE_SIZE);
-  /**
-   * Any change to what is listed starts over from the first page. The page is
-   * therefore tagged with its query, and read as page 1 once the query moves
-   * on — no reset effect, so no extra fetch of the stale page.
-   */
-  const queryKey = `${groupBy}|${sortType}|${pageSize}|${domain}|${filtersSearch}`;
-  const [page, setPage] = useState<IncidentGroupsPage>({
-    queryKey,
-    currentPage: 1,
-  });
-  const activePage: IncidentGroupsPage =
-    page.queryKey === queryKey ? page : { queryKey, currentPage: 1 };
-  const { currentPage } = activePage;
+  const { currentPage, pageSize, setPageSize, goToPage } = useIncidentPaging(
+    `${groupBy}|${sortType}|${domain}|${filtersSearch}`,
+    INCIDENT_GROUPS_PAGE_SIZE
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   // Guards against a slow response for a dimension the user already left.
@@ -210,7 +194,16 @@ export const useIncidentGroups = ({
         setIsLoading(false);
       }
     }
-  }, [groupBy, sortType, pageSize, currentPage, filters, domain, refreshKey, t]);
+  }, [
+    groupBy,
+    sortType,
+    pageSize,
+    currentPage,
+    filters,
+    domain,
+    refreshKey,
+    t,
+  ]);
 
   useEffect(() => {
     fetchIncidentGroups();
@@ -257,8 +250,8 @@ export const useIncidentGroups = ({
   );
 
   const handlePageChange = useCallback(
-    (nextPage: number) => setPage({ queryKey, currentPage: nextPage }),
-    [queryKey]
+    (nextPage: number) => goToPage(nextPage),
+    [goToPage]
   );
 
   return {

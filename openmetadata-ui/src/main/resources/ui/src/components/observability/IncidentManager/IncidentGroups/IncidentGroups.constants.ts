@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { BadgeColor } from '@openmetadata/ui-core-components';
+import type { BadgeColor, BadgeColors } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   Table,
@@ -154,6 +154,22 @@ export const INCIDENT_GROUP_STATUS_LABELS: Partial<
   [TestCaseResolutionStatusTypes.ACK]: 'label.ack-lowercase',
   [TestCaseResolutionStatusTypes.New]: 'label.new-lowercase',
 };
+
+/**
+ * Pill colour of each incident status: the hue the status bar slices it in, so
+ * an incident reads the same in its group's bar and in its own row.
+ */
+export const INCIDENT_STATUS_BADGE_COLORS: Record<
+  ResolutionStatusTypes,
+  BadgeColors
+> = {
+  [ResolutionStatusTypes.New]: 'purple',
+  [ResolutionStatusTypes.ACK]: 'blue-light',
+  [ResolutionStatusTypes.Assigned]: 'warning',
+  [ResolutionStatusTypes.Resolved]: 'success',
+};
+
+export const INCIDENT_GROUP_DRAWER_PAGE_SIZE_OPTIONS = [4, 8, 12, 20];
 
 export const SPARKLINE_WIDTH = 72;
 export const SPARKLINE_HEIGHT = 24;

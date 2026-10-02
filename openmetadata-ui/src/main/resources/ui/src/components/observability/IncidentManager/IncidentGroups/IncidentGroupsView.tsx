@@ -29,11 +29,14 @@ import {
   TrendUp01,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import Loader from '../../../common/Loader/Loader';
 import IncidentGroupByDropdown from './IncidentGroupByDropdown';
+import IncidentGroupDetail from './IncidentGroupDetail';
+import IncidentGroupDrawer from './IncidentGroupDrawer';
 import {
   CLEARED_INCIDENT_GROUP_FILTERS,
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
@@ -41,6 +44,7 @@ import {
 import { IncidentGroupsViewProps } from './IncidentGroups.types';
 import {
   countRecurringIncidentGroups,
+  getIncidentGroupKey,
   hasActiveIncidentGroupFilters,
 } from './IncidentGroups.utils';
 import IncidentGroupsFilters from './IncidentGroupsFilters';
@@ -89,6 +93,32 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
    * working in. Only a load with nothing to show yet takes the whole space.
    */
   const isInitialLoading = isLoading && isEmpty(incidentGroups);
+
+  const [previewGroup, setPreviewGroup] = useState<TestCaseIncidentGroup>();
+  const [detailGroup, setDetailGroup] = useState<TestCaseIncidentGroup>();
+  // The row the user drilled in from, to hand focus back to on the way out.
+  const [returnFocusKey, setReturnFocusKey] = useState<string>();
+
+  const handleOpenGroup = useCallback((group: TestCaseIncidentGroup) => {
+    setPreviewGroup(undefined);
+    setDetailGroup(group);
+  }, []);
+
+  const handleBack = useCallback(() => {
+    setReturnFocusKey(detailGroup && getIncidentGroupKey(detailGroup));
+    setDetailGroup(undefined);
+  }, [detailGroup]);
+
+  useEffect(() => {
+    if (!detailGroup && returnFocusKey) {
+      document
+        .querySelector<HTMLElement>(
+          `[data-testid="group-open-${returnFocusKey.replaceAll('"', '\\"')}"]`
+        )
+        ?.focus();
+      setReturnFocusKey(undefined);
+    }
+  }, [detailGroup, returnFocusKey]);
 
   const renderContent = () => {
     if (isInitialLoading) {
@@ -168,6 +198,8 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
           groupBy={groupBy}
           groups={incidentGroups}
           sortType={sortType}
+          onGroupOpen={handleOpenGroup}
+          onGroupPreview={setPreviewGroup}
           onSortTypeChange={handleSortTypeChange}
         />
         <PaginationCardWithControls
@@ -186,6 +218,14 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     );
   };
 
+  // The groups are re-read while a drill-down is open; it shows the latest copy.
+  const shownDetailGroup =
+    detailGroup &&
+    (incidentGroups.find(
+      (group) => getIncidentGroupKey(group) === getIncidentGroupKey(detailGroup)
+    ) ??
+      detailGroup);
+
   const hasStats = !isInitialLoading && !isError;
   const groupCount = paging?.total ?? incidentGroups.length;
 
@@ -195,61 +235,80 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
       className="tw:gap-4"
       data-testid="incident-groups"
       direction="col">
-      <Box className="tw:items-center tw:justify-between tw:gap-2">
-        {/* Kept when empty, so the dimension picker stays on the right. */}
-        <Box align="center" gap={3}>
-          {hasStats && (
-            <>
-              <Typography
-                as="span"
-                className="tw:text-secondary"
-                data-testid="incident-groups-count"
-                size="text-sm">
-                <Typography
-                  as="span"
-                  className="tw:text-primary"
-                  weight="semibold">
-                  {groupCount}
-                </Typography>{' '}
-                {t(
-                  groupCount === 1
-                    ? 'label.group-lowercase'
-                    : 'label.group-lowercase-plural'
-                )}
-              </Typography>
-              <Divider className="tw:h-4" orientation="vertical" />
-              <Tooltip
-                placement="top"
-                title={t('message.recurring-groups-loaded')}>
-                <TooltipTrigger>
-                  <Box align="center" gap={1}>
-                    <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
+      {shownDetailGroup ? (
+        <IncidentGroupDetail
+          filters={filters}
+          group={shownDetailGroup}
+          onBack={handleBack}
+        />
+      ) : (
+        <>
+          <Box className="tw:items-center tw:justify-between tw:gap-2">
+            {/* Kept when empty, so the dimension picker stays on the right. */}
+            <Box align="center" gap={3}>
+              {hasStats && (
+                <>
+                  <Typography
+                    as="span"
+                    className="tw:text-secondary"
+                    data-testid="incident-groups-count"
+                    size="text-sm">
                     <Typography
                       as="span"
-                      className="tw:text-secondary"
-                      data-testid="incident-groups-recurring-count"
-                      size="text-sm">
-                      <Typography
-                        as="span"
-                        className="tw:text-primary"
-                        weight="semibold">
-                        {recurringCount}
-                      </Typography>{' '}
-                      {t('label.recurring-lowercase')}
-                    </Typography>
-                  </Box>
-                </TooltipTrigger>
-              </Tooltip>
-            </>
-          )}
-        </Box>
-        <IncidentGroupByDropdown
-          value={groupBy}
-          onChange={handleGroupByChange}
-        />
-      </Box>
-      <IncidentGroupsFilters filters={filters} onChange={handleFiltersChange} />
-      {renderContent()}
+                      className="tw:text-primary"
+                      weight="semibold">
+                      {groupCount}
+                    </Typography>{' '}
+                    {t(
+                      groupCount === 1
+                        ? 'label.group-lowercase'
+                        : 'label.group-lowercase-plural'
+                    )}
+                  </Typography>
+                  <Divider className="tw:h-4" orientation="vertical" />
+                  <Tooltip
+                    placement="top"
+                    title={t('message.recurring-groups-loaded')}>
+                    <TooltipTrigger>
+                      <Box align="center" gap={1}>
+                        <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
+                        <Typography
+                          as="span"
+                          className="tw:text-secondary"
+                          data-testid="incident-groups-recurring-count"
+                          size="text-sm">
+                          <Typography
+                            as="span"
+                            className="tw:text-primary"
+                            weight="semibold">
+                            {recurringCount}
+                          </Typography>{' '}
+                          {t('label.recurring-lowercase')}
+                        </Typography>
+                      </Box>
+                    </TooltipTrigger>
+                  </Tooltip>
+                </>
+              )}
+            </Box>
+            <IncidentGroupByDropdown
+              value={groupBy}
+              onChange={handleGroupByChange}
+            />
+          </Box>
+          <IncidentGroupsFilters
+            filters={filters}
+            onChange={handleFiltersChange}
+          />
+          {renderContent()}
+        </>
+      )}
+      <IncidentGroupDrawer
+        filters={filters}
+        group={previewGroup}
+        onClose={() => setPreviewGroup(undefined)}
+        onViewAll={handleOpenGroup}
+      />
     </Box>
   );
 };
