@@ -33,6 +33,7 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import {
   waitForAllLoadersToDisappear,
   waitForWidgetsToRender,
@@ -70,7 +71,7 @@ const test = base.extend<{
   },
 });
 
-entities.forEach((EntityClass) => {
+pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
   const entity = new EntityClass();
 
   const rowSelector =
