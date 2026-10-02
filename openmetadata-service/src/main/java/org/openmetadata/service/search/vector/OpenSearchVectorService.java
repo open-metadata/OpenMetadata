@@ -1271,7 +1271,10 @@ public class OpenSearchVectorService implements VectorIndexService {
                       + indexName
                       + "/_doc/"
                       + parentId
-                      + "_0?_source_includes=fingerprint,chunkCount,docVersion,status,anchorId")
+                      + "_0?_source_includes=fingerprint,chunkCount,docVersion,"
+                      + ContextMemoryIndex.FIELD_STATUS
+                      + ","
+                      + ContextMemoryIndex.FIELD_ANCHOR_ID)
               .method("GET")
               .build();
       try (var response = genericClient.execute(request)) {
@@ -1297,7 +1300,7 @@ public class OpenSearchVectorService implements VectorIndexService {
                     source.path("chunkCount").asInt(0),
                     source.path("docVersion").asInt(0),
                     source.path(ContextMemoryIndex.FIELD_STATUS).asText(null),
-                    source.path("anchorId").asText(null));
+                    source.path(ContextMemoryIndex.FIELD_ANCHOR_ID).asText(null));
           }
         }
       }

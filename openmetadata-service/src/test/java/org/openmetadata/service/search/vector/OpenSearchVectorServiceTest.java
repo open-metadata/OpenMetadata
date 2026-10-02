@@ -26,6 +26,7 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -37,14 +38,48 @@ class OpenSearchVectorServiceTest {
   @Test
   void memoryFilterChangesRestampChunksWithoutChangingContent() {
     ContextMemory memory = new ContextMemory().withEntityStatus(EntityStatus.APPROVED);
-    assertFalse(OpenSearchVectorService.memoryFilterChanged(memory, "Active", "unanchored"));
+    assertFalse(OpenSearchVectorService.memoryFilterChanged(memory, "Approved", "unanchored"));
     assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, null, null));
     assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, "Superseded", "unanchored"));
 
     UUID anchorId = UUID.randomUUID();
     memory.setPrimaryEntity(new EntityReference().withId(anchorId).withType("table"));
-    assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, "Active", "unanchored"));
-    assertFalse(OpenSearchVectorService.memoryFilterChanged(memory, "Active", anchorId.toString()));
+    assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, "Approved", "unanchored"));
+    assertFalse(
+        OpenSearchVectorService.memoryFilterChanged(memory, "Approved", anchorId.toString()));
+  }
+
+  @Test
+  void chunkHeaderRequestsTheMemoryStatusFieldUsedByChunkDocuments() throws IOException {
+    ContextMemory memory =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withName("memory")
+            .withTitle("SQL preference")
+            .withQuestion("Should keywords be upper case?")
+            .withAnswer("Yes, use upper case keywords.")
+            .withEntityStatus(EntityStatus.APPROVED);
+    String fingerprint = VectorDocBuilder.computeFingerprintForEntity(memory);
+    mockOpenSearchResponse(
+        "{\"found\":true,\"_source\":{\"fingerprint\":\""
+            + fingerprint
+            + "\",\"chunkCount\":1,\"docVersion\":"
+            + VectorDocBuilder.CHUNK_DOC_VERSION
+            + ",\"entityStatus\":\"Approved\",\"anchorId\":\"unanchored\"}}");
+
+    vectorService.updateEntityEmbeddingChunks(memory, "chunkIndex");
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient).execute(captor.capture());
+    assertEquals(
+        "/chunkIndex/_doc/"
+            + memory.getId()
+            + "_0?_source_includes=fingerprint,chunkCount,docVersion,"
+            + ContextMemoryIndex.FIELD_STATUS
+            + ","
+            + ContextMemoryIndex.FIELD_ANCHOR_ID,
+        captor.getValue().getEndpoint());
   }
 
   private OpenSearchVectorService vectorService;
