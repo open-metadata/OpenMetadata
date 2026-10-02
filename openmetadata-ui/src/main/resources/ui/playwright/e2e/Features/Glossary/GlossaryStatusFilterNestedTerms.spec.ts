@@ -180,10 +180,10 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       // nothing to click then, only the expanded state to wait for.
       if ((await chevron.count()) > 0) {
         const isExpanded =
-          (await chevron.first().getAttribute('aria-expanded')) === 'true';
+          (await chevron.getAttribute('aria-expanded')) === 'true';
 
         if (!isExpanded) {
-          await chevron.first().click({ timeout: 5000 });
+          await chevron.click({ timeout: 5000 });
         }
       }
 
