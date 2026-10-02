@@ -522,6 +522,68 @@ describe('ProfileSampleConfigField', () => {
     });
   });
 
+  // Ingestion treats a 0 sample as "no sampling" and scans the full table.
+  describe('Minimum profile sample', () => {
+    it('raises a typed 0 static profile sample to 1', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={staticFormData}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('profile-sample-input'), {
+        target: { value: '0' },
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Static,
+        config: { ...staticFormData.config, profileSample: 1 },
+      });
+    });
+
+    it.each(['0', ''])(
+      'raises a threshold profile sample of "%s" to 1',
+      (value) => {
+        render(
+          <ProfileSampleConfigField
+            {...baseFieldProps}
+            formData={dynamicFormData}
+          />
+        );
+
+        fireEvent.change(screen.getByTestId('profile-sample-0'), {
+          target: { value },
+        });
+
+        expect(mockOnChange).toHaveBeenCalledWith({
+          sampleConfigType: SampleConfigType.Dynamic,
+          config: {
+            smartSampling: false,
+            thresholds: [
+              { ...dynamicFormData.config?.thresholds?.[0], profileSample: 1 },
+            ],
+          },
+        });
+      }
+    );
+
+    it('renders a stored 0 sample as-is without rewriting it', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={{
+            sampleConfigType: SampleConfigType.Static,
+            config: { profileSample: 0 },
+          }}
+        />
+      );
+
+      expect(screen.getByTestId('profile-sample-input')).toHaveValue(0);
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Label rendering', () => {
     it('renders all field labels in STATIC mode', () => {
       render(

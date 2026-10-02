@@ -46,6 +46,7 @@ import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
+  MIN_PROFILE_SAMPLE,
   PROFILER_MODAL_LABEL_STYLE,
   PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
@@ -77,10 +78,6 @@ import {
   ProfilerSettingModalState,
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
-
-// Ingestion treats a 0 sample as "no sampling" and profiles the full table,
-// overriding any schema/database/pipeline sampling.
-const MIN_PROFILE_SAMPLE = 1;
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../SchemaEditor/SchemaEditor'))

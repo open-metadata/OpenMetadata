@@ -24,6 +24,7 @@ import { FieldProps } from '@rjsf/utils';
 import { Form, Switch } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MIN_PROFILE_SAMPLE } from '../../../../../constants/profiler.constant';
 import {
   ICSamplingConfig,
   ProfileSampleConfig,
@@ -78,7 +79,9 @@ const StaticSampleConfig = ({
             onChange={(value) =>
               onFieldChange(
                 'profileSample',
-                value !== '' ? Number(value) : undefined
+                value === ''
+                  ? undefined
+                  : Math.max(MIN_PROFILE_SAMPLE, Number(value))
               )
             }
           />
@@ -238,7 +241,7 @@ const DynamicSampleConfig = ({
                           onThresholdChange(
                             index,
                             'profileSample',
-                            Number(value) || 0
+                            Math.max(MIN_PROFILE_SAMPLE, Number(value) || 0)
                           )
                         }
                       />
