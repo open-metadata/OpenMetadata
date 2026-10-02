@@ -507,9 +507,7 @@ describe('useLimitStore', () => {
       expect(survivingBanner?.resource).toBe('user');
       expect(survivingBanner?.type).toBe('danger');
       expect(survivingBanner?.subheader).toBe('11/10 (FREE, 100%)');
-      expect(
-        useLimitStore.getState().resourceLimit.user.currentCount
-      ).toBe(11);
+      expect(useLimitStore.getState().resourceLimit.user.currentCount).toBe(11);
     });
   });
 

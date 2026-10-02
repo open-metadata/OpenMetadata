@@ -58,6 +58,14 @@ const getLimitThresholdPercentage = (
   return Math.round((threshold / limits.hardLimit) * 100);
 };
 
+const computeLimitStatus = (
+  limits: { softLimit: number; hardLimit: number },
+  currentCount: number
+) => ({
+  softLimitExceed: limits.softLimit !== -1 && currentCount >= limits.softLimit,
+  hardLimitExceed: limits.hardLimit !== -1 && currentCount >= limits.hardLimit,
+});
+
 const maybeShowLimitBanner = (
   rLimit: ResourceLimit['featureLimitStatuses'][number],
   resource: string,
@@ -72,10 +80,10 @@ const maybeShowLimitBanner = (
     limitReached,
   } = rLimit;
 
-  const softLimitExceed =
-    limits.softLimit !== -1 && currentCount >= limits.softLimit;
-  const hardLimitExceed =
-    limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
+  const { softLimitExceed, hardLimitExceed } = computeLimitStatus(
+    limits,
+    currentCount
+  );
   const isAnyLimitExceeded = softLimitExceed || hardLimitExceed || limitReached;
 
   if (isAnyLimitExceeded && showBanner) {
