@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs, Tooltip } from '@openmetadata/ui-core-components';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -19,8 +19,7 @@ import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -32,6 +31,13 @@ import {
   DataAssetsHeaderProps,
   DataAssetWithDomains,
 } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { DataQualityIndicator } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator';
+import { DataQualityIndicatorCounts } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.types';
+import {
+  countUnresolvedIncidents,
+  DQ_INDICATOR_FETCH_LIMIT,
+  EMPTY_DQ_INDICATOR_COUNTS,
+} from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.utils';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -62,7 +68,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
-import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
+import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
 import {
   tableQueryCountFn,
@@ -77,6 +83,7 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
+import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 import {
   checkIfExpandViewSupported,
@@ -100,6 +107,7 @@ import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
   findColumnByEntityLink,
+  generateEntityLink,
   getJoinsFromTableJoins,
   getTagsWithoutTier,
   getTierTags,
@@ -138,7 +146,8 @@ const TableDetailsPageV1: React.FC = () => {
     FEED_COUNT_INITIAL_DATA
   );
 
-  const [dqFailureCount, setDqFailureCount] = useState(0);
+  const [dqIndicatorCounts, setDqIndicatorCounts] =
+    useState<DataQualityIndicatorCounts>(EMPTY_DQ_INDICATOR_COUNTS);
   const { customizedPage } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
@@ -153,25 +162,12 @@ const TableDetailsPageV1: React.FC = () => {
     [columnPart, datasetFQN]
   );
 
-  const alertBadge = useMemo(() => {
-    return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
-      <Tooltip
-        excludeTriggerFromTabOrder
-        placement="right"
-        title={t('label.check-active-data-quality-incident-plural')}
-        triggerClassName="tw:inline-flex">
-        <Link
-          aria-label={t('label.check-active-data-quality-incident-plural')}
-          to={getEntityDetailsPath(
-            EntityType.TABLE,
-            tableFqn,
-            EntityTabs.PROFILER
-          )}>
-          <RedAlertIcon className="text-red-3" height={24} width={24} />
-        </Link>
-      </Tooltip>
-    ) : undefined;
-  }, [dqFailureCount, tableFqn]);
+  const alertBadge = useMemo(
+    () => (
+      <DataQualityIndicator counts={dqIndicatorCounts} tableFqn={tableFqn} />
+    ),
+    [dqIndicatorCounts, tableFqn]
+  );
 
   const {
     permissions: fetchedTablePermissions,
@@ -349,59 +345,64 @@ const TableDetailsPageV1: React.FC = () => {
     [tablePermissions, tableFqn, tableDetails, navigate]
   );
 
-  const fetchDQUpstreamFailureCount = async () => {
+  const fetchDqIndicatorCounts = async () => {
     if (!tableClassBase.getAlertEnableStatus()) {
-      setDqFailureCount(0);
+      setDqIndicatorCounts(EMPTY_DQ_INDICATOR_COUNTS);
+
+      return;
     }
 
-    // Todo: Remove this once we have support for count in API
-    try {
-      const data = await getDataQualityLineage(tableFqn, {
-        upstreamDepth: 1,
-      });
-      setDqLineageData(data);
-      const updatedNodes =
-        data.nodes?.filter((node) => node?.fullyQualifiedName !== tableFqn) ??
-        [];
-      setDqFailureCount(updatedNodes.length);
-    } catch {
-      setDqFailureCount(0);
+    // ponytail: incidents are classified from the first DQ_INDICATOR_FETCH_LIMIT failing tests and
+    // latest incidents only. Past that the level is still right, only the tooltip counts drift;
+    // a server-side "open incidents on passing tests" count is the upgrade path.
+    const [failingResult, incidentResult, lineageResult] =
+      await Promise.allSettled([
+        getListTestCaseBySearch({
+          entityLink: generateEntityLink(tableFqn),
+          includeAllTests: true,
+          testCaseStatus: TestCaseStatus.Failed,
+          limit: DQ_INDICATOR_FETCH_LIMIT,
+        }),
+        getListTestCaseIncidentStatus({
+          originEntityFQN: tableFqn,
+          latest: true,
+          // `latest` is only honoured together with a time range.
+          startTs: 0,
+          endTs: Date.now(),
+          limit: DQ_INDICATOR_FETCH_LIMIT,
+        }),
+        getDataQualityLineage(tableFqn, { upstreamDepth: 1 }),
+      ]);
+
+    const failingTests =
+      failingResult.status === 'fulfilled' ? failingResult.value.data : [];
+    const failingTestCaseIds = new Set(
+      failingTests.map((testCase) => testCase.id ?? '')
+    );
+
+    if (lineageResult.status === 'fulfilled') {
+      setDqLineageData(lineageResult.value);
     }
-  };
 
-  const getTestCaseFailureCount = async () => {
-    try {
-      if (!tableClassBase.getAlertEnableStatus()) {
-        setDqFailureCount(0);
-
-        return;
-      }
-
-      const testSuiteId = tableDetails?.testSuite?.id;
-
-      if (!testSuiteId) {
-        await fetchDQUpstreamFailureCount();
-
-        return;
-      }
-
-      const { data } = await fetchTestCaseResultByTestSuiteId(
-        testSuiteId,
-        TestCaseStatus.Failed
-      );
-      const failureCount = data.reduce(
-        (acc, curr) => acc + Number.parseInt(curr.document_count ?? '0'),
-        0
-      );
-
-      if (failureCount === 0) {
-        await fetchDQUpstreamFailureCount();
-      } else {
-        setDqFailureCount(failureCount);
-      }
-    } catch {
-      setDqFailureCount(0);
-    }
+    setDqIndicatorCounts({
+      failingTests:
+        failingResult.status === 'fulfilled'
+          ? failingResult.value.paging?.total ?? failingTests.length
+          : 0,
+      unresolvedIncidents:
+        incidentResult.status === 'fulfilled'
+          ? countUnresolvedIncidents(
+              incidentResult.value.data,
+              failingTestCaseIds
+            )
+          : 0,
+      upstreamIssues:
+        lineageResult.status === 'fulfilled'
+          ? lineageResult.value.nodes?.filter(
+              (node) => node?.fullyQualifiedName !== tableFqn
+            ).length ?? 0
+          : 0,
+    });
   };
 
   const {
@@ -894,12 +895,12 @@ const TableDetailsPageV1: React.FC = () => {
     tourMockDatasetData,
   ]);
 
-  // P1.2: getTestCaseFailureCount drives the global red-alert badge in the page chrome,
+  // P1.2: fetchDqIndicatorCounts drives the global DQ indicator in the page chrome,
   // so it must run as soon as tableDetails resolves — deferring would mean the user could
   // miss a critical "this dataset has failing tests" indicator on first paint.
   useEffect(() => {
     if (tableDetails) {
-      getTestCaseFailureCount();
+      fetchDqIndicatorCounts();
     }
   }, [tableDetails?.fullyQualifiedName]);
 
