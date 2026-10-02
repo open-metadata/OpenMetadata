@@ -110,7 +110,10 @@ export const CONTRACT_EXECUTION_CHART_STATUS: Record<
     label: 'label.partial-success',
   },
   [ContractExecutionStatus.Running]: { status: 'info', label: 'label.running' },
-  [ContractExecutionStatus.Queued]: { status: 'neutral', label: 'label.queued' },
+  [ContractExecutionStatus.Queued]: {
+    status: 'neutral',
+    label: 'label.queued',
+  },
 };
 
 export const MAX_LATENCY_UNITS = ['minute', 'hour', 'day'];

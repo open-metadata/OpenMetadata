@@ -28,7 +28,11 @@ describe('CONTRACT_EXECUTION_CHART_STATUS', () => {
     [ContractExecutionStatus.Success, 'success', 'label.success'],
     [ContractExecutionStatus.Failed, 'failed', 'label.failed'],
     [ContractExecutionStatus.Aborted, 'warning', 'label.aborted'],
-    [ContractExecutionStatus.PartialSuccess, 'warning', 'label.partial-success'],
+    [
+      ContractExecutionStatus.PartialSuccess,
+      'warning',
+      'label.partial-success',
+    ],
     [ContractExecutionStatus.Running, 'info', 'label.running'],
     [ContractExecutionStatus.Queued, 'neutral', 'label.queued'],
   ])('%s is drawn as %s and named %s', (executionStatus, status, label) => {

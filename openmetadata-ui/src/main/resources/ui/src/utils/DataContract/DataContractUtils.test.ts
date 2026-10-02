@@ -187,9 +187,18 @@ describe('DataContractUtils', () => {
 
     it('starts a new month across a year boundary', () => {
       const processedData = [
-        { name: `${Date.UTC(2021, 11, 30)}_0`, displayTimestamp: Date.UTC(2021, 11, 30) },
-        { name: `${Date.UTC(2021, 11, 31)}_1`, displayTimestamp: Date.UTC(2021, 11, 31) },
-        { name: `${Date.UTC(2022, 0, 2)}_2`, displayTimestamp: Date.UTC(2022, 0, 2) },
+        {
+          name: `${Date.UTC(2021, 11, 30)}_0`,
+          displayTimestamp: Date.UTC(2021, 11, 30),
+        },
+        {
+          name: `${Date.UTC(2021, 11, 31)}_1`,
+          displayTimestamp: Date.UTC(2021, 11, 31),
+        },
+        {
+          name: `${Date.UTC(2022, 0, 2)}_2`,
+          displayTimestamp: Date.UTC(2022, 0, 2),
+        },
       ];
 
       expect(
