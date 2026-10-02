@@ -1155,6 +1155,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
 
         searchRepository.updateEntity(ref);
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -1168,6 +1169,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
 
       searchRepository.updateEntity(term.getEntityReference());
+      RdfUpdater.updateEntity(term);
     }
 
     // Add Failed And Suceess Request
@@ -1227,6 +1229,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
 
     success.add(new BulkResponse().withRequest(columnRef));
@@ -1435,6 +1438,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -1474,6 +1478,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (!dryRun) {
       // Update the parent table's search index
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
   }
 

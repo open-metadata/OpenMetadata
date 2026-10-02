@@ -126,6 +126,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -146,7 +147,8 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  public static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  public static final String PATCH_FIELDS =
+      "tableConstraints,tablePartition,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
       "tableConstraints,tablePartition,dataModel,sourceUrl,columns,schemaDefinition";
@@ -1456,8 +1458,11 @@ public class TableRepository extends EntityRepository<Table> {
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
     // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
     // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
-    // merged tags/dataModel instead of stale pre-merge JSON.
+    // merged tags/dataModel instead of stale pre-merge JSON. It also bypasses postUpdate, which is
+    // normally what triggers the RDF snapshot write — trigger it explicitly so the tags merged
+    // above (entity- and column-level) actually reach RDF.
     invalidateCacheForEntity(entityType, table.getId(), table.getFullyQualifiedName());
+    RdfUpdater.updateEntity(table);
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -1714,7 +1719,7 @@ public class TableRepository extends EntityRepository<Table> {
     for (Table table : entities) {
       collectColumnTags(table.getColumns(), columnTagsByTarget);
     }
-    applyTagsBatchWithRdf(columnTagsByTarget);
+    applyTagsBatch(columnTagsByTarget);
   }
 
   @Override
@@ -2414,8 +2419,17 @@ public class TableRepository extends EntityRepository<Table> {
           TABLE_CONSTRAINTS_FIELD,
           () -> updateTableConstraints(origTable, updatedTable, operation));
       compareAndUpdate(
+          "tablePartition",
+          () -> {
+            DatabaseUtil.validateTablePartition(
+                updatedTable.getColumns(), updatedTable.getTablePartition());
+            recordChange(
+                "tablePartition", origTable.getTablePartition(), updatedTable.getTablePartition());
+          });
+      compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
+      compareAndUpdate("aliases", () -> updateAliases(origTable, updatedTable));
       compareAndUpdate(
           "retentionPeriod",
           () ->
@@ -2472,6 +2486,16 @@ public class TableRepository extends EntityRepository<Table> {
           && !origTable.getSchemaDefinition().equals(updatedTable.getSchemaDefinition())) {
         updatedTable.setProcessedLineage(false);
       }
+    }
+
+    private void updateAliases(Table origTable, Table updatedTable) {
+      List<String> origAliases = listOrEmpty(origTable.getAliases());
+      List<String> updatedAliases = listOrEmpty(updatedTable.getAliases());
+
+      List<String> added = new ArrayList<>();
+      List<String> deleted = new ArrayList<>();
+      recordListChange(
+          "aliases", origAliases, updatedAliases, added, deleted, EntityUtil.stringMatch);
     }
 
     private void updateTableConstraints(Table origTable, Table updatedTable, Operation operation) {

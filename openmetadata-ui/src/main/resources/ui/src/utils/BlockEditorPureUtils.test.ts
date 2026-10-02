@@ -76,6 +76,284 @@ describe('formatClientContent: markdown special characters', () => {
   });
 });
 
+const NESTED_LIST_DESCRIPTION =
+  '<p><strong>Discontinued UEs:</strong></p>' +
+  '<ol class="om-list-decimal">' +
+  '<li class="om-leading-normal"><p>High Definition Media UEs</p>' +
+  '<ul class="om-list-disc">' +
+  '<li class="om-leading-normal"><p>HD: Capable</p></li>' +
+  '<li class="om-leading-normal"><p>HD: Display Capable</p></li>' +
+  '<li class="om-leading-normal"><p>HD: NO</p></li>' +
+  '<li class="om-leading-normal"><p>HD: Receivable</p></li>' +
+  '</ul></li>' +
+  '<li class="om-leading-normal"><p>VCR and Analog UEs</p>' +
+  '<ul class="om-list-disc">' +
+  '<li class="om-leading-normal"><p>AnalogCableOnlyWithPay</p></li>' +
+  '<li class="om-leading-normal"><p>PresVCRYes</p></li>' +
+  '<li class="om-leading-normal"><p>PresVCRNo</p></li>' +
+  '</ul></li>' +
+  '<li class="om-leading-normal"><p>Cable UE</p>' +
+  '<ul class="om-list-disc">' +
+  '<li class="om-leading-normal"><p>CableNotADS</p></li>' +
+  '<li class="om-leading-normal"><p>CableAndADS</p></li>' +
+  '</ul></li>' +
+  '</ol>';
+
+// Showdown's `unhashHTMLSpans` gives up after 10 levels of nesting and leaves
+// its `¨C<n>C` span placeholders in the output. Any content that reaches the
+// rendered page carrying one has been round-tripped through the markdown
+// converter when it should not have been.
+const SHOWDOWN_SPAN_PLACEHOLDER = /\u00a8C\d+C/;
+
+describe('isHTMLString: already-rendered HTML', () => {
+  it('should treat a nested ordered/unordered list as HTML', () => {
+    expect(isHTMLString(NESTED_LIST_DESCRIPTION)).toBe(true);
+  });
+
+  it('should treat a nested list as HTML even when its prose looks markdown', () => {
+    expect(
+      isHTMLString(`Legacy notes: **see wiki** ${NESTED_LIST_DESCRIPTION}`)
+    ).toBe(true);
+  });
+
+  it('should treat a table as HTML even without a wrapping block tag', () => {
+    // `table` has to be in the cheap tag pre-check too, or a bare table never
+    // reaches the DOM query that would recognise it.
+    expect(isHTMLString('<table><tr><td>**Value**</td></tr></table>')).toBe(
+      true
+    );
+  });
+
+  it('should not misread markdown characters in attributes as markdown', () => {
+    expect(
+      isHTMLString('<p><a href="https://x.dev/a__b__c">link</a></p>')
+    ).toBe(true);
+  });
+
+  it('should treat a fenced HTML table example as markdown', () => {
+    // The fence holds a code sample. `DOMParser` parses the `<table>` inside
+    // it into a real element, so the structural check has to ignore code
+    // regions or the example renders as a table instead of as code.
+    const markdown = [
+      'Example:',
+      '',
+      '```html',
+      '<table><tr><td>Cell</td></tr></table>',
+      '```',
+    ].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should treat a fenced HTML list example as markdown', () => {
+    const markdown = ['```html', '<ul><li>one</li></ul>', '```'].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should treat a list inside a code span as markdown', () => {
+    expect(isHTMLString('Use `<ul><li>x</li></ul>` for a list')).toBe(false);
+  });
+
+  it('should still treat a real list beside a code example as HTML', () => {
+    const content = `<ul><li>real</li></ul> and \`<ol><li>sample</li></ol>\``;
+
+    expect(isHTMLString(content)).toBe(true);
+  });
+
+  it('should treat an indented HTML table example as markdown', () => {
+    // Markdown's third code form. `DOMParser` parses the `<table>` into a real
+    // element exactly as it does inside a fence, so the indented block has to
+    // be recognised too.
+    const markdown = [
+      'Example:',
+      '',
+      '    <table><tr><td>Cell</td></tr></table>',
+    ].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should treat a tab-indented HTML list example as markdown', () => {
+    const markdown = ['Example:', '', '\t<ul><li>one</li></ul>'].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should treat an indented snippet with no prose around it as HTML', () => {
+    // Ambiguous by construction: with nothing around it, a lone indented
+    // block is equally a code example and pretty-printed markup, and no
+    // amount of parsing separates the two. It resolves to HTML, like the
+    // complex-HTML case above — a code example in a real description has
+    // prose introducing it, and that prose is what marks the document as
+    // markdown.
+    expect(isHTMLString('    <ul><li>one</li></ul>')).toBe(true);
+  });
+
+  it('should treat a multi-line indented example as markdown', () => {
+    // The block runs on through its own blank lines until a line that is
+    // neither indented nor blank.
+    const markdown = [
+      'Example:',
+      '',
+      '    <ul>',
+      '      <li>one</li>',
+      '',
+      '      <li>two</li>',
+      '    </ul>',
+    ].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should treat an indented block beside a top-level tag as HTML', () => {
+    // Deliberate tie-break, not an oversight.
+    //
+    // This is the same shape as `should keep pretty-printed HTML as HTML when
+    // an item holds a backtick` below: a tag at column zero, a blank line,
+    // then indented structural markup, all at top level. Read as markdown the
+    // indented part is a code example; read as HTML it is a pretty-printed
+    // list. Nothing in the string separates the two, and the DOM shape is
+    // identical — `p + table` here, `p + ol` there.
+    //
+    // It resolves to HTML, because the cost is asymmetric: calling a real
+    // description an example renders a fenced-looking block of raw tags, and
+    // calling an example a description renders one table that should have
+    // been code.
+    const content = [
+      '<p>Example:</p>',
+      '',
+      '    <table><tr><td>Cell</td></tr></table>',
+    ].join('\n');
+
+    expect(isHTMLString(content)).toBe(true);
+  });
+
+  it('should treat a blockquoted indented example as markdown', () => {
+    // A blockquote marker sits outside the indentation it quotes, so it has
+    // to come off before the line is measured.
+    const markdown = [
+      'Example:',
+      '',
+      '>     <table><tr><td>Cell</td></tr></table>',
+    ].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should treat a nested blockquoted indented example as markdown', () => {
+    const markdown = ['Example:', '', '> >     <ul><li>one</li></ul>'].join(
+      '\n'
+    );
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should treat pretty-printed HTML as HTML, not as indented code', () => {
+    // Indentation in serialized editor output is pretty printing. Reading it
+    // as a code block would strip the document's own markup.
+    const html = [
+      '<div>',
+      '',
+      '    <ul>',
+      '      <li>one</li>',
+      '    </ul>',
+      '',
+      '</div>',
+    ].join('\n');
+
+    expect(isHTMLString(html)).toBe(true);
+  });
+
+  it('should keep pretty-printed HTML as HTML when an item looks markdown', () => {
+    // The case above survives even a code-stripped structural query, because
+    // its text holds nothing a markdown pattern matches. This one does not:
+    // lose the indented `<ul>` and it falls through to the pattern check,
+    // `**one**` matches, and a real list goes back to the converter.
+    const html = [
+      '<div>',
+      '',
+      '    <ul>',
+      '      <li>**one**</li>',
+      '    </ul>',
+      '',
+      '</div>',
+    ].join('\n');
+
+    expect(isHTMLString(html)).toBe(true);
+  });
+
+  it('should keep pretty-printed HTML as HTML when an item holds a backtick', () => {
+    const html = [
+      '<p><strong>Discontinued UEs:</strong></p>',
+      '',
+      '    <ol>',
+      '      <li>use `x` here</li>',
+      '      <li>VCR</li>',
+      '    </ol>',
+    ].join('\n');
+
+    expect(isHTMLString(html)).toBe(true);
+  });
+
+  it('should treat an indented line continuing a paragraph as HTML', () => {
+    // No blank line before it, so it is a continuation rather than a block.
+    const html = ['<p>Intro</p>', '    <ul><li>one</li></ul>'].join('\n');
+
+    expect(isHTMLString(html)).toBe(true);
+  });
+
+  it('should still treat inline HTML mixed with markdown as markdown', () => {
+    expect(isHTMLString('<span>x</span> and **bold** text')).toBe(false);
+  });
+});
+
+describe('formatClientContent: HTML code examples', () => {
+  it('should render a fenced HTML table example as code, not as a table', () => {
+    const markdown = [
+      'Example:',
+      '',
+      '```html',
+      '<table><tr><td>Cell</td></tr></table>',
+      '```',
+    ].join('\n');
+
+    const result = formatClientContent(markdown);
+
+    expect(result).toContain('<pre>');
+    expect(result).toContain('&lt;table&gt;');
+    expect(result).not.toContain('<table>');
+  });
+});
+
+describe('formatClientContent: indented code examples', () => {
+  it('should render an indented HTML table example as code, not as a table', () => {
+    const markdown = [
+      'Example:',
+      '',
+      '    <table><tr><td>Cell</td></tr></table>',
+    ].join('\n');
+
+    const result = formatClientContent(markdown);
+
+    expect(result).toContain('<pre>');
+    expect(result).toContain('&lt;table&gt;');
+    expect(result).not.toContain('<table>');
+  });
+});
+
+describe('formatClientContent: nested lists', () => {
+  it('should not leak markdown-converter span placeholders', () => {
+    const result = formatClientContent(
+      `Legacy notes: **see wiki** ${NESTED_LIST_DESCRIPTION}`
+    );
+
+    expect(result).not.toMatch(SHOWDOWN_SPAN_PLACEHOLDER);
+    expect(result).toContain('AnalogCableOnlyWithPay');
+    expect(result).toContain('CableAndADS');
+  });
+});
+
 describe('isHTMLString: parser failure', () => {
   it('should fall back to treating content as markdown when parsing throws', () => {
     const spy = jest

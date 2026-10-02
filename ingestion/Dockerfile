@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.3.1-python3.12
+FROM apache/airflow:3.3.2-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -124,13 +124,13 @@ ARG INGESTION_DEPENDENCY="all"
 ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
-ARG RI_VERSION="2.0.3.0"
+ARG RI_VERSION="2.0.4.0"
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
 RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593

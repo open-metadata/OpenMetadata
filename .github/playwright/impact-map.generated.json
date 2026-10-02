@@ -54,6 +54,15 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew.tsx"
       ],
       "specs": [
@@ -946,15 +955,6 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/MarketplaceGreetingBanner/MarketplaceGreetingBanner.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DataMarketplace.spec.ts",
-        "playwright/e2e/Pages/DataMarketplacePermissions.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component.tsx"
       ],
       "specs": [
         "playwright/e2e/Pages/DataMarketplace.spec.ts",
@@ -2457,6 +2457,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts"
       ]
@@ -2547,6 +2548,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Pages/CustomThemeConfig.spec.ts"
@@ -2762,7 +2764,8 @@
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -4366,7 +4369,8 @@
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -4389,7 +4393,8 @@
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
     },
     {
@@ -4779,6 +4784,15 @@
       "specs": [
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/explore/ExploreHeader/ExploreSearchInput.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataMarketplace.spec.ts",
+        "playwright/e2e/Pages/DataMarketplacePermissions.spec.ts"
       ]
     },
     {
@@ -5302,6 +5316,7 @@
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/RTL.spec.ts",
@@ -5477,6 +5492,7 @@
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/SubDomainPagination.spec.ts",
+        "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
@@ -5490,6 +5506,7 @@
         "playwright/e2e/Pages/UserCreationWithPersona.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/Search/SearchNightly.spec.ts",
         "playwright/e2e/Search/SearchRelevance.spec.ts",
         "playwright/e2e/VersionPages/ClassificationVersionPage.spec.ts",
@@ -5678,6 +5695,27 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/entity/docStore/document.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
+        "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/PersonaAppLayout.spec.ts",
+        "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
+        "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DescriptionVisibility.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/policies/accessControl/resourcePermission.ts"
       ],
       "specs": [
@@ -5737,6 +5775,27 @@
       "specs": [
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/type/personaPreferences.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
+        "playwright/e2e/Features/PersonaAIContext.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRuleCardAndStates.spec.ts",
+        "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
+        "playwright/e2e/Features/PersonaAppLayout.spec.ts",
+        "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
+        "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DescriptionVisibility.spec.ts"
       ]
     },
     {
@@ -5803,6 +5862,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Pages/CustomThemeConfig.spec.ts"
@@ -6350,6 +6410,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/TableDetailsPageV1/TableAliases/TableAliases.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/TableAliases.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/TableDetailsPageV1/TableConstraints/TableConstraints.tsx"
       ],
       "specs": [
@@ -6553,6 +6621,14 @@
       ],
       "specs": [
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/platform/persona/PersonaAppLayoutPage/PersonaAppLayoutPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/PersonaAppLayout.spec.ts"
       ]
     },
     {

@@ -745,6 +745,20 @@ public class UserRepository extends EntityRepository<User> {
     SubjectCache.invalidateUser(user.getName());
   }
 
+  /**
+   * Fields an authentication flow must load before it mutates a user and PUTs it back. {@code
+   * createOrUpdate} compares the whole entity against the stored one, so any field {@link
+   * #clearFields} nulls and the caller did not ask for is recorded as a deletion and erased --
+   * that is the user's teams, profile, authentication mechanism, personas and domains. The two
+   * login timestamps are added on top of the update fields because they live in the stored JSON
+   * but are not part of the PUT field set.
+   */
+  public Fields getAuthUpdateFields() {
+    Set<String> fields = new HashSet<>(putFields.getFieldList());
+    fields.addAll(Set.of("lastLoginTime", "lastActivityTime"));
+    return new Fields(fields);
+  }
+
   private void updateImpersonationRole(
       User user, boolean allowImpersonation, EntityReference impersonationRole) {
     if (allowImpersonation) {

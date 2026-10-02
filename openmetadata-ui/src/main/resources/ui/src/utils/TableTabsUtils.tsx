@@ -177,6 +177,15 @@ const PartitionedKeys = withSuspenseFallback(
   <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
+const TableAliases = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../pages/TableDetailsPageV1/TableAliases/TableAliases.component'
+    ).then((module) => ({ default: module.TableAliases }))
+  ),
+  <EntityDetailWidgetSkeleton lineCount={5} />
+);
+
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isQueryCountLoading,
@@ -493,6 +502,8 @@ export const getTableWidgetFromKey = (
     return <FrequentlyJoinedTables />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
     return <PartitionedKeys />;
+  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_ALIASES)) {
+    return <TableAliases />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.ASSET_HEALTH)) {
     return <AssetHealthWidget />;
   } else {
