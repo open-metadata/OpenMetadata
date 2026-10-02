@@ -237,6 +237,7 @@ import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
+import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -574,6 +575,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * review any change, such as a tag, and stays with the workflow run that opened it.
    */
   protected boolean approvalTaskReviewsEntityStatus = false;
+
+  /** Decides which active governance workflows own an entity's lifecycle stage. */
+  protected StageOwnership stageOwnership = EntityStatusWorkflows.ACTIVE;
 
   protected boolean quoteFqn =
       false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
@@ -1452,7 +1456,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Objects.requireNonNullElse(entity.getEntityStatus(), defaultEntityStatus);
   }
 
-  private void assignInitialEntityStatus(T entity) {
+  /** Puts a new entity in the stage it starts in; every create path calls it before storing. */
+  void assignInitialEntityStatus(T entity) {
     if (supportsEntityStatus) {
       if (requestsStageOwnedByWorkflow(entity)) {
         entity.setEntityStatus(null);
@@ -1462,25 +1467,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   // A new entity cannot be created straight into a stage that a workflow owns: it starts where
-  // every
-  // new entity of its type starts, and the workflow moves it from there.
+  // every new entity of its type starts, and the workflow moves it from there.
   private boolean requestsStageOwnedByWorkflow(T entity) {
     return entity.getEntityStatus() != null
         && workflowsOwnEntityStatus
         && !EntityStatusWorkflows.isWorkflowChange(entity)
-        && EntityStatusWorkflows.owningStageOf(entityType, entity).isPresent();
+        && stageOwnership.owningStageOf(entityType, entity).isPresent();
   }
 
   /** Active workflows that own this entity type's lifecycle stage, sorted; empty when none can. */
   public List<String> getStageWorkflows() {
     return supportsEntityStatus && workflowsOwnEntityStatus
-        ? EntityStatusWorkflows.owningStageOf(entityType)
+        ? stageOwnership.owningStageOf(entityType)
         : List.of();
   }
 
   private void checkEntityStatusNotOwnedByWorkflow(T current, T change) {
     if (workflowsOwnEntityStatus && !EntityStatusWorkflows.isWorkflowChange(change)) {
-      EntityStatusWorkflows.owningStageOf(entityType, current)
+      stageOwnership
+          .owningStageOf(entityType, current)
           .ifPresent(
               workflow -> {
                 throw new AuthorizationException(
@@ -9888,7 +9893,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    private void updateEntityStatus(boolean consolidatingChanges) {
+    void updateEntityStatus(boolean consolidatingChanges) {
       if (!supportsEntityStatus) {
         return;
       }

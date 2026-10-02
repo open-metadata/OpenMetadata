@@ -99,9 +99,10 @@ class EntityStatusWorkflowsTest {
   void nothingOwnsAStageWhileTheWorkflowEngineIsDown() {
     EntityStatusWorkflows.invalidate();
 
-    assertTrue(EntityStatusWorkflows.owningStageOf(Entity.METRIC).isEmpty());
+    assertTrue(EntityStatusWorkflows.ACTIVE.owningStageOf(Entity.METRIC).isEmpty());
     assertTrue(
-        EntityStatusWorkflows.owningStageOf(Entity.METRIC, new Metric().withName("weekly"))
+        EntityStatusWorkflows.ACTIVE
+            .owningStageOf(Entity.METRIC, new Metric().withName("weekly"))
             .isEmpty());
   }
 
