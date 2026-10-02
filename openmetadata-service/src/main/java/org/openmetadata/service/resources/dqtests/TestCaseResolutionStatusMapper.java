@@ -3,9 +3,12 @@ package org.openmetadata.service.resources.dqtests;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityTimeSeriesMapper;
 
@@ -27,10 +30,32 @@ public class TestCaseResolutionStatusMapper
     return new TestCaseResolutionStatus()
         .withTimestamp(System.currentTimeMillis())
         .withTestCaseResolutionStatusType(create.getTestCaseResolutionStatusType())
-        .withTestCaseResolutionStatusDetails(create.getTestCaseResolutionStatusDetails())
+        .withTestCaseResolutionStatusDetails(withResolvedAssignee(create))
         .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis())
         .withTestCaseReference(testCase.getEntityReference())
         .withSeverity(create.getSeverity());
+  }
+
+  /**
+   * A request may name the assignee by id or by name alone. The record keeps the full reference:
+   * the incident lists show the assignee from it, and the incident groups count assignees by name.
+   */
+  private static Object withResolvedAssignee(CreateTestCaseResolutionStatus create) {
+    Object details = create.getTestCaseResolutionStatusDetails();
+    if (create.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Assigned
+        || details == null) {
+      return details;
+    }
+    Assigned assigned = JsonUtils.convertValue(details, Assigned.class);
+    EntityReference assignee = assigned.getAssignee();
+    if (assignee == null) {
+      return details;
+    }
+    String type = assignee.getType() != null ? assignee.getType() : Entity.USER;
+    return assigned.withAssignee(
+        assignee.getId() != null
+            ? Entity.getEntityReferenceById(type, assignee.getId(), Include.NON_DELETED)
+            : Entity.getEntityReferenceByName(type, assignee.getName(), Include.NON_DELETED));
   }
 }
