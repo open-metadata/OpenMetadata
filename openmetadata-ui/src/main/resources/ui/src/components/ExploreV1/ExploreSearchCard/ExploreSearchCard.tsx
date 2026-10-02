@@ -12,13 +12,14 @@
  */
 import {
   Breadcrumbs,
+  Button as CoreButton,
   Card,
+  Checkbox,
   ClassificationTag,
   Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Checkbox, Col, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
@@ -208,27 +209,28 @@ const CheckboxCell = ({
   checked,
   showCheckboxes,
   onCheckboxChange,
+  t,
 }: {
   checked: boolean;
   showCheckboxes: boolean;
   onCheckboxChange?: (checked: boolean) => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }) => {
   if (!showCheckboxes) {
     return null;
   }
 
   return (
-    <Col flex="25px">
+    <div className="tw:relative tw:max-w-full tw:min-h-px tw:px-0.5 tw:flex-[0_0_25px]">
       <Checkbox
-        checked={checked}
+        aria-label={t('label.select-entity', { entity: t('label.asset') })}
         className="assets-checkbox"
-        onChange={(e) => {
-          onCheckboxChange?.(e.target.checked);
-          e.stopPropagation();
-        }}
-        onClick={(e) => e.stopPropagation()}
+        data-testid="asset-checkbox"
+        isSelected={checked}
+        size="md"
+        onChange={(isSelected) => onCheckboxChange?.(isSelected)}
       />
-    </Col>
+    </div>
   );
 };
 
@@ -250,7 +252,7 @@ const BreadcrumbAndScoreCell = ({
   }
 
   return (
-    <Col className="d-flex justify-between items-center" flex="auto">
+    <div className="tw:relative tw:max-w-full tw:min-h-px tw:px-0.5 tw:flex tw:flex-auto tw:items-center tw:justify-between">
       <Breadcrumbs
         autoCollapse
         className={classNames(
@@ -271,7 +273,7 @@ const BreadcrumbAndScoreCell = ({
           </Typography>
         </div>
       )}
-    </Col>
+    </div>
   );
 };
 
@@ -294,19 +296,19 @@ const EntityTitleColumn = ({
   openEntityInNewPage?: boolean;
   source: ExploreSearchCardProps['source'];
 }) => (
-  <Col
+  <div
+    className="tw:relative tw:max-w-full tw:min-h-px tw:px-0.5 tw:flex-[0_0_100%]"
     data-testid={`${
       source.service?.name ? `${source.service.name}-` : 'explore-card-'
-    }${source.name}`}
-    span={24}>
+    }${source.name}`}>
     {isTourOpen ? (
-      <Button data-testid={source.fullyQualifiedName} type="link">
+      <CoreButton color="link-color" data-testid={source.fullyQualifiedName}>
         <Typography
           className="text-lg font-medium text-link-color"
           data-testid="entity-header-display-name">
           {renderHighlightedText(searchClassBase.getEntityName(source))}
         </Typography>
-      </Button>
+      </CoreButton>
     ) : (
       <div className="w-full d-flex items-center">
         {entityIcon}
@@ -353,7 +355,7 @@ const EntityTitleColumn = ({
         )}
       </div>
     )}
-  </Col>
+  </div>
 );
 
 interface SignalBoosts {
@@ -703,18 +705,23 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         const columnDetails: ExtraInfo[] = [];
 
         if (columnSource.table) {
+          const tableLink = searchClassBase.getEntityLink({
+            ...columnSource.table,
+            entityType: EntityType.TABLE,
+          } as SourceType);
           columnDetails.push({
             key: t('label.table'),
             value: (
-              <Link
-                className="text-primary no-underline truncate w-max-13 d-inline-block align-middle"
-                title={getEntityName(columnSource.table)}
-                to={searchClassBase.getEntityLink({
-                  ...columnSource.table,
-                  entityType: EntityType.TABLE,
-                } as SourceType)}>
+              <CoreButton
+                ellipsis
+                noTextPadding
+                className="tw:max-w-52 tw:align-middle"
+                color="link-color"
+                href={isString(tableLink) ? tableLink : tableLink.pathname}
+                size="xs"
+                tooltip={getEntityName(columnSource.table)}>
                 {getEntityName(columnSource.table)}
-              </Link>
+              </CoreButton>
             ),
           });
         }
@@ -871,10 +878,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         (source as GlossaryTerm).entityStatus !== EntityStatus.Approved;
 
       return (
-        <Row gutter={[4, 8]}>
+        <div className="tw:-mx-0.5 tw:flex tw:flex-wrap tw:gap-y-2">
           <CheckboxCell
             checked={checked}
             showCheckboxes={Boolean(showCheckboxes)}
+            t={t}
             onCheckboxChange={onCheckboxChange}
           />
           <BreadcrumbAndScoreCell
@@ -894,7 +902,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             openEntityInNewPage={openEntityInNewPage}
             source={source}
           />
-        </Row>
+        </div>
       );
     }, [
       breadcrumbs,
@@ -920,7 +928,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
-        onClick={() => {
+        onClick={(e) => {
+          // Toggling selection must not also open the summary panel.
+          if ((e.target as HTMLElement).closest('.assets-checkbox')) {
+            return;
+          }
           handleSummaryPanelDisplay?.(source, tab);
         }}>
         {header}
@@ -941,7 +953,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           t={t}
         />
         {actionPopoverContent && (
-          <Space className="explore-card-actions">{actionPopoverContent}</Space>
+          <div className="explore-card-actions tw:gap-2">
+            {actionPopoverContent}
+          </div>
         )}
       </Card>
     );

@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { GitMerge, X } from '@openmetadata/ui-core-components/icons';
-import { Button, Tooltip } from 'antd';
+import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +43,6 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
-import './entity-info-drawer.less';
 import { EdgeInfoDrawerInfo } from './EntityInfoDrawer.interface';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
@@ -330,14 +333,15 @@ const EdgeInfoDrawer = ({
 
       return (
         <SectionWithEdit
-          className="summary-panel-card sql-function-section"
+          className="sql-function-section tw:mt-4 tw:last:border-b-0"
           showEditButton={hasEditAccess}
           title={t('label.sql-function')}
+          titleClassName="tw:justify-start tw:gap-2"
           onEdit={() => {
             setSqlFunction(functionValue ?? '');
             setShowSqlFunctionModal(true);
           }}>
-          <Typography className="m-b-0" data-testid="sql-function">
+          <Typography className="tw:m-0" data-testid="sql-function">
             {functionValue ?? NO_DATA_PLACEHOLDER}
           </Typography>
         </SectionWithEdit>
@@ -347,13 +351,14 @@ const EdgeInfoDrawer = ({
     return (
       <>
         <SectionWithEdit
-          className="summary-panel-card"
+          className="tw:mt-4 tw:last:border-b-0"
           showEditButton={hasEditAccess}
           title={t('label.sql-uppercase-query')}
+          titleClassName="tw:justify-start tw:gap-2"
           onEdit={() => setShowSqlQueryModal(true)}>
           {mysqlQuery ? (
             <SchemaEditor
-              className="edge-drawer-sql-editor"
+              className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:dark:border-subtle tw:[&_.cm-editor]:h-50 tw:[&_.cm-editor]:rounded-lg"
               mode={{ name: CSMode.SQL }}
               options={{
                 styleActiveLine: false,
@@ -362,16 +367,16 @@ const EdgeInfoDrawer = ({
               value={mysqlQuery}
             />
           ) : (
-            <Typography as="p" className="m-b-0">
+            <Typography as="p" className="tw:m-0">
               {t('server.no-query-available')}
             </Typography>
           )}
         </SectionWithEdit>
         <SectionWithEdit
-          className="summary-panel-card"
+          className="tw:mt-4 tw:last:border-b-0"
           showEditButton={false}
           title={t('label.lineage-source')}>
-          <Typography className="lineage-source-text">
+          <Typography className="tw:text-xs tw:font-normal tw:text-utility-gray-900">
             {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
           </Typography>
         </SectionWithEdit>
@@ -442,43 +447,53 @@ const EdgeInfoDrawer = ({
   return (
     <>
       {visible && (
-        <div className="edge-info-drawer-container" ref={containerRef}>
-          <div className="d-flex items-center justify-between">
-            <div className="title-section drawer-title-section">
-              <div className="title-container">
+        <div
+          className="tw:flex tw:h-full tw:flex-col tw:bg-utility-gray-blue-50"
+          data-testid="edge-info-drawer-container"
+          ref={containerRef}>
+          <div className="tw:flex tw:items-center tw:justify-between">
+            <div className="tw:sticky tw:top-0 tw:z-999 tw:flex-1 tw:p-1">
+              <div className="tw:flex tw:h-[49px] tw:items-center tw:justify-between tw:rounded-lg tw:bg-utility-gray-blue-50 tw:px-3 tw:dark:bg-secondary_subtle">
                 <Tooltip
-                  mouseEnterDelay={0.5}
-                  placement="bottomLeft"
+                  excludeTriggerFromTabOrder
+                  delay={500}
+                  placement="bottom left"
                   title={t('label.edge-information')}
-                  trigger="hover">
-                  <div className="d-flex items-center gap-2">
-                    <span className="d-flex">
+                  triggerClassName="tw:flex tw:items-center tw:gap-2">
+                  <span className="tw:flex tw:items-center tw:gap-2">
+                    <span className="tw:flex">
                       <GitMerge height={16} width={16} />
                     </span>
                     <Typography
-                      className="edge-info-drawer-title"
+                      className="tw:block tw:text-[15px] tw:leading-[1.5715] tw:font-semibold tw:text-utility-gray-800"
                       data-testid="edge-header-title">
                       {t('label.edge-information')}
                     </Typography>
-                  </div>
+                  </span>
                 </Tooltip>
               </div>
             </div>
-            <Button
+            <ButtonUtility
               aria-label={t('label.close')}
-              className="drawer-close-icon flex-center mr-2"
+              className="tw:mr-2 tw:size-9 tw:rounded-lg tw:p-0 tw:text-primary tw:hover:bg-transparent tw:hover:text-primary"
+              color="tertiary"
               data-testid="drawer-close-icon"
-              icon={<X height={16} width={16} />}
-              size="small"
+              icon={X}
+              size="xs"
               onClick={onClose}
             />
           </div>
-          <div className="edge-info-drawer-content">
+          <div
+            className={classNames(
+              'tw:mx-3 tw:max-h-[calc(100vh-70px)] tw:flex-1 tw:overflow-x-hidden tw:overflow-y-auto',
+              'tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-primary tw:dark:border-subtle',
+              'tw:[scrollbar-width:none] tw:[&::-webkit-scrollbar]:hidden'
+            )}>
             {isLoading ? (
               <Loader />
             ) : (
               <div className="d-flex flex-col">
-                <div className="summary-panel-card">
+                <div className="tw:mt-4 tw:last:border-b-0 tw:[&_.description-section]:mt-0">
                   <DescriptionSection
                     description={edgeEntity?.description ?? ''}
                     entityFqn={edgeEntity.fromEntity.fullyQualifiedName}
@@ -489,7 +504,7 @@ const EdgeInfoDrawer = ({
                   />
                 </div>
                 {edgeData && edgeData.length > 0 && (
-                  <div className="summary-panel-card">
+                  <div className="tw:mt-4 tw:last:border-b-0">
                     <OverviewSection
                       componentType=""
                       entityInfoV1={edgeData}

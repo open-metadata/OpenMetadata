@@ -18,15 +18,21 @@ import {
   ExploreQuickFilterField,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
+import { SearchIndex } from '../../enums/search.enum';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useExploreCache } from '../../hooks/useExploreCache';
+import { searchEntityTypeCounts, searchQuery } from '../../rest/searchAPI';
 import { getExploreTabPath } from '../../utils/RouterUtils';
 import ExplorePageV1 from './ExplorePageV1.component';
 
 const mockHandlePageChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
 const mockLocation = { pathname: 'pathname', search: '' };
+
+jest.mock('../../rest/searchAPI');
+jest.mock('../../utils/ToastUtils');
 
 jest.mock(
   '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
@@ -116,6 +122,7 @@ const mockProps = {
 describe('ExplorePageV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useExploreCache.getState().clearCache();
     mockLocation.pathname = 'pathname';
     mockLocation.search = '';
     (useCustomLocation as jest.Mock).mockImplementation(() => mockLocation);
@@ -462,5 +469,175 @@ describe('ExplorePageV1', () => {
 
     expect(searchParams.get('sortOrder')).toBe('asc');
     expect(searchParams.get('currentPage')).toBe('1');
+  });
+
+  describe('search count revalidation', () => {
+    const resultsResponse = {
+      hits: { hits: [], total: { value: 42 } },
+      aggregations: {},
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const renderCustomerSearch = async () => {
+      (searchEntityTypeCounts as jest.Mock).mockResolvedValueOnce({
+        aggregations: {
+          entityType: {
+            buckets: [
+              { key: 'table', doc_count: 42 },
+              { key: 'dashboard', doc_count: 18 },
+            ],
+          },
+        },
+        hits: { hits: [], total: { value: 60 } },
+      });
+      (searchQuery as jest.Mock).mockResolvedValueOnce(resultsResponse);
+      (ExploreV1 as jest.Mock).mockImplementation(
+        ({ tabItems }: ExploreProps) => (
+          <>
+            {tabItems.map(({ key, count }) => (
+              <p key={key}>{`${key}: ${count}`}</p>
+            ))}
+          </>
+        )
+      );
+      mockLocation.search = '?search=customer';
+      const view = render(<ExplorePageV1 {...mockProps} />);
+      await act(async () => undefined);
+
+      expect(
+        screen.getByText(`${SearchIndex.DASHBOARD}: 18`)
+      ).toBeInTheDocument();
+
+      return view;
+    };
+
+    // The next count request stays pending until the returned callback fails it; the next
+    // results request reports 41 tables.
+    const holdNextCountRequest = () => {
+      let rejectCounts: (error: Error) => void = (_error) => undefined;
+      (searchEntityTypeCounts as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectCounts = reject;
+          })
+      );
+      (searchQuery as jest.Mock).mockResolvedValueOnce({
+        ...resultsResponse,
+        hits: { hits: [], total: { value: 41 } },
+      });
+
+      return () => rejectCounts(new Error('Count unavailable'));
+    };
+
+    const getCachedData = () =>
+      Array.from(
+        useExploreCache.getState().entries.values(),
+        ({ data }) => data
+      );
+
+    it.each([true, false])(
+      'preserves other tab badges and cached counts after a count failure (cache hit: %s)',
+      async (cacheHit) => {
+        const view = await renderCustomerSearch();
+        // The per-tab results remain fresh after the shared count cache expires.
+        jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 2001);
+        const failCounts = holdNextCountRequest();
+
+        await act(async () => {
+          if (cacheHit) {
+            view.unmount();
+            render(<ExplorePageV1 {...mockProps} />);
+          } else {
+            // A new sort order misses the page cache but changes no tab's count.
+            mockLocation.search = '?search=customer&sortOrder=asc';
+            view.rerender(<ExplorePageV1 {...mockProps} />);
+          }
+        });
+
+        expect(
+          screen.getByText(`${SearchIndex.TABLE}: 41`)
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText(`${SearchIndex.DASHBOARD}: 18`)
+        ).toBeInTheDocument();
+
+        await act(async () => {
+          failCounts();
+        });
+
+        expect(
+          screen.getByText(`${SearchIndex.DASHBOARD}: 18`)
+        ).toBeInTheDocument();
+        expect(getCachedData()).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              hitCounts: {
+                [SearchIndex.TABLE]: 41,
+                [SearchIndex.DASHBOARD]: 18,
+              },
+            }),
+          ])
+        );
+      }
+    );
+
+    it.each([
+      ['query text', '?search=orders'],
+      [
+        'quick filter',
+        `?search=customer&quickFilter=${encodeURIComponent(
+          JSON.stringify({
+            query: {
+              bool: {
+                must: [
+                  {
+                    bool: {
+                      should: [{ term: { 'owners.displayName.keyword': 'a' } }],
+                    },
+                  },
+                ],
+              },
+            },
+          })
+        )}`,
+      ],
+      ['deleted flag', '?search=customer&showDeleted=true'],
+    ])(
+      'does not carry other tab badges into a search with a new %s when counts fail',
+      async (_change, search) => {
+        const view = await renderCustomerSearch();
+        const failCounts = holdNextCountRequest();
+
+        await act(async () => {
+          mockLocation.search = search;
+          view.rerender(<ExplorePageV1 {...mockProps} />);
+        });
+
+        expect(
+          screen.getByText(`${SearchIndex.TABLE}: 41`)
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByText(`${SearchIndex.DASHBOARD}: 18`)
+        ).not.toBeInTheDocument();
+
+        await act(async () => {
+          failCounts();
+        });
+
+        expect(
+          screen.queryByText(`${SearchIndex.DASHBOARD}: 18`)
+        ).not.toBeInTheDocument();
+        expect(getCachedData()).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              hitCounts: { [SearchIndex.TABLE]: 41 },
+            }),
+          ])
+        );
+      }
+    );
   });
 });
