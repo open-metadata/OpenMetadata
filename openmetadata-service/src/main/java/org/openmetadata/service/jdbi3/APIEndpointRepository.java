@@ -290,7 +290,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   @Override
   public EntityRepository<APIEndpoint>.EntityUpdater getUpdater(
       APIEndpoint original, APIEndpoint updated, Operation operation, ChangeSource changeSource) {
-    return new APIEndpointUpdater(original, updated, operation);
+    return new APIEndpointUpdater(original, updated, operation, changeSource);
   }
 
   private void setDefaultFields(APIEndpoint apiEndpoint) {
@@ -549,8 +549,9 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   public class APIEndpointUpdater extends EntityUpdater {
     public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
 
-    public APIEndpointUpdater(APIEndpoint original, APIEndpoint updated, Operation operation) {
-      super(original, updated, operation);
+    public APIEndpointUpdater(
+        APIEndpoint original, APIEndpoint updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction

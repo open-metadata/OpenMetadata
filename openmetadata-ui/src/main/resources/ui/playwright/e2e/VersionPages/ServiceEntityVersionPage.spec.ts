@@ -86,7 +86,7 @@ const adminUser = new UserClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -197,6 +197,11 @@ test.describe('Service Version pages', () => {
      * in the UI to highlight what changed between versions
      */
     test(key, async ({ page }) => {
+      // Visits the version page and asserts diff markers across 4 version
+      // bumps (0.2 → 0.5). 6+ API round-trips + several UI transitions
+      // that can each drift under merge-queue load.
+      test.slow();
+
       const setupError = setupErrors.get(key);
 
       if (setupError) {

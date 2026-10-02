@@ -376,7 +376,7 @@ export const SelectableList = ({
 
       {/* Footer — multiselect controls */}
       {multiSelect && (
-        <div className="tw:flex tw:items-center tw:justify-between tw:px-3 tw:py-3 tw:border-t tw:border-primary">
+        <div className="tw:flex tw:items-center tw:justify-between tw:gap-4 tw:px-3 tw:py-3 tw:border-t tw:border-primary">
           <Button
             color="link-gray"
             data-testid="clear-all-button"

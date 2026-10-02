@@ -17,9 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.util.Util;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -163,6 +166,17 @@ class SamlSettingsHolderTest {
     assertThrows(IllegalArgumentException.class, () -> SamlSettingsHolder.initSettings(config));
   }
 
+  @Test
+  void loadKeyStoreClosesInputStream() throws Exception {
+    TrackingInputStream inputStream = new TrackingInputStream(createKeyStoreBytes());
+
+    KeyStore keyStore =
+        SamlSettingsHolder.loadKeyStore(inputStream, KEYSTORE_PASSWORD.toCharArray());
+
+    assertNotNull(keyStore);
+    assertTrue(inputStream.isClosed());
+  }
+
   private String resource(String path) throws IOException {
     try (InputStream stream = getClass().getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
@@ -187,5 +201,31 @@ class SamlSettingsHolderTest {
                 .withCallback("https://om.example.com/saml/callback")
                 .withAdditionalAcsUrls(additionalAcsUrls))
         .withSecurity(new SamlSecurityConfig());
+  }
+
+  private byte[] createKeyStoreBytes() throws Exception {
+    KeyStore keyStore = KeyStore.getInstance("JKS");
+    keyStore.load(null, KEYSTORE_PASSWORD.toCharArray());
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    keyStore.store(outputStream, KEYSTORE_PASSWORD.toCharArray());
+    return outputStream.toByteArray();
+  }
+
+  private static final class TrackingInputStream extends ByteArrayInputStream {
+    private boolean closed;
+
+    private TrackingInputStream(byte[] data) {
+      super(data);
+    }
+
+    @Override
+    public void close() throws IOException {
+      closed = true;
+      super.close();
+    }
+
+    private boolean isClosed() {
+      return closed;
+    }
   }
 }

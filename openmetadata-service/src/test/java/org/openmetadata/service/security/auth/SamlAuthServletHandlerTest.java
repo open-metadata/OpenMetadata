@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -343,6 +344,19 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
+  void handleRefresh_revokedSession_answersSessionRevoked() throws Exception {
+    // The browser signs out on this answer instead of re-authenticating silently, which would
+    // evict another of the user's sessions under the per-user cap.
+    when(sessionService.acquireRefreshLease(request, response)).thenReturn(Optional.empty());
+    when(sessionService.describeMissingSession(request)).thenReturn(SessionService.SESSION_REVOKED);
+
+    handler.handleRefresh(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    verify(servletOutputStream).print(contains(SessionService.SESSION_REVOKED));
+  }
+
+  @Test
   void handleRefresh_revokedSessionRotatesAndDeletesOrphanedRefreshToken() {
     UserSession leasedSession =
         UserSession.builder()
@@ -363,7 +377,8 @@ class SamlAuthServletHandlerTest {
     when(sessionService.acquireRefreshLease(request, response))
         .thenReturn(Optional.of(leasedSession));
     when(sessionService.decryptOmRefreshToken(leasedSession)).thenReturn("current-refresh-token");
-    when(sessionService.completeRefresh(eq(leasedSession), any(), eq(null)))
+    when(sessionService.completeRefresh(
+            eq(leasedSession), any(), eq(SessionService.ProviderTokenUpdate.NONE)))
         .thenReturn(Optional.of(revokedSession));
     when(tokenRepository.findByToken("current-refresh-token")).thenReturn(currentRefreshToken);
 

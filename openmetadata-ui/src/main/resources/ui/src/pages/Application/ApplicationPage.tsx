@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row, Skeleton, Space, Switch } from 'antd';
+import { SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -193,7 +194,7 @@ const ApplicationPage = () => {
           [1, 2, 3, 4].map((key) => (
             <Col key={key} lg={8} md={12} sm={24} xl={6}>
               <Card>
-                <Skeleton active paragraph title />
+                <SkeletonParagraph />
               </Card>
             </Col>
           ))}

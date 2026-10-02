@@ -89,6 +89,12 @@ jest.mock('../../../utils/SearchClassBase', () => ({
   },
 }));
 
+jest.mock('../../common/CertificationTag/CertificationTag', () =>
+  jest.fn(({ certification }) => (
+    <div data-testid={`certification-${certification.tagLabel.tagFQN}`} />
+  ))
+);
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
@@ -110,6 +116,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     // StatusBadge renders the core Badge; keep the real one (a plain span).
     Badge: actual.Badge,
+    Divider: actual.Divider,
     Breadcrumbs: jest.fn(({ items = [] }) => (
       <nav data-testid="breadcrumbs">
         {items.map(
@@ -135,10 +142,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         )}
       </nav>
     )),
+    Button: actual.Button,
     Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+    Checkbox: actual.Checkbox,
     Owner: jest.fn().mockReturnValue(null),
     toOwnerRef: actual.toOwnerRef,
     toOwnerRefs: actual.toOwnerRefs,
+    Typography: actual.Typography,
   };
 });
 
@@ -481,6 +491,29 @@ describe('ExploreSearchCard - Entity type tags', () => {
 
     expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
     expect(screen.queryByText(Constraint.PrimaryKey)).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreSearchCard - Certification badge', () => {
+  const certification = { tagLabel: { tagFQN: 'Certification.Gold' } };
+
+  it('renders the certification badge for a certified table', () => {
+    renderCard({ certification } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.getByTestId('certification-Certification.Gold')
+    ).toBeInTheDocument();
+  });
+
+  it('does not render the table certification inherited by a column', () => {
+    renderCard({
+      entityType: 'tableColumn',
+      certification,
+    } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(
+      screen.queryByTestId('certification-Certification.Gold')
+    ).not.toBeInTheDocument();
   });
 });
 

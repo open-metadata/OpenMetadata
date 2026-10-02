@@ -29,6 +29,7 @@ public class UserSession {
   private String email;
   private String omRefreshToken;
   private String providerRefreshToken;
+  private Long providerRenewalDueAt;
   private String redirectUri;
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
