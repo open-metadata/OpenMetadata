@@ -27,7 +27,7 @@ import {
   File06,
   RefreshCw01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import {
   FC,

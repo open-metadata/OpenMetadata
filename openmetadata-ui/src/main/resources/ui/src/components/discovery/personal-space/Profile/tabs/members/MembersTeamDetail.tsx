@@ -32,15 +32,15 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ArrowRight,
-  Delete,
-  Edit,
-} from '@openmetadata/ui-core-components/icons';
-import {
   Download01,
+  Edit01,
   Lock01,
-  LockUnlocked01,
+  Trash01,
   Upload01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
+// TODO: LockUnlocked01 is not yet in @openmetadata/ui-core-components/icons — switch to the
+// core-ui import once the icon is added.
+import { LockUnlocked01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, noop } from 'lodash';
@@ -921,7 +921,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                 <ButtonUtility
                   color="tertiary"
                   data-testid={`remove-user-${record.name}`}
-                  icon={Delete}
+                  icon={Trash01}
                   size="xs"
                   tooltip={t('label.remove')}
                   tooltipPlacement="left"
@@ -1035,7 +1035,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                 <ButtonUtility
                   color="tertiary"
                   data-testid={`remove-${getEntityName(record)}`}
-                  icon={Delete}
+                  icon={Trash01}
                   isDisabled={isSavingInline}
                   size="xs"
                   tooltip={t('label.remove')}
@@ -1135,7 +1135,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           })}
           color="tertiary"
           data-testid="edit-display-name"
-          icon={Edit}
+          icon={Edit01}
           size="xs"
           onClick={() => {
             setEditNameValue(getEntityName(team));
@@ -1240,7 +1240,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
               {canDelete && !team.deleted && !isOrgType && (
                 <Dropdown.Item
                   data-testid="delete-team"
-                  icon={Delete}
+                  icon={Trash01}
                   onAction={() => setIsDeleting(true)}>
                   {t('label.delete')}
                 </Dropdown.Item>
@@ -1311,7 +1311,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                 <ButtonUtility
                   color="tertiary"
                   data-testid="edit-description-btn"
-                  icon={Edit}
+                  icon={Edit01}
                   size="xs"
                   tooltip={String(
                     t('label.edit-entity', { entity: t('label.description') })
@@ -1456,8 +1456,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
               {movedTeam && (
                 <ModalOverlay
                   isDismissable
-                  data-testid="move-team-modal"
                   isOpen
+                  data-testid="move-team-modal"
                   style={{ zIndex: 999 }}
                   onOpenChange={(isOpen) => !isOpen && setMovedTeam(undefined)}>
                   <Modal>

@@ -12,7 +12,12 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { Clock, ShieldTick, User01, Users01 } from '@untitledui/icons';
+import {
+  Clock,
+  ShieldTick,
+  User01,
+  Users01,
+} from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

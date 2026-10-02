@@ -25,8 +25,10 @@ import {
   Typography,
   ButtonUtility,
 } from '@openmetadata/ui-core-components';
-import { Delete } from '@openmetadata/ui-core-components/icons';
-import { RefreshCcw01 } from '@untitledui/icons';
+import {
+  RefreshCcw01,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
@@ -434,7 +436,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
             aria-label={t('label.delete')}
             color="tertiary"
             data-testid={`delete-user-btn-${record.name}`}
-            icon={<Delete className="tw:size-4" />}
+            icon={<Trash01 className="tw:size-4" />}
             isDisabled={!isAdminUser}
             size="sm"
             tooltip={

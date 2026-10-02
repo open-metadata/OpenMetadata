@@ -24,8 +24,10 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit } from '@openmetadata/ui-core-components/icons';
-import { InfoCircle } from '@untitledui/icons';
+import {
+  Edit01,
+  InfoCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
@@ -116,7 +118,7 @@ const EditPencil: FC<{
       aria-label={t('label.edit-entity', { entity })}
       color="tertiary"
       data-testid={dataTestId}
-      icon={<Edit className="tw:size-3.5 tw:text-brand-secondary" />}
+      icon={<Edit01 className="tw:size-3.5 tw:text-brand-secondary" />}
       size="xs"
     />
   );
