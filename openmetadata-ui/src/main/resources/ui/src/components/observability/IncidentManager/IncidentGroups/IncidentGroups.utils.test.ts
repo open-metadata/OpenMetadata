@@ -18,6 +18,7 @@ import {
   TestCaseIncidentGroup,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
+import { TestCaseResolutionStatusTypes as ResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
   INCIDENT_TREND_COLORS,
@@ -29,6 +30,7 @@ import {
   countRecurringIncidentGroups,
   getIncidentGroupAssignees,
   getIncidentGroupByOption,
+  getIncidentGroupsQuery,
   getIncidentGroupStatusSegments,
   getIncidentGroupSubLine,
   getIncidentTrendColor,
@@ -36,6 +38,7 @@ import {
   isRecurring,
   isUnownedIncidentGroup,
   parseIncidentGroupBy,
+  parseIncidentGroupFilters,
 } from './IncidentGroups.utils';
 
 const group = (
@@ -324,5 +327,110 @@ describe('countRecurringIncidentGroups', () => {
 
   it('should count nothing for an empty page', () => {
     expect(countRecurringIncidentGroups([])).toBe(0);
+  });
+});
+
+describe('parseIncidentGroupFilters', () => {
+  it('should read every filter the URL carries', () => {
+    expect(
+      parseIncidentGroupFilters({
+        testCaseFQN: 'svc.db.schema.table.case',
+        assignee: 'aaron',
+        status: ['New', 'Ack'],
+        dateField: 'updatedAt',
+        startTs: '1700000000000',
+        endTs: '1700086400000',
+      })
+    ).toEqual({
+      testCaseFQN: 'svc.db.schema.table.case',
+      assignee: 'aaron',
+      status: [ResolutionStatusTypes.New, ResolutionStatusTypes.ACK],
+      dateField: 'updatedAt',
+      startTs: 1700000000000,
+      endTs: 1700086400000,
+    });
+  });
+
+  it('should default to no filter on an empty URL', () => {
+    expect(parseIncidentGroupFilters({})).toEqual({
+      status: [],
+      dateField: 'timestamp',
+    });
+  });
+
+  it('should accept a single status as well as a repeated one', () => {
+    expect(parseIncidentGroupFilters({ status: 'Assigned' }).status).toEqual([
+      ResolutionStatusTypes.Assigned,
+    ]);
+  });
+
+  it('should drop statuses the groups endpoint rejects, and duplicates', () => {
+    expect(
+      parseIncidentGroupFilters({ status: ['Resolved', 'bogus', 'New', 'New'] })
+        .status
+    ).toEqual([ResolutionStatusTypes.New]);
+  });
+
+  it('should ignore empty, repeated or non-numeric values', () => {
+    expect(
+      parseIncidentGroupFilters({
+        testCaseFQN: '',
+        assignee: ['a', 'b'],
+        dateField: 'bogus',
+        startTs: 'yesterday',
+        endTs: '',
+      })
+    ).toEqual({ status: [], dateField: 'timestamp' });
+  });
+});
+
+describe('getIncidentGroupsQuery', () => {
+  it('should send nothing for an unfiltered view', () => {
+    expect(
+      getIncidentGroupsQuery({ status: [], dateField: 'timestamp' })
+    ).toEqual({});
+  });
+
+  it('should send the test case, assignee and repeatable status', () => {
+    expect(
+      getIncidentGroupsQuery({
+        testCaseFQN: 'svc.db.schema.table.case',
+        assignee: 'aaron',
+        status: [ResolutionStatusTypes.New, ResolutionStatusTypes.Assigned],
+        dateField: 'timestamp',
+      })
+    ).toEqual({
+      testCaseFQN: 'svc.db.schema.table.case',
+      assignee: 'aaron',
+      status: [ResolutionStatusTypes.New, ResolutionStatusTypes.Assigned],
+    });
+  });
+
+  it('should apply a range to the creation date by default', () => {
+    expect(
+      getIncidentGroupsQuery({
+        status: [],
+        dateField: 'timestamp',
+        startTs: 1,
+        endTs: 2,
+      })
+    ).toEqual({ dateField: 'createdAt', startTs: 1, endTs: 2 });
+  });
+
+  it('should apply a range to the last update when asked to', () => {
+    expect(
+      getIncidentGroupsQuery({
+        status: [],
+        dateField: 'updatedAt',
+        startTs: 1,
+        endTs: 2,
+      })
+    ).toEqual({ dateField: 'updatedAt', startTs: 1, endTs: 2 });
+  });
+
+  it('should leave the date field out when no range is set', () => {
+    expect(
+      getIncidentGroupsQuery({ status: [], dateField: 'updatedAt' })
+    ).toEqual({});
   });
 });

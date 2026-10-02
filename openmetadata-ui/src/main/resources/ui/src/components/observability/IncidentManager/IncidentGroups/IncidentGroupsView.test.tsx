@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import {
   IncidentGroupBy,
   IncidentTrendDirection,
 } from '../../../../generated/tests/testCaseIncidentGroup';
+import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { listIncidentGroups } from '../../../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   IncidentGroupByDropdownProps,
+  IncidentGroupsFiltersProps,
   IncidentGroupsTableProps,
 } from './IncidentGroups.types';
 import IncidentGroupsView from './IncidentGroupsView';
@@ -89,10 +91,72 @@ jest.mock('./IncidentGroupsTable', () =>
     )
 );
 
+jest.mock('./IncidentGroupsFilters', () =>
+  jest
+    .fn()
+    .mockImplementation(({ filters, onChange }: IncidentGroupsFiltersProps) => (
+      <div>
+        <span data-testid="filters-state">{JSON.stringify(filters)}</span>
+        <button
+          aria-label="filter-assignee"
+          data-testid="filter-assignee"
+          onClick={() => onChange({ assignee: 'aaron' })}
+        />
+        <button
+          aria-label="filter-status"
+          data-testid="filter-status"
+          onClick={() =>
+            onChange({
+              status: [
+                TestCaseResolutionStatusTypes.New,
+                TestCaseResolutionStatusTypes.ACK,
+              ],
+            })
+          }
+        />
+        <button
+          aria-label="filter-clear-status"
+          data-testid="filter-clear-status"
+          onClick={() => onChange({ status: [] })}
+        />
+      </div>
+    ))
+);
+
+// Same press sequence react-aria listens for; a bare click does not open its
+// Select.
+const press = (element: HTMLElement) => {
+  fireEvent.pointerDown(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.pointerUp(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.click(element);
+};
+
 const LocationSearch = () => {
   const { search } = useLocation();
+  const navigate = useNavigate();
 
-  return <span data-testid="location-search">{search}</span>;
+  return (
+    <>
+      <span data-testid="location-search">{search}</span>
+      {/* Stands in for the incident table below, which writes its own paging
+          params into the same query string. */}
+      <button
+        aria-label="write-unrelated-param"
+        data-testid="write-unrelated-param"
+        onClick={() =>
+          navigate({ search: `${search}&currentPage=3` }, { replace: true })
+        }
+      />
+    </>
+  );
 };
 
 const mockGroups = [
@@ -325,7 +389,7 @@ describe('IncidentGroupsView', () => {
     expect(screen.getByTestId('location-search')).toHaveTextContent(
       'groupBy=owner'
     );
-    // Unrelated filters in the URL survive the switch.
+    // The filters in the URL survive the switch and keep applying.
     expect(screen.getByTestId('location-search')).toHaveTextContent(
       'assignee=adam'
     );
@@ -334,6 +398,7 @@ describe('IncidentGroupsView', () => {
       groupBy: IncidentGroupBy.Owner,
       limit: 10,
       sortType: 'desc',
+      assignee: 'adam',
     });
   });
 
@@ -593,5 +658,339 @@ describe('IncidentGroupsView', () => {
     });
 
     expect(mockListIncidentGroups).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('IncidentGroupsView filters and paging', () => {
+  const firstPage = {
+    data: mockGroups,
+    paging: { total: 25, after: 'cursor-2' },
+  };
+  const secondPage = {
+    data: mockGroups,
+    paging: { total: 25, before: 'cursor-1', after: 'cursor-3' },
+  };
+
+  const currentPageInput = () =>
+    screen.getByRole('textbox', { name: 'Current page' });
+
+  const goToSecondPage = async () => {
+    mockListIncidentGroups.mockResolvedValueOnce(secondPage);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('next'));
+    });
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListIncidentGroups.mockResolvedValue(firstPage);
+  });
+
+  it('should send the filters the URL carries with the groups request', async () => {
+    await act(async () => {
+      renderView(
+        '/observability/incident-manager?testCaseFQN=svc.db.schema.orders.row_count' +
+          '&assignee=aaron&status=New&status=Ack&dateField=updatedAt&startTs=1&endTs=2'
+      );
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'desc',
+      testCaseFQN: 'svc.db.schema.orders.row_count',
+      assignee: 'aaron',
+      status: [
+        TestCaseResolutionStatusTypes.New,
+        TestCaseResolutionStatusTypes.ACK,
+      ],
+      dateField: 'updatedAt',
+      startTs: 1,
+      endTs: 2,
+    });
+  });
+
+  it('should hand the parsed filters to the filter row', async () => {
+    await act(async () => {
+      renderView('/observability/incident-manager?assignee=aaron');
+    });
+
+    expect(
+      JSON.parse(screen.getByTestId('filters-state').textContent ?? '')
+    ).toEqual({
+      assignee: 'aaron',
+      status: [],
+      dateField: 'timestamp',
+    });
+  });
+
+  it('should write a filter change to the URL and refetch with it', async () => {
+    await act(async () => {
+      renderView('/observability/incident-manager?groupBy=table');
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('filter-status'));
+    });
+
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      'groupBy=table&status=New&status=Ack'
+    );
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.Table,
+      limit: 10,
+      sortType: 'desc',
+      status: [
+        TestCaseResolutionStatusTypes.New,
+        TestCaseResolutionStatusTypes.ACK,
+      ],
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('filter-clear-status'));
+    });
+
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      'groupBy=table'
+    );
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.Table,
+      limit: 10,
+      sortType: 'desc',
+    });
+  });
+
+  it('should not refetch when a param it does not read changes', async () => {
+    await act(async () => {
+      renderView('/observability/incident-manager?groupBy=table');
+    });
+
+    const callCount = mockListIncidentGroups.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('write-unrelated-param'));
+    });
+
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      'currentPage=3'
+    );
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(callCount);
+  });
+
+  it('should page forward with the after cursor, passed back verbatim', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    expect(currentPageInput()).toHaveValue('1');
+
+    await goToSecondPage();
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'desc',
+      offset: 'cursor-2',
+    });
+    expect(currentPageInput()).toHaveValue('2');
+  });
+
+  it('should page back with the before cursor', async () => {
+    await act(async () => {
+      renderView();
+    });
+    await goToSecondPage();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('previous'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'desc',
+      offset: 'cursor-1',
+    });
+    expect(currentPageInput()).toHaveValue('1');
+  });
+
+  it('should not page past a boundary the server reports no cursor for', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: mockGroups,
+      paging: { total: 25 },
+    });
+
+    await act(async () => {
+      renderView();
+    });
+
+    const callCount = mockListIncidentGroups.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('next'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(callCount);
+    expect(currentPageInput()).toHaveValue('1');
+  });
+
+  it('should go back to the first page when a filter changes', async () => {
+    await act(async () => {
+      renderView();
+    });
+    await goToSecondPage();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('filter-assignee'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'desc',
+      assignee: 'aaron',
+    });
+    expect(currentPageInput()).toHaveValue('1');
+  });
+
+  it('should go back to the first page when the dimension changes', async () => {
+    await act(async () => {
+      renderView();
+    });
+    await goToSecondPage();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-owner'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.Owner,
+      limit: 10,
+      sortType: 'desc',
+    });
+    expect(currentPageInput()).toHaveValue('1');
+  });
+
+  it('should go back to the first page when the ordering changes', async () => {
+    await act(async () => {
+      renderView();
+    });
+    await goToSecondPage();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('flip-sort'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'asc',
+    });
+    expect(currentPageInput()).toHaveValue('1');
+  });
+
+  it('should refetch the first page in the picked page size', async () => {
+    await act(async () => {
+      renderView();
+    });
+    await goToSecondPage();
+
+    await act(async () => {
+      press(
+        within(screen.getByTestId('rows-per-page-dropdown')).getByRole('button')
+      );
+    });
+    await act(async () => {
+      press(screen.getByTestId('rows-per-page-option-25'));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 25,
+      sortType: 'desc',
+    });
+    expect(currentPageInput()).toHaveValue('1');
+  });
+
+  it('should keep the page across a background refresh', async () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/observability/incident-manager']}>
+        {viewTree(0)}
+      </MemoryRouter>
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await goToSecondPage();
+
+    mockListIncidentGroups.mockResolvedValueOnce(secondPage);
+
+    await act(async () => {
+      rerender(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'desc',
+      offset: 'cursor-2',
+    });
+    expect(currentPageInput()).toHaveValue('2');
+  });
+
+  it('should show no pager while there is no group to page through', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+
+    await act(async () => {
+      renderView();
+    });
+
+    expect(screen.queryByTestId('next')).not.toBeInTheDocument();
+  });
+
+  it('should size the pager from the loaded groups when no total is reported', async () => {
+    mockListIncidentGroups.mockResolvedValue({ data: mockGroups, paging: {} });
+
+    await act(async () => {
+      renderView();
+    });
+
+    expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
+      'label.group-count:3'
+    );
+    expect(currentPageInput()).toHaveAttribute('max', '1');
+  });
+
+  it('should ignore a slow response for a dimension the user already left', async () => {
+    let resolveFirst: (value: unknown) => void = jest.fn();
+    mockListIncidentGroups.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFirst = resolve;
+      })
+    );
+    mockListIncidentGroups.mockResolvedValueOnce({
+      data: [mockGroups[0]],
+      paging: { total: 1 },
+    });
+
+    renderView();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-owner'));
+    });
+    await act(async () => {
+      resolveFirst(firstPage);
+    });
+
+    expect(screen.getByTestId('table-group-count')).toHaveTextContent('1');
   });
 });

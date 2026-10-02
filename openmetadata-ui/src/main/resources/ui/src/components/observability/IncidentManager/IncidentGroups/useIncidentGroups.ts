@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { pick } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,7 @@ import {
 import { Paging } from '../../../../generated/type/paging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import {
+  IncidentCursor,
   IncidentSortType,
   listIncidentGroups,
 } from '../../../../rest/incidentManagerAPI';
@@ -31,14 +33,27 @@ import {
   DEFAULT_INCIDENT_SORT_TYPE,
   INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUP_BY_PARAM,
+  INCIDENT_GROUP_FILTER_KEYS,
 } from './IncidentGroups.constants';
-import { parseIncidentGroupBy } from './IncidentGroups.utils';
+import { IncidentGroupFilters } from './IncidentGroups.types';
+import {
+  getIncidentGroupsQuery,
+  parseIncidentGroupBy,
+  parseIncidentGroupFilters,
+} from './IncidentGroups.utils';
+
+interface IncidentGroupsPage {
+  /** The query the page belongs to; a page of another query is page 1. */
+  queryKey: string;
+  currentPage: number;
+  offset?: IncidentCursor;
+}
 
 /**
- * Owns the grouped incident listing: the grouping dimension is read from and
- * written to the URL, and every change to it refires the fetch. The cursors the
- * server hands back are kept untouched so the pagination added on top of this
- * can pass them straight back as `offset`.
+ * Owns the grouped incident listing: the grouping dimension and the filters are
+ * read from and written to the URL, and every change to them refires the fetch
+ * from the first page. Pages are walked with the cursors the server hands back,
+ * passed straight back as `offset` and never decoded.
  *
  * `refreshKey` is the caller's way of saying the groups it is showing are out
  * of date — a new value refires the fetch once, which is how an incident
@@ -65,6 +80,17 @@ export const useIncidentGroups = ({
 
   const groupBy = parseIncidentGroupBy(searchParams[INCIDENT_GROUP_BY_PARAM]);
 
+  // Keyed on the filter params alone: the incident table on the same page
+  // writes its own paging params into this query string, and those must not
+  // refetch the groups.
+  const filtersSearch = QueryString.stringify(
+    pick(searchParams, INCIDENT_GROUP_FILTER_KEYS)
+  );
+  const filters = useMemo(
+    () => parseIncidentGroupFilters(QueryString.parse(filtersSearch)),
+    [filtersSearch]
+  );
+
   const [incidentGroups, setIncidentGroups] = useState<TestCaseIncidentGroup[]>(
     []
   );
@@ -77,6 +103,21 @@ export const useIncidentGroups = ({
   const [sortType, setSortType] = useState<IncidentSortType>(
     DEFAULT_INCIDENT_SORT_TYPE
   );
+  const [pageSize, setPageSize] = useState(INCIDENT_GROUPS_PAGE_SIZE);
+  /**
+   * Any change to what is listed starts over from the first page: a cursor
+   * belongs to the query that produced it. The page is therefore tagged with
+   * its query, and read as page 1 once the query moves on — no reset effect,
+   * so no extra fetch of the stale page.
+   */
+  const queryKey = `${groupBy}|${sortType}|${pageSize}|${filtersSearch}`;
+  const [page, setPage] = useState<IncidentGroupsPage>({
+    queryKey,
+    currentPage: 1,
+  });
+  const activePage: IncidentGroupsPage =
+    page.queryKey === queryKey ? page : { queryKey, currentPage: 1 };
+  const { currentPage, offset } = activePage;
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   // Guards against a slow response for a dimension the user already left.
@@ -128,8 +169,10 @@ export const useIncidentGroups = ({
     try {
       const response = await listIncidentGroups({
         groupBy,
-        limit: INCIDENT_GROUPS_PAGE_SIZE,
+        limit: pageSize,
         sortType,
+        offset,
+        ...getIncidentGroupsQuery(filters),
       });
 
       if (latestRequest.current !== requestId) {
@@ -160,7 +203,7 @@ export const useIncidentGroups = ({
         setIsLoading(false);
       }
     }
-  }, [groupBy, sortType, refreshKey, t]);
+  }, [groupBy, sortType, pageSize, offset, filters, refreshKey, t]);
 
   useEffect(() => {
     fetchIncidentGroups();
@@ -191,14 +234,57 @@ export const useIncidentGroups = ({
     [groupBy, navigate, searchParams]
   );
 
+  const handleFiltersChange = useCallback(
+    (changes: Partial<IncidentGroupFilters>) => {
+      navigate(
+        {
+          search: QueryString.stringify(
+            { ...searchParams, ...changes },
+            { arrayFormat: 'repeat' }
+          ),
+        },
+        { replace: true }
+      );
+    },
+    [navigate, searchParams]
+  );
+
+  /**
+   * Cursors only step to a neighbouring page, so any page asked for moves one
+   * page in its direction — the same way the other cursor-paged tables do.
+   */
+  const handlePageChange = useCallback(
+    (nextPage: number) => {
+      const isForward = nextPage > currentPage;
+      const cursor = isForward ? paging?.after : paging?.before;
+
+      if (nextPage === currentPage || !cursor) {
+        return;
+      }
+
+      setPage({
+        queryKey,
+        currentPage: currentPage + (isForward ? 1 : -1),
+        offset: cursor,
+      });
+    },
+    [currentPage, paging, queryKey]
+  );
+
   return {
     groupBy,
+    filters,
     incidentGroups,
     paging,
     sortType,
+    currentPage,
+    pageSize,
     isLoading,
     isError,
     handleGroupByChange,
+    handleFiltersChange,
     handleSortTypeChange: setSortType,
+    handlePageChange,
+    handlePageSizeChange: setPageSize,
   };
 };
