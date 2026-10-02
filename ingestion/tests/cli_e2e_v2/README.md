@@ -256,10 +256,11 @@ passed for the agreed stability window.
 
 Snowflake cannot run in a container, so `snowflake/` owns one fresh schema per test (`E2E_SF_<uuid>`,
 comment `owner=cli-e2e-v2`, zero Time Travel retention) in the configured database and drops it with
-`CASCADE` on success and failure. Every workflow sets the connection `database` and carries an anchored
-`schemaFilterPattern` for the owned schemas, because the database also holds unowned schemas. The
-invocation helper rejects a schema filter that includes anything beyond the owned schemas' anchored
-patterns. Missing credentials are errors, not skips.
+`CASCADE` on success and failure. Every workflow sets the connection `database`. The metadata, profiler
+and auto-classification workflows also carry an anchored `schemaFilterPattern` for the owned schemas,
+because the database also holds unowned schemas, and the `tableDiff` test suite targets one owned table
+by its fully qualified name. The invocation helper rejects a schema filter that includes anything beyond
+the owned schemas' anchored patterns. Missing credentials are errors, not skips.
 
 ```bash
 export E2E_SNOWFLAKE_ACCOUNT=... E2E_SNOWFLAKE_USERNAME=... E2E_SNOWFLAKE_WAREHOUSE=... E2E_SNOWFLAKE_DATABASE=...
@@ -305,13 +306,13 @@ v1 → v2 mapping:
 | vanilla ingestion, no failures, ≥ N records | `catalog.metadata` (complete inventory, native types, keys, comments, view) |
 | schema include/exclude filters | `filter.schema.include-one`, `filter.schema.exclude-wins` |
 | table include/exclude/mix filters (filtered-count floors) | `filter.table.*` (always combined with the owned-schema filter) |
-| create table + profiler | `profile.metrics` |
-| system profile INSERT/MERGE/DELETE on same-named tables in two schemas (expected failure) | `profile.system` (shim) |
-| auto-classification, sample rows | `classification.tags`, `sample.limit`, `sample.values.native` |
+| create table + profiler (expected failure) | `profile.metrics` |
+| system profile INSERT/MERGE/DELETE on same-named tables in two schemas (same expected failure) | `profile.system` (shim) |
+| auto-classification, sample rows (expected failure) | `classification.tags`, `sample.limit`, `sample.values.native` |
 | deleted table marked deleted | `deletion.tables` |
 | view lineage, 2 column edges | `lineage.view` |
 | `tableDiff` data-quality test (expected failure) | `dq.table-diff` |
-| profiler time partition (only checked a profile exists) | `profile.partition.time-unit` (rows outside the window must not be profiled) |
+| profiler time partition (expected failure, only checked a profile exists) | `profile.partition.time-unit` (rows outside the window must not be profiled) |
 | transient tables included / excluded | `table.transient.include`, `table.transient.exclude` |
 | dynamic table, stream, foreign key, clustering key | `table.dynamic`, `table.stream`, `fk.relationships`, `partition.cluster-key` |
 | stored procedures and tags ingested without failures | `procedure.code`, `tags.source` (shim) |
@@ -336,7 +337,9 @@ copy, whose secrets a non-bot token reads masked.
 The manually dispatched v2 workflow runs Snowflake with four workers and passes the v1 job's existing
 `TEST_SNOWFLAKE_*` secrets (key pair, database and warehouse) only to its Snowflake matrix job. The v1
 test drops and recreates that database for every test, so the Snowflake jobs of both workflows share the
-non-cancelling concurrency group `cli-e2e-snowflake-database` and run one at a time. GitHub keeps one
-pending job per group, so a third Snowflake run queued behind a pending one replaces it. Remove the v1
-Snowflake test, its `py-cli-e2e-tests.yml` matrix entry and that workflow's concurrency group only after
-this suite has passed for the agreed stability window.
+concurrency group `cli-e2e-snowflake-database`, which runs one at a time and never cancels a running job.
+GitHub keeps one pending job per group, so a newer Snowflake run replaces a pending one, and a replaced
+v1 nightly leg reports as cancelled. Release branches carry the v1 workflow without this group, so a v1
+run dispatched on one of them is not serialized with this job. Remove the v1 Snowflake test, its
+`py-cli-e2e-tests.yml` matrix entry and that workflow's concurrency group only after this suite has passed
+for the agreed stability window.

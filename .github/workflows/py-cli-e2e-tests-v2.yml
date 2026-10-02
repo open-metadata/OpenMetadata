@@ -40,8 +40,8 @@ jobs:
       fail-fast: false
       matrix:
         connector: ${{ fromJSON(inputs.connectors || '["mysql", "postgres", "bigquery", "oracle", "snowflake"]') }}
-    # The v1 Snowflake job drops and recreates the same E2E database, so both workflows queue their
-    # Snowflake jobs in one group and never run them at the same time.
+    # The v1 Snowflake job drops and recreates the same E2E database, so both workflows put their
+    # Snowflake jobs in one group that runs one at a time. A newer pending job replaces an older one.
     concurrency:
       group: ${{ matrix.connector == 'snowflake' && 'cli-e2e-snowflake-database' || format('{0}-{1}-{2}', github.workflow, github.run_id, matrix.connector) }}
       cancel-in-progress: false
