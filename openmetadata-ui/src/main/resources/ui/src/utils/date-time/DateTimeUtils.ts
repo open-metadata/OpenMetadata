@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
-import { DateTime, Duration, ToRelativeCalendarUnit } from 'luxon';
+import { DateTime, Duration, ToRelativeCalendarOptions } from 'luxon';
 import {
   DAY_SECONDS,
   HOUR_SECONDS,
@@ -267,7 +267,7 @@ export const getRelativeCalendar = (
   baseTimeStamp?: number,
   // Without a unit Luxon picks the largest that differs, so two days ago
   // across a month boundary reads "Last month"; 'days' keeps it "2 days ago".
-  unit?: ToRelativeCalendarUnit
+  unit?: ToRelativeCalendarOptions['unit']
 ): string => {
   return capitalize(
     DateTime.fromMillis(timeStamp, {
