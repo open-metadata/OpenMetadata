@@ -14,17 +14,51 @@
       "count": 1
     }
   },
+  "playwright/e2e/Auth/SsoScenarios.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 4
+    }
+  },
+  "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/AIMode/Observability.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/AIMode/TestCaseBreadcrumb.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Features/ActivityAPI.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
     }
   },
   "playwright/e2e/Features/ActivityFeed.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    },
     "om-playwright/no-positional-locator": {
       "count": 25
+    },
+    "om-playwright/no-ui-in-test-setup": {
+      "count": 3
+    }
+  },
+  "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
     }
   },
   "playwright/e2e/Features/ActivityStream.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
     }
@@ -32,6 +66,31 @@
   "playwright/e2e/Features/AdvancedSearch.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
+    }
+  },
+  "playwright/e2e/Features/AppMode/AppModePrecedence.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/AutoPilot.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    }
+  },
+  "playwright/e2e/Features/BlockEditorMathEquations.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
     }
   },
   "playwright/e2e/Features/BulkEditEntity.spec.ts": {
@@ -80,6 +139,9 @@
     }
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 3
+    },
     "om-playwright/no-positional-locator": {
       "count": 8
     },
@@ -103,6 +165,9 @@
     }
   },
   "playwright/e2e/Features/ContextCenterPermission.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 3
     }
@@ -110,16 +175,27 @@
   "playwright/e2e/Features/CuratedAssets.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 7
+    },
+    "om-playwright/no-ui-in-test-setup": {
+      "count": 1
     }
   },
   "playwright/e2e/Features/CustomizeDetailPage.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
+    },
+    "om-playwright/no-ui-in-test-setup": {
+      "count": 1
     }
   },
   "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 9
+    }
+  },
+  "playwright/e2e/Features/Dashboards.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 3
     }
   },
   "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts": {
@@ -128,6 +204,9 @@
     }
   },
   "playwright/e2e/Features/DataProductDomainMigration.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 5
     }
@@ -148,11 +227,17 @@
     }
   },
   "playwright/e2e/Features/DataQuality/DataQuality.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 3
+    },
     "om-playwright/no-positional-locator": {
       "count": 3
     }
   },
   "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 6
     }
@@ -162,7 +247,18 @@
       "count": 4
     }
   },
+  "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
+    "om-playwright/no-ui-in-test-setup": {
+      "count": 2
+    }
+  },
   "playwright/e2e/Features/DataQuality/Profiler.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
     }
@@ -187,9 +283,19 @@
       "count": 2
     }
   },
+  "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
+    }
+  },
+  "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
     }
   },
   "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts": {
@@ -198,6 +304,9 @@
     }
   },
   "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 7
     }
@@ -217,9 +326,19 @@
       "count": 1
     }
   },
+  "playwright/e2e/Features/ExploreUrlState.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
+    }
+  },
+  "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts": {
@@ -253,18 +372,40 @@
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryTermDetails.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 3
     }
   },
+  "playwright/e2e/Features/Glossary/GlossaryTermInverseRelation.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Features/Glossary/GlossaryTermRelatedTerms.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    },
     "om-playwright/no-positional-locator": {
       "count": 5
     }
   },
+  "playwright/e2e/Features/Glossary/GlossaryVoting.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
+    },
+    "om-playwright/no-ui-in-test-setup": {
+      "count": 1
     }
   },
   "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts": {
@@ -278,11 +419,17 @@
     }
   },
   "playwright/e2e/Features/IncidentManager.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    },
     "om-playwright/no-positional-locator": {
       "count": 22
     }
   },
   "playwright/e2e/Features/IngestionListNameSorting.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
     }
@@ -293,6 +440,9 @@
     }
   },
   "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
     }
@@ -302,9 +452,19 @@
       "count": 1
     }
   },
+  "playwright/e2e/Features/MetricAssets.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 20
+    }
+  },
+  "playwright/e2e/Features/MetricHierarchy.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
     }
   },
   "playwright/e2e/Features/MultipleRename.spec.ts": {
@@ -322,9 +482,22 @@
       "count": 1
     }
   },
+  "playwright/e2e/Features/OntologyStudioInteractions.spec.ts": {
+    "om-playwright/no-ui-in-test-setup": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Features/Pagination.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 6
+    }
+  },
+  "playwright/e2e/Features/Permission.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 3
     }
   },
   "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts": {
@@ -352,7 +525,20 @@
       "count": 8
     }
   },
+  "playwright/e2e/Features/PersonaAppLayout.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/PersonaSessionPersistence.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Features/QueryEntity.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    },
     "om-playwright/no-positional-locator": {
       "count": 4
     }
@@ -360,9 +546,15 @@
   "playwright/e2e/Features/RTL.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
+    },
+    "om-playwright/no-ui-in-test-setup": {
+      "count": 2
     }
   },
   "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 1
     }
@@ -408,6 +600,9 @@
     }
   },
   "playwright/e2e/Features/Table.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 6
     }
@@ -421,8 +616,16 @@
     }
   },
   "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 4
+    }
+  },
+  "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 6
     }
   },
   "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts": {
@@ -470,7 +673,15 @@
       "count": 1
     }
   },
+  "playwright/e2e/Features/TeamSubscriptions.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 3
     }
@@ -500,8 +711,18 @@
       "count": 1
     }
   },
+  "playwright/e2e/Flow/ExploreDiscovery.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Flow/IngestionBot.spec.ts": {
     "om-playwright/no-positional-locator": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Flow/LineageSettings.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
       "count": 1
     }
   },
@@ -510,12 +731,25 @@
       "count": 1
     }
   },
+  "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts": {
+    "om-playwright/no-ui-in-test-setup": {
+      "count": 2
+    }
+  },
   "playwright/e2e/Flow/ObservabilityAlerts.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
     }
   },
+  "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Flow/PersonaFlow.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 3
+    },
     "om-playwright/no-positional-locator": {
       "count": 1
     }
@@ -571,16 +805,30 @@
     }
   },
   "playwright/e2e/Pages/ClassificationConditionalRendering.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
     }
   },
+  "playwright/e2e/Pages/CustomProperties.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    }
+  },
   "playwright/e2e/Pages/DataContractInheritance.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
     }
   },
   "playwright/e2e/Pages/DataContracts.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 4
+    },
     "om-playwright/no-positional-locator": {
       "count": 4
     }
@@ -589,8 +837,21 @@
     "om-playwright/justified-rule-disable": {
       "count": 2
     },
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 32
+    },
     "om-playwright/no-positional-locator": {
       "count": 53
+    }
+  },
+  "playwright/e2e/Pages/DataInsightReportApplication.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/DataInsightSettings.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
     }
   },
   "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts": {
@@ -603,12 +864,20 @@
       "count": 3
     }
   },
+  "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Pages/DataProducts.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
     }
   },
   "playwright/e2e/Pages/DomainAdvanced.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 5
+    },
     "om-playwright/no-positional-locator": {
       "count": 3
     }
@@ -627,6 +896,9 @@
     "om-playwright/justified-rule-disable": {
       "count": 1
     },
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 24
+    },
     "om-playwright/no-positional-locator": {
       "count": 4
     }
@@ -639,14 +911,32 @@
       "count": 15
     }
   },
+  "playwright/e2e/Pages/EntityDataConsumer.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Pages/ExploreBrowse.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
     }
   },
   "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 3
+    },
     "om-playwright/no-positional-locator": {
       "count": 6
+    }
+  },
+  "playwright/e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 3
+    }
+  },
+  "playwright/e2e/Pages/ExploreResilience.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
     }
   },
   "playwright/e2e/Pages/ExploreTree.spec.ts": {
@@ -657,6 +947,9 @@
   "playwright/e2e/Pages/Glossary.spec.ts": {
     "om-playwright/justified-rule-disable": {
       "count": 1
+    },
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 5
     },
     "om-playwright/no-positional-locator": {
       "count": 6
@@ -692,7 +985,23 @@
       "count": 14
     }
   },
+  "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    }
+  },
+  "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
+    "om-playwright/no-ui-in-test-setup": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 1
     }
@@ -713,6 +1022,9 @@
     }
   },
   "playwright/e2e/Pages/Policies.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 11
     }
@@ -723,13 +1035,24 @@
     }
   },
   "playwright/e2e/Pages/Roles.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
+    }
+  },
+  "playwright/e2e/Pages/SearchIndexApplication.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 3
     }
   },
   "playwright/e2e/Pages/SearchSettings.spec.ts": {
     "om-playwright/justified-rule-disable": {
       "count": 1
+    },
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
     },
     "om-playwright/no-positional-locator": {
       "count": 2
@@ -741,6 +1064,9 @@
     }
   },
   "playwright/e2e/Pages/Tag.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    },
     "om-playwright/no-positional-locator": {
       "count": 3
     }
@@ -751,11 +1077,17 @@
     }
   },
   "playwright/e2e/Pages/Tags.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 2
+    },
     "om-playwright/no-positional-locator": {
       "count": 6
     }
   },
   "playwright/e2e/Pages/TaskFormSettings.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 1
     }
@@ -797,6 +1129,9 @@
     }
   },
   "playwright/e2e/Pages/Users.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 16
     }
@@ -811,7 +1146,20 @@
       "count": 1
     }
   },
+  "playwright/e2e/VersionPages/GlossaryVersionPage.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 4
+    }
+  },
+  "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/e2e/nightly/ContextCenter.spec.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 4
+    },
     "om-playwright/no-positional-locator": {
       "count": 11
     }
@@ -828,6 +1176,9 @@
     }
   },
   "playwright/support/entity/ingestion/ServiceBaseClass.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 5
     }
@@ -848,6 +1199,9 @@
     }
   },
   "playwright/utils/KnowledgeCenter.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 8
     },
@@ -889,6 +1243,9 @@
     }
   },
   "playwright/utils/common.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 7
+    },
     "om-playwright/no-positional-locator": {
       "count": 10
     }
@@ -899,6 +1256,9 @@
     }
   },
   "playwright/utils/customProperty.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
     }
@@ -919,6 +1279,9 @@
     }
   },
   "playwright/utils/dataContracts.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 1
     }
@@ -929,11 +1292,17 @@
     }
   },
   "playwright/utils/domain.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 7
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
     }
   },
   "playwright/utils/entity.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 8
+    },
     "om-playwright/no-positional-locator": {
       "count": 22
     }
@@ -954,6 +1323,9 @@
     }
   },
   "playwright/utils/glossary.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 12
     },
@@ -972,16 +1344,25 @@
     }
   },
   "playwright/utils/incidentManager.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 11
     }
   },
   "playwright/utils/lineage.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 6
     }
   },
   "playwright/utils/logsViewer.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 3
     }
@@ -1024,6 +1405,11 @@
       "count": 1
     }
   },
+  "playwright/utils/serviceIngestion.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    }
+  },
   "playwright/utils/sso-providers/keycloak-saml.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
@@ -1032,6 +1418,11 @@
   "playwright/utils/sso.ts": {
     "om-playwright/no-positional-locator": {
       "count": 9
+    }
+  },
+  "playwright/utils/tag.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
     }
   },
   "playwright/utils/task.ts": {
@@ -1048,6 +1439,9 @@
     }
   },
   "playwright/utils/team.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
+    },
     "om-playwright/no-positional-locator": {
       "count": 2
     }
@@ -1065,6 +1459,11 @@
   "playwright/utils/userDetails.ts": {
     "om-playwright/no-positional-locator": {
       "count": 4
+    }
+  },
+  "playwright/utils/version.ts": {
+    "om-playwright/no-page-reload-without-justification": {
+      "count": 1
     }
   },
   "playwright/utils/widgetFilters.ts": {

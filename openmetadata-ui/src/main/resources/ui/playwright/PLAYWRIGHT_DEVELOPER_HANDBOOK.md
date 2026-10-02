@@ -1406,7 +1406,9 @@ not hand-edit it, run `yarn generate:playwright-rules` instead.
 | `om-playwright/justified-rule-disable` | error | Require a justification comment when disabling a playwright lint rule |
 | `om-playwright/no-awaited-wait-for-response` | error | Disallow awaiting page.waitForResponse() directly — register the listener before the action instead |
 | `om-playwright/no-blanket-test-slow` | error | Disallow test.slow() at file or describe scope |
+| `om-playwright/no-page-reload-without-justification` | error | Disallow page.reload() without a justification comment — each reload boots the SPA again, inflating appBootsPerUIScenario (measured 2.3, target ≤1). |
 | `om-playwright/no-positional-locator` | error | Disallow positional locators (.first(), .last(), .nth()) |
+| `om-playwright/no-ui-in-test-setup` | error | Disallow UI input actions (click/fill/type/…) inside test.beforeAll/beforeEach/afterAll/afterEach — use apiContext for setup instead. |
 | `om-playwright/require-assertion-per-test` | error | Flag tests that only perform page interactions and verify nothing |
 | `openmetadata-playwright/no-form-sign-in` | error | Do not authenticate by driving the sign-in form; use signIn() or a page fixture |
 | `openmetadata-playwright/require-aggregation-wait-helper` | warn | Require waitForAggregation instead of waiting on search/aggregate directly |

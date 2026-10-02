@@ -16,8 +16,10 @@ import noAwaitedWaitForResponse from './no-awaited-wait-for-response.mjs';
 import noBlanketTestSlow from './no-blanket-test-slow.mjs';
 import noDiscardedStateQuery from './no-discarded-state-query.mjs';
 import noImplicitNavigationLoad from './no-implicit-navigation-load.mjs';
+import noPageReloadWithoutJustification from './no-page-reload-without-justification.mjs';
 import noPositionalLocator from './no-positional-locator.mjs';
 import noStatusFilteredResponse from './no-status-filtered-response.mjs';
+import noUiInTestSetup from './no-ui-in-test-setup.mjs';
 import requireAssertionPerTest from './require-assertion-per-test.mjs';
 import resetFixtureArrays from './reset-fixture-arrays.mjs';
 
@@ -27,6 +29,8 @@ export default {
     'no-blanket-test-slow': noBlanketTestSlow,
     'require-assertion-per-test': requireAssertionPerTest,
     'no-positional-locator': noPositionalLocator,
+    'no-ui-in-test-setup': noUiInTestSetup,
+    'no-page-reload-without-justification': noPageReloadWithoutJustification,
     'justified-rule-disable': justifiedRuleDisable,
     'reset-fixture-arrays': resetFixtureArrays,
     'no-discarded-state-query': noDiscardedStateQuery,
