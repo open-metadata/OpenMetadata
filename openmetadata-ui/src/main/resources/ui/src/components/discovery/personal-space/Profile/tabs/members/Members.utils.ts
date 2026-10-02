@@ -19,6 +19,8 @@ const ADMINS = 'admins';
 const ADD = 'add';
 const CREATE = 'create';
 const ONLINE_USERS = 'online-users';
+const IMPORT_TEAM = 'import-team';
+const IMPORT_USER = 'import-user';
 
 // fqns are URL-encoded in the hash to survive the round-trip (they can contain
 // `%`, `.`, `/`); decode the fqn segments back here.
@@ -37,6 +39,15 @@ function parseTeamsSubPath(parts: string[]): MembersView {
         : decodeURIComponent(parts.slice(1, -1).join('/'));
 
     return { type: 'teams-add', parentFqn };
+  }
+
+  if (last === IMPORT_TEAM || last === IMPORT_USER) {
+    // `teams/<fqn>/import-team` or `.../import-user` — fqn is everything between.
+    return {
+      type: 'teams-import',
+      fqn: decodeURIComponent(parts.slice(1, -1).join('/')),
+      importType: last === IMPORT_USER ? 'users' : 'teams',
+    };
   }
 
   const fqn = decodeURIComponent(parts.slice(1).join('/'));
@@ -77,6 +88,10 @@ function teamsViewToSubPath(view: MembersView): string {
       return view.parentFqn
         ? `${TEAMS}/${encodeURIComponent(view.parentFqn)}/${ADD}`
         : `${TEAMS}/${ADD}`;
+    case 'teams-import':
+      return `${TEAMS}/${encodeURIComponent(view.fqn)}/${
+        view.importType === 'users' ? IMPORT_USER : IMPORT_TEAM
+      }`;
     default:
       return TEAMS;
   }
@@ -99,7 +114,7 @@ export function viewToSubPath(view: MembersView): string | undefined {
     return view.isAdmin ? `${ADMINS}/${CREATE}` : `${USERS}/${CREATE}`;
   }
 
-  // teams, team-detail, teams-add
+  // teams, team-detail, teams-add, teams-import
   return teamsViewToSubPath(view);
 }
 
@@ -144,4 +159,30 @@ export const formatOnlineStatus = (
     label: t('label.n-days-ago', { count: diffDays }),
     colorClass: 'tw:text-error-primary',
   };
+};
+
+// ponytail: duplicated from BulkEntityImportPage (it keeps these private); ~15
+// lines, cheaper than exporting from a page module and wiring a shared import.
+const CSV_FILE_SIZE_UNITS = ['B', 'KB', 'MB', 'GB'];
+const BYTES_PER_UNIT = 1024;
+
+// Data-row count = non-empty lines minus the header row.
+export const getCsvRowCount = (content: string): number =>
+  content.split(/\r\n|\n|\r/).filter((line, index) => index > 0 && line.trim())
+    .length;
+
+export const getCsvFileSizeLabel = (bytes = 0): string => {
+  if (!bytes) {
+    return `0 ${CSV_FILE_SIZE_UNITS[0]}`;
+  }
+
+  const unitIndex = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(BYTES_PER_UNIT)),
+    CSV_FILE_SIZE_UNITS.length - 1
+  );
+  const normalizedSize = bytes / BYTES_PER_UNIT ** unitIndex;
+
+  return `${normalizedSize.toFixed(unitIndex === 0 ? 0 : 1)} ${
+    CSV_FILE_SIZE_UNITS[unitIndex]
+  }`;
 };

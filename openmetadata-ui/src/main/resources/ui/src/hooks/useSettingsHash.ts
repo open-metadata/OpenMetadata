@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PROFILE_NAV_IDS } from '../constants/Profile.constants';
 // eslint-disable-next-line openmetadata-imports/no-hook-ui-imports -- type-only import for hash ↔ nav-id mapping
@@ -108,6 +114,34 @@ function buildHash(
   return hash;
 }
 
+// The modal's BrowserRouter runs with `useTransitions`, so react-router wraps every
+// location update in `React.startTransition` — a low-priority commit. The Teams panel
+// pushes a stream of header-state updates (urgent re-renders) that starve that
+// transition, so a `useLocation()`-derived view never commits and the modal appears
+// frozen on the old sub-view until a refresh. This urgent store is updated
+// synchronously by `setHash`/`clearHash` so the view switches immediately; react-router
+// still owns the URL and history. Browser-driven changes (deep link, refresh,
+// Back/Forward) are mirrored back in via the `location.hash` effect below.
+let storeHash = typeof window !== 'undefined' ? window.location.hash : '';
+const storeListeners = new Set<() => void>();
+
+const setStoreHash = (next: string): void => {
+  if (storeHash !== next) {
+    storeHash = next;
+    storeListeners.forEach((listener) => listener());
+  }
+};
+
+const subscribeStoreHash = (onStoreChange: () => void): (() => void) => {
+  storeListeners.add(onStoreChange);
+
+  return () => {
+    storeListeners.delete(onStoreChange);
+  };
+};
+
+const getStoreHash = (): string => storeHash;
+
 /**
  * Hook that syncs settings modal navigation with `location.hash`.
  *
@@ -118,7 +152,19 @@ export const useSettingsHash = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const state = useMemo(() => parseHash(location.hash), [location.hash]);
+  const hash = useSyncExternalStore(
+    subscribeStoreHash,
+    getStoreHash,
+    getStoreHash
+  );
+
+  const state = useMemo(() => parseHash(hash), [hash]);
+
+  // Mirror browser-driven location changes (deep link, refresh, Back/Forward)
+  // into the urgent store.
+  useEffect(() => {
+    setStoreHash(location.hash);
+  }, [location.hash]);
 
   const setHash = useCallback(
     (
@@ -128,7 +174,8 @@ export const useSettingsHash = () => {
     ) => {
       const next = buildHash(tab, subPath, params);
 
-      if (window.location.hash !== next) {
+      if (storeHash !== next) {
+        setStoreHash(next);
         navigate(
           {
             pathname: location.pathname,
@@ -143,7 +190,8 @@ export const useSettingsHash = () => {
   );
 
   const clearHash = useCallback(() => {
-    if (window.location.hash) {
+    if (storeHash) {
+      setStoreHash('');
       navigate(
         { pathname: location.pathname, search: location.search, hash: '' },
         { replace: true }

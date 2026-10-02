@@ -11,25 +11,32 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    ButtonUtility,
-    Input,
-    Owner,
-    Popover,
-    PopoverTrigger,
-    Select,
-    SelectItemType,
-    Tooltip,
-    Typography
+  Box,
+  Button,
+  ButtonUtility,
+  Divider,
+  Input,
+  Owner,
+  Popover,
+  PopoverTrigger,
+  Select,
+  SelectItemType,
+  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit } from '@openmetadata/ui-core-components/icons';
-import { Check, InfoCircle, XClose } from '@untitledui/icons';
+import { InfoCircle } from '@untitledui/icons';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SUBSCRIPTION_WEBHOOK_OPTIONS } from '../../../../../../constants/Teams.constants';
+import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
+import {
+  SUBSCRIPTION_WEBHOOK,
+  SUBSCRIPTION_WEBHOOK_OPTIONS,
+} from '../../../../../../constants/Teams.constants';
 import { Team } from '../../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { getWebhookIcon } from '../../../../../../utils/TeamUtils';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import { DomainSelectTrigger } from '../../../../../common/DomainSelect/DomainSelectTrigger';
 import DomainTags from '../../../../../common/DomainTags/DomainTags';
@@ -45,6 +52,10 @@ interface MembersTeamInfoWidgetsProps {
 
 const WIDGET_CLASS =
   'tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3';
+
+// Sentinel id for the "None" webhook option; react-aria Select cannot round-trip
+// an empty-string key, so we map it to '' on selection and back for display.
+const NONE_KEY = 'none';
 
 // A filled value renders primary; an empty/None value renders muted.
 const valueTextClass = (hasValue: boolean): string =>
@@ -69,7 +80,10 @@ const InfoWidget: FC<{
 }> = ({ label, action, children }) => (
   <Box className={WIDGET_CLASS} direction="col" gap={1}>
     <Box align="center" direction="row" gap={1}>
-      <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
+      <Typography
+        className="tw:text-brand-secondary"
+        size="text-sm"
+        weight="medium">
         {label}
       </Typography>
       {action}
@@ -102,7 +116,7 @@ const EditPencil: FC<{
       aria-label={t('label.edit-entity', { entity })}
       color="tertiary"
       data-testid={dataTestId}
-      icon={<Edit className="tw:size-3" />}
+      icon={<Edit className="tw:size-3.5 tw:text-brand-secondary" />}
       size="xs"
     />
   );
@@ -140,7 +154,11 @@ const DomainField: FC<MembersTeamInfoWidgetsProps> = ({
         )
       }
       label={t('label.domain-plural')}>
-      {domains.length > 0 ? <DomainTags domains={domains} /> : <NoneText />}
+      {domains.length > 0 ? (
+        <DomainTags domains={domains} maxVisible={1} maxWidth="100%" />
+      ) : (
+        <NoneText />
+      )}
     </InfoWidget>
   );
 };
@@ -175,9 +193,15 @@ const PersonaField: FC<MembersTeamInfoWidgetsProps> = ({
       }
       label={t('label.persona')}>
       <Typography
-        className={valueTextClass(Boolean(team.defaultPersona))}
+        as="div"
+        className={`${valueTextClass(
+          Boolean(team.defaultPersona)
+        )} tw:w-full tw:truncate tw:text-left`}
         data-testid="team-persona"
-        size="text-sm">
+        size="text-sm"
+        title={
+          team.defaultPersona ? getEntityName(team.defaultPersona) : undefined
+        }>
         {team.defaultPersona
           ? getEntityName(team.defaultPersona)
           : t('label.none')}
@@ -194,11 +218,22 @@ const EmailField: FC<MembersTeamInfoWidgetsProps> = ({
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState('');
+  const [error, setError] = useState<string | undefined>();
 
   const save = useCallback(() => {
-    onPatch({ ...team, email: value });
+    const trimmed = value.trim();
+    // An empty string fails the backend email @Pattern (only null/absent is
+    // valid) and then makes every team GET 400; send undefined to clear it.
+    if (trimmed && !EMAIL_REG_EX.test(trimmed)) {
+      setError(
+        t('message.field-text-is-invalid', { fieldText: t('label.email') })
+      );
+
+      return;
+    }
+    onPatch({ ...team, email: trimmed || undefined });
     setIsEditing(false);
-  }, [team, value, onPatch]);
+  }, [team, value, onPatch, t]);
 
   // Seed the field from the current email each time the popover opens.
   const handleOpenChange = useCallback(
@@ -206,6 +241,7 @@ const EmailField: FC<MembersTeamInfoWidgetsProps> = ({
       if (open) {
         setValue(team.email ?? '');
       }
+      setError(undefined);
       setIsEditing(open);
     },
     [team.email]
@@ -217,39 +253,55 @@ const EmailField: FC<MembersTeamInfoWidgetsProps> = ({
         canEdit && (
           <PopoverTrigger isOpen={isEditing} onOpenChange={handleOpenChange}>
             <EditPencil dataTestId="edit-email" entity={t('label.email')} />
-            <Popover containerClassName="tw:w-72 tw:p-4">
-              <Box direction="col" gap={3}>
-                <Typography size="text-sm" weight="semibold">
-                  {t('label.edit-entity', { entity: t('label.email') })}
-                </Typography>
-                <Input
-                  data-testid="email-input"
-                  size="sm"
-                  value={value}
-                  onChange={setValue}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      save();
-                    }
-                  }}
-                />
-                <Box direction="row" gap={2}>
-                  <ButtonUtility
-                    aria-label={t('label.save')}
-                    color="secondary"
-                    data-testid="save-email"
-                    icon={Check}
-                    size="xs"
-                    onClick={save}
+            <Popover containerClassName="tw:w-80" placement="bottom right">
+              <Box direction="col">
+                <Box className="tw:px-4 tw:py-3">
+                  <Typography size="text-sm" weight="semibold">
+                    {t('label.add-entity', { entity: t('label.email') })}
+                  </Typography>
+                </Box>
+                <Divider />
+                <Box className="tw:p-4">
+                  <Input
+                    data-testid="email-input"
+                    hint={error}
+                    isInvalid={Boolean(error)}
+                    placeholder={t('label.enter-entity', {
+                      entity: t('label.email'),
+                    })}
+                    size="sm"
+                    value={value}
+                    onChange={(val) => {
+                      setValue(val);
+                      setError(undefined);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        save();
+                      }
+                    }}
                   />
-                  <ButtonUtility
-                    aria-label={t('label.cancel')}
+                </Box>
+                <Divider />
+                <Box
+                  className="tw:px-4 tw:py-3"
+                  direction="row"
+                  gap={2}
+                  justify="end">
+                  <Button
                     color="tertiary"
                     data-testid="cancel-email"
-                    icon={XClose}
-                    size="xs"
-                    onClick={() => setIsEditing(false)}
-                  />
+                    size="sm"
+                    onPress={() => setIsEditing(false)}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    color="primary"
+                    data-testid="save-email"
+                    size="sm"
+                    onPress={save}>
+                    {t('label.save')}
+                  </Button>
                 </Box>
               </Box>
             </Popover>
@@ -258,8 +310,12 @@ const EmailField: FC<MembersTeamInfoWidgetsProps> = ({
       }
       label={t('label.email')}>
       <Typography
-        className={valueTextClass(Boolean(team.email))}
-        size="text-sm">
+        as="div"
+        className={`${valueTextClass(
+          Boolean(team.email)
+        )} tw:w-full tw:truncate tw:text-left`}
+        size="text-sm"
+        title={team.email || undefined}>
         {team.email || t('label.none')}
       </Typography>
     </InfoWidget>
@@ -275,11 +331,12 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [webhook, setWebhook] = useState('');
   const [endpoint, setEndpoint] = useState('');
+  const [error, setError] = useState<string | undefined>();
 
   const items = useMemo<SelectItemType[]>(
     () =>
-      SUBSCRIPTION_WEBHOOK_OPTIONS.filter((o) => o.value !== '').map((o) => ({
-        id: o.value,
+      SUBSCRIPTION_WEBHOOK_OPTIONS.map((o) => ({
+        id: o.value || NONE_KEY,
         label: t(o.label),
       })),
     [t]
@@ -288,6 +345,16 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
   const keys = team.profile?.subscription
     ? Object.keys(team.profile.subscription)
     : [];
+  const subKey = keys[0];
+  const SubIcon = subKey
+    ? getWebhookIcon(subKey as SUBSCRIPTION_WEBHOOK)
+    : null;
+  const subLabel = subKey
+    ? t(
+        SUBSCRIPTION_WEBHOOK_OPTIONS.find((o) => o.value === subKey)?.label ??
+          subKey
+      )
+    : t('label.none');
 
   // Seed the webhook/endpoint from the existing subscription on each open.
   const handleOpenChange = useCallback(
@@ -299,12 +366,31 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
         setWebhook(existing ? existing[0] : '');
         setEndpoint(existing ? existing[1].endpoint ?? '' : '');
       }
+      setError(undefined);
       setIsEditing(open);
     },
     [team.profile?.subscription]
   );
 
   const save = useCallback(() => {
+    if (webhook) {
+      if (!endpoint.trim()) {
+        setError(
+          t('message.field-required-plural', { field: t('label.endpoint') })
+        );
+
+        return;
+      }
+
+      try {
+        new URL(endpoint);
+      } catch {
+        setError(t('message.endpoint-should-be-valid'));
+
+        return;
+      }
+    }
+
     const data: SubscriptionWebhook | undefined = webhook
       ? { webhook, endpoint }
       : undefined;
@@ -317,7 +403,7 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
       },
     });
     setIsEditing(false);
-  }, [team, webhook, endpoint, onPatch]);
+  }, [team, webhook, endpoint, onPatch, t]);
 
   return (
     <InfoWidget
@@ -328,59 +414,73 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
               dataTestId="edit-subscription"
               entity={t('label.subscription')}
             />
-            <Popover containerClassName="tw:w-80 tw:p-4">
-              <Box direction="col" gap={3}>
-                <Typography size="text-sm" weight="semibold">
-                  {t('label.add-subscription')}
-                </Typography>
-                <Box direction="col" gap={2}>
-                  <Typography
-                    className="tw:text-secondary"
-                    size="text-sm"
-                    weight="medium">
-                    {t('label.webhook')}
+            <Popover containerClassName="tw:w-80" placement="bottom right">
+              <Box direction="col">
+                <Box className="tw:px-4 tw:py-3">
+                  <Typography size="text-sm" weight="semibold">
+                    {t('label.add-subscription')}
                   </Typography>
-                  <Select
-                    data-testid="subscription-webhook-select"
-                    items={items}
-                    placeholder={t('label.select-field', {
-                      field: t('label.webhook'),
-                    })}
-                    selectedKey={webhook || null}
-                    onSelectionChange={(key) =>
-                      setWebhook(key ? String(key) : '')
-                    }>
-                    {(item) => <Select.Item key={item.id} {...item} />}
-                  </Select>
                 </Box>
-                {webhook && (
-                  <Input
-                    data-testid="subscription-endpoint-input"
-                    placeholder={t('label.enter-entity-value', {
-                      entity: t('label.endpoint'),
-                    })}
-                    size="sm"
-                    value={endpoint}
-                    onChange={setEndpoint}
-                  />
-                )}
-                <Box direction="row" gap={2}>
-                  <ButtonUtility
-                    aria-label={t('label.save')}
-                    color="secondary"
-                    data-testid="save-subscription"
-                    icon={Check}
-                    size="xs"
-                    onClick={save}
-                  />
-                  <ButtonUtility
-                    aria-label={t('label.cancel')}
+                <Divider />
+                <Box className="tw:p-4" direction="col" gap={3}>
+                  <Box direction="col" gap={2}>
+                    <Typography
+                      className="tw:text-secondary"
+                      size="text-sm"
+                      weight="medium">
+                      {t('label.webhook')}
+                    </Typography>
+                    <Select
+                      data-testid="subscription-webhook-select"
+                      items={items}
+                      placeholder={t('label.select-field', {
+                        field: t('label.webhook'),
+                      })}
+                      selectedKey={webhook || NONE_KEY}
+                      onSelectionChange={(key) => {
+                        setWebhook(key && key !== NONE_KEY ? String(key) : '');
+                        setError(undefined);
+                      }}>
+                      {(item) => <Select.Item key={item.id} {...item} />}
+                    </Select>
+                  </Box>
+                  {webhook && (
+                    <Input
+                      data-testid="subscription-endpoint-input"
+                      hint={error}
+                      isInvalid={Boolean(error)}
+                      placeholder={t('label.enter-entity-value', {
+                        entity: t('label.endpoint'),
+                      })}
+                      size="sm"
+                      value={endpoint}
+                      onChange={(value) => {
+                        setEndpoint(value);
+                        setError(undefined);
+                      }}
+                    />
+                  )}
+                </Box>
+                <Divider />
+                <Box
+                  className="tw:px-4 tw:py-3"
+                  direction="row"
+                  gap={2}
+                  justify="end">
+                  <Button
                     color="tertiary"
                     data-testid="cancel-subscription"
-                    icon={XClose}
-                    size="xs"
-                    onClick={() => setIsEditing(false)}
-                  />
+                    size="sm"
+                    onPress={() => setIsEditing(false)}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    color="primary"
+                    data-testid="save-subscription"
+                    size="sm"
+                    onPress={save}>
+                    {t('label.save')}
+                  </Button>
                 </Box>
               </Box>
             </Popover>
@@ -388,12 +488,21 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
         )
       }
       label={t('label.subscription')}>
-      <Typography
-        className={valueTextClass(keys.length > 0)}
-        data-testid="subscription-value"
-        size="text-sm">
-        {keys.length > 0 ? keys[0] : t('label.none')}
-      </Typography>
+      <Box
+        align="center"
+        className={`${valueTextClass(keys.length > 0)} tw:w-full`}
+        direction="row"
+        gap={2}>
+        {SubIcon && <SubIcon aria-hidden height={16} width={16} />}
+        <Typography
+          as="div"
+          className="tw:truncate tw:text-left"
+          data-testid="subscription-value"
+          size="text-sm"
+          title={subKey || undefined}>
+          {subLabel}
+        </Typography>
+      </Box>
     </InfoWidget>
   );
 };
@@ -424,6 +533,7 @@ const OwnerField: FC<MembersTeamInfoWidgetsProps> = ({
       label={t('label.owner-plural')}>
       {owners.length > 0 ? (
         <Owner
+          className="tw:w-full tw:min-w-0 tw:items-stretch"
           hasPermission={false}
           isCompactView={false}
           owners={owners}
@@ -443,9 +553,11 @@ const TypeField: FC<{ team: Team }> = ({ team }) => {
     <InfoWidget label={t('label.type')}>
       {team.teamType ? (
         <Typography
-          className="tw:text-primary"
+          as="div"
+          className="tw:w-full tw:truncate tw:text-left tw:text-primary"
           data-testid="team-type"
-          size="text-sm">
+          size="text-sm"
+          title={team.teamType}>
           {team.teamType}
         </Typography>
       ) : (
@@ -464,7 +576,7 @@ const MembersTeamInfoWidgets: FC<MembersTeamInfoWidgetsProps> = ({
 
   return (
     <Box
-      className="tw:flex-wrap tw:px-8 tw:py-4 tw:pt-0"
+      className="tw:flex-wrap tw:px-8 tw:pb-6"
       data-testid="team-info-widgets"
       direction="row"
       gap={4}>
@@ -480,11 +592,12 @@ const MembersTeamInfoWidgets: FC<MembersTeamInfoWidgetsProps> = ({
       <InfoWidget
         action={
           <Tooltip
+            placement="left"
             title={t('message.team-distinct-user-description')}
             triggerClassName="tw:inline-flex tw:items-center">
             <InfoCircle
               aria-label={t('message.team-distinct-user-description')}
-              className="tw:size-3 tw:text-tertiary"
+              className="tw:size-3.5 tw:text-brand-secondary"
             />
           </Tooltip>
         }

@@ -23,6 +23,7 @@ import { hashSubPathToView, viewToSubPath } from './Members.utils';
 import MembersAddTeamForm from './MembersAddTeamForm';
 import MembersAdminsPanel from './MembersAdminsPanel';
 import MembersCreateUserForm from './MembersCreateUserForm';
+import MembersImportForm from './MembersImportForm';
 import MembersLanding from './MembersLanding';
 import MembersOnlineUsersPanel from './MembersOnlineUsersPanel';
 import MembersTeamDetail from './MembersTeamDetail';
@@ -74,6 +75,11 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     const adminsLabel = t('label.admin-plural');
     const onlineUsersLabel = t('label.online-user-plural');
     const addTeamLabel = t('label.add-entity', { entity: t('label.team') });
+    const importIsUser =
+      view.type === 'teams-import' && view.importType === 'users';
+    const importLabel = t('label.import-entity', {
+      entity: importIsUser ? t('label.user') : t('label.team'),
+    });
 
     let teamName = '';
     const isTeamsOrDetail =
@@ -111,6 +117,11 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       teams: [...base, { id: 'current', label: organizationLabel }],
       [TEAM_DETAIL]: [...base, teamsItem, { id: 'current', label: teamName }],
       'teams-add': [...base, teamsItem, { id: 'current', label: addTeamLabel }],
+      'teams-import': [
+        ...base,
+        teamsItem,
+        { id: 'current', label: importLabel },
+      ],
       users: [...base, { id: 'current', label: usersLabel }],
       admins: [...base, { id: 'current', label: adminsLabel }],
       'user-create': [
@@ -129,6 +140,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       teams: Users01,
       [TEAM_DETAIL]: Users01,
       'teams-add': Users01,
+      'teams-import': Users01,
       users: User01,
       admins: ShieldTick,
       'user-create': createUserIsAdmin ? ShieldTick : User01,
@@ -140,6 +152,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       teams: organizationLabel,
       [TEAM_DETAIL]: teamName,
       'teams-add': addTeamLabel,
+      'teams-import': importLabel,
       users: usersLabel,
       admins: adminsLabel,
       'user-create': createUserLabel,
@@ -151,6 +164,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       teams: t('message.members-teams-description'),
       [TEAM_DETAIL]: t('message.members-teams-description'),
       'teams-add': t('message.members-teams-description'),
+      'teams-import': t('message.members-teams-description'),
       users: t('message.members-users-description'),
       admins: t('message.members-admins-description'),
       'user-create': createUserIsAdmin
@@ -244,6 +258,18 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       );
     }
 
+    if (view.type === 'teams-import') {
+      const { fqn, importType } = view;
+      const back = () =>
+        fqn === 'Organization'
+          ? onNavigate({ type: 'teams' })
+          : onNavigate({ type: TEAM_DETAIL, fqn, name: fqn });
+
+      return (
+        <MembersImportForm fqn={fqn} importType={importType} onClose={back} />
+      );
+    }
+
     if (view.type === 'users') {
       return (
         <MembersUsersPanel
@@ -277,7 +303,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
 
   return (
     <EntityExportModalProvider>
-      <div className="tw:flex-1 tw:overflow-y-auto">{content}</div>
+      <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto">{content}</div>
     </EntityExportModalProvider>
   );
 };

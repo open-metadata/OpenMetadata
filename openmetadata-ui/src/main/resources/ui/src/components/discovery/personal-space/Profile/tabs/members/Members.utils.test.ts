@@ -13,6 +13,8 @@
 
 import {
   formatOnlineStatus,
+  getCsvFileSizeLabel,
+  getCsvRowCount,
   hashSubPathToView,
   viewToSubPath,
 } from './Members.utils';
@@ -44,6 +46,50 @@ describe('hash <-> view round-trip', () => {
 
   it('maps teams/add to the add view (not a team named "add")', () => {
     expect(hashSubPathToView('teams/add')).toEqual({ type: 'teams-add' });
+  });
+
+  it('round-trips a team import view', () => {
+    const fqn = 'Engineering.Data';
+    const view = {
+      type: 'teams-import' as const,
+      fqn,
+      importType: 'teams' as const,
+    };
+    const subPath = viewToSubPath(view);
+
+    expect(subPath).toBe(`teams/${encodeURIComponent(fqn)}/import-team`);
+    expect(hashSubPathToView(subPath as string)).toEqual(view);
+  });
+
+  it('round-trips a user import view', () => {
+    const fqn = 'Organization';
+    const view = {
+      type: 'teams-import' as const,
+      fqn,
+      importType: 'users' as const,
+    };
+    const subPath = viewToSubPath(view);
+
+    expect(subPath).toBe(`teams/${encodeURIComponent(fqn)}/import-user`);
+    expect(hashSubPathToView(subPath as string)).toEqual(view);
+  });
+});
+
+describe('getCsvRowCount', () => {
+  it('counts data rows excluding the header and blank lines', () => {
+    expect(getCsvRowCount('name,email\na,a@x.com\nb,b@x.com')).toBe(2);
+    expect(getCsvRowCount('name,email\na,a@x.com\n\n')).toBe(1);
+    expect(getCsvRowCount('name,email')).toBe(0);
+    expect(getCsvRowCount('')).toBe(0);
+  });
+});
+
+describe('getCsvFileSizeLabel', () => {
+  it('formats byte sizes into B/KB/MB', () => {
+    expect(getCsvFileSizeLabel(0)).toBe('0 B');
+    expect(getCsvFileSizeLabel(512)).toBe('512 B');
+    expect(getCsvFileSizeLabel(1024)).toBe('1.0 KB');
+    expect(getCsvFileSizeLabel(1024 * 1024 * 2)).toBe('2.0 MB');
   });
 });
 

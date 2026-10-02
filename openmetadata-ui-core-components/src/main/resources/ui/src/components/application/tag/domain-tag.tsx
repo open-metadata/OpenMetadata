@@ -90,6 +90,10 @@ export const DomainTag: FC<EntityTagProps> = ({
     ...otherProps,
     className: cx(
       'tag-accent',
+      // Cap the chip at its flex parent's width and let it shrink, so a caller
+      // passing maxWidth="100%" fills the container and ellipsizes. No effect in
+      // wide containers where the content is narrower than the parent.
+      'tw:max-w-full tw:min-w-0',
       disabled && 'tw:cursor-not-allowed tw:opacity-50',
       className
     ),

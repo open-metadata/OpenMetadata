@@ -18,6 +18,7 @@ import {
   FieldTypes,
   FormFields,
   FormItemLabel,
+  FormSelectItem,
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -42,6 +43,12 @@ import {
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+
+// The teamType SELECT stores the whole option object as its RHF value, so the
+// form type overrides teamType with FormSelectItem and onSubmit unwraps the id.
+type AddTeamFormValues = Omit<CreateTeam, 'teamType'> & {
+  teamType: FormSelectItem;
+};
 
 interface MembersAddTeamFormProps {
   parentTeamType?: TeamType;
@@ -85,12 +92,12 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
     };
   }, [parentTeamFqn, parentTeamType]);
 
-  const form = useForm<CreateTeam>({
+  const form = useForm<AddTeamFormValues>({
     defaultValues: {
       name: '',
       displayName: '',
       email: '',
-      teamType: TeamType.Group,
+      teamType: { id: TeamType.Group, label: TeamType.Group },
       isJoinable: true,
     },
   });
@@ -208,7 +215,7 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
     [t, teamTypeOptions]
   );
 
-  const onSubmit = async (data: CreateTeam) => {
+  const onSubmit = async (data: AddTeamFormValues) => {
     const description = descEditorRef.current?.getEditorContent() ?? '';
 
     setIsSaving(true);
@@ -217,6 +224,9 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
         ...data,
         name: data.name.trim(),
         displayName: data.displayName?.trim(),
+        teamType: (data.teamType?.id as TeamType) ?? TeamType.Group,
+        // Empty string fails the backend email @Pattern; omit when blank.
+        email: data.email?.trim() || undefined,
         description,
         // The API takes parent team ids so the new team nests under the current
         // team instead of becoming top-level.
@@ -248,9 +258,11 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
 
   return (
     <Box className="tw:h-full tw:min-h-0" direction="col" justify="between">
-      <HookForm form={form}>
+      <HookForm
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
+        form={form}>
         <Box
-          className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-8 tw:pt-2"
+          className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-8"
           data-testid="add-team-container"
           direction="col">
           <Box className="tw:max-w-[50%] tw:w-full" direction="col" gap={5}>

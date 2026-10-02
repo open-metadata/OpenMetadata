@@ -75,9 +75,22 @@ const PersonaSelect: FC<PersonaSelectProps> = ({
     []
   );
 
+  // Key on content, not the reference: the parent hands a fresh defaultPersona
+  // object after each async PATCH, and keying on identity would re-run TreeSelect's
+  // value→selection resync and visibly drop the pick. Mirrors DomainSelect.
+  const selectedKey = JSON.stringify(
+    selectedPersona
+      ? [
+          selectedPersona.id,
+          selectedPersona.fullyQualifiedName,
+          selectedPersona.name,
+        ]
+      : null
+  );
   const value = useMemo(
     () => (selectedPersona ? [entityRefToTreeNode(selectedPersona)] : []),
-    [selectedPersona]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedKey]
   );
 
   const handleChange = useCallback(
@@ -87,8 +100,10 @@ const PersonaSelect: FC<PersonaSelectProps> = ({
         | TreeSelectNode<EntityReference>[]
         | null
     ) => {
-      const node = Array.isArray(selected) ? selected[0] : selected;
-      void onUpdate(node?.data ?? undefined);
+      // Send only the schema-required ref fields: server read-only fields
+      // (href, deleted, description) in a PATCH body are rejected.
+      const data = Array.isArray(selected) ? selected[0]?.data : selected?.data;
+      void onUpdate(data ? { id: data.id, type: data.type } : undefined);
     },
     [onUpdate]
   );

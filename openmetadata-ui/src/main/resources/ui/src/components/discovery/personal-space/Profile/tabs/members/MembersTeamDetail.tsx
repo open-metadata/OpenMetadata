@@ -17,18 +17,25 @@ import {
   Button,
   ButtonUtility,
   Card,
+  Dialog,
   Dropdown,
   EmptyPlaceholder,
+  FeaturedIcon,
   Input,
+  Modal,
+  ModalOverlay,
   PaginationCardWithControls,
   SelectItemType,
   Tabs,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
 import {
-  DotsGrid,
+  ArrowRight,
+  Delete,
+  Edit,
+} from '@openmetadata/ui-core-components/icons';
+import {
   Download01,
   Lock01,
   LockUnlocked01,
@@ -50,6 +57,7 @@ import type { Key } from 'react-aria-components';
 import { DropZone, useDragAndDrop } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { ReactComponent as ColumnDragIcon } from '../../../../../../assets/svg/menu-duo.svg';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
@@ -118,7 +126,6 @@ import Table from '../../../../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { MembersTeamDetailProps } from './Members.types';
-import MembersImportModal, { MembersImportType } from './MembersImportModal';
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 
 const AssetsTabs = withSuspenseFallback(
@@ -215,7 +222,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [usersSearchTerm, setUsersSearchTerm] = useState('');
-  const [importModalType, setImportModalType] = useState<MembersImportType>();
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [movedTeam, setMovedTeam] = useState<{
     from: Team;
@@ -320,7 +326,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       const { data } = await getTeams({
         parentTeam: team.fullyQualifiedName,
         include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
-        limit: PAGE_SIZE_LARGE,
         fields: [
           TabSpecificField.USER_COUNT,
           TabSpecificField.CHILDREN_COUNT,
@@ -520,9 +525,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   const handleTeamImport = useCallback(() => {
     if (team?.name) {
-      setImportModalType('teams');
+      onNavigate({ type: 'teams-import', fqn: team.name, importType: 'teams' });
     }
-  }, [team]);
+  }, [team, onNavigate]);
 
   const handleUsersExport = useCallback(() => {
     if (!team?.name) {
@@ -743,13 +748,20 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       const dragRecord = draggedTeamRef.current;
       const targetRecord = teamByName.get(String(event.target.key));
       draggedTeamRef.current = undefined;
-      if (
-        dragRecord &&
-        targetRecord &&
-        !isDropRestricted(dragRecord.teamType, targetRecord.teamType)
-      ) {
-        setMovedTeam({ from: dragRecord, to: targetRecord });
+      if (!dragRecord || !targetRecord || dragRecord.id === targetRecord.id) {
+        return;
       }
+      if (isDropRestricted(dragRecord.teamType, targetRecord.teamType)) {
+        showErrorToast(
+          t('message.error-team-transfer-message', {
+            dragTeam: dragRecord.teamType,
+            dropTeam: targetRecord.teamType,
+          })
+        );
+
+        return;
+      }
+      setMovedTeam({ from: dragRecord, to: targetRecord });
     },
     onRootDrop: () => {
       if (draggedTeamRef.current) {
@@ -767,7 +779,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         key: 'drag',
         width: 32,
         render: () => (
-          <DotsGrid
+          <ColumnDragIcon
             aria-hidden
             className="tw:size-4 tw:text-tertiary tw:cursor-grab"
             data-testid="drag-handle"
@@ -1288,7 +1300,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       />
 
       {/* Description (inline editor — no modal) */}
-      <Card className="tw:mx-8 tw:mb-4">
+      <Card className="tw:mx-8 tw:mb-6">
         <Card.Content className="tw:px-3">
           <Box direction="col" gap={2}>
             <Box align="center" direction="row" gap={2}>
@@ -1440,30 +1452,76 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                 />
               </DropZone>
 
-              {/* DnD confirmation modal */}
+              {/* DnD move confirmation modal */}
               {movedTeam && (
-                <DeleteModal
-                  open
-                  entityTitle={getEntityName(movedTeam.from)}
-                  message={
-                    movedTeam.to ? (
-                      <Transi18next
-                        i18nKey="message.entity-transfer-message"
-                        renderElement={<strong />}
-                        values={{
-                          from: getEntityName(movedTeam.from),
-                          to: getEntityName(movedTeam.to),
-                        }}
-                      />
-                    ) : (
-                      t('message.move-entity-to-root', {
-                        entity: getEntityName(movedTeam.from),
-                      })
-                    )
-                  }
-                  onCancel={() => setMovedTeam(undefined)}
-                  onDelete={handleMoveConfirm}
-                />
+                <ModalOverlay
+                  isDismissable
+                  data-testid="move-team-modal"
+                  isOpen
+                  style={{ zIndex: 999 }}
+                  onOpenChange={(isOpen) => !isOpen && setMovedTeam(undefined)}>
+                  <Modal>
+                    <Dialog width={400} onClose={() => setMovedTeam(undefined)}>
+                      <Dialog.Header className="tw:flex-col">
+                        <FeaturedIcon
+                          color="brand"
+                          icon={ArrowRight}
+                          size="lg"
+                          theme="light"
+                        />
+                        <div
+                          className="tw:flex tw:flex-col tw:gap-0.5 tw:mt-4 tw:min-w-0 tw:w-full"
+                          data-testid="modal-header">
+                          <Typography size="text-md" weight="semibold">
+                            {t('label.move-the-entity', {
+                              entity: t('label.team'),
+                            })}
+                          </Typography>
+                          <Typography
+                            as="p"
+                            className="tw:text-tertiary tw:break-words">
+                            {movedTeam.to ? (
+                              <Transi18next
+                                i18nKey="message.entity-transfer-message"
+                                renderElement={<strong />}
+                                values={{
+                                  from: getEntityName(movedTeam.from),
+                                  to: getEntityName(movedTeam.to),
+                                  entity: t('label.team-lowercase'),
+                                }}
+                              />
+                            ) : (
+                              t('message.move-entity-to-root', {
+                                entity: getEntityName(movedTeam.from),
+                              })
+                            )}
+                          </Typography>
+                        </div>
+                      </Dialog.Header>
+                      <Box
+                        className="tw:p-4 tw:pt-6 tw:sm:px-6 tw:sm:pt-8 tw:sm:pb-6"
+                        direction="row"
+                        gap={3}>
+                        <Button
+                          className="tw:w-full"
+                          color="secondary"
+                          data-testid="cancel-button"
+                          size="lg"
+                          onPress={() => setMovedTeam(undefined)}>
+                          {t('label.cancel')}
+                        </Button>
+                        <Button
+                          className="tw:w-full"
+                          color="primary"
+                          data-testid="confirm-button"
+                          size="lg"
+                          onPress={handleMoveConfirm}>
+                          {t('label.confirm')}
+                        </Button>
+                      </Box>
+                    </Dialog>
+                  </Modal>
+                </ModalOverlay>
               )}
             </>
           )}
@@ -1506,7 +1564,13 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
                             <Dropdown.Item
                               data-testid="import-users"
                               icon={Upload01}
-                              onAction={() => setImportModalType('users')}>
+                              onAction={() =>
+                                onNavigate({
+                                  type: 'teams-import',
+                                  fqn: team.name,
+                                  importType: 'users',
+                                })
+                              }>
                               {t('label.import-entity', {
                                 entity: t('label.user-plural'),
                               })}
@@ -1850,22 +1914,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           )}
           onCancel={() => setRemoveEntity(undefined)}
           onDelete={handleConfirmRemove}
-        />
-      )}
-
-      {importModalType && (
-        <MembersImportModal
-          fqn={team.name}
-          importType={importModalType}
-          open={Boolean(importModalType)}
-          onCancel={() => setImportModalType(undefined)}
-          onSuccess={() => {
-            setImportModalType(undefined);
-            fetchTeam();
-            if (activeTab === 'users') {
-              fetchTeamUsers();
-            }
-          }}
         />
       )}
     </Box>

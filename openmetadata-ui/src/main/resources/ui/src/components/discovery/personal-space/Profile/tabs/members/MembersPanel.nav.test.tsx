@@ -56,6 +56,17 @@ jest.mock(
           onClick={() => props.onNavigate({ type: 'teams-add' })}>
           add
         </button>
+        <button
+          data-testid="go-import"
+          onClick={() =>
+            props.onNavigate({
+              type: 'teams-import',
+              fqn: props.fqn,
+              importType: 'teams',
+            })
+          }>
+          import
+        </button>
       </div>
     )
 );
@@ -63,6 +74,17 @@ jest.mock(
 jest.mock('./MembersAddTeamForm', () => () => (
   <div data-testid="add-team-form" />
 ));
+jest.mock(
+  './MembersImportForm',
+  () => (props: { fqn: string; importType: string }) =>
+    (
+      <div
+        data-fqn={props.fqn}
+        data-import-type={props.importType}
+        data-testid="import-form"
+      />
+    )
+);
 jest.mock('./MembersUsersPanel', () => () => <div data-testid="users-panel" />);
 jest.mock('./MembersAdminsPanel', () => () => (
   <div data-testid="admins-panel" />
@@ -115,5 +137,24 @@ describe('MembersPanel hash navigation', () => {
     fireEvent.click(screen.getByTestId('go-add'));
 
     expect(screen.getByTestId('add-team-form')).toBeInTheDocument();
+  });
+
+  it('team-detail -> teams-import shows the import form with the team fqn', () => {
+    renderAt('#members/teams');
+    fireEvent.click(screen.getByTestId('go-import'));
+
+    const form = screen.getByTestId('import-form');
+
+    expect(form).toHaveAttribute('data-fqn', 'Organization');
+    expect(form).toHaveAttribute('data-import-type', 'teams');
+  });
+
+  it('deep-links a user import hash to the import form', () => {
+    renderAt('#members/teams/Engineering.Data/import-user');
+
+    const form = screen.getByTestId('import-form');
+
+    expect(form).toHaveAttribute('data-fqn', 'Engineering.Data');
+    expect(form).toHaveAttribute('data-import-type', 'users');
   });
 });
