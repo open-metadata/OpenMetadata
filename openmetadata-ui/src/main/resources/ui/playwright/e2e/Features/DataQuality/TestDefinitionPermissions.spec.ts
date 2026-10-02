@@ -370,10 +370,7 @@ test.describe(
       await stewardSwitch.click();
       await response2;
 
-      await expect(stewardSwitch).toHaveAttribute(
-        'aria-checked',
-        String('true')
-      );
+      await expect(stewardSwitch.getByRole('switch')).toBeChecked();
 
       // Data Steward should NOT see delete buttons (no Delete permission)
       await expect(

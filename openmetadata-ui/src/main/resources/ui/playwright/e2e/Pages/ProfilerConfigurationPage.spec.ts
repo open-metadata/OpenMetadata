@@ -165,7 +165,10 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.getByRole('tree').getByText('All').click();
       await clickOutside(adminPage);
 
-      await adminPage.click('#metricConfiguration_2_disabled');
+      // The visible track covers the hidden switch input, so click its label.
+      await adminPage
+        .locator('label:has(#metricConfiguration_2_disabled)')
+        .click();
 
       const settingRes = adminPage.waitForResponse('/api/v1/system/settings');
       await adminPage.click('[data-testid="save-button"]');
