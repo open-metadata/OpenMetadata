@@ -324,7 +324,9 @@ export class DatabaseClass extends EntityClass implements ParentNode {
       .getByTestId('owner-label')
       .getByTestId('owner-link')
       .getByTestId(owner);
-    const tableTab = page.getByRole('menuitem', { name: 'Tables' });
+    const tableTab = page
+      .getByTestId('explore-left-panel')
+      .getByRole('tab', { name: 'Tables' });
 
     await waitForSearchResult(page, searchTerm, ownerLink, tableTab, {
       owners: [owner],
@@ -335,7 +337,9 @@ export class DatabaseClass extends EntityClass implements ParentNode {
   async verifyDomainChangeInES(page: Page, domains: Domain['responseData'][]) {
     const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
     const entityCard = page.getByTestId(`table-data-card_${searchTerm}`);
-    const tableTab = page.getByRole('menuitem', { name: 'Tables' });
+    const tableTab = page
+      .getByTestId('explore-left-panel')
+      .getByRole('tab', { name: 'Tables' });
 
     for (const domain of domains) {
       const domainLink = entityCard

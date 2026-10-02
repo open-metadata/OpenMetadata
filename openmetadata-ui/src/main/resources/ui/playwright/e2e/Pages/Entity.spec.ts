@@ -62,6 +62,7 @@ import {
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
 import {
   applyGlossaryPicker,
@@ -130,7 +131,13 @@ test.afterAll('Cleanup shared entities', async () => {
   await afterAction();
 });
 
-Object.entries(entities).forEach(([key, EntityClass]) => {
+const entityEntries = Object.entries(entities);
+
+pickEntityMatrix(
+  __filename,
+  entityEntries,
+  entityEntries.filter(([, EntityClass]) => EntityClass === TableClass)
+).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   // For tables, softDeleteEntity counts and clicks the deleted table in its
   // schema's listing, so that table must be alone in its own schema.
@@ -1539,8 +1546,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           }
 
           // Verify Overview tab is active by default
-          await expect(page.getByTestId('overview-tab')).toHaveClass(
-            /selected/
+          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+            'aria-selected',
+            'true'
           );
 
           // Update description via panel
@@ -1581,15 +1589,17 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           if (entity.type === 'Table') {
             await page.getByTestId('data-quality-tab').click();
 
-            await expect(page.getByTestId('data-quality-tab')).toHaveClass(
-              /ant-menu-item-selected/
+            await expect(page.getByTestId('data-quality-tab')).toHaveAttribute(
+              'aria-selected',
+              'true'
             );
           }
 
           await page.getByTestId('overview-tab').click();
 
-          await expect(page.getByTestId('overview-tab')).toHaveClass(
-            /ant-menu-item-selected/
+          await expect(page.getByTestId('overview-tab')).toHaveAttribute(
+            'aria-selected',
+            'true'
           );
 
           // Test column navigation with arrow buttons and verify nested column counting

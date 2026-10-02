@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -284,11 +287,12 @@ const DataModelTable = ({
       defaultVisibleColumns={DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS}
       entityType="dashboardDataModelTable"
       extraTableFilters={
-        <span>
-          <Switch
-            checked={showDeleted}
+        <span className="tw:inline-flex tw:items-center">
+          <Toggle
             data-testid="show-deleted"
-            onClick={handleShowDeletedChange}
+            isSelected={showDeleted}
+            size="sm"
+            onChange={handleShowDeletedChange}
           />
           <Typography className="m-l-xs">{t('label.deleted')}</Typography>
         </span>

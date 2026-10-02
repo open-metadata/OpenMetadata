@@ -12,11 +12,12 @@
  */
 
 import {
+  Badge,
   ButtonGroup,
   ButtonGroupItem,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Col, Row, Tag, Tooltip } from 'antd';
+import { Col, Row, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -490,7 +491,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       <Col>
         <Typography color="secondary">{t('label.schema')}</Typography>
         {schemaTypePlaceholder ?? (
-          <Tag className="ml-4">{messageSchema.schemaType}</Tag>
+          <Badge
+            className="tw:inline-flex tw:mr-2 ml-4"
+            color="gray"
+            size="sm"
+            type="color">
+            {messageSchema.schemaType}
+          </Badge>
         )}
       </Col>
     );

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,7 +47,7 @@ const DomainSummary = ({
           )}
         />
 
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
 
         <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
@@ -66,7 +66,7 @@ const DomainSummary = ({
           </Col>
         </Row>
 
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
 
         <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
@@ -91,7 +91,7 @@ const DomainSummary = ({
           </Col>
         </Row>
 
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
       </>
     </SummaryPanelSkeleton>
   );
