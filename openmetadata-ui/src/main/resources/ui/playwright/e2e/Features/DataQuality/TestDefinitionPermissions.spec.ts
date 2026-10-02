@@ -95,19 +95,19 @@ const test = base.extend<{
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataStewardPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataStewardUser.login(page);
+    await dataStewardUser.signIn(page);
     await use(page);
     await page.close();
   },
   viewOnlyPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await viewOnlyUser.login(page);
+    await viewOnlyUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -220,7 +220,9 @@ test.describe(
       await redirectToHomePage(viewOnlyPage);
 
       // Navigate to Test Library
-      await viewOnlyPage.goto('/test-library');
+      await viewOnlyPage.goto('/test-library', {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Wait for table to load
       await viewOnlyPage
@@ -247,7 +249,9 @@ test.describe(
       await redirectToHomePage(dataConsumerPage);
 
       // Navigate to Test Library
-      await dataConsumerPage.goto('/test-library');
+      await dataConsumerPage.goto('/test-library', {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Wait for table to load
       await dataConsumerPage
@@ -315,7 +319,9 @@ test.describe(
       await redirectToHomePage(dataStewardPage);
 
       // Navigate to Test Library
-      await dataStewardPage.goto('/test-library');
+      await dataStewardPage.goto('/test-library', {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Wait for table to load
       await dataStewardPage

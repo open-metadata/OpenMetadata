@@ -224,11 +224,34 @@ public interface CoreRelationshipDAOs {
     List<ExtensionRecord> getExtensionsByJsonSchema(
         @BindUUID("id") UUID id, @Bind("jsonSchema") String jsonSchema);
 
-    // The keyset condition and the LIMIT are applied inside each UNION branch so that neither
-    // side materialises more than one page: the global top-:limit under this ORDER BY is always a
-    // subset of the union of each branch's own top-:limit. UNION ALL is safe because
-    // entity_extension only ever holds superseded versions while <table> holds the current one, so
-    // the same (id, updatedAt) cannot appear in both.
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension "
+            + "WHERE id = :id AND extension IN (<extensions>) ORDER BY extension")
+    @RegisterRowMapper(ExtensionMapper.class)
+    List<ExtensionRecord> getExtensionsByKeysInternal(
+        @BindUUID("id") UUID id, @BindList("extensions") List<String> extensions);
+
+    default List<ExtensionRecord> getExtensionsByKeys(UUID id, List<String> extensions) {
+      return EntityDAO.queryInChunks(extensions, chunk -> getExtensionsByKeysInternal(id, chunk));
+    }
+
+    // Bulk updates can commit history before replacing the current row. Prefer the current copy
+    // of an overlapping snapshot; hydrated history JSON need not equal the current storage JSON.
+    String MYSQL_HISTORY_WITHOUT_CURRENT =
+        "AND NOT EXISTS (SELECT 1 FROM <table> current_entity "
+            + "WHERE current_entity.id = entity_extension.id "
+            + "AND current_entity.updatedAt = entity_extension.updatedAt "
+            + "AND JSON_EXTRACT(current_entity.json, '$.version') = "
+            + "JSON_EXTRACT(entity_extension.json, '$.version')) ";
+
+    String POSTGRES_HISTORY_WITHOUT_CURRENT =
+        "AND NOT EXISTS (SELECT 1 FROM <table> current_entity "
+            + "WHERE current_entity.id = entity_extension.id "
+            + "AND current_entity.updatedAt = entity_extension.updatedAt "
+            + "AND current_entity.json::jsonb -> 'version' = entity_extension.json -> 'version') ";
+
+    // Filter overlaps before each branch's LIMIT so pages remain full. Keeping the keyset and
+    // LIMIT inside each branch bounds the JSON materialised for the final UNION ALL to two pages.
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
@@ -236,6 +259,7 @@ public interface CoreRelationshipDAOs {
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
+                + MYSQL_HISTORY_WITHOUT_CURRENT
                 + "<cursorCondition> "
                 + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit) "
@@ -257,6 +281,7 @@ public interface CoreRelationshipDAOs {
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
+                + POSTGRES_HISTORY_WITHOUT_CURRENT
                 + "<cursorCondition> "
                 + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit) "
@@ -283,18 +308,34 @@ public interface CoreRelationshipDAOs {
         @Bind("cursorId") String cursorId,
         @Bind("limit") int limit);
 
-    @SqlQuery(
+    @ConnectionAwareSqlQuery(
         value =
             "SELECT SUM(cnt) FROM ("
                 + "SELECT COUNT(*) AS cnt FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
+                + MYSQL_HISTORY_WITHOUT_CURRENT
                 + "UNION ALL "
                 + "SELECT COUNT(*) AS cnt FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs"
-                + ") total_counts")
+                + ") total_counts",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT SUM(cnt) FROM ("
+                + "SELECT COUNT(*) AS cnt FROM entity_extension "
+                + "WHERE updatedAt >= :startTs "
+                + "AND updatedAt <= :endTs "
+                + "AND jsonSchema = :entityType "
+                + POSTGRES_HISTORY_WITHOUT_CURRENT
+                + "UNION ALL "
+                + "SELECT COUNT(*) AS cnt FROM <table> "
+                + "WHERE updatedAt >= :startTs AND "
+                + "updatedAt <= :endTs"
+                + ") total_counts",
+        connectionType = POSTGRES)
     int getEntityHistoryByTimestampRangeCount(
         @Define("table") String table,
         @Bind("startTs") long startTs,
@@ -839,7 +880,8 @@ public interface CoreRelationshipDAOs {
     //
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation IN (<relation>)")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND relation IN (<relation>) AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
         @BindUUID("fromId") UUID fromId,
@@ -1044,7 +1086,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND toEntity = :toEntity AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
         @BindUUID("fromId") UUID fromId,
@@ -1054,7 +1097,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT toId FROM entity_relationship  "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND toEntity = :toEntity AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<UUID> findToIds(
         @BindUUID("fromId") UUID fromId,
@@ -1098,7 +1142,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT fromId, COUNT(toId) FROM entity_relationship "
-            + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
+            + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation "
+            + "AND toEntity = :toEntity AND deleted = FALSE "
             + "GROUP BY fromId")
     @RegisterRowMapper(ToRelationshipCountMapper.class)
     List<EntityRelationshipCount> countFindTo(
@@ -1138,7 +1183,7 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-            + "AND relation IN (<relation>)")
+            + "AND relation IN (<relation>) AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
     int countFindTo(
         @BindUUID("fromId") UUID fromId,
@@ -1170,6 +1215,26 @@ public interface CoreRelationshipDAOs {
         @Bind("toEntity") String toEntity);
 
     @SqlQuery(
+        "SELECT COUNT(*) FROM entity_relationship er "
+            + "JOIN metric_entity me ON er.toId = me.id "
+            + "WHERE er.fromId = :fromId AND er.fromEntity = 'metric' AND er.relation = :relation "
+            + "AND er.toEntity = 'metric' AND er.deleted = FALSE "
+            + "AND (me.deleted = false OR me.deleted IS NULL)")
+    int countNonDeletedChildMetrics(
+        @BindUUID("fromId") UUID fromId, @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
+            + "JOIN metric_entity me ON er.toId = me.id "
+            + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = 'metric' AND er.relation = :relation "
+            + "AND er.toEntity = 'metric' AND er.deleted = FALSE "
+            + "AND (me.deleted = false OR me.deleted IS NULL) "
+            + "GROUP BY er.fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> countNonDeletedChildMetricsBatch(
+        @BindList("fromIds") List<String> fromIds, @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
             + "JOIN test_case tc ON er.toId = tc.id "
             + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = :fromEntity AND er.relation = :relation "
@@ -1184,7 +1249,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
-            + "AND relation IN (<relation>) ORDER BY toId LIMIT :limit OFFSET :offset")
+            + "AND relation IN (<relation>) AND deleted = FALSE "
+            + "ORDER BY toId LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findToWithOffset(
         @BindUUID("fromId") UUID fromId,
@@ -1222,7 +1288,8 @@ public interface CoreRelationshipDAOs {
     //
     @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity ")
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND fromEntity = :fromEntity AND deleted = FALSE")
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
         @BindUUID("toId") UUID toId,
@@ -1355,7 +1422,8 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation")
+            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND deleted = FALSE")
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
         @BindUUID("toId") UUID toId,

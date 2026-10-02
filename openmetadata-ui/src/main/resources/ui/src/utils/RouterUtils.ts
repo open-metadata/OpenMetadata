@@ -49,8 +49,17 @@ import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import type { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './FqnUtils';
+import { getSettingPath } from './RouterPaths';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 import { getEncodedFqn } from './StringUtils';
+
+// Moved to RouterPaths so callers needing only a profile URL (the app
+// entry registers one) do not pull this module's graph into their chunk.
+export {
+  getSettingPath,
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from './RouterPaths';
 
 /**
  * The landing page is reachable at two paths: `/` (rendered in place, where
@@ -226,36 +235,6 @@ export const getAppInstallPath = (fqn: string) => {
     PLACEHOLDER_ROUTE_FQN,
     getEncodedFqn(fqn)
   );
-};
-
-export const getSettingPath = (
-  category?: string,
-  tab?: string,
-  withFqn = false,
-  withAction = false
-) => {
-  let path = ROUTES.SETTINGS;
-
-  if (tab && category) {
-    if (withFqn) {
-      path = withAction
-        ? ROUTES.SETTINGS_WITH_TAB_FQN_ACTION
-        : ROUTES.SETTINGS_WITH_TAB_FQN;
-    } else {
-      path = ROUTES.SETTINGS_WITH_TAB;
-    }
-
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-    path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
-  } else if (category) {
-    path = withFqn
-      ? ROUTES.SETTINGS_WITH_CATEGORY_FQN
-      : ROUTES.SETTINGS_WITH_CATEGORY;
-
-    path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
-  }
-
-  return path;
 };
 
 export const getSettingPathRelative = (
@@ -833,42 +812,9 @@ export const getGlossaryTermDetailsPath = (
   return path;
 };
 
-export const getTeamAndUserDetailsPath = (name?: string) => {
-  let path = getSettingPath(
-    GlobalSettingsMenuCategory.MEMBERS,
-    GlobalSettingOptions.TEAMS
-  );
-  if (name) {
-    path = getSettingPath(
-      GlobalSettingsMenuCategory.MEMBERS,
-      GlobalSettingOptions.TEAMS,
-      true
-    );
-    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(name));
-  }
-
-  return path;
-};
-
 export const getEditWebhookPath = (webhookName: string) => {
   let path = ROUTES.EDIT_WEBHOOK;
   path = path.replace(PLACEHOLDER_WEBHOOK_NAME, getEncodedFqn(webhookName));
-
-  return path;
-};
-
-export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
-  let path = tab ? ROUTES.USER_PROFILE_WITH_TAB : ROUTES.USER_PROFILE;
-
-  if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.USER_PROFILE_WITH_SUB_TAB;
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
-  }
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(username));
 
   return path;
 };

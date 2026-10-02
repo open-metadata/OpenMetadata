@@ -18,6 +18,7 @@ import { performAdminLogin } from '../../../utils/admin';
 import { clickOutside, redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -388,11 +389,12 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await sidebar.getByTestId('save-node-configuration-button').click();
         await expect(sidebar).not.toBeVisible();
 
-        const saveResponse = page.waitForResponse(
+        const saveResponse = waitForResponseWithStatus(
+          page,
           (response) =>
             response.url().includes('/api/v1/governance/workflowDefinitions') &&
-            response.request().method() === 'PUT' &&
-            response.ok()
+            response.request().method() === 'PUT',
+          'ok'
         );
 
         await page.getByTestId('save-workflow-button').click();
@@ -411,11 +413,12 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await navigateToWorkflowDetailPage(page, workflowName);
         await enterEditMode(page);
 
-        const saveResponse = page.waitForResponse(
+        const saveResponse = waitForResponseWithStatus(
+          page,
           (response) =>
             response.url().includes('/api/v1/governance/workflowDefinitions') &&
-            response.request().method() === 'PUT' &&
-            response.ok()
+            response.request().method() === 'PUT',
+          'ok'
         );
 
         await page.getByTestId('save-workflow-button').click();
@@ -649,6 +652,19 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         page,
       }) => {
         await redirectToHomePage(page);
+
+        // Trigger fires on table Created, so pin the payload to stay deterministic.
+        await page.route(
+          '**/api/v1/governance/workflowInstances**',
+          async (route) => {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ data: [], paging: { total: 0 } }),
+            });
+          }
+        );
+
         await navigateToWorkflowDetailPage(page, workflowName);
 
         const historyResponse = page.waitForResponse(
@@ -662,7 +678,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await historyResponse;
 
         await expect(
-          page.getByTestId('workflow-execution-history-table')
+          page.getByTestId('workflow-execution-history-empty')
         ).toBeVisible();
       });
     });

@@ -5,6 +5,7 @@ import {
   type RadioGroupProps as AriaRadioGroupProps,
   type RadioProps as AriaRadioProps,
 } from 'react-aria-components';
+import { Label } from '@/components/base/input/label';
 import { cx } from '@/utils/cx';
 import { borderAfter } from '@/utils/tailwindClasses';
 
@@ -63,12 +64,15 @@ interface RadioButtonProps extends AriaRadioProps {
   label?: ReactNode;
   hint?: ReactNode;
   ref?: Ref<HTMLLabelElement>;
+  /** Extra classes for the circular indicator (e.g. a brand-coloured ring). */
+  indicatorClassName?: string;
 }
 
 export const RadioButton = ({
   label,
   hint,
   className,
+  indicatorClassName,
   size = 'sm',
   ...ariaRadioProps
 }: RadioButtonProps) => {
@@ -105,7 +109,7 @@ export const RadioButton = ({
       {({ isSelected, isDisabled, isFocusVisible }) => (
         <>
           <RadioButtonBase
-            className={label || hint ? 'tw:mt-0.5' : ''}
+            className={cx((label || hint) && 'tw:mt-0.5', indicatorClassName)}
             isDisabled={isDisabled}
             isFocusVisible={isFocusVisible}
             isSelected={isSelected}
@@ -145,11 +149,13 @@ RadioButton.displayName = 'RadioButton';
 interface RadioGroupProps extends RadioGroupContextType, AriaRadioGroupProps {
   children: ReactNode;
   className?: string;
+  label?: ReactNode;
 }
 
 export const RadioGroup = ({
   children,
   className,
+  label,
   size = 'sm',
   ...props
 }: RadioGroupProps) => {
@@ -158,6 +164,7 @@ export const RadioGroup = ({
       <AriaRadioGroup
         {...props}
         className={cx('tw:flex tw:flex-col tw:gap-4', className)}>
+        {label && <Label>{label}</Label>}
         {children}
       </AriaRadioGroup>
     </RadioGroupContext.Provider>

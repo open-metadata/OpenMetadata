@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { groupBy, uniqBy } from 'lodash';
@@ -27,8 +27,8 @@ import {
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import type { TagLabel } from '../../../generated/entity/data/chart';
 import { TagSource } from '../../../generated/entity/data/chart';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
@@ -453,9 +453,7 @@ export const DashboardChartTable = ({
               data-testid="show-deleted"
               onClick={handleShowDeletedCharts}
             />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>
           </span>
         }
         loading={isChartsLoading}

@@ -11,90 +11,20 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  FieldProp,
-  FieldTypes,
-  FormField,
-  FormItemLabel,
-  getField,
-  HintText,
-  HookForm,
-  Typography,
-  useFieldDoc,
-} from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { uniq } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ENTITY_REFERENCE_OPTIONS,
-  PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
-} from '../../../../../../constants/CustomProperty.constants';
-import { Type } from '../../../../../../generated/entity/type';
-import {
-  Config,
-  CustomProperty,
-} from '../../../../../../generated/type/customProperty';
-import {
-  getTypeByFQN,
-  updateType,
+  CustomPropertyChanges,
+  updateCustomPropertyByName,
 } from '../../../../../../rest/metadataTypeAPI';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
-import {
-  CustomPropertiesEditPageProps,
-  DescriptionFormFieldProps,
-  EditCustomPropertyFormValues,
-} from './CustomPropertiesPanel.types';
-import { toId } from './CustomPropertiesPanel.utils';
-
-const DescriptionFormField: React.FC<
-  DescriptionFormFieldProps<EditCustomPropertyFormValues>
-> = ({ form, descriptionKey, initialValue = '' }) => {
-  const { t } = useTranslation();
-  const descriptionDocProps = useFieldDoc({
-    name: 'description',
-    label: t('label.description'),
-    doc: t('message.custom-property-description-help'),
-  });
-
-  return (
-    <FormField
-      control={form.control}
-      name="description"
-      rules={{
-        required: t('label.field-required', {
-          field: t('label.description'),
-        }),
-      }}>
-      {({ field, fieldState }) => (
-        <Box
-          aria-invalid={fieldState.invalid || undefined}
-          className="tw:gap-1.5"
-          direction="col"
-          {...descriptionDocProps}>
-          <FormItemLabel required label={t('label.description')} />
-          <RichTextEditor
-            className="description-text-area new-form-style"
-            initialValue={initialValue}
-            key={descriptionKey}
-            onTextChange={field.onChange}
-          />
-          {fieldState.error?.message && (
-            <HintText isInvalid>{fieldState.error.message}</HintText>
-          )}
-        </Box>
-      )}
-    </FormField>
-  );
-};
+import CustomPropertyEditForm from '../../../../../Settings/CustomProperty/CustomPropertyEditForm/CustomPropertyEditForm';
+import { CustomPropertiesEditPageProps } from './CustomPropertiesPanel.types';
 
 const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
   entityType,
@@ -105,201 +35,31 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
-  const [typeDetail, setTypeDetail] = useState<Type | undefined>();
-
-  const propertyTypeName = property.propertyType.name ?? '';
-  const isEnum = propertyTypeName === 'enum';
-  const isEntityRef =
-    PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(propertyTypeName);
-
-  const existingEnumValues = useMemo(() => {
-    if (!isEnum) {
-      return [];
-    }
-    const cfg = property.customPropertyConfig?.config;
-    if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
-      return (cfg as Config).values ?? [];
-    }
-
-    return [];
-  }, [isEnum, property.customPropertyConfig]);
-
-  const existingMultiSelect = useMemo(() => {
-    if (!isEnum) {
-      return false;
-    }
-    const cfg = property.customPropertyConfig?.config;
-    if (cfg && typeof cfg === 'object' && !Array.isArray(cfg)) {
-      return Boolean((cfg as Config).multiSelect);
-    }
-
-    return false;
-  }, [isEnum, property.customPropertyConfig]);
-
-  const existingEntityRefs = useMemo(() => {
-    if (!isEntityRef) {
-      return [];
-    }
-    const cfg = property.customPropertyConfig?.config;
-    if (Array.isArray(cfg)) {
-      return cfg as string[];
-    }
-
-    return [];
-  }, [isEntityRef, property.customPropertyConfig]);
-
-  const form = useForm<EditCustomPropertyFormValues>({
-    defaultValues: {
-      displayName: property.displayName ?? '',
-      description: property.description ?? '',
-      enumConfig: existingEnumValues.map((v) => ({ id: v, label: v })),
-      multiSelect: existingMultiSelect,
-      entityReferenceConfig: existingEntityRefs.map((v) => ({
-        id: v,
-        label: v,
-      })),
-    },
-  });
-
-  const [descriptionKey, setDescriptionKey] = useState(0);
-  useEffect(() => {
-    form.reset({
-      displayName: property.displayName ?? '',
-      description: property.description ?? '',
-      enumConfig: existingEnumValues.map((v) => ({ id: v, label: v })),
-      multiSelect: existingMultiSelect,
-      entityReferenceConfig: existingEntityRefs.map((v) => ({
-        id: v,
-        label: v,
-      })),
-    });
-    setDescriptionKey((k) => k + 1);
-  }, [
-    property,
-    existingEnumValues,
-    existingMultiSelect,
-    existingEntityRefs,
-    form,
-  ]);
-
-  const fetchTypeDetail = useCallback(async () => {
-    if (!entityType.fullyQualifiedName) {
-      return;
-    }
-    try {
-      const detail = await getTypeByFQN(entityType.fullyQualifiedName);
-      setTypeDetail(detail);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    }
-  }, [entityType.fullyQualifiedName]);
-
-  useEffect(() => {
-    fetchTypeDetail();
-  }, [fetchTypeDetail]);
-
-  const displayNameField: FieldProp = useMemo(
-    () => ({
-      name: 'displayName',
-      label: t('label.display-name'),
-      type: FieldTypes.TEXT,
-      required: false,
-      placeholder: t('label.display-name'),
-      doc: t('message.custom-property-display-name-help'),
-      props: { 'data-testid': 'edit-custom-property-display-name' },
-    }),
-    [t]
-  );
-
-  const enumConfigField: FieldProp = useMemo(
-    () => ({
-      name: 'enumConfig',
-      label: t('label.enum-value-plural'),
-      type: FieldTypes.MULTI_SELECT,
-      required: false,
-      placeholder: t('label.enum-value-plural'),
-      doc: t('message.custom-property-enum-config-help'),
-      props: {
-        'data-testid': 'edit-custom-property-enum-config',
-        allowsCreation: true,
-        items: existingEnumValues.map((v) => ({ id: v, label: v })),
-      },
-    }),
-    [t, existingEnumValues]
-  );
-
-  const multiSelectField: FieldProp = useMemo(
-    () => ({
-      name: 'multiSelect',
-      label: t('label.multi-select'),
-      type: FieldTypes.SWITCH,
-      required: false,
-      doc: t('message.custom-property-multi-select-help'),
-      props: { 'data-testid': 'edit-custom-property-multi-select' },
-    }),
-    [t]
-  );
-
-  const entityReferenceConfigField: FieldProp = useMemo(
-    () => ({
-      name: 'entityReferenceConfig',
-      label: t('label.entity-reference-types'),
-      type: FieldTypes.MULTI_SELECT,
-      required: false,
-      placeholder: t('label.select-field', { field: t('label.type') }),
-      doc: t('message.custom-property-entity-reference-config-help'),
-      props: {
-        'data-testid': 'edit-custom-property-entity-ref-config',
-        items: ENTITY_REFERENCE_OPTIONS.map((opt) => ({
-          id: opt.value,
-          label: opt.label,
-        })),
-      },
-    }),
-    [t]
-  );
 
   const handleSubmit = useCallback(
-    async (data: EditCustomPropertyFormValues) => {
-      if (!typeDetail) {
+    async (changes: CustomPropertyChanges) => {
+      if (!entityType.fullyQualifiedName) {
         return;
       }
 
-      let customPropertyConfig = property.customPropertyConfig;
-
-      if (isEnum && data.enumConfig) {
-        const newValues = data.enumConfig.map(toId);
-        customPropertyConfig = {
-          config: {
-            multiSelect: Boolean(data.multiSelect),
-            values: uniq(newValues),
-          },
-        };
-      } else if (isEntityRef && data.entityReferenceConfig) {
-        customPropertyConfig = {
-          config: data.entityReferenceConfig.map(toId),
-        };
-      }
-
-      const updatedProperty: CustomProperty = {
-        ...property,
-        displayName: data.displayName,
-        description: data.description,
-        customPropertyConfig,
-      };
-
-      const updatedProperties = (typeDetail.customProperties ?? []).map(
-        (prop) => (prop.name === property.name ? updatedProperty : prop)
-      );
-
-      const patch = compare(
-        { ...typeDetail },
-        { ...typeDetail, customProperties: updatedProperties }
-      );
-
       setIsSaving(true);
       try {
-        await updateType(typeDetail.id ?? '', patch);
+        const updated = await updateCustomPropertyByName(
+          entityType.fullyQualifiedName,
+          property.name,
+          changes
+        );
+
+        if (!updated) {
+          showErrorToast(
+            t('server.update-entity-error', {
+              entity: t('label.custom-property'),
+            })
+          );
+
+          return;
+        }
+
         showSuccessToast(
           t('server.update-entity-success', {
             entity: t('label.custom-property'),
@@ -312,7 +72,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
         setIsSaving(false);
       }
     },
-    [isEnum, isEntityRef, onSuccess, property, t, typeDetail]
+    [entityType.fullyQualifiedName, onSuccess, property.name, t]
   );
 
   return (
@@ -322,35 +82,12 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
       direction="col">
       <div className="tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">
         <Box className="tw:max-w-[50%]" direction="col">
-          <HookForm
-            className="tw:flex tw:flex-col tw:gap-6"
-            data-testid="edit-custom-property-form"
-            fieldDocDisplay="popover"
-            form={form}
-            id="edit-custom-property-form"
-            renderFieldDoc={(text) => (
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {text}
-              </Typography>
-            )}
-            showFieldDocs={showHint}
-            onSubmit={form.handleSubmit(handleSubmit)}>
-            {getField(displayNameField)}
-
-            {isEnum && (
-              <>
-                {getField(enumConfigField)}
-                {getField(multiSelectField)}
-              </>
-            )}
-            {isEntityRef && getField(entityReferenceConfigField)}
-
-            <DescriptionFormField
-              descriptionKey={descriptionKey}
-              form={form}
-              initialValue={property.description ?? ''}
-            />
-          </HookForm>
+          <CustomPropertyEditForm
+            formId="edit-custom-property-form"
+            property={property}
+            showHint={showHint}
+            onSubmit={handleSubmit}
+          />
         </Box>
       </div>
 

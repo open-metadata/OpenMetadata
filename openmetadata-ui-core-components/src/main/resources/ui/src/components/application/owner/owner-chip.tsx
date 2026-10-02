@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { ReactElement, ReactNode } from 'react';
-import { Owners as OwnersIcon } from '../../../icons/Owners';
+import { User01 as OwnersIcon } from '../../../icons/User01';
 import { Teams as TeamsIcon } from '../../../icons/Teams';
 import { cx } from '@/utils/cx';
 import { Avatar } from '../../base/avatar/avatar';
@@ -116,7 +116,7 @@ export const OwnerChip = ({
         {avatar}
         {href ? (
           <a
-            className="tw:truncate tw:text-sm tw:text-primary hover:tw:underline"
+            className="tw:truncate tw:text-sm tw:text-primary tw:hover:underline"
             data-testid="owner-link"
             href={href}>
             {nameNode}

@@ -1025,8 +1025,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
-            config.getJwtTokenConfiguration());
+            SecurityConfigurationManager.getCurrentAuthConfig(), config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
     AppMarketPlaceRepository appMarketRepository =
@@ -2126,7 +2125,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().deleteOnDemandJob(app);
-    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+    AppScheduler.getInstance()
+        .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
 
     int result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
 
@@ -2338,7 +2338,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().deleteOnDemandJob(app);
-    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+    AppScheduler.getInstance()
+        .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
     return waitAndReturnReindexingAppStatus(app, currentTime);
   }
 
@@ -2496,7 +2497,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Trigger Application
       long currentTime = System.currentTimeMillis();
-      AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+      AppScheduler.getInstance()
+          .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
 
       // Wait for completion and return status
       return waitAndReturnReindexingAppStatus(app, currentTime, null);
@@ -2988,7 +2990,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       JWTTokenGenerator.getInstance()
           .init(
-              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              SecurityConfigurationManager.getCurrentAuthConfig(),
               config.getJwtTokenConfiguration());
 
       initOrganization();

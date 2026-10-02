@@ -23,6 +23,7 @@
 
 import { expect, test } from '@playwright/test';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
+import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { uuid } from '../../../utils/common';
@@ -121,7 +122,7 @@ test.describe('AI mode Observability — layout', () => {
       await page.getByTestId('manage-button').click();
       await page.getByRole('menuitem', { name: /Rename/ }).click();
 
-      const dialog = page.getByRole('dialog');
+      const dialog = page.getByTestId('entity-name-modal');
 
       await expect(dialog).toBeVisible();
       await expect(dialog.getByText('Edit Display Name')).toBeVisible();
@@ -158,7 +159,11 @@ test.describe('AI mode Observability — layout', () => {
   test.describe('Incident Manager — table column widths', () => {
     test.describe.configure({ mode: 'serial' });
 
-    const table = new TableClass();
+    // Own service, although nothing here touches the parents: with the table
+    // under the shard's shared chain the incident reached the DB API but never
+    // the incident search index this page reads (seen on every run). Cause not
+    // yet traced; this keeps the layout check independent of it.
+    const table = new TableClass({ service: new DatabaseServiceClass() });
     // Long enough to stretch the column well past its declared width, and made
     // of one unbroken token so `overflow-wrap` is the only thing that can wrap
     // it — which is precisely what regressed.

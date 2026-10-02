@@ -34,6 +34,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
+  private static final String ANNOUNCEMENT_TABLE = "announcement_entity";
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
@@ -110,6 +111,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getActiveCondition(tableName));
+    conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -131,8 +133,10 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getSourceEntityCondition());
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
+    conditions.add(getAssetCondition());
     conditions.add(getGlossaryIdCondition(tableName));
     conditions.add(getOntologyChangeSetStateCondition(tableName));
+    conditions.add(getMemorySourcedChangeSetCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -147,12 +151,37 @@ public class ListFilter extends Filter<ListFilter> {
     return condition;
   }
 
+  /** Matches any of the comma-separated states, each bound as its own parameter. */
   private String getOntologyChangeSetStateCondition(String tableName) {
     String state = queryParams.get("state");
     String condition = "";
     if (!nullOrEmpty(state) && tableMatches(tableName, ONTOLOGY_CHANGE_SET_TABLE)) {
-      queryParams.put("ontologyChangeSetStateParam", state);
-      condition = qualifyColumn(tableName, "state") + " = :ontologyChangeSetStateParam";
+      String[] states = state.split(",");
+      List<String> placeholders = new ArrayList<>(states.length);
+      for (int index = 0; index < states.length; index++) {
+        String param = "ontologyChangeSetStateParam" + index;
+        queryParams.put(param, states[index]);
+        placeholders.add(":" + param);
+      }
+      condition =
+          qualifyColumn(tableName, "state") + " IN (" + String.join(", ", placeholders) + ")";
+    }
+    return condition;
+  }
+
+  /** Keeps only Studio drafts proposed from context memories (changeSet --DERIVED_FROM--> memory). */
+  private String getMemorySourcedChangeSetCondition(String tableName) {
+    String condition = "";
+    if (Boolean.parseBoolean(queryParams.get("memorySourced"))
+        && tableMatches(tableName, ONTOLOGY_CHANGE_SET_TABLE)) {
+      condition =
+          String.format(
+              "%s IN (SELECT entity_relationship.fromId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromEntity = 'ontologyChangeSet' "
+                  + "AND entity_relationship.toEntity = 'contextMemory' "
+                  + "AND entity_relationship.relation = %d "
+                  + "AND entity_relationship.deleted = FALSE)",
+              qualifyColumn(tableName, "id"), Relationship.DERIVED_FROM.ordinal());
     }
     return condition;
   }
@@ -162,7 +191,8 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private static boolean tableMatches(String tableName, String expectedTable) {
-    return !nullOrEmpty(tableName) && tableName.contains(expectedTable);
+    // EntityDAO's default list and count paths omit the table name when building conditions.
+    return nullOrEmpty(tableName) || tableName.contains(expectedTable);
   }
 
   public ResourceContext getResourceContext(String entityType) {
@@ -251,6 +281,22 @@ public class ListFilter extends Filter<ListFilter> {
               Relationship.APPLIED_TO.ordinal());
     }
     return result;
+  }
+
+  /**
+   * Documents by the stored asset they are a view of. A chat attachment is one such asset, and this
+   * is how a link to it finds the document to open.
+   */
+  public String getAssetCondition() {
+    String assetId = queryParams.get("assetId");
+    if (nullOrEmpty(assetId)) {
+      return "";
+    }
+    queryParams.put("assetIdParam", assetId);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetIdParam";
+    }
+    return "json->>'assetId' = :assetIdParam";
   }
 
   public String getFolderCondition() {
@@ -430,7 +476,7 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getActiveCondition(String tableName) {
     String active = queryParams.get("active");
-    if (active == null || !"announcement_entity".equals(tableName)) {
+    if (active == null || !ANNOUNCEMENT_TABLE.equals(tableName)) {
       return "";
     }
 
@@ -441,6 +487,11 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return String.format("(startTime > %d OR endTime < %d)", now, now);
+  }
+
+  private String getAnnouncementTypeCondition() {
+    String announcementType = queryParams.get("announcementType");
+    return announcementType == null ? "" : "type = :announcementType";
   }
 
   private String getEntityStatusCondition(String tableName) {
@@ -1601,10 +1652,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskType == null) {
       return "";
     }
-    String safeType = escapeApostrophe(taskType);
-    return tableName == null
-        ? String.format("type = '%s'", safeType)
-        : String.format("%s.type = '%s'", tableName, safeType);
+    return tableName == null ? "type = :taskType" : String.format("%s.type = :taskType", tableName);
   }
 
   private String getTaskFormTypeCondition(String tableName) {
@@ -1612,10 +1660,9 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskFormType == null) {
       return "";
     }
-    String safeType = escapeApostrophe(taskFormType);
     return tableName == null
-        ? String.format("taskType = '%s'", safeType)
-        : String.format("%s.taskType = '%s'", tableName, safeType);
+        ? "taskType = :taskFormType"
+        : String.format("%s.taskType = :taskFormType", tableName);
   }
 
   private String getTaskFormCategoryCondition(String tableName) {
@@ -1623,10 +1670,9 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskFormCategory == null) {
       return "";
     }
-    String safeCategory = escapeApostrophe(taskFormCategory);
     return tableName == null
-        ? String.format("taskCategory = '%s'", safeCategory)
-        : String.format("%s.taskCategory = '%s'", tableName, safeCategory);
+        ? "taskCategory = :taskFormCategory"
+        : String.format("%s.taskCategory = :taskFormCategory", tableName);
   }
 
   private String getTaskPriorityCondition(String tableName) {
@@ -1634,9 +1680,8 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskPriority == null) {
       return "";
     }
-    String safePriority = escapeApostrophe(taskPriority);
     return tableName == null
-        ? String.format("priority = '%s'", safePriority)
-        : String.format("%s.priority = '%s'", tableName, safePriority);
+        ? "priority = :taskPriority"
+        : String.format("%s.priority = :taskPriority", tableName);
   }
 }

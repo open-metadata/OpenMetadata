@@ -46,6 +46,9 @@ public interface OAuthDAOs {
   @CreateSqlObject
   McpPendingAuthRequestDAO mcpPendingAuthRequestDAO();
 
+  @CreateSqlObject
+  SsoTestLoginSessionDAO ssoTestLoginSessionDAO();
+
   interface OAuthClientDAO {
     @SqlQuery(
         "SELECT id, client_id, client_secret_encrypted, client_name, redirect_uris, grant_types, token_endpoint_auth_method, scopes FROM oauth_clients WHERE client_id = :clientId")
@@ -223,6 +226,90 @@ public interface OAuthDAOs {
 
     @SqlUpdate("DELETE FROM mcp_pending_auth_requests WHERE expires_at < :currentTime")
     void deleteExpired(@Bind("currentTime") long currentTime);
+  }
+
+  /**
+   * SSO Test Login state (#28784). Each change of state is a single conditional UPDATE, so the
+   * requests of one test can reach any server, and of two racing requests only the first acts.
+   */
+  interface SsoTestLoginSessionDAO {
+    String COLUMNS =
+        "test_session_id, admin_principal, protocol, status, pending_state, result, expires_at";
+
+    @SqlUpdate(
+        "INSERT INTO sso_test_login_session ("
+            + COLUMNS
+            + ") VALUES (:testSessionId, "
+            + ":adminPrincipal, :protocol, :status, :pendingState, :result, :expiresAt)")
+    void insert(
+        @Bind("testSessionId") String testSessionId,
+        @Bind("adminPrincipal") String adminPrincipal,
+        @Bind("protocol") String protocol,
+        @Bind("status") String status,
+        @Bind("pendingState") String pendingState,
+        @Bind("result") String result,
+        @Bind("expiresAt") long expiresAt);
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM sso_test_login_session "
+            + "WHERE test_session_id = :testSessionId AND expires_at > :now")
+    @RegisterRowMapper(SsoTestLoginSessionRowMapper.class)
+    OAuthRecords.SsoTestLoginSession findLive(
+        @Bind("testSessionId") String testSessionId, @Bind("now") long now);
+
+    @SqlUpdate(
+        "UPDATE sso_test_login_session SET status = 'claimed', credentials_submitted_at = :now "
+            + "WHERE test_session_id = :testSessionId AND status = 'pending' AND expires_at > :now")
+    int claimForCredentials(@Bind("testSessionId") String testSessionId, @Bind("now") long now);
+
+    @SqlUpdate(
+        "UPDATE sso_test_login_session SET status = 'completed', result = :result, "
+            + "pending_state = NULL, expires_at = :expiresAt WHERE test_session_id = :testSessionId "
+            + "AND status IN ('pending', 'claimed') AND expires_at > :now")
+    int complete(
+        @Bind("testSessionId") String testSessionId,
+        @Bind("result") String result,
+        @Bind("expiresAt") long expiresAt,
+        @Bind("now") long now);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM sso_test_login_session "
+            + "WHERE admin_principal = :adminPrincipal AND credentials_submitted_at > :since")
+    int countCredentialTestsSince(
+        @Bind("adminPrincipal") String adminPrincipal, @Bind("since") long since);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM sso_test_login_session "
+            + "WHERE admin_principal = :adminPrincipal AND expires_at > :now")
+    int countLive(@Bind("adminPrincipal") String adminPrincipal, @Bind("now") long now);
+
+    @SqlUpdate(
+        "UPDATE sso_test_login_session SET pending_state = NULL "
+            + "WHERE expires_at < :now AND pending_state IS NOT NULL")
+    void clearExpiredSecrets(@Bind("now") long now);
+
+    /** Keeps expired rows that still count towards the credential-test limit window. */
+    @SqlUpdate(
+        "DELETE FROM sso_test_login_session WHERE expires_at < :now "
+            + "AND (credentials_submitted_at IS NULL OR credentials_submitted_at < :windowStart)")
+    void deleteExpired(@Bind("now") long now, @Bind("windowStart") long windowStart);
+  }
+
+  class SsoTestLoginSessionRowMapper implements RowMapper<OAuthRecords.SsoTestLoginSession> {
+    @Override
+    public OAuthRecords.SsoTestLoginSession map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new OAuthRecords.SsoTestLoginSession(
+          rs.getString("test_session_id"),
+          rs.getString("admin_principal"),
+          rs.getString("protocol"),
+          rs.getString("status"),
+          rs.getString("pending_state"),
+          rs.getString("result"),
+          rs.getLong("expires_at"));
+    }
   }
 
   class McpPendingAuthRequestRowMapper implements RowMapper<OAuthRecords.McpPendingAuthRequest> {

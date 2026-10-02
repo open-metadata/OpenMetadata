@@ -65,10 +65,12 @@ import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfGraphSerializer;
 import org.openmetadata.service.rdf.RdfOwnedResources;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfWriteMode;
+import org.openmetadata.service.rdf.UnsupportedRdfSerializationException;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
@@ -123,6 +125,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String REQUEST_OUTCOME_SUCCESS = "success";
   private static final String REQUEST_OUTCOME_TIMEOUT = "timeout";
   private static final String REQUEST_OUTCOME_ERROR = "error";
+  private static final String READINESS_PROBE = "readinessProbe";
 
   // Compaction polls /$/tasks/{taskId} until the task reports finished. Fuseki
   // does not stream progress, so we poll on a fixed cadence. Total budget is
@@ -271,6 +274,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     if (!testConnection()) {
       throw new IllegalStateException("RDF dataset is not accessible at " + maskUserInfo(endpoint));
     }
+    requireUnionDefaultGraph(endpoint, connection);
   }
 
   private volatile FusekiWriteCapabilities writeCapabilities;
@@ -286,10 +290,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private FusekiWriteCapabilities verifyDataset(final String datasetEndpoint) {
     try {
-      final DatasetEndpoint info = parseDatasetEndpoint(datasetEndpoint);
-      if (info == null) {
-        throw new IllegalArgumentException("Invalid RDF dataset endpoint");
-      }
+      final DatasetEndpoint info = requireDatasetEndpoint(datasetEndpoint);
       final HttpRequest.Builder request =
           HttpRequest.newBuilder()
               .uri(
@@ -300,21 +301,109 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       addBasicAuth(request, username, password, info.userInfo());
       final HttpResponse<Void> response =
           streamingHttpClient.send(request.build(), HttpResponse.BodyHandlers.discarding());
-      if (response.statusCode() / 100 != 2) {
-        throw new IllegalStateException(
-            "Provision the RDF dataset from the OpenMetadata Fuseki assembler before indexing: "
-                + maskUserInfo(datasetEndpoint)
-                + " (HTTP "
-                + response.statusCode()
-                + ")");
-      }
-      return FusekiWriteCapabilities.require(response.headers());
+      final FusekiWriteCapabilities capabilities =
+          FusekiWriteCapabilities.negotiate(
+              response.statusCode(), response.headers(), info.serverBaseUrl(), info.datasetName());
+      warnAboutMissingGuarantees(datasetEndpoint, capabilities);
+      return capabilities;
     } catch (IOException exception) {
       throw new IllegalStateException("Could not verify Fuseki dataset configuration", exception);
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException(
           "Interrupted while verifying Fuseki dataset configuration", exception);
+    }
+  }
+
+  private static void warnAboutMissingGuarantees(
+      final String datasetEndpoint, final FusekiWriteCapabilities capabilities) {
+    if (!nullOrEmpty(capabilities.missingGuarantees())) {
+      LOG.warn(
+          "RDF dataset {} lacks guarantees OpenMetadata relies on at scale; indexing continues: {}",
+          maskUserInfo(datasetEndpoint),
+          String.join("; ", capabilities.missingGuarantees()));
+    }
+  }
+
+  private static DatasetEndpoint requireDatasetEndpoint(final String datasetEndpoint) {
+    final DatasetEndpoint info = parseDatasetEndpoint(datasetEndpoint);
+    if (info == null) {
+      throw new IllegalArgumentException("Invalid RDF dataset endpoint");
+    }
+    return info;
+  }
+
+  /**
+   * Runs a {@link UnionDefaultGraphProbe} and removes its triple whatever the answer, so a dataset
+   * that fails readiness is left as it was found.
+   */
+  private void requireUnionDefaultGraph(
+      final String datasetEndpoint, final RDFConnection datasetConnection) {
+    final DatasetEndpoint dataset = requireDatasetEndpoint(datasetEndpoint);
+    final UnionDefaultGraphProbe probe = UnionDefaultGraphProbe.unique();
+    writeProbe(dataset, datasetConnection, probe);
+    final boolean visible;
+    try {
+      visible = runWithTimeout(() -> askProbe(datasetConnection, probe), READINESS_PROBE);
+    } finally {
+      removeProbe(dataset, datasetConnection, probe);
+    }
+    if (!visible) {
+      throw new IllegalStateException(
+          UnionDefaultGraphProbe.unionDisabledMessage(
+              dataset.serverBaseUrl(), dataset.datasetName()));
+    }
+  }
+
+  private void writeProbe(
+      final DatasetEndpoint dataset,
+      final RDFConnection datasetConnection,
+      final UnionDefaultGraphProbe probe) {
+    try {
+      runWriteWithTimeout(() -> datasetConnection.update(probe.write()), READINESS_PROBE);
+    } catch (RdfWriteOutcomeUnknownException exception) {
+      // Fuseki may still apply a write the client stopped waiting for.
+      removeProbe(dataset, datasetConnection, probe);
+      throw updateNotAccepted(dataset, exception);
+    } catch (RuntimeException exception) {
+      throw updateNotAccepted(dataset, exception);
+    }
+  }
+
+  private static IllegalStateException updateNotAccepted(
+      final DatasetEndpoint dataset, final RuntimeException failure) {
+    return new IllegalStateException(
+        UnionDefaultGraphProbe.updateNotAcceptedMessage(
+            dataset.serverBaseUrl(), dataset.datasetName(), failure),
+        failure);
+  }
+
+  private static boolean askProbe(
+      final RDFConnection datasetConnection, final UnionDefaultGraphProbe probe) {
+    try (QueryExecution execution = datasetConnection.query(probe.askWithoutGraphClause())) {
+      return execution.execAsk();
+    }
+  }
+
+  /**
+   * Best effort: the leftover triple is inert, and throwing here would replace the readiness
+   * verdict already reached.
+   */
+  private void removeProbe(
+      final DatasetEndpoint dataset,
+      final RDFConnection datasetConnection,
+      final UnionDefaultGraphProbe probe) {
+    try {
+      runWriteWithTimeout(() -> datasetConnection.update(probe.remove()), READINESS_PROBE);
+    } catch (RuntimeException exception) {
+      LOG.warn(
+          "Could not remove readiness probe {} from graph {} in Fuseki dataset '{}' at {}; the"
+              + " triple is inert",
+          probe.subject(),
+          UnionDefaultGraphProbe.GRAPH,
+          dataset.datasetName(),
+          dataset.serverBaseUrl(),
+          exception);
     }
   }
 
@@ -520,7 +609,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public void createDatasetIfMissing(String datasetName) {
-    verifyDataset(redirectToDataset(endpoint, datasetName));
+    final String datasetEndpoint = redirectToDataset(endpoint, datasetName);
+    verifyDataset(datasetEndpoint);
+    try (RDFConnection datasetConnection = buildConnection(datasetEndpoint)) {
+      requireUnionDefaultGraph(datasetEndpoint, datasetConnection);
+    }
   }
 
   /**
@@ -1426,6 +1519,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           runWithTimeout(() -> doExecuteSparqlQuery(sparqlQuery, format), "executeSparqlQuery");
       recordSuccess();
       return result;
+    } catch (UnsupportedRdfSerializationException exception) {
+      // The query ran; only the requested serialization cannot carry the result. Rethrowing keeps
+      // the caller-facing 400 instead of the blanket 500 below, and leaves the breaker closed
+      // because the backend is healthy.
+      recordSuccess();
+      throw exception;
     } catch (Exception e) {
       LOG.error("Failed to execute SPARQL query on Fuseki", e);
       if (isCircuitBreakerFailure(e)) {
@@ -1482,9 +1581,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   private String formatModel(Model model, String format) {
-    StringWriter writer = new StringWriter();
-    RDFDataMgr.write(writer, model, resolveGraphFormat(format));
-    return writer.toString();
+    return RdfGraphSerializer.asString(model, resolveGraphFormat(format));
   }
 
   /**
@@ -1498,13 +1595,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * value still falls back to RDF/XML rather than throwing, but it is logged instead of passing
    * silently.
    */
-  private static RDFFormat resolveGraphFormat(String format) {
+  private static RdfSerializationFormat resolveGraphFormat(String format) {
     try {
-      return RdfSerializationFormat.parseOrDefault(format, RdfSerializationFormat.RDF_XML)
-          .rdfFormat();
+      return RdfSerializationFormat.parseOrDefault(format, RdfSerializationFormat.RDF_XML);
     } catch (IllegalArgumentException exception) {
       LOG.warn("Unrecognised RDF serialization '{}'; falling back to RDF/XML", format);
-      return RDFFormat.RDFXML;
+      return RdfSerializationFormat.RDF_XML;
     }
   }
 

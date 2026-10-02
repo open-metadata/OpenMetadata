@@ -44,6 +44,7 @@ export const UserSelectableList = ({
   onUpdate,
   children,
   popoverProps,
+  onClose,
   multiSelect = true,
   filterCurrentUser = false,
   includeBot = false,
@@ -202,7 +203,10 @@ export const UserSelectableList = ({
             type: t('label.user'),
           })}
           selectedItems={selectedUsers}
-          onCancel={() => setPopupVisible(false)}
+          onCancel={() => {
+            setPopupVisible(false);
+            onClose?.();
+          }}
           onUpdate={handleUpdate}
         />
       }

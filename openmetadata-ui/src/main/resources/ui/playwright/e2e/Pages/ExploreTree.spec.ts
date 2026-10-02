@@ -18,6 +18,10 @@ import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
@@ -61,11 +65,11 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
     // with a digit guarantees these services land within that bucket
     // regardless of how many other `pw-*` services have accumulated.
-    table1 = new TableClass(undefined, undefined, {
-      name: `0-pw-database-service-${uuid()}`,
+    table1 = new TableClass({
+      service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
     });
-    table2 = new TableClass(undefined, undefined, {
-      name: `0-pw-database-service-${uuid()}`,
+    table2 = new TableClass({
+      service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
     });
 
     await table1.create(apiContext);
@@ -205,10 +209,12 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ).toBeVisible();
 
       await page
-        .locator('.ant-tree-treenode', {
+        .getByTestId('explore-tree')
+        .getByRole('row')
+        .filter({
           has: page.getByTestId('explore-tree-title-Governance'),
         })
-        .locator('.ant-tree-switcher')
+        .getByTestId('tree-expand-btn')
         .click();
     });
 
@@ -388,14 +394,20 @@ test.describe('Explore page', () => {
     // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
     // with a digit guarantees these services land within that bucket
     // regardless of how many other `pw-*` services have accumulated.
-    table = new TableClass(undefined, undefined, {
-      name: `0-pw-database-service-${uuid()}`,
+    table = new TableClass({
+      service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
     });
-    dashboard = new DashboardClass(undefined, undefined, {
-      name: `0-pw-dashboard-service-${uuid()}`,
+    dashboard = new DashboardClass({
+      service: new DashboardServiceClass(`0-pw-dashboard-service-${uuid()}`),
     });
-    apiEndpoint = new ApiEndpointClass(`0-pw-api-endpoint-service-${uuid()}`);
-    searchIndex = new SearchIndexClass(`0-pw-search-index-service-${uuid()}`);
+    apiEndpoint = new ApiEndpointClass({
+      service: new ApiServiceClass(`0-pw-api-endpoint-service-${uuid()}`),
+    });
+    searchIndex = new SearchIndexClass({
+      service: new SearchIndexServiceClass(
+        `0-pw-search-index-service-${uuid()}`
+      ),
+    });
 
     await table.create(apiContext);
     await dashboard.create(apiContext);
@@ -417,14 +429,14 @@ test.describe('Explore page', () => {
 
   test('Check the listing of tags', async ({ page }) => {
     await page
-      .locator('div')
-      .filter({ hasText: /^Governance$/ })
-      .locator('svg')
-      .first()
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({ has: page.getByTestId('explore-tree-title-Governance') })
+      .getByTestId('tree-expand-btn')
       .click();
 
-    await expect(page.getByRole('tree')).toContainText('Glossaries');
-    await expect(page.getByRole('tree')).toContainText('Tags');
+    await expect(page.getByRole('treegrid')).toContainText('Glossaries');
+    await expect(page.getByRole('treegrid')).toContainText('Tags');
 
     // The tree fires size=0 count queries on the dataAsset index alongside the
     // main results query; match the results query (non-zero size) so the hits
@@ -473,20 +485,24 @@ test.describe('Explore page', () => {
     await dashboardNodeClickResponse;
 
     await page
-      .locator('.ant-tree-treenode', {
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({
         has: page.getByTestId('explore-tree-title-Dashboards'),
       })
-      .locator('.ant-tree-switcher')
+      .getByTestId('tree-expand-btn')
       .click();
 
     const supersetNode = page.getByTestId('explore-tree-title-superset');
     await expect(supersetNode).toBeVisible();
 
     await page
-      .locator('.ant-tree-treenode', {
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({
         has: page.getByTestId('explore-tree-title-superset'),
       })
-      .locator('.ant-tree-switcher')
+      .getByTestId('tree-expand-btn')
       .click();
 
     const dashboardServiceNode = page.getByTestId(
@@ -495,10 +511,12 @@ test.describe('Explore page', () => {
     await expect(dashboardServiceNode).toBeVisible();
 
     await page
-      .locator('.ant-tree-treenode', {
+      .getByTestId('explore-tree')
+      .getByRole('row')
+      .filter({
         has: page.getByTestId(`explore-tree-title-${serviceName}`),
       })
-      .locator('.ant-tree-switcher')
+      .getByTestId('tree-expand-btn')
       .click();
 
     const chartsNode = page.getByTestId('explore-tree-title-chart');
@@ -582,7 +600,7 @@ test.describe('Explore page', () => {
     expect(validationResult.pathname).toContain('searchIndex');
 
     // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');
@@ -624,7 +642,7 @@ test.describe('Explore page', () => {
     expect(validationResult.pathname).toContain('apiEndpoint');
 
     // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');
@@ -658,9 +676,10 @@ test.describe('Explore page', () => {
       '/api/v1/search/query?q=&index=dataAsset*databaseSchema.displayName*'
     );
     await page
-      .locator('.ant-tree-treenode')
+      .getByTestId('explore-tree')
+      .getByRole('row')
       .filter({ hasText: schemaName })
-      .locator('.ant-tree-switcher svg')
+      .getByTestId('tree-expand-btn')
       .click();
     await schemaRes;
 
@@ -691,9 +710,10 @@ test.describe('Explore page', () => {
       '/api/v1/search/query?q=&index=dataAsset*databaseSchema.displayName*'
     );
     await page
-      .locator('.ant-tree-treenode')
+      .getByTestId('explore-tree')
+      .getByRole('row')
       .filter({ hasText: schemaName })
-      .locator('.ant-tree-switcher svg')
+      .getByTestId('tree-expand-btn')
       .click();
     await schemaRes;
 

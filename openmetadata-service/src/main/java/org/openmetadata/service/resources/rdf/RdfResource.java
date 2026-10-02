@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
@@ -42,7 +43,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
-import javax.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.CustomOntology;
 import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationResult;
@@ -65,7 +65,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
-import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfEntityDiffService;
 import org.openmetadata.service.rdf.RdfEntityTypeValidator;
@@ -119,7 +119,7 @@ public class RdfResource {
   private volatile RdfEntityDiffService entityDiffService;
   private volatile SemanticSearchEngine semanticSearchEngine;
   private volatile SparqlFederationGuard federationGuard;
-  private volatile boolean askCollateEnabled;
+  private volatile boolean aiEnabled;
   private volatile String configuredBaseUri = DEFAULT_RDF_BASE_URI;
 
   public static final String RDF_XML = "application/rdf+xml";
@@ -302,10 +302,7 @@ public class RdfResource {
     this.federationGuard = new SparqlFederationGuard(config.getRdfConfiguration());
     this.configuredBaseUri = rdfBaseUri(config);
     this.entityDiffService = new RdfEntityDiffService(configuredBaseUri);
-    this.askCollateEnabled =
-        config.getRdfConfiguration() != null
-            && Boolean.TRUE.equals(config.getRdfConfiguration().getAskCollateEnabled())
-            && LLMClientHolder.isEnabled();
+    this.aiEnabled = OntologyAiAvailability.isEnabled(config.getRdfConfiguration());
   }
 
   private static String rdfBaseUri(final OpenMetadataApplicationConfig config) {
@@ -358,7 +355,7 @@ public class RdfResource {
         .withStorageType(storageType)
         .withInference(inferenceStatus)
         .withProjectionState(projectionState)
-        .withAskCollateEnabled(askCollateEnabled);
+        .withAiEnabled(aiEnabled);
   }
 
   private RdfProjectionState projectionState(final boolean enabled) {

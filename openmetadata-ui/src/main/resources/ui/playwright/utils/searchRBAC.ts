@@ -140,7 +140,9 @@ export const enableDisableSearchRBAC = async (
           '/api/v1/system/settings/searchSettings'
         );
         if (!response.ok()) {
-          return undefined;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
         const settings = await response.json();
 
@@ -172,7 +174,11 @@ export const searchForEntityShouldWork = async (
   await searchResponse;
 
   await waitForAllLoadersToDisappear(page);
-  await page.getByRole('menuitem').filter({ hasText: entityName }).click();
+  await page
+    .getByTestId('explore-left-panel')
+    .getByRole('tab')
+    .filter({ hasText: entityName })
+    .click();
   await waitForAllLoadersToDisappear(page);
 
   await expect(

@@ -13,8 +13,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { act, ReactNode } from 'react';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { CursorType } from '../../../enums/pagination.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Access } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { getEntityPermissionByFqn } from '../../../rest/permissionAPI';
@@ -260,6 +260,9 @@ describe('useTestDefinitionListPage', () => {
         limit: 15,
         entityType: undefined,
         testPlatform: undefined,
+        q: undefined,
+        sortField: 'displayName',
+        sortOrder: 'asc',
       });
       expect(result.current.testDefinitions).toEqual(MOCK_TEST_DEFINITIONS);
       expect(mockHandlePagingChange).toHaveBeenCalledWith(MOCK_PAGING);
@@ -385,6 +388,7 @@ describe('useTestDefinitionListPage', () => {
       });
 
       expect(mockUpdateUrlParams).toHaveBeenCalledWith({
+        q: null,
         entityType: null,
         testPlatforms: null,
       });
@@ -409,6 +413,9 @@ describe('useTestDefinitionListPage', () => {
           limit: 15,
           entityType: 'table',
           testPlatform: 'OpenMetadata',
+          q: undefined,
+          sortField: 'displayName',
+          sortOrder: 'asc',
         });
       });
 

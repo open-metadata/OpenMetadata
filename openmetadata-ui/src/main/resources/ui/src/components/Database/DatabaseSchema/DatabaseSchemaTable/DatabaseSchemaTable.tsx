@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { ColumnsType } from '../../../common/Table/Table.interface';
@@ -37,7 +37,6 @@ import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Database } from '../../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
-import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { UsageDetails } from '../../../../generated/type/entityUsage';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
@@ -61,7 +60,6 @@ import {
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import {
   certificationTableObject,
@@ -114,11 +112,7 @@ export const DatabaseSchemaTable = ({
   }, [permissions, isVersionPage]);
 
   const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        permissions.databaseSchema,
-        Operation.ViewUsage
-      ),
+    () => getDerivedPermissionFlags(permissions.databaseSchema).canViewUsage,
     [permissions.databaseSchema]
   );
 
@@ -395,9 +389,7 @@ export const DatabaseSchemaTable = ({
               data-testid="show-deleted"
               onClick={handleShowDeletedSchemas}
             />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>{' '}
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>{' '}
           </span>
           {getBulkEditButton(
             getDerivedPermissionFlags(

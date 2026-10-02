@@ -22,6 +22,7 @@ import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -223,7 +224,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     let databaseFqn: string;
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
-      database = new DatabaseClass();
+      // Adds 20 databases to this service and counts pages — must not be the
+      // shard's shared service.
+      database = new DatabaseClass({ service: new DatabaseServiceClass() });
       await database.create(apiContext);
       databaseFqn = database.serviceResponseData.fullyQualifiedName;
       for (let i = 1; i <= 20; i++) {
@@ -269,7 +272,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect(response.status()).toBe(200);
       await page
         .getByTestId('total-data-assets-widget')
-        .locator('.ant-skeleton')
+        .locator('.total-data-assets-loader')
         .first()
         .waitFor({
           state: 'detached',
@@ -287,7 +290,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       });
 
       const paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -600,7 +603,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('stored_procedure').click();
       await page.waitForLoadState('domcontentloaded');
       const paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -742,7 +745,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('data-model').click();
       await page.waitForLoadState('domcontentloaded');
       const paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -892,7 +895,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       let paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -901,7 +904,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
 
       const nextButton = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('next');
       await expect(nextButton).toBeEnabled();
@@ -938,7 +941,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
@@ -983,7 +986,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       paginationText = page
-        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByRole('tabpanel')
         .getByTestId('pagination')
         .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();

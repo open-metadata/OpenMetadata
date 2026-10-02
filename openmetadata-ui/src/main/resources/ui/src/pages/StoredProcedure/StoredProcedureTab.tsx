@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -33,7 +33,7 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
-import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../../interface/platform/service.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
@@ -274,9 +274,7 @@ const StoredProcedureTab = () => {
             data-testid="show-deleted-stored-procedure"
             onClick={handleShowDeletedStoredProcedures}
           />
-          <Typography.Text className="m-l-xs">
-            {t('label.deleted')}
-          </Typography.Text>
+          <Typography className="m-l-xs">{t('label.deleted')}</Typography>
         </span>
       }
       loading={isLoading}

@@ -23,7 +23,7 @@ import {
   MarkerPin01,
   Plus,
   ZapFast,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { Button } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

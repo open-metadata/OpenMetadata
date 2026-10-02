@@ -488,10 +488,10 @@ jobs:
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
 
-  # Slack renders a triple-backtick block as monospace — that's the only
-  # reason the table lines up. Any emoji inside the table would misalign
-  # (raw source width ≠ rendered glyph width), so emoji lives only in the
-  # header line, driven by the summary's verdict.
+  # Slack Block Kit's `type: table` block (see saas-provisioner's
+  # slack_release_test.py for the reference shape) gives real rows/columns
+  # with per-cell emoji and right-alignment — no monospace hack needed.
+  # The summary Python script builds the full payload; this step just POSTs.
   notify-slack:
     if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
     needs: sso-login
@@ -504,7 +504,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           sparse-checkout: |
-            .github/scripts/build_sso_login_summary.sh
+            .github/scripts/build_sso_login_summary.py
           sparse-checkout-cone-mode: false
 
       - name: Download leg outcomes
@@ -514,44 +514,23 @@ jobs:
           path: outcomes
 
       - name: Build consolidated summary
-        run: bash .github/scripts/build_sso_login_summary.sh /tmp/sso-summary
+        env:
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: python3 .github/scripts/build_sso_login_summary.py /tmp/sso-summary
 
       - name: Post to Slack
         env:
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
           SLACK_CHANNEL: C04HGB0NY04
-          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          REF_NAME: ${{ github.ref_name }}
-          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
-          verdict=$(cat /tmp/sso-summary/status.txt)
-          totals=$(cat /tmp/sso-summary/totals.txt)
-          case "$verdict" in
-            failed)  title_emoji=':x:'; title_word='FAILED';;
-            passed)  title_emoji=':white_check_mark:'; title_word='PASSED';;
-            *)       title_emoji=':fast_forward:'; title_word='SKIPPED';;
-          esac
+          # The Python script wrote a text+blocks payload — layer the
+          # channel on top with jq so we don't hard-code it in Python.
+          jq --arg channel "$SLACK_CHANNEL" '. + {channel: $channel}' \
+            /tmp/sso-summary/slack_blocks.json > /tmp/sso-payload.json
 
-          payload=$(jq -n \
-            --arg channel "$SLACK_CHANNEL" \
-            --arg text "${title_emoji} SSO Login Nightly ${title_word} on \`${REF_NAME}\` — ${totals}" \
-            --arg header "${title_emoji} SSO Login Nightly — ${title_word}" \
-            --arg context "Branch: \`${REF_NAME}\` · Event: ${EVENT_NAME} · <${RUN_URL}|View run>" \
-            --arg totals "$totals" \
-            --rawfile table /tmp/sso-summary/table.txt \
-            '{
-              channel: $channel,
-              text: $text,
-              blocks: [
-                { type: "header",  text: { type: "plain_text", text: $header, emoji: true } },
-                { type: "context", elements: [ { type: "mrkdwn", text: $context } ] },
-                { type: "section", text: { type: "mrkdwn", text: ("```\n" + $table + "\n```") } },
-                { type: "section", text: { type: "mrkdwn", text: ("*" + $totals + "*") } }
-              ]
-            }')
-
-          echo "$payload" > /tmp/sso-payload.json
           response=$(curl -sS -X POST https://slack.com/api/chat.postMessage \
             -H "Authorization: Bearer ${SLACK_BOT_USER_OAUTH_TOKEN}" \
             -H 'Content-Type: application/json; charset=utf-8' \
@@ -577,7 +556,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           sparse-checkout: |
-            .github/scripts/build_sso_login_summary.sh
+            .github/scripts/build_sso_login_summary.py
           sparse-checkout-cone-mode: false
 
       - name: Download leg outcomes
@@ -587,42 +566,26 @@ jobs:
           path: outcomes
 
       - name: Build consolidated summary
-        run: bash .github/scripts/build_sso_login_summary.sh /tmp/sso-summary
+        env:
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: python3 .github/scripts/build_sso_login_summary.py /tmp/sso-summary
 
       - name: Post sticky PR comment
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          verdict=$(cat /tmp/sso-summary/status.txt)
-          totals=$(cat /tmp/sso-summary/totals.txt)
-          case "$verdict" in
-            failed)  header=':x: SSO Login Nightly — **FAILED**';;
-            passed)  header=':white_check_mark: SSO Login Nightly — **PASSED**';;
-            *)       header=':fast_forward: SSO Login Nightly — **SKIPPED**';;
-          esac
-
           marker='<!-- sso-login-nightly-summary -->'
-          {
-            echo "$marker"
-            echo "$header"
-            echo
-            echo "[View workflow run]($RUN_URL) · Commit \`${GITHUB_SHA::7}\`"
-            echo
-            echo '```'
-            cat /tmp/sso-summary/table.txt
-            echo '```'
-            echo
-            echo "**$totals**"
-          } > /tmp/pr-comment.md
 
           # Sticky lookup: match the marker AND scope to the workflow bot's
-          # own comments. Marker-only would let any PR participant paste the
-          # string into their comment and have subsequent runs overwrite it.
+          # own comments. Marker-only would let any PR participant paste
+          # the string into their comment and have subsequent runs
+          # overwrite it.
           existing=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
             --paginate --jq \
             ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"${marker}\"))) | .id" \
@@ -630,8 +593,8 @@ jobs:
 
           if [ -n "$existing" ]; then
             gh api -X PATCH "repos/${REPO}/issues/comments/${existing}" \
-              -F body=@/tmp/pr-comment.md
+              -F body=@/tmp/sso-summary/pr_comment.md
           else
             gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-              -F body=@/tmp/pr-comment.md
+              -F body=@/tmp/sso-summary/pr_comment.md
           fi

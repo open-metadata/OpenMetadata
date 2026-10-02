@@ -33,7 +33,10 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  waitForAllLoadersToDisappear,
+  waitForWidgetsToRender,
+} from '../../utils/entity';
 
 const user = new UserClass();
 
@@ -61,7 +64,7 @@ const test = base.extend<{
 }>({
   page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
@@ -86,6 +89,7 @@ entities.forEach((EntityClass) => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
       await entity.visitEntityPage(page);
+      await waitForWidgetsToRender(page);
     });
 
     // Running following 2 tests serially since they are dependent on each other
@@ -100,8 +104,9 @@ entities.forEach((EntityClass) => {
       });
 
       test('No edit owner permission', async ({ page }) => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
+        await waitForWidgetsToRender(page);
 
         await expect(page.getByTestId('edit-owner')).not.toBeAttached();
       });

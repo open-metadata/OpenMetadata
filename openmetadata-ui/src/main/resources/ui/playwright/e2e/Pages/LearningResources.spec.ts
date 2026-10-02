@@ -31,15 +31,16 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 async function goToLearningResourcesAdmin(page: Page) {
   const admin = new AdminClass();
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('domcontentloaded');
 
   if (page.url().includes('/signin')) {
-    await admin.login(page);
+    await admin.signIn(page);
   }
 
   await page.waitForURL(
-    (url) => url.pathname === '/' || url.pathname === '/my-data'
+    (url) => url.pathname === '/' || url.pathname === '/my-data',
+    { waitUntil: 'domcontentloaded' }
   );
   await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
   await waitForAllLoadersToDisappear(page);

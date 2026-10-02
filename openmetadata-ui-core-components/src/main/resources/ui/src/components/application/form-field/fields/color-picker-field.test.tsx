@@ -26,7 +26,7 @@ describe('ColorPickerField', () => {
     });
 
     expect(firstSwatch).toHaveStyle({
-      backgroundColor: 'var(--color-entity-palette-blue)',
+      backgroundColor: 'var(--color-entity-palette-blue, #1470EF)',
     });
 
     fireEvent.click(firstSwatch);

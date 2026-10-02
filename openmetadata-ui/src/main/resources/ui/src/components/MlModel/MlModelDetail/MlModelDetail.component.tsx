@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, Typography } from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -37,6 +37,7 @@ import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBas
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -48,6 +49,7 @@ import {
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   updateCertificationTag,
@@ -66,6 +68,21 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { MlModelDetailProp } from './MlModelDetail.interface';
+
+// Storage/image-repository values come from ingestion; only http(s) URLs are
+// rendered as links, anything else (e.g. `s3://`, `javascript:`) as plain text.
+const renderExternalUrl = (value: string) => {
+  const safeUrl = getSafeHttpUrl(value);
+
+  return safeUrl ? (
+    <a href={safeUrl} rel="noopener noreferrer" target="_blank">
+      {value}
+    </a>
+  ) : (
+    value
+  );
+};
+
 const MlModelDetail: FC<MlModelDetailProp> = ({
   updateMlModelDetailsState,
   mlModelDetail,
@@ -260,25 +277,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         title: t('label.storage'),
         dataIndex: 'storage',
         key: 'storage',
-        render: (value: string) => {
-          return (
-            <a href={value} rel="noreferrer" target="_blank">
-              {value}
-            </a>
-          );
-        },
+        render: renderExternalUrl,
       },
       {
         title: t('label.image-repository'),
         dataIndex: 'imageRepository',
         key: 'imageRepository',
-        render: (value: string) => {
-          return (
-            <a href={value} rel="noreferrer" target="_blank">
-              {value}
-            </a>
-          );
-        },
+        render: renderExternalUrl,
       },
     ];
 
@@ -288,9 +293,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlHyperParameters = useMemo(() => {
     return (
       <>
-        <Typography.Title level={5}>
+        <Typography
+          as="h5"
+          className="tw:mb-2!"
+          size="text-md"
+          weight="semibold">
           {t('label.hyper-parameter-plural')}{' '}
-        </Typography.Title>
+        </Typography>
         {isEmpty(mlModelDetail.mlHyperParameters) ? (
           <ErrorPlaceHolder size={SIZE.MEDIUM} />
         ) : (
@@ -310,7 +319,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlModelStore = useMemo(() => {
     return (
       <>
-        <Typography.Title level={5}>{t('label.model-store')}</Typography.Title>
+        <Typography
+          as="h5"
+          className="tw:mb-2!"
+          size="text-md"
+          weight="semibold">
+          {t('label.model-store')}
+        </Typography>
         {mlModelDetail.mlStore ? (
           <Table
             columns={mlModelStoreColumn}
@@ -412,8 +427,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   return (
     <PageLayoutV1 pageTitle={mlModelName}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -432,7 +447,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Mlmodel>
           customizedPage={customizedPage}
           data={mlModelDetail}
@@ -440,28 +455,42 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           permissions={mlModelPermissions}
           type={EntityType.MLMODEL}
           onUpdate={onMlModelUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
 
       <LimitWrapper resource="mlmodel">
         <></>

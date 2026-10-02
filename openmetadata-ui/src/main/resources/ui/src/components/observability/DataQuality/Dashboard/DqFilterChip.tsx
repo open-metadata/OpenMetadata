@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown } from '@untitledui/icons';
-import classNames from 'classnames';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
 import {
   fqnsToGlossaryTags,
@@ -21,9 +20,9 @@ import GlossaryTermPicker from '../../../common/GlossaryTermPicker/GlossaryTermP
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DqFilterDescriptor } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
 import {
+  chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
-  chipTriggerSelectedClassName,
 } from './dqFilterChip.utils';
 import DqSearchFilterChip from './DqSearchFilterChip';
 
@@ -39,6 +38,7 @@ const DqFilterChip = ({
   if (filter.type === DQ_FILTER_TYPES.GLOSSARY_TERM) {
     return (
       <GlossaryTermPicker
+        bordered
         commitMode="staged"
         data-testid={`search-dropdown-${filter.label}`}
         // The bar owns which chip is open, so it can close this one.
@@ -69,9 +69,7 @@ const DqFilterChip = ({
           onOpenChange(false);
         }}>
         <button
-          className={classNames(chipTriggerClassName, {
-            [chipTriggerSelectedClassName]: filter.selectedOwnerKeys.length > 0,
-          })}
+          className={chipTriggerClassName}
           data-testid={`search-dropdown-${filter.key}`}
           type="button">
           {filter.label}
@@ -82,10 +80,7 @@ const DqFilterChip = ({
               {filter.selectedOwnerKeys.length}
             </span>
           )}
-          <ChevronDown
-            className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
-            data-icon="true"
-          />
+          <ChevronDown className={chipChevronClassName} />
         </button>
       </UserTeamSelectableList>
     );

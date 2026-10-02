@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Col, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { lazy, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -139,8 +140,6 @@ const RelatedMetrics = withSuspenseFallback(
   lazy(() => import('../components/Metric/RelatedMetrics/RelatedMetrics'))
 );
 
-const { Text } = Typography;
-
 /*
  * @param {
  *   listItem: SummaryItem,
@@ -165,12 +164,12 @@ export const getTitle = (
           EntityType.DASHBOARD,
           listItem.fullyQualifiedName ?? ''
         )}>
-        <Text
+        <Typography
           className="entity-title text-link-color font-medium m-r-xss"
           data-testid="entity-title"
           ellipsis={{ tooltip: true }}>
           {title}
-        </Text>
+        </Typography>
       </Link>
     );
   }
@@ -178,22 +177,22 @@ export const getTitle = (
   return sourceUrl ? (
     <Link target="_blank" to={sourceUrl}>
       <div className="d-flex items-center">
-        <Text
+        <Typography
           className="entity-title text-link-color font-medium m-r-xss"
           data-testid="entity-title"
           ellipsis={{ tooltip: true }}>
           {title}
-        </Text>
+        </Typography>
         <Icon component={IconExternalLink} style={ICON_DIMENSION} />
       </div>
     </Link>
   ) : (
-    <Text
+    <Typography
       className="entity-title"
       data-testid="entity-title"
       ellipsis={{ tooltip: true }}>
       {title}
-    </Text>
+    </Typography>
   );
 };
 
@@ -319,11 +318,11 @@ const getChildComponentDetails = (
       childComponent: isEmpty(
         (entityInfo as Topic).messageSchema?.schemaFields
       ) ? (
-        <Typography.Text data-testid="no-data-message">
-          <Typography.Text className="no-data-chip-placeholder">
+        <Typography data-testid="no-data-message">
+          <Typography className="no-data-chip-placeholder">
             {t('message.no-data-available')}
-          </Typography.Text>
-        </Typography.Text>
+          </Typography>
+        </Typography>
       ) : (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
@@ -425,7 +424,7 @@ const getChildComponentDetails = (
           permissions={{} as OperationPermission}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
-          <MetricExpression />
+          <MetricExpression metric={entityInfo as Metric} />
         </GenericProvider>
       ),
       headingTestId: 'schema-header',
@@ -495,11 +494,11 @@ const getDashboardSummary = (
         className="p-md border-radius-card summary-panel-card"
         gutter={[0, 8]}>
         <Col span={24}>
-          <Typography.Text
+          <Typography
             className="summary-panel-section-title"
             data-testid="charts-header">
             {t('label.chart-plural')}
-          </Typography.Text>
+          </Typography>
         </Col>
         <Col span={24}>
           <SummaryList
@@ -513,11 +512,11 @@ const getDashboardSummary = (
         className="p-md border-radius-card summary-panel-card"
         gutter={[0, 8]}>
         <Col span={24}>
-          <Typography.Text
+          <Typography
             className="summary-panel-section-title"
             data-testid="data-model-header">
             {t('label.data-model-plural')}
-          </Typography.Text>
+          </Typography>
         </Col>
         <Col span={24}>
           <SummaryList formattedEntityData={formattedDataModelData} />
@@ -607,11 +606,11 @@ export const getEntityChildDetails = (
         className="p-md border-radius-card summary-panel-card"
         gutter={[0, 8]}>
         <Col span={24}>
-          <Typography.Text
+          <Typography
             className="summary-panel-section-title"
             data-testid={childDetails.headingTestId}>
             {childDetails.heading}
-          </Typography.Text>
+          </Typography>
         </Col>
         <Col span={24}>{childDetails.childComponent}</Col>
       </Row>

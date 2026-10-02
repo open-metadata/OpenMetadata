@@ -272,6 +272,38 @@ class SampleTest(TestCase):
         )
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
+    def test_sampling_struct_child_column(self, sampler_mock):
+        """A struct child metric (`address.zip`) samples the parent struct column."""
+        from sqlalchemy_bigquery import STRUCT
+
+        class StructUser(Base):
+            __tablename__ = "struct_users"
+            id = Column(Integer, primary_key=True)
+            address = Column(STRUCT(zip=Integer))
+
+        with patch.object(SQASampler, "build_table_orm", return_value=StructUser):
+            sampler = BigQuerySampler(
+                service_connection_config=self.bq_conn,
+                ometa_client=None,
+                entity=self.table_entity,
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(
+                                profileSample=50.0,
+                                profileSampleType=ProfileSampleType.PERCENTAGE,
+                            ),
+                        )
+                    )
+                ),
+                table_type=TableType.Regular,
+            )
+            query: CTE = sampler.get_sample_query(sampler._resolve_sample_config, column=Column("address.zip", Integer))
+        compiled = str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        assert "select struct_users_1.address" in compiled
+        assert "tablesample system(50.0 percent)" in compiled
+
     def test_partitioned_sampling_uses_emitted_bigquery_cte_column_names(self, sampler_mock):
         """Digit-leading columns must be referenced using BigQuery's CTE labels."""
         sampler = object.__new__(SQASampler)
@@ -285,11 +317,7 @@ class SampleTest(TestCase):
         )
 
         query = sampler._partitioned_table()
-        compiled = str(
-            select(*query.c).compile(
-                dialect=bigquery_dialect(), compile_kwargs={"literal_binds": True}
-            )
-        )
+        compiled = str(select(*query.c).compile(dialect=bigquery_dialect(), compile_kwargs={"literal_binds": True}))
         outer_sql = compiled.rsplit(")\n SELECT", 1)[-1]
 
         assert "2024_revenue" in query.c
@@ -329,15 +357,18 @@ class SampleTest(TestCase):
             partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
             partitionValues=["1"],
         )
+        sampler.sample_query = None
+        sampler.sample_config = None
         sampler.sample_limit = 100
         sampler._handle_array_column = lambda column: False
+        sampler.get_dataset = sampler._partitioned_table
 
         session = MagicMock()
         session.__enter__.return_value = session
         session.query.return_value.select_from.return_value.limit.return_value.all.return_value = [(42,)]
         sampler.session_factory = lambda: session
 
-        table_data = sampler.fetch_sample_data(columns=[DigitLeadingColumns.__table__.c.revenue])
+        table_data = sampler.fetch_sample_data(columns=[DigitLeadingColumns.__table__.c["2024_revenue"]])
 
-        assert table_data.columns == ["2024_revenue"]
+        assert table_data.columns == [ColumnName("2024_revenue")]
         assert table_data.rows == [[42]]

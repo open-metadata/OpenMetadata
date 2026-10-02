@@ -26,6 +26,7 @@ from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
+    PartitionIntervalTypes,
     PartitionProfilerConfig,
     TableData,
 )
@@ -236,7 +237,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         such as _sample, or _rnd.
         """
         encoded_name = self.raw_dataset.__tablename__.encode(UTF_8)
-        hash_object = hashlib.md5(encoded_name)
+        hash_object = hashlib.md5(encoded_name, usedforsecurity=False)
         return hash_object.hexdigest()
 
     def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
@@ -278,23 +279,13 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        static = self._resolve_sample_config
-
-        if (
-            not static
-            or not static.profileSample
-            or (
-                static.profileSampleType == ProfileSampleType.PERCENTAGE
-                and static.profileSample == 100
-                and self.sample_config.randomizedSample is not True
-            )
-        ):
+        if not self.applies_sampling:
             if self.partition_details:
                 return self._partitioned_table()
 
             return self.raw_dataset
 
-        return self.get_sample_query(static, column=column)  # type: ignore
+        return self.get_sample_query(self._resolve_sample_config, column=column)  # type: ignore
 
     def fetch_sample_data(self, columns: list[Column] | None = None) -> TableData:
         """
@@ -321,8 +312,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             sqa_columns = [
                 col
                 for col in inspect(ds).c
-                if col.name != RANDOM_LABEL
-                and (col.key in target_identifiers or col.name in target_identifiers)
+                if col.name != RANDOM_LABEL and (col.key in target_identifiers or col.name in target_identifiers)
             ]
 
         with self.session_factory() as client:
@@ -354,10 +344,48 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     value = self._process_array_value(value)
                 processed_row.append(self._truncate_cell(value))
             processed_rows.append(processed_row)
+        if self.partition_details and not sqa_sample:
+            self._warn_empty_partition()
         return TableData(
             columns=[column.key for column in sqa_columns],
             rows=processed_rows,
         )
+
+    def _warn_empty_partition(self) -> None:
+        """Warn when a partition filter yields an empty sample, so a silently
+        unexamined table is not reported the same as one examined and found clean
+        (issue #33084). Wording is tailored to the partition type."""
+        partition_details = self.partition_details
+        if partition_details is None:
+            return
+        table_name = getattr(self.raw_dataset, "__tablename__", "unknown")
+        interval_type = partition_details.partitionIntervalType
+        if interval_type in (
+            PartitionIntervalTypes.TIME_UNIT,
+            PartitionIntervalTypes.INGESTION_TIME,
+        ):
+            interval_unit = getattr(
+                partition_details.partitionIntervalUnit,
+                "value",
+                partition_details.partitionIntervalUnit,
+            )
+            logger.warning(
+                "Partition filter on table '%s' returned 0 rows. "
+                "The partition window (interval=%s %s) may not cover the table's most-recent data. "
+                "Override the profiler partition config for this table to widen the window. "
+                "See https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/"
+                "profiler/workflow#4.-updating-profiler-setting-at-the-table-level",
+                table_name,
+                partition_details.partitionInterval,
+                interval_unit,
+            )
+        else:
+            logger.warning(
+                "Partition filter on table '%s' returned 0 rows. "
+                "Verify the partition config (type=%s) matches the table's data.",
+                table_name,
+                interval_type,
+            )
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""

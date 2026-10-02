@@ -266,7 +266,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -689,7 +690,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -856,7 +858,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -1587,7 +1590,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -1858,7 +1862,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { clickCodeEditor } from '../../../utils/codeEditor';
@@ -626,10 +627,19 @@ test.describe(
      * 3. Submit and verify in Data Quality tab; then edit to add additional key/use columns; delete at the end.
      */
     test('Table Difference', async ({ page }) => {
+      // Multi-step flow (visit create form, select tableDiff type, wait
+      // for tables listing, edit for additional columns, delete) — 60s
+      // is tight under SharedInfra load where the tables search
+      // response can take 30-60s to return.
+      test.slow();
       await redirectToHomePage(page);
       const { apiContext } = await getApiContext(page);
-      table1 = new TableClass(undefined, undefined, service);
-      table2 = new TableClass(undefined, undefined, service);
+      table1 = new TableClass({
+        service: new DatabaseServiceClass(undefined, service),
+      });
+      table2 = new TableClass({
+        service: new DatabaseServiceClass(undefined, service),
+      });
       await table1.create(apiContext);
       await table2.create(apiContext);
       const testCase = {

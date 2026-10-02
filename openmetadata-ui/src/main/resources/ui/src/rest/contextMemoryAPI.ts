@@ -12,10 +12,11 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from '../components/common/AsyncSelect/AsyncSelect';
 import { CreateContextMemory } from '../generated/api/context/createContextMemory';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
 import { ListParams } from '../interface/API.interface';
+import { PagingResponse } from '../interface/common/paging.interface';
+import Fqn from '../utils/Fqn';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/contextCenter/memories';
@@ -94,7 +95,7 @@ export const getContextMemoryByName = async (
   fields?: string
 ): Promise<ContextMemory> => {
   const response = await APIClient.get<ContextMemory>(
-    `${BASE_URL}/name/${encodeURIComponent(name)}`,
+    `${BASE_URL}/name/${encodeURIComponent(Fqn.quoteName(name))}`,
     {
       params: fields ? { fields } : undefined,
     }

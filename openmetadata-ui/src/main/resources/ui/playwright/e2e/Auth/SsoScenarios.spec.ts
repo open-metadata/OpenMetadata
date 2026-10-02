@@ -28,6 +28,7 @@ import {
   restoreSecurityConfig,
   SecurityConfigSnapshot,
 } from '../../utils/ssoAuth';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // Every fixture the AuthCoordinator scenario matrix runs against. Scenarios 1–6
 // covered here; commit 10 layers scenarios 7–9 (misconfig, self-signup) on top.
@@ -47,6 +48,23 @@ const FIXTURES: SsoProviderFixture[] = [
 
 const AUTH_REFRESH_PATH = '/api/v1/auth/refresh';
 const APP_BAR_HOME_TESTID = 'app-bar-item-my-data';
+// A protected page whose query string the app keeps in the URL, so landing
+// back on it proves both the path and the search survived the IdP round trip.
+const SILENT_REAUTH_DEEP_LINK = '/explore/tables?sortOrder=asc';
+const SILENT_REAUTH_DEEP_LINK_URL = /\/explore\/tables\?(.*&)?sortOrder=asc/;
+
+// Every main-frame path the page visits from here on, including client-side
+// (history API) navigations, so a scenario can prove /signin never showed.
+const trackVisitedPaths = (page: Page): string[] => {
+  const paths: string[] = [];
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) {
+      paths.push(new URL(frame.url()).pathname);
+    }
+  });
+
+  return paths;
+};
 
 // Reads the coordinator's canonical stored token (`app_state.primary`)
 // with two independent paths: the service worker's postMessage protocol
@@ -159,7 +177,7 @@ for (const fixture of FIXTURES) {
 
   test.describe(
     `SSO / ${fixture.name} [${fixture.slug}]`,
-    { tag: [`@${fixture.slug}`, '@sso-matrix'] },
+    { tag: [`@${fixture.slug}`, '@sso-matrix', '@sso'] },
     () => {
       // A test failure must NOT retry: retries re-run beforeAll, but the
       // backend is now on this fixture's provider and /api/v1/auth/login no
@@ -253,6 +271,65 @@ for (const fixture of FIXTURES) {
         });
       });
 
+      // Scenario 1a — every fixture with `usesPkce: true` MUST request
+      // its OIDC /authorize with `code_challenge` + `code_challenge_method=S256`.
+      // Regressing to the implicit flow (no `code_challenge`) or
+      // dropping S256 for `plain` silently downgrades security on
+      // every browser-driven OIDC flow — public clients have no
+      // `client_secret` to bind the code exchange, so PKCE is the
+      // only proof-of-possession the token endpoint has. Gated on a
+      // dedicated `usesPkce` capability rather than
+      // `expectedResponseType` (which only keycloak-oidc-public
+      // declares) so Auth0 / Okta / MSAL SDK paths are also covered
+      // (gitar-bot r4084334634).
+      if (fixture.usesPkce) {
+        test('public OIDC /authorize request carries PKCE code_challenge + S256', async ({
+          page,
+        }) => {
+          test.slow();
+
+          // Snapshot every navigation to a URL whose path looks like an
+          // OIDC /authorize endpoint. Provider fixtures redirect to
+          // various IdP hosts (Keycloak, mock-oidc, Okta) so match on
+          // the path pattern rather than a fixed host.
+          const authorizeUrls: string[] = [];
+          page.on('request', (req) => {
+            const url = req.url();
+            // Match a REAL IdP authorization endpoint. Keycloak
+            // exposes it as `/realms/{realm}/protocol/openid-connect/auth`,
+            // Auth0 / Okta / most others as `.../authorize`. Exclude
+            // URLs on the OM host's `/api/` prefix so OM's own
+            // `/api/v1/system/config/auth` config endpoint isn't
+            // mis-matched (gitar-bot r4101190852).
+            const path = new URL(url).pathname;
+            if (
+              !path.startsWith('/api/') &&
+              /\/authorize(\?|$)|\/openid-connect\/auth(\?|$)/i.test(path)
+            ) {
+              authorizeUrls.push(url);
+            }
+          });
+
+          await fixture.performLogin(page);
+
+          const authorizeWithPkce = authorizeUrls
+            .map((u) => new URL(u).searchParams)
+            .find((params) => params.get('code_challenge') !== null);
+
+          expect(
+            authorizeWithPkce,
+            `no /authorize navigation carried a code_challenge — saw ${JSON.stringify(
+              authorizeUrls
+            )}`
+          ).toBeDefined();
+          expect(authorizeWithPkce?.get('code_challenge_method')).toBe('S256');
+          // The verifier itself must NEVER be on the wire on the
+          // authorize step — only on the token exchange. Belt-and-braces
+          // so a client that mistakenly sent both wouldn't slip past.
+          expect(authorizeWithPkce?.get('code_verifier')).toBeNull();
+        });
+      }
+
       // Scenario 2 — logout clears storage and returns to /signin. Tokens
       // live in the SW/IndexedDB `app_state` JSON (see `SwTokenStorageUtils`,
       // keys `primary` / `secondary`), with a `localStorage['app_state']`
@@ -333,6 +410,65 @@ for (const fixture of FIXTURES) {
         expect(remainingTokens.idbHasToken).toBe(false);
       });
 
+      // Scenario 2a — SDK-driven public providers (Auth0 memory-mode,
+      // MSAL sessionStorage, oidc-client via the OM ServiceWorker /
+      // IndexedDB) must NEVER surface a refresh_token in
+      // window.localStorage. A regression flipping Auth0's
+      // `cacheLocation` to `localstorage` or MSAL's `cacheLocation` to
+      // `localStorage` is a silent exfil risk on any XSS bug — this
+      // scenario is the tripwire. Gated to public + SDK-driven:
+      // backend-refresh providers keep their refresh_token in an
+      // HttpOnly cookie the browser can't see, so localStorage is a
+      // non-issue for them (Scenario 3c covers the cookie flags).
+      //
+      // Detection: EITHER the literal `refresh_token` substring
+      // (SDK's structured JSON dumps) OR a known OM-owned key
+      // (`app_state`, `oidcIdToken`) — the OM SW/IndexedDB fallback
+      // serialises tokens as `{"primary":"<opaque>","secondary":"<opaque>"}`
+      // where the opaque strings contain no `refresh_token` substring
+      // (greptile P2 r4084367161). The tripwire has to catch the
+      // structural presence, not just the string.
+      if (fixture.clientType === 'public' && !fixture.usesBackendRefresh) {
+        test('SDK-driven public providers do not leak refresh_token into localStorage', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+
+          const localStorageDump = await page.evaluate(() => {
+            const dump: Record<string, string> = {};
+            for (let i = 0; i < localStorage.length; i += 1) {
+              const key = localStorage.key(i);
+              if (key) {
+                dump[key] = localStorage.getItem(key) ?? '';
+              }
+            }
+
+            return dump;
+          });
+
+          // OM's SwTokenStorageUtils falls back to `localStorage['app_state']`
+          // when SW+IDB aren't available; that key holds `{primary, secondary}`
+          // where either slot can be a refresh_token. Legacy `oidcIdToken`
+          // is on the same list — nothing should write it anymore.
+          const OM_TOKEN_KEYS = new Set(['app_state', 'oidcIdToken']);
+          const offenders = Object.entries(localStorageDump).filter(
+            ([key, value]) =>
+              OM_TOKEN_KEYS.has(key) || /refresh_?token/i.test(value)
+          );
+
+          expect(
+            offenders,
+            `token-shaped values surfaced in localStorage keys: ${offenders
+              .map(([k]) => k)
+              .join(', ')}. Full dump keys: ${Object.keys(
+              localStorageDump
+            ).join(', ')}`
+          ).toEqual([]);
+        });
+      }
+
       // Scenario 3 — silent refresh recovers an expired token. `forceTokenExpiry`
       // mangles the stored JWT's `exp` claim; the coordinator's boot path (or
       // its axios 401 interceptor) must detect the expired token and drive a
@@ -352,9 +488,10 @@ for (const fixture of FIXTURES) {
           await fixture.performLogin(page);
           await fixture.forceTokenExpiry(page);
 
-          const refreshPromise = page.waitForResponse(
-            (resp) =>
-              resp.url().includes(AUTH_REFRESH_PATH) && resp.status() === 200,
+          const refreshPromise = waitForResponseWithStatus(
+            page,
+            (resp) => resp.url().includes(AUTH_REFRESH_PATH),
+            200,
             { timeout: 30_000 }
           );
 
@@ -369,6 +506,137 @@ for (const fixture of FIXTURES) {
             timeout: 30_000,
           });
           expect(page.url()).not.toContain('/signin');
+        });
+
+        // Scenario 3c — after login, the OM-issued session/refresh
+        // cookie MUST be HttpOnly + SameSite (Lax|Strict). Regressing
+        // either flag silently ships an XSS / CSRF hole. Gated at
+        // registration time on `hasBackendIssuedRefreshCookie` (a
+        // stricter subset of `usesBackendRefresh` — providers that
+        // carry the session inside the JWT body without a cookie opt
+        // out here rather than needing a runtime `test.skip`).
+        //
+        // Assertion runs against `context.cookies()` (Playwright's
+        // context-level API surfaces HttpOnly cookies that
+        // `document.cookie` would hide by definition). Watching the
+        // /auth/refresh response's Set-Cookie header would false-fail
+        // here because OM issues the session cookie ONCE on the
+        // initial login and refresh returns only the new access
+        // token in the body — the cookie is already sitting in the
+        // browser jar.
+        //
+        // `Secure` is intentionally NOT asserted because the dev
+        // Playwright stack runs over plain HTTP (the browser drops
+        // Secure cookies under HTTP anyway, so the assertion would
+        // fail even on a correctly-flagged prod build).
+        if (fixture.hasBackendIssuedRefreshCookie) {
+          test('backend session cookie is HttpOnly + SameSite after login', async ({
+            page,
+          }) => {
+            test.slow();
+
+            await fixture.performLogin(page);
+
+            const cookies = await page.context().cookies();
+            // Filter to the exact OM-emitted cookie name (see
+            // SessionCookieUtil.COOKIE_NAME on the backend — only
+            // `OM_SESSION` today; `OM_*` reserved for the future).
+            // An earlier permissive `/session/i` filter picked up
+            // unrelated cookies like `__session` (docker seed / test
+            // infra) and false-failed on those third-party flags.
+            const omAuthCookies = cookies.filter((c) => /^OM_/.test(c.name));
+
+            expect(
+              omAuthCookies.length,
+              `${
+                fixture.slug
+              } declares hasBackendIssuedRefreshCookie:true but no OM_* cookie in the jar after login. Cookies seen: ${JSON.stringify(
+                cookies.map((c) => c.name)
+              )}`
+            ).toBeGreaterThan(0);
+
+            for (const cookie of omAuthCookies) {
+              expect(cookie.httpOnly, `${cookie.name} must be HttpOnly`).toBe(
+                true
+              );
+              expect(
+                cookie.sameSite,
+                `${cookie.name} must be SameSite Lax or Strict (got ${cookie.sameSite})`
+              ).toMatch(/^(Lax|Strict)$/);
+            }
+          });
+        }
+      }
+
+      // Scenario 3b — persistent server-side 401 stops looping within a
+      // bounded request budget. Regression: the fast-path used to
+      // short-circuit refresh when the stored token's `exp` was still
+      // fresh, looping ~2 req/s on /loggedInUser without ever hitting
+      // /auth/refresh (147 calls in 45s per the HAR). The coordinator's
+      // per-request retry cap must now stop that loop. SDK-driven
+      // providers don't use /api/v1/auth/refresh, so opt out.
+      if (fixture.usesBackendRefresh) {
+        test('persistent server-side 401 stops looping within a bounded request budget', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+
+          const loggedInUserCalls: string[] = [];
+          const authRefreshCalls: string[] = [];
+          page.on('request', (req) => {
+            const u = req.url();
+            if (u.includes(AUTH_REFRESH_PATH)) {
+              authRefreshCalls.push(u);
+            } else if (/\/api\/v1\/users\/loggedInUser/.test(u)) {
+              loggedInUserCalls.push(u);
+            }
+          });
+
+          // Fault-inject the exact 401 body OM's JwtFilter emits after a
+          // signing-key rotation. Scoped to /loggedInUser (the endpoint
+          // the HAR looped on) so the app boots normally and only the
+          // session probe is broken.
+          await page.route(/\/api\/v1\/users\/loggedInUser/, (route) =>
+            route.fulfill({
+              status: 401,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                code: 401,
+                message:
+                  'Not Authorized! Token signing key not found in configured public keys',
+              }),
+            })
+          );
+
+          await page.goto('/', { waitUntil: 'load' });
+          // Wait for the /loggedInUser count to hold steady across 3
+          // consecutive 2s samples — proof the storm has stopped. A
+          // regressed fast-path would keep firing ~2 req/s and the
+          // count would never stabilise before the poll timeout.
+          let previousCount = -1;
+          let stableSamples = 0;
+          await expect
+            .poll(
+              () => {
+                if (loggedInUserCalls.length === previousCount) {
+                  stableSamples += 1;
+                } else {
+                  stableSamples = 0;
+                  previousCount = loggedInUserCalls.length;
+                }
+
+                return stableSamples;
+              },
+              { timeout: 30_000, intervals: [2_000] }
+            )
+            .toBeGreaterThanOrEqual(3);
+
+          // Loose ceilings — well under the ~150 /loggedInUser calls in
+          // the runaway HAR. Both counts must be finite and small.
+          expect(loggedInUserCalls.length).toBeLessThan(15);
+          expect(authRefreshCalls.length).toBeLessThan(10);
         });
       }
 
@@ -520,6 +788,113 @@ for (const fixture of FIXTURES) {
         });
       }
 
+      // Scenario 11 — silent renewal fails while the IdP session is alive
+      // (blocked third-party cookies, an ended OpenMetadata session, Entra's
+      // 24h SPA refresh-token limit). The app must recover with exactly one
+      // top-level prompt=none redirect and land back on the page the user was
+      // on, never showing /signin. Fixtures without a prompt=none flow (Basic,
+      // LDAP, SAML) opt out via supportsSilentReauth.
+      const { breakSilentRenewal, killIdpSession, trackSilentReauth } = fixture;
+      if (
+        fixture.supportsSilentReauth &&
+        breakSilentRenewal &&
+        trackSilentReauth
+      ) {
+        test('silent re-auth restores the deep link without /signin', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+          await page.goto(SILENT_REAUTH_DEEP_LINK, {
+            waitUntil: 'domcontentloaded',
+          });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: 30_000,
+          });
+
+          const visitedPaths = trackVisitedPaths(page);
+          const silentReauthCount = trackSilentReauth(page);
+          await breakSilentRenewal(page);
+          await fixture.forceTokenExpiry(page);
+
+          await page.reload({ waitUntil: 'domcontentloaded' });
+
+          // The reload itself lands on the deep link, so wait for the round
+          // trip to the IdP before checking where it ended up.
+          await expect
+            .poll(silentReauthCount, { timeout: 60_000 })
+            .toBeGreaterThanOrEqual(1);
+          await expect(page).toHaveURL(SILENT_REAUTH_DEEP_LINK_URL, {
+            timeout: 60_000,
+          });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: 30_000,
+          });
+          expect(await silentReauthCount()).toBe(1);
+          expect(visitedPaths).not.toContain('/signin');
+        });
+      }
+
+      // Scenario 12 — once the IdP session itself is gone the single
+      // prompt=none redirect comes back with login_required. The user must
+      // land on /signin signed out after exactly that one attempt: a second
+      // redirect would be the start of a loop.
+      if (
+        fixture.supportsSilentReauth &&
+        breakSilentRenewal &&
+        killIdpSession &&
+        trackSilentReauth
+      ) {
+        test('dead IdP session signs out after one silent re-auth, no loop', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await fixture.performLogin(page);
+          await page.goto(SILENT_REAUTH_DEEP_LINK, {
+            waitUntil: 'domcontentloaded',
+          });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: 30_000,
+          });
+
+          const silentReauthCount = trackSilentReauth(page);
+          await breakSilentRenewal(page);
+          await killIdpSession(page);
+          await fixture.forceTokenExpiry(page);
+
+          await page.reload({ waitUntil: 'domcontentloaded' });
+
+          await expect(page).toHaveURL(/\/signin$/, { timeout: 60_000 });
+
+          // Hold the count steady across 3 consecutive 2s samples: a loop
+          // would keep redirecting to the IdP and never settle.
+          let previousCount = -1;
+          let stableSamples = 0;
+          await expect
+            .poll(
+              async () => {
+                const count = await silentReauthCount();
+                if (count === previousCount) {
+                  stableSamples += 1;
+                } else {
+                  stableSamples = 0;
+                  previousCount = count;
+                }
+
+                return stableSamples;
+              },
+              { timeout: 30_000, intervals: [2_000] }
+            )
+            .toBeGreaterThanOrEqual(3);
+
+          expect(await silentReauthCount()).toBe(1);
+          await expect(page).toHaveURL(/\/signin$/);
+          expect(await readStoredPrimaryToken(page)).toBeFalsy();
+        });
+      }
+
       // Scenario 7 — the /silent-callback iframe route is a bare oidc-client
       // handoff and MUST NOT boot the full app. If AppRoot ever mounted here
       // (regression: someone re-adds it under AuthProvider), a >2 MB main
@@ -532,16 +907,29 @@ for (const fixture of FIXTURES) {
         test('silent-callback iframe does not load the full app', async ({
           page,
         }) => {
+          // Track each `resp.body()` promise so we can wait on the
+          // batch BEFORE asserting. Without this, a large-bundle load
+          // whose body-read resolves AFTER `goto` returns can slip
+          // past the check silently (greptile P2 r4084367151).
           const responses: Array<{ url: string; size: number }> = [];
-          page.on('response', async (resp) => {
+          const bodyReads: Promise<void>[] = [];
+          page.on('response', (resp) => {
+            const url = resp.url();
             if (
-              resp.url().endsWith('.js') ||
-              resp.url().endsWith('.js.map') ||
-              resp.url().endsWith('.css')
+              !url.endsWith('.js') &&
+              !url.endsWith('.js.map') &&
+              !url.endsWith('.css')
             ) {
-              const body = await resp.body().catch(() => null);
-              responses.push({ url: resp.url(), size: body?.length ?? 0 });
+              return;
             }
+            bodyReads.push(
+              resp
+                .body()
+                .then((body) => {
+                  responses.push({ url, size: body?.length ?? 0 });
+                })
+                .catch(() => undefined)
+            );
           });
 
           // `waitUntil: 'load'` fires once every top-level resource — the
@@ -551,6 +939,10 @@ for (const fixture of FIXTURES) {
           // is the correct synchronization point (no wall-clock sleep, no
           // banned `networkidle`). oidc-client's own async work is fire-
           // and-forget inside a hidden iframe and is not asserted on.
+          // This scenario asserts what the silent-callback entry actually loads,
+          // so it has to wait for `load` rather than short-circuit at
+          // domcontentloaded.
+
           await page.goto('/silent-callback', { waitUntil: 'load' });
 
           // Full-app shell markers MUST NOT be present in the iframe DOM.
@@ -558,6 +950,8 @@ for (const fixture of FIXTURES) {
             page.getByTestId(APP_BAR_HOME_TESTID)
           ).not.toBeAttached();
           await expect(page.locator('#appbar')).not.toBeAttached();
+
+          await Promise.all(bodyReads);
 
           // Bundle-size budget: no single JS chunk larger than 500 KB should
           // load for this route. The full-app bundle is >2 MB, so exceeding
@@ -632,6 +1026,73 @@ for (const fixture of FIXTURES) {
           // resolved a promise into the void.
           const storedAfter = await readStoredPrimaryToken(page);
           expect(storedAfter).toBe(renewedToken);
+        });
+
+        // Scenario 11 (deferred) — silent-refresh failure must land on
+        // /signin, not spin on the iframe. The first attempt at this
+        // scenario fault-injected the /silent-callback response, but
+        // oidc-client's UserManager can bypass the iframe entirely when
+        // a cached refresh_token is available (its refresh_token grant
+        // path — CI leg observed the renewer resolving successfully
+        // instead of hitting the mocked callback). Fault-injecting at
+        // the /authorize URL with prompt=none or invalidating the
+        // IdP-side session is the correct hook and needs a follow-up.
+        // Coordinator-side rejection handling is fully covered by the
+        // unit tests in AuthCoordinator.test.ts; the missing coverage
+        // here is only the end-to-end propagation of an IdP-side
+        // silent-refresh failure into /signin.
+      }
+
+      // Scenario 7a — mirror of scenario 7 for confidential clients.
+      // Confidential OIDC doesn't use the /silent-callback iframe at
+      // all (refresh runs through OM's server-side /auth/refresh),
+      // so navigating there must render an empty stub. A regression
+      // that mounts AppRoot under a shared route would silently boot
+      // the full app inside a hidden iframe for confidential builds
+      // too; catch it symmetrically with the public case.
+      if (fixture.clientType === 'confidential') {
+        test('confidential /silent-callback route does not mount the full app', async ({
+          page,
+        }) => {
+          test.slow();
+
+          // Track each `resp.body()` promise and wait on the batch
+          // BEFORE asserting on `responses`, so a large-bundle load
+          // that resolves after `goto` returns can't slip past the
+          // check (greptile P2 r4084367151 — the same pattern lives
+          // in Scenario 7; fixing both together in follow-up work).
+          const responses: Array<{ url: string; size: number }> = [];
+          const bodyReads: Promise<void>[] = [];
+          page.on('response', (resp) => {
+            const url = resp.url();
+            if (
+              !url.endsWith('.js') &&
+              !url.endsWith('.js.map') &&
+              !url.endsWith('.css')
+            ) {
+              return;
+            }
+            bodyReads.push(
+              resp
+                .body()
+                .then((body) => {
+                  responses.push({ url, size: body?.length ?? 0 });
+                })
+                .catch(() => undefined)
+            );
+          });
+
+          await page.goto('/silent-callback', { waitUntil: 'load' });
+
+          await expect(
+            page.getByTestId(APP_BAR_HOME_TESTID)
+          ).not.toBeAttached();
+          await expect(page.locator('#appbar')).not.toBeAttached();
+
+          await Promise.all(bodyReads);
+
+          const largeChunks = responses.filter((r) => r.size > 500_000);
+          expect(largeChunks).toEqual([]);
         });
       }
 

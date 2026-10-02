@@ -343,10 +343,12 @@ describe('TestCaseDetail', () => {
     expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
   });
 
-  it('should align the detail header card with the inset tab content', () => {
+  it('should keep the detail header card on the shell header band', () => {
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('test-case-header-container')).toHaveClass(
+    // AI padding standard: the header band sits at the shell's 8px padding,
+    // 8px outside the 16px-inset tab content, like the other shell pages.
+    expect(screen.getByTestId('test-case-header-container')).not.toHaveClass(
       'tw:mx-4'
     );
   });
@@ -524,6 +526,61 @@ describe('TestCaseDetail', () => {
 
     expect(screen.getByTestId('incident-tab-body')).toBeInTheDocument();
     expect(screen.queryByTestId('result-tab-body')).not.toBeInTheDocument();
+  });
+
+  describe('tab strip / body synchronization', () => {
+    const getSelectedTab = () =>
+      screen
+        .queryAllByRole('tab')
+        .find((tab) => tab.getAttribute('aria-selected') === 'true');
+
+    it('should highlight the matching tab and render its body when activeTab matches a rendered tab', () => {
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        activeTab: 'issues',
+      });
+
+      render(<TestCaseDetail />);
+
+      expect(screen.getByTestId('incident')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(getSelectedTab()).toHaveAttribute('data-testid', 'incident');
+      expect(screen.getByTestId('incident-tab-body')).toBeInTheDocument();
+      expect(screen.queryByTestId('result-tab-body')).not.toBeInTheDocument();
+    });
+
+    it('should normalize an unmatched activeTab so the strip highlight and the rendered body agree (version page omits the issues tab)', () => {
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        isVersionPage: true,
+        version: '0.2',
+        tabs: [
+          {
+            key: 'test-case-results',
+            labelProps: { id: 'test-case-result', name: 'Test Case Results' },
+            LabelComponent: MockTabLabel,
+            Tab: MockResultTab,
+          },
+        ],
+        activeTab: 'issues',
+      });
+
+      render(<TestCaseDetail isVersionPage />);
+
+      expect(screen.getByTestId('test-case-result')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(getSelectedTab()).toHaveAttribute(
+        'data-testid',
+        'test-case-result'
+      );
+      expect(screen.queryByTestId('incident')).not.toBeInTheDocument();
+      expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
+      expect(screen.queryByTestId('incident-tab-body')).not.toBeInTheDocument();
+    });
   });
 
   describe('last run banner', () => {

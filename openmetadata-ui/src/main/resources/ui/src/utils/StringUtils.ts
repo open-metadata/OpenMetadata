@@ -12,10 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import DOMPurify from 'dompurify';
-import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
-import removeMarkdown from 'remove-markdown';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
 import { ClientErrors } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
@@ -98,22 +95,67 @@ export const slugify = (value: string) =>
     .replaceAll(/^-+|-+$/g, '');
 
 // will add back slash "\" before quote in string if present
-export const getQueryWithSlash = (query: string): string =>
-  query.replaceAll(/["']/g, String.raw`\$&`);
+export const getQueryWithSlash = (query: string): string => {
+  const trimmed = query.trim();
+  // escapeESReservedCharacters already escapes "&" upstream of this call;
+  // re-escaping a query that is purely those already-escaped characters
+  // sends Elasticsearch a term with no actual content, so drop it instead.
+  if (/^[\\&]+$/.test(trimmed)) {
+    return '';
+  }
+
+  /*
+   * Always escape a raw single quote. Escape a double quote only when it
+   * isn't already escaped: escapeESReservedCharacters pre-escapes " -> \"
+   * for callers that use it (e.g. Suggestions.tsx), while other callers
+   * (e.g. TagsUtils#fetchGlossaryList) pass raw text straight here and
+   * still need an unescaped quote escaped so it doesn't break
+   * Elasticsearch's query_string parser. A quote is only actually escaped
+   * when it's preceded by an odd number of backslashes -- an even run
+   * (including zero) resolves to literal backslashes, leaving the quote
+   * itself unescaped. Walking the string once (instead of a `(\\*)"` regex)
+   * avoids the super-linear backtracking a quantified-group-then-literal
+   * pattern causes on long non-matching backslash runs.
+   */
+  let result = '';
+  let precedingBackslashes = 0;
+  for (const char of query) {
+    if (char === '\\') {
+      precedingBackslashes += 1;
+      result += char;
+
+      continue;
+    }
+    if (char === "'") {
+      result += String.raw`\'`;
+    } else if (char === '"') {
+      result += precedingBackslashes % 2 === 1 ? char : String.raw`\"`;
+    } else {
+      result += char;
+    }
+    precedingBackslashes = 0;
+  }
+
+  return result;
+};
+
+const SAFE_URL_PROTOCOLS = ['http:', 'https:'];
 
 /**
- * Convert a template string into HTML DOM nodes.
- * Input is sanitized with DOMPurify before being parsed to prevent stored
- * XSS from stored user content (e.g. entity name/displayName) — see
- * GHSA-59gm-6h39-397f. DOMPurify's default profile preserves the benign
- * markup callers rely on (<span class>, <mark>, <em>, <ins>, <del>) while
- * stripping <iframe>, <script>, event handler attributes, and
- * javascript:/data: URLs.
+ * Returns the URL only when it is an absolute http(s) URL, otherwise undefined.
+ * Use before rendering any user- or ingestion-supplied URL as an `href`, so
+ * `javascript:`/`data:` URLs never become clickable.
  */
-export const stringToHTML = function (
-  strHTML: string
-): string | JSX.Element | JSX.Element[] {
-  return strHTML ? parse(DOMPurify.sanitize(strHTML)) : strHTML;
+export const getSafeHttpUrl = (url?: string): string | undefined => {
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    return SAFE_URL_PROTOCOLS.includes(new URL(url).protocol) ? url : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 /**
@@ -426,20 +468,6 @@ export const jsonToCSV = <T extends JSONRecord>(
  * @param htmlString - HTML content as a string
  * @returns A cleaned HTML string with invalid file-attachment divs removed
  */
-/**
- * Decode HTML entities (e.g. "&amp;", "&#98;") into their literal characters.
- * Uses DOMParser in text mode so embedded markup is never executed, only
- * read back as plain text.
- */
-export function decodeHtmlEntities(text: string): string {
-  const doc = new DOMParser().parseFromString(text, 'text/html');
-
-  return doc.documentElement.textContent ?? text;
-}
-
-export function stripMarkdown(text: string): string {
-  return decodeHtmlEntities(removeMarkdown(text)).trim();
-}
 
 export function removeAttachmentsWithoutUrl(htmlString: string): string {
   if (!htmlString.includes('data-type="file-attachment"')) {
@@ -461,3 +489,11 @@ export function removeAttachmentsWithoutUrl(htmlString: string): string {
 
   return doc.body.innerHTML;
 }
+
+// Kept for downstream (Collate) imports. Code in this repo should import these
+// from RichTextStringUtils so the shell does not load dompurify / html parsing.
+export {
+  decodeHtmlEntities,
+  stringToHTML,
+  stripMarkdown,
+} from './RichTextStringUtils';

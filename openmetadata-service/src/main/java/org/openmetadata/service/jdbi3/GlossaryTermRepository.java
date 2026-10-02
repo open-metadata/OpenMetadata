@@ -170,6 +170,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String ONTOLOGY_EDGE_ID_NAMESPACE = "ontology:";
   private static final int ONTOLOGY_RELATION_CANDIDATE_MULTIPLIER = 5;
   private static final int MAX_ONTOLOGY_RELATION_CANDIDATES = 2500;
+  private static final Comparator<TermRelation> TERM_RELATION_ORDER =
+      Comparator.comparing((TermRelation relation) -> relation.getTerm().getFullyQualifiedName())
+          .thenComparing(TermRelation::getRelationType);
 
   private final TermRelationMetadataCodec termRelationMetadataCodec =
       new TermRelationMetadataCodec();
@@ -879,7 +882,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     for (EntityRelationshipRecord record : toRecords) {
       relations.add(buildTermRelation(record));
     }
-    relations.sort(Comparator.comparing(tr -> tr.getTerm().getFullyQualifiedName()));
+    relations.sort(TERM_RELATION_ORDER);
     return relations;
   }
 
@@ -1124,6 +1127,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY_TERM);
     deleteFromMany(ids, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
     deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
+    List<UUID> memorySourceCarryingIds =
+        entities.stream()
+            .filter(term -> term.getSourceMemoryIds() != null)
+            .map(GlossaryTerm::getId)
+            .toList();
+    deleteFromMany(
+        memorySourceCarryingIds,
+        Entity.GLOSSARY_TERM,
+        Relationship.DERIVED_FROM,
+        Entity.CONTEXT_MEMORY);
     // Realized assets are heterogeneous, so clear every target type from the term's outgoing side.
     // A null realizedIn means "unchanged" for callers that never carry the field, and clearing
     // those would drop edges the caller never intended to touch.
@@ -1144,6 +1157,41 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       storeTermRelation(entity.getId(), termRelation, entity.getUpdatedBy());
     }
     storeRealizations(entity);
+    storeSourceMemoryRelationships(entity);
+  }
+
+  // Provenance must never block a term write: a source memory deleted after the draft was made is
+  // skipped rather than failing the apply (or a later bulk rewrite) of an otherwise valid term.
+  private void storeSourceMemoryRelationships(GlossaryTerm entity) {
+    for (UUID memoryId :
+        entity.getSourceMemoryIds() == null ? Set.<UUID>of() : entity.getSourceMemoryIds()) {
+      if (isKnownMemory(memoryId)) {
+        addRelationship(
+            entity.getId(),
+            memoryId,
+            Entity.GLOSSARY_TERM,
+            Entity.CONTEXT_MEMORY,
+            Relationship.DERIVED_FROM);
+      }
+    }
+  }
+
+  // A client edit may only add memories that exist; ids already stored are kept as they are.
+  private static void requireKnownMemories(Set<UUID> original, Set<UUID> updated) {
+    for (UUID memoryId : updated == null ? Set.<UUID>of() : updated) {
+      if ((original == null || !original.contains(memoryId)) && !isKnownMemory(memoryId)) {
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(Entity.CONTEXT_MEMORY, memoryId));
+      }
+    }
+  }
+
+  private static boolean isKnownMemory(UUID memoryId) {
+    boolean isKnown = ContextMemoryRepository.memoryExists(memoryId);
+    if (!isKnown) {
+      LOG.debug("Skipping provenance to missing context memory {}", memoryId);
+    }
+    return isKnown;
   }
 
   private void storeRealizations(GlossaryTerm entity) {
@@ -2582,7 +2630,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     for (List<TermRelation> relations : relatedTermsMap.values()) {
-      relations.sort(Comparator.comparing(tr -> tr.getTerm().getFullyQualifiedName()));
+      relations.sort(TERM_RELATION_ORDER);
     }
 
     if (!relatedTermsMap.isEmpty()) {
@@ -2782,6 +2830,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       recordChange("conceptType", original.getConceptType(), updated.getConceptType());
       recordChange(
           "ontologySource", original.getOntologySource(), updated.getOntologySource(), true);
+      if (updated.getSourceMemoryIds() == null) {
+        updated.setSourceMemoryIds(original.getSourceMemoryIds());
+      }
+      if (!Objects.equals(original.getSourceMemoryIds(), updated.getSourceMemoryIds())) {
+        requireKnownMemories(original.getSourceMemoryIds(), updated.getSourceMemoryIds());
+        deleteFrom(
+            updated.getId(),
+            Entity.GLOSSARY_TERM,
+            Relationship.DERIVED_FROM,
+            Entity.CONTEXT_MEMORY);
+        storeSourceMemoryRelationships(updated);
+      }
+      recordChange("sourceMemoryIds", original.getSourceMemoryIds(), updated.getSourceMemoryIds());
       compareAndUpdate("relatedTerms", () -> updateRelatedTerms(original, updated));
       compareAndUpdate(FIELD_REALIZED_IN, () -> updateRealizedIn(original, updated));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "glossary");

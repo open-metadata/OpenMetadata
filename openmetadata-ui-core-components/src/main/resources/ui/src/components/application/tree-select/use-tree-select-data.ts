@@ -18,18 +18,36 @@ import type {
   TreeSelectNode,
 } from './tree-select.types';
 
+// Keyed by node id, so the root listing needs one no node can collide with.
+const ROOT_CACHE_KEY = '\u0000root';
+
+/** A branch's loaded children plus what it takes to ask for the next page. */
+interface BranchPage<T> {
+  nodes: TreeSelectNode<T>[];
+  hasMore?: boolean;
+  total?: number;
+  cursor?: string;
+}
+
 interface TreeSelectDataState<T> {
   data: TreeSelectNode<T>[];
   loading: boolean;
+  /** A root page appended to what is already shown, rather than replacing it. */
+  loadingMore: boolean;
   error: string | null;
   loadingNodes: Set<string>;
-  cachedData: Map<string, TreeSelectNode<T>[]>;
+  cachedData: Map<string, BranchPage<T>>;
+  /** Paging state for the root listing, mirroring BranchPage for a branch. */
+  rootPage: Omit<BranchPage<T>, 'nodes'>;
 }
 
 interface UseTreeSelectDataOptions<T> {
   fetchData: TreeSelectDataFetcher<T>;
   searchTerm?: string;
   pageSize?: number;
+  onFetchError?: (error: unknown) => void;
+  // False holds off every fetch, so a closed picker on each row costs no request.
+  enabled?: boolean;
 }
 
 interface UseTreeSelectDataReturn<T> {
@@ -38,54 +56,108 @@ interface UseTreeSelectDataReturn<T> {
   error: string | null;
   loadingNodes: Set<string>;
   loadChildren: (parentId: string) => Promise<void>;
+  loadMoreChildren: (parentId: string) => Promise<void>;
+  /** Set when the root listing is a truncated page. */
+  hasMoreRoot: boolean;
+  /** Root total, when the source reports one. */
+  rootTotal?: number;
+  loadingMoreRoot: boolean;
+  loadMoreRoot: () => Promise<void>;
 }
 
 const insertChildrenIntoTree = <T>(
   nodes: TreeSelectNode<T>[],
   parentId: string,
-  children: TreeSelectNode<T>[]
+  page: BranchPage<T>,
+  append = false
 ): TreeSelectNode<T>[] =>
   nodes.map((node) => {
     if (node.id === parentId) {
+      const children = append
+        ? [...(node.children ?? []), ...page.nodes]
+        : page.nodes;
+
       // An empty result must not make it a leaf, or it loses its chevron.
       return {
         ...node,
         children,
+        hasMoreChildren: page.hasMore === true,
+        childrenTotal: page.total,
+        childrenCursor: page.cursor,
         isLeaf: children.length > 0 ? false : node.isLeaf,
       };
     }
     if (node.children) {
       return {
         ...node,
-        children: insertChildrenIntoTree(node.children, parentId, children),
+        children: insertChildrenIntoTree(node.children, parentId, page, append),
       };
     }
 
     return node;
   });
 
+const findNode = <T>(
+  nodes: TreeSelectNode<T>[],
+  id: string
+): TreeSelectNode<T> | undefined => {
+  for (const node of nodes) {
+    if (node.id === id) {
+      return node;
+    }
+    const found = node.children && findNode(node.children, id);
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
 export const useTreeSelectData = <T = unknown>({
   fetchData,
   searchTerm = '',
   pageSize = 50,
+  onFetchError,
+  enabled = true,
 }: UseTreeSelectDataOptions<T>): UseTreeSelectDataReturn<T> => {
   const [state, setState] = useState<TreeSelectDataState<T>>({
     data: [],
     loading: false,
+    loadingMore: false,
     error: null,
     loadingNodes: new Set(),
     cachedData: new Map(),
+    rootPage: {},
   });
 
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // One controller per scope — the root listing and each branch load
+  // independently, so a load-more must not cancel an expand, or vice versa.
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const loadingNodesRef = useRef<Set<string>>(new Set());
-  const cachedDataRef = useRef<Map<string, TreeSelectNode<T>[]>>(new Map());
+  const cachedDataRef = useRef<Map<string, BranchPage<T>>>(new Map());
+  // Read inside stable callbacks, so `loadMoreChildren` never needs the tree.
+  const dataRef = useRef<TreeSelectNode<T>[]>([]);
+  dataRef.current = state.data;
+  // Same reason as dataRef: `loadMoreRoot` must not depend on the tree.
+  const rootPageRef = useRef<Omit<BranchPage<T>, 'nodes'>>({});
+  rootPageRef.current = state.rootPage;
+  const loadingMoreRef = useRef(false);
+  loadingMoreRef.current = state.loadingMore;
 
   const fetchTreeData = useCallback(
-    async (params: TreeSelectDataFetcherParams) => {
-      abortControllerRef.current?.abort();
+    async (params: TreeSelectDataFetcherParams, append = false) => {
+      const scope = params.parentId ?? ROOT_CACHE_KEY;
+      // A fresh root or search replaces the whole tree, so every in-flight
+      // branch becomes irrelevant; everything else cancels only its own scope.
+      if (!params.parentId && !append) {
+        abortControllersRef.current.forEach((inFlight) => inFlight.abort());
+        abortControllersRef.current.clear();
+      } else {
+        abortControllersRef.current.get(scope)?.abort();
+      }
       const controller = new AbortController();
-      abortControllerRef.current = controller;
+      abortControllersRef.current.set(scope, controller);
 
       if (params.parentId) {
         loadingNodesRef.current = new Set(loadingNodesRef.current).add(
@@ -93,9 +165,11 @@ export const useTreeSelectData = <T = unknown>({
         );
       }
 
+      const isRootAppend = !params.parentId && append;
       setState((prev) => ({
         ...prev,
-        loading: !params.parentId,
+        loading: !params.parentId && !append,
+        loadingMore: isRootAppend,
         error: null,
         loadingNodes: loadingNodesRef.current,
       }));
@@ -106,6 +180,10 @@ export const useTreeSelectData = <T = unknown>({
           pageSize,
           signal: controller.signal,
         });
+
+        if (abortControllersRef.current.get(scope) === controller) {
+          abortControllersRef.current.delete(scope);
+        }
 
         if (controller.signal.aborted) {
           if (params.parentId) {
@@ -122,20 +200,40 @@ export const useTreeSelectData = <T = unknown>({
           const nextLoadingNodes = new Set(loadingNodesRef.current);
           let nextData = prev.data;
           let nextCachedData = cachedDataRef.current;
+          let nextRootPage = prev.rootPage;
 
           if (params.parentId) {
+            const previous = cachedDataRef.current.get(params.parentId);
+            const page: BranchPage<T> = {
+              nodes:
+                append && previous
+                  ? [...previous.nodes, ...response.nodes]
+                  : response.nodes,
+              hasMore: response.hasMore,
+              total: response.total,
+              cursor: response.nextCursor,
+            };
+
             nextCachedData = new Map(cachedDataRef.current);
-            nextCachedData.set(params.parentId, response.nodes);
+            nextCachedData.set(params.parentId, page);
             nextData = insertChildrenIntoTree(
               prev.data,
               params.parentId,
-              response.nodes
+              { ...page, nodes: response.nodes },
+              append
             );
             nextLoadingNodes.delete(params.parentId);
           } else {
-            nextData = response.nodes;
+            nextData = append
+              ? [...prev.data, ...response.nodes]
+              : response.nodes;
+            nextRootPage = {
+              hasMore: response.hasMore,
+              total: response.total,
+              cursor: response.nextCursor,
+            };
             if (!params.searchTerm) {
-              nextCachedData = new Map([['root', response.nodes]]);
+              nextCachedData = new Map([[ROOT_CACHE_KEY, { nodes: nextData }]]);
             }
           }
 
@@ -148,9 +246,15 @@ export const useTreeSelectData = <T = unknown>({
             cachedData: nextCachedData,
             loadingNodes: nextLoadingNodes,
             loading: false,
+            loadingMore: false,
+            rootPage: nextRootPage,
           };
         });
       } catch (error) {
+        if (abortControllersRef.current.get(scope) === controller) {
+          abortControllersRef.current.delete(scope);
+        }
+
         if (controller.signal.aborted) {
           if (params.parentId) {
             const nextLoadingNodes = new Set(loadingNodesRef.current);
@@ -177,24 +281,35 @@ export const useTreeSelectData = <T = unknown>({
         setState((prev) => ({
           ...prev,
           loading: false,
+          loadingMore: false,
           error: errorMessage,
           loadingNodes: nextLoadingNodes,
         }));
 
-        toast.error(errorMessage);
+        // A consumer that knows its transport can render a translated message
+        // (and its own retry); the raw `error.message` is an axios string like
+        // "Request failed with status code 500".
+        if (onFetchError) {
+          onFetchError(error);
+        } else {
+          toast.error(errorMessage);
+        }
       }
     },
-    [fetchData, pageSize]
+    [fetchData, pageSize, onFetchError]
   );
 
   useEffect(() => {
-    fetchTreeData({ searchTerm });
+    if (enabled) {
+      fetchTreeData({ searchTerm });
+    }
 
     return () => {
-      abortControllerRef.current?.abort();
+      abortControllersRef.current.forEach((inFlight) => inFlight.abort());
+      abortControllersRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm]);
+  }, [searchTerm, enabled]);
 
   const loadChildren = useCallback(
     async (parentId: string) => {
@@ -215,11 +330,41 @@ export const useTreeSelectData = <T = unknown>({
     [fetchTreeData]
   );
 
+  // The next page of an already-loaded branch, appended to what it has.
+  const loadMoreChildren = useCallback(
+    async (parentId: string) => {
+      const node = findNode(dataRef.current, parentId);
+      if (!node?.hasMoreChildren || loadingNodesRef.current.has(parentId)) {
+        return;
+      }
+
+      await fetchTreeData({ parentId, after: node.childrenCursor }, true);
+    },
+    [fetchTreeData]
+  );
+
+  // The next page of the root listing, appended to what is already shown.
+  const loadMoreRoot = useCallback(async () => {
+    if (!rootPageRef.current.hasMore || loadingMoreRef.current) {
+      return;
+    }
+
+    await fetchTreeData(
+      { after: rootPageRef.current.cursor, searchTerm },
+      true
+    );
+  }, [fetchTreeData, searchTerm]);
+
   return {
     treeData: state.data,
     loading: state.loading,
     error: state.error,
     loadingNodes: state.loadingNodes,
     loadChildren,
+    loadMoreChildren,
+    hasMoreRoot: state.rootPage.hasMore === true,
+    rootTotal: state.rootPage.total,
+    loadingMoreRoot: state.loadingMore,
+    loadMoreRoot,
   };
 };

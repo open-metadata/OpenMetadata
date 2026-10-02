@@ -31,7 +31,7 @@ import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { createTask } from '../../../../rest/tasksAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ArrowLeft: () => <svg data-testid="icon-arrow-left" />,
   Check: () => <svg data-testid="icon-check" />,
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,
@@ -312,6 +312,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  // Spread the real module: the transition ids are plain constants the
+  // source reads at import time, and a bare factory leaves them undefined.
+  ...jest.requireActual('../../../../rest/incidentManagerAPI'),
   transitionIncident: jest.fn().mockResolvedValue({}),
   postTestCaseIncidentStatus: jest
     .fn()
