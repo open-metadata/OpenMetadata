@@ -669,8 +669,9 @@ def get_column_lineage(
     """
     column_lineage = []
     if column_lineage_map.get(to_table_raw_name) and column_lineage_map.get(to_table_raw_name).get(from_table_raw_name):
-        # Select all
-        if "*" in column_lineage_map.get(to_table_raw_name).get(from_table_raw_name)[0]:
+        # Select all: only when a ("*", "*") wildcard pair is present.
+        # A pair like ("nb", "*") from COUNT(*) AS nb must NOT trigger this path.
+        if ("*", "*") in column_lineage_map.get(to_table_raw_name).get(from_table_raw_name):
             column_lineage_map[to_table_raw_name][from_table_raw_name] = [
                 (c.name.root, c.name.root) for c in from_entity.columns
             ]
