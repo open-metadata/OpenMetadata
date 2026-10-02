@@ -207,8 +207,12 @@ public final class CustomPropertyReferences {
     dao()
         .deleteMany(
             delta.removed.stream().filter(row -> !retypedKeys.contains(row.primaryKey())).toList());
-    delta.added.forEach(row -> dropped.add(row.targetId()));
-    proven.forEach(row -> dropped.remove(row.targetId()));
+    Set<String> provenKeys = new HashSet<>();
+    proven.forEach(row -> provenKeys.add(dropKey(row.targetType(), row.targetId())));
+    delta.added.stream()
+        .map(row -> dropKey(row.targetType(), row.targetId()))
+        .filter(key -> !provenKeys.contains(key))
+        .forEach(dropped::add);
     return dropped;
   }
 
@@ -337,8 +341,10 @@ public final class CustomPropertyReferences {
                 if (row != null) {
                   position++;
                   rows.putIfAbsent(row.key(), row);
-                } else if (isReference(ref)) {
-                  dropped.add(ref.get(FIELD_ID).asText());
+                } else if (ref.isObject()) {
+                  // A malformed id, or a name that resolved to nothing on an unvalidated path.
+                  LOG.warn("Dropping custom-property reference that names no entity: {}", ref);
+                  dropped.add(dropKey(ref));
                 }
               }
             });
@@ -390,7 +396,7 @@ public final class CustomPropertyReferences {
   }
 
   /**
-   * Returns {@code extension} without the references to {@code targetIds}, so the entity a write
+   * Returns {@code extension} without the references a write reported as dropped, so the entity it
    * returns and indexes matches what was stored. A property left without references is removed.
    */
   public static Object withoutTargets(
@@ -426,9 +432,22 @@ public final class CustomPropertyReferences {
     return value != null && matches(value, targetIds);
   }
 
-  private static boolean matches(JsonNode ref, Set<String> targetIds) {
+  private static boolean matches(JsonNode ref, Set<String> dropped) {
+    return dropped.contains(dropKey(ref));
+  }
+
+  /** Identifies a dropped reference by type and id, or by type and name when it has no id. */
+  private static String dropKey(JsonNode ref) {
     String id = ref.path(FIELD_ID).asText("");
-    return targetIds.contains(id) || targetIds.contains(canonicalId(id));
+    String canonical = canonicalId(id);
+    return id.isEmpty()
+        ? dropKey(
+            ref.path(FIELD_TYPE).asText(""), "name:" + ref.path("fullyQualifiedName").asText(""))
+        : dropKey(ref.path(FIELD_TYPE).asText(""), canonical == null ? id : canonical);
+  }
+
+  private static String dropKey(String type, String id) {
+    return type + '\u0000' + id;
   }
 
   /**
@@ -449,6 +468,11 @@ public final class CustomPropertyReferences {
       LOG.warn("Dropping {} custom-property references of unknown type '{}'", rows.size(), type);
       return List.of();
     }
+    if (!hasEntityTable(type)) {
+      // Time-series entities have no lockable entity row and are not hard-deleted through the
+      // cleanup that removes references, so their references are stored as sent, as before.
+      return rows;
+    }
     EntityDAO<?> entityDao = Entity.getEntityRepository(type).getDao();
     List<String> ids = rows.stream().map(ReferenceRow::targetId).distinct().toList();
     Set<String> present =
@@ -464,6 +488,16 @@ public final class CustomPropertyReferences {
           type);
     }
     return kept;
+  }
+
+  /** Whether the type has a regular entity table; time-series types have a repository but not this. */
+  public static boolean hasEntityTable(String type) {
+    try {
+      Entity.getEntityRepository(type);
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
   }
 
   /** Rows of one value scope, in the order the query returned them. */

@@ -38,6 +38,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.CustomPropertyReferenceDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceRow;
 import org.openmetadata.service.jdbi3.CustomPropertyReferences.Scope;
@@ -168,12 +169,44 @@ class CustomPropertyReferencesTest {
     when(dao.findEntityLevel(anyList())).thenReturn(List.of());
 
     assertEquals(
-        Set.of("not-a-uuid"),
+        Set.of("team\u0000not-a-uuid"),
         references.write(
             SCOPE,
             (ObjectNode)
                 JsonUtils.readTree(
                     "{\"owningTeams\":[{\"id\":\"not-a-uuid\",\"type\":\"team\"}]}")));
+  }
+
+  @Test
+  void anUnresolvedNameIsDroppedFromTheReturnedValue() {
+    when(dao.findEntityLevel(anyList())).thenReturn(List.of());
+    ObjectNode value =
+        (ObjectNode)
+            JsonUtils.readTree(
+                "{\"owningTeams\":[{\"type\":\"team\",\"fullyQualifiedName\":\"gone\"}]}");
+
+    Set<String> dropped = references.write(SCOPE, value);
+
+    assertNull(CustomPropertyReferences.withoutTargets(value, "owningTeams"::equals, dropped));
+  }
+
+  @Test
+  void aTimeSeriesTargetIsStoredWithoutAnEntityTableCheck() {
+    entity.when(() -> Entity.hasEntityRepository("testCaseResolutionStatus")).thenReturn(true);
+    entity
+        .when(() -> Entity.getEntityRepository("testCaseResolutionStatus"))
+        .thenThrow(EntityNotFoundException.byMessage("no regular repository"));
+    when(dao.findEntityLevel(anyList())).thenReturn(List.of());
+
+    references.write(
+        SCOPE,
+        (ObjectNode)
+            JsonUtils.readTree(
+                String.format(
+                    "{\"owningTeams\":[{\"id\":\"%s\",\"type\":\"testCaseResolutionStatus\"}]}",
+                    LIVE)));
+
+    assertEquals(List.of(LIVE), targets(captureInserted()));
   }
 
   @Test

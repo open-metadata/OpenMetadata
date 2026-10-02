@@ -451,6 +451,11 @@ public final class CustomPropertyReferenceMigration {
     List<ReferenceRow> kept = new ArrayList<>();
     byType.forEach(
         (type, typeRows) -> {
+          if (!CustomPropertyReferences.hasEntityTable(type)) {
+            // Time-series targets have no entity table to check; keep their references as stored.
+            kept.addAll(typeRows);
+            return;
+          }
           EntityDAO<?> targetDao = Entity.getEntityRepository(type).getDao();
           List<String> ids = typeRows.stream().map(ReferenceRow::targetId).distinct().toList();
           Set<String> present =
