@@ -175,6 +175,10 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     })) as DataProduct[];
 
     setEditingDataProducts(dpList);
+
+    if (!open) {
+      cancelEditing();
+    }
   };
 
   const editingState = useMemo(
