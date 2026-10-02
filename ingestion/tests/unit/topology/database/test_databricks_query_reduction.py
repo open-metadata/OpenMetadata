@@ -412,4 +412,4 @@ def test_get_table_type_cache_is_bounded_to_current_schema():
 
     # 'sales' was evicted by 'analytics', so the third lookup re-queries.
     assert connection.execute.call_count == 3
-    assert list(connection.info["databricks_table_types"]) == [("main_prod", "sales")]
+    assert list(connection.info["databricks_table_info"]) == [("main_prod", "sales")]

@@ -26,12 +26,15 @@ import pytest
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.databricks.metadata import (
+    _TABLE_INFO_CACHE_KEY,
     DatabricksSource,
+    _get_schema_table_info,
     _table_type_from_data_source_format,
+    _TableInfo,
     get_table_type,
 )
 
-_CACHE_KEY = "databricks_table_types"
+_CACHE_KEY = _TABLE_INFO_CACHE_KEY
 
 
 def test_delta_formats_map_to_delta_lake():
@@ -75,7 +78,9 @@ def _seeded_source(table_formats):
     inspector.get_table_names.return_value = list(table_formats)
     fake_self.inspector = inspector
     connection = Mock()
-    connection.info = {_CACHE_KEY: {("main_prod", "sales"): dict(table_formats)}}
+    connection.info = {
+        _CACHE_KEY: {("main_prod", "sales"): {name: _TableInfo(*row) for name, row in table_formats.items()}}
+    }
     fake_self.connection = connection
     return fake_self, connection
 
@@ -117,6 +122,19 @@ def test_query_table_names_and_types_defaults_regular_when_name_absent():
 
     assert result["managed_delta"] == TableType.DeltaLake
     assert result["orphan"] == TableType.Regular
+
+
+def test_schema_table_info_exposes_named_fields():
+    """The per-schema map carries named fields, so call sites read .table_type /
+    .data_source_format instead of indexing a positional 2-tuple."""
+    connection = Mock()
+    connection.info = {}
+    connection.execute.return_value = [("orders", "MANAGED", "DELTA")]
+
+    info = _get_schema_table_info(SimpleNamespace(), connection, "main_prod", "sales")
+
+    assert info["orders"].table_type == "MANAGED"
+    assert info["orders"].data_source_format == "DELTA"
 
 
 def test_get_table_type_still_returns_type_string_for_foreign_skip():
