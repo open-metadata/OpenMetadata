@@ -223,7 +223,7 @@ public class VectorSearchQueryBuilder {
    * ContextMemorySearchVisibility#buildVisibilityFilter}, where a null or unresolvable subject means
    * "no filter" and each call site opts into {@code buildOrgWideOnlyFilter}: this builder serves
    * callers that pass no identity at all, so the safe default lives here rather than in call-site
-   * discipline. Unknown subject means org-wide memories only; admins still see only Active
+   * discipline. Unknown subject means org-wide memories only; admins still see only Approved
    * memories in normal search.
    */
   private static void appendMemoryVisibilityFilter(

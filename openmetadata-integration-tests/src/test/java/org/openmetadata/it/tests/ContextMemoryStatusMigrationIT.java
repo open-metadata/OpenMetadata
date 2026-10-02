@@ -7,7 +7,6 @@ import static org.openmetadata.it.tests.MetricMigrationSqlFixture.currentConnect
 import static org.openmetadata.it.tests.MetricMigrationSqlFixture.readMigrationScripts;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,9 +33,11 @@ class ContextMemoryStatusMigrationIT {
   @Test
   void migrationMovesMemoryStatusOntoEntityStatus() throws Exception {
     ConnectionType connectionType = currentConnectionType();
-    List<String> statements = memoryStatusStatements(connectionType);
-    assertEquals(
-        5, statements.size(), "three memory-table updates and two version-history updates");
+    List<String> legacyStatements = legacyStatusStatements(connectionType);
+    List<String> previewStatements =
+        MetricMigrationSqlFixture.readSchemaStatements("2.1.1", connectionType);
+    assertEquals(3, legacyStatements.size(), "memory and version-history updates");
+    assertEquals(2, previewStatements.size(), "previous preview-status updates");
     String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     String memoryTable = "it_memory_status_" + suffix;
     String extensionTable = "it_memory_versions_" + suffix;
@@ -45,14 +46,12 @@ class ContextMemoryStatusMigrationIT {
       jdbi.useHandle(
           handle -> {
             createFixture(handle, memoryTable, extensionTable, connectionType);
-            for (String statement : statements) {
-              String fixtureStatement =
-                  statement
-                      .replace("UPDATE " + MEMORY_TABLE, "UPDATE " + memoryTable)
-                      .replace("UPDATE " + EXTENSION_TABLE, "UPDATE " + extensionTable);
-              handle.execute(fixtureStatement);
-              handle.execute(fixtureStatement);
-            }
+            applyStatements(handle, legacyStatements, memoryTable, extensionTable);
+            assertEquals("Deprecated", stage(readJson(handle, memoryTable), "superseded"));
+            assertEquals("Rejected", stage(readJson(handle, memoryTable), "invalidated"));
+            assertEquals(
+                "Deprecated", stage(readJson(handle, extensionTable), "memoryRetiredVersion"));
+            applyStatements(handle, previewStatements, memoryTable, extensionTable);
             assertMemories(readJson(handle, memoryTable));
             assertVersionHistory(readJson(handle, extensionTable));
           });
@@ -65,19 +64,27 @@ class ContextMemoryStatusMigrationIT {
     }
   }
 
-  private static List<String> memoryStatusStatements(ConnectionType connectionType)
+  private static void applyStatements(
+      Handle handle, List<String> statements, String memoryTable, String extensionTable) {
+    for (String statement : statements) {
+      String fixtureStatement =
+          statement
+              .replace("UPDATE " + MEMORY_TABLE, "UPDATE " + memoryTable)
+              .replace("UPDATE " + EXTENSION_TABLE, "UPDATE " + extensionTable);
+      handle.execute(fixtureStatement);
+      handle.execute(fixtureStatement);
+    }
+  }
+
+  private static List<String> legacyStatusStatements(ConnectionType connectionType)
       throws Exception {
-    List<String> statements = new ArrayList<>();
-    statements.addAll(
-        readMigrationScripts(connectionType).postStatements().stream()
-            .filter(
-                statement ->
-                    statement.contains("UPDATE " + MEMORY_TABLE)
-                        || (statement.contains("UPDATE " + EXTENSION_TABLE)
-                            && statement.contains("'" + MEMORY_SCHEMA + "'")))
-            .toList());
-    statements.addAll(MetricMigrationSqlFixture.readSchemaStatements("2.1.1", connectionType));
-    return List.copyOf(statements);
+    return readMigrationScripts(connectionType).postStatements().stream()
+        .filter(
+            statement ->
+                statement.contains("UPDATE " + MEMORY_TABLE)
+                    || (statement.contains("UPDATE " + EXTENSION_TABLE)
+                        && statement.contains("'" + MEMORY_SCHEMA + "'")))
+        .toList();
   }
 
   private static void createFixture(

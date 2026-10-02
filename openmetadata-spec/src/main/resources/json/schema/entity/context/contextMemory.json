@@ -187,7 +187,7 @@
     },
     "memoryDispute": {
       "javaType": "org.openmetadata.schema.entity.context.MemoryDispute",
-      "description": "A memory owned by someone else whose claim contradicts this one. Both stay Active.",
+      "description": "A memory owned by someone else whose claim contradicts this one. Both remain Approved.",
       "type": "object",
       "properties": {
         "memory": {

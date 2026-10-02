@@ -316,7 +316,7 @@ export interface EntityReference {
 }
 
 /**
- * A memory owned by someone else whose claim contradicts this one. Both stay Active.
+ * A memory owned by someone else whose claim contradicts this one. Both remain Approved.
  */
 export interface MemoryDispute {
     /**

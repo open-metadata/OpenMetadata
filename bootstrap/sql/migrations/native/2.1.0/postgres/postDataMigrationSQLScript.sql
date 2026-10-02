@@ -305,8 +305,9 @@ SET json = jsonb_set(json, '{email}', to_jsonb(lower(json ->> 'email')))
 WHERE json ->> 'email' <> lower(json ->> 'email');
 
 -- Context memories move from their own `status` onto `entityStatus`, the
--- lifecycle stage every entity type shares: Active becomes Approved, Superseded and Invalidated
--- are preserved, and a memory with no status becomes Approved. Version history is rewritten too:
+-- lifecycle stage every entity type shares: Active becomes Approved, Superseded becomes
+-- Deprecated, Invalidated becomes Rejected, and a memory with no status becomes Approved.
+-- Version history is rewritten too:
 -- `status` is no longer part of the ContextMemory schema, so rows still carrying it would fail to
 -- load. Idempotent: rows without `status` are untouched.
 UPDATE context_memory
@@ -315,8 +316,8 @@ SET json = (json::jsonb - 'status') || jsonb_build_object(
   CASE json::jsonb ->> 'status'
     WHEN 'Draft' THEN 'Draft'
     WHEN 'Archived' THEN 'Archived'
-    WHEN 'Superseded' THEN 'Superseded'
-    WHEN 'Invalidated' THEN 'Invalidated'
+    WHEN 'Superseded' THEN 'Deprecated'
+    WHEN 'Invalidated' THEN 'Rejected'
     ELSE 'Approved'
   END)
 WHERE json::jsonb -> 'status' IS NOT NULL;
@@ -331,8 +332,8 @@ SET json = (json::jsonb - 'status') || jsonb_build_object(
   CASE json::jsonb ->> 'status'
     WHEN 'Draft' THEN 'Draft'
     WHEN 'Archived' THEN 'Archived'
-    WHEN 'Superseded' THEN 'Superseded'
-    WHEN 'Invalidated' THEN 'Invalidated'
+    WHEN 'Superseded' THEN 'Deprecated'
+    WHEN 'Invalidated' THEN 'Rejected'
     ELSE 'Approved'
   END)
 WHERE jsonSchema = 'contextMemory'
