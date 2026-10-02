@@ -57,6 +57,12 @@ describe('hashSubPathToView', () => {
     });
   });
 
+  it('returns intake-list for an invalid intake entityType', () => {
+    expect(hashSubPathToView('intake-forms/add/table')).toEqual({
+      type: 'intake-list',
+    });
+  });
+
   it('returns intake-edit with id for "intake-forms/<id>"', () => {
     expect(hashSubPathToView('intake-forms/abc123')).toEqual({
       type: 'intake-edit',

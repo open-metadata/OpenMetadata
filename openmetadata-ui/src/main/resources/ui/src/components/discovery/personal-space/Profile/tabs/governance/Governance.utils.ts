@@ -17,6 +17,8 @@ import { GovernanceView } from './Governance.types';
 const PATH_GLOSSARY = 'glossary-relations';
 const PATH_INTAKE = 'intake-forms';
 
+const INTAKE_LIST_VIEW: GovernanceView = { type: 'intake-list' };
+
 export function hashSubPathToView(subPath: string): GovernanceView {
   if (!subPath) {
     return { type: 'landing' };
@@ -38,11 +40,14 @@ export function hashSubPathToView(subPath: string): GovernanceView {
 
   if (parts[0] === PATH_INTAKE) {
     if (!parts[1]) {
-      return { type: 'intake-list' };
+      return INTAKE_LIST_VIEW;
     }
 
-    if (parts[1] === 'add' && parts[2]) {
-      return { type: 'intake-add', entityType: parts[2] as TargetEntityType };
+    if (parts[1] === 'add') {
+      return parts[2] &&
+        (Object.values(TargetEntityType) as string[]).includes(parts[2])
+        ? { type: 'intake-add', entityType: parts[2] as TargetEntityType }
+        : INTAKE_LIST_VIEW;
     }
 
     return { type: 'intake-edit', id: parts.slice(1).join('/') };
