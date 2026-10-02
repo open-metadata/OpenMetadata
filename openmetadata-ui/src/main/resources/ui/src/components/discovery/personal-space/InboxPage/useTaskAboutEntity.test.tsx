@@ -12,7 +12,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { Task } from '../../../../generated/entity/tasks/task';
 
@@ -90,6 +90,24 @@ describe('useTaskAboutEntity', () => {
       'tableRowCountToEqual'
     );
     expect(result.current.about?.testCaseTableFqn).toBe('svc.db.sch.orders');
+  });
+
+  // A background refetch keeps the cached tiles instead of flashing skeletons.
+  it('stays loaded while it refetches data it already has', async () => {
+    const { result } = renderHook(() => useTaskAboutEntity(INCIDENT_TASK), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.about).toBeDefined());
+
+    act(() => {
+      queryClient.invalidateQueries();
+    });
+
+    expect(result.current.isLoading).toBe(false);
+
+    await waitFor(() => expect(mockGetTestCaseByFqn).toHaveBeenCalledTimes(2));
+
+    expect(result.current.isLoading).toBe(false);
   });
 
   // The task carries no severity; the incident's latest status record does.

@@ -75,15 +75,15 @@ export const getPlainDescription = (
     .join('\n');
 };
 
-// The description as a labelled callout, or none when it has no text.
+// The description as a labelled callout, or none when it has no text. It
+// stays as written; the callout renders its markdown and mentions.
 const descriptionCallout = (
   task: Pick<Task, 'description'>,
   label: string
-): TaskDetailCallout | undefined => {
-  const text = getPlainDescription(task);
-
-  return text ? { label, text } : undefined;
-};
+): TaskDetailCallout | undefined =>
+  getPlainDescription(task)
+    ? { label, text: task.description?.trim() ?? '' }
+    : undefined;
 
 /**
  * The one PII tag that marks a column as holding personal data. Its siblings

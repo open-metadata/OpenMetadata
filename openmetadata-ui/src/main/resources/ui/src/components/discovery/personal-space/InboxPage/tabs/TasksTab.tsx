@@ -65,6 +65,9 @@ import { useInboxInfiniteList } from '../useInboxInfiniteList';
 import { useIsScrolled } from '../useIsScrolled';
 
 const TASK_LIMIT = 25;
+// ponytail: Type and Status narrow the loaded pages client-side, so a narrowed
+// list scans at most this many tasks; a server-side type/status filter lifts it.
+const MAX_NARROWED_SCAN = 200;
 const SEARCH_DEBOUNCE_MS = 300;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
@@ -113,6 +116,89 @@ const STATUS_GROUP: Record<TaskStatusFilter, TaskStatusGroup | undefined> = {
   all: undefined,
   open: TaskStatusGroup.Open,
   closed: TaskStatusGroup.Closed,
+};
+
+// Nothing more is coming: matching rows may still sit in pages being scanned.
+const isListSettled = ({
+  isLoading,
+  isLoadingMore,
+  hasMore,
+  canLoadMore,
+  tasks,
+}: {
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  canLoadMore: (loaded: Task[]) => boolean;
+  tasks: Task[];
+}) => !isLoading && !isLoadingMore && (!hasMore || !canLoadMore(tasks));
+
+interface TasksEmptyStateProps {
+  status: TaskStatusFilter;
+  isNarrowed: boolean;
+  onClearFilters: () => void;
+}
+
+// A dedicated empty state per status: All = generic "nothing to do", Open =
+// "no open tasks", Closed = archival. A search or filter that matches nothing
+// says so instead, with a way back to the whole queue.
+const TasksEmptyState = ({
+  status,
+  isNarrowed,
+  onClearFilters,
+}: TasksEmptyStateProps) => {
+  const { t } = useTranslation();
+
+  const noMatch = (
+    <EmptyPlaceholder
+      actions={[
+        {
+          key: 'clear-filters',
+          label: t('label.clear-all'),
+          onPress: onClearFilters,
+        },
+      ]}
+      data-testid="inbox-tasks-no-match"
+      description={t('message.no-results-for-filters-description')}
+      icon={
+        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
+      }
+      title={t('message.no-match-found')}
+      variant="blank"
+    />
+  );
+
+  const emptyStateByStatus: Record<TaskStatusFilter, ReactNode> = {
+    all: (
+      <EmptyPlaceholder
+        data-testid="inbox-tasks-empty"
+        description={t('message.tasks-empty-description')}
+        icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
+        title={t('label.no-tasks-right-now')}
+        variant="blank"
+      />
+    ),
+    open: (
+      <EmptyPlaceholder
+        data-testid="inbox-tasks-open-empty"
+        description={t('message.tasks-open-empty-description')}
+        icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
+        title={t('label.no-open-tasks-yet')}
+        variant="blank"
+      />
+    ),
+    closed: (
+      <EmptyPlaceholder
+        data-testid="inbox-tasks-closed-empty"
+        description={t('message.tasks-closed-empty-description')}
+        icon={<Inbox01 className="tw:size-7 tw:text-utility-gray-blue-600" />}
+        title={t('label.no-closed-tasks-yet')}
+        variant="blank"
+      />
+    ),
+  };
+
+  return <>{isNarrowed ? noMatch : emptyStateByStatus[status]}</>;
 };
 
 export interface TasksTabProps {
@@ -363,10 +449,19 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [status, aboutEntity, searchQuery]
   );
 
+  // A short narrowed list keeps the scroll sentinel in view, which would page
+  // through the user's whole history; stop after a bounded scan.
+  const isClientNarrowed = typeFilter.length > 0 || statusFilter.length > 0;
+  const canLoadMore = useCallback(
+    (loaded: Task[]) => !isClientNarrowed || loaded.length < MAX_NARROWED_SCAN,
+    [isClientNarrowed]
+  );
+
   const {
     items: tasks,
     isLoading,
     isLoadingMore,
+    hasMore,
     total,
     scrollRef,
     sentinelRef,
@@ -374,7 +469,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setTotal,
   } = useInboxInfiniteList<Task>(
     [TASK_LIST_QUERY_KEY, scope, status, searchQuery],
-    fetchPage
+    fetchPage,
+    canLoadMore
   );
 
   useEffect(() => {
@@ -537,60 +633,11 @@ const TasksTab: React.FC<TasksTabProps> = ({
     </Tabs>
   );
 
-  // A dedicated empty state per status: All = generic "nothing to do", Open =
-  // "no open tasks", Closed = archival. All render the same blank placeholder.
-  const emptyStateByStatus: Record<TaskStatusFilter, ReactNode> = {
-    all: (
-      <EmptyPlaceholder
-        data-testid="inbox-tasks-empty"
-        description={t('message.tasks-empty-description')}
-        icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
-        title={t('label.no-tasks-right-now')}
-        variant="blank"
-      />
-    ),
-    open: (
-      <EmptyPlaceholder
-        data-testid="inbox-tasks-open-empty"
-        description={t('message.tasks-open-empty-description')}
-        icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
-        title={t('label.no-open-tasks-yet')}
-        variant="blank"
-      />
-    ),
-    closed: (
-      <EmptyPlaceholder
-        data-testid="inbox-tasks-closed-empty"
-        description={t('message.tasks-closed-empty-description')}
-        icon={<Inbox01 className="tw:size-7 tw:text-utility-gray-blue-600" />}
-        title={t('label.no-closed-tasks-yet')}
-        variant="blank"
-      />
-    ),
-  };
   // A search or filter that matches nothing must not read as an empty queue.
-  const isNarrowed =
-    Boolean(searchQuery) || typeFilter.length > 0 || statusFilter.length > 0;
-  const emptyState = isNarrowed ? (
-    <EmptyPlaceholder
-      actions={[
-        {
-          key: 'clear-filters',
-          label: t('label.clear-all'),
-          onPress: handleClearFilters,
-        },
-      ]}
-      data-testid="inbox-tasks-no-match"
-      description={t('message.no-results-for-filters-description')}
-      icon={
-        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
-      }
-      title={t('message.no-match-found')}
-      variant="blank"
-    />
-  ) : (
-    emptyStateByStatus[status]
-  );
+  const isNarrowed = Boolean(searchQuery) || isClientNarrowed;
+  const showEmptyState =
+    visibleTasks.length === 0 &&
+    isListSettled({ isLoading, isLoadingMore, hasMore, canLoadMore, tasks });
 
   return (
     <Box
@@ -602,7 +649,13 @@ const TasksTab: React.FC<TasksTabProps> = ({
       direction="col">
       <TasksTabBody
         emptyState={
-          !isLoading && visibleTasks.length === 0 ? emptyState : undefined
+          showEmptyState ? (
+            <TasksEmptyState
+              isNarrowed={isNarrowed}
+              status={status}
+              onClearFilters={handleClearFilters}
+            />
+          ) : undefined
         }
         groups={taskGroups}
         handleCommentsChanged={handleCommentsChanged}

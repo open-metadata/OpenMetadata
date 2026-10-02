@@ -201,6 +201,25 @@ describe('InboxTaskListToolbar', () => {
     );
   });
 
+  // Switching tab can unload every task of a chosen type; it must stay
+  // offered, or the user could not untick it.
+  it('keeps a chosen type offered when none of its tasks are loaded', () => {
+    render(
+      <InboxTaskListToolbar
+        {...props}
+        tasks={[{ id: 't1', type: TaskType.TagUpdate }] as unknown as Task[]}
+        typeFilter={['label.incident']}
+      />
+    );
+
+    const incident = screen.getByTestId(
+      'inbox-tasks-type-filter-label.incident'
+    );
+
+    expect(incident).toHaveAttribute('data-count', '0');
+    expect(incident).toHaveTextContent('label.incident');
+  });
+
   it('offers no types for an empty queue', () => {
     render(<InboxTaskListToolbar {...props} tasks={[]} />);
 

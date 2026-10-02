@@ -18,10 +18,11 @@ import {
   SearchInputIcon,
 } from '@openmetadata/ui-core-components';
 import { FilterLines } from '@openmetadata/ui-core-components/icons';
+import { countBy } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Task } from '../../../../../generated/entity/tasks/task';
-import { getTaskTypeBadge, getTaskTypeKey } from '../taskDetail.utils';
+import { getTaskTypeKey } from '../taskDetail.utils';
 import {
   TaskStatusBucket,
   TASK_STATUS_BUCKET_LABEL_KEY,
@@ -94,21 +95,21 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
   );
 
   // One option per label, not per type: a test case incident and an incident
-  // both read "Incident", and listing them apart showed "Incident" twice.
+  // both read "Incident", and listing them apart showed "Incident" twice. A
+  // chosen type stays offered (at 0) when none of its tasks are loaded, e.g.
+  // after switching tab, so it can still be unticked.
   const typeOptions = useMemo(() => {
-    const kinds = new Map<string, { task: Task; count: number }>();
-    tasks.forEach((task) => {
-      const key = getTaskTypeKey(task);
-      const kind = kinds.get(key);
-      kind ? (kind.count += 1) : kinds.set(key, { task, count: 1 });
+    const counts = countBy(tasks, getTaskTypeKey);
+    typeFilter.forEach((key) => {
+      counts[key] ??= 0;
     });
 
-    return Array.from(kinds, ([key, { task, count }]) => ({
+    return Object.entries(counts).map(([key, count]) => ({
       value: key,
-      label: getTaskTypeBadge(task, t).label,
+      label: t(key),
       count,
     }));
-  }, [tasks, t]);
+  }, [tasks, typeFilter, t]);
 
   return (
     <Box

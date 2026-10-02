@@ -121,6 +121,8 @@ describe('useInboxInfiniteList', () => {
     renderHarness(fetchPage);
     await waitFor(() => expect(api.items).toHaveLength(1));
 
+    expect(api.hasMore).toBe(true);
+
     await act(async () => {
       intersect?.();
     });
@@ -128,6 +130,7 @@ describe('useInboxInfiniteList', () => {
     await waitFor(() => expect(api.items.map((i) => i.id)).toEqual([1, 2]));
 
     expect(fetchPage).toHaveBeenLastCalledWith('c1');
+    expect(api.hasMore).toBe(false);
   });
 
   it('shows an error toast when a page fetch rejects', async () => {
