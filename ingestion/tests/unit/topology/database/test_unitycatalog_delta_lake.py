@@ -296,6 +296,15 @@ def test_materialized_view_not_overridden_by_iceberg_securable_kind():
     assert _run(table, {"mv"}) == [("mv", TableType.MaterializedView)]
 
 
+@pytest.mark.parametrize("data_source_format", ["DELTA_UNIFORM_ICEBERG", "DELTA_LIVE_TABLE"])
+def test_only_the_exact_delta_format_is_delta_lake(data_source_format):
+    # Raw strings: databricks-sdk 0.20.0's DataSourceFormat has no DELTA_UNIFORM_*
+    # member and a real UniForm table reports plain DELTA, so a prefix match buys
+    # nothing and would swallow any future DELTA-prefixed format that is not Delta.
+    table = TableInfo(name="t", table_type=SdkTableType.MANAGED, data_source_format=data_source_format)
+    assert _run(table, set()) == [("t", TableType.Regular)]
+
+
 def test_delta_sharing_not_classified_delta_lake():
     # DELTASHARING shares the "DELTA" string prefix but is not a Delta Lake table;
     # a prefix match would mislabel it, so it must keep the default Regular type.

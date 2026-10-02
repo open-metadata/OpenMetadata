@@ -843,13 +843,13 @@ def _table_type_from_data_source_format(data_source_format: str | None) -> Table
     """Map a Databricks ``information_schema.tables.data_source_format`` to an
     OpenMetadata table type. Unity Catalog reports every Delta table — managed,
     partitioned and UniForm(Iceberg) alike — as ``DELTA``, while native Iceberg
-    tables report ``ICEBERG``; ``DELTA_UNIFORM_*`` is defined by the UC REST enum
-    and mapped defensively. Any other/unknown/missing value returns ``None`` so
-    the caller keeps its default type."""
+    tables report ``ICEBERG``. Both are matched exactly: DELTASHARING shares the
+    prefix but is a Delta Sharing table. Any other/unknown/missing value returns
+    ``None`` so the caller keeps its default type."""
     if not data_source_format:
         return None
     normalized = data_source_format.strip().upper()
-    if normalized == "DELTA" or normalized.startswith("DELTA_UNIFORM"):
+    if normalized == "DELTA":
         return TableType.DeltaLake
     if normalized == "ICEBERG":
         return TableType.Iceberg

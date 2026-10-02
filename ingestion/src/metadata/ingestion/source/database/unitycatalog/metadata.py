@@ -678,16 +678,15 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             # table also reports data_source_format DELTA, so the Delta branch would
             # otherwise swallow it. Both branches need the Iceberg listing to have
             # succeeded: without it DELTA is ambiguous and guessing DeltaLake would
-            # relabel every Iceberg table. Match DELTA exactly (plus the
-            # DELTA_UNIFORM* variants, mirroring the Databricks connector) rather
-            # than any DELTA-prefixed value, so DELTASHARING -- a Delta Sharing
-            # table, not Delta Lake -- is not misclassified.
+            # relabel every Iceberg table. Match DELTA exactly rather than any
+            # DELTA-prefixed value, so DELTASHARING -- a Delta Sharing table, not
+            # Delta Lake -- is not misclassified.
             dsf = getattr(table, "data_source_format", None)
             normalized_dsf = str(getattr(dsf, "value", dsf)).upper() if dsf is not None else ""
             if table_type not in (TableType.View, TableType.MaterializedView) and iceberg_table_names is not None:
                 if table_name in iceberg_table_names:
                     table_type = TableType.Iceberg
-                elif normalized_dsf == "DELTA" or normalized_dsf.startswith("DELTA_UNIFORM"):
+                elif normalized_dsf == "DELTA":
                     table_type = TableType.DeltaLake
             self.context.get().table_data = table  # pyright: ignore[reportAttributeAccessIssue]
             yield table_name, table_type

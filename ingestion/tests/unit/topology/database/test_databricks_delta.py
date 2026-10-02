@@ -22,6 +22,8 @@ native Iceberg reports ``ICEBERG``; views report ``UNKNOWN_DATA_SOURCE_FORMAT``)
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
+
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.databricks.metadata import (
     DatabricksSource,
@@ -36,10 +38,13 @@ def test_delta_formats_map_to_delta_lake():
     """Managed, partitioned and UniForm(Iceberg) Delta tables all report ``DELTA``
     in information_schema and must classify as DeltaLake."""
     assert _table_type_from_data_source_format("DELTA") == TableType.DeltaLake
-    # Defensive: the Unity Catalog REST enum defines DELTA_UNIFORM_* even though a
-    # live schema reports plain DELTA for UniForm tables.
-    assert _table_type_from_data_source_format("DELTA_UNIFORM_ICEBERG") == TableType.DeltaLake
-    assert _table_type_from_data_source_format("DELTA_UNIFORM_HUDI") == TableType.DeltaLake
+
+
+@pytest.mark.parametrize("data_source_format", ["DELTASHARING", "DELTA_UNIFORM_ICEBERG", "DELTA_LIVE_TABLE"])
+def test_only_the_exact_delta_format_is_delta_lake(data_source_format):
+    """Sharing the "DELTA" prefix is not evidence of Delta Lake storage --
+    DELTASHARING is a Delta Sharing table -- so the match is exact, not a prefix."""
+    assert _table_type_from_data_source_format(data_source_format) is None
 
 
 def test_iceberg_format_maps_to_iceberg_not_delta():
