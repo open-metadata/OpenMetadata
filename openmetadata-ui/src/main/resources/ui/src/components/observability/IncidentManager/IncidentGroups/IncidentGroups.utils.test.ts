@@ -28,11 +28,11 @@ import {
 } from './IncidentGroups.constants';
 import {
   countRecurringIncidentGroups,
-  getIncidentGroupAssignees,
   getIncidentGroupByOption,
   getIncidentGroupsQuery,
   getIncidentGroupStatusSegments,
   getIncidentGroupSubLine,
+  getIncidentGroupSubLineTitle,
   getIncidentTrendColor,
   getIncidentTrendPoints,
   isRecurring,
@@ -125,6 +125,38 @@ describe('getIncidentGroupSubLine', () => {
   });
 });
 
+describe('getIncidentGroupSubLineTitle', () => {
+  it('should tell same-named tables apart by their FQN, one per line', () => {
+    expect(
+      getIncidentGroupSubLineTitle(
+        group({
+          tables: [
+            {
+              id: 't1',
+              type: 'table',
+              name: 'gl_fx_rates',
+              fullyQualifiedName: 'warehouse.fin.gl.gl_fx_rates',
+            },
+            {
+              id: 't2',
+              type: 'table',
+              name: 'gl_fx_rates',
+              fullyQualifiedName: 'warehouse_eu.fin.gl.gl_fx_rates',
+            },
+            { id: 't3', type: 'table', name: 'orders' },
+          ],
+        })
+      )
+    ).toBe(
+      'warehouse.fin.gl.gl_fx_rates\nwarehouse_eu.fin.gl.gl_fx_rates\norders'
+    );
+  });
+
+  it('should return nothing when the group names no related entity', () => {
+    expect(getIncidentGroupSubLineTitle(group())).toBe('');
+  });
+});
+
 describe('isUnownedIncidentGroup', () => {
   it('should single out the owner group that resolved to no entity', () => {
     expect(
@@ -184,38 +216,6 @@ describe('getIncidentGroupStatusSegments', () => {
   it('should report nothing when the group carries no counts', () => {
     expect(getIncidentGroupStatusSegments()).toEqual([]);
     expect(getIncidentGroupStatusSegments([])).toEqual([]);
-  });
-});
-
-describe('getIncidentGroupAssignees', () => {
-  it('should count the overflow from assigneeCount, not from the capped array', () => {
-    expect(
-      getIncidentGroupAssignees(
-        group({ assignees: ['a', 'b', 'c'], assigneeCount: 7 })
-      )
-    ).toEqual({ visible: ['a', 'b', 'c'], overflowCount: 4 });
-  });
-
-  it('should show no more than three avatars', () => {
-    expect(
-      getIncidentGroupAssignees(
-        group({ assignees: ['a', 'b', 'c', 'd'], assigneeCount: 4 })
-      )
-    ).toEqual({ visible: ['a', 'b', 'c'], overflowCount: 1 });
-  });
-
-  it('should fall back to the array length when the count is absent', () => {
-    expect(getIncidentGroupAssignees(group({ assignees: ['a'] }))).toEqual({
-      visible: ['a'],
-      overflowCount: 0,
-    });
-  });
-
-  it('should report nothing for an unassigned group', () => {
-    expect(getIncidentGroupAssignees(group())).toEqual({
-      visible: [],
-      overflowCount: 0,
-    });
   });
 });
 

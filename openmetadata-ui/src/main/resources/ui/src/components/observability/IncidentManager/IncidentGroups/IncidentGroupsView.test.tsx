@@ -1084,6 +1084,7 @@ describe('IncidentGroupsView filters and paging', () => {
         groupBy: IncidentGroupBy.TestDefinition,
         limit: 10,
         sortType: 'desc',
+        page: 1,
         domain: 'Marketing',
       });
     } finally {

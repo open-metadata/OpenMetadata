@@ -12,10 +12,11 @@
  */
 
 import {
-  Avatar,
+  AvatarGroup,
   Badge,
   Box,
   Table,
+  toOwnerRefs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -23,33 +24,34 @@ import {
   LayersTwo01,
   User01,
 } from '@openmetadata/ui-core-components/icons';
+import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import {
   IncidentGroupBy,
-  Severities,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
-import { Severities as ResolutionSeverities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   formatDate,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
-import InlineSeverity from '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component';
-import { INCIDENT_GROUPS_SORT_COLUMN } from './IncidentGroups.constants';
+import {
+  INCIDENT_GROUPS_SORT_COLUMN,
+  INCIDENT_GROUP_MAX_AVATARS,
+  INCIDENT_GROUP_SEVERITY_COLOR,
+} from './IncidentGroups.constants';
 import {
   IncidentGroupCellProps,
   IncidentGroupsTableProps,
   StackedCellProps,
 } from './IncidentGroups.types';
 import {
-  getIncidentGroupAssignees,
   getIncidentGroupByOption,
   getIncidentGroupSubLine,
+  getIncidentGroupSubLineTitle,
   isUnownedIncidentGroup,
 } from './IncidentGroups.utils';
 import IncidentStatusBreakdown from './IncidentStatusBreakdown';
@@ -58,20 +60,14 @@ import IncidentTrendSparkline from './IncidentTrendSparkline';
 /** Short form of the first-seen date, e.g. `Aug '25`. */
 const FIRST_SEEN_FORMAT = "MMM ''yy";
 
-/**
- * The groups schema `$ref`s the severity of a resolution status, but the TS
- * generator emits one enum per schema file, so the two are nominally distinct
- * with identical members. This bridges them for the shared severity chip.
- */
-const toResolutionSeverity = (severity?: Severities) =>
-  severity as unknown as ResolutionSeverities | undefined;
-
-/** Matches the avatars the incident rows below draw for their assignees. */
-const ASSIGNEE_AVATAR_WIDTH = '24';
-
+// Truncated text keeps its full value in `title`: a hover reveals it without
+// making every cell of a clickable row a focus stop.
 const StackedCell = ({
   value,
+  valueTitle,
+  valueWeight = 'semibold',
   caption,
+  captionTitle,
   captionIcon: CaptionIcon,
   valueTestId,
   captionTestId,
@@ -79,10 +75,11 @@ const StackedCell = ({
   <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
     <Typography
       as="span"
-      className="tw:text-primary"
+      className="tw:truncate tw:text-primary"
       data-testid={valueTestId}
       size="text-sm"
-      weight="semibold">
+      title={valueTitle}
+      weight={valueWeight}>
       {value}
     </Typography>
     {caption && (
@@ -94,7 +91,8 @@ const StackedCell = ({
           as="span"
           className="tw:truncate"
           data-testid={captionTestId}
-          size="text-xs">
+          size="text-xs"
+          title={captionTitle}>
           {caption}
         </Typography>
       </Box>
@@ -125,7 +123,7 @@ const RelatedEntityCell = ({ group }: IncidentGroupCellProps) => {
 
   return (
     <span data-testid="group-related">
-      <Badge color="gray" size="sm" type="modern">
+      <Badge color="gray" size="sm" type="pill-color">
         {onlyTestDefinition ? getEntityName(onlyTestDefinition) : countLabel}
       </Badge>
     </span>
@@ -133,16 +131,15 @@ const RelatedEntityCell = ({ group }: IncidentGroupCellProps) => {
 };
 
 /**
- * The assignee names the group carries, drawn by the app's standard avatar so a
- * group row reads the same as the incident rows it aggregates. Only the `+N`
- * bubble is local to the group: it counts from `assigneeCount`, which no single
- * user's avatar knows about.
+ * The group's assignees as the owner stack every other listing draws: a hover
+ * card per avatar, and a `+N` that lists the rest. It takes the resolved
+ * references, which know whether a name is a user or a team.
  */
 const AssigneesCell = ({ group }: IncidentGroupCellProps) => {
   const { t } = useTranslation();
-  const { visible, overflowCount } = getIncidentGroupAssignees(group);
+  const assignees = toOwnerRefs(group.assigneeReferences);
 
-  if (visible.length === 0 && overflowCount === 0) {
+  if (assignees.length === 0) {
     return (
       <Box className="tw:items-center tw:gap-1 tw:text-tertiary">
         <User01 className="tw:size-4" />
@@ -154,22 +151,13 @@ const AssigneesCell = ({ group }: IncidentGroupCellProps) => {
   }
 
   return (
-    <Box className="tw:items-center tw:gap-1" data-testid="group-assignees">
-      {visible.map((assignee) => (
-        // ProfilePicture takes no `data-testid`, so the hook sits on a wrapper.
-        <span data-testid={`group-assignee-${assignee}`} key={assignee}>
-          <ProfilePicture name={assignee} width={ASSIGNEE_AVATAR_WIDTH} />
-        </span>
-      ))}
-      {overflowCount > 0 && (
-        <Avatar
-          colorVariant="neutral"
-          data-testid="group-assignee-overflow"
-          initials={`+${overflowCount}`}
-          size="xs"
-        />
-      )}
-    </Box>
+    <span data-testid="group-assignees">
+      <AvatarGroup
+        maxCount={INCIDENT_GROUP_MAX_AVATARS}
+        overflowTitleLabel={t('label.assignee-plural')}
+        owners={assignees}
+      />
+    </span>
   );
 };
 
@@ -188,6 +176,7 @@ const LastSeenCell = ({ group }: IncidentGroupCellProps) => {
       captionTestId="group-first-seen"
       value={group.lastSeen ? formatDate(group.lastSeen) : NO_DATA_PLACEHOLDER}
       valueTestId="group-last-seen"
+      valueWeight="regular"
     />
   );
 };
@@ -251,11 +240,12 @@ const IncidentGroupsTable = ({
 
     return (
       <Table.Row id={rowId} key={rowId}>
-        <Table.Cell>
+        <Table.Cell className="tw:max-w-72">
           <StackedCell
             caption={getIncidentGroupSubLine(group) || undefined}
             captionIcon={subLineIcon}
             captionTestId="group-sub-line"
+            captionTitle={getIncidentGroupSubLineTitle(group)}
             value={
               // The unowned bucket stands for no entity, so it is named here
               // rather than after something the server resolved.
@@ -264,6 +254,7 @@ const IncidentGroupsTable = ({
                 : getEntityName(group)
             }
             valueTestId="group-name"
+            valueTitle={group.fullyQualifiedName}
           />
         </Table.Cell>
         <Table.Cell>
@@ -277,14 +268,19 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          {/* The same read-only chip the incident rows below render, so the
-              group and its incidents cannot drift apart in palette or wording.
-              InlineSeverity takes no `data-testid`; the hook sits on a wrapper. */}
           <span data-testid="group-severity">
-            <InlineSeverity
-              hasEditPermission={false}
-              severity={toResolutionSeverity(group.severity)}
-            />
+            <Badge
+              color={
+                group.severity
+                  ? INCIDENT_GROUP_SEVERITY_COLOR[group.severity]
+                  : 'gray'
+              }
+              size="sm"
+              type="pill-color">
+              {group.severity
+                ? startCase(group.severity)
+                : t('label.no-entity', { entity: t('label.severity') })}
+            </Badge>
           </span>
         </Table.Cell>
         <Table.Cell>

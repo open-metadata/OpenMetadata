@@ -29,7 +29,6 @@ import {
   DEFAULT_INCIDENT_GROUP_BY,
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_BY_OPTIONS,
-  INCIDENT_GROUP_MAX_AVATARS,
   INCIDENT_GROUP_SEPARATOR,
   INCIDENT_GROUP_STATUS_OPTIONS,
   INCIDENT_TREND_COLORS,
@@ -38,7 +37,6 @@ import {
   SPARKLINE_WIDTH,
 } from './IncidentGroups.constants';
 import {
-  IncidentGroupAssignees,
   IncidentGroupByOption,
   IncidentGroupFilters,
   IncidentGroupStatusSegment,
@@ -132,14 +130,24 @@ export const getIncidentGroupByOption = (
  * the test definitions of a table group, the tables of any other. It lists what
  * the server-capped array holds; the related column carries the full count.
  */
+const getSubLineEntities = (group: TestCaseIncidentGroup) =>
+  (group.groupBy === IncidentGroupBy.Table
+    ? group.testDefinitions
+    : group.tables) ?? [];
+
 export const getIncidentGroupSubLine = (group: TestCaseIncidentGroup): string =>
-  (
-    (group.groupBy === IncidentGroupBy.Table
-      ? group.testDefinitions
-      : group.tables) ?? []
-  )
-    .map(getEntityName)
-    .join(INCIDENT_GROUP_SEPARATOR);
+  getSubLineEntities(group).map(getEntityName).join(INCIDENT_GROUP_SEPARATOR);
+
+/**
+ * The sub-line's entities by FQN, one per line, for its hover title: tables
+ * of the same name in two services read alike on the sub-line itself.
+ */
+export const getIncidentGroupSubLineTitle = (
+  group: TestCaseIncidentGroup
+): string =>
+  getSubLineEntities(group)
+    .map((entity) => entity.fullyQualifiedName ?? getEntityName(entity))
+    .join('\n');
 
 /**
  * The owner dimension carries one group for the incidents on test cases nobody
@@ -167,21 +175,6 @@ export const getIncidentGroupStatusSegments = (
     count,
     share: (count / total) * 100,
   }));
-};
-
-/**
- * Assignees to draw, and how many more the group has. The count comes from
- * `assigneeCount` — the `assignees` array is capped server-side, so its length
- * would under-report the overflow (and read as 0 once the cap is reached).
- */
-export const getIncidentGroupAssignees = (
-  group: TestCaseIncidentGroup
-): IncidentGroupAssignees => {
-  const assignees = group.assignees ?? [];
-  const visible = assignees.slice(0, INCIDENT_GROUP_MAX_AVATARS);
-  const total = group.assigneeCount ?? assignees.length;
-
-  return { visible, overflowCount: Math.max(0, total - visible.length) };
 };
 
 /**
