@@ -142,6 +142,16 @@ describe('useIncidentManagerListPage', () => {
     expect(result.current.hasActiveFilters).toBe(true);
   });
 
+  it('should read the filters from a query string that keeps its leading ?', () => {
+    mockLocation.search = `?${QueryString.stringify({
+      testCaseFQN: 'svc.db.tc',
+    })}`;
+
+    const { result } = renderHook(() => useIncidentManagerListPage({}));
+
+    expect(result.current.hasActiveFilters).toBe(true);
+  });
+
   it('should navigate to clear filter params when clearAllFilters is called', () => {
     mockLocation.search = QueryString.stringify({ testCaseFQN: 'svc.db.tc' });
 

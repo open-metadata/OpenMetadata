@@ -56,7 +56,6 @@ import {
   BulkIncidentOutcome,
   BulkIncidentStatus,
   IncidentGroupBulkStatusModalProps,
-  IncidentGroupsViewProps,
 } from './IncidentGroups.types';
 import {
   countRecurringIncidentGroups,
@@ -74,7 +73,7 @@ import { useIncidentGroups } from './useIncidentGroups';
  * over the fetched groups, the filter row, and the paged group table — plus
  * the loading/empty/error states of the fetch that feeds them.
  */
-const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
+const IncidentGroupsView = () => {
   const { t } = useTranslation();
   const {
     refresh,
@@ -98,7 +97,7 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     handleSortTypeChange,
     handlePageChange,
     handlePageSizeChange,
-  } = useIncidentGroups({ refreshKey });
+  } = useIncidentGroups();
   const { isApplying, applyBulkChange } = useIncidentGroupBulkUpdate({
     filters,
   });

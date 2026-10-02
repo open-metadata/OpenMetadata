@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { render, screen, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import {
   Severities,
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { OBSERVABILITY_ROUTES } from '../../observability.constants';
 import IncidentList from './IncidentList';
 
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
@@ -61,6 +62,12 @@ const fresh: TestCaseResolutionStatus = {
   },
 };
 
+const LocationState = () => (
+  <span data-testid="location-state">
+    {JSON.stringify(useLocation().state)}
+  </span>
+);
+
 const renderList = (
   incidents: TestCaseResolutionStatus[] = [assigned, fresh],
   isLoading = false
@@ -98,6 +105,28 @@ describe('IncidentList', () => {
     expect(within(row).getByTestId('incident-table')).toHaveTextContent(
       'customers'
     );
+  });
+
+  it('should hand the test case page a breadcrumb back to the incidents', () => {
+    render(
+      <MemoryRouter>
+        <IncidentList incidents={[assigned]} isLoading={false} />
+        <LocationState />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: 'customers_row_count' }));
+
+    expect(
+      JSON.parse(screen.getByTestId('location-state').textContent ?? '')
+    ).toEqual({
+      breadcrumbData: [
+        {
+          name: 'label.incident-manager',
+          url: OBSERVABILITY_ROUTES.OBSERVABILITY_INCIDENT_MANAGER,
+        },
+      ],
+    });
   });
 
   it('should show the failure reason, status, severity and assignee', () => {

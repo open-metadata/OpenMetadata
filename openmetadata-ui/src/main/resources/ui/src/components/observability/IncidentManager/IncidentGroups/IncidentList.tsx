@@ -43,6 +43,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import Loader from '../../../common/Loader/Loader';
+import { OBSERVABILITY_ROUTES } from '../../observability.constants';
 import { INCIDENT_STATUS_BADGE_COLORS } from './IncidentGroups.constants';
 import { IncidentListProps } from './IncidentGroups.types';
 import IncidentSeverityBadge from './IncidentSeverityBadge';
@@ -58,12 +59,22 @@ const getAssignee = (incident: TestCaseResolutionStatus) =>
     : undefined;
 
 const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
+  const { t } = useTranslation();
   const fqn = incident.testCaseReference?.fullyQualifiedName ?? '';
 
   return (
     <Box className="tw:min-w-0 tw:max-w-96" direction="col" gap={1}>
       <Link
         className="tw:truncate tw:text-sm tw:font-medium tw:text-link"
+        // The test case page reads it to lead its breadcrumb back here.
+        state={{
+          breadcrumbData: [
+            {
+              name: t('label.incident-manager'),
+              url: OBSERVABILITY_ROUTES.OBSERVABILITY_INCIDENT_MANAGER,
+            },
+          ],
+        }}
         to={observabilityRouterClassBase.getTestCaseDetailPagePath(fqn)}>
         {incident.testCaseReference
           ? getEntityName(incident.testCaseReference)

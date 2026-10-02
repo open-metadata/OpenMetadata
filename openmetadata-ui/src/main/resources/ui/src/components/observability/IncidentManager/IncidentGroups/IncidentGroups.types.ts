@@ -155,15 +155,6 @@ export interface IncidentGroupBulkFailuresModalProps {
   onClose: () => void;
 }
 
-export interface IncidentGroupsViewProps {
-  /**
-   * Bumped by the page when an incident it lists below changes status: the
-   * groups summarise those incidents, so their counts have to be re-read for
-   * the change to show. Every new value costs one fetch — nothing polls.
-   */
-  refreshKey?: number;
-}
-
 export interface IncidentGroupsTableProps {
   groups: TestCaseIncidentGroup[];
   groupBy: IncidentGroupBy;

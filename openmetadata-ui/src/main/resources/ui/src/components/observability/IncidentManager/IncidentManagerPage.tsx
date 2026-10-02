@@ -10,20 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, PageLayout } from '@openmetadata/ui-core-components';
-import { useCallback, useMemo, useState } from 'react';
+import { PageLayout } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import IncidentManagerTable from '../../IncidentManager/IncidentManagerTable.component';
-import { useIncidentManagerListPage } from '../../IncidentManager/useIncidentManagerListPage';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import IncidentGroupsView from './IncidentGroups/IncidentGroupsView';
@@ -41,65 +38,17 @@ const INCIDENT_WIDGETS_WRAPPER_CLASS = [
 ].join(' ');
 
 /**
- * App-mode Incident Manager page: the grouped incidents, with the shared
- * useIncidentManagerListPage hook + IncidentManagerTable listing them one by one
- * below. The groups' filter row writes the query string params that listing
- * reads, so a single filter set drives both.
+ * App-mode Incident Manager page: the incident widgets above the grouped
+ * incidents. A group's own incidents open from its row, in the drawer or the
+ * drill-down, so the page lists no incidents one by one.
  */
 const IncidentManagerPage = () => {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
 
-  /**
-   * The group rows above the table aggregate the very incidents it lists, so a
-   * status, severity or assignee changed in the table leaves their counts,
-   * chips and breakdown bar showing the old values until the page is reloaded.
-   * Bumping the key re-reads the groups — one fetch per change that went
-   * through, and none while the user is only looking.
-   */
-  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
-
-  const refreshIncidentGroups = useCallback(
-    () => setGroupsRefreshKey((key) => key + 1),
-    []
-  );
-
-  const {
-    commonTestCasePermission,
-    isIncidentPage,
-    tableDetails,
-    testCaseListData,
-    isPermissionLoading,
-    testCasePermissions,
-    showPagination,
-    pagingData,
-    handleStatusSubmit,
-    handleSeveritySubmit,
-    handleAssigneeUpdate,
-  } = useIncidentManagerListPage({
-    isIncidentPage: true,
-    onIncidentChange: refreshIncidentGroups,
-  });
-
-  // Consumer via a hook return value (useIncidentManagerListPage is out of this batch's
-  // scope — incident permissions decouple from test-case perms in an open upstream PR
-  // #26521), mirroring the classic IncidentManager.component.tsx precedent. Pure rename:
-  // `!hasViewAccess` is De Morgan's law applied to the old `!ViewAll && !ViewBasic` — the
-  // exact same condition, just via the named flag.
   const hasViewPermission = getDerivedPermissionFlags(
-    commonTestCasePermission ?? DEFAULT_ENTITY_PERMISSION
+    permissions.testCase ?? DEFAULT_ENTITY_PERMISSION
   ).hasViewAccess;
-
-  // Attached to the test case links so the detail page breadcrumb reflects
-  // the incidents page as the origin.
-  const incidentBreadcrumb = useMemo(
-    () => [
-      {
-        name: t('label.incident-manager'),
-        url: OBSERVABILITY_ROUTES.OBSERVABILITY_INCIDENT_MANAGER,
-      },
-    ],
-    [t]
-  );
 
   return (
     <ObservabilityPageShell
@@ -135,26 +84,7 @@ const IncidentManagerPage = () => {
         <IncidentManagerPageWidgets />
       </div>
       {hasViewPermission ? (
-        <Box className="tw:gap-4" direction="col">
-          <IncidentGroupsView refreshKey={groupsRefreshKey} />
-          <Box
-            className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
-            direction="col">
-            <IncidentManagerTable
-              breadcrumbData={incidentBreadcrumb}
-              handleAssigneeUpdate={handleAssigneeUpdate}
-              handleSeveritySubmit={handleSeveritySubmit}
-              handleStatusSubmit={handleStatusSubmit}
-              isIncidentPage={isIncidentPage}
-              isPermissionLoading={isPermissionLoading}
-              pagingData={pagingData}
-              showPagination={showPagination}
-              tableDetails={tableDetails}
-              testCaseListData={testCaseListData}
-              testCasePermissions={testCasePermissions}
-            />
-          </Box>
-        </Box>
+        <IncidentGroupsView />
       ) : (
         <ErrorPlaceHolder
           className="border-none"

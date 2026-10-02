@@ -29,12 +29,6 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 export interface UseIncidentActionsProps {
   setTestCaseListData: Dispatch<SetStateAction<TestCaseIncidentStatusData>>;
-  /**
-   * Called once an incident has actually changed. Each handler swallows its own
-   * errors, so a caller wrapping them cannot tell a change from a failure —
-   * the signal has to come from in here, after the call that went through.
-   */
-  onIncidentChange?: () => void;
 }
 
 /**
@@ -44,7 +38,6 @@ export interface UseIncidentActionsProps {
  */
 export const useIncidentActions = ({
   setTestCaseListData,
-  onIncidentChange,
 }: UseIncidentActionsProps) => {
   const handleSeveritySubmit = async (
     record: TestCaseResolutionStatus,
@@ -69,7 +62,6 @@ export const useIncidentActions = ({
           data: testCaseList,
         };
       });
-      onIncidentChange?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -128,14 +120,11 @@ export const useIncidentActions = ({
             data: testCaseList,
           };
         });
-        // The transition also moves the incident to Assigned, so this changes
-        // its status as well as its assignee.
-        onIncidentChange?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [setTestCaseListData, onIncidentChange]
+    [setTestCaseListData]
   );
 
   const handleStatusSubmit = useCallback(
@@ -157,9 +146,8 @@ export const useIncidentActions = ({
           data: testCaseList,
         };
       });
-      onIncidentChange?.();
     },
-    [setTestCaseListData, onIncidentChange]
+    [setTestCaseListData]
   );
 
   return {
