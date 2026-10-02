@@ -172,6 +172,58 @@ describe('EChart', () => {
     });
   });
 
+  it('preserves the zoom window across a loading flicker that leaves the option unchanged', () => {
+    const option: ChartOption = {
+      dataZoom: [
+        { id: 'zoom-inside', type: 'inside', start: 0, end: 30 },
+        { id: 'zoom-slider', type: 'slider', start: 0, end: 30 },
+      ],
+      series: [],
+    };
+    const { rerender } = render(<EChart ariaLabel="Chart" option={option} />);
+    act(() => {
+      (lastHost().onEvents as Record<string, (e: unknown) => void>).datazoom({
+        batch: [{ start: 40, end: 70 }],
+      });
+    });
+    rerender(<EChart loading ariaLabel="Chart" option={option} />);
+    rerender(<EChart ariaLabel="Chart" option={option} />);
+
+    expect(screen.queryByTestId('echarts-host')).toBeInTheDocument();
+    expect(lastHost().option).toMatchObject({
+      dataZoom: [
+        { id: 'zoom-inside', start: 40, end: 70 },
+        { id: 'zoom-slider', start: 40, end: 70 },
+      ],
+    });
+  });
+
+  it('preserves the zoom window across an isEmpty flicker that leaves the option unchanged', () => {
+    const option: ChartOption = {
+      dataZoom: [
+        { id: 'zoom-inside', type: 'inside', start: 0, end: 30 },
+        { id: 'zoom-slider', type: 'slider', start: 0, end: 30 },
+      ],
+      series: [],
+    };
+    const { rerender } = render(<EChart ariaLabel="Chart" option={option} />);
+    act(() => {
+      (lastHost().onEvents as Record<string, (e: unknown) => void>).datazoom({
+        batch: [{ start: 10, end: 50 }],
+      });
+    });
+    rerender(<EChart isEmpty ariaLabel="Chart" option={option} />);
+    rerender(<EChart ariaLabel="Chart" option={option} />);
+
+    expect(screen.queryByTestId('echarts-host')).toBeInTheDocument();
+    expect(lastHost().option).toMatchObject({
+      dataZoom: [
+        { id: 'zoom-inside', start: 10, end: 50 },
+        { id: 'zoom-slider', start: 10, end: 50 },
+      ],
+    });
+  });
+
   it("still calls the caller's own datazoom handler", () => {
     const onZoom = vi.fn();
     render(
