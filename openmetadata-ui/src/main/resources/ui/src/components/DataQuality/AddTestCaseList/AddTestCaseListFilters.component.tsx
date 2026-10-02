@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
@@ -58,7 +59,7 @@ const AddTestCaseListFilters = ({
 
   return (
     <Space size={8}>
-      <Typography.Text>{t('label.filter-plural')}:</Typography.Text>
+      <Typography>{t('label.filter-plural')}:</Typography>
       {filtersToShow.map((filter) => (
         <FilterSelectDropdown
           hideCounts

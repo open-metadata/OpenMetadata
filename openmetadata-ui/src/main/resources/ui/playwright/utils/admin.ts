@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Browser, Page, request } from '@playwright/test';
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Page,
+  request,
+} from '@playwright/test';
 import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { AdminClass } from '../support/user/AdminClass';
@@ -23,6 +29,43 @@ import {
 import { waitForAllLoadersToDisappear } from './entity';
 import { claimFirstBoot } from './storageStateRecovery';
 
+// Poll for whichever of the two landing states appears, rather than racing two
+// `waitFor` calls. A losing `waitFor` cannot be cancelled: it stays pending for
+// the rest of the test and, when anything later times out, reports itself as a
+// ~60s `waiting for locator('input[name="email"]')` failure — the first and longest error in
+// the report, sending every triage down a login rabbit hole that does not exist.
+// A poll ends when it returns.
+const waitForLandingState = async (page: Page): Promise<'app' | 'login'> => {
+  let landingState: 'app' | 'login' = 'app';
+
+  await expect
+    .poll(
+      async () => {
+        if ((await page.getByTestId('left-sidebar').count()) > 0) {
+          landingState = 'app';
+
+          return true;
+        }
+
+        if (await page.locator('input[name="email"]').isVisible()) {
+          landingState = 'login';
+
+          return true;
+        }
+
+        return false;
+      },
+      {
+        timeout: 30_000,
+        message:
+          'Neither the app shell (left-sidebar) nor the login form (input[name="email"]) appeared after navigating to /my-data',
+      }
+    )
+    .toBe(true);
+
+  return landingState;
+};
+
 export const authenticateAdminPage = async (page: Page) => {
   // Claimed before goto and settled before choosing the UI-login fallback:
   // otherwise the storageState guard would claim this first boot itself and
@@ -33,21 +76,8 @@ export const authenticateAdminPage = async (page: Page) => {
   if (await firstBootRecovery) {
     await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
   }
-  // Promise.any, not Promise.race: only one of the two elements ever appears, so
-  // the losing waitFor keeps running until it times out or the page closes. With
-  // race, that loser's late rejection is unhandled and shows up in traces as a
-  // giant red "Wait for selector #email" spanning the whole test — misleading
-  // noise that points at a login stall that never happened. any() consumes it.
-  const requiresLogin = await Promise.any([
-    page
-      .locator('input[name="email"]')
-      .waitFor({ state: 'visible' })
-      .then(() => true),
-    page
-      .getByTestId('left-sidebar')
-      .waitFor({ state: 'attached' })
-      .then(() => false),
-  ]);
+
+  const requiresLogin = (await waitForLandingState(page)) === 'login';
 
   if (requiresLogin) {
     const admin = new AdminClass();

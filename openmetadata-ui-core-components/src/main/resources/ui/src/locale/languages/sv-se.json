@@ -7,6 +7,7 @@
     "close": "Stäng",
     "close-navigation-menu": "Stäng navigeringsmeny",
     "copy-link": "Kopiera länk",
+    "count-remaining": "{{count}} kvar",
     "count-selected": "{{count}} valda",
     "current-page": "Aktuell sida",
     "date-range-picker": "Väljare för datumintervall",
@@ -33,8 +34,10 @@
     "remove-filter": "Ta bort filter",
     "search": "Sök",
     "select-all": "Välj alla",
+    "select-date": "Välj datum",
     "select-dates": "Välj datum",
     "select-only-one-row": "Välj en rad",
+    "show-count-more": "Visa {{count}} till",
     "show-hidden-breadcrumbs": "Visa dolda brödsmulor",
     "today": "Idag",
     "tree-select": "Trädval"

@@ -85,7 +85,7 @@ const ConfirmationModal = ({
                 className={headerClassName}
                 data-testid="modal-header"
                 id={headerId}
-                weight="bold">
+                weight="semibold">
                 {header}
               </Typography>
             </Dialog.Header>

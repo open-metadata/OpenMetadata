@@ -63,11 +63,12 @@
       "javaType": "org.openmetadata.schema.entity.context.MemoryVisibility",
       "description": "Visibility level for the memory.",
       "type": "string",
-      "enum": ["Private", "Entity", "Shared"],
+      "enum": ["Private", "Entity", "Shared", "Public"],
       "javaEnums": [
         { "name": "PRIVATE" },
         { "name": "ENTITY" },
-        { "name": "SHARED" }
+        { "name": "SHARED" },
+        { "name": "PUBLIC" }
       ],
       "default": "Private"
     },

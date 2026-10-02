@@ -64,7 +64,7 @@ test.describe('Activity Stream on Entity Pages', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('activity feed tab shows activity events for entity', async ({

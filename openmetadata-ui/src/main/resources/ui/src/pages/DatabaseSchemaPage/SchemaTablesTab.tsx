@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -386,9 +386,7 @@ function SchemaTablesTab({
                 data-testid="show-deleted"
                 onClick={handleShowDeletedTables}
               />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>
+              <Typography className="m-l-xs">{t('label.deleted')}</Typography>
             </span>
 
             {getBulkEditButton(canBulkEditTables, handleEditTable)}

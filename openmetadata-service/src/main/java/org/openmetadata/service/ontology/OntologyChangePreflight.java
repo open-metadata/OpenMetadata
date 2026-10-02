@@ -67,6 +67,7 @@ public final class OntologyChangePreflight {
       final Set<UUID> scope,
       final List<GlossaryTerm> plannedTerms) {
     switch (operation.getOperationType()) {
+      case CREATE_GLOSSARY -> requireInScope(operation, operation.getGlossary().getId(), scope);
       case CREATE_TERM -> validateCreatedTermScope(operation, scope, plannedTerms);
       case UPDATE_TERM,
           DELETE_TERM,
@@ -199,7 +200,7 @@ public final class OntologyChangePreflight {
   private static OperationTarget target(final OntologyChangeOperation operation) {
     final OperationTarget target =
         switch (operation.getOperationType()) {
-          case CREATE_TERM -> null;
+          case CREATE_GLOSSARY, CREATE_TERM -> null;
           case UPSERT_AXIOM -> operation.getTargetId() == null
               ? null
               : new OperationTarget(Entity.ONTOLOGY_AXIOM, operation.getTargetId());

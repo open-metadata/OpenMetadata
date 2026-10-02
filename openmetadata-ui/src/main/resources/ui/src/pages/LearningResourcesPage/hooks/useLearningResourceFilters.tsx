@@ -18,7 +18,7 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Space } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

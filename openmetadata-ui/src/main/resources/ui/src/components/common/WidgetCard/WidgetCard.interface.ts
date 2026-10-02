@@ -17,11 +17,16 @@ export interface WidgetCardProps {
   title?: string;
   titleIcon?: React.ReactNode;
   headerExtra?: React.ReactNode;
+  /** Rendered at the right end of the header, before the collapse button. */
+  headerActions?: React.ReactNode;
+  /** Replaces the whole header (title, extras, collapse button), e.g. an open search field. */
+  headerContent?: React.ReactNode;
   defaultExpanded?: boolean;
   onExpandStateChange?: (isExpanded: boolean) => void;
   isExpandDisabled?: boolean;
   forceExpand?: boolean;
   dataTestId?: string;
   className?: string;
+  contentClassName?: string;
   helperText?: React.ReactNode;
 }
