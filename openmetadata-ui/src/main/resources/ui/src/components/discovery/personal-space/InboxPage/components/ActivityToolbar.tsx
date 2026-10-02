@@ -34,6 +34,8 @@ import {
   ActivityFilter,
   ActivityGrouping,
   ACTIVITY_TYPE_KEYS,
+  formatInboxCount,
+  InboxCount,
   INBOX_DATE_RANGE_OPTIONS,
 } from '../inbox.utils';
 import ActivityToolbarMenu, {
@@ -56,7 +58,7 @@ const GROUPING_OPTIONS = [
 
 export interface ActivityToolbarProps {
   // Items per sub-tab; a tab without one shows no badge.
-  counts?: Partial<Record<ActivityFilter, number>>;
+  counts?: Partial<Record<ActivityFilter, InboxCount>>;
   datePreset: string;
   filter: ActivityFilter;
   grouping: ActivityGrouping;
@@ -126,27 +128,34 @@ const ActivityToolbar = ({
         onSelectionChange={(key) => onFilterChange(key as ActivityFilter)}>
         {/* The design sets the tabs on the tertiary gray, a step darker. */}
         <Tabs.List className="tw:bg-tertiary" size="sm" type="button-border">
-          {Object.values(ActivityFilter).map((value) => (
-            // The design's tighter tabs, so a count fits without wrapping.
-            <Tabs.Item className="tw:gap-1.5 tw:px-2.25" id={value} key={value}>
-              {/* The tab's own badge stays gray; the design tints the chosen one. */}
-              {({ isSelected }) => (
-                <>
-                  {t(FILTER_LABEL_KEY[value])}
-                  {Boolean(counts?.[value]) && (
-                    <Badge
-                      // Keeps a badged tab as tall as a bare one.
-                      className="tw:-my-px"
-                      color={isSelected ? 'brand' : 'gray'}
-                      size="sm"
-                      type="color">
-                      {counts?.[value]}
-                    </Badge>
-                  )}
-                </>
-              )}
-            </Tabs.Item>
-          ))}
+          {Object.values(ActivityFilter).map((value) => {
+            const count = counts?.[value];
+
+            return (
+              // The design's tighter tabs, so a count fits without wrapping.
+              <Tabs.Item
+                className="tw:gap-1.5 tw:px-2.25"
+                id={value}
+                key={value}>
+                {/* The tab's own badge stays gray; the design tints the chosen one. */}
+                {({ isSelected }) => (
+                  <>
+                    {t(FILTER_LABEL_KEY[value])}
+                    {count?.total ? (
+                      <Badge
+                        // Keeps a badged tab as tall as a bare one.
+                        className="tw:-my-px"
+                        color={isSelected ? 'brand' : 'gray'}
+                        size="sm"
+                        type="color">
+                        {formatInboxCount(count)}
+                      </Badge>
+                    ) : null}
+                  </>
+                )}
+              </Tabs.Item>
+            );
+          })}
         </Tabs.List>
       </Tabs>
       <Box align="center" gap={2}>

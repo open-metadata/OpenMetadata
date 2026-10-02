@@ -13,11 +13,11 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
-import { ActivityFilter, InboxDateRange } from './inbox.utils';
+import { ActivityFilter, InboxCount, InboxDateRange } from './inbox.utils';
 import { useInboxActivity } from './useInboxActivity';
 
 export interface InboxCounts {
-  activityCount: number;
+  activityCount: InboxCount;
   taskCount: number;
   isLoading: boolean;
 }
@@ -34,8 +34,11 @@ const INBOX_COUNTS_STALE_TIME = 30 * 1000;
  * `INBOX_COUNTS_QUERY_KEY` so a mutation elsewhere can invalidate it.
  */
 export const useInboxCounts = (dateRange?: InboxDateRange): InboxCounts => {
-  const { total: activityCount, isLoading: isActivityLoading } =
-    useInboxActivity(ActivityFilter.All, dateRange);
+  const {
+    total,
+    isCapped,
+    isLoading: isActivityLoading,
+  } = useInboxActivity(ActivityFilter.All, dateRange);
 
   const { data: taskCount = 0, isFetching: isTaskFetching } = useQuery({
     queryKey: [INBOX_COUNTS_QUERY_KEY],
@@ -51,7 +54,7 @@ export const useInboxCounts = (dateRange?: InboxDateRange): InboxCounts => {
   });
 
   return {
-    activityCount,
+    activityCount: { total, isCapped },
     taskCount,
     isLoading: isActivityLoading || isTaskFetching,
   };

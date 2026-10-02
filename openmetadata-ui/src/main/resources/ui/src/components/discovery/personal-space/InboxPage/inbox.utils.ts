@@ -334,10 +334,9 @@ export const getActivityDayLabel = (timestamp: number): string =>
 // list APIs as startTs/endTs (server-side filtering).
 export type { InboxDateRange } from '../../../../interface/inbox.interface';
 
-// Default Inbox window: the last 30 days (start-of-day to now), used by the page
-// on first render and by the sidebar inbox-icon count.
 // The window a date preset covers: from the start of its first day to the end
-// of today.
+// of today. getDefaultInboxDateRange (last 30 days) seeds the page and the
+// sidebar inbox-icon count.
 export const getInboxDateRange = (days: number): InboxDateRange => ({
   startTs: getStartOfDayInMillis(getEpochMillisForPastDays(days)),
   endTs: getEndOfDayInMillis(getCurrentMillis()),
@@ -381,6 +380,17 @@ export const getActivityWindowDays = (dateRange?: InboxDateRange): number => {
 
   return Math.min(Math.max(days, 1), MAX_ACTIVITY_DAYS);
 };
+
+// A list that came back a full page may hold fewer items than the window has,
+// so its length is a floor, not a total.
+export interface InboxCount {
+  total: number;
+  isCapped: boolean;
+}
+
+// "42", or "300+" when the count is a floor.
+export const formatInboxCount = ({ total, isCapped }: InboxCount): string =>
+  isCapped ? `${total}+` : String(total);
 
 /**
  * Whether a millis timestamp falls inside the selected Inbox date window.
@@ -434,118 +444,12 @@ export const isTaskOpen = (task: Pick<Task, 'status' | 'type'>): boolean =>
   (task.type === TaskType.DataAccessRequest &&
     task.status === TaskStatus.Approved);
 
-export interface RelativeDayGroup<T> {
-  day: string;
-  items: T[];
-}
-
-export type ActivityBucketKey = 'today' | 'yesterday' | 'earlier';
-
-export interface ActivityBucket {
-  key: ActivityBucketKey;
-  // Sub-label shown next to the bucket title, e.g. "Tuesday, July 9" or a
-  // "July 4 - July 7" range for the Earlier bucket.
-  dateText: string;
-  items: Conversation[];
-}
-
-// Display timestamp for a conversation card/drawer ("Posted on …"). createdAt is
-// the Conversation V2 counterpart of the legacy threadTs, so the posted time is
-// shown createdAt-first (matches upstream's card display). Used by
-// getActivityBuckets (display grouping), NOT by the merged-list sort (use
-// getFeedSortTimestamp for that).
-export const getFeedTimestamp = (feed: Conversation): number =>
-  feed.createdAt ?? feed.updatedAt ?? 0;
-
-// Sort key for the merged inbox list. Mirrors upstream's getConversationTimestamp
-// (ActivityFeedListV1New.component.tsx): last-activity (updatedAt) first, falling
-// back to createdAt. Kept separate from getFeedTimestamp so the displayed
-// timestamp (createdAt-first) is unaffected — many products order threads by
-// last activity while showing the original post time, which is what upstream and
-// the inbox display both do (OpenMetadata#30879, #30909).
+// Sort key for the merged inbox list and its day groups. Mirrors upstream's
+// getConversationTimestamp (ActivityFeedListV1New.component.tsx): last activity
+// (updatedAt) first, falling back to createdAt, so a replied conversation rises
+// above newer unreplied ones (OpenMetadata#30879, #30909).
 export const getFeedSortTimestamp = (feed: Conversation): number =>
   feed.updatedAt ?? feed.createdAt ?? 0;
-
-const SINGLE_DAY_FORMAT = 'cccc, LLLL d';
-const RANGE_DAY_FORMAT = 'LLLL d';
-
-/**
- * Bucket conversations into Today / Yesterday / Earlier (matching the figma),
- * each with a human date sub-label. Earlier collapses everything older into a
- * single group with a date range. Empty buckets are omitted; order is fixed
- * (today → yesterday → earlier).
- */
-export const getActivityBuckets = (feeds: Conversation[]): ActivityBucket[] => {
-  const now = DateTime.now();
-  const yesterdayStart = now.minus({ days: 1 });
-  const today: Conversation[] = [];
-  const yesterday: Conversation[] = [];
-  const earlier: Conversation[] = [];
-
-  feeds.forEach((feed) => {
-    const dt = DateTime.fromMillis(getFeedTimestamp(feed));
-    if (dt.hasSame(now, 'day')) {
-      today.push(feed);
-    } else if (dt.hasSame(yesterdayStart, 'day')) {
-      yesterday.push(feed);
-    } else {
-      earlier.push(feed);
-    }
-  });
-
-  const singleDate = (items: Conversation[]): string =>
-    DateTime.fromMillis(getFeedTimestamp(items[0])).toFormat(SINGLE_DAY_FORMAT);
-
-  const buckets: ActivityBucket[] = [];
-  if (today.length) {
-    buckets.push({ key: 'today', dateText: singleDate(today), items: today });
-  }
-  if (yesterday.length) {
-    buckets.push({
-      key: 'yesterday',
-      dateText: singleDate(yesterday),
-      items: yesterday,
-    });
-  }
-  if (earlier.length) {
-    const timestamps = earlier.map(getFeedTimestamp);
-    const min = Math.min(...timestamps);
-    const max = Math.max(...timestamps);
-    const format = (ms: number) =>
-      DateTime.fromMillis(ms).toFormat(RANGE_DAY_FORMAT);
-    buckets.push({
-      key: 'earlier',
-      dateText: min === max ? format(min) : `${format(min)} - ${format(max)}`,
-      items: earlier,
-    });
-  }
-
-  return buckets;
-};
-
-/**
- * Bucket a list into ordered groups keyed by a relative-calendar day label
- * ("Today", "Yesterday", …) computed from each item's timestamp. Preserves the
- * incoming order so callers control sorting upstream.
- */
-export const groupByRelativeDay = <T>(
-  items: T[],
-  getTimestamp: (item: T) => number | undefined
-): RelativeDayGroup<T>[] => {
-  const groups: RelativeDayGroup<T>[] = [];
-
-  items.forEach((item) => {
-    const day = getRelativeCalendar(getTimestamp(item) || 0);
-    const existing = groups.find((group) => group.day === day);
-    if (existing) {
-      existing.items.push(item);
-    } else {
-      groups.push({ day, items: [item] });
-    }
-  });
-
-  return groups;
-};
 
 export interface ReactionUser {
   id?: string;

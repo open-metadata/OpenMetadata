@@ -51,7 +51,7 @@ import { useIncrementalRender } from '../useIncrementalRender';
 import { useIsScrolled } from '../useIsScrolled';
 
 // Cards rendered per batch. The feed is fetched whole (up to ACTIVITY_LIMIT),
-// but mounting all of it made opening the detail drawer block for a second.
+// but a small DOM keeps a modal over it (a delete confirm, say) cheap to open.
 const ACTIVITY_RENDER_BATCH = 40;
 
 const getItemEntity = ({ activity, feed }: InboxActivityItem) =>
@@ -86,14 +86,12 @@ export interface ActivityTabProps {
   onDatePresetChange?: (key: string) => void;
   // Narrowed window → empty reads as "no activity in period" vs first-run state.
   isFiltered?: boolean;
-  onCountChange?: (count: number) => void;
 }
 
 const ActivityTab: React.FC<ActivityTabProps> = ({
   dateRange,
   onDatePresetChange,
   isFiltered = false,
-  onCountChange,
 }) => {
   const { t } = useTranslation();
   const [filter, setFilter] = useState(ActivityFilter.All);
@@ -110,7 +108,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   }, [markInboxActivitySeen]);
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
-  const { items, total, isLoading } = useInboxActivity(filter, dateRange);
+  const { items, isLoading } = useInboxActivity(filter, dateRange);
   const counts = useInboxActivityCounts(dateRange);
   // The Mentions feed (already read for its count) marks the cards that name
   // the viewer, whichever tab they appear under.
@@ -133,15 +131,16 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     [items, typeKeys]
   );
 
-  useEffect(() => {
-    onCountChange?.(total);
-  }, [total, onCountChange]);
-
   const { isScrolled, onScroll } = useIsScrolled();
+  // Day groups are chronological, so a new batch only appends below. Asset and
+  // User groups would grow above the viewport and jump the page, so they render
+  // whole.
+  // ponytail: mounts up to ~300 cards when grouped by Asset/User; reveal whole
+  // groups a batch at a time if that gets slow.
   const { visibleItems, hasMore, scrollRef, sentinelRef } =
     useIncrementalRender(
       filteredItems,
-      ACTIVITY_RENDER_BATCH,
+      grouping === ActivityGrouping.Day ? ACTIVITY_RENDER_BATCH : Infinity,
       `${filter}:${typeKeys}:${dateRange?.startTs}:${dateRange?.endTs}`
     );
 

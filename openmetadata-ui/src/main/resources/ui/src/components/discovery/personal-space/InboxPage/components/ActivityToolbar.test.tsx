@@ -13,7 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { ActivityFilter, ActivityGrouping } from '../inbox.utils';
+import { ActivityFilter, ActivityGrouping, InboxCount } from '../inbox.utils';
 import ActivityToolbar from './ActivityToolbar';
 
 interface MockOption {
@@ -109,7 +109,11 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const renderToolbar = (counts?: Partial<Record<ActivityFilter, number>>) => {
+const exact = (total: number): InboxCount => ({ total, isCapped: false });
+
+const renderToolbar = (
+  counts?: Partial<Record<ActivityFilter, InboxCount>>
+) => {
   const props = {
     counts,
     datePreset: 'last30days',
@@ -142,9 +146,9 @@ describe('ActivityToolbar', () => {
   // Zero reads as no badge; the chosen tab's count is brand-tinted.
   it('badges each sub-tab with its count', () => {
     renderToolbar({
-      [ActivityFilter.All]: 3,
-      [ActivityFilter.Mentions]: 1,
-      [ActivityFilter.Following]: 0,
+      [ActivityFilter.All]: exact(3),
+      [ActivityFilter.Mentions]: exact(1),
+      [ActivityFilter.Following]: exact(0),
     });
 
     expect(screen.getByTestId('tab-all')).toHaveTextContent('label.all3');
@@ -157,6 +161,13 @@ describe('ActivityToolbar', () => {
     expect(
       screen.getAllByTestId('tab-count').map((badge) => badge.dataset.color)
     ).toEqual(['brand', 'gray']);
+  });
+
+  // The lists are capped, so a full page reads as a floor.
+  it('marks a capped count with a plus', () => {
+    renderToolbar({ [ActivityFilter.All]: { total: 300, isCapped: true } });
+
+    expect(screen.getByTestId('tab-all')).toHaveTextContent('label.all300+');
   });
 
   it('reads Group until a grouping is picked, with day groups as None', () => {

@@ -47,7 +47,14 @@ import {
   useInboxActivityCounts,
 } from './useInboxActivity';
 
-const threeEvents = { data: [{ id: '1' }, { id: '2' }, { id: '3' }] };
+// Inside the 100–200 window the range tests use.
+const threeEvents = {
+  data: [
+    { id: '1', timestamp: 150 },
+    { id: '2', timestamp: 150 },
+    { id: '3', timestamp: 150 },
+  ],
+};
 const twoThreads = { data: [{ id: 't1' }, { id: 't2' }] };
 
 const createWrapper = () => {
@@ -171,10 +178,69 @@ describe('fetchInboxActivity', () => {
     expect(threads).toHaveLength(2);
   });
 
+  // The server's whole-day `days` reaches back past startTs (a 7-day preset
+  // sends days=8), so events outside the exact window are dropped.
+  it('clips activity events to the selected window', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: [
+        { id: 'before', timestamp: 99 },
+        { id: 'start', timestamp: 100 },
+        { id: 'end', timestamp: 200 },
+        { id: 'after', timestamp: 201 },
+      ],
+    });
+
+    const { activities } = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1',
+      100,
+      200
+    );
+
+    expect(activities.map(({ id }) => id)).toEqual(['start', 'end']);
+  });
+
+  // The Mentions window is when the mention was made, so an older event with
+  // a fresh mention stays.
+  it('keeps Mentions events older than the window', async () => {
+    mockGetMentionsActivityFeed.mockResolvedValue({
+      data: [{ id: 'old', timestamp: 1 }],
+    });
+
+    const { activities } = await fetchInboxActivity(
+      ActivityFilter.Mentions,
+      'u1',
+      100,
+      200
+    );
+
+    expect(activities.map(({ id }) => id)).toEqual(['old']);
+  });
+
+  it.each([
+    ['activity', 200, 0, true],
+    ['conversation', 0, 100, true],
+    ['neither', 199, 99, false],
+  ])(
+    'flags a full %s page as capped',
+    async (_, activityCount, threadCount, isCapped) => {
+      mockGetActivityEvents.mockResolvedValue({
+        data: Array.from({ length: activityCount }, (_, i) => ({ id: i })),
+      });
+      mockListConversations.mockResolvedValue({
+        data: Array.from({ length: threadCount }, (_, i) => ({ id: `t${i}` })),
+      });
+
+      const result = await fetchInboxActivity(ActivityFilter.All, 'u1');
+
+      expect(result.isCapped).toBe(isCapped);
+    }
+  );
+
   it('returns empty lists when the user id is not resolved yet', async () => {
     const result = await fetchInboxActivity(ActivityFilter.All, undefined);
 
-    expect(result).toEqual({ activities: [], threads: [] });
+    expect(result).toEqual({ activities: [], threads: [], isCapped: false });
     expect(mockGetActivityEvents).not.toHaveBeenCalled();
     expect(mockListConversations).not.toHaveBeenCalled();
   });
@@ -205,8 +271,7 @@ describe('useInboxActivity', () => {
     });
     mockListConversations.mockResolvedValue({
       data: [
-        // createdAt is the Conversation V2 counterpart of the legacy threadTs;
-        // getFeedTimestamp falls back to updatedAt when it is absent.
+        // Conversations sort by last activity: updatedAt, else createdAt.
         { id: 't-mid', createdAt: 200 },
         { id: 't-late', updatedAt: 300 },
       ],
@@ -301,14 +366,35 @@ describe('useInboxActivityCounts', () => {
       wrapper: createWrapper(),
     });
 
+    const count = { total: 5, isCapped: false };
+
     await waitFor(() =>
       expect(result.current).toEqual({
-        [ActivityFilter.All]: 5,
-        [ActivityFilter.Mentions]: 5,
-        [ActivityFilter.MyAssets]: 5,
-        [ActivityFilter.Following]: 5,
+        [ActivityFilter.All]: count,
+        [ActivityFilter.Mentions]: count,
+        [ActivityFilter.MyAssets]: count,
+        [ActivityFilter.Following]: count,
       })
     );
+  });
+
+  it('marks a sub-tab whose list hit the page size as capped', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, i) => ({ id: i })),
+    });
+
+    const { result } = renderHook(() => useInboxActivityCounts(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(result.current[ActivityFilter.All]).toEqual({
+        total: 202,
+        isCapped: true,
+      })
+    );
+
+    expect(result.current[ActivityFilter.Mentions]?.isCapped).toBe(false);
   });
 
   it('counts nothing until the user id is resolved', () => {

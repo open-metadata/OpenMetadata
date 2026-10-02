@@ -264,12 +264,6 @@ const getEventTimestamp = (
 ): number | undefined =>
   isActivity ? activity?.timestamp : feed?.createdAt ?? feed?.updatedAt;
 
-/**
- * A single Inbox card: actor + action + entity chip, the message body, and a
- * footer with reactions (plus a comment affordance for conversations —
- * change-event activities are read-only). Renders either a 2.0 activity event
- * or a conversation. Clicking opens the detail drawer.
- */
 // The header's right side: whether it names the viewer, and when it happened.
 const CardMeta = ({
   isMentioned,
@@ -303,6 +297,11 @@ const CardMeta = ({
   );
 };
 
+/**
+ * A single Inbox card for a 2.0 activity event or a conversation: actor +
+ * action + entity link, the change (or message) body, and a footer with Like,
+ * reactions, Reply and a replies toggle that opens the thread inline below.
+ */
 const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   activity,
   feed,

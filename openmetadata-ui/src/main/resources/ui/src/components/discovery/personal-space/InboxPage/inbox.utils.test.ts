@@ -30,8 +30,6 @@ import {
 } from '../../../../rest/conversationsAPI';
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
-  // Bucket by calendar day derived from the ms timestamp.
-  getRelativeCalendar: (ts: number) => `day-${Math.floor(ts / 100)}`,
   getStartOfDayInMillis: (value: number) => value ?? 0,
   getEndOfDayInMillis: (value: number) => value ?? 0,
   getEpochMillisForPastDays: (days: number) => days,
@@ -54,14 +52,12 @@ jest.mock('../../../../rest/conversationsAPI', () => ({
 
 import { Task } from '../../../../generated/entity/tasks/task';
 import {
+  formatInboxCount,
   formatInboxDate,
   formatInboxDateTime,
-  getActivityBuckets,
   getActivityChange,
   getActivityEventLabel,
   getFeedSortTimestamp,
-  getFeedTimestamp,
-  groupByRelativeDay,
   isTaskOpen,
   pairFieldChanges,
   toggleActivityReaction,
@@ -213,91 +209,10 @@ describe('inbox.utils', () => {
     });
   });
 
-  describe('groupByRelativeDay', () => {
-    it('buckets items by relative day, preserving order', () => {
-      const items = [
-        { id: 'a', ts: 100 },
-        { id: 'b', ts: 150 },
-        { id: 'c', ts: 500 },
-      ];
-
-      const groups = groupByRelativeDay(items, (item) => item.ts);
-
-      expect(groups).toHaveLength(2);
-      expect(groups[0].day).toBe('day-1');
-      expect(groups[0].items.map((i) => i.id)).toEqual(['a', 'b']);
-      expect(groups[1].day).toBe('day-5');
-      expect(groups[1].items.map((i) => i.id)).toEqual(['c']);
-    });
-
-    it('treats a missing timestamp as 0', () => {
-      const groups = groupByRelativeDay([{ id: 'x' }], () => undefined);
-
-      expect(groups[0].day).toBe('day-0');
-    });
-
-    it('returns an empty array for no items', () => {
-      expect(groupByRelativeDay([], () => 0)).toEqual([]);
-    });
-  });
-
-  describe('getActivityBuckets', () => {
-    const now = DateTime.now();
-    const single = (ms: number) =>
-      DateTime.fromMillis(ms).toFormat('cccc, LLLL d');
-    const range = (ms: number) => DateTime.fromMillis(ms).toFormat('LLLL d');
-
-    it('buckets feeds into today / yesterday / earlier with date labels', () => {
-      const todayTs = now.toMillis();
-      const yesterdayTs = now.minus({ days: 1 }).toMillis();
-      const oldNewer = now.minus({ days: 5 }).toMillis();
-      const oldOlder = now.minus({ days: 10 }).toMillis();
-
-      const feeds = [
-        { id: 'today', createdAt: todayTs },
-        { id: 'yest', createdAt: yesterdayTs },
-        { id: 'old-a', createdAt: oldOlder },
-        { id: 'old-b', createdAt: oldNewer },
-      ] as Conversation[];
-
-      const buckets = getActivityBuckets(feeds);
-
-      expect(buckets.map((b) => b.key)).toEqual([
-        'today',
-        'yesterday',
-        'earlier',
-      ]);
-      expect(buckets[0].items.map((f) => f.id)).toEqual(['today']);
-      expect(buckets[0].dateText).toBe(single(todayTs));
-      expect(buckets[1].dateText).toBe(single(yesterdayTs));
-      expect(buckets[2].items.map((f) => f.id)).toEqual(['old-a', 'old-b']);
-      expect(buckets[2].dateText).toBe(
-        `${range(oldOlder)} - ${range(oldNewer)}`
-      );
-    });
-
-    it('omits empty buckets and uses a single date when earlier spans one day', () => {
-      const old = now.minus({ days: 3 }).toMillis();
-      const buckets = getActivityBuckets([
-        { id: 'o', createdAt: old },
-      ] as Conversation[]);
-
-      expect(buckets).toHaveLength(1);
-      expect(buckets[0].key).toBe('earlier');
-      expect(buckets[0].dateText).toBe(range(old));
-    });
-
-    it('returns an empty array for no feeds', () => {
-      expect(getActivityBuckets([])).toEqual([]);
-    });
-  });
-
-  describe('feed timestamps', () => {
-    // Locks the deliberate separation between the sort key (updatedAt-first,
-    // upstream parity) and the display timestamp (createdAt-first, "Posted on").
-    // See useInboxActivity for the sort consumer and ActivityDetailDrawer for the
-    // display consumer. Regression for the inbox sort precedence bug.
-    it('getFeedSortTimestamp prefers updatedAt (last activity) for sorting', () => {
+  describe('getFeedSortTimestamp', () => {
+    // Last activity first, so a replied conversation sorts above newer
+    // unreplied ones (upstream parity). Regression for the inbox sort bug.
+    it('prefers updatedAt over createdAt', () => {
       const feed = {
         id: 'c1',
         createdAt: 200,
@@ -306,17 +221,16 @@ describe('inbox.utils', () => {
 
       expect(getFeedSortTimestamp(feed)).toBe(400);
     });
+  });
 
-    it('getFeedTimestamp prefers createdAt (posted time) for display', () => {
-      const feed = {
-        id: 'c1',
-        createdAt: 200,
-        updatedAt: 400,
-      } as Conversation;
+  describe('formatInboxCount', () => {
+    it('shows an exact count as is', () => {
+      expect(formatInboxCount({ total: 42, isCapped: false })).toBe('42');
+    });
 
-      // Same both-present shape as the sort test above: display stays createdAt,
-      // never updatedAt, so displayed "Posted on" time is unaffected by the fix.
-      expect(getFeedTimestamp(feed)).toBe(200);
+    // A full page is a floor, not a total.
+    it('marks a capped count with a trailing plus', () => {
+      expect(formatInboxCount({ total: 300, isCapped: true })).toBe('300+');
     });
   });
 

@@ -30,7 +30,9 @@ import {
   CONVERSATION_LIMIT,
   getActivityWindowDays,
   getFeedSortTimestamp,
+  InboxCount,
   InboxDateRange,
+  isWithinInboxRange,
   pairFieldChanges,
 } from './inbox.utils';
 
@@ -42,6 +44,8 @@ const INBOX_ACTIVITY_STALE_TIME = 30 * 1000;
 export interface InboxActivityResult {
   activities: ActivityEvent[];
   threads: Conversation[];
+  // Either list came back a full page, so the window may hold more.
+  isCapped: boolean;
 }
 
 // Exactly one of `activity` or `feed`, matching ActivityFeedItem's props.
@@ -77,6 +81,21 @@ const CONVERSATION_FILTER: Record<
   [ActivityFilter.Mentions]: ConversationFilterType.Mentions,
 };
 
+// The activity API takes whole `days`, so its window reaches back past startTs;
+// clip to the exact window the conversations use. Mentions stay as served: that
+// window is when the mention was made, so an older event freshly mentioned
+// belongs in it.
+const clipToWindow = (
+  filter: ActivityFilter,
+  activities: ActivityEvent[],
+  dateRange: InboxDateRange
+): ActivityEvent[] =>
+  filter === ActivityFilter.Mentions
+    ? activities
+    : activities.filter(({ timestamp }) =>
+        isWithinInboxRange(timestamp, dateRange)
+      );
+
 /** The selected sub-tab's activity events plus its conversations. */
 export const fetchInboxActivity = async (
   filter: ActivityFilter,
@@ -85,7 +104,7 @@ export const fetchInboxActivity = async (
   endTs?: number
 ): Promise<InboxActivityResult> => {
   if (!userId) {
-    return { activities: [], threads: [] };
+    return { activities: [], threads: [], isCapped: false };
   }
   const days = getActivityWindowDays({ startTs, endTs });
   const activityRequest = ACTIVITY_REQUEST[filter]({
@@ -111,13 +130,19 @@ export const fetchInboxActivity = async (
     conversationRequest,
   ]);
 
+  const activities =
+    activityRes.status === 'fulfilled' ? activityRes.value?.data ?? [] : [];
+  const threads =
+    conversationRes.status === 'fulfilled'
+      ? conversationRes.value.data ?? []
+      : [];
+
   return {
-    activities:
-      activityRes.status === 'fulfilled' ? activityRes.value?.data ?? [] : [],
-    threads:
-      conversationRes.status === 'fulfilled'
-        ? conversationRes.value.data ?? []
-        : [],
+    activities: clipToWindow(filter, activities, { startTs, endTs }),
+    threads,
+    isCapped:
+      activities.length >= ACTIVITY_LIMIT ||
+      threads.length >= CONVERSATION_LIMIT,
   };
 };
 
@@ -140,9 +165,8 @@ const inboxActivityQuery = (
   staleTime: INBOX_ACTIVITY_STALE_TIME,
 });
 
-export interface UseInboxActivity {
+export interface UseInboxActivity extends InboxCount {
   items: InboxActivityItem[];
-  total: number;
   isLoading: boolean;
 }
 
@@ -187,18 +211,20 @@ export const useInboxActivity = (
   return {
     items,
     total: items.length,
+    isCapped: data?.isCapped ?? false,
     isLoading,
   };
 };
 
 /**
- * Each sub-tab's item count in the window, as its list would show it.
+ * Each sub-tab's item count in the window, as its list would show it, and
+ * whether that count is a floor.
  * ponytail: a fetch per sub-tab, since the server has no per-feed count; swap
  * for a count endpoint (or unread counts, as the design shows) once one exists.
  */
 export const useInboxActivityCounts = (
   dateRange?: InboxDateRange
-): Partial<Record<ActivityFilter, number>> => {
+): Partial<Record<ActivityFilter, InboxCount>> => {
   const { currentUser } = useApplicationStore();
   const filters = Object.values(ActivityFilter);
   const results = useQueries({
@@ -215,7 +241,12 @@ export const useInboxActivityCounts = (
         ? [
             [
               filter,
-              pairFieldChanges(data.activities).length + data.threads.length,
+              {
+                total:
+                  pairFieldChanges(data.activities).length +
+                  data.threads.length,
+                isCapped: data.isCapped,
+              },
             ],
           ]
         : [];

@@ -15,8 +15,14 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import type { InboxDateRange } from './inbox.utils';
 
+let mockActivityCount = { total: 5, isCapped: false };
+
 jest.mock('./useInboxCounts', () => ({
-  useInboxCounts: () => ({ activityCount: 5, taskCount: 2, isLoading: false }),
+  useInboxCounts: () => ({
+    activityCount: mockActivityCount,
+    taskCount: 2,
+    isLoading: false,
+  }),
 }));
 
 interface CapturedActivityTabProps {
@@ -138,6 +144,7 @@ describe('InboxContent', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPathname = '/inbox';
+    mockActivityCount = { total: 5, isCapped: false };
   });
 
   it('renders the Activity tab by default', () => {
@@ -184,6 +191,16 @@ describe('InboxContent', () => {
       'label.activity:5'
     );
     expect(screen.getByTestId('tab-tasks')).toHaveTextContent('label.triage:2');
+  });
+
+  // The activity lists are capped, so a full page reads as a floor.
+  it('marks a capped activity count with a plus', () => {
+    mockActivityCount = { total: 300, isCapped: true };
+    render(<InboxContent />);
+
+    expect(screen.getByTestId('tab-activity')).toHaveTextContent(
+      'label.activity:300+'
+    );
   });
 
   // The selected tab's count is brand-tinted; the other stays gray.

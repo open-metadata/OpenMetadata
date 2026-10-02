@@ -29,7 +29,7 @@ export interface InboxCommentComposerProps {
 }
 
 /**
- * Comment composer shared by the Inbox (Activity drawer + Task detail). It
+ * Comment composer shared by the Inbox (activity card threads + Task detail). It
  * reuses the OSS {@link ActivityFeedEditorNew} verbatim — so mention (@),
  * hashtag (#), markdown, the send button and Enter-to-send all keep working —
  * and only restyles it via the scoped `inbox-comment-composer__editor` class:

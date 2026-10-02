@@ -167,19 +167,6 @@ describe('ActivityTab', () => {
     expect(screen.getByTestId('activity-skeleton')).toBeInTheDocument();
   });
 
-  it('reports the total via onCountChange', () => {
-    activityState = {
-      items: [{ activity: { id: 'a1' } }],
-      total: 7,
-      isLoading: false,
-    };
-    const onCountChange = jest.fn();
-
-    render(<ActivityTab onCountChange={onCountChange} />);
-
-    expect(onCountChange).toHaveBeenCalledWith(7);
-  });
-
   it('renders activity events and conversations in one merged list', () => {
     activityState = {
       items: [
@@ -289,6 +276,28 @@ describe('ActivityTab', () => {
     render(<ActivityTab />);
 
     expect(screen.getAllByTestId('feed-item')).toHaveLength(40);
+    expect(screen.getByTestId('activity-group')).toHaveTextContent(
+      'label.number-update-plural:45'
+    );
+  });
+
+  // A batch revealed later would grow a group above the viewport, so Asset and
+  // User groupings render every card at once.
+  it('renders every card when grouped by user, not a batch', () => {
+    const alice = { id: 'u1', name: 'alice' };
+    activityState = {
+      items: Array.from({ length: 45 }, (_, index) => ({
+        activity: { id: `a${index}`, actor: alice },
+      })),
+      total: 45,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('by-user'));
+
+    expect(screen.getAllByTestId('feed-item')).toHaveLength(45);
+    expect(screen.queryByTestId('inbox-activity-sentinel')).toBeNull();
     expect(screen.getByTestId('activity-group')).toHaveTextContent(
       'label.number-update-plural:45'
     );

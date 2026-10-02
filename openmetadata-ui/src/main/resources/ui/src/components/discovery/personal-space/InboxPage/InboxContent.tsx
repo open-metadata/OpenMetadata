@@ -20,8 +20,10 @@ import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
 import {
   DEFAULT_INBOX_DATE_PRESET,
+  formatInboxCount,
   getDefaultInboxDateRange,
   getInboxDateRange,
+  InboxCount,
   InboxDateRange,
   INBOX_DATE_RANGE_OPTIONS,
 } from './inbox.utils';
@@ -36,12 +38,12 @@ const DEFAULT_TAB: InboxTabKey = 'activity';
 
 // A soft pill with no outline, brand-tinted on the selected tab. The tab's own
 // `badge` prop draws an outlined pill, so the count is rendered here instead.
-const renderTabLabel = (label: string, count: number) =>
+const renderTabLabel = (label: string, count: InboxCount) =>
   function TabLabel({ isSelected }: { isSelected: boolean }) {
     return (
       <>
         {label}
-        {count > 0 && (
+        {count.total > 0 && (
           <Badge
             bordered={false}
             className={classNames(
@@ -51,7 +53,7 @@ const renderTabLabel = (label: string, count: number) =>
             color={isSelected ? 'brand' : 'gray'}
             size="sm"
             type="pill-color">
-            {count}
+            {formatInboxCount(count)}
           </Badge>
         )}
       </>
@@ -123,7 +125,10 @@ const InboxContent: React.FC = () => {
           {renderTabLabel(t('label.activity'), activityCount)}
         </Tabs.Item>
         <Tabs.Item id="tasks">
-          {renderTabLabel(t('label.triage'), taskCount)}
+          {renderTabLabel(t('label.triage'), {
+            total: taskCount,
+            isCapped: false,
+          })}
         </Tabs.Item>
       </Tabs.List>
     </Tabs>

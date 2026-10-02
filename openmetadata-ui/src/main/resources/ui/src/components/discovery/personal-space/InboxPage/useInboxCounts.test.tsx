@@ -70,7 +70,10 @@ describe('useInboxCounts', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.activityCount).toBe(7);
+    expect(result.current.activityCount).toEqual({
+      total: 7,
+      isCapped: false,
+    });
     expect(result.current.taskCount).toBe(3);
     // The badge counts the All feed; default 30-day window, page size 200.
     expect(mockGetActivityEvents).toHaveBeenCalledWith({
@@ -104,7 +107,10 @@ describe('useInboxCounts', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.activityCount).toBe(0);
+    expect(result.current.activityCount).toEqual({
+      total: 0,
+      isCapped: false,
+    });
     // The task count still resolves independently.
     expect(result.current.taskCount).toBe(3);
   });
@@ -115,7 +121,7 @@ describe('useInboxCounts', () => {
       const a = useInboxCounts();
       const b = useInboxCounts();
 
-      return <span>{`${a.activityCount}-${b.activityCount}`}</span>;
+      return <span>{`${a.activityCount.total}-${b.activityCount.total}`}</span>;
     };
 
     render(<TwoConsumers />, { wrapper });
