@@ -99,11 +99,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Input: ({
       'data-testid': testId,
       value,
+      onBlur,
       onChange,
       type,
     }: {
       'data-testid'?: string;
       value?: string;
+      onBlur?: () => void;
       onChange?: (value: string) => void;
       type?: string;
       className?: string;
@@ -113,6 +115,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         data-testid={testId}
         type={type}
         value={value}
+        onBlur={onBlur}
         onChange={(e) => onChange?.(e.target.value)}
       />
     ),
@@ -524,17 +527,18 @@ describe('ProfileSampleConfigField', () => {
 
   // Ingestion treats a 0 sample as "no sampling" and scans the full table.
   describe('Minimum profile sample', () => {
-    it('raises a typed 0 static profile sample to 1', () => {
+    it('raises a static profile sample below 1 to 1 on blur', () => {
       render(
         <ProfileSampleConfigField
           {...baseFieldProps}
-          formData={staticFormData}
+          formData={{
+            sampleConfigType: SampleConfigType.Static,
+            config: { ...staticFormData.config, profileSample: 0 },
+          }}
         />
       );
 
-      fireEvent.change(screen.getByTestId('profile-sample-input'), {
-        target: { value: '0' },
-      });
+      fireEvent.blur(screen.getByTestId('profile-sample-input'));
 
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Static,
@@ -542,31 +546,67 @@ describe('ProfileSampleConfigField', () => {
       });
     });
 
-    it.each(['0', ''])(
-      'raises a threshold profile sample of "%s" to 1',
-      (value) => {
-        render(
-          <ProfileSampleConfigField
-            {...baseFieldProps}
-            formData={dynamicFormData}
-          />
-        );
+    it('raises a threshold profile sample below 1 to 1 on blur', () => {
+      const threshold = dynamicFormData.config?.thresholds?.[0];
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={{
+            sampleConfigType: SampleConfigType.Dynamic,
+            config: {
+              smartSampling: false,
+              thresholds: [{ ...threshold, profileSample: 0 }],
+            },
+          }}
+        />
+      );
 
-        fireEvent.change(screen.getByTestId('profile-sample-0'), {
-          target: { value },
-        });
+      fireEvent.blur(screen.getByTestId('profile-sample-0'));
 
-        expect(mockOnChange).toHaveBeenCalledWith({
-          sampleConfigType: SampleConfigType.Dynamic,
-          config: {
-            smartSampling: false,
-            thresholds: [
-              { ...dynamicFormData.config?.thresholds?.[0], profileSample: 1 },
-            ],
-          },
-        });
-      }
-    );
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [{ ...threshold, profileSample: 1 }],
+        },
+      });
+    });
+
+    it('does not clamp while typing so a cleared threshold can be retyped', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={dynamicFormData}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('profile-sample-0'), {
+        target: { value: '' },
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [
+            { ...dynamicFormData.config?.thresholds?.[0], profileSample: 0 },
+          ],
+        },
+      });
+    });
+
+    it('does not rewrite a valid sample on blur', () => {
+      render(
+        <ProfileSampleConfigField
+          {...baseFieldProps}
+          formData={staticFormData}
+        />
+      );
+
+      fireEvent.blur(screen.getByTestId('profile-sample-input'));
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
 
     it('renders a stored 0 sample as-is without rewriting it', () => {
       render(
