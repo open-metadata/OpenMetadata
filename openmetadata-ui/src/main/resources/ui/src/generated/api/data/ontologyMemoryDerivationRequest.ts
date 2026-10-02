@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,25 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../styles/variables.less';
-
-.application-card {
-  border: 1px solid @grey-15;
-  height: 100%;
-  display: flex;
-  align-items: center;
-
-  .application-info {
-    display: flex;
-    flex-direction: column;
-    align-items: baseline;
-  }
-
-  &.application-card-disabled {
-    opacity: 0.65;
-
-    .application-logo {
-      filter: grayscale(1);
-    }
-  }
+/**
+ * Queue glossary-term suggestions grounded in published context memories.
+ */
+export interface OntologyMemoryDerivationRequest {
+    glossary?: string;
+    memoryIds: string[];
 }

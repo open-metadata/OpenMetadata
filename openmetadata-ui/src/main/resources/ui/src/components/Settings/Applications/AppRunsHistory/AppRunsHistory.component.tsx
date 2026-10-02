@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { Typography } from '@openmetadata/ui-core-components';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Modal, Space, Typography } from 'antd';
+import { Button, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
 import {
@@ -276,11 +278,11 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'runType',
           key: 'runType',
           render: (runType, record) => (
-            <Typography.Text>
+            <Typography className="tw:text-primary">
               {record.isSynthetic
                 ? NO_DATA_PLACEHOLDER
                 : runType ?? NO_DATA_PLACEHOLDER}
-            </Typography.Text>
+            </Typography>
           ),
         },
         {
@@ -562,11 +564,11 @@ const AppRunsHistory = forwardRef(
           maskClosable={false}
           open={showConfigModal}
           title={
-            <Typography.Text>
+            <Typography>
               {t('label.entity-configuration', {
                 entity: getEntityName(appData) ?? t('label.application'),
               })}
-            </Typography.Text>
+            </Typography>
           }
           width={800}>
           {jsonSchema && (

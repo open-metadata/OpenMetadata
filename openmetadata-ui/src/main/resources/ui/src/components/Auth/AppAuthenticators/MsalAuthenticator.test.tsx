@@ -17,6 +17,7 @@ import {
 import { useMsal } from '@azure/msal-react';
 import { render, screen } from '@testing-library/react';
 import React, { act } from 'react';
+import { ReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
 import { msalLoginRequest } from '../../../utils/AuthProvider.util';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import MsalAuthenticator from './MsalAuthenticator';
@@ -51,6 +52,7 @@ const mockInstance = {
   handleRedirectPromise: jest.fn(),
   acquireTokenSilent: jest.fn(),
   acquireTokenPopup: jest.fn(),
+  acquireTokenRedirect: jest.fn(),
   logout: jest.fn(),
 };
 
@@ -75,6 +77,7 @@ describe('MsalAuthenticator', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockInstance.handleRedirectPromise.mockResolvedValue(null);
     // Default mock implementation for useMsal
     (useMsal as jest.Mock).mockReturnValue({
       instance: mockInstance,
@@ -250,15 +253,107 @@ describe('MsalAuthenticator', () => {
     });
   });
 
-  it('getRenewer falls back to acquireTokenPopup on InteractionRequiredAuthError', async () => {
-    const expiresOn = new Date(Date.now() + 5 * 60_000);
-    const interactionError = new InteractionRequiredAuthError(
-      'interaction_required'
+  it('getRenewer hands InteractionRequiredAuthError to a top-level redirect instead of a popup', async () => {
+    // Entra's 24h SPA refresh-token limit and blocked third-party cookies
+    // both land here; a popup opened without a user gesture is blocked too.
+    mockInstance.acquireTokenSilent.mockRejectedValueOnce(
+      new InteractionRequiredAuthError('interaction_required')
     );
-    mockInstance.acquireTokenSilent.mockRejectedValueOnce(interactionError);
-    mockInstance.acquireTokenPopup.mockResolvedValueOnce({
-      idToken: 'azure-popup-fresh',
-      expiresOn,
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+    await expect(renewer?.()).rejects.toBeInstanceOf(ReauthRequiredError);
+    expect(mockInstance.acquireTokenPopup).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'interaction_required',
+    'login_required',
+    'consent_required',
+    'no_account_error',
+    'monitor_window_timeout',
+    'block_iframe_reload',
+  ])(
+    'getRenewer classifies a plain MSAL %s error code as recoverable by a redirect',
+    async (errorCode) => {
+      // The Playwright MSAL mock cannot construct MSAL error classes, so the
+      // classification must work from errorCode alone.
+      mockInstance.acquireTokenSilent.mockRejectedValueOnce({ errorCode });
+
+      render(
+        <MsalAuthenticator
+          {...mockProps}
+          ref={(ref) => (authenticatorRef = ref)}
+        />
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      await expect(renewer?.()).rejects.toBeInstanceOf(ReauthRequiredError);
+    }
+  );
+
+  it('getRenewer rethrows errors a redirect cannot fix, such as network failures', async () => {
+    const networkError = Object.assign(new Error('network down'), {
+      errorCode: 'network_error',
+    });
+    mockInstance.acquireTokenSilent.mockRejectedValueOnce(networkError);
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+    await expect(renewer?.()).rejects.toBe(networkError);
+  });
+
+  it('getRenewer finishes processing a pending redirect response before renewing', async () => {
+    const order: string[] = [];
+    mockInstance.handleRedirectPromise.mockImplementation(async () => {
+      order.push('handleRedirectPromise');
+
+      return null;
+    });
+    mockInstance.acquireTokenSilent.mockImplementationOnce(async () => {
+      order.push('acquireTokenSilent');
+
+      return {
+        idToken: 'azure-fresh',
+        expiresOn: new Date(Date.now() + 60_000),
+      };
+    });
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+    order.length = 0;
+
+    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+    await renewer?.();
+
+    expect(order).toEqual(['handleRedirectPromise', 'acquireTokenSilent']);
+  });
+
+  it('getRenewer schedules renewal off the ID token expiry, not the access token', async () => {
+    const idTokenExpSeconds = Math.floor(Date.now() / 1000) + 3600;
+    mockInstance.acquireTokenSilent.mockResolvedValueOnce({
+      idToken: 'azure-fresh',
+      idTokenClaims: { exp: idTokenExpSeconds },
+      expiresOn: new Date(Date.now() + 90 * 60_000),
     });
 
     render(
@@ -271,21 +366,39 @@ describe('MsalAuthenticator', () => {
     const renewer = registerRenewer.mock.calls.at(-1)?.[0];
     const result = await renewer?.();
 
-    expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
-    expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
     expect(result).toEqual({
-      idToken: 'azure-popup-fresh',
-      expiresAt: expiresOn.getTime(),
+      idToken: 'azure-fresh',
+      expiresAt: idTokenExpSeconds * 1000,
     });
   });
 
-  it('getRenewer propagates the error when the popup fallback also fails', async () => {
-    const interactionError = new InteractionRequiredAuthError(
-      'interaction_required'
+  it('invokeSilentReauth redirects with prompt=none and returns to the current page', async () => {
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
     );
-    const popupError = new Error('popup_failed');
-    mockInstance.acquireTokenSilent.mockRejectedValueOnce(interactionError);
-    mockInstance.acquireTokenPopup.mockRejectedValueOnce(popupError);
+
+    await act(async () => {
+      await authenticatorRef?.invokeSilentReauth?.();
+    });
+
+    expect(mockInstance.acquireTokenRedirect).toHaveBeenCalledWith({
+      account: { username: 'test@example.com' },
+      scopes: msalLoginRequest.scopes,
+      prompt: 'none',
+      redirectStartPage: window.location.href,
+    });
+    expect(mockInstance.loginRedirect).not.toHaveBeenCalled();
+  });
+
+  it('invokeSilentReauth falls back to a prompt=none login redirect without a cached account', async () => {
+    (useMsal as jest.Mock).mockReturnValue({
+      instance: mockInstance,
+      accounts: [],
+      inProgress: InteractionStatus.None,
+    });
 
     render(
       <MsalAuthenticator
@@ -294,11 +407,16 @@ describe('MsalAuthenticator', () => {
       />
     );
 
-    const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+    await act(async () => {
+      await authenticatorRef?.invokeSilentReauth?.();
+    });
 
-    await expect(renewer?.()).rejects.toThrow('popup_failed');
-    expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
-    expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
+    expect(mockInstance.loginRedirect).toHaveBeenCalledWith({
+      scopes: msalLoginRequest.scopes,
+      prompt: 'none',
+      redirectStartPage: window.location.href,
+    });
+    expect(mockInstance.acquireTokenRedirect).not.toHaveBeenCalled();
   });
 
   it('getRenewer throws when the msal response has no expiresOn', async () => {

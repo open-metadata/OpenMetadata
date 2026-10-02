@@ -12,7 +12,11 @@
  */
 
 import type { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { RefreshQueue } from '../RefreshQueue';
+import {
+  isRefreshFailedError,
+  RefreshFailedError,
+  RefreshQueue,
+} from '../RefreshQueue';
 
 const mockAxios = (responder: (cfg: AxiosRequestConfig) => Promise<unknown>) =>
   ({ request: jest.fn(responder) } as unknown as AxiosInstance);
@@ -54,7 +58,15 @@ describe('RefreshQueue', () => {
     await queue.drain(null, axios);
 
     await expect(p).rejects.toThrow(/refresh failed/i);
+    // Typed, so callers can leave the outcome to the refresh-failed handler.
+    await expect(p).rejects.toBeInstanceOf(RefreshFailedError);
     expect(queue.size()).toBe(0);
+  });
+
+  it('recognises only its own refresh failure', () => {
+    expect(isRefreshFailedError(new RefreshFailedError())).toBe(true);
+    expect(isRefreshFailedError(new Error('Token refresh failed'))).toBe(false);
+    expect(isRefreshFailedError({ response: { status: 401 } })).toBe(false);
   });
 
   it('reports hasPending accurately', () => {

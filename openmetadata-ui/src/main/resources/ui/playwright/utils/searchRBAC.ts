@@ -174,7 +174,11 @@ export const searchForEntityShouldWork = async (
   await searchResponse;
 
   await waitForAllLoadersToDisappear(page);
-  await page.getByRole('menuitem').filter({ hasText: entityName }).click();
+  await page
+    .getByTestId('explore-left-panel')
+    .getByRole('tab')
+    .filter({ hasText: entityName })
+    .click();
   await waitForAllLoadersToDisappear(page);
 
   await expect(

@@ -111,7 +111,7 @@ const glossary: Glossary = {
   termCount: 2,
 };
 const rdfStatus: RDFStatus = {
-  askCollateEnabled: false,
+  aiEnabled: false,
   baseUri: 'https://open-metadata.org/',
   enabled: true,
   inference: {

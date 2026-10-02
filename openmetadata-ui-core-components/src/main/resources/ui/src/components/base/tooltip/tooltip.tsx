@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import type { Placement } from 'react-aria';
+import { useFocusable } from 'react-aria';
 import type {
   ButtonProps as AriaButtonProps,
   PressEvent,
   TooltipProps as AriaTooltipProps,
   TooltipTriggerComponentProps as AriaTooltipTriggerComponentProps,
 } from 'react-aria-components';
-import { forwardRef, isValidElement } from 'react';
+import { forwardRef, isValidElement, useRef } from 'react';
 import {
   Button as AriaButton,
   Focusable as AriaFocusable,
@@ -98,6 +99,30 @@ interface TooltipProps
   excludeTriggerFromTabOrder?: boolean;
 }
 
+// Trigger for `excludeTriggerFromTabOrder`. A bare span never consumes
+// TooltipTrigger's FocusableContext, so it got no hover handlers and the
+// tooltip could not open. useFocusable reads that context (hover, aria, ref)
+// but always assigns a tabIndex; dropping it keeps the span unreachable by
+// focus, including antd FocusTrap.restoreFocus().
+const UnfocusableTrigger = ({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const {
+    focusableProps: { tabIndex: _tabIndex, ...triggerProps },
+  } = useFocusable({}, ref);
+
+  return (
+    <span {...triggerProps} className={className} ref={ref}>
+      {children}
+    </span>
+  );
+};
+
 export const Tooltip = ({
   title,
   description,
@@ -170,9 +195,10 @@ export const Tooltip = ({
       // exists to avoid. Opting out of the tab order costs the same keyboard
       // affordance there as here; the two paths make the same trade.
       excludeTriggerFromTabOrder ? (
-        <span className={cx(disabledWrapClassName, triggerClassName)}>
+        <UnfocusableTrigger
+          className={cx(disabledWrapClassName, triggerClassName)}>
           {children}
-        </span>
+        </UnfocusableTrigger>
       ) : (
         <AriaFocusable>
           <span
@@ -186,10 +212,12 @@ export const Tooltip = ({
       // Use a plain span instead of AriaButton when the trigger is explicitly
       // excluded from the tab order. AriaButton with tabindex="-1" is still
       // programmatically focusable, so Ant Design FocusTrap.restoreFocus() can
-      // accidentally land on it inside rdg cells. A span has no focusability at
-      // all — FocusTrap cannot reach it — while RAC's TooltipTrigger still
-      // passes hover handlers via cloneElement, so mouse tooltips work normally.
-      <span className={triggerClassName}>{children}</span>
+      // accidentally land on it inside rdg cells. A span without a tabIndex
+      // has no focusability at all — FocusTrap cannot reach it — and
+      // UnfocusableTrigger still wires the hover handlers.
+      <UnfocusableTrigger className={triggerClassName}>
+        {children}
+      </UnfocusableTrigger>
     ) : (
       <AriaButton
         className={cx('tw:h-max tw:w-max tw:outline-hidden', triggerClassName)}

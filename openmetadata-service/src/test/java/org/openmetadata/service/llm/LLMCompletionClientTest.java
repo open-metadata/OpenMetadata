@@ -66,6 +66,14 @@ class LLMCompletionClientTest {
   }
 
   @Test
+  void completeStructuredAcceptsSingleObject() {
+    String json = "{\"title\":\"T\",\"question\":\"Q\",\"answer\":\"A\"}";
+    List<PillLike> pills = new StubClient(json).completeStructured("sys", "user", PillLike.class);
+    assertEquals(1, pills.size());
+    assertEquals("Q", pills.getFirst().question());
+  }
+
+  @Test
   void rejectsNonPositiveConcurrency() {
     assertThrows(IllegalArgumentException.class, ZeroPermitClient::new);
   }
