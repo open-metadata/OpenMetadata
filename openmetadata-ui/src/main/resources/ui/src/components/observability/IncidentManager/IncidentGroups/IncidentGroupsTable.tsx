@@ -166,6 +166,8 @@ const IncidentGroupsTable = ({
   onSortTypeChange,
   onGroupPreview,
   onGroupOpen,
+  selectedKeys,
+  onSelectionChange,
 }: IncidentGroupsTableProps) => {
   const { t } = useTranslation();
 
@@ -286,8 +288,12 @@ const IncidentGroupsTable = ({
     <Table
       aria-label={t('label.incident-plural')}
       data-testid="incident-groups-table"
+      selectedKeys={selectedKeys}
+      selectionBehavior="toggle"
+      selectionMode="multiple"
       size="sm"
       sortDescriptor={sortDescriptor}
+      onSelectionChange={onSelectionChange}
       onSortChange={handleSortChange}>
       <Table.Header columns={columns}>
         {(column) => (

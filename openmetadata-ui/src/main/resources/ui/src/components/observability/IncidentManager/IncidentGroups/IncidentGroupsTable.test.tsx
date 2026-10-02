@@ -39,6 +39,7 @@ jest.mock('./IncidentTrendSparkline', () => ({
 const mockOnSortTypeChange = jest.fn();
 const mockOnGroupPreview = jest.fn();
 const mockOnGroupOpen = jest.fn();
+const mockOnSelectionChange = jest.fn();
 
 // Same press sequence react-aria listens for on rows and buttons.
 const press = (element: HTMLElement) => {
@@ -115,9 +116,11 @@ const renderTable = (
     <IncidentGroupsTable
       groupBy={groupBy}
       groups={groups}
+      selectedKeys={new Set()}
       sortType="desc"
       onGroupOpen={mockOnGroupOpen}
       onGroupPreview={mockOnGroupPreview}
+      onSelectionChange={mockOnSelectionChange}
       onSortTypeChange={mockOnSortTypeChange}
     />
   );

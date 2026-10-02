@@ -12,6 +12,12 @@
  */
 
 import { FC, ReactNode } from 'react';
+import type { Selection } from 'react-aria-components';
+import {
+  CreateTestCaseResolutionStatus,
+  Severities as CreateSeverities,
+  TestCaseResolutionStatusTypes as CreateStatusTypes,
+} from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import {
   IncidentGroupBy,
   IncidentStatusCount,
@@ -21,6 +27,8 @@ import {
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
+import { Response as BulkResponse } from '../../../../generated/type/bulkOperationResult';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import {
   IncidentSortType,
   OpenIncidentStatus,
@@ -87,6 +95,63 @@ export interface IncidentGroupStatProps {
   testId: string;
 }
 
+/** A status a selection of groups can be moved to in bulk. */
+export type BulkIncidentStatus =
+  | CreateStatusTypes.ACK
+  | CreateStatusTypes.Assigned
+  | CreateStatusTypes.Resolved;
+
+/** What a bulk action does to every open incident of the selected groups. */
+export type BulkIncidentChange =
+  | {
+      kind: 'status';
+      status: BulkIncidentStatus;
+      details?: CreateTestCaseResolutionStatus['testCaseResolutionStatusDetails'];
+    }
+  | { kind: 'severity'; severity: CreateSeverities };
+
+/** What the bulk status form collects, before it becomes the entries' details. */
+export interface BulkStatusFormValues {
+  assignee?: { value: EntityReference };
+  /** The picked option of the reason select, which holds the whole option. */
+  testCaseFailureReason?: { id: string };
+  testCaseFailureComment?: string;
+}
+
+/** What a bulk change came to, over every call it took. */
+export interface BulkIncidentOutcome {
+  /** Entries sent: the incidents the change would alter. */
+  total: number;
+  passed: number;
+  failures: BulkResponse[];
+  /** Incidents left out because the change would not alter them. */
+  unchanged: number;
+}
+
+export interface IncidentGroupBulkStatusModalProps {
+  /** The status being applied; the modal is open while there is one. */
+  status?: CreateStatusTypes.Assigned | CreateStatusTypes.Resolved;
+  isApplying: boolean;
+  onCancel: () => void;
+  onApply: (
+    details: CreateTestCaseResolutionStatus['testCaseResolutionStatusDetails']
+  ) => void;
+}
+
+export interface IncidentGroupsSelectionBarProps {
+  selectedCount: number;
+  isApplying: boolean;
+  onSetStatus: (status: BulkIncidentStatus) => void;
+  onSetSeverity: (severity: CreateSeverities) => void;
+  onClearSelection: () => void;
+}
+
+export interface IncidentGroupBulkFailuresModalProps {
+  /** The outcome to report; the modal is open while there is one. */
+  outcome?: BulkIncidentOutcome;
+  onClose: () => void;
+}
+
 export interface IncidentGroupsViewProps {
   /**
    * Bumped by the page when an incident it lists below changes status: the
@@ -105,6 +170,9 @@ export interface IncidentGroupsTableProps {
   onGroupPreview: (group: TestCaseIncidentGroup) => void;
   /** The row's open affordance drills into the group. */
   onGroupOpen: (group: TestCaseIncidentGroup) => void;
+  /** Groups picked for a bulk change, by group key. */
+  selectedKeys: Selection;
+  onSelectionChange: (keys: Selection) => void;
 }
 
 /** One status' slice of the breakdown bar, already sized against the group. */

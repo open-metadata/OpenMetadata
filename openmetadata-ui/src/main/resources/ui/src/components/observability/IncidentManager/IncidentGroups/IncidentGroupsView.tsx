@@ -28,13 +28,23 @@ import {
   ShieldTick,
   TrendUp01,
 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
+import { TestCaseResolutionStatusTypes as CreateStatusTypes } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
+import {
+  showErrorToast,
+  showInfoToast,
+  showSuccessToast,
+} from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
+import IncidentGroupBulkFailuresModal from './IncidentGroupBulkFailuresModal';
+import IncidentGroupBulkStatusModal from './IncidentGroupBulkStatusModal';
 import IncidentGroupByDropdown from './IncidentGroupByDropdown';
 import IncidentGroupDetail from './IncidentGroupDetail';
 import IncidentGroupDrawer from './IncidentGroupDrawer';
@@ -42,14 +52,22 @@ import {
   CLEARED_INCIDENT_GROUP_FILTERS,
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
 } from './IncidentGroups.constants';
-import { IncidentGroupsViewProps } from './IncidentGroups.types';
+import {
+  BulkIncidentChange,
+  BulkIncidentOutcome,
+  BulkIncidentStatus,
+  IncidentGroupBulkStatusModalProps,
+  IncidentGroupsViewProps,
+} from './IncidentGroups.types';
 import {
   countRecurringIncidentGroups,
   getIncidentGroupKey,
   hasActiveIncidentGroupFilters,
 } from './IncidentGroups.utils';
 import IncidentGroupsFilters from './IncidentGroupsFilters';
+import IncidentGroupsSelectionBar from './IncidentGroupsSelectionBar';
 import IncidentGroupsTable from './IncidentGroupsTable';
+import { useIncidentGroupBulkUpdate } from './useIncidentGroupBulkUpdate';
 import { useIncidentGroups } from './useIncidentGroups';
 
 /**
@@ -60,6 +78,7 @@ import { useIncidentGroups } from './useIncidentGroups';
 const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
   const { t } = useTranslation();
   const {
+    refresh,
     groupBy,
     filters,
     incidentGroups,
@@ -81,6 +100,9 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     handlePageChange,
     handlePageSizeChange,
   } = useIncidentGroups({ refreshKey });
+  const { isApplying, applyBulkChange } = useIncidentGroupBulkUpdate({
+    filters,
+  });
 
   /**
    * Only the loaded page can be counted: the endpoint reports the group total
@@ -99,6 +121,50 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
    * working in. Only a load with nothing to show yet takes the whole space.
    */
   const isInitialLoading = isLoading && isEmpty(incidentGroups);
+
+  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set());
+  // The status that needs more than itself (an assignee, a reason), while its
+  // details are being asked for.
+  const [pendingStatus, setPendingStatus] =
+    useState<IncidentGroupBulkStatusModalProps['status']>();
+  const [bulkOutcome, setBulkOutcome] = useState<BulkIncidentOutcome>();
+
+  // A selection is of the rows on screen; a new read replaces them.
+  useEffect(() => setSelectedKeys(new Set()), [incidentGroups]);
+
+  const selectedGroups =
+    selectedKeys === 'all'
+      ? incidentGroups
+      : incidentGroups.filter((group) =>
+          selectedKeys.has(getIncidentGroupKey(group))
+        );
+
+  const runBulkChange = async (change: BulkIncidentChange) => {
+    try {
+      const outcome = await applyBulkChange(selectedGroups, change);
+
+      if (outcome.failures.length > 0) {
+        setBulkOutcome(outcome);
+      } else if (outcome.total === 0) {
+        showInfoToast(t('message.bulk-incident-no-change'));
+      } else {
+        showSuccessToast(
+          t('message.bulk-incident-update-success', { count: outcome.passed })
+        );
+      }
+      setSelectedKeys(new Set());
+      refresh();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setPendingStatus(undefined);
+    }
+  };
+
+  const handleSetStatus = (status: BulkIncidentStatus) =>
+    status === CreateStatusTypes.ACK
+      ? runBulkChange({ kind: 'status', status })
+      : setPendingStatus(status);
 
   const [previewGroup, setPreviewGroup] = useState<TestCaseIncidentGroup>();
   const isRouteVisible = useIsRouteVisible();
@@ -209,28 +275,46 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     }
 
     return (
-      <TableCard.Root>
-        <IncidentGroupsTable
-          groupBy={groupBy}
-          groups={incidentGroups}
-          sortType={sortType}
-          onGroupOpen={handleOpenGroup}
-          onGroupPreview={setPreviewGroup}
-          onSortTypeChange={handleSortTypeChange}
-        />
-        <PaginationCardWithControls
-          className="tw:border-0"
-          page={currentPage}
-          pageSize={pageSize}
-          pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
-          total={Math.max(
-            1,
-            computeTotalPages(pageSize, paging?.total ?? incidentGroups.length)
-          )}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
-      </TableCard.Root>
+      <>
+        {selectedGroups.length > 0 && (
+          <IncidentGroupsSelectionBar
+            isApplying={isApplying}
+            selectedCount={selectedGroups.length}
+            onClearSelection={() => setSelectedKeys(new Set())}
+            onSetSeverity={(severity) =>
+              runBulkChange({ kind: 'severity', severity })
+            }
+            onSetStatus={handleSetStatus}
+          />
+        )}
+        <TableCard.Root>
+          <IncidentGroupsTable
+            groupBy={groupBy}
+            groups={incidentGroups}
+            selectedKeys={selectedKeys}
+            sortType={sortType}
+            onGroupOpen={handleOpenGroup}
+            onGroupPreview={setPreviewGroup}
+            onSelectionChange={setSelectedKeys}
+            onSortTypeChange={handleSortTypeChange}
+          />
+          <PaginationCardWithControls
+            className="tw:border-0"
+            page={currentPage}
+            pageSize={pageSize}
+            pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
+            total={Math.max(
+              1,
+              computeTotalPages(
+                pageSize,
+                paging?.total ?? incidentGroups.length
+              )
+            )}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </TableCard.Root>
+      </>
     );
   };
 
@@ -350,6 +434,19 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
       ) : (
         renderDetail()
       )}
+      <IncidentGroupBulkStatusModal
+        isApplying={isApplying}
+        status={pendingStatus}
+        onApply={(details) =>
+          pendingStatus &&
+          runBulkChange({ kind: 'status', status: pendingStatus, details })
+        }
+        onCancel={() => setPendingStatus(undefined)}
+      />
+      <IncidentGroupBulkFailuresModal
+        outcome={bulkOutcome}
+        onClose={() => setBulkOutcome(undefined)}
+      />
       <IncidentGroupDrawer
         filters={filters}
         // The app keeps this page mounted, hidden, while another route shows,
