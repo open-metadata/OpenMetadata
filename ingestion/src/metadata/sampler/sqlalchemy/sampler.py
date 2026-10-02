@@ -18,6 +18,7 @@ from collections.abc import Callable
 from typing import Any, cast
 
 from sqlalchemy import Column, inspect, select, text
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
@@ -398,11 +399,18 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
             columns = list(rnd.keys())
+        try:
+            type_codes = [entry[1] for entry in rnd.cursor.description]
+        except (AttributeError, IndexError, TypeError):
+            type_codes = [None] * len(columns)
         # The query returns raw driver values. A result named like a table column converts through that
-        # column's type, as a regular sample does, and a computed column stays as returned.
-        table_columns = {column.name.lower(): column for column in self.get_columns()}
-        row_columns = [table_columns.get(str(name).lower()) for name in columns]
-        processors = [None if column is None else column.type.result_processor(dialect, None) for column in row_columns]
+        # column's dialect type, as a regular sample does, and a computed column stays as returned.
+        table_columns = {column.name: column for column in self.get_columns()}
+        row_columns = [self._matching_column(str(name), table_columns) for name in columns]
+        processors = [
+            None if column is None else self._result_processor(column, dialect, type_code)
+            for column, type_code in zip(row_columns, type_codes, strict=True)
+        ]
         return TableData(
             columns=columns,
             rows=[
@@ -413,6 +421,26 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 for row in rnd.fetchmany(100)
             ],
         )
+
+    @staticmethod
+    def _matching_column(name: str, table_columns: dict[str, Column]) -> Column | None:
+        """An exact name match wins, since a table can hold columns whose names differ only in case."""
+        if name in table_columns:
+            return table_columns[name]
+        folded = name.lower()
+        return next((column for column in table_columns.values() if column.name.lower() == folded), None)
+
+    @staticmethod
+    def _result_processor(column: Column, dialect: Dialect, type_code: Any) -> Callable[[Any], Any] | None:
+        """The dialect's own processor, which a regular sample also uses, or None when it cannot be built.
+
+        A generic type can fail to build one for a dialect, as JSON does without a JSON deserializer.
+        """
+        try:
+            return column.type.dialect_impl(dialect).result_processor(dialect, type_code)
+        except Exception as exc:
+            logger.debug("Keeping raw %s values, its type has no processor for this dialect: %r", column.name, exc)
+            return None
 
     def _user_query_cell(self, column: Column | None, processor: Callable[[Any], Any] | None, cell: Any) -> Any:
         if column is None:

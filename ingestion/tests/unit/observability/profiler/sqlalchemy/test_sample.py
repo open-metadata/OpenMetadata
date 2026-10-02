@@ -15,12 +15,15 @@ Test Sample behavior
 
 import os
 import struct
+from decimal import Decimal
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Integer, LargeBinary, Numeric, String, TypeDecorator, func
+from sqlalchemy import JSON, TEXT, Column, Integer, LargeBinary, Numeric, String, TypeDecorator, func, text
+from sqlalchemy.dialects.postgresql import psycopg2
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.types import UserDefinedType
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -657,6 +660,61 @@ class SampleTest(TestCase):
             assert samples == [[[1, "gold"]], [[1, "GOLD"]]]
         finally:
             QueriedEnum.__table__.drop(bind=self.engine)
+
+    def test_user_query_keeps_raw_values_when_the_type_has_no_processor_for_the_dialect(self, sampler_mock):
+        """A generic type can fail to build a processor for a dialect, as JSON does without a JSON deserializer."""
+
+        class NoProcessorForDialect(UserDefinedType):
+            cache_ok = True
+
+            def get_col_spec(self, **kw):
+                return "TEXT"
+
+            def result_processor(self, dialect, coltype):
+                raise AttributeError(f"{dialect.name} has no JSON deserializer")
+
+        class QueriedDocument(Base):
+            __tablename__ = "queried_document"
+            id = Column(Integer, primary_key=True)
+            doc = Column(NoProcessorForDialect)
+
+        QueriedDocument.__table__.create(bind=self.engine)
+        try:
+            self.session.execute(text("INSERT INTO queried_document (id, doc) VALUES (1, '{\"a\": 1}')"))
+            self.session.commit()
+            with patch.object(SQASampler, "build_table_orm", return_value=QueriedDocument):
+                sampler = SQASampler(
+                    service_connection_config=self.sqlite_conn,
+                    ometa_client=None,
+                    entity=None,
+                    config=DatabaseSamplerConfig(sample_query="SELECT id, doc FROM queried_document"),
+                )
+            assert sampler.fetch_sample_data().rows == [[1, '{"a": 1}']]
+        finally:
+            QueriedDocument.__table__.drop(bind=self.engine)
+
+    def test_user_query_converts_through_the_dialect_type_like_a_regular_sample(self, sampler_mock):
+        """psycopg2 decodes JSON itself, so the generic JSON processor would decode a JSON string value twice."""
+        sampler = SQASampler(
+            service_connection_config=self.sqlite_conn,
+            ometa_client=None,
+            entity=None,
+            config=DatabaseSamplerConfig(sample_query="SELECT 1"),
+        )
+        document, amount = Column("doc", JSON), Column("amount", Numeric(10, 2))
+        dialect = psycopg2.dialect()
+        jsonb_processor = sampler._result_processor(document, dialect, 3802)
+        numeric_processor = sampler._result_processor(amount, dialect, 1700)
+        assert sampler._user_query_cell(document, jsonb_processor, "123") == "123"
+        assert sampler._user_query_cell(amount, numeric_processor, Decimal("1.50")) == Decimal("1.50")
+
+    def test_user_query_matches_columns_by_exact_name_before_case(self, sampler_mock):
+        """A table can hold columns whose names differ only in case."""
+        lower, upper = Column("id", Integer), Column("ID", String)
+        assert SQASampler._matching_column("ID", {"id": lower, "ID": upper}) is upper
+        assert SQASampler._matching_column("id", {"id": lower, "ID": upper}) is lower
+        assert SQASampler._matching_column("Id", {"ID": upper}) is upper
+        assert SQASampler._matching_column("total", {"id": lower}) is None
 
     @classmethod
     def tearDownClass(cls) -> None:
