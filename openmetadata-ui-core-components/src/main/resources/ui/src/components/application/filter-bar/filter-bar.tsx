@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { XClose } from '@untitledui/icons';
+import { XClose } from '../../../icons';
 import type { ComponentPropsWithRef, FC, ReactNode } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';

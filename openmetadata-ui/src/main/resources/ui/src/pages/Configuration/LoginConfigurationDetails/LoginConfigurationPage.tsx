@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,25 +31,15 @@ import {
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
-import { AuthProvider } from '../../../generated/settings/settings';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getLoginConfig } from '../../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const LoginConfigurationPage = () => {
   const { t } = useTranslation();
-  const { authConfig } = useApplicationStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(false);
   const [loginConfig, setLoginConfig] = useState<LoginConfiguration>();
-
-  const isBasicAuth = useMemo(() => {
-    return (
-      authConfig?.provider === AuthProvider.Basic ||
-      authConfig?.provider === AuthProvider.LDAP
-    );
-  }, [authConfig]);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -77,11 +68,11 @@ const LoginConfigurationPage = () => {
     navigate(ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG);
   };
 
+  // SettingsRouter only mounts this page under a provider whose login OpenMetadata owns, so the
+  // config is always meaningful here — no provider check of its own.
   useEffect(() => {
-    if (isBasicAuth) {
-      fetchLoginConfig();
-    }
-  }, [isBasicAuth]);
+    fetchLoginConfig();
+  }, []);
 
   if (loading) {
     return <Loader />;
@@ -116,7 +107,7 @@ const LoginConfigurationPage = () => {
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              <Typography className="m-0" color="secondary">
                 {t('label.max-login-fail-attempt-plural')}
                 <Tooltip
                   placement="top"
@@ -128,19 +119,19 @@ const LoginConfigurationPage = () => {
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={24}>
-              <Typography.Text data-testid="max-login-fail-attampts">
+              <Typography data-testid="max-login-fail-attampts">
                 {loginConfig?.maxLoginFailAttempts ?? NO_DATA_PLACEHOLDER}
-              </Typography.Text>
+              </Typography>
             </Col>
           </Row>
         </Col>
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              <Typography className="m-0" color="secondary">
                 {t('label.access-block-time')}
                 <Tooltip
                   placement="top"
@@ -152,19 +143,19 @@ const LoginConfigurationPage = () => {
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={24}>
-              <Typography.Text data-testid="access-block-time">
+              <Typography data-testid="access-block-time">
                 {loginConfig?.accessBlockTime ?? NO_DATA_PLACEHOLDER}
-              </Typography.Text>
+              </Typography>
             </Col>
           </Row>
         </Col>
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              <Typography className="m-0" color="secondary">
                 {t('label.jwt-token-expiry-time')}
                 <Tooltip
                   placement="top"
@@ -176,13 +167,13 @@ const LoginConfigurationPage = () => {
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={24}>
-              <Typography.Text data-testid="jwt-token-expiry-time">
+              <Typography data-testid="jwt-token-expiry-time">
                 {loginConfig?.jwtTokenExpiryTime ?? NO_DATA_PLACEHOLDER}{' '}
                 {t('label.second-plural')}
-              </Typography.Text>
+              </Typography>
             </Col>
           </Row>
         </Col>

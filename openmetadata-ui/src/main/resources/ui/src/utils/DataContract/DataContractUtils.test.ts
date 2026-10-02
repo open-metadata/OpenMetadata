@@ -259,14 +259,20 @@ describe('DataContractUtils', () => {
 
   describe('formatContractExecutionTick', () => {
     it('should extract timestamp and format as month', () => {
-      const result = formatContractExecutionTick('1640995200000_0');
+      const result = formatContractExecutionTick(
+        `${new Date(2022, 0, 1).getTime()}_0`
+      );
 
       expect(result).toBe('Jan');
     });
 
     it('should handle different months', () => {
-      expect(formatContractExecutionTick('1643673600000_0')).toBe('Feb');
-      expect(formatContractExecutionTick('1646092800000_0')).toBe('Mar');
+      expect(
+        formatContractExecutionTick(`${new Date(2022, 1, 1).getTime()}_0`)
+      ).toBe('Feb');
+      expect(
+        formatContractExecutionTick(`${new Date(2022, 2, 1).getTime()}_0`)
+      ).toBe('Mar');
     });
 
     it('should handle invalid timestamp gracefully', () => {
@@ -336,6 +342,30 @@ describe('DataContractUtils', () => {
       );
 
       expect(result).toEqual({});
+    });
+
+    it('should fail the SLA when any evaluated requirement was missed', () => {
+      const result = getConstraintStatus({
+        slaValidation: { refreshFrequencyMet: true, availabilityMet: false },
+      } as DataContractResult);
+
+      expect(result).toEqual({ sla: 'label.failed' });
+    });
+
+    it('should pass the SLA when every evaluated requirement was met', () => {
+      const result = getConstraintStatus({
+        slaValidation: { refreshFrequencyMet: true },
+      } as DataContractResult);
+
+      expect(result).toEqual({ sla: 'label.passed' });
+    });
+
+    it('should not pass an SLA nothing could evaluate', () => {
+      const result = getConstraintStatus({
+        slaValidation: { message: 'Not evaluated' },
+      } as DataContractResult);
+
+      expect(result).toEqual({ sla: 'label.not-evaluated' });
     });
   });
 

@@ -36,12 +36,12 @@ export const cardStyles = sortCx({
   },
   variants: {
     default: {
-      root: 'tw:border-1 tw:border-secondary tw:bg-primary',
+      root: 'tw:border-1 tw:border-subtle tw:bg-surface',
     },
     elevated: {
-      root: 'tw:border-1 tw:border-secondary tw:bg-primary tw:shadow-md',
+      root: 'tw:border-1 tw:border-subtle tw:bg-surface tw:shadow-md',
     },
-    outlined: { root: 'tw:border-2 tw:border-primary tw:bg-primary' },
+    outlined: { root: 'tw:border-2 tw:border-primary tw:bg-surface' },
     ghost: { root: 'tw:bg-transparent' },
   },
   colors: {
@@ -146,7 +146,7 @@ const CardFooter = ({ children, className, ...props }: CardFooterProps) => {
     <div
       {...props}
       className={cx(
-        'tw:border-t tw:border-secondary',
+        'tw:border-t tw:border-subtle',
         sizes[size].padding,
         className
       )}>

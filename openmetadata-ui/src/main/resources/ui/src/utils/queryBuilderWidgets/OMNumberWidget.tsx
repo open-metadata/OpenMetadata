@@ -23,9 +23,7 @@ const OMNumberWidget: FC<NumberWidgetProps> = ({
   const externalStr =
     value !== null && value !== undefined ? String(value) : '';
   const [localValue, setLocalValue] = useState(externalStr);
-  // Prevent external value sync from overwriting the user's in-progress input
-  // (e.g. typing "1." would round to 1, which would then reset the display to
-  // "1" and make it impossible to type a decimal).
+  // Without this, typing "1." rounds to 1, resets the display to "1" and makes a decimal impossible to type.
   const isFocusedRef = useRef(false);
 
   useEffect(() => {
@@ -35,6 +33,7 @@ const OMNumberWidget: FC<NumberWidgetProps> = ({
   }, [externalStr]);
 
   return (
+    // `qb-number-input` is the id Playwright locates by exact attribute match.
     <Input
       inputDataTestId="qb-number-input"
       isDisabled={readonly}

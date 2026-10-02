@@ -12,11 +12,12 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Card, Col, Modal, Row, Tabs, Typography } from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as RoleIcon } from '../../../assets/svg/role-colored.svg';
@@ -32,15 +33,12 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { getRoleByName, patchRole } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
@@ -62,7 +60,6 @@ const RolesDetailPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { fqn } = useFqn();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -73,8 +70,25 @@ const RolesDetailPage = () => {
   }>();
 
   const [addAttribute, setAddAttribute] = useState<AddAttribute>();
-  const [rolePermission, setRolePermission] =
-    useState<OperationPermission | null>(null);
+
+  // Fetch-owner, by fqn. Ungated: Role carries a `deleted` field per its generated type, but
+  // the old raw expressions here never referenced it (roles aren't soft-deleted through this
+  // page) — matching the ungated-site rule (TagPage.tsx/StoredProcedurePage.tsx precedent),
+  // not passing `deleted` here.
+  // canEditDisplayName is also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
+  const {
+    error: permissionsError,
+    canEditDisplayName: editDisplayNamePermission,
+    canDelete: hasDeletePermission,
+    hasViewAccess: viewBasicPermission,
+  } = useEntityPermissions(ResourceEntity.ROLE, fqn, { enabled: Boolean(fqn) });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const rolesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -95,39 +109,6 @@ const RolesDetailPage = () => {
       },
     ],
     [rolesPath, roleName]
-  );
-
-  const {
-    editDisplayNamePermission,
-    hasDeletePermission,
-    viewBasicPermission,
-  } = useMemo(() => {
-    const editDisplayNamePermission =
-      rolePermission?.EditAll || rolePermission?.EditDisplayName;
-    const hasDeletePermission = rolePermission?.Delete;
-    const viewBasicPermission =
-      rolePermission?.ViewAll || rolePermission?.ViewBasic;
-
-    return {
-      editDisplayNamePermission,
-      hasDeletePermission,
-      viewBasicPermission,
-    };
-  }, [rolePermission]);
-
-  const fetchRolePermission = useCallback(
-    async (fqn: string) => {
-      try {
-        const response = await getEntityPermissionByFqn(
-          ResourceEntity.ROLE,
-          fqn
-        );
-        setRolePermission(response);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [getEntityPermissionByFqn, setRolePermission]
   );
 
   const fetchRole = async () => {
@@ -281,16 +262,6 @@ const RolesDetailPage = () => {
     }
   };
 
-  const init = async () => {
-    if (!fqn) {
-      return;
-    }
-    await fetchRolePermission(fqn);
-    if (viewBasicPermission) {
-      fetchRole();
-    }
-  };
-
   const tabItems = useMemo(() => {
     return [
       {
@@ -352,9 +323,15 @@ const RolesDetailPage = () => {
     ];
   }, [role]);
 
+  // Permission fetching now lives in useEntityPermissions (above); this effect keeps the
+  // old init()'s "only fetch the role once view access is known" gate, reactive to the
+  // hook's resolved viewBasicPermission instead of a same-tick local variable (which also
+  // drops the old code's redundant re-fetch-permission-on-every-effect-run side effect).
   useEffect(() => {
-    init();
-  }, [fqn, rolePermission]);
+    if (fqn && viewBasicPermission) {
+      fetchRole();
+    }
+  }, [fqn, viewBasicPermission]);
 
   if (isLoading) {
     return <Loader />;
@@ -393,8 +370,8 @@ const RolesDetailPage = () => {
           </ErrorPlaceHolder>
         ) : (
           <>
-            <Row className="flex justify-between">
-              <Col span={23}>
+            <Box justify="between">
+              <div className="tw:min-w-0 tw:flex-1">
                 <EntityHeaderTitle
                   className="w-max-full"
                   displayName={role.displayName}
@@ -410,8 +387,8 @@ const RolesDetailPage = () => {
                   name={role?.name ?? ''}
                   serviceName="role"
                 />
-              </Col>
-              <Col span={1}>
+              </div>
+              <div>
                 <ManageButton
                   isRecursiveDelete
                   afterDeleteAction={() => navigate(rolesPath)}
@@ -425,8 +402,8 @@ const RolesDetailPage = () => {
                   entityType={EntityType.ROLE}
                   onEditDisplayName={handleDisplayNameUpdate}
                 />
-              </Col>
-            </Row>
+              </div>
+            </Box>
 
             <Description
               hasEditAccess
@@ -439,11 +416,25 @@ const RolesDetailPage = () => {
             />
 
             <Tabs
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              defaultActiveKey="policies"
-              items={tabItems}
-            />
+              defaultSelectedKey="policies">
+              <Tabs.List size="sm" type="underline" variant="card">
+                {tabItems.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabItems.map(({ key, children }) => (
+                <Tabs.Panel
+                  className="tw:rounded-xl tw:bg-primary"
+                  id={key}
+                  key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
           </>
         )}
 
@@ -466,12 +457,12 @@ const RolesDetailPage = () => {
               );
               setEntity(undefined);
             }}>
-            <Typography.Text>
+            <Typography>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
                 parent: roleName,
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         )}
         {addAttribute && (

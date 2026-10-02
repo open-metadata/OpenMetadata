@@ -193,6 +193,15 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   private record TestsRelationshipRevision(long revision) {}
 
+  /**
+   * {@code TestSuiteDAO} list/count queries inner-join test cases unless {@code
+   * includeEmptyTestSuites} is set, which left suites without test cases out of every reindex.
+   */
+  @Override
+  public ListFilter getReindexFilter() {
+    return super.getReindexFilter().addQueryParam("includeEmptyTestSuites", true);
+  }
+
   @Override
   public ResultList<TestSuite> listFromSearchWithOffset(
       UriInfo uriInfo,

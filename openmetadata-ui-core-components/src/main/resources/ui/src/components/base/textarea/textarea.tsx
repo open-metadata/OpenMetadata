@@ -13,12 +13,13 @@ import { Label } from '@/components/base/input/label';
 import { cx } from '@/utils/cx';
 import { fontSizeClass } from '@/utils';
 
-// Creates a data URL for an SVG resize handle with a given color.
-const getResizeHandleBg = (color: string) => {
-  return `url(data:image/svg+xml;base64,${btoa(
-    `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 2L2 10" stroke="${color}" stroke-linecap="round"/><path d="M11 7L7 11" stroke="${color}" stroke-linecap="round"/></svg>`
-  )})`;
-};
+// The resize grip: two short diagonal strokes in the corner. Chromium and
+// WebKit paint only background properties on ::-webkit-resizer — a mask is
+// ignored, which left a solid square — so the strokes are gradient bands in
+// currentColor, and the pseudo's `color` carries the semantic token (dark mode
+// included) without a hardcoded hex.
+const RESIZE_GRIP_CLASSES =
+  'tw:[&::-webkit-resizer]:text-border-primary tw:[&::-webkit-resizer]:bg-transparent tw:[&::-webkit-resizer]:bg-[linear-gradient(135deg,transparent_31%,currentColor_31%_37%,transparent_37%_47%,currentColor_47%_53%,transparent_53%)]';
 
 interface TextAreaBaseProps extends AriaTextAreaProps {
   ref?: Ref<HTMLTextAreaElement>;
@@ -40,8 +41,7 @@ export const TextAreaBase = ({
           // gone — the outline IS the focus indicator here, as in input.tsx.
           'tw:w-full tw:scroll-py-3 tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-3 tw:text-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary',
 
-          // Resize handle
-          'tw:[&::-webkit-resizer]:bg-(image:--resize-handle-bg) tw:[&::-webkit-resizer]:bg-contain tw:dark:[&::-webkit-resizer]:bg-(image:--resize-handle-bg-dark)',
+          RESIZE_GRIP_CLASSES,
 
           state.isFocused &&
             !state.isDisabled &&
@@ -57,12 +57,6 @@ export const TextAreaBase = ({
 
           typeof className === 'function' ? className(state) : className
         )
-      }
-      style={
-        {
-          '--resize-handle-bg': getResizeHandleBg('#D5D7DA'),
-          '--resize-handle-bg-dark': getResizeHandleBg('#373A41'),
-        } as React.CSSProperties
       }
     />
   );

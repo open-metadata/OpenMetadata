@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tooltip } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
@@ -45,7 +49,10 @@ import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
@@ -55,7 +62,6 @@ import {
 } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getOptionalFields } from '../../../utils/ServiceUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
@@ -70,6 +76,7 @@ import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElement
 import { ColumnsType, TableProps } from '../../common/Table/Table.interface';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
+
 interface ServicesProps {
   serviceName: ServiceCategory;
 }
@@ -392,7 +399,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                 record.fullyQualifiedName ?? record.name,
                 serviceName
               )}>
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchTerm)
               )}
             </Link>
@@ -426,7 +433,9 @@ const Services = ({ serviceName }: ServicesProps) => {
         filters: serviceTypeFilters,
         render: (serviceType) => (
           <span className="font-normal text-grey-body">
-            {stringToHTML(highlightSearchText(serviceType, searchTerm))}
+            {renderHighlightedText(
+              highlightSearchText(serviceType, searchTerm)
+            )}
           </span>
         ),
       },
@@ -450,12 +459,12 @@ const Services = ({ serviceName }: ServicesProps) => {
                     service.fullyQualifiedName ?? service.name,
                     serviceName
                   )}>
-                  <Typography.Text
+                  <Typography
                     className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
                     data-testid={`service-name-${service.name}`}
                     title={getEntityName(service)}>
                     {getEntityName(service)}
-                  </Typography.Text>
+                  </Typography>
                 </Link>
                 <div
                   className="p-t-xs text-grey-body break-all description-text"

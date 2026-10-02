@@ -87,10 +87,16 @@ class ContextMemorySearchVisibilityTest {
 
     assertFieldExists(
         json,
-        "$.bool.should[0].bool.must_not[?(@.term['entityType'].value=='"
+        "$.bool.should[0].bool.must_not[?(@.terms['entityType'] contains '"
             + Entity.CONTEXT_MEMORY
             + "')]",
-        "non-memory documents pass through via a must_not entityType branch");
+        "ungoverned documents pass through via a must_not entityType branch");
+    assertFieldExists(
+        json,
+        "$.bool.should[0].bool.must_not[?(@.terms['entityType'] contains '"
+            + Entity.CONTEXT_FILE
+            + "')]",
+        "context files are governed too, so the pass-through branch excludes them as well");
   }
 
   @Test
@@ -109,6 +115,10 @@ class ContextMemorySearchVisibilityTest {
         "Entity-visibility memories are visible to everyone");
     assertFieldExists(
         json,
+        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Public')]",
+        "Public memories are visible to everyone");
+    assertFieldExists(
+        json,
         "$.bool.should[1].bool.must[1].bool.should[?(@.nested.query.term['owners.id'].value=='"
             + USER_ID
             + "')]",
@@ -117,6 +127,49 @@ class ContextMemorySearchVisibilityTest {
         json,
         "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
         "Shared memories are matched via sharedWithIds (gated by visibility=Shared)");
+  }
+
+  @Test
+  void nonAdminSubjectRestrictsFileDocumentsToVisibleOnes() {
+    DocumentContext json = JsonPath.parse(buildElasticJson(nonAdminSubject()));
+
+    assertFieldExists(
+        json,
+        "$.bool.should[2].bool.must[?(@.term['entityType'].value=='" + Entity.CONTEXT_FILE + "')]",
+        "the file branch is scoped to contextFile documents");
+    assertFieldExists(
+        json,
+        "$.bool.should[2].bool.must[1].bool.should[1].bool.should[?(@.nested.query.term['owners.id'].value=='"
+            + USER_ID
+            + "')]",
+        "owners see their own Private documents");
+    assertFieldDoesNotExist(
+        json,
+        "$.bool.should[2].bool.must[1].bool.should[1].bool.should[?(@.term['visibility'].value=='Public')]",
+        "Public files are not visible to non-owners through search");
+  }
+
+  @Test
+  void aFileWithNoVisibilityStampedStaysVisible() {
+    // Every document uploaded before sharing existed has no visibility. Applying the memory rule to
+    // those would empty the Context Center rather than protect anything, so the file branch admits
+    // them explicitly — matching ContextFileVisibility#isVisibleToUser on the REST side.
+    DocumentContext json = JsonPath.parse(buildElasticJson(nonAdminSubject()));
+
+    assertFieldExists(
+        json,
+        "$.bool.should[2].bool.must[1].bool.should[?(@.bool.must_not[?(@.exists.field=='visibility')])]",
+        "a document with no visibility stamped is not restricted");
+  }
+
+  @Test
+  void orgWideOnlyFilterKeepsUnstampedFilesReadable() {
+    DocumentContext json = JsonPath.parse(orgWideOnlyJson());
+
+    assertFieldExists(
+        json,
+        "$.bool.should[2].bool.must[1].bool.should[?(@.bool.must_not[?(@.exists.field=='visibility')])]",
+        "the fail-closed default still admits documents that predate sharing");
   }
 
   @Test
@@ -198,20 +251,30 @@ class ContextMemorySearchVisibilityTest {
 
     assertFieldExists(
         json,
-        "$.bool.should[0].bool.must_not[?(@.term['entityType'].value=='"
+        "$.bool.should[0].bool.must_not[?(@.terms['entityType'] contains '"
             + Entity.CONTEXT_MEMORY
             + "')]",
-        "non-memory documents pass through via a must_not entityType branch");
+        "ungoverned documents pass through via a must_not entityType branch");
+    assertFieldExists(
+        json,
+        "$.bool.should[0].bool.must_not[?(@.terms['entityType'] contains '"
+            + Entity.CONTEXT_FILE
+            + "')]",
+        "context files are governed too, so the pass-through branch excludes them as well");
   }
 
   @Test
-  void orgWideOnlyFilterAdmitsOnlyEntityVisibilityMemories() {
+  void orgWideOnlyFilterAdmitsPublicAndEntityMemories() {
     DocumentContext json = JsonPath.parse(orgWideOnlyJson());
 
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[?(@.term['visibility'].value=='Entity')]",
+        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Entity')]",
         "the memory branch admits Entity-visibility memories");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Public')]",
+        "the memory branch admits Public memories");
     assertFieldDoesNotExist(
         json, "$..term['owners.id']", "a subject-less path must not match by ownership");
     assertFieldDoesNotExist(
@@ -230,7 +293,7 @@ class ContextMemorySearchVisibilityTest {
   }
 
   @Test
-  void isOrgWideReadableAdmitsEveryNonMemoryDocument() {
+  void isOrgWideReadableAdmitsDocumentsWithoutVisibilityRules() {
     assertTrue(ContextMemorySearchVisibility.isOrgWideReadable(null));
     assertTrue(ContextMemorySearchVisibility.isOrgWideReadable(Map.of()));
     assertTrue(
@@ -242,6 +305,8 @@ class ContextMemorySearchVisibilityTest {
   void isOrgWideReadableRejectsRestrictedMemories() {
     assertTrue(
         ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.ENTITY)));
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.PUBLIC)));
     assertFalse(
         ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.PRIVATE)));
     assertFalse(
@@ -250,6 +315,27 @@ class ContextMemorySearchVisibilityTest {
         ContextMemorySearchVisibility.isOrgWideReadable(
             Map.of("entityType", Entity.CONTEXT_MEMORY)),
         "a memory with no indexed visibility is not org-wide");
+  }
+
+  @Test
+  void isOrgWideReadableKeepsUnstampedFilesAndRejectsRestrictedFiles() {
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(Map.of("entityType", Entity.CONTEXT_FILE)));
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType", Entity.CONTEXT_FILE, "visibility", MemoryVisibility.ENTITY.value())));
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType",
+                Entity.CONTEXT_FILE,
+                "visibility",
+                MemoryVisibility.PRIVATE.value())));
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType", Entity.CONTEXT_FILE, "visibility", MemoryVisibility.PUBLIC.value())));
   }
 
   private Map<String, Object> memoryDocument(MemoryVisibility visibility) {

@@ -26,11 +26,9 @@ import {
 } from '../../../../../constants/constants';
 import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import {
-  IngestionServicePermission,
-  ResourceEntity,
-} from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { IngestionServicePermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../../enums/common.enum';
+import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
@@ -52,8 +50,8 @@ import {
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import Table from '../../../../common/Table/Table';
 import { ColumnsType } from '../../../../common/Table/Table.interface';
+import Table from '../../../../common/Table/TableV2';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 import './ingestion-list-table.less';

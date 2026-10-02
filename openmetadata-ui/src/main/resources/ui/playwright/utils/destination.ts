@@ -26,29 +26,27 @@ const selectOwnedOption = async ({
   optionName,
   page,
 }: SelectOwnedOptionArgs) => {
+  await control.focus();
+  // Index-keyed destination rows remount on every form-value write, tearing down
+  // the open listbox mid-click ("element detached from the DOM"). Reopen and
+  // re-resolve the listbox on every attempt so a torn-down popover can recover.
   await expect(async () => {
     if ((await control.getAttribute('aria-expanded')) !== 'true') {
       await open();
     }
-
-    const listboxId = await control.getAttribute('aria-controls');
-    if (!listboxId) {
-      throw new Error('Destination popup did not expose aria-controls');
-    }
-
-    // Destination selection replaces its RHF object, which can remount the
-    // React Aria popup during a click. Re-resolving the popup on each retry
-    // also prevents options from another open destination being selected.
-    await page
-      .locator(`[role="listbox"][id="${listboxId}"]`)
+    await expect(control).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 2_000,
+    });
+    const listboxId = (await control.getAttribute('aria-controls')) ?? '';
+    expect(listboxId).toBeTruthy();
+    const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
+    await listbox
       .getByRole('option', { exact: true, name: optionName })
       .click({ timeout: 2_000 });
-  }).toPass({ timeout: 15_000 });
-
-  // A remounted control can leave its previous portal open even after the
-  // selection lands. Moving focus out prevents that popup polluting the next
-  // destination interaction without sending Escape to the surrounding form.
-  await control.blur().catch(() => undefined);
+    // The exiting overlay still owns focus until it unmounts. Opening the next
+    // picker during that transition can restore focus into the old control.
+    await expect(listbox).toBeHidden({ timeout: 2_000 });
+  }).toPass({ timeout: 10_000 });
 };
 
 export const selectComboBoxOption = async ({
@@ -62,15 +60,16 @@ export const selectComboBoxOption = async ({
 }) => {
   const input = page.getByTestId(testId).getByRole('combobox');
   await expect(input).toBeVisible();
+  await input.hover();
+  await input.fill('');
   await selectOwnedOption({
     control: input,
-    open: async () => {
-      await input.fill('');
-      await input.press('ArrowDown');
-    },
+    open: () => input.press('ArrowDown'),
     optionName,
     page,
   });
+  await expect(input).toHaveValue(optionName);
+  await input.blur();
   await expect(input).toHaveValue(optionName);
 };
 
@@ -92,6 +91,7 @@ export const selectDropdownOption = async ({
     page,
   });
   await expect(trigger).toContainText(optionName);
+  await trigger.blur();
 };
 
 export const ensureAccordionExpanded = async (
@@ -104,9 +104,12 @@ export const ensureAccordionExpanded = async (
   });
   await expect(trigger).toBeVisible();
 
-  if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
-    await trigger.click();
-  }
-
-  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.click();
+    }
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 10_000 });
 };

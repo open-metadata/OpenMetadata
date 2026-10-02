@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LineageData } from '../../../Lineage/Lineage.interface';
+import { LineageData } from '../../../../interface/lineage.interface';
 
 export interface LineageTabContentProps {
   entityFqn: string;

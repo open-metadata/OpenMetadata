@@ -14,35 +14,52 @@
 import type { FormInstance } from 'antd';
 import type { ComponentType } from 'react';
 import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
-import type {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
-import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
-import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
+import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import type { ResourceEntity } from '../../enums/permissions.enum';
+import type { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import {
-  Destination,
+  AlertType,
   EventFilterRule,
-  EventSubscription,
-  SubscriptionCategory,
-  SubscriptionType,
-  Webhook,
 } from '../../generated/events/eventSubscription';
+import { EventType } from '../../generated/type/changeEvent';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
-import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
+import type {
+  AddAlertPageLoadingState,
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+  ModifiedWebhookConfig,
+} from '../../utils/AlertsClassBase.interface';
+
+export type {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+  ModifiedWebhookConfig,
+};
 
 export interface ObservabilityFilterResourceDescriptor {
   containerEntities?: string[];
   name?: string;
   supportedActions?: EventFilterRule[];
+  /** Event types the source emits; narrows the event-type filter options. */
+  supportedEventTypes?: EventType[];
   supportedFilters?: EventFilterRule[];
 }
 
 export interface UseObservabilityAlertFormOptions {
   afterSaveAction?: (fqn: string) => Promise<void> | void;
+  /** Defaults to Observability; selects which resource catalogue to load. */
+  alertType?: AlertType;
   form?: FormInstance<ModifiedCreateEventSubscription>;
   fqn?: string;
   onCancel?: () => void;
+}
+
+export interface UseAlertFormDataOptions
+  extends Omit<UseObservabilityAlertFormOptions, 'form'> {
+  /** The chosen alert source; narrows the loaded source catalogue. */
+  selectedTrigger?: string;
 }
 
 export interface UseObservabilityAlertResourcesReturn {
@@ -66,35 +83,6 @@ export interface UseObservabilityAlertTemplatesOptions {
   getResourcePermission: (
     resourceEntity: ResourceEntity
   ) => Promise<OperationPermission>;
-}
-
-export interface ModifiedWebhookConfig extends Webhook {
-  headers?: { key: string; value: string }[];
-  queryParams?: { key: string; value: string }[];
-}
-
-export interface ModifiedDestination extends Destination {
-  destinationType: SubscriptionType | SubscriptionCategory;
-  config?: ModifiedWebhookConfig;
-}
-
-export interface ModifiedEventSubscription
-  extends Omit<EventSubscription, 'notificationTemplate'> {
-  destinations: ModifiedDestination[];
-  notificationTemplate?: string | EventSubscription['notificationTemplate'];
-  timeout: number;
-  readTimeout: number;
-}
-
-export interface ModifiedCreateEventSubscription
-  extends Omit<CreateEventSubscription, 'notificationTemplate'> {
-  notificationTemplate?:
-    | string
-    | CreateEventSubscription['notificationTemplate'];
-  customNotificationTemplateData?: NotificationTemplate;
-  destinations: ModifiedDestination[];
-  timeout: number;
-  readTimeout: number;
 }
 
 export interface UseObservabilityAlertFormReturn {
@@ -122,6 +110,11 @@ export interface UseObservabilityAlertFormReturn {
   templateResourcePermission: OperationPermission;
   templates: NotificationTemplate[];
 }
+
+export type UseAlertFormDataReturn = Omit<
+  UseObservabilityAlertFormReturn,
+  'form'
+>;
 
 export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
 

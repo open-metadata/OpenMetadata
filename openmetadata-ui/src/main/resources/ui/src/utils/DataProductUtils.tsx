@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
+import { Space } from 'antd';
 import { noop } from 'lodash';
 import { lazy } from 'react';
 import {
@@ -26,7 +28,6 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import { Icon as ImageIcon } from '../components/common/Icon/Icon';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -35,8 +36,8 @@ import { DataProductDomainWidget } from '../components/DataProducts/DataProductD
 import DataQualityDashboard from '../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import type { AssetsTabRef } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import type { EntityReference } from '../generated/entity/data/table';
@@ -452,17 +453,18 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
     <Space direction="vertical" size={0}>
       <Space>
         <Icon component={DataProductIcon} style={{ fontSize: '16px' }} />
-        <Typography.Text>{getEntityName(props)}</Typography.Text>
+        <Typography>{getEntityName(props)}</Typography>
       </Space>
       {props.description && (
-        <Typography.Paragraph
+        <Typography
+          as="div"
           className="data-product-list-description"
           ellipsis={{
             tooltip: props.description,
             rows: 2,
           }}>
           <RichTextEditorPreviewerV1 markdown={props.description} />
-        </Typography.Paragraph>
+        </Typography>
       )}
     </Space>
   );

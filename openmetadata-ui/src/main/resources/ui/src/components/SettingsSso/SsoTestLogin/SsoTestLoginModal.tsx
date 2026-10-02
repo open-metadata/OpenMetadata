@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Modal, Space, Typography } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
+import { Modal, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,35 +40,35 @@ const SsoTestLoginModal = ({
         className="sso-test-login-details"
         data-testid="sso-test-login-details">
         {result.resolvedPrincipal && (
-          <Typography.Paragraph className="m-b-0">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.user')}:</strong> {result.resolvedPrincipal}
-          </Typography.Paragraph>
+          </Typography>
         )}
         {result.resolvedEmail && (
-          <Typography.Paragraph className="m-b-0">
+          <Typography as="p" className="tw:wrap-break-word m-b-0">
             <strong>{t('label.email')}:</strong> {result.resolvedEmail}
-          </Typography.Paragraph>
+          </Typography>
         )}
         {!isEmpty(result.mappedRoles) && (
-          <Typography.Paragraph className="m-b-0">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.role-plural')}:</strong>{' '}
             {result.mappedRoles?.join(', ')}
-          </Typography.Paragraph>
+          </Typography>
         )}
         {!isEmpty(result.mappedTeams) && (
-          <Typography.Paragraph className="m-b-0">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.team-plural')}:</strong>{' '}
             {result.mappedTeams?.join(', ')}
-          </Typography.Paragraph>
+          </Typography>
         )}
         {result.domainCheck?.enforced && (
-          <Typography.Paragraph className="m-b-0">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.domain')}:</strong>{' '}
             {result.domainCheck.resolvedDomain}{' '}
             {result.domainCheck.passed
               ? `(${t('label.success')})`
               : `(${t('label.failed')})`}
-          </Typography.Paragraph>
+          </Typography>
         )}
       </div>
     );
@@ -109,9 +111,7 @@ const SsoTestLoginModal = ({
           className="d-flex flex-col items-center gap-3 p-md"
           data-testid="sso-test-login-loading">
           <Loader size="small" />
-          <Typography.Text>
-            {t('message.sso-test-login-waiting')}
-          </Typography.Text>
+          <Typography>{t('message.sso-test-login-waiting')}</Typography>
         </div>
       );
     }
@@ -137,9 +137,9 @@ const SsoTestLoginModal = ({
       open={open}
       title={t('label.test-login')}
       onCancel={onClose}>
-      <Typography.Paragraph className="text-grey-muted">
+      <Typography as="p" color="secondary">
         {t('message.sso-test-login-description')}
-      </Typography.Paragraph>
+      </Typography>
       {body}
     </Modal>
   );

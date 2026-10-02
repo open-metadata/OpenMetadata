@@ -69,7 +69,6 @@ public class ElasticSearchVectorService implements VectorIndexService {
       ElasticsearchClient client, EmbeddingClient embeddingClient, int knnNumCandidatesMultiplier) {
     if (instance != null) {
       LOG.warn("ElasticSearchVectorService already initialized, reinitializing");
-      EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
     ElasticSearchVectorService svc =
         new ElasticSearchVectorService(client, embeddingClient, knnNumCandidatesMultiplier);
@@ -93,7 +92,9 @@ public class ElasticSearchVectorService implements VectorIndexService {
   private void registerVectorEmbeddingHandler() {
     try {
       VectorEmbeddingHandler handler = new VectorEmbeddingHandler(this);
-      EntityLifecycleEventDispatcher.getInstance().registerHandler(handler);
+      // Replace, so a re-init hands over to the new service without a window in which entity
+      // writes see no vector handler at all.
+      EntityLifecycleEventDispatcher.getInstance().replaceHandler(handler);
       LOG.info("Registered VectorEmbeddingHandler for entity lifecycle events");
     } catch (Exception e) {
       LOG.error("Failed to register VectorEmbeddingHandler", e);
@@ -111,9 +112,25 @@ public class ElasticSearchVectorService implements VectorIndexService {
       double threshold,
       String preference,
       SubjectContext subjectContext) {
+    return search(
+        new VectorSearchParameters(
+            query, filters, size, from, k, threshold, preference, subjectContext, null));
+  }
+
+  @Override
+  @SuppressWarnings("unchecked")
+  public VectorSearchResponse search(VectorSearchParameters parameters) {
+    String query = parameters.query();
+    int size = parameters.size();
+    int from = parameters.from();
+    int k = parameters.k();
+    double threshold = parameters.threshold();
     long start = System.currentTimeMillis();
     try {
-      float[] queryVector = embeddingClient.embed(query);
+      // embedQuery, not embed: providers that distinguish the two (Cohere's search_query vs
+      // search_document input type) produce a worse vector for a question embedded as a
+      // document. The OpenSearch path already does this.
+      float[] queryVector = embeddingClient.embedQuery(query);
       LinkedHashMap<String, List<Map<String, Object>>> byParent = new LinkedHashMap<>();
       int rawOffset = 0;
       long totalHits = -1L;
@@ -130,14 +147,11 @@ public class ElasticSearchVectorService implements VectorIndexService {
         String queryJson =
             VectorSearchQueryBuilder.buildNativeESQuery(
                 queryVector,
-                overFetchSize,
-                rawOffset,
-                k,
-                filters,
-                knnNumCandidatesMultiplier,
-                subjectContext);
+                parameters.withPagination(overFetchSize, rawOffset),
+                knnNumCandidatesMultiplier);
         String endpoint =
-            SearchUtils.appendPreferenceParam("/" + indexName + "/_search", preference);
+            SearchUtils.appendPreferenceParam(
+                "/" + indexName + "/_search", parameters.preference());
         String responseBody = executeGenericRequest("POST", endpoint, queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);

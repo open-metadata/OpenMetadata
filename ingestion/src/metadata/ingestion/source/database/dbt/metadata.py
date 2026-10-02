@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.data.metric import (
     MetricFilter,
     MetricGranularity,
     MetricMeasure,
+    UnitOfMeasurement,
 )
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -45,6 +46,7 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
+from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -63,6 +65,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     FullyQualifiedEntityName,
     SqlQuery,
     Timestamp,
@@ -165,8 +168,10 @@ class DbtSource(DbtServiceSource):
             self.source_config.dbtClassificationName if self.source_config.dbtClassificationName else "dbtTags"
         )
         self.omd_custom_properties = {}
+        self.omd_metric_custom_properties = {}
         self.extracted_custom_properties = {}
         self.extracted_domains = {}
+        self.extracted_data_products = {}
         # Upstream nodes already reported as unresolved, so a dbt project whose source
         # database was never ingested reports each missing upstream once instead of once
         # per referencing model. Bounded by the number of distinct upstream nodes in the
@@ -191,20 +196,23 @@ class DbtSource(DbtServiceSource):
 
     def _load_omd_custom_properties(self):
         """
-        Loads custom properties definitions for tables
+        Loads custom properties definitions for the entity types dbt writes them to
         """
+        self.omd_custom_properties = self._fetch_custom_property_definitions("table")
+        self.omd_metric_custom_properties = self._fetch_custom_property_definitions("metric")
+
+    def _fetch_custom_property_definitions(self, entity_type: str) -> dict[str, Any]:
+        definitions: dict[str, Any] = {}
         try:
-            response = self.metadata.client.get(
-                f"/metadata/types/name/table?fields=customProperties"  # noqa: F541
-            )
+            response = self.metadata.client.get(f"/metadata/types/name/{entity_type}?fields=customProperties")
 
-            if response and "customProperties" in response:
-                for prop in response["customProperties"]:
-                    self.omd_custom_properties[prop["name"]] = prop
+            for prop in (response or {}).get("customProperties") or []:
+                definitions[prop["name"]] = prop
 
-            logger.debug(f"Loaded {len(self.omd_custom_properties)} custom properties for tables")
+            logger.debug("Loaded %d custom properties for %s", len(definitions), entity_type)
         except Exception as exc:
-            logger.warning(f"Error loading custom properties: {exc}")
+            logger.warning("Error loading custom properties for %s: %s", entity_type, exc)
+        return definitions
 
     def get_dbt_domain(self, manifest_node: Any) -> EntityReference | None:
         """
@@ -410,6 +418,52 @@ class DbtSource(DbtServiceSource):
             logger.warning(f"Failed to update dbt domain for {table_fqn}: {exc}")
             logger.debug(traceback.format_exc())
 
+    def process_dbt_data_products(self, data_model_link: DataModelLink):
+        """
+        Attach the table to every Data Product listed in
+        meta.openmetadata.dataProducts. Products are resolved through the
+        OpenMetadata API; unknown products are reported as warnings and never
+        created implicitly. Re-running is idempotent because the assets/add
+        endpoint only adds the relationship when it is missing.
+        """
+        table_entity: Table = data_model_link.table_entity
+
+        if not table_entity:
+            return
+
+        table_fqn = model_str(table_entity.fullyQualifiedName)
+        product_names = self.extracted_data_products.get(table_fqn)
+
+        if not product_names:
+            return
+
+        asset_ref = EntityReference(id=table_entity.id, type="table")
+
+        for product_name in product_names:
+            try:
+                data_product = self.metadata.get_by_name(entity=DataProduct, fqn=product_name)
+
+                if not data_product:
+                    logger.warning(
+                        "Data Product '%s' not found in OpenMetadata for table %s; skipping assignment",
+                        product_name,
+                        table_fqn,
+                    )
+                    continue
+
+                self.metadata.add_assets_to_data_product(model_str(data_product.fullyQualifiedName), [asset_ref])
+                logger.info("Added table %s to Data Product '%s'", table_fqn, product_name)
+
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning(
+                    "Failed to assign Data Product '%s' to %s: %s. If this is a domain validation "
+                    "error, ensure the table's domain matches the Data Product's domain.",
+                    product_name,
+                    table_fqn,
+                    exc,
+                )
+                logger.debug(traceback.format_exc())
+
     def process_dbt_custom_properties(self, data_model_link: DataModelLink):
         """
         Method to process DBT custom properties using new patch_custom_properties method
@@ -461,6 +515,21 @@ class DbtSource(DbtServiceSource):
         custom_properties: dict[str, Any],
     ) -> dict[str, Any] | None:
         """
+        Validates and converts a table's custom properties against the table definitions
+        """
+        return self._validate_custom_properties_against(
+            definitions=self.omd_custom_properties,
+            custom_properties=custom_properties,
+            entity_label=f"Table {model_str(table_entity.fullyQualifiedName)}",
+        )
+
+    def _validate_custom_properties_against(
+        self,
+        definitions: dict[str, Any],
+        custom_properties: dict[str, Any],
+        entity_label: str,
+    ) -> dict[str, Any] | None:
+        """
         Validates and converts custom properties with comprehensive type checking.
 
         This method performs three-layer validation:
@@ -469,30 +538,30 @@ class DbtSource(DbtServiceSource):
         3. Format validation - Does the value meet format requirements?
 
         Args:
-            table_entity: The table entity being processed
+            definitions: Custom property definitions registered for the target entity type
             custom_properties: Dictionary of custom property names to values from DBT
+            entity_label: Entity being processed, used in the validation log messages
 
         Returns:
             Dictionary of validated and converted custom properties, or None if no valid properties
         """
         valid_custom_properties = {}
         validation_errors = []
-        table_fqn = table_entity.fullyQualifiedName.root
 
-        logger.debug(f"Validating {len(custom_properties)} custom properties for table {table_fqn}")
+        logger.debug("Validating %d custom properties for %s", len(custom_properties), entity_label)
 
         for field_name, field_value in custom_properties.items():
             # Step 1: Check if property exists in OpenMetadata
-            if field_name not in self.omd_custom_properties:
+            if field_name not in definitions:
                 error_msg = (
                     f"Custom property '{field_name}' not found in OpenMetadata. "
                     f"Please create it in the OpenMetadata UI before ingesting."
                 )
-                logger.warning(f"Table {table_fqn}: {error_msg}")
+                logger.warning("%s: %s", entity_label, error_msg)
                 validation_errors.append(f"{field_name}: Property not defined")
                 continue
 
-            custom_property = self.omd_custom_properties[field_name]
+            custom_property = definitions[field_name]
             property_type = custom_property["propertyType"]["name"]
 
             # Extract property configuration (format, enum values, etc.)
@@ -518,7 +587,7 @@ class DbtSource(DbtServiceSource):
                     value=field_value,
                     error_detail=error_detail,
                 )
-                logger.warning(f"Table {table_fqn}: {error_msg}")
+                logger.warning("%s: %s", entity_label, error_msg)
                 validation_errors.append(f"{field_name}: {error_detail}")
                 continue
 
@@ -527,38 +596,51 @@ class DbtSource(DbtServiceSource):
                 error_msg = (
                     f"Failed to convert custom property '{field_name}' (type: {property_type}, value: {field_value})"
                 )
-                logger.warning(f"Table {table_fqn}: {error_msg}")
+                logger.warning("%s: %s", entity_label, error_msg)
                 validation_errors.append(f"{field_name}: Conversion failed")
                 continue
 
             # Log if enum values were filtered
             if property_type == "enum" and converted_value != field_value:
                 logger.debug(
-                    f"Table {table_fqn}: Filtered enum property '{field_name}' from {field_value} to {converted_value}"
+                    "%s: Filtered enum property '%s' from %s to %s",
+                    entity_label,
+                    field_name,
+                    field_value,
+                    converted_value,
                 )
 
             # Successfully validated and converted
             valid_custom_properties[field_name] = converted_value
             logger.debug(
-                f"✓ Validated custom property '{field_name}' for table {table_fqn}: "
-                f"{field_value} → {converted_value} (type: {property_type})"
+                "✓ Validated custom property '%s' for %s: %s → %s (type: %s)",
+                field_name,
+                entity_label,
+                field_value,
+                converted_value,
+                property_type,
             )
 
         # Log validation summary
         if validation_errors:
             logger.warning(
-                f"Custom property validation errors for table {table_fqn}:\n"
-                + "\n".join(f"  • {err}" for err in validation_errors)
+                "Custom property validation errors for %s:\n%s",
+                entity_label,
+                "\n".join(f"  • {err}" for err in validation_errors),
             )
 
         if valid_custom_properties:
             logger.debug(
-                f"Successfully validated {len(valid_custom_properties)}/{len(custom_properties)} "
-                f"custom properties for table {table_fqn}"
+                "Successfully validated %d/%d custom properties for %s",
+                len(valid_custom_properties),
+                len(custom_properties),
+                entity_label,
             )
         else:
             logger.warning(
-                f"No valid custom properties found for table {table_fqn} (attempted: {len(custom_properties)})"
+                "No valid custom properties found for %s (attempted: %d)",
+                entity_label,
+                len(custom_properties),
             )
 
         return valid_custom_properties if valid_custom_properties else None
@@ -1375,6 +1457,47 @@ class DbtSource(DbtServiceSource):
 
             tags = self._extract_metric_tags(metric_node)
 
+            # Governance metadata lives in the node-level meta (dbt copies config.meta: onto
+            # manifest_node.meta while parsing). Tables already ingest owners/domain/tier/
+            # glossary/custom properties from there; metrics must too.
+            dbt_meta = None
+            raw_meta = getattr(metric_node, "meta", None)
+            if raw_meta:
+                dbt_meta = DbtMeta(**raw_meta)
+                # Tier/glossary/tags flow through the tag channel; owner/domain/custom
+                # properties/unit of measurement are read directly below. process_dbt_meta also
+                # records table-level domain and custom-property side effects, so only feed it
+                # meta that needs the tag channel.
+                om_meta = raw_meta.get("openmetadata") if isinstance(raw_meta, dict) else None
+                if isinstance(om_meta, dict) and any(om_meta.get(k) for k in ("tier", "glossary", "tags")):
+                    tag_meta = {"openmetadata": {k: om_meta[k] for k in ("tier", "glossary", "tags") if om_meta.get(k)}}
+                    tags = (tags or []) + (self.process_dbt_meta(tag_meta, metric_name) or [])
+
+            owners = self.get_dbt_owner(metric_node, None)
+            domain_ref = self.get_dbt_domain(metric_node)
+            unit_of_measurement = None
+            custom_unit = None
+            if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.unit:
+                unit_value = dbt_meta.openmetadata.unit.upper()
+                if unit_value in set(UnitOfMeasurement.__members__) and unit_value != UnitOfMeasurement.OTHER.value:
+                    unit_of_measurement = UnitOfMeasurement(unit_value)
+                else:
+                    # MetricRepository.validateCustomUnitOfMeasurement nulls customUnitOfMeasurement
+                    # unless unitOfMeasurement is OTHER, and rejects OTHER without one - so a
+                    # free-form dbt unit only survives when both are sent together.
+                    unit_of_measurement = UnitOfMeasurement.OTHER
+                    custom_unit = dbt_meta.openmetadata.unit
+            extension = None
+            if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.customProperties:
+                # EntityRepository.validateExtension rejects the whole create request when a field
+                # is not registered for the metric type, which would cost the metric itself and the
+                # rest of its governance metadata - so drop unknown fields like the table path does.
+                valid_properties = self._validate_custom_properties_against(
+                    definitions=self.omd_metric_custom_properties,
+                    custom_properties=dict(dbt_meta.openmetadata.customProperties),
+                    entity_label=f"Metric {metric_name}",
+                )
+                extension = EntityExtension(root=valid_properties) if valid_properties else None
             create_metric = CreateMetricRequest(
                 name=metric_name,
                 displayName=label or metric_name,
@@ -1387,6 +1510,11 @@ class DbtSource(DbtServiceSource):
                 measures=measures or None,
                 filters=filters or None,
                 tags=tags or None,
+                owners=owners,
+                domains=[domain_ref.fullyQualifiedName] if domain_ref and domain_ref.fullyQualifiedName else None,
+                unitOfMeasurement=unit_of_measurement,
+                customUnitOfMeasurement=custom_unit,
+                extension=extension,
             )
 
             yield Either(right=create_metric)
@@ -1418,12 +1546,44 @@ class DbtSource(DbtServiceSource):
         return metric_expression, related_metrics
 
     @staticmethod
+    def _metric_aggregation(type_params: Any) -> str | None:
+        """Return the aggregation function name from the dbt 1.12+ inline spec.
+
+        In the measure-less spec the aggregation lives on
+        ``type_params.metric_aggregation_params.agg``. The manifest parser keeps that
+        block as an extra attribute, so it may arrive as a dict or an object. Returns
+        ``None`` for the pre-1.12 spec, where the measure itself carries the aggregation.
+        """
+        params = getattr(type_params, "metric_aggregation_params", None)
+        if params is None:
+            return None
+        agg = params.get("agg") if isinstance(params, dict) else getattr(params, "agg", None)
+        return getattr(agg, "value", agg) if agg else None
+
+    @staticmethod
+    def _is_simple_metric(metric_node: Any) -> bool:
+        """True when the metric is a dbt ``simple`` metric.
+
+        Only simple metrics own a measure, so only they get a synthesised measure from
+        the 1.12 inline fields. Derived/ratio/cumulative/conversion carry their formula in
+        type_params but do not represent a measure.
+        """
+        metric_type = getattr(metric_node, "type", None)
+        dbt_type = getattr(metric_type, "value", str(metric_type)) if metric_type else None
+        return dbt_type == "simple"
+
+    @staticmethod
     def _simple_metric_expression(type_params):
         expression = None
         measure_ref = getattr(type_params, "measure", None)
         measure_name = getattr(measure_ref, "name", None) if measure_ref else None
         if measure_name:
             expression = MetricExpression(language=Language.SQL, code=measure_name)
+        else:
+            # dbt 1.12+ inline spec: measure ref is absent; use type_params.expr directly
+            expr = getattr(type_params, "expr", None)
+            if expr:
+                expression = MetricExpression(language=Language.SQL, code=expr)
         return expression, None
 
     @staticmethod
@@ -1465,6 +1625,15 @@ class DbtSource(DbtServiceSource):
         expression = None
         measure_ref = getattr(type_params, "measure", None)
         measure_name = getattr(measure_ref, "name", None) if measure_ref else None
+        if not measure_name:
+            # dbt 1.12+ inline spec: the measure is gone; a cumulative metric now wraps
+            # another metric referenced on cumulative_type_params.metric.
+            cum_params = getattr(type_params, "cumulative_type_params", None)
+            metric_ref = getattr(cum_params, "metric", None) if cum_params else None
+            if isinstance(metric_ref, dict):
+                measure_name = metric_ref.get("name")
+            else:
+                measure_name = getattr(metric_ref, "name", None) if metric_ref else None
         if measure_name:
             window_str = DbtSource._cumulative_window_str(type_params)
             expression = MetricExpression(language=Language.SQL, code=f"cumulative({measure_name}{window_str})")
@@ -1535,6 +1704,25 @@ class DbtSource(DbtServiceSource):
                         aggregation=agg_value,
                         description=getattr(measure, "description", None),
                         expression=getattr(measure, "expr", None),
+                    )
+                )
+        # dbt 1.12+ inline spec: a simple metric no longer references a measure; its
+        # aggregation is defined directly on the metric. When the semantic model yields no
+        # measures, synthesise one from type_params.expr + metric_aggregation_params so the
+        # measure matches the metadata the pre-1.12 spec produced. Restricted to simple
+        # metrics: derived/ratio/etc. also carry type_params.expr (their formula), and that
+        # belongs only in the metric expression, not as a fabricated measure.
+        if not result and self._is_simple_metric(metric_node):
+            type_params = getattr(metric_node, "type_params", None)
+            expr = getattr(type_params, "expr", None) if type_params else None
+            aggregation = self._metric_aggregation(type_params) if type_params else None
+            if expr or aggregation:
+                result.append(
+                    MetricMeasure(
+                        name=getattr(metric_node, "name", ""),
+                        aggregation=aggregation,
+                        description=None,
+                        expression=expr,
                     )
                 )
         return result
@@ -1775,6 +1963,9 @@ class DbtSource(DbtServiceSource):
 
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
                 self.extracted_domains[table_fqn] = dbt_meta_info.openmetadata.domain
+
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.dataProducts:
+                self.extracted_data_products[table_fqn] = dbt_meta_info.openmetadata.dataProducts
 
             if self.source_config.includeTags and dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
                 for tag_fqn in dbt_meta_info.openmetadata.tags:

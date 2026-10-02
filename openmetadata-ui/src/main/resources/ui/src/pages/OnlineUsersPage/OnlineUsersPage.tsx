@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Select, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
+import Table from '../../components/common/Table/TableV2';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -40,6 +41,7 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { commonUserDetailColumns } from '../../utils/Users.util';
+
 const OnlineUsersPage = () => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -191,11 +193,7 @@ const OnlineUsersPage = () => {
         const activityTime = lastActivityTime || record.lastLoginTime;
 
         if (!activityTime) {
-          return (
-            <Typography.Text type="secondary">
-              {t('label.never')}
-            </Typography.Text>
-          );
+          return <Typography color="secondary">{t('label.never')}</Typography>;
         }
 
         const lastActivityMoment = moment(activityTime);
@@ -223,12 +221,14 @@ const OnlineUsersPage = () => {
 
         return (
           <Space direction="vertical" size={0}>
-            <Typography.Text style={{ color: statusColor }}>
+            <Typography
+              className="tw:text-primary"
+              style={{ color: statusColor }}>
               {statusText}
-            </Typography.Text>
-            <Typography.Text style={{ fontSize: '12px' }} type="secondary">
+            </Typography>
+            <Typography color="secondary" style={{ fontSize: '12px' }}>
               {formatDateTime(activityTime)}
-            </Typography.Text>
+            </Typography>
           </Space>
         );
       },
@@ -264,14 +264,13 @@ const OnlineUsersPage = () => {
 
         <Col span={24}>
           <Table
-            bordered
             className="user-list-table"
             columns={columns}
             data-testid="online-users-table"
             dataSource={userList}
             extraTableFilters={
               <Space>
-                <Typography.Text>{t('label.time-window')}:</Typography.Text>
+                <Typography>{t('label.time-window')}:</Typography>
                 <Select
                   data-testid="time-window-select"
                   options={TIME_WINDOWS}

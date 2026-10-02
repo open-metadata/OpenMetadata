@@ -366,6 +366,18 @@ describe('AddDomainFormExtensionFields', () => {
     );
   });
 
+  it('labels the field with the custom property display name when set', () => {
+    const definition: CustomProperty = {
+      ...buildDefinition('string'),
+      displayName: 'Owner Team',
+    };
+
+    render(<ExtensionFieldsHarness definition={definition} />);
+
+    expect(screen.getByText('Owner Team')).toBeInTheDocument();
+    expect(screen.queryByText(definition.name)).not.toBeInTheDocument();
+  });
+
   it.each([
     ['entityReference', { config: ['glossaryTerm'] }, 'ENTITYREFERENCE'],
     ['hyperlink-cp', undefined, 'HYPERLINK'],

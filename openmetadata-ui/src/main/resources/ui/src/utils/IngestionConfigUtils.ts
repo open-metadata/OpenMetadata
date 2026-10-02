@@ -47,7 +47,10 @@ import {
   getSettingsPathWithFqn,
 } from './RouterUtils';
 import { getFilteredSchema } from './ServiceConnectionUtils';
-import { getReadableCountString } from './ServicePureUtils';
+import {
+  getReadableCountString,
+  getServiceCategoryLabel,
+} from './ServicePureUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getIngestionHeadingName = (
@@ -110,7 +113,7 @@ export const getBreadCrumbsArray = (
     breadCrumbsArray.push(
       ...[
         {
-          name: startCase(serviceCategory),
+          name: getServiceCategoryLabel(serviceCategory),
           url: connectionsRouterClassBase.getSettingsServicesPath(
             serviceCategory
           ),
@@ -306,7 +309,12 @@ export const getTypeAndStatusMenuItems = () => {
 export const getIngestionStatusCountData = (summary?: StepSummary) => [
   {
     label: i18n.t('label.success'),
-    value: getReadableCountString(summary?.records ?? 0, 1),
+    // Success = created + updated records (e.g. the Automator reports only
+    // updated_records), matching the ingestion's own record_count + updated_records.
+    value: getReadableCountString(
+      (summary?.records ?? 0) + (summary?.updated_records ?? 0),
+      1
+    ),
     type: 'success',
   },
   {

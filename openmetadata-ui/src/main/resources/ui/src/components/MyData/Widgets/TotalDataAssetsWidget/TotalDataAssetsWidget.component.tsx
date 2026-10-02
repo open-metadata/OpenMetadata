@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -35,11 +35,11 @@ import {
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/widget/total-assets.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
-import { GRAY_600 } from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useChartColors } from '../../../../hooks/useChartColors';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
@@ -71,6 +71,7 @@ const TotalDataAssetsWidget = ({
   handleLayoutUpdate,
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
+  const { axis } = useChartColors();
   const navigate = useNavigate();
   const { applicationConfig } = useApplicationStore();
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -253,7 +254,7 @@ const TotalDataAssetsWidget = ({
                 />
                 <text
                   dy={8}
-                  fill={GRAY_600}
+                  fill={axis}
                   fontSize={28}
                   fontWeight={600}
                   textAnchor="middle"
@@ -284,9 +285,9 @@ const TotalDataAssetsWidget = ({
                         pieChartColors[index % pieChartColors.length],
                     }}
                   />
-                  <Typography.Text ellipsis={{ tooltip: true }}>
+                  <Typography ellipsis={{ tooltip: true }}>
                     {startCase(label)}
-                  </Typography.Text>
+                  </Typography>
                   <span
                     className="text-xs font-medium p-y-xss p-x-xs data-value"
                     data-testid={`legend-count-${label}`}>
@@ -323,6 +324,7 @@ const TotalDataAssetsWidget = ({
       </div>
     );
   }, [
+    axis,
     availableDates,
     selectedDate,
     selectedDateData,

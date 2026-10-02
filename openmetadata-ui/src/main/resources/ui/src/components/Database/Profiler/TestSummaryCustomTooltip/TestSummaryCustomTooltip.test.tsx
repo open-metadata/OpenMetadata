@@ -87,8 +87,9 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(null),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 jest.mock('../../../../utils/HistoryUtils', () => ({
   ...jest.requireActual('../../../../utils/HistoryUtils'),
@@ -150,6 +151,31 @@ describe('Test TestSummaryCustomTooltip component', () => {
       (await screen.findByTestId('failedRowsPercentage')).textContent
     ).toBe('40%');
     expect(screen.queryByText('name')).not.toBeInTheDocument();
+  });
+
+  // An aborted run is placed on the chart at a value it never recorded; the
+  // tooltip must not present that value as its result.
+  it('should not list a value that was only placed', async () => {
+    render(
+      <TestSummaryCustomTooltip
+        {...mockProps}
+        payload={[
+          {
+            ...mockProps.payload[0],
+            payload: {
+              name: 'Jan 3, 2024, 6:45 PM',
+              status: 'Aborted',
+              minValueLength: 12,
+              placedKeys: ['minValueLength'],
+            },
+          },
+        ]}
+      />
+    );
+
+    expect((await screen.findByTestId('status')).textContent).toBe('Aborted');
+    expect(screen.queryByTestId('minValueLength')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('placedKeys')).not.toBeInTheDocument();
   });
 
   it('should display freshness values in seconds', async () => {

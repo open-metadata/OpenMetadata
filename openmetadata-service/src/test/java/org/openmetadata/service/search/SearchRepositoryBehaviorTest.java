@@ -30,6 +30,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -438,6 +439,39 @@ class SearchRepositoryBehaviorTest {
         "cluster_table_search_index", repository.getIndexOrAliasName("cluster_table_search_index"));
   }
 
+  @Test
+  void getIndexOrAliasNameUsesDataInsightsDataStreamPrefix() {
+    for (String index : List.of("di-data-assets*", "di-data-assets-*", "di-data-assets-table")) {
+      assertEquals("cluster-" + index, repository.getIndexOrAliasName(index));
+      assertEquals("cluster-" + index, repository.getIndexOrAliasName("cluster-" + index));
+    }
+  }
+
+  @Test
+  void getIndexOrAliasNamePreservesClusterAliasesStartingWithDataInsightsPrefix() {
+    SearchRepository diCluster = newRepository(Map.of(), "di-data-assets-prod");
+    for (String index :
+        List.of("di-data-assets-prod_table_search_index", "di-data-assets-prod-di-data-assets-*")) {
+      assertEquals(index, diCluster.getIndexOrAliasName(index));
+    }
+  }
+
+  @Test
+  void getIndexOrAliasNamePreservesDataInsightsWithoutClusterAlias() {
+    assertEquals(
+        "di-data-assets-*", newRepository(Map.of(), null).getIndexOrAliasName("di-data-assets-*"));
+    assertEquals(
+        "di-data-assets-table",
+        newRepository(Map.of(), "").getIndexOrAliasName("di-data-assets-table"));
+  }
+
+  @Test
+  void getIndexOrAliasNameResolvesMixedDataInsightsAndEntityIndexes() {
+    assertEquals(
+        "cluster_table_search_index,cluster-di-data-assets-*,cluster_dataAsset",
+        repository.getIndexOrAliasName("table, di-data-assets-*, dataAsset"));
+  }
+
   /**
    * Mixed input: each comma-separated token is resolved independently. Entity-specific aliases
    * resolve to canonical names; compound aliases pass through.
@@ -462,6 +496,23 @@ class SearchRepositoryBehaviorTest {
         "cluster_table_search_index,cluster_domain_search_index",
         repository.getIndexOrAliasName("table, ,domain"));
     assertEquals(", ,", repository.getIndexOrAliasName(", ,"));
+  }
+
+  @Test
+  void getEntityTypesForIndexUsesRegisteredMappings() {
+    SearchRepository resolver =
+        newRepository(
+            Map.of(
+                Entity.TABLE, TABLE_MAPPING,
+                Entity.TABLE_COLUMN, COLUMN_MAPPING,
+                Entity.DOMAIN, DOMAIN_MAPPING,
+                Entity.MLMODEL_SERVICE, MLMODEL_SERVICE_MAPPING),
+            "cluster");
+    assertEquals(
+        List.of("domain", "table"),
+        resolver.getEntityTypesForIndex("table,domain,table_search_index"));
+    assertEquals(List.of("mlmodelService"), resolver.getEntityTypesForIndex("mlModelService"));
+    assertEquals(List.of(), resolver.getEntityTypesForIndex("unknown"));
   }
 
   @Test
@@ -2018,13 +2069,19 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void getScriptWithParamsBuildsFollowerDescriptionAndQueryUsageUpdates() {
+  void getScriptWithParamsBuildsFollowerDescriptionAndReducedQueryDomainUpdates() {
     EntityInterface queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
     EntityReference queryDomain =
         new EntityReference()
             .withId(UUID.randomUUID())
             .withType(Entity.DOMAIN)
-            .withName("analytics");
+            .withName("analytics")
+            .withDisplayName("Analytics")
+            .withFullyQualifiedName("analytics")
+            .withDescription("Analytics domain")
+            .withDeleted(false)
+            .withInherited(true)
+            .withHref(URI.create("http://localhost/api/v1/domains/analytics"));
     when(queryEntity.getUpdatedAt()).thenReturn(1234L);
     when(queryEntity.getDescription()).thenReturn("Updated query description");
     when(queryEntity.getDomains()).thenReturn(List.of(queryDomain));
@@ -2062,7 +2119,17 @@ class SearchRepositoryBehaviorTest {
     assertNotNull(params.get(Entity.FIELD_FOLLOWERS));
     assertNotNull(params.get(Entity.FIELD_USAGE_SUMMARY));
     assertEquals(List.of(Map.of("name", "dashboard")), params.get("queryUsedIn"));
-    assertEquals(List.of(queryDomain), params.get(Entity.FIELD_DOMAINS));
+    assertEquals(
+        List.of(
+            Map.of(
+                "id", queryDomain.getId().toString(),
+                "type", Entity.DOMAIN,
+                "name", "analytics",
+                "displayName", "Analytics",
+                "fullyQualifiedName", "analytics",
+                "description", "Analytics domain",
+                "deleted", false)),
+        params.get(Entity.FIELD_DOMAINS));
   }
 
   @Test

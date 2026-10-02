@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Folder, Plus, Stars01, UploadCloud01 } from '@untitledui/icons';
+import { Folder, Plus, Stars01, UploadCloud01 } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { EmptyPlaceholder } from '../components/application/empty-placeholder/empty-placeholder';
 

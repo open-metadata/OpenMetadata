@@ -24,6 +24,7 @@ import {
   navigateToSampleDataTab,
   RESERVED_SAMPLE_COLUMN_NAMES,
 } from '../../utils/sampleData';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 test.describe('Sample Data Tab - Download and Delete Functionality', () => {
@@ -110,9 +111,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Verify each cell value sits under its own column', async () => {
-      const rows = page
-        .getByTestId('sample-data-table')
-        .locator('tbody tr.ant-table-row');
+      const rows = page.getByTestId('sample-data-table').locator('tbody tr');
 
       for (const [columnIndex] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
         for (const rowIndex of [0, 2]) {
@@ -276,26 +275,26 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Type DELETE and confirm deletion', async () => {
-      const deleteResponse = page.waitForResponse(
+      const deleteResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response
             .url()
             .includes(
               `/api/v1/tables/${tableForDelete.entityResponseData.id}/sampleData`
-            ) &&
-          response.request().method() === 'DELETE' &&
-          response.status() === 200
+            ) && response.request().method() === 'DELETE',
+        200
       );
 
-      const refetchResponse = page.waitForResponse(
+      const refetchResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response
             .url()
             .includes(
               `/api/v1/tables/${tableForDelete.entityResponseData.id}/sampleData`
-            ) &&
-          response.request().method() === 'GET' &&
-          response.status() === 200
+            ) && response.request().method() === 'GET',
+        200
       );
 
       await fillDeleteConfirmationIfPresent(page);

@@ -535,10 +535,10 @@ describe('getFieldByArgumentType tests', () => {
     expect(await screen.findByTitle('Thread Created')).toBeInTheDocument();
 
     fireEvent.change(select.querySelector('input') as HTMLElement, {
-      target: { value: 'Suggestion' },
+      target: { value: 'Entity Deleted' },
     });
 
-    expect(screen.queryByTitle('Suggestion Created')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Entity Deleted')).not.toBeInTheDocument();
   });
 
   it('should fall back to every event type when the resource declares none', async () => {
@@ -551,10 +551,10 @@ describe('getFieldByArgumentType tests', () => {
     );
 
     fireEvent.change(select.querySelector('input') as HTMLElement, {
-      target: { value: 'Suggestion' },
+      target: { value: 'Ontology' },
     });
 
-    expect(await screen.findByTitle('Suggestion Created')).toBeInTheDocument();
+    expect(await screen.findByTitle('Ontology Imported')).toBeInTheDocument();
   });
 
   it('should return correct fields for argumentType entityIdList', async () => {

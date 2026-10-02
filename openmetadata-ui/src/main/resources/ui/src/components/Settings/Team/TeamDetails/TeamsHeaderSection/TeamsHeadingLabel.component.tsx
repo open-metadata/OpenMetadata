@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   CheckOutlined,
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Button, Input, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Input, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +28,7 @@ import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { hasEditAccess } from '../../../../../utils/EntityPermissionUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { TeamsHeadingLabelProps } from '../team.interface';
 
@@ -49,16 +52,18 @@ const TeamsHeadingLabel = ({
     [owners, currentUser]
   );
 
-  const { hasEditDisplayNamePermission, hasAccess } = useMemo(
-    () => ({
-      hasEditPermission: entityPermissions.EditAll,
-      hasEditDisplayNamePermission:
-        entityPermissions.EditDisplayName || entityPermissions.EditAll,
-      hasAccess: isAdminUser,
-    }),
-
+  // Consumer via the `entityPermissions: OperationPermission` prop (raw contract kept per
+  // Task 8 rule 2). The old object literal also computed a `hasEditPermission` field (bare
+  // `entityPermissions.EditAll`) that was never destructured/consumed — dropped as dead code
+  // (Task 7/8 precedent). hasEditDisplayNamePermission's raw `EditDisplayName || EditAll` ->
+  // canEditDisplayName: explicit-deny-wins fix (Task 6 Finding 1). No `deleted` argument — the
+  // old expression never gated on currentTeam.deleted itself (that check is applied
+  // separately, externally, in the JSX render condition below).
+  const { canEditDisplayName: hasEditDisplayNamePermission } = useMemo(
+    () => getDerivedPermissionFlags(entityPermissions),
     [entityPermissions]
   );
+  const hasAccess = isAdminUser;
 
   const onHeadingSave = async (): Promise<void> => {
     if (isEmpty(heading)) {
@@ -88,21 +93,24 @@ const TeamsHeadingLabel = ({
 
   const teamHeadingRender = useMemo(() => {
     const headingTitle = heading ? (
-      <Typography.Title
+      <Typography
+        as="h5"
         className="m-b-0 flex-1 w-min-0"
         data-testid="team-heading"
         ellipsis={{ tooltip: true }}
-        level={5}>
+        size="text-md"
+        weight="semibold">
         {heading}
-      </Typography.Title>
+      </Typography>
     ) : (
-      <Typography.Text
-        className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
+      <Typography
+        className="m-b-0 flex-1 w-min-0 text-sm"
+        color="secondary"
         data-testid="team-heading">
         {t('label.no-entity', {
           entity: t('label.display-name'),
         })}
-      </Typography.Text>
+      </Typography>
     );
 
     const canEditHeading = hasAccess || isCurrentTeamOwner;

@@ -87,7 +87,15 @@ public class ContextMemoryIndex implements TaggableIndex {
    * any divergence between them is a privacy bug rather than a cosmetic inconsistency.
    */
   public static Map<String, Object> shareConfigFields(ContextMemory memory) {
-    MemoryShareConfig shareConfig = memory.getShareConfig();
+    return shareConfigFields(memory.getShareConfig());
+  }
+
+  /**
+   * The share fields for any entity governed by a {@link MemoryShareConfig}. Context files carry the
+   * same config and are filtered by the same query, so they stamp through here rather than through a
+   * second copy that could drift.
+   */
+  public static Map<String, Object> shareConfigFields(MemoryShareConfig shareConfig) {
     MemoryVisibility visibility = shareConfig == null ? null : shareConfig.getVisibility();
     Map<String, Object> fields = new LinkedHashMap<>();
     fields.put("visibility", visibility == null ? null : visibility.value());
@@ -115,6 +123,7 @@ public class ContextMemoryIndex implements TaggableIndex {
     doc.put("relatedEntities", related);
     doc.put("rootMemory", getEntityWithDisplayName(memory.getRootMemory()));
     doc.put("parentMemory", getEntityWithDisplayName(memory.getParentMemory()));
+    doc.put("sourceFile", getEntityWithDisplayName(memory.getSourceFile()));
   }
 
   public static Map<String, Float> getFields() {

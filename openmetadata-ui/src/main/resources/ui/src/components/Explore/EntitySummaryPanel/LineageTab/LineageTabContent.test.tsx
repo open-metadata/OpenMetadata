@@ -12,15 +12,12 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import {
-  LineageData,
-  LineageEntityReference,
-} from '../../../../components/Lineage/Lineage.interface';
-import { User } from '../../../../generated/entity/teams/user';
+import { LineageEntityReference } from '../../../../components/Lineage/Lineage.interface';
+import { LineageData } from '../../../../interface/lineage.interface';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import LineageTabContent from './LineageTabContent';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronRight: jest
     .fn()
     .mockImplementation((props: React.SVGProps<SVGSVGElement>) => (
@@ -35,12 +32,14 @@ jest.mock('@untitledui/icons', () => ({
 
 // Mock react-i18next
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
   Tooltip: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+  Owner: jest.fn().mockReturnValue(<></>),
   Breadcrumbs: jest
     .fn()
     .mockImplementation(
@@ -125,20 +124,6 @@ jest.mock('antd', () => ({
         {children}
       </button>
     )),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
-    )),
-    Paragraph: jest
-      .fn()
-      .mockImplementation(({ children, className, ...props }) => (
-        <p className={className} data-testid="typography-paragraph" {...props}>
-          {children}
-        </p>
-      )),
-  },
 }));
 
 // Mock SVG components with unique implementations
@@ -214,24 +199,6 @@ jest.mock('../../../../utils/SearchClassBase', () => ({
         <div data-testid={`entity-icon-${entityType}`}>EntityIcon</div>
       )),
   },
-}));
-
-// Mock OwnerLabel component
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(({ owners }) => (
-      <div data-testid="owner-label">
-        {owners?.map((owner: User) => owner.name).join(', ')}
-      </div>
-    )),
-}));
-
-// Mock NoOwnerFound component
-jest.mock('../../../common/NoOwner/NoOwnerFound', () => ({
-  NoOwnerFound: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="no-owner-found">No Owner</div>),
 }));
 
 // Mock data
@@ -549,7 +516,7 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} />);
 
-      const paragraph = screen.getByTestId('typography-paragraph');
+      const paragraph = screen.getByText('label.lineage-not-found');
 
       expect(paragraph).toBeInTheDocument();
       expect(paragraph).toHaveClass('text-center');

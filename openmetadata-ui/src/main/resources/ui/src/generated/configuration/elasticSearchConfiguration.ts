@@ -72,6 +72,10 @@ export interface ElasticSearchConfiguration {
      */
     port?: number;
     /**
+     * Enable gzip compression for HTTP request bodies sent to Elasticsearch.
+     */
+    requestCompressionEnabled?: boolean;
+    /**
      * Http/Https connection scheme
      */
     scheme: string;

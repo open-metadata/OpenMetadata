@@ -11,16 +11,24 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
-import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { EntityUnion } from '../components/Explore/ExplorePage.interface';
 import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import { APP_ROUTER_ROUTES } from '../constants/router.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
+import { AuthenticationConfigurationWithScope } from '../interface/auth.interface';
+import { EntityUnion } from '../interface/entity-union.interface';
 import { ApplicationStore } from '../interface/store.interface';
+import { authCoordinator } from '../utils/Auth/AuthCoordinator/AuthCoordinator';
+import { isReauthRequiredError } from '../utils/Auth/AuthCoordinator/ReauthRequiredError';
+import {
+  EXPIRY_THRESHOLD_MILLES,
+  extractDetailsFromToken,
+} from '../utils/AuthProvider.util';
 import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
+import { getBasePath } from '../utils/HistoryUtils';
 import {
   clearPersonaSession,
   readPersonaSession,
@@ -29,6 +37,38 @@ import {
 import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 import { useDomainStore } from './useDomainStore';
+
+// Routes where an identity-provider round trip finishes and the callback
+// stores a fresh token of its own.
+const LOGIN_CALLBACK_ROUTES: ReadonlySet<string> = new Set([
+  APP_ROUTER_ROUTES.CALLBACK,
+  APP_ROUTER_ROUTES.AUTH_CALLBACK,
+]);
+
+const isLoginCallbackRoute = (): boolean =>
+  LOGIN_CALLBACK_ROUTES.has(
+    globalThis.location.pathname.replace(getBasePath(), '')
+  );
+
+type AuthState = Pick<ApplicationStore, 'isAuthenticated' | 'isAuthenticating'>;
+
+// Cold load with a stored token that is expired or inside the pre-expiry
+// buffer: refresh it before the app renders as authenticated.
+const resolveExpiredTokenState = async (): Promise<Partial<AuthState>> => {
+  try {
+    await authCoordinator.ensureFreshToken();
+
+    return { isAuthenticated: true, isAuthenticating: false };
+  } catch (error) {
+    // After a ReauthRequiredError, AuthProvider's refresh-failed handler
+    // either redirects to the identity provider (the loader must stay up
+    // meanwhile, or /signin flashes before the page leaves) or signs the user
+    // out, which settles isAuthenticating itself.
+    return isReauthRequiredError(error)
+      ? { isAuthenticated: false }
+      : { isAuthenticated: false, isAuthenticating: false };
+  }
+};
 
 const resolvePersonaFromSession = (user: User): EntityReference | undefined => {
   const storedId = readPersonaSession();
@@ -108,6 +148,24 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
 
   initializeAuthState: async () => {
     try {
+      // OAuth-callback races: on a fresh redirect back into the app the
+      // authenticator's own handler (OidcAuthenticator's <Callback>,
+      // MsalAuthenticator's handleRedirectPromise, SamlCallback) hasn't
+      // stored the token yet. Every branch below must settle
+      // `isAuthenticating`: nothing else clears it (see the setter map below
+      // and `handleSuccessfulLogin`, which only touches
+      // `isAuthenticated`/`isApplicationLoading`), and AppRouter's top-level
+      // `if (isAuthenticating) return <Loader />` gate once kept SamlCallback
+      // from ever mounting on /auth/callback, hanging confidential OIDC and
+      // SAML logins.
+      //
+      // Signed-out rendering is safe on callback routes: OidcAuthenticator
+      // owns its own <Route path="/callback"> that renders regardless of
+      // childElement, and its OidcCallbackWrapper renders above the
+      // catch-all `path="*"`, so no sign-in blink shows. /silent-callback is
+      // served by its own HTML entry (`silent-callback.html`) rather than
+      // the SPA shell, so this code path is never entered on that URL.
+
       let token = '';
 
       if ('serviceWorker' in navigator && 'indexedDB' in window) {
@@ -129,10 +187,60 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
         token = '';
       }
 
-      set({
-        isAuthenticated: Boolean(token),
-        isAuthenticating: false,
-      });
+      if (!token) {
+        set({ isAuthenticated: false, isAuthenticating: false });
+
+        return;
+      }
+
+      // A login callback stores a fresh token of its own. The stored token is
+      // the one that sent the user to the identity provider, and after a
+      // silent re-authentication the server has already rejected it whether
+      // or not its exp has passed. Signed-in rendering would leave the
+      // callback unmounted: Okta's and Auth0's /callback and /auth/callback
+      // exist only in the signed-out routes. Refreshing the token instead
+      // would race the callback, and a second failure right after a silent
+      // re-authentication reads as a dead session.
+      if (isLoginCallbackRoute()) {
+        set({ isAuthenticated: false, isAuthenticating: false });
+
+        return;
+      }
+
+      // A cold-load token can be present but already past (or within a
+      // buffer of) its expiry — treating it as authenticated let the app
+      // render with a dead token and fail the first API call with a 401
+      // that never triggered silent refresh (Bug 1). Refresh it up front
+      // via the coordinator so `isAuthenticated` only flips true once a
+      // usable token is guaranteed.
+      const { exp } = extractDetailsFromToken(token);
+
+      // A missing / non-positive `exp` means the token is opaque, a
+      // non-JWT, or an Unlimited bot JWT (the ingestion-bot's
+      // JWTTokenExpiry.Unlimited path emits `.withExpiresAt(null)`, so
+      // the payload has no `exp` claim at all). None of these are
+      // refreshable proactively — treat them as usable and let the axios
+      // interceptor drive a refresh on a real 401 if one ever arrives.
+      // Same reasoning as AuthCoordinator.onTabVisible's exp guard.
+      if (typeof exp !== 'number' || exp <= 0) {
+        set({ isAuthenticated: true, isAuthenticating: false });
+
+        return;
+      }
+
+      const isExpired = exp * 1000 - Date.now() < EXPIRY_THRESHOLD_MILLES;
+
+      if (!isExpired) {
+        set({ isAuthenticated: true, isAuthenticating: false });
+        // Arm the proactive renewal timer now; it is otherwise armed only by
+        // a completed refresh, leaving the first renewal to a request that
+        // 401s.
+        authCoordinator.syncFromStoredToken().catch(() => undefined);
+
+        return;
+      }
+
+      set(await resolveExpiredTokenState());
     } catch {
       set({
         isAuthenticated: false,
@@ -182,6 +290,9 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setIsAuthenticated: (authenticated: boolean) => {
     set({ isAuthenticated: authenticated });
+  },
+  setIsAuthenticating: (authenticating: boolean) => {
+    set({ isAuthenticating: authenticating });
   },
   setIsSigningUp: (signingUp: boolean) => {
     set({ isSigningUp: signingUp });

@@ -13,7 +13,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Typography } from './typography';
 
 describe('Typography', () => {
@@ -76,9 +76,145 @@ describe('Typography', () => {
     expect(el).toHaveClass('tw:text-tertiary');
     expect(el.className).not.toMatch(/tw:text-error-primary/);
   });
+
+  // `.prose` styles descendants through `.prose :not(...)`, and no rule in that
+  // block targets `span`/`div`. Dropping the wrapper for those keeps the
+  // computed text style identical (the element-level `.prose` layer sets only
+  // inherited properties) while restoring inline flow and avoiding invalid
+  // `<div>`-inside-`<span>` nesting. Elements the descendant rules *do* target
+  // must keep the wrapper or they silently lose their styling.
+  describe('prose wrapper', () => {
+    it('renders no wrapper for the default span, carrying prose itself', () => {
+      render(<Typography>Hello</Typography>);
+
+      const el = screen.getByText('Hello');
+
+      expect(el.tagName).toBe('SPAN');
+      expect(el).toHaveClass('prose');
+      expect(el.parentElement).not.toHaveClass('prose');
+    });
+
+    it('renders no wrapper for as="div"', () => {
+      render(<Typography as="div">Hello</Typography>);
+
+      const el = screen.getByText('Hello');
+
+      expect(el.tagName).toBe('DIV');
+      expect(el).toHaveClass('prose');
+      expect(el.parentElement).not.toHaveClass('prose');
+    });
+
+    it.each(['p', 'h1', 'a', 'blockquote', 'li'] as const)(
+      'keeps the wrapper for as="%s" so descendant prose rules still match',
+      (as) => {
+        render(<Typography as={as}>Hello</Typography>);
+
+        const el = screen.getByText('Hello');
+
+        expect(el).not.toHaveClass('prose');
+        expect(el.parentElement).toHaveClass('prose');
+      }
+    );
+
+    it('keeps the wrapper when ellipsis is set', () => {
+      render(<Typography ellipsis={{ rows: 2 }}>Hello</Typography>);
+
+      const el = screen.getByText('Hello');
+
+      expect(el).not.toHaveClass('prose');
+      expect(el.parentElement).toHaveClass('prose');
+    });
+
+    it('keeps the wrapper for a non-default quote variant', () => {
+      render(<Typography quoteVariant="centered-quote">Hello</Typography>);
+
+      const el = screen.getByText('Hello');
+
+      expect(el).not.toHaveClass('prose');
+      expect(el.parentElement).toHaveClass('prose');
+      expect(el.parentElement).toHaveClass('prose-centered-quote');
+    });
+
+    it('still forwards other props to an unwrapped element', () => {
+      render(<Typography data-testid="unwrapped">Hello</Typography>);
+
+      expect(screen.getByTestId('unwrapped')).toHaveTextContent('Hello');
+    });
+  });
 });
 
+const mockOverflow = (overflowing: boolean) => {
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
+  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+    overflowing ? 200 : 100
+  );
+};
+
 describe('Typography ellipsis tooltip', () => {
+  beforeEach(() => mockOverflow(true));
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('does not show the tooltip when the text is not truncated', async () => {
+    mockOverflow(false);
+    const user = userEvent.setup();
+
+    render(
+      <Typography ellipsis={{ tooltip: 'Full text' }}>Short text</Typography>
+    );
+
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByText('Short text'));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(screen.queryByText('Full text')).not.toBeInTheDocument();
+  });
+
+  it('keeps an inline ellipsis in the text flow', () => {
+    render(<Typography ellipsis>Inline text</Typography>);
+
+    const wrapper = screen.getByText('Inline text').parentElement;
+
+    expect(wrapper?.tagName).toBe('SPAN');
+    expect(wrapper).toHaveClass('tw:inline-block', 'tw:max-w-full');
+  });
+
+  it('shows the tooltip when only a block inner element overflows', async () => {
+    vi.restoreAllMocks();
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(
+      function (this: HTMLElement) {
+        return this.tagName === 'P' ? 200 : 100;
+      }
+    );
+    const user = userEvent.setup();
+
+    render(
+      <Typography as="p" ellipsis={{ tooltip: 'Full text' }}>
+        Clipped paragraph
+      </Typography>
+    );
+
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByText('Clipped paragraph'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Full text')).toBeInTheDocument();
+    });
+  });
+
+  it('keeps a block wrapper for block elements', () => {
+    render(
+      <Typography ellipsis as="p">
+        Block text
+      </Typography>
+    );
+
+    expect(screen.getByText('Block text').parentElement?.tagName).toBe('DIV');
+  });
+
   it('propagates a click through to an ancestor onClick handler', () => {
     const handleAncestorClick = vi.fn();
 
@@ -178,5 +314,34 @@ describe('Typography ellipsis tooltip', () => {
     fireEvent.click(el);
 
     expect(handleAncestorClick).toHaveBeenCalledTimes(1);
+  });
+  it('keeps the parent text alignment inside the tooltip trigger button', () => {
+    render(<Typography ellipsis={{ tooltip: true }}>Left text</Typography>);
+
+    expect(screen.getByText('Left text').closest('button')).toHaveClass(
+      'tw:[text-align:inherit]'
+    );
+  });
+
+  it('lays out an inline ellipsis trigger as inline-flex', () => {
+    render(<Typography ellipsis={{ tooltip: true }}>Inline text</Typography>);
+
+    const trigger = screen.getByText('Inline text').closest('button');
+
+    expect(trigger).toHaveClass('tw:inline-flex');
+    expect(trigger).not.toHaveClass('tw:inline-block');
+  });
+
+  it('marks the root so nested links skip prose link styling', () => {
+    render(
+      <Typography>
+        <a href="/x">Link</a>
+      </Typography>
+    );
+
+    expect(screen.getByText('Link').parentElement).toHaveClass(
+      'prose',
+      'prose-typography'
+    );
   });
 });

@@ -16,7 +16,8 @@ generate the _run based on their topology.
 import math
 import time
 import traceback
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
+from contextlib import closing
 from functools import singledispatchmethod
 from time import perf_counter
 from typing import Any, ClassVar, Generic, TypeVar, cast
@@ -233,17 +234,23 @@ class TopologyRunnerMixin(Generic[C]):
             node_progress.open(None)
 
         for node_entity in node_entities:
-            for stage in node.stages:
-                yield from self._process_stage(stage=stage, node_entity=node_entity)
+            yield from self._process_node_entity(node, node_entity, child_nodes, node_progress)
 
-            for stage in node.stages:
-                if stage.clear_context:
-                    self.context.get().clear_stage(stage=stage)
+    def _process_node_entity(
+        self, node: TopologyNode, node_entity: Any, child_nodes: list[TopologyNode], node_progress: Any
+    ) -> Generator[Entity, None, None]:
+        """Process one producer item through its stages and children."""
+        for stage in node.stages:
+            yield from self._process_stage(stage=stage, node_entity=node_entity)
 
-            node_progress.advance_leaf()
+        for stage in node.stages:
+            if stage.clear_context:
+                self.context.get().clear_stage(stage=stage)
 
-            with node_progress.enter_scope():
-                yield from self.process_nodes(child_nodes)
+        node_progress.advance_leaf()
+
+        with node_progress.enter_scope():
+            yield from self.process_nodes(child_nodes)
 
     def process_nodes(self, nodes: list[TopologyNode]) -> Iterable[Entity]:
         """
@@ -298,34 +305,20 @@ class TopologyRunnerMixin(Generic[C]):
 
         operation_metrics = OperationMetricsState()
 
-        for node_entity in node_entities:
-            # For each stage, we get all the stage results and one by one yield them by adding them to the Queue.
-            for stage in node.stages:
-                for stage_result in self._process_stage(stage=stage, node_entity=node_entity):
-                    self.queue.put(stage_result)
-
-            # After all the stages are done, we clear the context if needed.
-            for stage in node.stages:
-                if stage.clear_context:
-                    self.context.get().clear_stage(stage=stage)
-
-            node_progress.advance_leaf()
-
-            with node_progress.enter_scope():
-                for child_result in self.process_nodes(child_nodes):
-                    self.queue.put(child_result)
-
-        # Merge thread-local metrics into global state before thread exits
-        operation_metrics.merge_thread_metrics()
-
-        # Finally we pop the context and finish the thread
-        self.context.pop()
+        try:
+            for node_entity in node_entities:
+                with closing(self._process_node_entity(node, node_entity, child_nodes, node_progress)) as results:
+                    for result in results:
+                        self.queue.put(result)
+        finally:
+            operation_metrics.merge_thread_metrics()
+            self.context.pop()
 
     def _get_child_nodes(self, node: TopologyNode) -> list[TopologyNode]:
         """Compute children nodes if any"""
         return [get_topology_node(child, self.topology) for child in node.children] if node.children else []
 
-    def _run_stage_processor(self, stage: NodeStage, node_entity: Any) -> Iterable[Entity]:
+    def _run_stage_processor(self, stage: NodeStage, node_entity: Any) -> Generator[Either[C], None, None]:
         """Run the stage processor"""
         try:
             stage_fn = getattr(self, stage.processor)
@@ -347,13 +340,14 @@ class TopologyRunnerMixin(Generic[C]):
         operation_metrics = OperationMetricsState()
         stage_start = perf_counter()
 
-        for entity_request in self._run_stage_processor(stage=stage, node_entity=node_entity) or []:
-            try:
-                # yield and make sure the data is updated
-                yield from self.sink_request(stage=stage, entity_request=entity_request)
-            except ValueError as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
+        with closing(self._run_stage_processor(stage=stage, node_entity=node_entity)) as requests:
+            for entity_request in requests:
+                try:
+                    # yield and make sure the data is updated
+                    yield from self.sink_request(stage=stage, entity_request=entity_request)
+                except ValueError as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
 
         # Track STAGE time - processing and sinking entities
         stage_time_ms = (perf_counter() - stage_start) * 1000

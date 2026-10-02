@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Icon } from '@openmetadata/ui-core-components/icon';
+import { Divider, Space, Tooltip as AntDTooltip } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
@@ -24,13 +26,12 @@ import type {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
-import { Icon } from '../components/common/Icon/Icon';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { DE_ACTIVE_COLOR } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { Domain } from '../generated/entity/domains/domain';
@@ -123,12 +124,12 @@ export const domainTypeTooltipDataRender = () => (
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
         <Space direction="vertical" size={0}>
-          <Typography.Text className="tw:text-primary_on-brand">{`${t(
+          <Typography className="tw:text-primary_on-brand">{`${t(
             type
-          )} :`}</Typography.Text>
-          <Typography.Paragraph className="m-0 tw:text-primary_on-brand">
+          )} :`}</Typography>
+          <Typography as="p" className="m-0 tw:text-primary_on-brand">
             {t(description)}
-          </Typography.Paragraph>
+          </Typography>
         </Space>
 
         {index !== 2 && <Divider className="m-0" />}
@@ -162,11 +163,11 @@ export const renderDomainLink = (
         data-testid="domain-link"
         to={getDomainPath(domain?.fullyQualifiedName)}>
         {trimLink ? (
-          <Typography.Text
+          <Typography
             className="domain-link-name"
             ellipsis={{ tooltip: false }}>
             {displayName}
-          </Typography.Text>
+          </Typography>
         ) : (
           <>{displayName}</>
         )}
@@ -214,7 +215,7 @@ export const convertDomainsToTreeOptions = (
             />
           )}
 
-          <Typography.Text ellipsis>{getEntityName(option)}</Typography.Text>
+          <Typography ellipsis>{getEntityName(option)}</Typography>
         </div>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,

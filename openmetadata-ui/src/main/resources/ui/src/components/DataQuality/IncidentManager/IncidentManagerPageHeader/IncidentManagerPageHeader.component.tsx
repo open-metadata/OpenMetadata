@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Owner,
   Skeleton,
   Tooltip,
   TooltipTrigger,
@@ -27,7 +28,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
@@ -143,20 +144,19 @@ const IncidentManagerPageHeader = ({
         />
         <HeaderDotSeparator />
         <div className="tw:min-w-0" data-testid="assignee">
-          <OwnerLabel
-            className="header-owner-heading"
+          <Owner
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
-            multiple={{
-              user: false,
-              team: false,
-            }}
             owners={details?.assignee ? [details.assignee] : []}
             placeHolder={t('label.assignee')}
-            tooltipText={t('label.edit-entity', {
-              entity: t('label.assignee'),
-            })}
-            onUpdate={handleAssigneeUpdate}
+            selectorContent={
+              <UserTeamSelectableList
+                hasPermission={Boolean(hasEditStatusPermission)}
+                multiple={{ user: false, team: false }}
+                owner={details?.assignee ? [details.assignee] : []}
+                onUpdate={handleAssigneeUpdate}
+              />
+            }
           />
         </div>
         <HeaderDotSeparator />
@@ -204,25 +204,31 @@ const IncidentManagerPageHeader = ({
         entityId={testCaseData?.id ?? ''}
         entityType={EntityType.TEST_CASE}
         hasPermission={hasEditDomainPermission}
+        labelClassName="tw:text-secondary!"
         multiple={false}
-        textClassName="render-domain-lebel-style"
+        textClassName="render-domain-lebel-style tw:text-secondary!"
         onUpdate={handleDomainUpdate}
       />
       <HeaderDotSeparator />
-      <OwnerLabel
+      <Owner
         showDashPlaceholder
         avatarSize={24}
-        className="header-owner-heading"
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}
-        multiple={{
-          user: canAddMultipleUserOwners,
-          team: canAddMultipleTeamOwner,
-        }}
         ownerDisplayName={ownerDisplayName}
         owners={testCaseData?.owners ?? ownerRef}
-        onUpdate={onOwnerUpdate}
+        selectorContent={
+          <UserTeamSelectableList
+            hasPermission={Boolean(hasEditOwnerPermission)}
+            multiple={{
+              user: canAddMultipleUserOwners,
+              team: canAddMultipleTeamOwner,
+            }}
+            owner={testCaseData?.owners ?? ownerRef}
+            onUpdate={onOwnerUpdate}
+          />
+        }
       />
       {!isVersionPage && statusDetails}
       {tableFqn && (

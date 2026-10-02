@@ -20,6 +20,7 @@ from pydoris.sqlalchemy.dialect import DorisDialect
 from sqlalchemy import sql
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.sql.compiler import IdentifierPreparer
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -71,6 +72,14 @@ DorisDialect.get_table_names_and_type = get_table_names_and_type
 DorisDialect.get_table_comment = get_table_comment
 
 logger = ingestion_logger()
+
+
+def _qualified_identifier(
+    preparer: IdentifierPreparer,
+    *identifiers: str | None,
+) -> str:
+    """Build a safely quoted Doris identifier from individual name parts."""
+    return ".".join(preparer.quote_identifier(identifier) for identifier in identifiers if identifier is not None)
 
 
 def extract_number(data):
@@ -202,8 +211,12 @@ class DorisSource(CommonDbSourceService):
 
         table_columns = []
         primary_columns = []
+        preparer = self.engine.dialect.identifier_preparer
+        qualified_table_name = _qualified_identifier(preparer, schema, table_name)
         # row schema: Field, Type, Collation, Null, Key, Default, Extra, Privileges, Comment
-        for i, row in enumerate(self.connection.execute(sql.text(DORIS_SHOW_FULL_COLUMNS.format(schema, table_name)))):
+        for i, row in enumerate(
+            self.connection.execute(sql.text(DORIS_SHOW_FULL_COLUMNS.format(table_name=qualified_table_name)))
+        ):
             table_columns.append(_get_column(i, row[0], row[1], row[3], row[5], row[8]))
             if row[4] == "YES":
                 primary_columns.append(row[0])
@@ -287,8 +300,14 @@ class DorisSource(CommonDbSourceService):
         check if the table is partitioned table and return the partition details
         """
         try:
+            preparer = self.engine.dialect.identifier_preparer
+            qualified_table_name = _qualified_identifier(
+                preparer,
+                schema_name,
+                table_name,
+            )
             with self.engine.connect() as conn:
-                result = conn.execute(sql.text(DORIS_PARTITION_DETAILS.format(schema_name, table_name))).all()
+                result = conn.execute(sql.text(DORIS_PARTITION_DETAILS.format(table_name=qualified_table_name))).all()
 
             if result and result[0].PartitionKey != "":
                 partition_details = TablePartition(
