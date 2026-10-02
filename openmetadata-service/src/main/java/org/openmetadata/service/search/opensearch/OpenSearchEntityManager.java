@@ -635,6 +635,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   @Override
   public void updateChildrenByNestedField(
       List<String> indexNames,
+      List<String> docIds,
       List<String> nestedPaths,
       String field,
       List<String> values,
@@ -648,6 +649,9 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
     List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
     List<Query> matches = new ArrayList<>();
+    if (!docIds.isEmpty()) {
+      matches.add(Query.of(q -> q.ids(i -> i.values(docIds))));
+    }
     for (String path : nestedPaths) {
       Query terms =
           Query.of(

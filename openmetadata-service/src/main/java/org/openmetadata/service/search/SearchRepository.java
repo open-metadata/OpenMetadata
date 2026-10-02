@@ -3744,15 +3744,18 @@ public class SearchRepository {
   }
 
   /**
-   * Strips references to hard-deleted entities from every search document's custom-property
-   * values, at entity level and on columns. Called after the delete commits, only when a stored
-   * reference to one of them existed.
+   * Strips references to hard-deleted entities from search documents' custom-property values, at
+   * entity level and on columns. Called after the delete commits with the holders it found, so
+   * their documents are selected by id even where the mapping cannot match the reference (a
+   * nested child column, or an index without typed custom properties); column documents are
+   * matched by the reference itself. Fans out to staged indexes so a running reindex keeps it.
    */
-  public void removeCustomPropertyReferences(List<UUID> deletedIds) {
+  public void removeCustomPropertyReferences(List<UUID> deletedIds, Set<UUID> holders) {
     List<String> ids = deletedIds.stream().map(UUID::toString).toList();
     try {
       searchClient.updateChildrenByNestedField(
-          List.of(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+          getWriteFanoutTargets(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+          holders.stream().map(UUID::toString).toList(),
           List.of("customPropertiesTyped", "columns.customPropertiesTyped"),
           "refId",
           ids,

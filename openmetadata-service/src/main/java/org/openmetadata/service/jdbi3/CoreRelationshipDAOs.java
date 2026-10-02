@@ -499,6 +499,19 @@ public interface CoreRelationshipDAOs {
       }
     }
 
+    /**
+     * Holders of references to these entities, locking the rows a delete is about to remove. Plain
+     * rows rather than DISTINCT, because Postgres does not allow DISTINCT with FOR UPDATE.
+     */
+    @SqlQuery("SELECT id FROM custom_property_reference WHERE targetId IN (<ids>) FOR UPDATE")
+    List<String> lockHoldersOfTargetsInternal(@BindList("ids") List<String> ids);
+
+    default List<String> lockHoldersOfTargets(List<String> targetIds) {
+      return nullOrEmpty(targetIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(targetIds, this::lockHoldersOfTargetsInternal);
+    }
+
     @SqlUpdate("DELETE FROM custom_property_reference WHERE targetId IN (<ids>)")
     int deleteByTargetsInternal(@BindList("ids") List<String> ids);
 
@@ -537,8 +550,9 @@ public interface CoreRelationshipDAOs {
       String targetType,
       int position,
       String json) {
+    /** A reference is the same only if both its target id and type are. */
     String key() {
-      return propertyName + '\u0000' + targetId;
+      return propertyName + '\u0000' + targetId + '\u0000' + targetType;
     }
   }
 

@@ -159,9 +159,12 @@ public final class CustomPropertyReferences {
     return byHolder;
   }
 
-  /** Brings one scope's rows in line with {@code references}; a property absent there is removed. */
-  public void write(Scope scope, ObjectNode references) {
-    writeMany(Map.of(scope, references));
+  /**
+   * Brings one scope's rows in line with {@code references}; a property absent there is removed.
+   * Returns the ids of targets that were not stored because they no longer exist.
+   */
+  public Set<String> write(Scope scope, ObjectNode references) {
+    return writeMany(Map.of(scope, references));
   }
 
   /**
@@ -170,9 +173,9 @@ public final class CustomPropertyReferences {
    * written back. Added targets are inserted only once their entity is proven to exist under a
    * shared lock; a target that is gone is dropped.
    */
-  public void writeMany(Map<Scope, ObjectNode> referencesByScope) {
+  public Set<String> writeMany(Map<Scope, ObjectNode> referencesByScope) {
     if (referencesByScope.isEmpty()) {
-      return;
+      return Set.of();
     }
     Map<RowScope, Map<String, ReferenceRow>> persisted = persistedRows(referencesByScope.keySet());
     Delta delta = new Delta();
@@ -182,18 +185,29 @@ public final class CustomPropertyReferences {
                 persisted.getOrDefault(RowScope.of(scope), Map.of()), toRows(scope, references)));
     // Target rows first, then reference rows, the same order a hard delete takes them in, so a
     // writer and a concurrent delete cannot wait on each other in a cycle.
-    dao().insertMany(provenTargets(delta.added));
+    List<ReferenceRow> proven = provenTargets(delta.added);
+    dao().insertMany(proven);
     dao().updateMany(delta.changed);
     dao().deleteMany(delta.removed);
+    Set<String> dropped = new HashSet<>();
+    delta.added.forEach(row -> dropped.add(row.targetId()));
+    proven.forEach(row -> dropped.remove(row.targetId()));
+    return dropped;
   }
 
   public void deleteHolders(List<UUID> holderIds) {
     dao().deleteByHolders(toStrings(holderIds));
   }
 
-  /** Removes every reference to these entities; returns whether any existed. */
-  public boolean deleteTargets(List<UUID> targetIds) {
-    return dao().deleteByTargets(toStrings(targetIds)) > 0;
+  /** Removes every reference to these entities; returns the holders that had one. */
+  public Set<UUID> deleteTargets(List<UUID> targetIds) {
+    List<String> ids = toStrings(targetIds);
+    Set<UUID> holders = new HashSet<>();
+    dao().lockHoldersOfTargets(ids).forEach(id -> holders.add(UUID.fromString(id)));
+    if (!holders.isEmpty()) {
+      dao().deleteByTargets(ids);
+    }
+    return holders;
   }
 
   public void deleteColumn(UUID holderId, String columnKey) {
@@ -299,8 +313,10 @@ public final class CustomPropertyReferences {
             field -> {
               int position = 0;
               for (JsonNode ref : elements(field.getValue())) {
-                if (isReference(ref)) {
-                  ReferenceRow row = toRow(scope, field.getKey(), ref, position++);
+                ReferenceRow row =
+                    isReference(ref) ? toRow(scope, field.getKey(), ref, position) : null;
+                if (row != null) {
+                  position++;
                   rows.putIfAbsent(row.key(), row);
                 }
               }
@@ -322,16 +338,71 @@ public final class CustomPropertyReferences {
     return ref.isObject() && ref.hasNonNull(FIELD_ID) && ref.hasNonNull(FIELD_TYPE);
   }
 
+  /** Null when the id is not a UUID; unvalidated paths can send one. */
   private static ReferenceRow toRow(Scope scope, String propertyName, JsonNode ref, int position) {
+    String id = canonicalId(ref.get(FIELD_ID).asText());
+    if (id == null) {
+      return null;
+    }
+    ObjectNode snapshot = ((ObjectNode) ref).deepCopy().put(FIELD_ID, id);
     return new ReferenceRow(
         scope.holderId().toString(),
         scope.columnKey(),
         propertyName,
-        ref.get(FIELD_ID).asText(),
+        id,
         scope.holderType(),
         ref.get(FIELD_TYPE).asText(),
         position,
-        ref.toString());
+        snapshot.toString());
+  }
+
+  /**
+   * The database returns ids in canonical lowercase form, so a reference sent as an uppercase UUID
+   * is stored that way too; otherwise it would not match its own existence check or search docs.
+   */
+  public static String canonicalId(String id) {
+    try {
+      return UUID.fromString(id).toString();
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Returns {@code extension} without the references to {@code targetIds}, so the entity a write
+   * returns and indexes matches what was stored. A property left without references is removed.
+   */
+  public static Object withoutTargets(
+      Object extension, Predicate<String> isReference, Set<String> targetIds) {
+    JsonNode node = extension == null ? null : JsonUtils.valueToTree(extension);
+    if (targetIds.isEmpty() || !(node instanceof ObjectNode values)) {
+      return extension;
+    }
+    List<String> emptied = new ArrayList<>();
+    values
+        .fields()
+        .forEachRemaining(
+            field -> {
+              if (isReference.test(field.getKey()) && removeTargets(field.getValue(), targetIds)) {
+                emptied.add(field.getKey());
+              }
+            });
+    emptied.forEach(values::remove);
+    return values.isEmpty() ? null : JsonUtils.treeToValue(values, Object.class);
+  }
+
+  /** Removes matching elements; returns whether nothing of the value is left. */
+  private static boolean removeTargets(JsonNode value, Set<String> targetIds) {
+    if (value instanceof ArrayNode list) {
+      Iterator<JsonNode> elements = list.elements();
+      while (elements.hasNext()) {
+        if (targetIds.contains(canonicalId(elements.next().path(FIELD_ID).asText("")))) {
+          elements.remove();
+        }
+      }
+      return list.isEmpty();
+    }
+    return value != null && targetIds.contains(canonicalId(value.path(FIELD_ID).asText("")));
   }
 
   /**

@@ -154,12 +154,13 @@ public interface EntityManagementClient {
       throws IOException;
 
   /**
-   * Like {@link #updateChildren(List, String, List, Pair)}, for a field inside nested objects:
-   * matches documents where {@code field} under any of {@code nestedPaths} equals any of {@code
-   * values}. A path an index does not map is ignored for that index.
+   * Like {@link #updateChildren(List, String, List, Pair)}, but matches documents by id ({@code
+   * docIds}) or where {@code field} under any of {@code nestedPaths}, nested or not, equals any of
+   * {@code values}. A path an index does not map is ignored for that index.
    */
   default void updateChildrenByNestedField(
       List<String> indexNames,
+      List<String> docIds,
       List<String> nestedPaths,
       String field,
       List<String> values,

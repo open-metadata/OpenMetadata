@@ -1745,6 +1745,43 @@ public class ColumnCustomPropertiesIT {
     }
   }
 
+  /** A property the migration cannot convert stays in place without holding back the others. */
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_tableColumn_migrationMovesConvertiblePropertiesNextToAnUnknownOne(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String movedProp =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    String keptProp = ns.prefix("unknownTeams");
+    CustomPropertyConfig teams = new CustomPropertyConfig();
+    teams.setConfig(List.of(TEAM));
+    addCustomPropertyToColumnType(
+        client, TABLE_COLUMN, keptProp, ENTITY_REFERENCE_LIST_TYPE, teams);
+    try {
+      Team team = createTeam(client, ns.prefix("moved"));
+      Table table = createTestTable(ns);
+      Map<String, Object> unknown =
+          Map.of("id", UUID.randomUUID().toString(), "type", "noSuchEntityType");
+      writeLegacyValue(
+          table, "id", Map.of(movedProp, List.of(teamRef(team)), keptProp, List.of(unknown)), true);
+
+      TypeResourceIT.runReferenceMigration();
+
+      assertEquals(1, referenceRowsTo(team.getId()).size());
+      Table stored = Entity.getCollectionDAO().tableDAO().findEntityById(table.getId());
+      JsonNode inline =
+          JsonUtils.valueToTree(columnNamed(stored.getColumns(), "id").getExtension());
+      assertTrue(inline.has(keptProp), "the unconvertible property stays in place");
+      assertFalse(inline.has(movedProp), "the convertible property moved");
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, movedProp);
+      removeColumnTypeProperty(client, TABLE_COLUMN, keptProp);
+    }
+  }
+
   /**
    * Bulk create on main stored column values only in the inline copy, often by name only; the
    * migration moves those too and completes their ids.

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -1387,6 +1388,26 @@ public class TypeResourceIT {
     }
   }
 
+  /** A reference sent as an uppercase UUID is stored in canonical form, so a delete removes it. */
+  @Test
+  void test_uppercaseReferenceIdIsStoredCanonically(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team team = createTeam(client, ns.prefix("upper"), CreateTeam.TeamType.GROUP, null);
+      Map<String, Object> upper = new HashMap<>(referenceOf(team));
+      upper.put("id", id(team).toUpperCase());
+      Domain domain = createDomain(client, ns, property, List.of(upper));
+
+      assertEquals(1, referenceRowsTo(team.getId()).size());
+      client.teams().delete(id(team), HARD_DELETE);
+      assertNoReferencesTo(team.getId());
+      assertTrue(referenceIds(client.domains().get(id(domain), "extension"), property).isEmpty());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
   /** The holder's search doc loses the reference once the delete commits, with no reindex. */
   @Test
   void test_referenceList_hardDeleteRemovesReferenceFromSearch(TestNamespace ns) throws Exception {
@@ -1465,7 +1486,10 @@ public class TypeResourceIT {
     }
   }
 
-  /** The reference cleanup runs per delete chunk, so its statement count does not grow with size. */
+  /**
+   * The reference cleanup issues a fixed set of statements per delete chunk, so the count is the
+   * same for a small and a large subtree.
+   */
   @Test
   void test_recursiveDeleteReferenceCleanupDoesNotGrowWithSubtreeSize(TestNamespace ns)
       throws Exception {
@@ -1479,18 +1503,12 @@ public class TypeResourceIT {
   private static int referenceStatementsForRecursiveDelete(
       OpenMetadataClient client, TestNamespace ns, String name, int children) throws Exception {
     Team parent = createTeam(client, ns.prefix(name), CreateTeam.TeamType.DEPARTMENT, null);
-    List<String> subtree = new ArrayList<>(List.of(id(parent)));
     for (int i = 0; i < children; i++) {
-      subtree.add(
-          id(createTeam(client, ns.prefix(name + i), CreateTeam.TeamType.GROUP, parent.getId())));
+      createTeam(client, ns.prefix(name + i), CreateTeam.TeamType.GROUP, parent.getId());
     }
-    // Other tests delete concurrently; count only statements bound to this subtree's ids.
-    try (var statements =
-        SqlQueryCounter.forRequests(
-            Entity.getJdbi(),
-            "delete from custom_property_reference",
-            context -> subtree.stream().anyMatch(context.getBinding().toString()::contains))) {
-      client.teams().delete(id(parent), HARD_DELETE);
+    // Deleted on this thread through the repository, so concurrent tests cannot be counted.
+    try (var statements = new SqlQueryCounter(Entity.getJdbi(), "custom_property_reference")) {
+      Entity.getEntityRepository(Entity.TEAM).delete("admin", parent.getId(), true, true);
       return statements.count();
     }
   }

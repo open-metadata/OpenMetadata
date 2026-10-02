@@ -749,12 +749,14 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void updateChildrenByNestedField(
       List<String> indexNames,
+      List<String> docIds,
       List<String> nestedPaths,
       String field,
       List<String> values,
       Pair<String, Map<String, Object>> updates)
       throws IOException {
-    entityManager.updateChildrenByNestedField(indexNames, nestedPaths, field, values, updates);
+    entityManager.updateChildrenByNestedField(
+        indexNames, docIds, nestedPaths, field, values, updates);
   }
 
   @Override

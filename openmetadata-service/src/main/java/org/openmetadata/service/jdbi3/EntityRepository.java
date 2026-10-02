@@ -146,8 +146,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -5053,9 +5053,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * would re-issue them.
    */
   protected final void cleanup(String deletedBy, T entityInterface) {
-    AtomicBoolean referenced = new AtomicBoolean();
-    flushInOneTransaction(() -> referenced.set(cleanupFlushBody(deletedBy, entityInterface)));
-    removeCustomPropertyReferencesFromSearch(referenced.get(), List.of(entityInterface.getId()));
+    AtomicReference<Set<UUID>> holders = new AtomicReference<>(Set.of());
+    flushInOneTransaction(() -> holders.set(cleanupFlushBody(deletedBy, entityInterface)));
+    removeCustomPropertyReferencesFromSearch(holders.get(), List.of(entityInterface.getId()));
     // Flowable commits on its own connection, so cancel only once the owning entity transaction
     // has committed: a rolled-back delete must not leave a live entity without its workflow. An
     // enclosing unit of work drains this after its own commit; without one it runs right away.
@@ -5070,8 +5070,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     PostCommitActionQueue.runOrDefer(() -> markEntityNotFound(entityInterface));
   }
 
-  /** Returns whether any custom-property value referenced the deleted entity. */
-  private boolean cleanupFlushBody(String deletedBy, T entityInterface) {
+  /** Returns the holders whose custom-property values referenced the deleted entity. */
+  private Set<UUID> cleanupFlushBody(String deletedBy, T entityInterface) {
     // Perform Entity Specific Cleanup
     entitySpecificCleanup(deletedBy, entityInterface);
 
@@ -5122,9 +5122,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Runs after the entity rows are deleted, so their X locks are held: drops the deleted entities'
-   * own reference values and every reference to them. Returns whether any reference existed.
+   * own reference values and every reference to them. Returns the holders of those references.
    */
-  private boolean deleteCustomPropertyReferences(List<UUID> ids) {
+  private Set<UUID> deleteCustomPropertyReferences(List<UUID> ids) {
     CustomPropertyReferences references = customPropertyReferences();
     if (supportsExtension) {
       references.deleteHolders(ids);
@@ -5133,10 +5133,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** Search docs carry copies of the references; strip them once the delete has committed. */
-  private void removeCustomPropertyReferencesFromSearch(boolean referenced, List<UUID> ids) {
-    if (referenced && Entity.getSearchRepository() != null) {
+  private void removeCustomPropertyReferencesFromSearch(Set<UUID> holders, List<UUID> ids) {
+    if (!holders.isEmpty() && Entity.getSearchRepository() != null) {
       PostCommitActionQueue.runOrDefer(
-          () -> Entity.getSearchRepository().removeCustomPropertyReferences(ids));
+          () -> Entity.getSearchRepository().removeCustomPropertyReferences(ids, holders));
     }
   }
 
@@ -6058,7 +6058,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ObjectNode references = CustomPropertyReferences.extractReferences(fields, referenceTyped());
     fields.fields().forEachRemaining(e -> storeCustomProperty(entity, e.getKey(), e.getValue()));
     if (!references.isEmpty()) {
-      customPropertyReferences().write(entityScope(entity), references);
+      dropUnstored(entity, customPropertyReferences().write(entityScope(entity), references));
+    }
+  }
+
+  /** The entity a write returns and indexes carries only the references that were stored. */
+  private void dropUnstored(EntityInterface entity, Set<String> dropped) {
+    if (!dropped.isEmpty()) {
+      entity.setExtension(
+          CustomPropertyReferences.withoutTargets(
+              entity.getExtension(), referenceTyped(), dropped));
     }
   }
 
@@ -6071,7 +6080,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         references.put(entityScope(entity), values);
       }
     }
-    customPropertyReferences().writeMany(references);
+    Set<String> dropped = customPropertyReferences().writeMany(references);
+    entities.forEach(entity -> dropUnstored(entity, dropped));
   }
 
   /**
@@ -6084,7 +6094,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ObjectNode references = CustomPropertyReferences.extractReferences(fields, referenceTyped());
     fields.fields().forEachRemaining(e -> storeCustomProperty(updated, e.getKey(), e.getValue()));
     if (!references.isEmpty() || !referenceFields(original).isEmpty()) {
-      customPropertyReferences().write(entityScope(updated), references);
+      dropUnstored(updated, customPropertyReferences().write(entityScope(updated), references));
     }
   }
 
@@ -6094,7 +6104,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeNonReferenceExtensions(updated);
     Map<CustomPropertyReferences.Scope, ObjectNode> references = new LinkedHashMap<>();
     updated.forEach(entity -> references.put(entityScope(entity), referenceFields(entity)));
-    customPropertyReferences().writeMany(references);
+    Set<String> dropped = customPropertyReferences().writeMany(references);
+    updated.forEach(entity -> dropUnstored(entity, dropped));
   }
 
   private void storeNonReferenceExtensions(List<T> entities) {
@@ -6160,7 +6171,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String extensionKey = FullyQualifiedName.buildHash(column.getFullyQualifiedName());
     ObjectNode references = storeColumnValues(entityId, extensionKey, column, true);
     if (CustomPropertyReferences.columnTypeOf(entityType) != null) {
-      customPropertyReferences().write(columnScope(entityId, extensionKey), references);
+      dropUnstored(
+          column,
+          customPropertyReferences().write(columnScope(entityId, extensionKey), references));
+    }
+  }
+
+  private void dropUnstored(Column column, Set<String> dropped) {
+    if (!dropped.isEmpty()) {
+      column.setExtension(
+          CustomPropertyReferences.withoutTargets(
+              column.getExtension(), columnReferenceTyped(), dropped));
     }
   }
 
@@ -6180,7 +6201,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         references.put(columnScope(entityId, extensionKey), columnReferences);
       }
     }
-    customPropertyReferences().writeMany(references);
+    Set<String> dropped = customPropertyReferences().writeMany(references);
+    EntityUtil.getFlattenedEntityField(columns).forEach(column -> dropUnstored(column, dropped));
   }
 
   /** Bulk create stores column values the way single create does. */
@@ -7434,17 +7456,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // Same boundary as cleanup(): deadlock retry plus a deferral scope, since the cascade rewrites
     // the same hot relationship rows and the per-entity hooks it runs defer search writes.
-    AtomicBoolean referenced = new AtomicBoolean();
+    AtomicReference<Set<UUID>> holders = new AtomicReference<>(Set.of());
     flushInOneTransaction(
         () -> {
           bulkCleanupReferences(entities);
           bulkDeleteEntityRows(entities);
           // After the entity rows' X locks, like the single-entity cleanup.
-          referenced.set(deleteCustomPropertyReferences(ids));
+          holders.set(deleteCustomPropertyReferences(ids));
         });
     // Keep Flowable's separate transaction after the owning entity commit. See cleanup().
     PostCommitActionQueue.runOrDefer(() -> cancelWorkflowInstances(ids));
-    removeCustomPropertyReferencesFromSearch(referenced.get(), ids);
+    removeCustomPropertyReferencesFromSearch(holders.get(), ids);
   }
 
   private List<UUID> entityIds(List<T> entities) {

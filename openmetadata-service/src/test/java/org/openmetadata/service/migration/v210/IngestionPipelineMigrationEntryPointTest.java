@@ -29,6 +29,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
@@ -73,6 +74,10 @@ class IngestionPipelineMigrationEntryPointTest {
       ingestionPipelineMigration.verify(
           () -> IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO));
       searchTermBoostRepair.verify(SearchTermBoostRepair::repairTermBoostSettings);
+      ConnectionType connectionType =
+          "MySQL".equals(database) ? ConnectionType.MYSQL : ConnectionType.POSTGRES;
+      referenceMigration.verify(
+          () -> CustomPropertyReferenceMigration.migrate(handle, collectionDAO, connectionType));
     }
   }
 

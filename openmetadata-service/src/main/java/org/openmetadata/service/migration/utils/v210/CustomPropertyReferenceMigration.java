@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -204,7 +205,7 @@ public final class CustomPropertyReferenceMigration {
     List<String> movedHolders = new ArrayList<>();
     for (Holder holder : page) {
       ColumnMove move = planColumnMove(holderType, holder, sideRows, isReference);
-      if (move != null && move.rows() != null) {
+      if (move != null) {
         rows.addAll(move.rows());
         strips.add(() -> applyColumnMove(table, holder, move));
         movedHolders.add(holder.id());
@@ -223,73 +224,113 @@ public final class CustomPropertyReferenceMigration {
   private record ColumnMove(
       List<ReferenceRow> rows, String strippedJson, Map<String, ObjectNode> strippedSideRows) {}
 
-  /** Null when the holder has no reference values; rows are null when they cannot be moved. */
+  /**
+   * Null when the holder has no reference values. A property that cannot be converted (unknown
+   * target type, unparseable) stays in its sources; every other one moves.
+   */
   private ColumnMove planColumnMove(
       String holderType,
       Holder holder,
       Map<String, Map<String, SourceRow>> sideRows,
       Predicate<String> isReference) {
     ObjectNode root = (ObjectNode) JsonUtils.readTree(holder.json());
-    Map<String, ObjectNode> referencesByKey = new LinkedHashMap<>();
-    boolean inlineChanged = collectInline(root.get("columns"), isReference, referencesByKey);
-    Map<String, ObjectNode> strippedSideRows = new HashMap<>();
+    Map<String, ObjectNode> sideValues = new HashMap<>();
     sideRows
         .getOrDefault(holder.id(), Map.of())
         .forEach(
             (key, source) -> {
-              if (!(readValue(source.json()) instanceof ObjectNode value)) {
-                return;
-              }
-              ObjectNode references =
-                  CustomPropertyReferences.extractReferences(value, isReference);
-              if (!references.isEmpty()) {
-                referencesByKey
-                    .computeIfAbsent(key, k -> JsonUtils.getObjectNode())
-                    .setAll(references);
-                strippedSideRows.put(key, value);
+              if (readValue(source.json()) instanceof ObjectNode value) {
+                sideValues.put(key, value);
               }
             });
+    Map<String, ObjectNode> referencesByKey = new LinkedHashMap<>();
+    collectInline(root.get("columns"), isReference, referencesByKey);
+    sideValues.forEach(
+        (key, value) -> {
+          ObjectNode references =
+              CustomPropertyReferences.extractReferences(value.deepCopy(), isReference);
+          if (!references.isEmpty()) {
+            referencesByKey.computeIfAbsent(key, k -> JsonUtils.getObjectNode()).setAll(references);
+          }
+        });
     if (referencesByKey.isEmpty()) {
       return null;
     }
-    List<ReferenceRow> rows = columnRows(holderType, holder.id(), referencesByKey);
+    Set<String> leftInPlaceKeys = new HashSet<>();
+    List<ReferenceRow> rows = columnRows(holderType, holder.id(), referencesByKey, leftInPlaceKeys);
+    BiPredicate<String, String> moves =
+        (key, name) -> isReference.test(name) && !leftInPlaceKeys.contains(key + '\u0000' + name);
+    boolean inlineChanged = stripInline(root.get("columns"), moves);
+    Map<String, ObjectNode> strippedSideRows = new HashMap<>();
+    sideValues.forEach(
+        (key, value) -> {
+          if (!CustomPropertyReferences.extractReferences(value, name -> moves.test(key, name))
+              .isEmpty()) {
+            strippedSideRows.put(key, value);
+          }
+        });
     return new ColumnMove(rows, inlineChanged ? root.toString() : null, strippedSideRows);
   }
 
-  private static boolean collectInline(
+  /** Copies every column's reference values by column key, nested columns included. */
+  private static void collectInline(
       JsonNode columns, Predicate<String> isReference, Map<String, ObjectNode> byKey) {
+    for (ObjectNode column : columnNodes(columns)) {
+      if (column.get("extension") instanceof ObjectNode extension) {
+        ObjectNode references =
+            CustomPropertyReferences.extractReferences(extension.deepCopy(), isReference);
+        if (!references.isEmpty()) {
+          byKey
+              .computeIfAbsent(columnKey(column), k -> JsonUtils.getObjectNode())
+              .setAll(references);
+        }
+      }
+    }
+  }
+
+  /** Removes the moved reference values from the inline copy; returns whether anything changed. */
+  private static boolean stripInline(JsonNode columns, BiPredicate<String, String> moves) {
     boolean changed = false;
-    if (columns instanceof ArrayNode columnArray) {
-      for (JsonNode column : columnArray) {
-        if (column instanceof ObjectNode node) {
-          changed |= collectInlineColumn(node, isReference, byKey);
-          changed |= collectInline(node.get("children"), isReference, byKey);
+    for (ObjectNode column : columnNodes(columns)) {
+      if (column.get("extension") instanceof ObjectNode extension) {
+        String key = columnKey(column);
+        changed |=
+            !CustomPropertyReferences.extractReferences(extension, name -> moves.test(key, name))
+                .isEmpty();
+        if (extension.isEmpty()) {
+          column.remove("extension");
         }
       }
     }
     return changed;
   }
 
-  private static boolean collectInlineColumn(
-      ObjectNode column, Predicate<String> isReference, Map<String, ObjectNode> byKey) {
-    if (!(column.get("extension") instanceof ObjectNode extension)
-        || !column.hasNonNull("fullyQualifiedName")) {
-      return false;
+  /** Every column with a FQN, nested children included. */
+  private static List<ObjectNode> columnNodes(JsonNode columns) {
+    List<ObjectNode> nodes = new ArrayList<>();
+    if (columns instanceof ArrayNode columnArray) {
+      for (JsonNode column : columnArray) {
+        if (column instanceof ObjectNode node) {
+          if (node.hasNonNull("fullyQualifiedName")) {
+            nodes.add(node);
+          }
+          nodes.addAll(columnNodes(node.get("children")));
+        }
+      }
     }
-    ObjectNode references = CustomPropertyReferences.extractReferences(extension, isReference);
-    if (references.isEmpty()) {
-      return false;
-    }
-    if (extension.isEmpty()) {
-      column.remove("extension");
-    }
-    String key = FullyQualifiedName.buildHash(column.get("fullyQualifiedName").asText());
-    byKey.computeIfAbsent(key, k -> JsonUtils.getObjectNode()).setAll(references);
-    return true;
+    return nodes;
   }
 
+  private static String columnKey(ObjectNode column) {
+    return FullyQualifiedName.buildHash(column.get("fullyQualifiedName").asText());
+  }
+
+  /** Rows of every convertible property; the keys of the others go to {@code leftInPlaceKeys}. */
   private List<ReferenceRow> columnRows(
-      String holderType, String holderId, Map<String, ObjectNode> referencesByKey) {
+      String holderType,
+      String holderId,
+      Map<String, ObjectNode> referencesByKey,
+      Set<String> leftInPlaceKeys) {
     List<ReferenceRow> rows = new ArrayList<>();
     for (Map.Entry<String, ObjectNode> entry : referencesByKey.entrySet()) {
       Iterator<Map.Entry<String, JsonNode>> properties = entry.getValue().fields();
@@ -298,9 +339,10 @@ public final class CustomPropertyReferenceMigration {
         List<ReferenceRow> propertyRows =
             toRows(holderType, holderId, entry.getKey(), property.getKey(), property.getValue());
         if (propertyRows == null) {
-          return null;
+          leftInPlaceKeys.add(entry.getKey() + '\u0000' + property.getKey());
+        } else {
+          rows.addAll(propertyRows);
         }
-        rows.addAll(propertyRows);
       }
     }
     return rows;
@@ -387,10 +429,16 @@ public final class CustomPropertyReferenceMigration {
         dropped++;
         continue;
       }
-      if (seen.add(id)) {
+      String canonical = CustomPropertyReferences.canonicalId(id);
+      if (canonical == null) {
+        dropped++;
+        continue;
+      }
+      if (seen.add(canonical)) {
+        String snapshot = ((ObjectNode) ref).deepCopy().put("id", canonical).toString();
         rows.add(
             new ReferenceRow(
-                holderId, columnKey, property, id, holderType, type, rows.size(), ref.toString()));
+                holderId, columnKey, property, canonical, holderType, type, rows.size(), snapshot));
       }
     }
     return rows;
