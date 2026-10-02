@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from decimal import Decimal
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
@@ -220,6 +221,11 @@ class SampleTest(TestCase):
         (VARIANT, None, None),
         (VARIANT, "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1), "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1)),
         (VARIANT, "[" * 1500 + "]" * 1500, "[" * 1500 + "]" * 1500),
+        (
+            VARIANT,
+            '{"exact": 1.10, "wide": 12345678901234567890.12, "count": 12345678901234567890}',
+            {"exact": 1.1, "wide": Decimal("12345678901234567890.12"), "count": 12345678901234567890},
+        ),
         (String, '{"kind": "fixture"}', '{"kind": "fixture"}'),
         (
             SQASGeography,
