@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../../../styles/variables.less';
-
 .edge-option-container {
   margin-top: var(--om-space-6);
   width: 100%;
@@ -28,19 +26,19 @@
     cursor: pointer;
 
     &.active {
-      background: @primary-1;
+      background: var(--om-color-utility-brand-100);
 
       &:hover {
-        background: @primary-1;
+        background: var(--om-color-utility-brand-100);
       }
     }
 
     &:hover {
-      background: @body-dark-bg-color;
+      background: var(--om-color-bg-tertiary);
     }
 
     .breadcrumb {
-      color: @text-grey-muted;
+      color: var(--om-color-text-quaternary);
       font-size: var(--om-font-size-10);
     }
   }

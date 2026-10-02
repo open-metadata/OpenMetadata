@@ -213,6 +213,7 @@
   --om-color-fg-error: var(--color-fg-error-primary, #d92d20);
   --om-color-fg-warning: var(--color-fg-warning-primary, #dc6803);
   --om-color-fg-success: var(--color-fg-success-primary, #079455);
+  --om-color-fg-quaternary: var(--color-fg-quaternary, #a4a7ae);
 
   /* Categorical utility pairs preserve distinct status hues while their
      lightness follows the active theme. */
@@ -224,12 +225,15 @@
     --color-utility-blue-light-700,
     #026aa2
   );
+  --om-color-utility-brand-100: var(--color-utility-brand-100, #d1e9ff);
   --om-color-utility-error-100: var(--color-utility-error-100, #fee4e2);
   --om-color-utility-error-700: var(--color-utility-error-700, #b42318);
   --om-color-utility-gray-100: var(--color-utility-gray-100, #f5f5f5);
   --om-color-utility-gray-700: var(--color-utility-gray-700, #414651);
   --om-color-utility-green-100: var(--color-utility-green-100, #d3f8df);
   --om-color-utility-green-700: var(--color-utility-green-700, #087443);
+  --om-color-utility-indigo-100: var(--color-utility-indigo-100, #e0eaff);
+  --om-color-utility-indigo-600: var(--color-utility-indigo-600, #444ce7);
   --om-color-utility-orange-100: var(--color-utility-orange-100, #ffead5);
   --om-color-utility-orange-700: var(--color-utility-orange-700, #c4320a);
   --om-color-utility-purple-100: var(--color-utility-purple-100, #ebe9fe);

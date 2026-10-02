@@ -175,11 +175,11 @@ const LINEAGE_MAP_EMPTY_CLASSES =
   'lineage-map-empty tw:absolute tw:inset-0 tw:z-1 tw:grid tw:place-items-center tw:bg-transparent tw:text-tertiary';
 const LINEAGE_MAP_RAIL_CLASSES = [
   'lineage-map-rail tw:absolute tw:top-1/2 tw:right-6 tw:z-10 tw:flex tw:w-8 tw:-translate-y-1/2',
-  'tw:flex-col tw:items-center tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:py-1.5 tw:shadow-lg',
+  'tw:flex-col tw:items-center tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:py-1.5 tw:shadow-lg',
 ].join(' ');
 const LINEAGE_MAP_RAIL_LABEL_CLASSES = [
   'lineage-map-rail-label tw:absolute tw:right-10 tw:max-w-[164px] tw:whitespace-nowrap tw:rounded-full',
-  'tw:border tw:border-brand tw:bg-primary tw:px-2.5 tw:py-1 tw:text-sm tw:font-semibold tw:leading-normal',
+  'tw:border tw:border-brand tw:bg-surface tw:px-2.5 tw:py-1 tw:text-sm tw:font-semibold tw:leading-normal',
   'tw:text-brand-tertiary',
 ].join(' ');
 const FIELD_NODE_HEIGHT =
@@ -684,7 +684,7 @@ const LineageMapOnboardingDialog = ({
                 {t('message.lineage-map-onboarding-description')}
               </span>
             </div>
-            <div className="lineage-map-onboarding-body tw:bg-primary tw:px-8 tw:pt-5 tw:pb-1">
+            <div className="lineage-map-onboarding-body tw:bg-overlay-surface tw:px-8 tw:pt-5 tw:pb-1">
               <div className="lineage-map-onboarding-row tw:grid tw:grid-cols-[44px_1fr] tw:gap-4 tw:border-b tw:border-secondary tw:pt-3 tw:pb-5">
                 <span className="lineage-map-onboarding-icon tw:flex tw:size-9 tw:items-center tw:justify-center tw:rounded-xl tw:bg-brand-primary tw:text-fg-brand-primary">
                   <ArrowsUp aria-hidden="true" className="tw:size-5" />
@@ -712,7 +712,7 @@ const LineageMapOnboardingDialog = ({
                 </div>
               </div>
             </div>
-            <div className="lineage-map-onboarding-footer tw:flex tw:items-center tw:justify-between tw:gap-5 tw:bg-primary tw:px-8 tw:pt-5 tw:pb-7">
+            <div className="lineage-map-onboarding-footer tw:flex tw:items-center tw:justify-between tw:gap-5 tw:bg-overlay-surface tw:px-8 tw:pt-5 tw:pb-7">
               <span className="lineage-map-onboarding-hint tw:text-sm tw:leading-normal tw:text-quaternary">
                 {t('message.lineage-map-onboarding-hint')}
               </span>
@@ -761,7 +761,7 @@ const LineageMapControls = ({
             icon={
               <span
                 className={classNames(
-                  'lineage-map-rail-dot tw:size-2 tw:rounded-full tw:border-2 tw:border-primary tw:bg-primary tw:transition-all tw:duration-150',
+                  'lineage-map-rail-dot tw:size-2 tw:rounded-full tw:border-2 tw:border-primary tw:bg-surface tw:transition-all tw:duration-150',
                   {
                     'active tw:size-3.5 tw:border-brand tw:bg-brand-solid':
                       scene.band === band,
@@ -831,7 +831,7 @@ const LineageMapBreadcrumbs = ({
       <Breadcrumbs
         autoCollapse
         aria-label={t('label.navigation')}
-        className="lineage-map-breadcrumbs tw:max-w-[min(760px,calc(100vw-520px))] tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-2 tw:shadow-lg"
+        className="lineage-map-breadcrumbs tw:max-w-[min(760px,calc(100vw-520px))] tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-2 tw:shadow-lg"
         data-testid="lineage-map-breadcrumbs"
         items={items}
         maxItemWidth={180}

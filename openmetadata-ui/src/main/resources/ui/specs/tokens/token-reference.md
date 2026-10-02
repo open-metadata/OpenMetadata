@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **837**.
+Total project tokens: **841**.
 
 ## Spacing (60)
 
@@ -268,7 +268,7 @@ transition / animation. See foundations/motion.md.
 | `--om-ease-out` | `cubic-bezier(0, 0, 0.2, 1)` |
 | `--om-ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` |
 
-## Semantic colors (71)
+## Semantic colors (75)
 
 Prefer these — they adapt to dark mode.
 
@@ -307,6 +307,7 @@ Prefer these — they adapt to dark mode.
 | `--om-color-border-warning-subtle` | `#fec84b` |
 | `--om-color-fg-brand` | `#1570ef` |
 | `--om-color-fg-error` | `#d92d20` |
+| `--om-color-fg-quaternary` | `#a4a7ae` |
 | `--om-color-fg-success` | `#079455` |
 | `--om-color-fg-warning` | `#dc6803` |
 | `--om-color-focus-ring` | `#2e90fa` |
@@ -329,12 +330,15 @@ Prefer these — they adapt to dark mode.
 | `--om-color-text-warning` | `#dc6803` |
 | `--om-color-utility-blue-light-100` | `#e0f2fe` |
 | `--om-color-utility-blue-light-700` | `#026aa2` |
+| `--om-color-utility-brand-100` | `#d1e9ff` |
 | `--om-color-utility-error-100` | `#fee4e2` |
 | `--om-color-utility-error-700` | `#b42318` |
 | `--om-color-utility-gray-100` | `#f5f5f5` |
 | `--om-color-utility-gray-700` | `#414651` |
 | `--om-color-utility-green-100` | `#d3f8df` |
 | `--om-color-utility-green-700` | `#087443` |
+| `--om-color-utility-indigo-100` | `#e0eaff` |
+| `--om-color-utility-indigo-600` | `#444ce7` |
 | `--om-color-utility-orange-100` | `#ffead5` |
 | `--om-color-utility-orange-700` | `#c4320a` |
 | `--om-color-utility-purple-100` | `#ebe9fe` |

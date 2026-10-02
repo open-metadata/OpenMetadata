@@ -11,31 +11,29 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../../../styles/variables.less';
-
 .ports-lineage-view {
   .react-flow__renderer {
-    background-color: @grey-9;
+    background-color: var(--om-color-bg-secondary);
   }
 
   .react-flow__controls {
     box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-1);
     border-radius: var(--om-radius-lg);
-    border: 1px solid @grey-200;
+    border: 1px solid var(--om-color-border-secondary);
     overflow: hidden;
 
     .react-flow__controls-button {
       width: 28px;
       height: 28px;
       border: none;
-      border-bottom: 1px solid @grey-200;
+      border-bottom: 1px solid var(--om-color-border-secondary);
 
       &:last-child {
         border-bottom: none;
       }
 
       &:hover {
-        background-color: @grey-100;
+        background-color: var(--om-color-bg-tertiary);
       }
     }
   }
@@ -45,8 +43,8 @@
   }
 
   .data-product-center-node {
-    background-color: var(--tw-color-bg-primary);
-    border: 2px solid @primary-color;
+    background-color: var(--om-color-bg-surface);
+    border: 2px solid var(--om-color-fg-brand);
     border-radius: var(--om-radius-xl);
     padding: var(--om-space-16) var(--om-space-24);
     min-width: 220px;
@@ -59,8 +57,8 @@
       top: -12px;
       left: 50%;
       transform: translateX(-50%);
-      background-color: @primary-color;
-      color: var(--tw-color-text-white);
+      background-color: var(--om-color-bg-brand-solid);
+      color: var(--om-color-text-inverse);
       padding: var(--om-space-2) var(--om-space-12);
       border-radius: var(--om-radius-lg);
       font-size: var(--om-font-size-11);
@@ -81,7 +79,7 @@
         width: 40px;
         height: 40px;
         border-radius: 50%;
-        background-color: @primary-1;
+        background-color: var(--om-color-utility-brand-100);
         display: flex;
         align-items: center;
         justify-content: center;

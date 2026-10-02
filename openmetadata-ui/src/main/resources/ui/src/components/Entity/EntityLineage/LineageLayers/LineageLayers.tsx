@@ -62,7 +62,7 @@ const SCENE_LAYER_MENU_ICON_CLASSES =
 
 const SCENE_LAYER_TRIGGER_CLASSES = [
   'lineage-scene-layer-trigger tw:flex! tw:min-h-[62px] tw:min-w-[248px] tw:items-center',
-  'tw:justify-start! tw:gap-2.5! tw:rounded-xl! tw:bg-primary tw:px-3! tw:py-2! tw:text-left tw:shadow-lg',
+  'tw:justify-start! tw:gap-2.5! tw:rounded-xl! tw:bg-surface tw:px-3! tw:py-2! tw:text-left tw:shadow-lg',
   'tw:[&>[data-text]]:min-w-0 tw:[&>[data-text]]:flex-1 tw:[&>[data-text]]:p-0',
 ].join(' ');
 
@@ -438,7 +438,7 @@ const LineageLayers = ({
       </Button>
     ) : (
       <Button
-        className={classNames(LAYER_BUTTON_CLASSES, 'tw:bg-primary', {
+        className={classNames(LAYER_BUTTON_CLASSES, 'tw:bg-surface', {
           'tw:after:outline-brand tw:z-10 tw:[&>svg]:text-fg-brand-primary':
             isLayersOpen,
         })}
