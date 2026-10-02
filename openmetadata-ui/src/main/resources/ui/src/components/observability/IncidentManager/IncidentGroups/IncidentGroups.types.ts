@@ -78,6 +78,7 @@ export interface IncidentGroupDetailProps {
   group: TestCaseIncidentGroup;
   filters: IncidentGroupFilters;
   onBack: () => void;
+  onClearFilters: () => void;
 }
 
 export interface IncidentGroupStatProps {

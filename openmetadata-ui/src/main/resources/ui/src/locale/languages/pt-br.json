@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "Neste Banco de Dados",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "Somente os incidentes que correspondem aos filtros dos grupos são listados.",
     "incident-group-seen-range": "visto pela primeira vez {{firstSeen}} · visto por último {{lastSeen}}",
     "incident-metrics-sub-header": "Acompanhe o volume, responsividade e eficiência de resolução de incidentes relacionados a dados para melhorar a confiabilidade operacional.",
     "include-assets-message": "Habilite a extração de {{assets}} da fonte de dados.",

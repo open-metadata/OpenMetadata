@@ -69,6 +69,11 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     isLoading,
     isError,
     retry,
+    detailKey,
+    detailGroup,
+    isDetailLoading,
+    openGroup,
+    closeGroup,
     handleGroupByChange,
     handleFiltersChange,
     handleSortTypeChange,
@@ -95,30 +100,39 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
   const isInitialLoading = isLoading && isEmpty(incidentGroups);
 
   const [previewGroup, setPreviewGroup] = useState<TestCaseIncidentGroup>();
-  const [detailGroup, setDetailGroup] = useState<TestCaseIncidentGroup>();
   // The row the user drilled in from, to hand focus back to on the way out.
   const [returnFocusKey, setReturnFocusKey] = useState<string>();
 
-  const handleOpenGroup = useCallback((group: TestCaseIncidentGroup) => {
-    setPreviewGroup(undefined);
-    setDetailGroup(group);
-  }, []);
+  const handleOpenGroup = useCallback(
+    (group: TestCaseIncidentGroup) => {
+      setPreviewGroup(undefined);
+      openGroup(group);
+    },
+    [openGroup]
+  );
 
   const handleBack = useCallback(() => {
     setReturnFocusKey(detailGroup && getIncidentGroupKey(detailGroup));
-    setDetailGroup(undefined);
-  }, [detailGroup]);
+    closeGroup();
+  }, [closeGroup, detailGroup]);
 
   useEffect(() => {
-    if (!detailGroup && returnFocusKey) {
+    if (detailKey !== undefined || !returnFocusKey) {
+      return;
+    }
+    // The table builds its rows a pass after it mounts, so the row is looked
+    // up once they are in.
+    const frame = requestAnimationFrame(() => {
       document
         .querySelector<HTMLElement>(
           `[data-testid="group-open-${returnFocusKey.replaceAll('"', '\\"')}"]`
         )
         ?.focus();
       setReturnFocusKey(undefined);
-    }
-  }, [detailGroup, returnFocusKey]);
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [detailKey, returnFocusKey]);
 
   const renderContent = () => {
     if (isInitialLoading) {
@@ -218,13 +232,48 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     );
   };
 
-  // The groups are re-read while a drill-down is open; it shows the latest copy.
-  const shownDetailGroup =
-    detailGroup &&
-    (incidentGroups.find(
-      (group) => getIncidentGroupKey(group) === getIncidentGroupKey(detailGroup)
-    ) ??
-      detailGroup);
+  const renderDetail = () => {
+    if (detailGroup) {
+      return (
+        <IncidentGroupDetail
+          filters={filters}
+          group={detailGroup}
+          onBack={handleBack}
+          onClearFilters={() =>
+            handleFiltersChange(CLEARED_INCIDENT_GROUP_FILTERS)
+          }
+        />
+      );
+    }
+
+    return isDetailLoading ? (
+      <Box
+        className="tw:min-h-80 tw:items-center tw:justify-center"
+        data-testid="incident-group-detail-loader">
+        <Loader />
+      </Box>
+    ) : (
+      // The group a link names may have no open incident left in this scope.
+      <Box
+        className="tw:relative tw:min-h-80 tw:w-full"
+        data-testid="incident-group-detail-missing">
+        <EmptyPlaceholder
+          actions={[
+            {
+              key: 'back',
+              color: 'secondary',
+              label: t('label.back-to-group-plural'),
+              onPress: handleBack,
+            },
+          ]}
+          description={t('message.try-adjusting-filter')}
+          icon={<Search className="tw:text-fg-quaternary" />}
+          title={t('message.no-match-found')}
+          variant="blank"
+        />
+      </Box>
+    );
+  };
 
   const hasStats = !isInitialLoading && !isError;
   const groupCount = paging?.total ?? incidentGroups.length;
@@ -235,13 +284,7 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
       className="tw:gap-4"
       data-testid="incident-groups"
       direction="col">
-      {shownDetailGroup ? (
-        <IncidentGroupDetail
-          filters={filters}
-          group={shownDetailGroup}
-          onBack={handleBack}
-        />
-      ) : (
+      {detailKey === undefined ? (
         <>
           <Box className="tw:items-center tw:justify-between tw:gap-2">
             {/* Kept when empty, so the dimension picker stays on the right. */}
@@ -302,6 +345,8 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
           />
           {renderContent()}
         </>
+      ) : (
+        renderDetail()
       )}
       <IncidentGroupDrawer
         filters={filters}

@@ -21,6 +21,7 @@ import {
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import IncidentGroupDetail from './IncidentGroupDetail';
+import { IncidentGroupFilters } from './IncidentGroups.types';
 
 const mockList = getListTestCaseIncidentStatus as jest.Mock;
 const mockOnBack = jest.fn();
@@ -46,13 +47,19 @@ const GROUP: TestCaseIncidentGroup = {
   testDefinitionCount: 2,
 };
 
-const renderDetail = (group: TestCaseIncidentGroup = GROUP) =>
+const mockOnClearFilters = jest.fn();
+
+const renderDetail = (
+  group: TestCaseIncidentGroup = GROUP,
+  filters: IncidentGroupFilters = { status: [], dateField: 'timestamp' }
+) =>
   render(
     <MemoryRouter>
       <IncidentGroupDetail
-        filters={{ status: [], dateField: 'timestamp' }}
+        filters={filters}
         group={group}
         onBack={mockOnBack}
+        onClearFilters={mockOnClearFilters}
       />
     </MemoryRouter>
   );
@@ -143,5 +150,32 @@ describe('IncidentGroupDetail', () => {
     expect(screen.getByTestId('incident-group-summary')).toHaveTextContent(
       '5 label.incident-lowercase-plural'
     );
+  });
+
+  it('should say the list is filtered, and clear the filters on request', async () => {
+    await act(async () => {
+      renderDetail(GROUP, {
+        status: [TestCaseResolutionStatusTypes.New],
+        dateField: 'timestamp',
+      });
+    });
+
+    expect(
+      screen.getByTestId('incident-group-detail-filtered')
+    ).toHaveTextContent('message.incident-group-filtered');
+
+    fireEvent.click(screen.getByTestId('incident-group-detail-clear-filters'));
+
+    expect(mockOnClearFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not flag an unfiltered list', async () => {
+    await act(async () => {
+      renderDetail();
+    });
+
+    expect(
+      screen.queryByTestId('incident-group-detail-filtered')
+    ).not.toBeInTheDocument();
   });
 });

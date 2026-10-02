@@ -19,7 +19,7 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowLeft } from '@openmetadata/ui-core-components/icons';
+import { ArrowLeft, FilterLines } from '@openmetadata/ui-core-components/icons';
 import { Key, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
@@ -31,9 +31,12 @@ import {
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
 } from './IncidentGroups.constants';
 import { IncidentGroupDetailProps } from './IncidentGroups.types';
-import { getIncidentGroupName } from './IncidentGroups.utils';
-import IncidentGroupSeverityBadge from './IncidentGroupSeverityBadge';
+import {
+  getIncidentGroupName,
+  hasActiveIncidentGroupFilters,
+} from './IncidentGroups.utils';
 import IncidentList from './IncidentList';
+import IncidentSeverityBadge from './IncidentSeverityBadge';
 import { useIncidentGroupIncidents } from './useIncidentGroupIncidents';
 
 const GROUPS_CRUMB = 'groups';
@@ -47,6 +50,7 @@ const IncidentGroupDetail = ({
   group,
   filters,
   onBack,
+  onClearFilters,
 }: IncidentGroupDetailProps) => {
   const { t } = useTranslation();
   const headingRef = useRef<HTMLDivElement>(null);
@@ -107,7 +111,9 @@ const IncidentGroupDetail = ({
         </div>
         <Box align="center" gap={3} wrap="wrap">
           <IncidentGroupRelatedBadge group={group} />
-          <IncidentGroupSeverityBadge severity={group.severity} />
+          <span data-testid="group-severity">
+            <IncidentSeverityBadge severity={group.severity} />
+          </span>
           <Typography
             as="span"
             className="tw:text-tertiary"
@@ -132,6 +138,27 @@ const IncidentGroupDetail = ({
             })}
           </Typography>
         </Box>
+        {/* The groups list's filters carry over, so a count that reads short
+            of the group's says why. */}
+        {hasActiveIncidentGroupFilters(filters) && (
+          <Box
+            align="center"
+            className="tw:text-tertiary"
+            data-testid="incident-group-detail-filtered"
+            gap={2}>
+            <FilterLines className="tw:size-4 tw:text-fg-quaternary" />
+            <Typography as="span" size="text-sm">
+              {t('message.incident-group-filtered')}
+            </Typography>
+            <Button
+              color="link-color"
+              data-testid="incident-group-detail-clear-filters"
+              size="sm"
+              onPress={onClearFilters}>
+              {t('label.clear-filter-plural')}
+            </Button>
+          </Box>
+        )}
       </Box>
       <TableCard.Root>
         <IncidentList incidents={incidents} isLoading={isLoading} />

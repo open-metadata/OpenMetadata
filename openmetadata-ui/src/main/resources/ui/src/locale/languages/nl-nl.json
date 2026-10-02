@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "In deze database",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "Alleen de incidenten die aan de filters van de groepen voldoen, worden getoond.",
     "incident-group-seen-range": "eerst gezien {{firstSeen}} · laatst gezien {{lastSeen}}",
     "incident-metrics-sub-header": "Volg het volume, responsiviteit en resolutie-efficiëntie van data-gerelateerde incidenten om operationele betrouwbaarheid te verbeteren.",
     "include-assets-message": "Schakel het extraheren van {{assets}} uit de databron in.",

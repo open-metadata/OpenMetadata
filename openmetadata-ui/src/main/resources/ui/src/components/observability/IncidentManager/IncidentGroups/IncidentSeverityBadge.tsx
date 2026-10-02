@@ -18,29 +18,32 @@ import { Severities } from '../../../../generated/tests/testCaseIncidentGroup';
 import { INCIDENT_GROUP_SEVERITY_COLOR } from './IncidentGroups.constants';
 
 /**
- * A group's severity, read-only: the worst of its incidents. A group cannot be
- * given a severity of its own, so this is a label rather than the chip control
- * an incident row edits through.
+ * A severity as a read-only label, for a group (the worst of its incidents) and
+ * for an incident that cannot be edited where it is listed. Takes either
+ * generated `Severities` enum: they come from two schema files but name the
+ * same values.
  */
-const IncidentGroupSeverityBadge = ({
+const IncidentSeverityBadge = ({
   severity,
 }: {
-  severity?: Severities;
+  severity?: `${Severities}`;
 }) => {
   const { t } = useTranslation();
 
   return (
-    <span data-testid="group-severity">
-      <Badge
-        color={severity ? INCIDENT_GROUP_SEVERITY_COLOR[severity] : 'gray'}
-        size="sm"
-        type="pill-color">
-        {severity
-          ? startCase(severity)
-          : t('label.no-entity', { entity: t('label.severity') })}
-      </Badge>
-    </span>
+    <Badge
+      color={
+        severity
+          ? INCIDENT_GROUP_SEVERITY_COLOR[severity as Severities]
+          : 'gray'
+      }
+      size="sm"
+      type="pill-color">
+      {severity
+        ? startCase(severity)
+        : t('label.no-entity', { entity: t('label.severity') })}
+    </Badge>
   );
 };
 
-export default IncidentGroupSeverityBadge;
+export default IncidentSeverityBadge;

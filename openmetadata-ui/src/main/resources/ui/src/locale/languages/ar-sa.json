@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "في قاعدة البيانات هذه",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "تُعرض فقط الحوادث التي تطابق عوامل تصفية المجموعات.",
     "incident-group-seen-range": "أول ظهور {{firstSeen}} · آخر ظهور {{lastSeen}}",
     "incident-metrics-sub-header": "تتبع حجم واستجابة وكفاءة حل الحوادث المتعلقة بالبيانات لتحسين الموثوقية التشغيلية.",
     "include-assets-message": "تفعيل استخراج {{assets}} من مصدر البيانات.",

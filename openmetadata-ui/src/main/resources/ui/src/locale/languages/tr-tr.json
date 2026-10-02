@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "Bu Veritabanında",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "Yalnızca grupların filtreleriyle eşleşen olaylar listelenir.",
     "incident-group-seen-range": "ilk görülme {{firstSeen}} · son görülme {{lastSeen}}",
     "incident-metrics-sub-header": "Operasyonel güvenilirliği artırmak için veriyle ilgili olayların hacmini, yanıt hızını ve çözüm etkinliğini takip edin.",
     "include-assets-message": "Veri kaynağından {{assets}} çıkarımını etkinleştirin.",

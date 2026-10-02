@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "이 데이터베이스에서",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "그룹 필터와 일치하는 인시던트만 표시됩니다.",
     "incident-group-seen-range": "최초 발생 {{firstSeen}} · 마지막 발생 {{lastSeen}}",
     "incident-metrics-sub-header": "운영 신뢰성을 향상시키기 위해 데이터 관련 인시던트의 볼륨, 응답성 및 해결 효율성을 추적합니다.",
     "include-assets-message": "데이터 소스에서 {{assets}} 추출을 활성화합니다.",

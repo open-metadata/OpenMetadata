@@ -4239,6 +4239,7 @@
     "importing-entity": "در حال وارد کردن {{entity}}...",
     "in-this-database": "در این پایگاه داده",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "فقط رویدادهایی که با فیلترهای گروه‌ها مطابقت دارند نمایش داده می‌شوند.",
     "incident-group-seen-range": "نخستین مشاهده {{firstSeen}} · آخرین مشاهده {{lastSeen}}",
     "incident-metrics-sub-header": "حجم، پاسخ و کارایی حل حوادث مرتبط با کیفیت داده را برای سنجش انعطاف‌پذیری داده پیگیری کنید.",
     "include-assets-message": "استخراج {{assets}} از منبع داده را فعال کنید.",

@@ -41,6 +41,12 @@ import {
  */
 export const INCIDENT_GROUP_BY_PARAM = 'groupBy';
 
+/**
+ * Query string param naming the group whose drill-down is open, so a reload,
+ * a shared link or the browser's Back lands on it again.
+ */
+export const INCIDENT_GROUP_DETAIL_PARAM = 'group';
+
 /** Dimension the page opens with when the URL does not carry a valid one. */
 export const DEFAULT_INCIDENT_GROUP_BY = IncidentGroupBy.TestDefinition;
 

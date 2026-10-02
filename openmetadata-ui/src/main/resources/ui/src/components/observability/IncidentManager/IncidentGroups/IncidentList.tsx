@@ -15,7 +15,9 @@ import {
   Badge,
   Box,
   EmptyPlaceholder,
+  OwnerChip,
   Table,
+  toOwnerRef,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -26,7 +28,6 @@ import {
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { FqnPart } from '../../../../enums/entity.enum';
 import {
@@ -34,17 +35,20 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
+import {
+  formatDate,
+  formatDateTimeLong,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import Loader from '../../../common/Loader/Loader';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
-import InlineSeverity from '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component';
 import { INCIDENT_STATUS_BADGE_COLORS } from './IncidentGroups.constants';
 import { IncidentListProps } from './IncidentGroups.types';
+import IncidentSeverityBadge from './IncidentSeverityBadge';
 
-const ASSIGNEE_AVATAR_WIDTH = '24';
+/** Time of day under the date, with the zone the stamp is read in. */
+const LAST_UPDATED_TIME_FORMAT = "h:mm a '(UTC'ZZ')'";
 
 const getAssignee = (incident: TestCaseResolutionStatus) =>
   incident.testCaseResolutionStatusType ===
@@ -57,7 +61,7 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
   const fqn = incident.testCaseReference?.fullyQualifiedName ?? '';
 
   return (
-    <Box className="tw:min-w-0 tw:max-w-120" direction="col" gap={1}>
+    <Box className="tw:min-w-0 tw:max-w-96" direction="col" gap={1}>
       <Link
         className="tw:truncate tw:text-sm tw:font-medium tw:text-link"
         to={observabilityRouterClassBase.getTestCaseDetailPagePath(fqn)}>
@@ -71,26 +75,21 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
           {getPartialNameFromTableFQN(fqn, [FqnPart.Table])}
         </Typography>
       </Box>
-      <div data-testid="incident-failure-summary">
-        {incident.failureSummary ? (
-          // Not the core Alert: it is a live region, and every row of the list
-          // would be announced as one. Same error tokens, in the design's
-          // compact callout.
-          <Box
-            align="start"
-            className="tw:rounded-lg tw:border tw:border-error-subtle tw:bg-error-primary tw:px-3 tw:py-2"
-            gap={2}>
-            <AlertTriangle className="tw:mt-0.5 tw:size-4 tw:shrink-0 tw:text-fg-error-primary" />
-            <Typography as="span" className="tw:text-secondary" size="text-sm">
-              {incident.failureSummary}
-            </Typography>
-          </Box>
-        ) : (
-          <Typography as="span" className="tw:text-tertiary" size="text-xs">
-            {NO_DATA_PLACEHOLDER}
+      {incident.failureSummary && (
+        // Not the core Alert: it is a live region, and every row of the list
+        // would be announced as one. Same error tokens, in the design's
+        // compact callout.
+        <Box
+          align="start"
+          className="tw:rounded-lg tw:border tw:border-error-subtle tw:bg-error-primary tw:px-3 tw:py-2"
+          data-testid="incident-failure-summary"
+          gap={2}>
+          <AlertTriangle className="tw:mt-0.5 tw:size-4 tw:shrink-0 tw:text-fg-error-primary" />
+          <Typography as="span" className="tw:text-secondary" size="text-sm">
+            {incident.failureSummary}
           </Typography>
-        )}
-      </div>
+        </Box>
+      )}
     </Box>
   );
 };
@@ -151,6 +150,7 @@ const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
           const assignee = getAssignee(incident);
           const status = incident.testCaseResolutionStatusType;
           const rowId = incident.id ?? incident.stateId;
+          const lastUpdated = incident.updatedAt ?? incident.timestamp;
 
           return (
             <Table.Row
@@ -161,10 +161,20 @@ const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
                 <TestCaseCell incident={incident} />
               </Table.Cell>
               <Table.Cell className="tw:whitespace-nowrap">
-                <DateTimeDisplay
-                  size="compact"
-                  timestamp={incident.updatedAt ?? incident.timestamp}
-                />
+                <Box data-testid="incident-last-updated" direction="col">
+                  <Typography
+                    as="span"
+                    className="tw:text-primary"
+                    size="text-sm">
+                    {formatDate(lastUpdated)}
+                  </Typography>
+                  <Typography
+                    as="span"
+                    className="tw:text-tertiary"
+                    size="text-xs">
+                    {formatDateTimeLong(lastUpdated, LAST_UPDATED_TIME_FORMAT)}
+                  </Typography>
+                </Box>
               </Table.Cell>
               <Table.Cell>
                 <span data-testid="incident-status">
@@ -178,23 +188,17 @@ const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
               </Table.Cell>
               <Table.Cell>
                 <span data-testid="incident-severity">
-                  <InlineSeverity
-                    hasEditPermission={false}
-                    severity={incident.severity}
-                  />
+                  <IncidentSeverityBadge severity={incident.severity} />
                 </span>
               </Table.Cell>
-              <Table.Cell>
+              <Table.Cell className="tw:whitespace-nowrap">
                 {assignee && (
-                  <Box align="center" data-testid="incident-assignee" gap={2}>
-                    <ProfilePicture
-                      name={assignee.name ?? ''}
-                      width={ASSIGNEE_AVATAR_WIDTH}
+                  <span data-testid="incident-assignee">
+                    <OwnerChip
+                      isCompactView={false}
+                      owner={toOwnerRef(assignee)}
                     />
-                    <Typography as="span" size="text-sm">
-                      {getEntityName(assignee)}
-                    </Typography>
-                  </Box>
+                  </span>
                 )}
               </Table.Cell>
             </Table.Row>

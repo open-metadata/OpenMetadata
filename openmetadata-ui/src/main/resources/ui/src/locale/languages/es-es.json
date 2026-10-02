@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "En esta base de datos",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "Solo se muestran los incidentes que coinciden con los filtros de los grupos.",
     "incident-group-seen-range": "visto por primera vez {{firstSeen}} · visto por última vez {{lastSeen}}",
     "incident-metrics-sub-header": "Rastree el volumen, capacidad de respuesta y eficiencia de resolución de incidentes relacionados con datos para mejorar la confiabilidad operacional.",
     "include-assets-message": "Configuración opcional para activar la ingestión de {{assets}}.",

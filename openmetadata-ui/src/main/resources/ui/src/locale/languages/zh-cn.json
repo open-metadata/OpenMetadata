@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "在此数据库中",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "仅列出与分组筛选条件匹配的事件。",
     "incident-group-seen-range": "首次出现于 {{firstSeen}} · 最后出现于 {{lastSeen}}",
     "incident-metrics-sub-header": "跟踪数据相关事件的数量、响应能力和解决效率，以提高操作可靠性。",
     "include-assets-message": "启用从数据源提取{{assets}}",

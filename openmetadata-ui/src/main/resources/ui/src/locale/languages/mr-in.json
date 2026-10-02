@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "या डेटाबेसमध्ये",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "फक्त गटांच्या फिल्टरशी जुळणाऱ्या घटना दाखवल्या आहेत.",
     "incident-group-seen-range": "प्रथम आढळले {{firstSeen}} · शेवटचे आढळले {{lastSeen}}",
     "incident-metrics-sub-header": "ऑपरेशनल विश्वासार्हता सुधारण्यासाठी डेटा-संबंधित घटनांचे प्रमाण, प्रतिसादशीलता आणि निराकरण कार्यक्षमता ट्रॅक करा.",
     "include-assets-message": "डेटा स्रोतातून {{assets}} काढणे सक्षम करा.",

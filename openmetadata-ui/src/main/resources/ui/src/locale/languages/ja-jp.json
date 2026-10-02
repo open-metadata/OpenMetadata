@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "このデータベース内",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "グループのフィルターに一致するインシデントのみが表示されています。",
     "incident-group-seen-range": "初回検出 {{firstSeen}} · 最終検出 {{lastSeen}}",
     "incident-metrics-sub-header": "データ関連インシデントのボリューム、応答性、解決効率を追跡して運用の信頼性を向上させます。",
     "include-assets-message": "{{assets}} をデータソースから抽出可能にする",

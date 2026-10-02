@@ -4239,6 +4239,7 @@
     "importing-entity": "Импорт {{entity}}...",
     "in-this-database": "В этой базе данных",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "Показаны только инциденты, соответствующие фильтрам групп.",
     "incident-group-seen-range": "впервые {{firstSeen}} · в последний раз {{lastSeen}}",
     "incident-metrics-sub-header": "Отслеживайте объем, скорость реагирования и эффективность разрешения инцидентов, связанных с данными, для улучшения операционной надежности.",
     "include-assets-message": "Включите извлечение {{assets}} из источника данных.",

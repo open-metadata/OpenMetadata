@@ -21,14 +21,7 @@ import {
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import IncidentList from './IncidentList';
 
-jest.mock('../../../common/ProfilePicture/ProfilePicture', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ name }: { name: string }) => (
-      <span>{`avatar:${name}`}</span>
-    )),
-}));
+import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 
 const TEST_CASE_FQN = 'svc.db.shop.customers.customers_row_count';
 
@@ -122,11 +115,22 @@ describe('IncidentList', () => {
       'Severity 1'
     );
     expect(within(row).getByTestId('incident-assignee')).toHaveTextContent(
-      'avatar:tomas.montiel'
-    );
-    expect(within(row).getByTestId('incident-assignee')).toHaveTextContent(
       'Tomas Montiel'
     );
+    // A label, not a disabled control sitting in the row.
+    expect(
+      within(within(row).getByTestId('incident-severity')).queryByRole('button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should show the last update as a short date over its time', () => {
+    renderList();
+
+    expect(
+      within(screen.getByTestId('incident-row-incident-1')).getByTestId(
+        'incident-last-updated'
+      )
+    ).toHaveTextContent(formatDate(assigned.updatedAt));
   });
 
   it('should fall back for an incident with no reason and no assignee', () => {
@@ -135,8 +139,11 @@ describe('IncidentList', () => {
     const row = screen.getByTestId('incident-row-incident-2');
 
     expect(
-      within(row).getByTestId('incident-failure-summary')
-    ).toHaveTextContent('--');
+      within(row).queryByTestId('incident-failure-summary')
+    ).not.toBeInTheDocument();
+    expect(within(row).getByTestId('incident-severity')).toHaveTextContent(
+      'label.no-entity'
+    );
     expect(within(row).getByTestId('incident-status')).toHaveTextContent(
       'label.new'
     );
@@ -170,8 +177,6 @@ describe('IncidentList', () => {
     ]);
 
     expect(screen.getByTestId('incident-row-state-3')).toBeInTheDocument();
-    expect(screen.getByTestId('incident-assignee')).toHaveTextContent(
-      'avatar:'
-    );
+    expect(screen.getByTestId('incident-assignee')).toHaveTextContent('team-1');
   });
 });

@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "ในฐานข้อมูลนี้",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "แสดงเฉพาะเหตุการณ์ที่ตรงกับตัวกรองของกลุ่ม",
     "incident-group-seen-range": "พบครั้งแรก {{firstSeen}} · พบล่าสุด {{lastSeen}}",
     "incident-metrics-sub-header": "ติดตามปริมาณ การตอบสนอง และประสิทธิภาพการแก้ไขอุบัติการณ์ที่เกี่ยวข้องกับข้อมูล เพื่อปรับปรุงความน่าเชื่อถือในการดำเนินงาน",
     "include-assets-message": "เปิดใช้งานการดึง {{assets}} จากแหล่งข้อมูล",

@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { pick } from 'lodash';
+import { isString, omit, pick } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,10 +34,12 @@ import {
   DEFAULT_INCIDENT_SORT_TYPE,
   INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUP_BY_PARAM,
+  INCIDENT_GROUP_DETAIL_PARAM,
   INCIDENT_GROUP_FILTER_KEYS,
 } from './IncidentGroups.constants';
 import { IncidentGroupFilters } from './IncidentGroups.types';
 import {
+  getIncidentGroupFilterKey,
   getIncidentGroupsQuery,
   parseIncidentGroupBy,
   parseIncidentGroupFilters,
@@ -54,6 +56,9 @@ import { useIncidentPaging } from './useIncidentPaging';
  * changed elsewhere on the page reaches these rows without a reload. That
  * re-read runs in the background whenever there are rows to keep: they stay put
  * until the new ones land.
+ *
+ * The open drill-down is in the URL too, and its group is read on its own: the
+ * one a link names may sit on any page of the listing.
  */
 export const useIncidentGroups = ({
   refreshKey,
@@ -88,6 +93,13 @@ export const useIncidentGroups = ({
     () => parseIncidentGroupFilters(QueryString.parse(filtersSearch)),
     [filtersSearch]
   );
+  const detailParam = searchParams[INCIDENT_GROUP_DETAIL_PARAM];
+  const detailKey = isString(detailParam) ? detailParam : undefined;
+  // The group last read for the drill-down, with the key it was read for.
+  const [detail, setDetail] = useState<{
+    key: string;
+    group?: TestCaseIncidentGroup;
+  }>();
 
   const [incidentGroups, setIncidentGroups] = useState<TestCaseIncidentGroup[]>(
     []
@@ -215,6 +227,86 @@ export const useIncidentGroups = ({
     };
   }, [fetchIncidentGroups]);
 
+  useEffect(() => {
+    if (detailKey === undefined) {
+      return;
+    }
+    let isCurrent = true;
+    listIncidentGroups({
+      groupBy,
+      group: detailKey,
+      limit: 1,
+      domain,
+      ...getIncidentGroupsQuery(filters),
+    })
+      .then(({ data }) => {
+        if (isCurrent) {
+          setDetail({ key: detailKey, group: data[0] });
+        }
+      })
+      .catch((error: AxiosError) => {
+        if (isCurrent) {
+          setDetail({ key: detailKey });
+          showErrorToast(
+            error,
+            t('server.entity-fetch-error', {
+              entity: t('label.incident-plural'),
+            })
+          );
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [detailKey, groupBy, domain, filters, refreshKey, t]);
+
+  // A group opened from a row is on screen already, so it shows at once; the
+  // read above then keeps it current.
+  const loadedDetailGroup =
+    detailKey === undefined
+      ? undefined
+      : incidentGroups.find(
+          (group) => getIncidentGroupFilterKey(group) === detailKey
+        );
+  const hasReadDetail = detailKey !== undefined && detail?.key === detailKey;
+  const detailGroup = hasReadDetail ? detail?.group : loadedDetailGroup;
+
+  const openGroup = useCallback(
+    (group: TestCaseIncidentGroup) =>
+      navigate(
+        {
+          search: QueryString.stringify(
+            {
+              ...searchParams,
+              [INCIDENT_GROUP_DETAIL_PARAM]: getIncidentGroupFilterKey(group),
+            },
+            { arrayFormat: 'repeat' }
+          ),
+        },
+        { state: { fromGroups: true } }
+      ),
+    [navigate, searchParams]
+  );
+
+  // Back from a drill-down opened here retraces that step, so the browser's
+  // Back cannot return to it; one reached by a link has nothing to retrace.
+  const closeGroup = useCallback(() => {
+    if ((location.state as { fromGroups?: boolean } | null)?.fromGroups) {
+      navigate(-1);
+    } else {
+      navigate(
+        {
+          search: QueryString.stringify(
+            omit(searchParams, INCIDENT_GROUP_DETAIL_PARAM),
+            { arrayFormat: 'repeat' }
+          ),
+        },
+        { replace: true }
+      );
+    }
+  }, [location.state, navigate, searchParams]);
+
   const handleGroupByChange = useCallback(
     (updatedGroupBy: IncidentGroupBy) => {
       if (updatedGroupBy === groupBy) {
@@ -265,6 +357,11 @@ export const useIncidentGroups = ({
     isLoading,
     isError,
     retry: fetchIncidentGroups,
+    detailKey,
+    detailGroup,
+    isDetailLoading: detailKey !== undefined && !hasReadDetail && !detailGroup,
+    openGroup,
+    closeGroup,
     handleGroupByChange,
     handleFiltersChange,
     handleSortTypeChange: setSortType,

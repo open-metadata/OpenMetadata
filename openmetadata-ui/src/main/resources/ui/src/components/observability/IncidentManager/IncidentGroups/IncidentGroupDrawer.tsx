@@ -29,8 +29,8 @@ import {
   IncidentGroupStatProps,
 } from './IncidentGroups.types';
 import { getIncidentGroupName } from './IncidentGroups.utils';
-import IncidentGroupSeverityBadge from './IncidentGroupSeverityBadge';
 import IncidentList from './IncidentList';
+import IncidentSeverityBadge from './IncidentSeverityBadge';
 import { useIncidentGroupIncidents } from './useIncidentGroupIncidents';
 
 const DRAWER_WIDTH = 1040;
@@ -120,7 +120,9 @@ const IncidentGroupDrawer = ({
                 </Typography>
                 <Box align="center" gap={2}>
                   <IncidentGroupRelatedBadge group={group} />
-                  <IncidentGroupSeverityBadge severity={group.severity} />
+                  <span data-testid="group-severity">
+                    <IncidentSeverityBadge severity={group.severity} />
+                  </span>
                 </Box>
               </Box>
             </SlideoutMenu.Header>

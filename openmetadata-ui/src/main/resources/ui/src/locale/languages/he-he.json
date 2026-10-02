@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "במסד נתונים זה",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "מוצגות רק התקריות שתואמות את מסנני הקבוצות.",
     "incident-group-seen-range": "נצפה לראשונה {{firstSeen}} · נצפה לאחרונה {{lastSeen}}",
     "incident-metrics-sub-header": "עקב אחר ההיקף, היעילות ויעילות הפתרון של אירועים הקשורים לנתונים כדי לשפר את האמינות התפעולית.",
     "include-assets-message": "הפעל את החילוץ של {{assets}} ממקור הנתונים.",

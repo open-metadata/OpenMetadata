@@ -55,7 +55,7 @@ import {
   getIncidentGroupSubLine,
   getIncidentGroupSubLineTitle,
 } from './IncidentGroups.utils';
-import IncidentGroupSeverityBadge from './IncidentGroupSeverityBadge';
+import IncidentSeverityBadge from './IncidentSeverityBadge';
 import IncidentStatusBreakdown from './IncidentStatusBreakdown';
 import IncidentTrendSparkline from './IncidentTrendSparkline';
 
@@ -211,19 +211,24 @@ const IncidentGroupsTable = ({
 
   const renderRow = (group: TestCaseIncidentGroup) => {
     const rowId = getIncidentGroupKey(group);
+    const groupName = getIncidentGroupName(
+      group,
+      t('label.no-entity', { entity: t('label.owner') })
+    );
 
     return (
-      <Table.Row id={rowId} key={rowId} onAction={() => onGroupPreview(group)}>
+      <Table.Row
+        className="tw:cursor-pointer"
+        id={rowId}
+        key={rowId}
+        onAction={() => onGroupPreview(group)}>
         <Table.Cell className="tw:max-w-72">
           <StackedCell
             caption={getIncidentGroupSubLine(group) || undefined}
             captionIcon={subLineIcon}
             captionTestId="group-sub-line"
             captionTitle={getIncidentGroupSubLineTitle(group)}
-            value={getIncidentGroupName(
-              group,
-              t('label.no-entity', { entity: t('label.owner') })
-            )}
+            value={groupName}
             valueTestId="group-name"
             valueTitle={group.fullyQualifiedName}
           />
@@ -239,7 +244,9 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          <IncidentGroupSeverityBadge severity={group.severity} />
+          <span data-testid="group-severity">
+            <IncidentSeverityBadge severity={group.severity} />
+          </span>
         </Table.Cell>
         <Table.Cell>
           <IncidentStatusBreakdown statusCounts={group.statusCounts} />
@@ -262,9 +269,7 @@ const IncidentGroupsTable = ({
               stay with its button. */}
           <div role="presentation" onClick={stopPropagationIfInteractive}>
             <Button
-              aria-label={t('label.view-entity', {
-                entity: t('label.incident-plural'),
-              })}
+              aria-label={t('label.view-entity', { entity: groupName })}
               color="tertiary"
               data-testid={`group-open-${rowId}`}
               iconLeading={ChevronRight}

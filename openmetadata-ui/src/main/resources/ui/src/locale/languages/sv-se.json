@@ -4239,6 +4239,7 @@
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "I den här databasen",
     "inbox-desc": "Your tasks, activity, and owned data, all in one place.",
+    "incident-group-filtered": "Endast incidenter som matchar gruppernas filter visas.",
     "incident-group-seen-range": "först sedd {{firstSeen}} · senast sedd {{lastSeen}}",
     "incident-metrics-sub-header": "Följ volymen, responsiviteten och lösningseffektiviteten för datarelaterade incidenter för att förbättra den operativa tillförlitligheten.",
     "include-assets-message": "Aktivera extrahering av {{assets}} från datakällan.",
