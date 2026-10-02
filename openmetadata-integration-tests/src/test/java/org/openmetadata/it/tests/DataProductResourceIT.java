@@ -213,11 +213,6 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Override
-  protected EntityStatus expectedInitialEntityStatus() {
-    return EntityStatus.DRAFT;
-  }
-
-  @Override
   protected void validateCreatedEntity(DataProduct entity, CreateDataProduct createRequest) {
     assertEquals(createRequest.getName(), entity.getName());
     assertNotNull(entity.getDomains(), "DataProduct must have a domain");

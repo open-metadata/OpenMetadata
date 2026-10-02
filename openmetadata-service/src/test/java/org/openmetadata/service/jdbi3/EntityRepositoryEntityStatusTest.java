@@ -148,7 +148,7 @@ class EntityRepositoryEntityStatusTest {
     new TestMetricRepo(metricDAO).assignInitialEntityStatus(ingested);
     new ReviewedMetricRepo(metricDAO).assignInitialEntityStatus(reviewed);
 
-    assertEquals(EntityStatus.APPROVED, ingested.getEntityStatus());
+    assertEquals(EntityStatus.UNPROCESSED, ingested.getEntityStatus());
     assertEquals(EntityStatus.DRAFT, reviewed.getEntityStatus());
   }
 

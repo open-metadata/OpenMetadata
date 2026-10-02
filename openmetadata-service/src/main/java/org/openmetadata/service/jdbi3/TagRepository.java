@@ -91,6 +91,7 @@ public class TagRepository extends EntityRepository<Tag> {
         "");
     supportsSearch = true;
     renameAllowed = true;
+    onlyReviewersDeleteInReview = true;
     approvalTaskReviewsEntityStatus = true;
 
     // Initialize inherited field search

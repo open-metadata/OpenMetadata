@@ -20,7 +20,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
@@ -50,7 +49,6 @@ public class McpServerRepository extends EntityRepository<McpServer> {
     // status when there is one, and the AI governance endpoints move it. Without one the asset
     // starts in Draft, which sits outside the registration approval flow, so saving it records no
     // approval.
-    defaultEntityStatus = EntityStatus.DRAFT;
     workflowsOwnEntityStatus = false;
   }
 

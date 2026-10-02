@@ -134,7 +134,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         DATA_CONTRACT_UPDATE_FIELDS);
     // A contract's rules and inheritance apply only once it is Approved, so a new contract starts
     // in Draft until it is reviewed.
-    defaultEntityStatus = EntityStatus.DRAFT;
     onlyReviewersDeleteInReview = true;
     approvalTaskReviewsEntityStatus = true;
     this.ingestionPipelineMapper = new IngestionPipelineMapper(config);

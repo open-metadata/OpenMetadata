@@ -49,7 +49,7 @@ public class AIApplicationResourceIT {
   }
 
   @Test
-  void test_newAIApplicationStartsInDraft(TestNamespace ns) {
+  void test_newAIApplicationStartsUnprocessed(TestNamespace ns) {
     AIApplication app =
         AIApplications.create()
             .name(ns.prefix("draftApp"))
@@ -57,7 +57,7 @@ public class AIApplicationResourceIT {
             .withDescription("AI Application with no registration status")
             .execute();
 
-    assertEquals(EntityStatus.DRAFT, app.getEntityStatus());
+    assertEquals(EntityStatus.UNPROCESSED, app.getEntityStatus());
   }
 
   @Test

@@ -560,7 +560,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * describe assets that already exist in the data infrastructure, so they start Approved; entity
    * types created and reviewed in OpenMetadata start in Draft instead.
    */
-  protected EntityStatus defaultEntityStatus = EntityStatus.APPROVED;
+  protected EntityStatus defaultEntityStatus = EntityStatus.UNPROCESSED;
 
   /**
    * Whether an active governance workflow that sets this entity type's lifecycle stage is the only
@@ -1490,6 +1490,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return supportsEntityStatus && workflowsOwnEntityStatus
         ? stageOwnership.owningStageOf(entityType)
         : List.of();
+  }
+
+  private void validateEntityStatusChange(T current, T change, EntityStatus from, EntityStatus to) {
+    requireMoveInLifecycle(from, to);
+    checkEntityStatusNotOwnedByWorkflow(current, change);
+    if (from == EntityStatus.IN_REVIEW
+        && (to == EntityStatus.APPROVED || to == EntityStatus.REJECTED)) {
+      checkUpdatedByReviewer(current, change.getUpdatedBy());
+    }
+  }
+
+  /**
+   * Applies the update path's stage rules to a CSV row that the batched import stores without an
+   * {@link EntityUpdater}: a row without a stage keeps the stored one, and a stage change must be a
+   * move in the type's lifecycle that no active workflow owns. Throws so the row is reported as
+   * failed instead of silently leaving the lifecycle.
+   */
+  public void applyEntityStatusRulesForImport(T original, T updated, String importedBy) {
+    if (supportsEntityStatus) {
+      if (updated.getEntityStatus() == null) {
+        updated.setEntityStatus(original.getEntityStatus());
+      }
+      EntityStatus from = original.getEntityStatus();
+      EntityStatus to = updated.getEntityStatus();
+      if (from != to) {
+        updated.setUpdatedBy(importedBy);
+        validateEntityStatusChange(original, updated, from, to);
+      }
+    }
   }
 
   private void checkEntityStatusNotOwnedByWorkflow(T current, T change) {
@@ -9946,12 +9975,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void validateEntityStatusChange(EntityStatus from, EntityStatus to) {
-      requireMoveInLifecycle(from, to);
-      checkEntityStatusNotOwnedByWorkflow(original, updated);
-      if (from == EntityStatus.IN_REVIEW
-          && (to == EntityStatus.APPROVED || to == EntityStatus.REJECTED)) {
-        checkUpdatedByReviewer(original, updated.getUpdatedBy());
-      }
+      EntityRepository.this.validateEntityStatusChange(original, updated, from, to);
     }
 
     private void updateOwners() {

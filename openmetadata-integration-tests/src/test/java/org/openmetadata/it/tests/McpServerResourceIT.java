@@ -82,7 +82,7 @@ public class McpServerResourceIT {
   }
 
   @Test
-  void testNewMcpServerStartsInDraft(TestNamespace ns) throws Exception {
+  void testNewMcpServerStartsUnprocessed(TestNamespace ns) throws Exception {
     McpServer created =
         createMcpServer(
             new CreateMcpServer()
@@ -91,7 +91,7 @@ public class McpServerResourceIT {
                 .withTransportType(McpTransportType.Stdio)
                 .withDescription("MCP Server with no registration status"));
 
-    assertEquals(EntityStatus.DRAFT, created.getEntityStatus());
+    assertEquals(EntityStatus.UNPROCESSED, created.getEntityStatus());
   }
 
   @Test

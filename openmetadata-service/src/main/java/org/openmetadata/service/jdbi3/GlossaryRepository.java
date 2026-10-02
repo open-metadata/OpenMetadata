@@ -105,7 +105,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
-    defaultEntityStatus = EntityStatus.DRAFT;
     ontologyLayerValidator =
         new OntologyLayerValidator(
             id -> Entity.getEntity(Entity.GLOSSARY, id, "", Include.NON_DELETED));
@@ -470,9 +469,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
       String termStatus = csvRecord.get(10);
       try {
-        return nullOrEmpty(termStatus)
-            ? EntityStatus.DRAFT
-            : EntityFieldUtils.parseEntityStatus(termStatus);
+        // A blank status leaves the stage to the lifecycle: an existing term keeps its stored
+        // stage and a new one starts in the stage every new term starts in.
+        return nullOrEmpty(termStatus) ? null : EntityFieldUtils.parseEntityStatus(termStatus);
       } catch (Exception ex) {
         // List should have even numbered terms - termName and endPoint
         importFailure(

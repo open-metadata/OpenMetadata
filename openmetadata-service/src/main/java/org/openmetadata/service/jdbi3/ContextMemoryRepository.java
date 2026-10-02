@@ -105,6 +105,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         UPDATE_FIELDS);
     supportsSearch = true;
     entityLifecycle = LIFECYCLE;
+    defaultEntityStatus = EntityStatus.APPROVED;
   }
 
   @Override

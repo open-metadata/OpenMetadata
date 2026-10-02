@@ -7,10 +7,12 @@ import static org.openmetadata.service.governance.workflows.WorkflowEventConsume
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
@@ -22,7 +24,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.TriggerEntityFilter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
-import org.openmetadata.service.util.EntityUtil;
 
 /**
  * The active governance workflows that own an entity type's lifecycle stage. A workflow owns the
@@ -31,6 +32,7 @@ import org.openmetadata.service.util.EntityUtil;
  * rollback, or the glossary-term status task. While such a workflow applies to an entity, only the
  * workflow may change that entity's stage.
  */
+@Slf4j
 public final class EntityStatusWorkflows implements StageOwnership {
   /** Stage ownership as decided by the workflows active on this server. */
   public static final EntityStatusWorkflows ACTIVE = new EntityStatusWorkflows();
@@ -132,15 +134,31 @@ public final class EntityStatusWorkflows implements StageOwnership {
   private static List<WorkflowDefinition> loadActiveStageWorkflows() {
     List<WorkflowDefinition> workflows = List.of();
     if (WorkflowHandler.isInitialized()) {
-      WorkflowDefinitionRepository repository =
-          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
       workflows =
-          repository
-              .listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter(Include.NON_DELETED))
-              .stream()
+          readableWorkflowDefinitions().stream()
               .filter(EntityStatusWorkflows::ownsStage)
               .filter(workflow -> WorkflowHandler.getInstance().isDeployed(workflow))
               .toList();
+    }
+    return workflows;
+  }
+
+  // Every lifecycle-stage write consults this list, so one stored definition this server cannot
+  // read (a node type from another version) must not fail stage changes on every entity type. It
+  // cannot be deployed here either, so skipping it leaves ownership unchanged.
+  private static List<WorkflowDefinition> readableWorkflowDefinitions() {
+    WorkflowDefinitionRepository repository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    List<WorkflowDefinition> workflows = new ArrayList<>();
+    for (String json :
+        repository
+            .getDao()
+            .listAfter(new ListFilter(Include.NON_DELETED), Integer.MAX_VALUE, "", "")) {
+      try {
+        workflows.add(JsonUtils.readValue(json, WorkflowDefinition.class));
+      } catch (Exception e) {
+        LOG.error("Skipping unreadable workflow definition for lifecycle-stage ownership", e);
+      }
     }
     return workflows;
   }

@@ -126,6 +126,11 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     return "contextMemory";
   }
 
+  @Override
+  protected EntityStatus expectedInitialEntityStatus() {
+    return EntityStatus.APPROVED;
+  }
+
   /** A memory can never go back to Draft, so its path moves between in use and archived. */
   @Override
   protected List<EntityStatus> entityStatusPath() {

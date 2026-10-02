@@ -46,7 +46,6 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -111,7 +110,6 @@ public class DomainRepository extends EntityRepository<Domain> {
         UPDATE_FIELDS);
     supportsSearch = true;
     renameAllowed = true;
-    defaultEntityStatus = EntityStatus.DRAFT;
 
     // Initialize inherited field search
     if (searchRepository != null) {

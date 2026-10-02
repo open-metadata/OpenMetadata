@@ -39,7 +39,6 @@ import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -91,7 +90,6 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         KNOWLEDGE_PATCH_FIELDS,
         KNOWLEDGE_UPDATE_FIELDS);
     supportsSearch = true;
-    defaultEntityStatus = EntityStatus.DRAFT;
     approvalTaskReviewsEntityStatus = true;
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
     this.daoExtension = jdbi.onDemand(CollectionDAO.class).knowledgePageDAO();
