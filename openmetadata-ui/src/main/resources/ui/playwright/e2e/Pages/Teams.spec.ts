@@ -38,11 +38,13 @@ import {
   toastNotification,
   uuid,
   visitOwnProfilePage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { getCellByName } from '../../utils/scopedLocators';
 import { settingClick } from '../../utils/sidebar';
 import {
   addEmailTeam,
@@ -65,6 +67,7 @@ import {
   verifyTeamListingAssetCount,
   waitForTeamAssetsSearchResponse,
 } from '../../utils/team';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 base.describe.configure({ mode: 'serial' });
 
@@ -133,25 +136,25 @@ const test = base.extend<{
 }>({
   editOnlyUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editOnlyUser.login(page);
+    await editOnlyUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   ownerUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await ownerUser.login(page);
+    await ownerUser.signIn(page);
     await use(page);
     await page.close();
   },
   scopedUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
@@ -235,21 +238,28 @@ test.describe('Teams Page', () => {
       await page.locator('[data-testid="users"]').click();
 
       // Click on add new user
-      const fetchUsersResponse = page.waitForResponse(
+      const fetchUsersResponse = waitForResponseWithStatus(
+        page,
         (response) =>
           response.url().includes('/api/v1/users') &&
           response.url().includes('limit=25') &&
-          response.request().method() === 'GET' &&
-          response.status() === 200
+          response.request().method() === 'GET',
+        200
       );
       await page.locator('[data-testid="add-new-user"]').click();
       await fetchUsersResponse;
 
+      // UserSelectableList lives in an Ant Popover, which zooms in. Pressing a
+      // row mid-animation puts mousedown on it and mouseup past it, so the
+      // deselect never registers, the update below sends an unchanged member
+      // list, and the row this step is trying to remove is still there.
+      await waitForAntdPopupToSettle(page);
+
       // Select the user to remove
       await page
-        .locator(
-          `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
-        )
+        .locator('[data-testid="selectable-list"]')
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() })
         .click();
 
       const updateTeamResponse = page.waitForResponse('/api/v1/users*');
@@ -395,9 +405,7 @@ test.describe('Teams Page', () => {
       await expect
         .poll(
           async () =>
-            page
-              .getByRole('cell', { name: teamDetails?.displayName ?? '' })
-              .count(),
+            getCellByName(page, teamDetails?.displayName ?? '').count(),
           { timeout: 60000, intervals: [500, 1000, 2000] }
         )
         .toBe(0);
@@ -424,6 +432,11 @@ test.describe('Teams Page', () => {
   });
 
   test('Create a new public team', async ({ page }) => {
+    // Full UI create flow plus per-test admin login: nightly runs measured
+    // 66-84s under load against the 60s default budget (all three attempts of
+    // run 35066461002 timed out just past it).
+    test.slow();
+
     await settingClick(page, GlobalSettingOptions.TEAMS);
 
     await openAddTeamModal(page);
@@ -545,6 +558,12 @@ test.describe('Teams Page', () => {
   test('Permanently deleting a team without soft deleting should work properly', async ({
     page,
   }) => {
+    // Per-test admin login, a settings navigation that reloads the whole
+    // Organization listing, and the two-step hard-delete flow: 20s on the
+    // release lane, but run 35144854437 (main, both databases) measured every
+    // attempt past the 60s default and timed out waiting for the team link.
+    test.slow();
+
     const { apiContext, afterAction } = await getApiContext(page);
     const team = new TeamClass();
     await team.create(apiContext);
@@ -861,12 +880,13 @@ test.describe('Teams Page', () => {
     // Navigate to users tab and add new user
     await page.locator('[data-testid="users"]').click();
 
-    const fetchUsersResponse = page.waitForResponse(
+    const fetchUsersResponse = waitForResponseWithStatus(
+      page,
       (response) =>
         response.url().includes('/api/v1/users') &&
         response.url().includes('limit=25') &&
-        response.request().method() === 'GET' &&
-        response.status() === 200
+        response.request().method() === 'GET',
+      200
     );
     await page.locator('[data-testid="add-new-user"]').click();
     await fetchUsersResponse;
@@ -877,15 +897,16 @@ test.describe('Teams Page', () => {
       .fill(user.getUserDisplayName());
 
     await page
-      .locator(
-        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
-      )
+      .locator('[data-testid="selectable-list"]')
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: user.getUserDisplayName() })
       .click();
 
     await expect(
-      page.locator(
-        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
-      )
+      page
+        .locator('[data-testid="selectable-list"]')
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() })
     ).toHaveClass(/active/);
 
     const updateTeamResponse = page.waitForResponse('/api/v1/users*');
@@ -1415,9 +1436,10 @@ test.describe('Teams Page action as Owner of Team', () => {
     await domain.delete(apiContext);
     await teamNoOwner.delete(apiContext);
     await team4.delete(apiContext);
-    await team3.delete(apiContext);
-    await team2.delete(apiContext);
-    await team.delete(apiContext);
+    // The owner scenarios create child teams under these unique fixture roots.
+    await team3.delete(apiContext, { recursive: true });
+    await team2.delete(apiContext, { recursive: true });
+    await team.delete(apiContext, { recursive: true });
     await role.delete(apiContext);
     await policy.delete(apiContext);
     await ownerUser.delete(apiContext);

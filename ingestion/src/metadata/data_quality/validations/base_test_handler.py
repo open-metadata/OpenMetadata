@@ -16,6 +16,8 @@ Base validator class
 from __future__ import annotations
 
 import reprlib
+import sys
+import time
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
@@ -27,16 +29,26 @@ from typing import (
 from uuid import uuid4
 
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.api.models import TestCaseResultResponse  # noqa: TC001
-from metadata.data_quality.validations import utils
+from metadata.data_quality.validations import result_messages, thresholds, utils
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     MAX_TOP_DIMENSIONS,
 )
+from metadata.data_quality.validations.models import EvaluationScopeRuntimeParameters
+from metadata.data_quality.validations.result_messages import SamplingStability
+from metadata.data_quality.validations.thresholds import (
+    THRESHOLD_PARAM,
+    THRESHOLD_UNIT_PARAM,
+    FailureThreshold,
+    ThresholdUnit,
+)
 from metadata.generated.schema.tests.basic import (
     DimensionValue,
     TestCaseDimensionResult,
+    TestCaseErrorDetails,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -45,11 +57,14 @@ from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue  # noqa: TC001
 from metadata.generated.schema.type.basic import Timestamp  # noqa: TC001
 from metadata.profiler.processor.runner import PandasRunner, QueryRunner  # noqa: TC001
+from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn  # noqa: TC001
 
 if TYPE_CHECKING:
     from sqlalchemy import Column
+
+    from metadata.profiler.metrics.registry import Metrics
 
 logger = test_suite_logger()
 
@@ -65,6 +80,58 @@ DIMENSION_IMPACT_SCORE_KEY = "impact_score"
 DIMENSION_FAILED_COUNT_KEY = "failed_count"
 DIMENSION_TOTAL_COUNT_KEY = "total_count"
 DIMENSION_SUM_VALUE_KEY = "sum_value"  # For statistical validators weighted calculations
+
+
+def elapsed_ms(start: float) -> float:
+    """Milliseconds elapsed since a `time.perf_counter()` reading"""
+    return (time.perf_counter() - start) * 1000
+
+
+# A trace or message is stored in the result, both search indexes and every search response, and
+# drivers put whole SQL statements and bound parameters in them, so both are capped.
+MAX_STACK_TRACE_CHARS = 16_000
+MAX_ERROR_MESSAGE_CHARS = 2_000
+TRUNCATION_MARKER = "... [truncated {count} characters]\n"
+
+
+def _root_error_type(exc: BaseException) -> str:
+    """Name of the driver exception behind a SQLAlchemy error, or of the exception itself
+
+    SQLAlchemy wraps the driver's exception (e.g. psycopg2 `QueryCanceled` for a statement
+    timeout) and keeps it on `orig`; our validators also re-raise as a bare `SQLAlchemyError`
+    with the wrapped one chained behind it. The driver type is what says what went wrong.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        orig = getattr(current, "orig", None)
+        if orig is not None:
+            return type(orig).__name__
+        if not isinstance(current, SQLAlchemyError):
+            break
+        current = current.__cause__ or current.__context__
+    return type(exc).__name__
+
+
+def _keep_head(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[:limit] + TRUNCATION_MARKER.format(count=len(text) - limit).rstrip()
+
+
+def _keep_tail(text: str, limit: int) -> str:
+    # The raising frame and the exception line are at the end of a traceback.
+    return text if len(text) <= limit else TRUNCATION_MARKER.format(count=len(text) - limit) + text[-limit:]
+
+
+def error_details(exc: BaseException | None) -> TestCaseErrorDetails | None:
+    """Structured details of the exception that aborted a test run"""
+    if exc is None:
+        return None
+    return TestCaseErrorDetails(
+        errorType=_root_error_type(exc),
+        message=_keep_head(str(exc), MAX_ERROR_MESSAGE_CHARS),
+        stackTrace=_keep_tail("".join(traceback.format_exception(exc)), MAX_STACK_TRACE_CHARS),
+    )
 
 
 class TestEvaluation(TypedDict, total=False):
@@ -100,6 +167,23 @@ class BaseTestValidator(ABC):
     The runtime_parameter_setter is run after the test case is created to set the runtime parameters.
     This can be useful to resolve complex test parameters based on the parameters given by the user.
     """
+
+    # Memoized reading of the failure threshold parameters. Declared on the class so that
+    # validators overriding __init__ without calling super() still get the default.
+    _failure_threshold: FailureThreshold | None = None
+
+    # Memoized reading of the evaluation scope, and the last widening the threshold produced as
+    # `(effective bounds, configured bounds)`. Declared on the class for the same reason.
+    _evaluation_scope: EvaluationScopeRuntimeParameters | None = None
+    _bound_widening: tuple[tuple, tuple] | None = None
+
+    # How this validator's metric behaves once only part of the table is read. Overridden by
+    # validators whose metric a sample distorts, so the result message can say so.
+    SAMPLING_STABILITY: SamplingStability = SamplingStability.STABLE
+
+    # Whether the test runs its own SQL against the table rather than reading the sampled
+    # dataset. Rule-library and custom SQL tests do, and the message has to say so.
+    BYPASSES_SAMPLER: bool = False
 
     def __init__(
         self,
@@ -144,11 +228,13 @@ class BaseTestValidator(ABC):
         """
         # Execute the main validation logic (overall results)
         test_result = self._run_validation()
+        if test_result.result:
+            test_result.result = self.with_evaluation_scope(test_result.result, test_result.testCaseStatus)
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
-            logger.debug(f"Executing dimensional validation for test case: {self.test_case.fullyQualifiedName}")
-            logger.debug(f"Dimension columns: {self.test_case.dimensionColumns}")
+            logger.debug("Executing dimensional validation for test case: %s", self.test_case.fullyQualifiedName)
+            logger.debug("Dimension columns: %s", self.test_case.dimensionColumns)
 
             if not self.are_dimension_columns_valid():
                 return test_result
@@ -156,19 +242,19 @@ class BaseTestValidator(ABC):
             try:
                 dimension_results = self._run_dimensional_validation()
                 if dimension_results:
-                    logger.debug(f"Dimensional validation completed with {len(dimension_results)} results")
+                    logger.debug("Dimensional validation completed with %d results", len(dimension_results))
 
                     test_case_dimension_results = self._convert_to_test_case_dimension_results(
                         dimension_results, test_result
                     )
 
                     test_result.dimensionResults = test_case_dimension_results
-                    logger.debug(f"Attached {len(test_case_dimension_results)} dimension results to main test result")
+                    logger.debug("Attached %d dimension results to main test result", len(test_case_dimension_results))
                 else:
                     logger.debug("Dimensional validation completed with no results")
 
             except Exception as exc:
-                logger.warning(f"Dimensional validation failed for {self.test_case.fullyQualifiedName}: {exc}")
+                logger.warning("Dimensional validation failed for %s: %s", self.test_case.fullyQualifiedName, exc)
                 logger.debug(traceback.format_exc())
 
         return test_result
@@ -339,6 +425,311 @@ class BaseTestValidator(ABC):
         """
         raise NotImplementedError(f"{self.__class__.__name__} must implement _evaluate_test_condition()")
 
+    def get_failure_threshold(self) -> FailureThreshold:
+        """Read the failure threshold and the unit it is expressed in
+
+        Both parameters are optional. A test case that does not set them tolerates no
+        deviation at all (`0` ABSOLUTE), which is the verdict tests had before thresholds
+        were introduced. Both threshold semantics read this same configuration: the row
+        tolerance counts violating rows, the deviation tolerance widens the bounds of a
+        statistic or the delta around an expected value.
+
+        The parameters cannot change while the test case runs, so the reading is memoized:
+        it is asked for once per dimension row, and a misconfigured test case would
+        otherwise log the same warning once per call.
+
+        Returns:
+            FailureThreshold: the tolerated deviation and its unit
+        """
+        threshold = self._failure_threshold
+        if threshold is None:
+            threshold = self._failure_threshold = self._read_failure_threshold()
+        return threshold
+
+    def _read_failure_threshold(self) -> FailureThreshold:
+        """Parse the threshold parameters, falling back to tolerating no deviation"""
+        param_values = self.test_case.parameterValues or []
+
+        try:
+            raw_threshold = self.get_test_case_param_value(param_values, THRESHOLD_PARAM, float, default=0.0)
+        except (TypeError, ValueError):
+            logger.warning(
+                "Unreadable %s for %s. Tolerating no deviation.",
+                THRESHOLD_PARAM,
+                self.test_case.fullyQualifiedName,
+            )
+            return FailureThreshold()
+
+        # The parameter is read through `float`, so anything else is a test case without the
+        # parameter set and tolerates no deviation.
+        threshold = raw_threshold if isinstance(raw_threshold, float) else 0.0
+
+        if not thresholds.is_usable(threshold):
+            logger.warning(
+                "Out of range %s '%s' for %s. A threshold is a tolerance, so it has to be a finite, "
+                "non-negative number. Tolerating no deviation.",
+                THRESHOLD_PARAM,
+                threshold,
+                self.test_case.fullyQualifiedName,
+            )
+            return FailureThreshold()
+
+        raw_unit = self.get_test_case_param_value(
+            param_values, THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
+        )
+        unit_value = raw_unit if isinstance(raw_unit, str) else ThresholdUnit.ABSOLUTE.value
+        try:
+            unit = ThresholdUnit(unit_value.upper())
+        except ValueError:
+            logger.warning(
+                "Unknown %s '%s' for %s. Reading the threshold as %s.",
+                THRESHOLD_UNIT_PARAM,
+                unit_value,
+                self.test_case.fullyQualifiedName,
+                ThresholdUnit.ABSOLUTE.value,
+            )
+            unit = ThresholdUnit.ABSOLUTE
+
+        return FailureThreshold(value=threshold, unit=unit)
+
+    def _needs_row_count(self) -> bool:
+        """Whether the total row count has to be computed
+
+        Row level reporting needs it, and so does a percentage threshold: without the
+        denominator there is nothing to compute the share of failing rows against.
+        """
+        if self.test_case.computePassedFailedRowCount:
+            return True
+        return self.get_failure_threshold().unit is ThresholdUnit.PERCENTAGE
+
+    def _run_results_with_row_count(self, metric: Metrics, column, **kwargs) -> dict:
+        """Compute a violation count, and the row count denominator when one is needed
+
+        The denominator is only computed when `_needs_row_count()` asks for it, so an
+        ABSOLUTE threshold never pays for a metric its verdict does not read.
+
+        Args:
+            metric: metric counting the rows that break the test condition
+            column: column the test runs against
+            **kwargs: props to pass to the violation metric at runtime
+
+        Returns:
+            dict: metric values keyed by `Metrics` enum name, ready to be evaluated
+        """
+        if not self._needs_row_count():
+            return {metric.name: self._run_results(metric, column, **kwargs)}  # type: ignore
+
+        return self._run_results_and_row_count(metric, column, **kwargs)
+
+    def _run_results_and_row_count(self, metric: Metrics, column, **kwargs) -> dict:
+        """Compute the violation count and the row count denominator together
+
+        Two passes over the dataset by default. Validators whose runner can compute both
+        at once - SQA folds them into a single `SELECT` - override this.
+
+        Args:
+            metric: metric counting the rows that break the test condition
+            column: column the test runs against
+            **kwargs: props to pass to the violation metric at runtime
+
+        Returns:
+            dict: metric values keyed by `Metrics` enum name
+        """
+        # Local import: the registry reaches back into this module through
+        # `metadata.utils.importer`, so importing it at module level is a cycle.
+        from metadata.profiler.metrics.registry import Metrics as MetricsRegistry
+
+        return {
+            metric.name: self._run_results(metric, column, **kwargs),  # type: ignore
+            MetricsRegistry.rowCount.name: self.get_row_count(),  # type: ignore
+        }
+
+    def _apply_row_threshold(self, violations: int | None, denominator: int | None) -> bool:
+        """Check a violation count against the test case failure threshold
+
+        ABSOLUTE tolerates `threshold` violations. PERCENTAGE tolerates `threshold` percent
+        of `denominator`; an empty denominator has nothing to violate, so it passes instead
+        of dividing by zero.
+
+        Args:
+            violations: Number of rows that broke the test condition
+            denominator: Rows the violations are counted against. Validator specific: tests
+                         that only look at non-null values count against those, not the
+                         table row count.
+
+        Returns:
+            bool: True if the test passes
+        """
+        violations = violations or 0
+        threshold = self.get_failure_threshold()
+
+        if threshold.unit is ThresholdUnit.PERCENTAGE:
+            if not denominator:
+                return True
+            return violations / denominator * 100 <= threshold.value
+
+        return violations <= threshold.value
+
+    def get_evaluation_scope(self) -> EvaluationScopeRuntimeParameters:
+        """What this test case was actually measured against
+
+        Injected by `EvaluationScopeParamsSetter`, like every other runtime parameter. A test
+        case run without it -- a unit test building a validator by hand, or a caller that does
+        not go through the test suite interface -- falls back to the full table, which is the
+        scope a table with no sampling and no partitioning has.
+
+        Returns:
+            EvaluationScopeRuntimeParameters: the resolved sample and partition
+        """
+        scope = self._evaluation_scope
+        if scope is None:
+            try:
+                scope = self.get_runtime_parameters(EvaluationScopeRuntimeParameters)
+            except ValueError:
+                logger.debug(
+                    "No evaluation scope for %s. Reporting the result as measured on the full table.",
+                    self.test_case.fullyQualifiedName,
+                )
+                scope = EvaluationScopeRuntimeParameters()
+            self._evaluation_scope = scope
+        return scope
+
+    def evaluation_scope_sentence(self) -> str:
+        """The sentence every result message ends with: which rows the verdict was measured on"""
+        return result_messages.scope_sentence(
+            self.get_evaluation_scope(),
+            stability=self.SAMPLING_STABILITY,
+            bypasses_sampler=self.BYPASSES_SAMPLER,
+            threshold=self.get_failure_threshold(),
+        )
+
+    def with_evaluation_scope(self, message: str, status: TestCaseStatus | None) -> str:
+        """Append the sampling and partition provenance to a result message
+
+        An aborted test case computed nothing, so there is no population to qualify: its message
+        is the error and is left alone. Provenance is reporting, never a verdict, so a scope
+        that cannot be rendered leaves the message as it was rather than failing the run.
+        """
+        if not message or status is TestCaseStatus.Aborted:
+            return message
+        try:
+            return f"{message} {self.evaluation_scope_sentence()}"
+        except Exception as exc:
+            logger.debug("Could not describe the evaluation scope of %s: %s", self.test_case, exc)
+            return message
+
+    @staticmethod
+    def _dimension_prefix(dimension_info: DimensionInfo | None) -> str:
+        """`Dimension country=Spain: ` for a dimensional row, nothing for the overall result"""
+        if not dimension_info:
+            return ""
+        return f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
+
+    def _matched(self, metric_values: dict, test_params: dict | None = None) -> bool:
+        """Re-evaluate the verdict so a message can state it
+
+        `_format_result_message` is only handed the metrics, but a message that does not say
+        whether the test passed leaves the reader to work it out from the numbers. Re-evaluating
+        is free: `_evaluate_test_condition` is arithmetic on metrics that are already computed.
+        """
+        return bool(self._evaluate_test_condition(metric_values, test_params).get("matched"))
+
+    def format_violation_message(
+        self,
+        violations: int | None,
+        population: int | None,
+        violation_noun: str,
+        matched: bool,
+        dimension_info: DimensionInfo | None = None,
+    ) -> str:
+        """Message for a row-tolerance test: violations, population, threshold, verdict
+
+        Args:
+            violations: rows that broke the test condition
+            population: rows they were counted against, None when the validator did not count it
+            violation_noun: what the violating rows are, e.g. "null rows"
+            matched: the verdict
+            dimension_info: dimension details, for a dimensional row
+
+        Returns:
+            str: e.g. "Found 120 null rows out of 9,981 evaluated (1.20%). Threshold is 1.00%,
+                 so this test failed."
+        """
+        return self._dimension_prefix(dimension_info) + result_messages.violation_sentence(
+            violations,
+            population,
+            violation_noun,
+            self.get_failure_threshold(),
+            matched,
+        )
+
+    def format_statistic_message(
+        self,
+        statistic: str,
+        value,
+        effective_bounds: tuple[float | None, float | None],
+        matched: bool,
+        dimension_info: DimensionInfo | None = None,
+    ) -> str:
+        """Message for a deviation test against bounds: statistic, bounds, widening, verdict
+
+        Args:
+            statistic: what was measured, e.g. "Mean of `amount`"
+            value: the observed value
+            effective_bounds: the bounds the value was evaluated against, threshold included
+            matched: the verdict
+            dimension_info: dimension details, for a dimensional row
+
+        Returns:
+            str: e.g. "Mean of `amount` is 87.4. Expected between 90 and 110, widened by a 5%
+                 tolerance to 85.5 and 115.5, so this test passed."
+        """
+        return self._dimension_prefix(dimension_info) + result_messages.statistic_sentence(
+            statistic,
+            value,
+            self.configured_bounds(effective_bounds),
+            effective_bounds,
+            self.get_failure_threshold(),
+            matched,
+        )
+
+    def format_expected_value_message(
+        self,
+        statistic: str,
+        value,
+        expected,
+        matched: bool,
+        dimension_info: DimensionInfo | None = None,
+    ) -> str:
+        """Message for a deviation test against an exact value: statistic, expectation, verdict
+
+        Args:
+            statistic: what was measured, e.g. "Row count"
+            value: the observed value
+            expected: the value the test case expects
+            matched: the verdict
+            dimension_info: dimension details, for a dimensional row
+
+        Returns:
+            str: e.g. "Row count is 9,981. Expected 10,000, with a 1.00% tolerance, so this test
+                 passed."
+        """
+        return self._dimension_prefix(dimension_info) + result_messages.expected_value_sentence(
+            statistic,
+            value,
+            expected,
+            self.get_failure_threshold(),
+            matched,
+        )
+
+    def column_label(self, fallback: str = "the column") -> str:
+        """The column under test, backticked, for a result message"""
+        try:
+            column_name = entity_link.get_column_name_or_none(self.test_case.entityLink.root)
+        except Exception:  # pragma: no cover - a malformed entity link is not worth failing a test case for
+            column_name = None
+        return f"`{column_name}`" if column_name else fallback
+
     def _format_result_message(
         self,
         metric_values: dict,
@@ -455,14 +846,18 @@ class BaseTestValidator(ABC):
             DimensionResult: Formatted dimension result
         """
         dimension_value = self._extract_dimension_value(row)
+        status = self.get_test_case_status(bool(evaluation.get("matched")))
 
-        result_message = self._format_result_message(
-            metric_values,
-            dimension_info=DimensionInfo(
-                dimension_name=dimension_col_name,
-                dimension_value=dimension_value,
+        result_message = self.with_evaluation_scope(
+            self._format_result_message(
+                metric_values,
+                dimension_info=DimensionInfo(
+                    dimension_name=dimension_col_name,
+                    dimension_value=dimension_value,
+                ),
+                test_params=test_params,
             ),
-            test_params=test_params,
+            status,
         )
 
         test_result_values = self._get_test_result_values(metric_values)
@@ -470,7 +865,7 @@ class BaseTestValidator(ABC):
 
         return self.get_dimension_result_object(
             dimension_values={dimension_col_name: dimension_value},
-            test_case_status=self.get_test_case_status(evaluation["matched"]),
+            test_case_status=status,
             result=result_message,
             test_result_value=test_result_values,
             total_rows=evaluation["total_rows"],
@@ -500,6 +895,8 @@ class BaseTestValidator(ABC):
         passed_rows: int | None = None,
         min_bound: float | None = None,
         max_bound: float | None = None,
+        *,
+        exc: BaseException | None = None,
     ) -> TestCaseResult:
         """Returns a TestCaseResult object with the given args
 
@@ -508,6 +905,7 @@ class BaseTestValidator(ABC):
             status (TestCaseStatus): failed, success, aborted
             result (str): test case result
             test_result_value (List[TestResultValue]): test result value to display in UI
+            exc (BaseException): the exception that aborted the run; defaults to the one being handled
         Returns:
             TestCaseResult:
         """
@@ -520,6 +918,14 @@ class BaseTestValidator(ABC):
             # if users don't set the min/max bound, we'll change the inf/-inf (used for computation) to None
             minBound=None if min_bound == float("-inf") else min_bound,
             maxBound=None if max_bound == float("inf") else max_bound,
+            # Validators build their Aborted result inside the `except` block that caught the error,
+            # so without an explicit `exc` the exception being handled is the cause; that spares each
+            # of them from threading it through.
+            errorDetails=(
+                error_details(exc if exc is not None else sys.exc_info()[1])
+                if status == TestCaseStatus.Aborted
+                else None
+            ),
         )
 
         if (row_count is not None and row_count != 0) and (
@@ -700,6 +1106,73 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_bounds(self, min_param_name: str, max_param_name: str) -> tuple[float | None, float | None]:
+        """Resolve the test case bounds and widen them by the failure threshold.
+
+        The tolerance is applied here rather than in `get_min_bound`/`get_max_bound` so that it also
+        holds for validators that resolve their bounds dynamically by overriding those getters.
+
+        Args:
+            min_param_name: name of the parameter holding the lower bound
+            max_param_name: name of the parameter holding the upper bound
+
+        Returns:
+            tuple[float | None, float | None]: the effective bounds to evaluate the observed value against
+        """
+        return self.apply_bound_tolerance(self.get_min_bound(min_param_name), self.get_max_bound(max_param_name))
+
+    def apply_bound_tolerance(
+        self, min_bound: float | None, max_bound: float | None
+    ) -> tuple[float | None, float | None]:
+        """Widen already resolved bounds by the failure threshold.
+
+        The bounds the test case asked for are kept alongside what they widened into, so that
+        the result message can report both: a reader has to see the tolerance that was applied,
+        not only the window it produced. A validator resolves its bounds once per run and hands
+        the same pair to the message, so only the latest widening is worth keeping.
+
+        Args:
+            min_bound: resolved lower bound
+            max_bound: resolved upper bound
+
+        Returns:
+            tuple[float | None, float | None]: the effective bounds
+        """
+        threshold = self.get_failure_threshold()
+        effective = thresholds.apply_bound_tolerance(min_bound, max_bound, threshold.value, threshold.unit)
+        self._bound_widening = (effective, (min_bound, max_bound))
+        return effective
+
+    def configured_bounds(
+        self, effective_bounds: tuple[float | None, float | None]
+    ) -> tuple[float | None, float | None]:
+        """The bounds the test case asked for, before the threshold widened them
+
+        Falls back to the effective bounds for a validator that never went through
+        `apply_bound_tolerance`, or that widened a different pair: without a recorded widening
+        for these bounds there is none to report.
+        """
+        widening = self._bound_widening
+        if widening and widening[0] == effective_bounds:
+            return widening[1]
+        return effective_bounds
+
+    def matches_expected(
+        self, observed: float | None, expected: float | None, label: str = "the expected value"
+    ) -> bool:
+        """Whether `observed` matches `expected` within the failure threshold.
+
+        Args:
+            observed: value computed against the data
+            expected: value the test case expects
+            label: what `expected` is, used for logging only
+
+        Returns:
+            bool: True when the deviation is tolerated
+        """
+        threshold = self.get_failure_threshold()
+        return thresholds.within_deviation(observed, expected, threshold.value, threshold.unit, label)
 
     def get_predicted_value(self) -> str | None:
         """Get predicted value"""

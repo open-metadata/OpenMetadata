@@ -202,6 +202,22 @@ class AIContextRestIT extends McpTestBase {
     assertThat(markdown).startsWith("---");
     assertThat(markdown).contains("type: \"table\"");
     assertThat(markdown).contains("# Schema");
+    assertThat(markdown).contains("# Sample Data");
+    assertThat(markdown).contains("| id | name | created_at |");
+    assertThat(markdown).contains("| 9 | name-9 | 2026-09-04T00:00:00Z |");
+    assertThat(markdown).doesNotContain("name-10");
+  }
+
+  @Test
+  void tableContext_omitsSamplesFromMarkdownWithoutViewSampleDataPermission() throws Exception {
+    HttpResponse<String> response =
+        getResponse(
+            "tables/name/" + table.getFullyQualifiedName() + "/context", sampleRestrictedToken);
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(response.body()).contains("# Schema");
+    assertThat(response.body()).doesNotContain("# Sample Data");
+    assertThat(response.body()).doesNotContain("name-0");
   }
 
   @Test

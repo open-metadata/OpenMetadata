@@ -84,7 +84,7 @@ export const getIncidentMetadata = (
   return {
     description: incidentTitle ?? testCaseStatusData?.failureSummary ?? result,
     id: incidentLink
-      ? `INC–${incidentLink.label.replace(/^#/, '')}`
+      ? `INC-${incidentLink.label.replace(/^#/, '')}`
       : undefined,
     statusConfig: incidentStatus
       ? INCIDENT_STATUS_CONFIG[incidentStatus]

@@ -13,22 +13,25 @@
 
 import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
-import {
-  TestCase,
-  TestCaseParameterValue,
-} from '../../../../generated/tests/testCase';
+import { TestCase } from '../../../../generated/tests/testCase';
 
 export const shouldShowEditParameterButton = (
   hasEditPermission: boolean | undefined,
   testCaseData: TestCase | undefined,
-  showComputeRowCount: boolean
-): boolean =>
-  Boolean(
-    hasEditPermission &&
-      (testCaseData?.parameterValues?.length ||
-        testCaseData?.useDynamicAssertion ||
-        showComputeRowCount)
-  );
+  showComputeRowCount: boolean,
+  // The data quality dimension is edited through this button too, so a test case without
+  // parameters of its own still needs it as long as the box shows the dimension.
+  hasDataQualityDimension = false
+): boolean => {
+  const hasEditableContent = [
+    testCaseData?.parameterValues?.length,
+    testCaseData?.useDynamicAssertion,
+    showComputeRowCount,
+    hasDataQualityDimension,
+  ].some(Boolean);
+
+  return Boolean(hasEditPermission && hasEditableContent);
+};
 
 export const shouldShowAILearningBanner = (
   showAILearningBanner: boolean,
@@ -36,14 +39,19 @@ export const shouldShowAILearningBanner = (
 ): boolean =>
   Boolean(showAILearningBanner && testCaseData?.useDynamicAssertion);
 
-export const shouldShowSqlParamsSection = (
-  withSqlParams: TestCaseParameterValue[] | undefined,
-  isVersionPage: boolean
-): boolean => !isUndefined(withSqlParams) && !isVersionPage;
-
 export const hasAdditionalComponents = (
   additionalComponents: unknown[]
 ): boolean => !isEmpty(additionalComponents);
+
+/**
+ * A type predicate so the caller can pass `testCaseData` straight to
+ * `TestSummary`, which requires a defined test case.
+ */
+export const shouldRenderTestSummary = (
+  testCaseData: TestCase | undefined,
+  shouldRenderDefaultGraph: boolean
+): testCaseData is TestCase =>
+  !isUndefined(testCaseData) && shouldRenderDefaultGraph;
 
 export const canEditTestCaseParameters = (
   hasEditPermission: boolean | undefined,
@@ -51,7 +59,7 @@ export const canEditTestCaseParameters = (
 ): boolean => Boolean(hasEditPermission && isParameterEdit);
 
 export const getSidePanelColSpanClass = (isSidePanelVisible: boolean): string =>
-  isSidePanelVisible ? 'tw:col-span-9' : 'tw:col-span-12';
+  isSidePanelVisible ? 'tw:col-span-8' : 'tw:col-span-12';
 
 export const resolveIsSidePanelVisible = (
   showSidePanel: boolean | undefined,

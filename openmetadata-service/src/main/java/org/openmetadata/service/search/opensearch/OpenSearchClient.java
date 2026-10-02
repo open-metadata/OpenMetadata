@@ -171,7 +171,7 @@ public class OpenSearchClient implements SearchClient {
         return null;
       }
       os.org.opensearch.client.opensearch.OpenSearchClient newClient =
-          new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
+          new ShardFailureAwareOpenSearchClient(transport);
 
       LOG.info(
           "Successfully initialized OpenSearch Java API client with transport: {}",
@@ -524,14 +524,58 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchManager.searchByFieldWithOptions(
+        fieldName,
+        fieldValue,
+        index,
+        deleted,
+        from,
+        size,
+        sourceIncludes,
+        requiredExistsField,
+        trackTotalHits);
+  }
+
+  @Override
+  public Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchManager.searchByTerms(
+        fieldName, fieldValues, index, deleted, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  @Override
+  public boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException {
+    return searchManager.isFieldMappedInIndex(index, fieldPath);
+  }
+
+  @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
-    return aggregationManager.getEntityTypeCounts(request, index);
+    return searchManager.getEntityTypeCounts(request, index, null);
   }
 
   @Override
   public Response getEntityTypeCounts(
       SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
-    return aggregationManager.getEntityTypeCounts(request, index, subjectContext);
+    return searchManager.getEntityTypeCounts(request, index, subjectContext);
   }
 
   @Override
@@ -1103,6 +1147,12 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
     entityManager.deleteColumnsInUpstreamLineage(indexName, deletedColumns);
+  }
+
+  @Override
+  public void reconcileColumnsInUpstreamLineage(
+      String indexName, Map<String, String> renamedColumns, List<String> deletedColumns) {
+    entityManager.reconcileColumnsInUpstreamLineage(indexName, renamedColumns, deletedColumns);
   }
 
   @Override

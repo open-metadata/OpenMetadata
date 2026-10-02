@@ -35,11 +35,12 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { toastNotification } from '../../utils/common';
+import { chooseSelectOption, toastNotification } from '../../utils/common';
 import {
   enablePersonaRulePreloading,
   openPersonaAIContext,
 } from '../../utils/personaAIContext';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // ---------------------------------------------------------------------------
 // Fixtures and shared state
@@ -51,7 +52,7 @@ const test = base.extend<{ adminPage: Page }>({
   adminPage: async ({ browser }, use) => {
     const admin = new AdminClass();
     const page = await browser.newPage();
-    await admin.login(page);
+    await admin.signIn(page);
     await use(page);
     await page.close();
   },
@@ -65,11 +66,11 @@ const test = base.extend<{ adminPage: Page }>({
 // Select.ComboBox (OMFieldSelect). The default "owners" rule leaves an empty,
 // hidden `<div class="rule--field">` first in the DOM, so scope to the
 // container that actually holds a combobox — the pre-migration
-// `.rule--field .ant-select` selector filtered these out implicitly.
-const comboboxField = (scope: Page | Locator, className: string): Locator =>
-  scope
-    .locator(className)
-    .filter({ has: scope.locator('input[role="combobox"]') });
+// `[data-testid=advanced-search-field-select] .ant-select` selector filtered these out implicitly.
+// The filter this used to carry excluded RAQB's non-combobox field markup.
+// The canvas renders one combobox per control, so the testid is exact.
+const comboboxField = (scope: Page | Locator, testId: string): Locator =>
+  scope.getByTestId(testId);
 
 const openPersonaContext = async (page: Page) =>
   openPersonaAIContext(page, persona.data.name);
@@ -94,12 +95,13 @@ const openAddRuleDrawer = async (page: Page) => {
 
 /** Clicks Save Rule and waits for the API to respond with 200. */
 const saveRule = async (page: Page) => {
-  const saved = page.waitForResponse(
+  const saved = waitForResponseWithStatus(
+    page,
     (r) =>
       r.url().includes('/api/v1/personas/') &&
       r.url().includes('/aiContext/rules') &&
-      ['POST', 'PUT'].includes(r.request().method()) &&
-      r.status() === 200
+      ['POST', 'PUT'].includes(r.request().method()),
+    200
   );
   await page.getByRole('button', { name: 'Save Rule' }).click();
   await saved;
@@ -113,12 +115,13 @@ const deleteRuleByName = async (page: Page, ruleName: string) => {
     .getByTestId('delete-context-rule')
     .click();
   await expect(page.getByTestId('delete-modal')).toBeVisible();
-  const deleted = page.waitForResponse(
+  const deleted = waitForResponseWithStatus(
+    page,
     (r) =>
       r.url().includes('/api/v1/personas/') &&
       r.url().includes('/aiContext/rules/') &&
-      r.request().method() === 'DELETE' &&
-      r.status() === 200
+      r.request().method() === 'DELETE',
+    200
   );
   await page.getByTestId('confirm-button').click();
   await deleted;
@@ -228,7 +231,9 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add an empty condition row', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await expect(comboboxField(page, '.rule--field').first()).toBeVisible();
+        await expect(
+          comboboxField(page, 'advanced-search-field-select').first()
+        ).toBeVisible();
       });
 
       await test.step('click Save Rule — must be blocked', async () => {
@@ -272,7 +277,9 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add a condition row', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await expect(comboboxField(page, '.rule--field').first()).toBeVisible();
+        await expect(
+          comboboxField(page, 'advanced-search-field-select').first()
+        ).toBeVisible();
       });
 
       await test.step('select the Description field (text type, no async fetch)', async () => {
@@ -280,7 +287,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
         // "owners" rule leaves an empty hidden .rule--field first in the DOM.
         await selectOption(
           page,
-          comboboxField(page, '.rule--field').first(),
+          comboboxField(page, 'advanced-search-field-select').first(),
           'Description',
           true
         );
@@ -289,14 +296,19 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('select Contains operator (required before text widget appears)', async () => {
         // Description field uses match_phrase operators; text widget only renders
         // after an operator is chosen — select "Contains" (match_phrase)
-        const operatorLocator = comboboxField(page, '.rule--operator').first();
+        const operatorLocator = comboboxField(
+          page,
+          'advanced-search-operator-select'
+        ).first();
         await expect(operatorLocator).toBeVisible({ timeout: 5000 });
         await selectOption(page, operatorLocator, 'Contains', false);
       });
 
       await test.step('type a value in the text widget', async () => {
         const textInput = page
-          .locator('.rule--widget--TEXT input[type="text"]')
+          .locator(
+            '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+          )
           .first();
         await textInput.waitFor({ state: 'visible' });
         await textInput.fill('important data asset');
@@ -329,7 +341,9 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add an empty condition — save must be blocked', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await expect(comboboxField(page, '.rule--field').first()).toBeVisible();
+        await expect(
+          comboboxField(page, 'advanced-search-field-select').first()
+        ).toBeVisible();
         await page.getByRole('button', { name: 'Save Rule' }).click();
         await expect(
           page.getByTestId('context-rule-filter-error')
@@ -337,12 +351,18 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       });
 
       await test.step('switch entity type — filter must reset and unblock save', async () => {
-        await page.getByTestId('context-rule-entity-type').click();
-        await page
-          .getByRole('listbox')
-          .getByRole('option', { name: /metric/i })
-          .first()
-          .click();
+        // react-aria can close the listbox mid-click and detach the option,
+        // dropping the selection so the filter is never reset and the save stays
+        // blocked — the source of this test's flakiness. selectOption
+        // re-resolves the trigger's expanded state and reopens the popover before
+        // retrying the option click.
+        await chooseSelectOption(
+          page.getByTestId('context-rule-entity-type'),
+          page
+            .getByRole('listbox')
+            .getByRole('option', { name: /metric/i })
+            .first()
+        );
         await saveRule(page);
         await toastNotification(page, /AI context rule saved\./);
       });
@@ -439,35 +459,36 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await page.keyboard.press('Escape');
     });
 
-    test(
-      'knowledge entity type forces Fully rendered on and disables it',
-      { tag: '@quarantine' },
-      async ({ adminPage: page }) => {
-        await openPersonaContext(page);
-        await openAddRuleDrawer(page);
+    test('knowledge entity type forces Fully rendered on and disables it', async ({
+      adminPage: page,
+    }) => {
+      await openPersonaContext(page);
+      await openAddRuleDrawer(page);
 
-        await test.step('switch to a knowledge entity type', async () => {
-          await page.getByTestId('context-rule-entity-type').click();
-          await page
-            .getByRole('listbox')
-            .getByText(/knowledge/i)
-            .first()
-            .click();
-        });
+      await test.step('switch to a knowledge entity type', async () => {
+        // Each option carries its EntityType as data-key. Matching the
+        // "Knowledge" supporting text instead would match all three knowledge
+        // types and leave DOM order to decide which one the test exercises.
+        await chooseSelectOption(
+          page.getByTestId('context-rule-entity-type'),
+          page.getByRole('listbox').locator('[data-key="glossaryTerm"]')
+        );
+        await expect(
+          page.getByTestId('context-rule-entity-type')
+        ).toContainText('Glossary Term');
+      });
 
-        await test.step('Fully rendered switch must be checked and disabled', async () => {
-          const fullyRenderedSwitch = page
-            .getByTestId('context-rule-fully-rendered')
-            .getByRole('switch')
-            .first();
-          // toBeChecked() reads the checkbox `checked` property — react-aria Switch
-          // does not always set the aria-checked attribute, so attribute checks fail
-          await expect(fullyRenderedSwitch).toBeChecked();
-          await expect(fullyRenderedSwitch).toBeDisabled();
-        });
+      await test.step('Fully rendered switch must be checked and disabled', async () => {
+        const fullyRenderedSwitch = page
+          .getByTestId('context-rule-fully-rendered')
+          .getByRole('switch');
+        // toBeChecked() reads the checkbox `checked` property — react-aria Switch
+        // does not always set the aria-checked attribute, so attribute checks fail
+        await expect(fullyRenderedSwitch).toBeChecked();
+        await expect(fullyRenderedSwitch).toBeDisabled();
+      });
 
-        await page.keyboard.press('Escape');
-      }
-    );
+      await page.keyboard.press('Escape');
+    });
   });
 });

@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SnowflakeConnection",
   "description": "Snowflake Connection Config",
   "type": "object",
@@ -88,6 +87,11 @@
       "description": "Connection to Snowflake instance via Private Key",
       "type": "string",
       "format": "password",
+      "accept": [
+        ".pem",
+        ".key",
+        ".p8"
+      ],
       "uiFieldType": "fileOrInput",
       "recommended": true
     },
@@ -361,7 +365,6 @@
                   "oneOf": [
                     {
                       "title": "AWS S3 Storage Config",
-                      "$schema": "http://json-schema.org/draft-07/schema#",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -391,7 +394,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",

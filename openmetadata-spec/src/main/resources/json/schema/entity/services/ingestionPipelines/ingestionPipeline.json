@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/ingestionPipeline.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "IngestionPipeline",
   "description": "Ingestion Pipeline Config is used to set up a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.",
   "type": "object",
@@ -51,6 +51,10 @@
         "metadata": {
           "description": "Metadata for the pipeline status.",
           "$ref": "../../../type/basic.json#/definitions/map"
+        },
+        "triggeredBy": {
+          "description": "User who triggered the run on demand, when known. Not set for scheduled runs.",
+          "type": "string"
         }
       },
       "additionalProperties": false

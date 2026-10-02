@@ -15,6 +15,7 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   AlertProps,
   Checkbox,
@@ -24,7 +25,6 @@ import {
   Select,
   Skeleton,
   Tooltip,
-  Typography,
 } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
@@ -179,7 +179,7 @@ export const getFqnSearchIndexes = (
     .filter((index): index is SearchIndex => Boolean(index));
 };
 
-const getTableSuggestions = async (searchText: string) => {
+export const getTableSuggestions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.TABLE,
@@ -187,7 +187,7 @@ const getTableSuggestions = async (searchText: string) => {
   });
 };
 
-const getDataContractSuggestions = async (searchText = '') => {
+export const getDataContractSuggestions = async (searchText = '') => {
   try {
     const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
 
@@ -210,15 +210,15 @@ const getDataContractSuggestions = async (searchText = '') => {
   }
 };
 
-const getTestSuiteSuggestions = async (searchText: string) => {
+export const getTestSuiteSuggestions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.TEST_SUITE });
 };
 
-const getDomainOptions = async (searchText: string) => {
+export const getDomainOptions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.DOMAIN });
 };
 
-const getOwnerOptions = async (searchText: string) => {
+export const getOwnerOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
@@ -228,7 +228,7 @@ const getOwnerOptions = async (searchText: string) => {
   });
 };
 
-const getUserOptions = async (searchText: string) => {
+export const getUserOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.USER,
@@ -238,11 +238,47 @@ const getUserOptions = async (searchText: string) => {
   });
 };
 
-const getUserBotOptions = async (searchText: string) => {
+export const getUserBotOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.USER,
   });
+};
+
+export const getEntityByIdOptions = async (
+  searchText: string,
+  selectedTrigger: string
+) => {
+  const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
+  const trimmed = searchText.trim();
+  const isUuidInput = UUID_REGEX.test(trimmed);
+
+  try {
+    const response = await searchQuery({
+      query: trimmed,
+      pageNumber: 1,
+      pageSize: PAGE_SIZE_LARGE,
+      queryFilter: isUuidInput ? getTermQuery({ id: trimmed }) : undefined,
+      searchIndex: searchIndexMapping[selectedTrigger],
+    });
+
+    return uniqBy(
+      response.hits.hits.map((d) => {
+        const id = d._source.id ?? '';
+        const fqn = d._source.fullyQualifiedName ?? '';
+
+        return { label: `${id} (${fqn})`, value: id };
+      }),
+      'value'
+    );
+  } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      t('server.entity-fetch-error', { entity: t('label.search') })
+    );
+
+    return [];
+  }
 };
 
 export const getSupportedFilterOptions = (
@@ -609,7 +645,7 @@ export const getAlertRecentEventsFilterOptions = () => {
     const label = getAlertEventsFilterLabels(status);
 
     return {
-      label: <Typography.Text>{label}</Typography.Text>,
+      label: <Typography>{label}</Typography>,
       key: status,
     };
   });

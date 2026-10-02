@@ -18,7 +18,7 @@ from unittest.mock import patch
 from urllib.parse import quote
 
 import pytest
-from sqlalchemy import JSON, Boolean, Column, DateTime, LargeBinary, String, create_engine
+from sqlalchemy import JSON, Boolean, Column, DateTime, LargeBinary, MetaData, String, Table, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session
 
 # pylint: disable=unused-import
@@ -27,6 +27,9 @@ try:
 except ImportError:
     pytest.skip("Airflow dependencies not installed", allow_module_level=True)
 
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -189,6 +192,66 @@ class Airflow2DagModel(Airflow2Base):
 
     dag_id = Column(String(250), primary_key=True)
     is_paused = Column(Boolean)
+
+
+@pytest.mark.parametrize("date_column", ["logical_date", "execution_date"])
+@pytest.mark.parametrize(
+    "dates",
+    [
+        [(None, 1), (None, 4), (None, 2), (None, 3)],
+        [(1, 6), (None, 4), (2, 2), (None, 3)],
+        [(1, 6), (4, 4), (2, 2), (3, 3)],
+    ],
+    ids=["asset-triggered", "mixed", "scheduled"],
+)
+def test_get_pipeline_status_selects_latest_runs(date_column, dates):
+    config = OpenMetadataWorkflowConfig.model_validate(MOCK_CONFIG)
+    config.source.serviceConnection.root.config.connection = SQLiteConnection(databaseMode=":memory:")
+    config.source.serviceConnection.root.config.numberOfStatus = 2
+    with patch.object(AirflowSource, "test_connection"):
+        source = AirflowSource(config.source, OpenMetadata(config.workflowConfig.openMetadataServerConfig))
+
+    dag_run = Table(
+        "dag_run",
+        MetaData(),
+        Column("dag_id", String),
+        Column("run_id", String),
+        Column("queued_at", DateTime),
+        Column(date_column, DateTime),
+        Column("start_date", DateTime),
+        Column("state", String),
+    )
+    try:
+        dag_run.create(source.connection)
+        with Session(source.connection) as session:
+            rows = [
+                {
+                    "dag_id": "my_dag",
+                    "run_id": run_id,
+                    date_column: datetime(2026, 1, date_day) if date_day else None,
+                    "start_date": datetime(2026, 1, start_day),
+                    "state": "success",
+                }
+                for run_id, (date_day, start_day) in zip(["run_1", "run_4", "run_2", "run_3"], dates, strict=True)
+            ]
+            rows.append(
+                {
+                    "dag_id": "other_dag",
+                    "run_id": "other_run",
+                    date_column: datetime(2026, 1, 7),
+                    "start_date": datetime(2026, 1, 7),
+                    "state": "success",
+                }
+            )
+            session.execute(dag_run.insert(), rows)
+            session.commit()
+            source._session = session
+
+            runs = source.get_pipeline_status("my_dag")
+
+            assert [run.run_id for run in runs] == ["run_4", "run_3"]
+    finally:
+        source.connection.dispose()
 
 
 class TestAirflow(TestCase):
@@ -1669,3 +1732,36 @@ class TestAirflow(TestCase):
         self.assertEqual(len(failed_statuses), 10)
         for status in failed_statuses:
             self.assertEqual(status.taskStatus, [])
+
+    def test_get_pipeline_status_cache_returns_same_result(self):
+        """
+        A second call for the same dag_id returns the cached result without
+        hitting the session again.
+        """
+        from collections import namedtuple
+        from unittest.mock import MagicMock
+
+        Row = namedtuple("Row", ["dag_id", "run_id", "queued_at", "date_value", "start_date", "state"])
+
+        rows = [
+            Row(dag_id="dag_cached", run_id="run_1", queued_at=None, date_value=None, start_date=None, state="success"),
+        ]
+
+        mock_session = MagicMock()
+        mock_query = MagicMock()
+        mock_query.filter.return_value.order_by.return_value.limit.return_value.all.return_value = rows
+        mock_session.query.return_value = mock_query
+
+        # session is a @property backed by _session — inject mock directly
+        self.airflow._session = mock_session
+        self.airflow._status_cache_dag_id = None
+        try:
+            first = self.airflow.get_pipeline_status("dag_cached")
+            second = self.airflow.get_pipeline_status("dag_cached")
+        finally:
+            self.airflow._session = None
+            self.airflow._status_cache_dag_id = None
+
+        # Session was queried only once — second call used the cache
+        self.assertEqual(mock_session.query.call_count, 1)
+        self.assertIs(first, second)

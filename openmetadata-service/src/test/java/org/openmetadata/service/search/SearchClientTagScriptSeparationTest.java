@@ -14,6 +14,13 @@ package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -143,4 +150,61 @@ class SearchClientTagScriptSeparationTest {
                 + " separation drift. Append TAG_RESEPARATION_SCRIPT at the very end of the"
                 + " script string.");
   }
+
+  @Test
+  void tagReseparationScriptDeclaresNothingAtTheTopLevel() {
+    // SearchRepository.getInheritedFieldChanges appends the delete, update and add scripts for
+    // every changed field into ONE StringBuilder, and each of those ends with this snippet. A tag
+    // *replacement* therefore emits the snippet twice in a single painless program. Painless has no
+    // shadowing across a program, so any `def` at the top level fails to compile with
+    // "Variable [newTags] is already defined" and the whole propagation update is rejected.
+    List<String> topLevel = declarationsAtTopLevel(SearchClient.TAG_RESEPARATION_SCRIPT);
+    assertTrue(
+        topLevel.isEmpty(),
+        () ->
+            "TAG_RESEPARATION_SCRIPT must declare nothing at the top level so it can be"
+                + " concatenated with itself, but found: "
+                + topLevel
+                + ". Move the declarations inside the containsKey('tags') guard.");
+  }
+
+  @Test
+  void twoTagMutatingScriptsConcatenateWithoutRedeclaring() {
+    // The exact shape a tag replacement produces: one script for fieldsDeleted and one for
+    // fieldsAdded, each suffixed with the reseparation snippet.
+    String composed =
+        SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT + "\n" + SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
+    List<String> topLevel = declarationsAtTopLevel(composed);
+    Set<String> duplicated =
+        topLevel.stream()
+            .filter(name -> Collections.frequency(topLevel, name) > 1)
+            .collect(Collectors.toSet());
+    assertTrue(
+        duplicated.isEmpty(),
+        () ->
+            "Concatenating two tag-mutating scripts redeclares "
+                + duplicated
+                + " at the top level; painless rejects the program.");
+  }
+
+  /** Names declared with {@code def}/{@code boolean}/{@code int} at brace depth 0. */
+  private static List<String> declarationsAtTopLevel(String script) {
+    List<String> names = new ArrayList<>();
+    int depth = 0;
+    Matcher matcher = DECLARATION.matcher(script);
+    int cursor = 0;
+    while (matcher.find()) {
+      for (int i = cursor; i < matcher.start(); i++) {
+        char c = script.charAt(i);
+        if (c == '{') depth++;
+        else if (c == '}') depth--;
+      }
+      cursor = matcher.start();
+      if (depth == 0) names.add(matcher.group(2));
+    }
+    return names;
+  }
+
+  private static final Pattern DECLARATION =
+      Pattern.compile("\\b(def|boolean|int|String)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*=");
 }

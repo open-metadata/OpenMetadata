@@ -40,6 +40,22 @@ export const AVATAR_SIZE_NAME_MAP: Record<
   64: '2xl',
 };
 
+// Maps avatarSize prop to the actual px size the Avatar component renders at.
+// Avatar supports discrete sizes (xxs=16, xs=24, sm=32, md=40, lg=48, xl=56, 2xl=64).
+// Values like 18 or 20 round down to the nearest supported size so the outline
+// wrapper stays flush with the actual rendered circle.
+export const AVATAR_RENDER_SIZE_MAP: Record<number, number> = {
+  16: 16,
+  18: 16,
+  20: 24,
+  24: 24,
+  32: 32,
+  40: 40,
+  48: 48,
+  56: 56,
+  64: 64,
+};
+
 export const AVATAR_FONT_SIZE_MAP: Record<number, string> = {
   16: TEXT_8PX_CLASS,
   18: TEXT_8PX_CLASS,

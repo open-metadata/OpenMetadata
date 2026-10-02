@@ -8,6 +8,7 @@ import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.utils.JsonUtils;
 
@@ -21,6 +22,26 @@ class DataInsightsSearchInterfaceTest {
 
   private static final DataInsightsSearchInterface SEARCH_INTERFACE =
       mock(DataInsightsSearchInterface.class, CALLS_REAL_METHODS);
+
+  @Test
+  void rolloverTemplatesKeepEachEntityTypesMappingsAndTenant() {
+    var table =
+        JsonUtils.readOrConvertValue(
+            IndexTemplate.forDataStream(
+                "tenant-di-data-assets-table",
+                SEARCH_INTERFACE.readResource("/dataInsights/elasticsearch/indexTemplate.json")),
+            Map.class);
+    var endpoint =
+        JsonUtils.readOrConvertValue(
+            IndexTemplate.forDataStream(
+                "tenant-di-data-assets-apiendpoint",
+                SEARCH_INTERFACE.readResource("/dataInsights/elasticsearch/indexTemplate.json")),
+            Map.class);
+    assertEquals(List.of("tenant-di-data-assets-table"), table.get("index_patterns"));
+    assertEquals(List.of("tenant-di-data-assets-table-mapping"), table.get("composed_of"));
+    assertEquals(List.of("tenant-di-data-assets-apiendpoint-mapping"), endpoint.get("composed_of"));
+    assertEquals(501, table.get("priority"));
+  }
 
   @Test
   void aTypeTheConfigForgotFailsAndNamesIt() {

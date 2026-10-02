@@ -20,6 +20,7 @@ import {
 } from '@playwright/test';
 import { DBT, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
+import { CODE_EDITOR, getCodeEditorText } from '../../../utils/codeEditor';
 import {
   getApiContext,
   redirectToHomePage,
@@ -30,6 +31,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import { visitLineageTab } from '../../../utils/lineage';
+import { getCellByName } from '../../../utils/scopedLocators';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { selectOneOfOption } from '../../../utils/serviceFormUtils';
 import {
@@ -199,19 +201,14 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
           )}&pipelineType=dbt&serviceType=databaseService&limit=1`
         )
         .then((res) => res.json());
-
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-      await page.waitForTimeout(3000);
+      const startedAfter = Date.now();
       await getAgentCard(page, response.data[0].name)
         .getByTestId('run-agent-button')
         .click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);
 
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
-      await page.waitForTimeout(2000);
-
-      await this.handleIngestionRetry('dbt', page);
+      await this.waitForIngestion(page, startedAfter, 'dbt');
     });
 
     await test.step('Validate DBT is ingested properly', async () => {
@@ -228,7 +225,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
       await page.getByTestId('table').waitFor();
 
-      await expect(page.getByRole('cell', { name: DBT.tagName })).toBeVisible();
+      await expect(getCellByName(page, DBT.tagName)).toBeVisible();
 
       // Verify DBT in table entity
       await visitEntityPage({
@@ -255,8 +252,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.click('[data-testid="dbt"]');
 
       // Verify query is present in the DBT tab
-      await page.locator('.CodeMirror').waitFor();
-      const codeMirrorText = await page.textContent('.CodeMirror');
+      await page.locator(CODE_EDITOR).waitFor();
+      const codeMirrorText = await getCodeEditorText(page);
 
       expect(codeMirrorText).toContain(DBT.dbtQuery);
 

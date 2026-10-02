@@ -103,7 +103,7 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
     return ca_cert, client_cert, private_key
 
 
-def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
+def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext | None:
     """
     Method to get SSL Context
     """
@@ -128,13 +128,14 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
         cert_chain = None
 
     if ca_cert or cert_chain:
+        verify = str(ca_cert) if ca_cert else True
         ssl_context = create_ssl_context(
             cert=cert_chain,
-            verify=ca_cert,
+            verify=verify,
         )
         return ssl_context  # noqa: RET504
 
-    return ssl._create_unverified_context()  # pylint: disable=protected-access
+    return create_ssl_context(verify=True)
 
 
 def _cleanup_staging_dir(staging_dir: str | None) -> None:

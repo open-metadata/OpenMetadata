@@ -185,7 +185,10 @@ jobs:
 
       - name: Summarise the diff
         id: summarise
-        if: steps.git-check.outcome != 'success'
+        # `git-check` is skipped on forks, and a skipped step's outcome is
+        # 'skipped' (!= 'success'), so without the fork guard this ran `git show`
+        # in a workspace that was never checked out and failed the job.
+        if: steps.check-fork.outputs.is_fork != 'true' && steps.git-check.outcome != 'success'
         run: |
           # Cap the summary at what fits comfortably in a PR comment. The full
           # file is a single JSON line — a raw diff would be unreadable — so
@@ -233,14 +236,12 @@ jobs:
       - name: Auto-commit + push (same-repo PRs only)
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref) != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Not GITHUB_TOKEN: pushes made with it never trigger workflow runs,
+          # so every required check stays pending and the PR can't merge.
+          GH_TOKEN: ${{ secrets.COLLATE_PAT }}
           HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref }}
         run: |
-          # `[skip ci]` prevents the push from re-triggering this same workflow
-          # (which would find a clean tree and pass anyway, wasting a run).
-          # PR CI's other checks still re-fire because they gate on push events,
-          # not on this workflow.
-          git commit -m "chore(playwright): auto-refresh impact-map.generated.json [skip ci]"
+          git commit -m "chore(playwright): auto-refresh impact-map.generated.json"
           # persist-credentials: false above, so re-attach the token to origin.
           # Bare URL would break --force-with-lease (no remote-tracking ref to
           # lease against).

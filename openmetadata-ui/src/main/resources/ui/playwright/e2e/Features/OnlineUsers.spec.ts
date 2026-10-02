@@ -18,6 +18,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { getCellByName } from '../../utils/scopedLocators';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -76,16 +77,16 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Verify table headers
     await expect(
-      page.getByRole('columnheader', { name: 'Username' })
+      page.getByRole('columnheader').filter({ hasText: 'Username' })
     ).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Last Activity' })
+      page.getByRole('columnheader').filter({ hasText: 'Last Activity' })
     ).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Teams' })
+      page.getByRole('columnheader').filter({ hasText: 'Teams' })
     ).toBeVisible();
     await expect(
-      page.getByRole('columnheader', { name: 'Roles' })
+      page.getByRole('columnheader').filter({ hasText: 'Roles' })
     ).toBeVisible();
 
     // Check for time filter dropdown (labeled as "Time window:")
@@ -103,7 +104,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   }) => {
     const userPage = await browser.newPage();
     try {
-      await testUser.login(userPage);
+      await testUser.signIn(userPage);
       await redirectToHomePage(userPage);
       await sidebarClick(userPage, SidebarItem.EXPLORE);
       await waitForAllLoadersToDisappear(userPage);
@@ -121,7 +122,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await searchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    const userCell = page.getByRole('cell', { name: displayName }).first();
+    const userCell = getCellByName(page, displayName).first();
     await expect(userCell).toBeVisible();
 
     const userRow = page.locator('tr').filter({ has: userCell });
@@ -234,7 +235,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test.slow(); // Mark this test as slow since it involves multiple logins and navigation
     await test.step('Visit Explore Page as New User', async () => {
       const userPage = await browser.newPage();
-      await testUser.login(userPage);
+      await testUser.signIn(userPage);
       await redirectToHomePage(userPage);
 
       // 1 step - go to explore page using new user
@@ -259,9 +260,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.getByRole('cell', { name: displayName }).first()
-      ).toBeVisible();
+      await expect(getCellByName(page, displayName).first()).toBeVisible();
 
       // Search by email should surface the same user
       const emailSearchResponse = page.waitForResponse(
@@ -272,9 +271,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.getByRole('cell', { name: displayName }).first()
-      ).toBeVisible();
+      await expect(getCellByName(page, displayName).first()).toBeVisible();
     });
   });
 });

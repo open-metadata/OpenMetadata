@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -181,7 +181,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     () => (
       <DataProductsSelectListV1
         fetchOptions={fetchAPI}
-        multiSelect={entityRules.canAddMultipleDataProducts}
+        multiSelect={isRulesLoaded && entityRules.canAddMultipleDataProducts}
         popoverProps={{
           open: popoverOpen,
           onOpenChange: handlePopoverOpenChange,
@@ -201,6 +201,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       handlePopoverOpenChange,
       editingDataProducts,
       handleSaveWithDataProducts,
+      isRulesLoaded,
       entityRules.canAddMultipleDataProducts,
       cancelEditing,
     ]
@@ -219,9 +220,9 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       (!displayActiveDomains || displayActiveDomains.length === 0)
     ) {
       return (
-        <Typography.Text className="no-data-placeholder">
+        <Typography className="no-data-placeholder">
           {t('message.select-domain-to-add-data-product')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -302,9 +303,9 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     return (
       <div className="data-products-section">
         <div className="data-products-header">
-          <Typography.Text className="data-products-title">
+          <Typography className="data-products-title">
             {t('label.data-product-plural')}
-          </Typography.Text>
+          </Typography>
           {canShowEditButton && (
             <EditIconButton
               newLook
@@ -327,9 +328,9 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   return (
     <div className="data-products-section">
       <div className="data-products-header">
-        <Typography.Text className="data-products-title">
+        <Typography className="data-products-title">
           {t('label.data-product-plural')}
-        </Typography.Text>
+        </Typography>
         {canShowEditButton && (
           <EditIconButton
             newLook

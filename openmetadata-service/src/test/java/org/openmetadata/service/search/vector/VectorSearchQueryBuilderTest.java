@@ -1077,6 +1077,34 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testPersonaQueryFilterReachesBothVectorEngines() throws Exception {
+    String personaFilter =
+        "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"entityType\":\"table\"}},"
+            + "{\"term\":{\"service.name.keyword\":\"finance\"}}]}}}";
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(
+            "customer data",
+            Map.of("tier", List.of("Tier.Tier1")),
+            10,
+            0,
+            100,
+            0.0,
+            null,
+            null,
+            personaFilter);
+
+    String osQuery = VectorSearchQueryBuilder.build(new float[] {0.1f}, parameters);
+    String esQuery = VectorSearchQueryBuilder.buildNativeESQuery(new float[] {0.1f}, parameters, 2);
+
+    JsonNode osMust = MAPPER.readTree(osQuery).at("/query/knn/embedding/filter/bool/must");
+    JsonNode esMust = MAPPER.readTree(esQuery).at("/knn/filter/bool/must");
+    assertEquals(osMust, esMust);
+    assertEquals(3, osMust.size());
+    assertEquals("table", osMust.get(2).at("/bool/filter/0/term/entityType").asText());
+    assertEquals("finance", osMust.get(2).at("/bool/filter/1/term/service.name.keyword").asText());
+  }
+
+  @Test
   void nullFiltersProduceOnlyTheDeletedClauseWithoutThrowing() throws Exception {
     float[] vector = {0.1f, 0.2f};
 
@@ -1112,6 +1140,7 @@ class VectorSearchQueryBuilderTest {
     assertNotNull(clause, "every vector query must carry a memory visibility clause");
     String rendered = clause.toString();
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()), "org-wide memories still match");
+    assertTrue(rendered.contains(MemoryVisibility.PUBLIC.value()), "public memories still match");
     assertFalse(rendered.contains("owners.id"), "no subject means no owner branch");
     assertFalse(rendered.contains("sharedWithIds"), "no subject means no shared branch");
     assertFalse(
@@ -1130,6 +1159,18 @@ class VectorSearchQueryBuilderTest {
     assertTrue(rendered.contains(TEAM_ID.toString()), "the shared branch must include their team");
     assertTrue(rendered.contains(MemoryVisibility.SHARED.value()));
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()));
+    assertTrue(rendered.contains(MemoryVisibility.PUBLIC.value()));
+  }
+
+  @Test
+  void testPublicVisibilityAppliesOnlyToMemoryChunks() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(
+            new float[] {0.1f}, 10, Map.of(), 0.0, nonAdminSubject());
+    JsonNode branches = memoryVisibilityClause(MAPPER.readTree(query)).path("bool").path("should");
+
+    assertTrue(branches.get(1).toString().contains(MemoryVisibility.PUBLIC.value()));
+    assertFalse(branches.get(2).toString().contains(MemoryVisibility.PUBLIC.value()));
   }
 
   /**

@@ -12,14 +12,23 @@
  */
 
 import { EntityField } from '../constants/Feeds.constants';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../generated/entity/bot';
 import { Classification } from '../generated/entity/classification/classification';
 import { ChangeDescription } from '../generated/entity/type';
 import { getClassificationInfo } from './ClassificationPureUtils';
+import { getTagsTableColumn } from './ClassificationUtils';
 import { getEntityVersionByField } from './EntityVersionUtilsPure';
 // Mock dependencies
 jest.mock('./EntityVersionUtilsPure', () => ({
   getEntityVersionByField: jest.fn(),
+}));
+
+// setupTests stubs descriptionTableObject to [], hiding the column we assert against
+jest.mock('./TableColumn.util', () => ({
+  descriptionTableObject: () => [
+    { key: 'description', dataIndex: 'description' },
+  ],
 }));
 
 const mockGetEntityVersionByField =
@@ -369,5 +378,33 @@ describe('ClassificationUtils', () => {
         expect(result.name).toBe('TestClassification');
       });
     });
+  });
+});
+
+describe('getTagsTableColumn', () => {
+  const baseArgs = {
+    classificationPermissions: {} as OperationPermission,
+    isClassificationDisabled: false,
+    isVersionView: false,
+  };
+
+  it('should place the usage column right after the display name', () => {
+    const keys = getTagsTableColumn(baseArgs).map(({ key }) => key);
+
+    expect(keys).toEqual([
+      'name',
+      'displayName',
+      'usageCount',
+      'description',
+      'actions',
+    ]);
+  });
+
+  it('should omit the usage column in the version view', () => {
+    const keys = getTagsTableColumn({ ...baseArgs, isVersionView: true }).map(
+      ({ key }) => key
+    );
+
+    expect(keys).not.toContain('usageCount');
   });
 });

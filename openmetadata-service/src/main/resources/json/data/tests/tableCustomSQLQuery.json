@@ -42,6 +42,14 @@
         "description": "Partition expression that will be used to compute the passed/failed row count, if compute row count is enabled.",
         "dataType": "STRING",
         "required": false
+      },
+      {
+        "name": "thresholdUnit",
+        "displayName": "Threshold Unit",
+        "description": "How to read `threshold`: `ABSOLUTE` for a raw count of failures, `PERCENTAGE` for a share of the evaluated rows (defaults to ABSOLUTE).",
+        "dataType": "STRING",
+        "required": false,
+        "optionValues": ["ABSOLUTE", "PERCENTAGE"]
       }
     ],
     "supportsRowLevelPassedFailed": true,

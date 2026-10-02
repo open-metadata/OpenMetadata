@@ -81,7 +81,32 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }
   );
 
+  const InputMock = jest
+    .fn()
+    .mockImplementation(
+      ({
+        inputDataTestId,
+        value,
+        onChange,
+        placeholder,
+      }: {
+        inputDataTestId?: string;
+        value?: string;
+        onChange?: (value: string) => void;
+        placeholder?: string;
+      }) => (
+        <input
+          aria-label={placeholder ?? 'search'}
+          data-testid={inputDataTestId ?? 'searchbar'}
+          placeholder={placeholder}
+          value={value ?? ''}
+          onChange={(e) => onChange?.(e.target.value)}
+        />
+      )
+    );
+
   return {
+    Input: InputMock,
     Skeleton: () => (
       <span aria-hidden="true" data-testid="table-loading-skeleton" />
     ),

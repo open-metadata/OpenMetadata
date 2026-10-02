@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Input, Skeleton, Space, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  SkeletonParagraph,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';
@@ -37,6 +44,7 @@ import {
   entityDisplayName,
   getEntityFQN,
   getEntityType,
+  isFeedPostAuthor,
 } from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -53,6 +61,8 @@ import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
+
+const POST_SKELETON_KEYS = ['first', 'second', 'third'];
 
 interface ActivityFeedCardNewProps {
   feed?: Conversation;
@@ -157,13 +167,14 @@ const ActivityFeedCardNew = ({
     selectedThread,
     postFeed,
     updateFeed,
+    deleteFeed,
+    updateReactions,
     isPostsLoading,
     postActivityComment,
     activityReplies,
   } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
-  const [isHovered, setIsHovered] = useState(false);
   const [, , user] = useUserProfile({
     permission: true,
     name: createdBy,
@@ -273,15 +284,14 @@ const ActivityFeedCardNew = ({
   const timestampValue =
     post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
   const timestamp = timestampValue ? (
-    <Tooltip
-      color="white"
-      overlayClassName="timestamp-tooltip"
-      title={formatDateTime(timestampValue)}>
-      <Typography.Text
+    <Tooltip excludeTriggerFromTabOrder title={formatDateTime(timestampValue)}>
+      <Typography
         className="feed-card-header-v2-timestamp"
-        data-testid="timestamp">
+        color="secondary"
+        data-testid="timestamp"
+        size="text-xs">
         {getRelativeTime(timestampValue)}
-      </Typography.Text>
+      </Typography>
     </Tooltip>
   ) : null;
 
@@ -289,9 +299,10 @@ const ActivityFeedCardNew = ({
     setShowFeedEditor(false);
   };
 
-  const canShowFeedActions = isHovered && !isActivityEvent && !isPost;
+  // Rendered unconditionally and revealed with CSS: gating the mount on hover
+  // put these permanently out of reach of the keyboard and screen readers.
   const feedActions =
-    canShowFeedActions && feed ? (
+    !isActivityEvent && !isPost && feed ? (
       <ActivityFeedActions
         conversation={feed}
         conversationId={feed.id}
@@ -306,11 +317,11 @@ const ActivityFeedCardNew = ({
     }
     if (isPostsLoading) {
       return (
-        <Space className="m-y-md" direction="vertical" size={16}>
-          <Skeleton active />
-          <Skeleton active />
-          <Skeleton active />
-        </Space>
+        <Box className="m-y-md" direction="col" gap={4}>
+          {POST_SKELETON_KEYS.map((key) => (
+            <SkeletonParagraph key={key} />
+          ))}
+        </Box>
       );
     }
 
@@ -322,18 +333,43 @@ const ActivityFeedCardNew = ({
     }
 
     return (
-      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-        {orderedPosts.map((reply, index, arr) => (
-          <CommentCard
-            closeFeedEditor={closeFeedEditor}
-            conversation={feed}
-            conversationId={activity?.id ?? feed?.id ?? ''}
-            isLastReply={index === arr.length - 1}
-            key={reply.id}
-            reply={reply}
-          />
-        ))}
-      </Col>
+      <Box className="p-l-0 p-r-0" data-testid="feed-replies" direction="col">
+        {orderedPosts.map((reply, index, arr) => {
+          const conversationId = activity?.id ?? feed?.id ?? '';
+          const canManage =
+            isFeedPostAuthor(currentUser, reply.author) ||
+            Boolean(currentUser?.isAdmin);
+
+          return (
+            <CommentCard
+              canDelete={canManage}
+              canEdit={canManage}
+              closeFeedEditor={closeFeedEditor}
+              isLastReply={index === arr.length - 1}
+              key={reply.id}
+              reply={reply}
+              onDelete={() => deleteFeed(conversationId, reply.id, false)}
+              onEdit={async (message) => {
+                await updateFeed(
+                  conversationId,
+                  reply.id,
+                  false,
+                  compare(reply, { ...reply, message })
+                );
+              }}
+              onReaction={(reaction, operation) =>
+                updateReactions(
+                  reply,
+                  conversationId,
+                  false,
+                  reaction,
+                  operation
+                )
+              }
+            />
+          );
+        })}
+      </Box>
     );
   }, [
     feed,
@@ -344,6 +380,10 @@ const ActivityFeedCardNew = ({
     isActivityEvent,
     activityReplies,
     activity?.id,
+    currentUser,
+    deleteFeed,
+    updateFeed,
+    updateReactions,
   ]);
 
   const feedMessage = useMemo(() => {
@@ -364,9 +404,7 @@ const ActivityFeedCardNew = ({
         isActive
       )}
       data-conversation-id={feed?.id}
-      data-testid="feed-card-v2-sidebar"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      data-testid="feed-card-v2-sidebar">
       <Space align="start" className="w-full">
         <div className="flex gap-2 w-full">
           <div className="flex-center flex-col">
@@ -413,11 +451,12 @@ const ActivityFeedCardNew = ({
                     showThread,
                     entityRef?.type
                   )}>
-                  <Typography.Text
-                    className="card-style-feed-header text-sm"
-                    data-testid="headerText">
+                  <Typography
+                    className="card-style-feed-header"
+                    data-testid="headerText"
+                    size="text-sm">
                     {feedHeaderText}
-                  </Typography.Text>
+                  </Typography>
 
                   {renderEntityLink}
                 </Space>
@@ -480,9 +519,9 @@ const ActivityFeedCardNew = ({
   const renderCommentsSection = () => (
     <div className="activity-feed-comments-container d-flex flex-col">
       {(showActivityFeedEditor || isOpenInDrawer) && (
-        <Typography.Text className="activity-feed-comments-title m-b-md">
+        <Typography className="activity-feed-comments-title m-b-md">
           {t('label.comment-plural')}
-        </Typography.Text>
+        </Typography>
       )}
       {showFeedEditor ? (
         <ActivityFeedEditorNew
@@ -508,12 +547,15 @@ const ActivityFeedCardNew = ({
             </UserPopOverCard>
           </div>
 
-          <Input
-            className="comments-input-field"
+          {/* Only opens the editor, so it is a button rather than an input. */}
+          <Button
+            className="tw:w-full tw:justify-start"
+            color="secondary"
             data-testid="comments-input-field"
-            placeholder={t('message.input-placeholder')}
-            onClick={() => setShowFeedEditor(true)}
-          />
+            size="sm"
+            onPress={() => setShowFeedEditor(true)}>
+            {t('message.input-placeholder')}
+          </Button>
         </div>
       )}
 
@@ -531,9 +573,7 @@ const ActivityFeedCardNew = ({
         isActive
       )}
       data-conversation-id={feed?.id}
-      data-testid="feed-card-v2-sidebar"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      data-testid="feed-card-v2-sidebar">
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space
@@ -558,8 +598,8 @@ const ActivityFeedCardNew = ({
                   'header-container-right-panel': showThread,
                 })}
                 size={0}>
-                <Typography.Text
-                  className={classNames('mr-2', {
+                <Typography
+                  className={classNames('mr-2 not-prose', {
                     'activity-feed-user-name': !isPost,
                     'reply-card-user-name': isPost,
                   })}>
@@ -573,7 +613,7 @@ const ActivityFeedCardNew = ({
                       {getEntityName(user)}
                     </Link>
                   </UserPopOverCard>
-                </Typography.Text>
+                </Typography>
                 {timestamp}
               </Space>
               {!isPost && (
@@ -582,11 +622,12 @@ const ActivityFeedCardNew = ({
                     showThread,
                     entityRef?.type
                   )}>
-                  <Typography.Text
-                    className="card-style-feed-header text-sm"
-                    data-testid="headerText">
+                  <Typography
+                    className="card-style-feed-header"
+                    data-testid="headerText"
+                    size="text-sm">
                     {feedHeaderText}
-                  </Typography.Text>
+                  </Typography>
 
                   {renderEntityLink}
                 </Space>

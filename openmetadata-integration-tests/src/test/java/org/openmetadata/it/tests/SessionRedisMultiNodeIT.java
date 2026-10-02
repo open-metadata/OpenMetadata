@@ -64,6 +64,7 @@ import org.openmetadata.schema.utils.JsonUtils;
  * </ul>
  */
 @Tag("session")
+@Tag("multi-node")
 @ExtendWith(TestNamespaceExtension.class)
 @EnabledIf(value = "org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled")
 class SessionRedisMultiNodeIT {

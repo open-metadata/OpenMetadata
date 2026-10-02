@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Divider, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
@@ -29,6 +30,7 @@ import { TagSource } from '../../../generated/type/schema';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -88,13 +90,12 @@ const MlModelFeaturesList = () => {
     setDisplayedColumns(mlFeatures || []);
   }, [mlFeatures, setDisplayedColumns]);
 
-  const hasEditPermission = useMemo(
-    () => permissions.EditTags || permissions.EditAll,
-    [permissions]
-  );
-
-  const hasEditGlossaryTermPermission = useMemo(
-    () => permissions.EditGlossaryTerms || permissions.EditAll,
+  // Ungated: isDeleted is threaded separately to each TableTags/TableDescription call as
+  // `isReadOnly` below (SearchIndexFieldsTab.tsx/TopicSchema.tsx precedent), never folded
+  // into these edit flags. Also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
+  const { canEditTags, canEditGlossaryTerms, canEditDescription } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
     [permissions]
   );
 
@@ -171,9 +172,13 @@ const MlModelFeaturesList = () => {
             <Divider className="m-y-md" />
           </Col>
           <Col span={24}>
-            <Typography.Title level={5}>
+            <Typography
+              as="h5"
+              className="tw:mb-2!"
+              size="text-md"
+              weight="semibold">
               {t('label.feature-plural-used')}
-            </Typography.Title>
+            </Typography>
           </Col>
 
           {mlFeatures?.map((feature: MlFeature, index) => {
@@ -185,7 +190,7 @@ const MlModelFeaturesList = () => {
                   key={feature.fullyQualifiedName}>
                   <Row gutter={[0, 8]}>
                     <Col span={24}>
-                      <Typography.Text
+                      <Typography
                         className="font-semibold"
                         data-testid="column-name"
                         style={{
@@ -193,26 +198,24 @@ const MlModelFeaturesList = () => {
                         }}
                         onClick={(event) => handleColumnClick(feature, event)}>
                         {feature.name}
-                      </Typography.Text>
+                      </Typography>
                     </Col>
                     <Col span={24}>
                       <Space align="start">
                         <Space>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.type')} :`}
-                          </Typography.Text>{' '}
-                          <Typography.Text>
-                            {feature.dataType || '--'}
-                          </Typography.Text>
+                          </Typography>{' '}
+                          <Typography>{feature.dataType || '--'}</Typography>
                         </Space>
                         <Divider className="border-gray" type="vertical" />
                         <Space>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.algorithm')} :`}
-                          </Typography.Text>{' '}
-                          <Typography.Text>
+                          </Typography>{' '}
+                          <Typography>
                             {feature.featureAlgorithm || '--'}
-                          </Typography.Text>
+                          </Typography>
                         </Space>
                       </Space>
                     </Col>
@@ -220,9 +223,9 @@ const MlModelFeaturesList = () => {
                     <Col span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography.Text className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.glossary-term-plural')} :`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
 
                         <Col flex="auto">
@@ -230,7 +233,7 @@ const MlModelFeaturesList = () => {
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
-                            hasTagEditAccess={hasEditPermission}
+                            hasTagEditAccess={canEditTags}
                             index={index}
                             isReadOnly={isDeleted}
                             record={feature}
@@ -244,16 +247,16 @@ const MlModelFeaturesList = () => {
                     <Col span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography.Text className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.tag-plural')} :`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col flex="auto">
                           <TableTags<MlFeature>
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
-                            hasTagEditAccess={hasEditGlossaryTermPermission}
+                            hasTagEditAccess={canEditGlossaryTerms}
                             index={index}
                             isReadOnly={isDeleted}
                             record={feature}
@@ -267,9 +270,9 @@ const MlModelFeaturesList = () => {
                     <Col className="m-t-xs" span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography.Text className="text-grey-muted">
+                          <Typography color="secondary">
                             {`${t('label.description')} :`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col flex="auto">
                           <TableDescription
@@ -279,9 +282,7 @@ const MlModelFeaturesList = () => {
                             }}
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
-                            hasEditPermission={
-                              permissions.EditAll || permissions.EditDescription
-                            }
+                            hasEditPermission={canEditDescription}
                             index={index}
                             isReadOnly={isDeleted}
                             onClick={() => {

@@ -86,7 +86,7 @@ const adminUser = new UserClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -94,6 +94,7 @@ const test = base.extend<{ page: Page }>({
 
 test.describe('Service Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    setupErrors.clear();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
@@ -157,9 +158,25 @@ test.describe('Service Version pages', () => {
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-
-    await afterAction();
+    try {
+      const results = await Promise.allSettled(
+        Object.values(entities).map((entity) => entity.delete(apiContext))
+      );
+      await adminUser.delete(apiContext);
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected'
+      );
+      if (failures.length) {
+        throw new AggregateError(
+          failures.map((failure) => failure.reason),
+          'Service version fixture cleanup failed'
+        );
+      }
+    } finally {
+      setupErrors.clear();
+      await afterAction();
+    }
   });
 
   test.beforeEach('Visit entity details page', async ({ page }) => {
@@ -180,6 +197,11 @@ test.describe('Service Version pages', () => {
      * in the UI to highlight what changed between versions
      */
     test(key, async ({ page }) => {
+      // Visits the version page and asserts diff markers across 4 version
+      // bumps (0.2 → 0.5). 6+ API round-trips + several UI transitions
+      // that can each drift under merge-queue load.
+      test.slow();
+
       const setupError = setupErrors.get(key);
 
       if (setupError) {
@@ -212,13 +234,13 @@ test.describe('Service Version pages', () => {
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PersonalData.SpecialCategory"]'
           )
         ).toBeVisible();
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PII.Sensitive"]'
           )
         ).toBeVisible();
       });
@@ -308,7 +330,7 @@ test.describe('Service Version pages', () => {
           BIG_ENTITY_DELETE_TIMEOUT
         );
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 

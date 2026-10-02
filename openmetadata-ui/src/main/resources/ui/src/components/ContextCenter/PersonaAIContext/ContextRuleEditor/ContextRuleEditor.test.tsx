@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -169,5 +170,90 @@ describe('ContextRuleEditor', () => {
 
     expect(fullyRendered).toBeChecked();
     expect(fullyRendered).toBeDisabled();
+  });
+
+  it('does not clobber alwaysInContext/fullyRendered for a knowledge rule with stored filteredInSearch=true', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    render(
+      <ContextRuleEditor
+        {...defaultProps}
+        rule={{
+          entityType: EntityType.GLOSSARY_TERM,
+          id: rule.id,
+          name: 'Terms',
+          filteredInSearch: true,
+          alwaysInContext: true,
+          fullyRendered: true,
+        }}
+        onSubmit={onSubmit}
+      />
+    );
+
+    // The editor forces the filteredInSearch toggle OFF for knowledge rules, even
+    // when the stored value is `true`.
+    expect(
+      within(screen.getByTestId('context-rule-filtered-in-search')).getByRole(
+        'switch'
+      )
+    ).not.toBeChecked();
+
+    const form = screen.getByTestId('context-rule-name').closest('form');
+    fireEvent.submit(form as HTMLFormElement);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    // A knowledge rule is never search-scoped (the backend ignores filteredInSearch
+    // for knowledge types), so saving it untouched must preserve its stored preloaded
+    // flags. Before the fix, handleSubmit emitted {alwaysInContext:false,
+    // fullyRendered:false, filteredInSearch:true} — silently flipping the flags.
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alwaysInContext: true,
+        filteredInSearch: true,
+        fullyRendered: true,
+      })
+    );
+  });
+
+  it('preserves alwaysInContext/fullyRendered for every knowledge type with stored filteredInSearch=true', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+
+    for (const entityType of [
+      EntityType.GLOSSARY_TERM,
+      EntityType.KNOWLEDGE_PAGE,
+      EntityType.METRIC,
+    ]) {
+      jest.clearAllMocks();
+      render(
+        <ContextRuleEditor
+          {...defaultProps}
+          rule={{
+            entityType,
+            id: rule.id,
+            name: 'Knowledge',
+            filteredInSearch: true,
+            alwaysInContext: true,
+            fullyRendered: true,
+          }}
+          onSubmit={onSubmit}
+        />
+      );
+
+      const form = screen.getByTestId('context-rule-name').closest('form');
+      fireEvent.submit(form as HTMLFormElement);
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          alwaysInContext: true,
+          entityType,
+          filteredInSearch: true,
+          fullyRendered: true,
+        })
+      );
+
+      cleanup();
+    }
   });
 });

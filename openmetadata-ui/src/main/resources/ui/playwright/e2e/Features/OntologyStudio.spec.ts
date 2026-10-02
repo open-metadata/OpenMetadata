@@ -20,6 +20,8 @@ import {
   disposeApiContext,
   navigateToOntologyStudio,
   readGraphEdges,
+  readGraphZoom,
+  readNodePositions,
   releaseOntologyEditLease,
   waitForGraphLoaded,
 } from '../../utils/ontologyStudio';
@@ -76,6 +78,62 @@ test.describe('Ontology Studio', () => {
     await expect(page.locator('.ontology-g6-container')).toBeVisible();
   });
 
+  test('preserves the loaded graph through View, Edit, Query, Edit and View', async ({
+    page,
+  }) => {
+    const graph = page.locator('.ontology-g6-container');
+    const stats = page.getByTestId('ontology-explorer-stats');
+    const nodesBefore = Object.keys(await readNodePositions(page)).sort();
+    const edgesBefore = await readGraphEdges(page, 0);
+    const statsBefore = await stats.innerText();
+    const zoomBefore = await readGraphZoom(page);
+    await expect(
+      page.getByTestId('ontology-glossary-menu-trigger')
+    ).toHaveAttribute('data-selected-glossary-id', '');
+
+    // Once loaded, mode changes must work even when the catalog cannot be fetched again.
+    await page.route('**/api/v1/glossaries?*', (route) =>
+      route.abort('failed')
+    );
+
+    await test.step('Visit Query and return to the loaded graph', async () => {
+      await page.getByTestId('mode-tab-edit').click();
+      await expect(graph).toBeVisible();
+      await page.getByTestId('mode-tab-query').click();
+      await expect(page.getByTestId('mode-tab-query')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+      await expect(graph).not.toBeVisible();
+      await page.getByTestId('mode-tab-edit').click();
+      await expect(graph).toBeVisible();
+      await expect(
+        page.getByTestId('ontology-graph-loading')
+      ).not.toBeVisible();
+      await expect(stats).toHaveText(statsBefore);
+      await page.getByTestId('mode-tab-view').click();
+      await expect(graph).toBeVisible();
+      await expect(stats).toHaveText(statsBefore);
+    });
+
+    await test.step('Opening and closing Library leaves the graph usable', async () => {
+      await page.getByTestId('ontology-library-trigger').click();
+      await expect(page.getByTestId('ontology-library')).toBeVisible();
+      await page.getByTestId('ontology-library-close').click();
+      await expect(page.getByTestId('ontology-library')).not.toBeVisible();
+      await expect(graph).toBeVisible();
+    });
+
+    expect(Object.keys(await readNodePositions(page)).sort()).toEqual(
+      nodesBefore
+    );
+    expect(await readGraphEdges(page, 0)).toEqual(edgesBefore);
+    expect(await readGraphZoom(page)).toBeCloseTo(zoomBefore);
+    await expect(
+      page.getByTestId('ontology-graph-render-error')
+    ).not.toBeVisible();
+  });
+
   test('scopes the Studio graph and stats to a glossary', async ({ page }) => {
     await page.getByTestId('ontology-glossary-menu-trigger').click();
     await expect(
@@ -129,9 +187,10 @@ test.describe('Ontology Studio', () => {
       await expect(
         page.getByTestId('ontology-edit-lease-status')
       ).toContainText('Active');
+      // Edit mode authors concepts, so it hides the Model/Data switch.
       await expect(
         page.getByRole('tab', { name: 'Data', exact: true })
-      ).toBeDisabled();
+      ).toHaveCount(0);
 
       const addConcept = page.getByTestId('ontology-add-concept');
       await expect(addConcept).toBeEnabled();
@@ -187,13 +246,28 @@ test.describe('Ontology Studio', () => {
     }
   });
 
-  test('searches the Model graph and clears the query', async ({ page }) => {
+  test('preserves the scoped Model graph search across Query and clears it', async ({
+    page,
+  }) => {
     await applyGlossaryFilter(page, PageData.glossary.responseData.id);
     await waitForGraphLoaded(page);
 
     const searchInput = page.getByTestId('ontology-graph-search');
+    const edgesBefore = await readGraphEdges(page);
     await searchInput.fill(PageData.term1.data.name);
     await expect(searchInput).toHaveValue(PageData.term1.data.name);
+
+    await page.getByTestId('mode-tab-query').click();
+    await expect(searchInput).not.toBeVisible();
+    await page.getByTestId('mode-tab-view').click();
+    await expect(searchInput).toHaveValue(PageData.term1.data.name);
+    await expect(
+      page.getByTestId('ontology-glossary-menu-trigger')
+    ).toHaveAttribute(
+      'data-selected-glossary-id',
+      PageData.glossary.responseData.id
+    );
+    expect(await readGraphEdges(page)).toEqual(edgesBefore);
 
     await searchInput.clear();
     await expect(searchInput).toHaveValue('');

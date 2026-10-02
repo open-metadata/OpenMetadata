@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { startCase } from 'lodash';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
@@ -39,6 +38,8 @@ jest.mock('./RouterUtils', () => ({
 
 jest.mock('./ServicePureUtils', () => ({
   getEntityTypeFromServiceCategory: jest.fn(() => EntityType.DATABASE_SERVICE),
+  getServiceCategoryLabel:
+    jest.requireActual('./ServicePureUtils').getServiceCategoryLabel,
   getServiceRouteFromServiceType: jest.fn(),
 }));
 
@@ -64,7 +65,7 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
       expect(result).toEqual([
         {
           iconType: EntityType.DATABASE_SERVICE,
-          name: startCase(ServiceCategory.DATABASE_SERVICES),
+          name: 'label.database-plural',
           url: mockSettingUrl,
         },
         {
@@ -96,7 +97,7 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
       expect(result).toEqual([
         {
           iconType: EntityType.DATABASE_SERVICE,
-          name: startCase(ServiceCategory.DATABASE_SERVICES),
+          name: 'label.database-plural',
           url: mockSettingUrl,
         },
         {
@@ -125,7 +126,7 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
       expect(result).toEqual([
         {
           iconType: EntityType.DATABASE_SERVICE,
-          name: startCase(ServiceCategory.DATABASE_SERVICES),
+          name: 'label.database-plural',
           url: mockSettingUrl,
         },
         {
@@ -164,7 +165,7 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
       expect(result).toEqual([
         {
           iconType: EntityType.DATABASE_SERVICE,
-          name: startCase(ServiceCategory.DATABASE_SERVICES),
+          name: 'label.database-plural',
           url: mockSettingUrl,
         },
         {

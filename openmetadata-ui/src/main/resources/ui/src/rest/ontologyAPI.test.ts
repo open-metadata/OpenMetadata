@@ -13,18 +13,23 @@
 
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
-import APIClient from './index';
+import { OntologyChangeSetState } from '../generated/entity/data/ontologyChangeSet';
+import APIClient from './axiosClient';
 import {
   generateOntologyDomainDraft,
   generateOntologySparql,
+  getMemoryOntologyProposalStatus,
   getOntologyBulkTemplate,
+  getOntologyChangeSet,
   getRdfEntityDiff,
   installOntologyPack,
   listInferenceRules,
   listOntologyBulkJobs,
+  listOntologyChangeSets,
   listOntologyPacks,
   listRelationshipTypes,
   materializeInferenceRules,
+  proposeTermFromMemory,
   releaseOntologyEditLock,
   submitOntologyBulkOperation,
   suggestOntologyMappings,
@@ -33,7 +38,7 @@ import {
   upsertInferenceRule,
 } from './ontologyAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   delete: jest.fn(),
   get: jest.fn(),
   patch: jest.fn(),
@@ -57,6 +62,58 @@ describe('ontologyAPI', () => {
     expect(mockedApiClient.get).toHaveBeenCalledWith('/relationshipTypes', {
       params: { limit: 25 },
     });
+    expect(result).toEqual(response.data);
+  });
+
+  it('reads the proposal status for a memory', async () => {
+    const status = { enabled: true, proposals: [], queued: true };
+    mockedApiClient.get.mockResolvedValue({ data: status });
+
+    expect(await getMemoryOntologyProposalStatus('memory-id')).toEqual(status);
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/ontology/ai/memories/memory-id/proposals'
+    );
+  });
+
+  it('lists memory drafts across several states in one request', async () => {
+    mockedApiClient.get.mockResolvedValue({ data: { data: [], paging: {} } });
+
+    await listOntologyChangeSets({
+      memorySourced: true,
+      state: [OntologyChangeSetState.Draft, OntologyChangeSetState.Submitted],
+    });
+
+    expect(mockedApiClient.get).toHaveBeenCalledWith('/ontologyChangeSets', {
+      params: {
+        memorySourced: true,
+        state: [OntologyChangeSetState.Draft, OntologyChangeSetState.Submitted],
+      },
+    });
+  });
+
+  it('reads one change set with the requested fields', async () => {
+    const changeSet = { id: 'draft-id' };
+    mockedApiClient.get.mockResolvedValue({ data: changeSet });
+
+    expect(await getOntologyChangeSet('draft-id', 'operations')).toEqual(
+      changeSet
+    );
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/ontologyChangeSets/draft-id',
+      { params: { fields: 'operations' } }
+    );
+  });
+
+  it('queues an ontology proposal from a memory', async () => {
+    const response = { data: { id: 42, status: 'PENDING' } };
+    mockedApiClient.post.mockResolvedValue(response);
+
+    const result = await proposeTermFromMemory('memory-id');
+
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontology/ai/memories/jobs',
+      { memoryIds: ['memory-id'] }
+    );
     expect(result).toEqual(response.data);
   });
 

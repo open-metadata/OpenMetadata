@@ -20,6 +20,7 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -62,11 +63,13 @@ import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CachedSearchLayer;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
@@ -82,6 +85,8 @@ import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -263,6 +268,17 @@ public class SearchResource {
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
 
+    return cachedSearch(request, subjectContext);
+  }
+
+  private Response cachedSearch(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return cachedSearch(request, subjectContext, CachedSearchLayer.Operation.QUERY);
+  }
+
+  private Response cachedSearch(
+      SearchRequest request, SubjectContext subjectContext, CachedSearchLayer.Operation operation)
+      throws IOException {
     // Auth-aware response cache (Item 1). Bots bypass — they do bulk indexing reads with
     // cardinalities that would pollute the user-keyed cache. Uses the layer's loadOrCompute
     // to get single-flight semantics: 100 concurrent users hitting the same uncached query
@@ -272,7 +288,7 @@ public class SearchResource {
     String principal = subjectContext.user() != null ? subjectContext.user().getName() : null;
     boolean cacheable = searchCache != null && searchCache.enabled() && !subjectContext.isBot();
     if (!cacheable) {
-      return searchRepository.search(request, subjectContext);
+      return executeSearch(request, subjectContext, operation);
     }
 
     // Buffer the upstream response body once so the cache stores exactly what we return. The
@@ -289,9 +305,10 @@ public class SearchResource {
         searchCache.loadOrCompute(
             request,
             principal,
+            operation,
             () -> {
               try {
-                Response upstream = searchRepository.search(request, subjectContext);
+                Response upstream = executeSearch(request, subjectContext, operation);
                 capturedResponse[0] = upstream;
                 if (upstream.getStatus() != 200) {
                   return null; // don't cache non-200; loadOrCompute treats null as "no cache write"
@@ -319,7 +336,15 @@ public class SearchResource {
     // response was non-cacheable, so the cache stayed empty and we received body=null. Fall
     // through to a live call (this is rare and only affects the second+ caller of a query
     // that's currently returning errors).
-    return searchRepository.search(request, subjectContext);
+    return executeSearch(request, subjectContext, operation);
+  }
+
+  private Response executeSearch(
+      SearchRequest request, SubjectContext subjectContext, CachedSearchLayer.Operation operation)
+      throws IOException {
+    return operation == CachedSearchLayer.Operation.ENTITY_TYPE_COUNTS
+        ? searchRepository.getEntityTypeCounts(request, request.getIndex(), subjectContext)
+        : searchRepository.search(request, subjectContext);
   }
 
   @GET
@@ -835,6 +860,40 @@ public class SearchResource {
   }
 
   @GET
+  @Path("/entityTypes")
+  @Operation(
+      operationId = "getIndexedEntityTypes",
+      summary = "List the entity types that have a search index",
+      description =
+          "Entity types registered in the index mapping for this deployment, sorted. Includes "
+              + "distribution-specific indexes (e.g. Collate-only entity types) because the "
+              + "registry is merged from the classpath at startup. This is the same set that "
+              + "reindexing expands \"all\" into, so clients can offer an entity picker without "
+              + "hardcoding a list that goes stale.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sorted list of entity types",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string")))),
+        @ApiResponse(responseCode = "403", description = "No view permission on Application")
+      })
+  public List<String> getIndexedEntityTypes(@Context SecurityContext securityContext) {
+    // Gate on Application view, not admin: SettingsRouter renders the app details page for
+    // `isAdminUser || hasViewPermissions(APPLICATION)` and that page fetches the config schema on
+    // every mount, so an admin-only check here would 403 a legitimate viewer on a request they
+    // never triggered.
+    OperationContext operationContext =
+        new OperationContext(Entity.APPLICATION, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(
+        securityContext, operationContext, new ResourceContext<>(Entity.APPLICATION));
+
+    return List.copyOf(searchRepository.getIndexedEntityTypes());
+  }
+
+  @GET
   @Path("/entityTypeCounts")
   @Operation(
       operationId = "getEntityTypeCounts",
@@ -868,7 +927,11 @@ public class SearchResource {
           String queryFilter,
       @Parameter(description = "Elasticsearch query that will be used as a post_filter")
           @QueryParam("post_filter")
-          String postFilter)
+          String postFilter,
+      @Parameter(description = "Include the global top hit as an Explore tab-selection hint")
+          @DefaultValue("false")
+          @QueryParam("include_top_hit")
+          boolean includeTopHit)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -884,16 +947,20 @@ public class SearchResource {
     SearchRequest request =
         new SearchRequest()
             .withQuery(query)
-            .withSize(0)
+            .withSize(includeTopHit ? 1 : 0)
             .withFrom(0)
             .withDeleted(deleted)
             .withFetchSource(false)
             .withTrackTotalHits(true)
             .withQueryFilter(queryFilter)
             .withPostFilter(postFilter)
-            .withDomains(domains);
+            .withDomains(domains)
+            .withApplyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .withIncludeAggregations(false);
 
-    return searchRepository.getEntityTypeCounts(request, index, subjectContext);
+    request.setIndex(index);
+    return cachedSearch(request, subjectContext, CachedSearchLayer.Operation.ENTITY_TYPE_COUNTS);
   }
 
   @POST

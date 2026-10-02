@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -20,6 +21,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -42,6 +44,16 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
       List.of("COLUMN", "Column", "column", " Column ");
   private static final List<String> BLANK_ENTITY_TYPES = List.of("", " ");
   private static final int ENTITY_TYPE_FILTER_LIMIT = 1000000;
+  private static final int SORT_FIXTURE_COUNT = 3;
+  private static final List<String> NUMERIC_AGGREGATE_DEFINITIONS =
+      List.of(
+          "columnValueMaxToBeBetween",
+          "columnValueMeanToBeBetween",
+          "columnValueMedianToBeBetween",
+          "columnValueMinToBeBetween",
+          "columnValueStdDevToBeBetween",
+          "columnValuesSumToBeBetween");
+  private static final String REGEX_DEFINITION = "columnValuesToMatchRegex";
 
   // Disable tests that don't apply to TestDefinition
   {
@@ -331,6 +343,74 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     }
   }
 
+  // ===================================================================
+  // SUPPORTED DATA TYPE FILTER — issue #27718
+  // ===================================================================
+
+  /**
+   * A test definition that lists no supported data types declares no restriction, so it is generic
+   * and must be offered for every column type. Before the fix the filter required a positive match,
+   * which hid such definitions from the dropdown that maps a test case to a column.
+   */
+  @Test
+  void list_supportedDataTypeFilterKeepsDefinitionsWithoutDataTypes_200_OK(TestNamespace ns) {
+    TestDefinition generic = createColumnTestDefinition(ns, "sdt_generic");
+    TestDefinition numeric =
+        createColumnTestDefinitionWithDataTypes(ns, "sdt_numeric", List.of(ColumnDataType.NUMBER));
+
+    ListResponse<TestDefinition> response =
+        listBySupportedDataType(SdkClients.adminClient(), ColumnDataType.VARCHAR.value());
+    Set<String> fullyQualifiedNames = fullyQualifiedNamesOf(response.getData());
+
+    assertTrue(
+        fullyQualifiedNames.contains(generic.getFullyQualifiedName()),
+        "A test definition without supportedDataTypes must be returned for any data type");
+    assertFalse(
+        fullyQualifiedNames.contains(numeric.getFullyQualifiedName()),
+        "A test definition restricted to NUMBER must not be returned for VARCHAR");
+    assertTrue(
+        response.getPaging().getTotal() > 0,
+        "supportedDataType must produce a non-zero paging total, which is served by the DAO's"
+            + " separate listCount query");
+  }
+
+  /**
+   * NUMERIC is what BigQuery, Postgres, Snowflake and DB2 numeric columns are ingested as, but the
+   * seeded aggregate definitions only ever listed NUMBER and DECIMAL. Since the listing filters on
+   * the column's exact data type, none of mean/min/max/median/stddev/sum could be picked for a
+   * NUMERIC column.
+   */
+  @Test
+  void list_supportedDataTypeNumericReturnsSeededAggregateDefinitions_200_OK() {
+    Set<String> fullyQualifiedNames =
+        fullyQualifiedNamesOf(
+            listBySupportedDataType(SdkClients.adminClient(), ColumnDataType.NUMERIC.value())
+                .getData());
+
+    assertTrue(
+        fullyQualifiedNames.containsAll(NUMERIC_AGGREGATE_DEFINITIONS),
+        () ->
+            "Every seeded numeric aggregate definition must be offered for a NUMERIC column, missing: "
+                + NUMERIC_AGGREGATE_DEFINITIONS.stream()
+                    .filter(name -> !fullyQualifiedNames.contains(name))
+                    .collect(Collectors.joining(", ")));
+    assertFalse(
+        fullyQualifiedNames.contains(REGEX_DEFINITION),
+        REGEX_DEFINITION
+            + " only supports string types, so returning it for NUMERIC would mean the filter"
+            + " stopped discriminating rather than that the data types were corrected");
+  }
+
+  private static ListResponse<TestDefinition> listBySupportedDataType(
+      OpenMetadataClient client, String supportedDataType) {
+    ListParams params =
+        new ListParams()
+            .setLimit(ENTITY_TYPE_FILTER_LIMIT)
+            .addFilter("supportedDataType", supportedDataType);
+
+    return client.testDefinitions().list(params);
+  }
+
   private OpenMetadataClient createNonAdminClient(TestNamespace ns) {
     String name = ns.shortPrefix("etfilter");
     String email = name + "@test.openmetadata.org";
@@ -377,6 +457,238 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
             + tableDefinition.getFullyQualifiedName());
   }
 
+  /**
+   * The listing is sorted server-side across the whole table, so these tests isolate their own
+   * rows with the {@code q} search on the namespace prefix rather than asserting absolute
+   * positions among the seeded system definitions.
+   */
+  @Test
+  void list_sortsByDisplayNameAscendingByDefault_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortasc");
+
+    assertEquals(
+        List.of("Alpha rule", "Mike rule", "Zulu rule"),
+        displayNamesOf(listSorted(marker, null, null)),
+        "An unspecified sortField must keep the display-name ascending order");
+  }
+
+  @Test
+  void list_sortsByDisplayNameDescending_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortdesc");
+
+    assertEquals(
+        List.of("Zulu rule", "Mike rule", "Alpha rule"),
+        displayNamesOf(listSorted(marker, "displayName", "desc")),
+        "sortOrder=desc must reverse the display-name order");
+  }
+
+  @Test
+  void list_sortsByEntityType_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortentity");
+
+    List<TestDefinitionEntityType> ascending =
+        entityTypesOf(listSorted(marker, "entityType", null));
+    List<TestDefinitionEntityType> descending =
+        entityTypesOf(listSorted(marker, "entityType", "desc"));
+
+    assertEquals(
+        List.of(
+            TestDefinitionEntityType.COLUMN,
+            TestDefinitionEntityType.TABLE,
+            TestDefinitionEntityType.TABLE),
+        ascending,
+        "sortField=entityType must group COLUMN before TABLE");
+    assertEquals(
+        List.of(
+            TestDefinitionEntityType.TABLE,
+            TestDefinitionEntityType.TABLE,
+            TestDefinitionEntityType.COLUMN),
+        descending,
+        "sortField=entityType with sortOrder=desc must group TABLE first");
+  }
+
+  @Test
+  void list_sortsByTestPlatforms_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortplatform");
+
+    assertEquals(
+        List.of("Mike rule", "Zulu rule", "Alpha rule"),
+        displayNamesOf(listSorted(marker, "testPlatforms", null)),
+        "sortField=testPlatforms must order on the first platform each rule declares: "
+            + "dbt, then OpenMetadata, then Soda");
+    assertEquals(
+        List.of("Alpha rule", "Zulu rule", "Mike rule"),
+        displayNamesOf(listSorted(marker, "testPlatforms", "desc")),
+        "sortField=testPlatforms with sortOrder=desc must reverse that order");
+  }
+
+  /**
+   * The keyset cursor is built from the active sort key, so a page boundary is where a mismatch
+   * between the SQL ordering and the Java-side cursor shows up — rows repeat or vanish. Walking
+   * every ordering one row at a time is the only assertion that catches it.
+   */
+  @Test
+  void list_pagesAcrossBoundariesInEverySortOrder_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortpaging");
+
+    for (String sortField : Arrays.asList(null, "displayName", "entityType", "testPlatforms")) {
+      for (String sortOrder : Arrays.asList(null, "asc", "desc")) {
+        String ordering = "sortField=" + sortField + " sortOrder=" + sortOrder;
+        List<String> singlePage =
+            fullyQualifiedNamesInOrder(listSorted(marker, sortField, sortOrder));
+        List<String> paged = pageThrough(marker, sortField, sortOrder);
+
+        // Without this the comparison below passes on two empty lists, which is
+        // exactly how a descending listing that returns nothing slips through.
+        assertEquals(
+            SORT_FIXTURE_COUNT,
+            singlePage.size(),
+            "Every ordering must return all the fixtures, missing for " + ordering);
+        assertEquals(
+            singlePage,
+            paged,
+            "Paging one row at a time must reproduce the single-page order for " + ordering);
+      }
+    }
+  }
+
+  /**
+   * The first page has no cursor, and {@code EntityRepository} seeds it with an empty cursor name.
+   * That is an ascending-only sentinel — {@code key > ''} admits every row but {@code key < ''}
+   * admits none — so a descending listing that did not drop the keyset predicate for an
+   * unanchored page came back empty.
+   */
+  @Test
+  void list_returnsAFirstPageWithNoCursorInEitherDirection_200_OK(TestNamespace ns) {
+    String marker = createSortFixtures(ns, "sortfirstpage");
+
+    for (String sortOrder : Arrays.asList("asc", "desc")) {
+      ListParams params =
+          sortParams(marker, "displayName", sortOrder).setLimit(SORT_FIXTURE_COUNT - 1);
+
+      assertEquals(
+          SORT_FIXTURE_COUNT - 1,
+          SdkClients.adminClient().testDefinitions().list(params).getData().size(),
+          "An uncursored first page must be full for sortOrder=" + sortOrder);
+    }
+  }
+
+  @Test
+  void list_rejectsUnknownSortField_400() {
+    InvalidRequestException exception =
+        assertThrows(InvalidRequestException.class, () -> listSorted("anything", "banana", null));
+
+    assertEquals(400, exception.getStatusCode());
+    assertTrue(
+        exception.getMessage().contains("banana") && exception.getMessage().contains("displayName"),
+        "Error must name the rejected value and the allowed ones, was: " + exception.getMessage());
+  }
+
+  @Test
+  void list_rejectsUnknownSortOrder_400() {
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class, () -> listSorted("anything", "displayName", "sideways"));
+
+    assertEquals(400, exception.getStatusCode());
+    assertTrue(
+        exception.getMessage().contains("sideways"),
+        "Error must name the rejected value, was: " + exception.getMessage());
+  }
+
+  /**
+   * Three definitions whose display names sort differently from their internal names, so an
+   * ordering that silently fell back to the {@code name} column would fail rather than pass by
+   * coincidence. Every sortable column holds a distinct value per fixture: rows that
+   * tie on the sort key fall back to a random UUID, so an assertion over a tied pair passes or
+   * fails by chance. Returns the marker every fixture name embeds, for the {@code q} search to
+   * isolate them.
+   */
+  private String createSortFixtures(TestNamespace ns, String marker) {
+    String scopedMarker = ns.prefix(marker);
+    createSortFixture(
+        scopedMarker,
+        "zzz",
+        "Alpha rule",
+        TestDefinitionEntityType.COLUMN,
+        List.of(TestPlatform.SODA));
+    createSortFixture(
+        scopedMarker,
+        "aaa",
+        "Zulu rule",
+        TestDefinitionEntityType.TABLE,
+        List.of(TestPlatform.OPEN_METADATA));
+    createSortFixture(
+        scopedMarker,
+        "mmm",
+        "Mike rule",
+        TestDefinitionEntityType.TABLE,
+        List.of(TestPlatform.DBT));
+
+    return scopedMarker;
+  }
+
+  private void createSortFixture(
+      String scopedMarker,
+      String nameSuffix,
+      String displayName,
+      TestDefinitionEntityType entityType,
+      List<TestPlatform> platforms) {
+    CreateTestDefinition request = new CreateTestDefinition();
+    request.setName(scopedMarker + "_" + nameSuffix);
+    request.setDisplayName(displayName);
+    request.setDescription("Test definition for sort ordering");
+    request.setEntityType(entityType);
+    request.setTestPlatforms(platforms);
+
+    createEntity(request);
+  }
+
+  private static ListResponse<TestDefinition> listSorted(
+      String marker, String sortField, String sortOrder) {
+    return SdkClients.adminClient()
+        .testDefinitions()
+        .list(sortParams(marker, sortField, sortOrder));
+  }
+
+  private static ListParams sortParams(String marker, String sortField, String sortOrder) {
+    ListParams params = new ListParams().setLimit(ENTITY_TYPE_FILTER_LIMIT).addFilter("q", marker);
+    if (sortField != null) {
+      params.addFilter("sortField", sortField);
+    }
+    if (sortOrder != null) {
+      params.addFilter("sortOrder", sortOrder);
+    }
+
+    return params;
+  }
+
+  private static List<String> pageThrough(String marker, String sortField, String sortOrder) {
+    List<String> fullyQualifiedNames = new ArrayList<>();
+    String after = null;
+    do {
+      ListParams params = sortParams(marker, sortField, sortOrder).setLimit(1).setAfter(after);
+      ListResponse<TestDefinition> page = SdkClients.adminClient().testDefinitions().list(params);
+      fullyQualifiedNames.addAll(fullyQualifiedNamesInOrder(page));
+      after = page.getPaging() == null ? null : page.getPaging().getAfter();
+    } while (after != null);
+
+    return fullyQualifiedNames;
+  }
+
+  private static List<String> displayNamesOf(ListResponse<TestDefinition> response) {
+    return response.getData().stream().map(TestDefinition::getDisplayName).toList();
+  }
+
+  private static List<TestDefinitionEntityType> entityTypesOf(
+      ListResponse<TestDefinition> response) {
+    return response.getData().stream().map(TestDefinition::getEntityType).toList();
+  }
+
+  private static List<String> fullyQualifiedNamesInOrder(ListResponse<TestDefinition> response) {
+    return response.getData().stream().map(TestDefinition::getFullyQualifiedName).toList();
+  }
+
   private static ListResponse<TestDefinition> listByEntityType(
       OpenMetadataClient client, String entityTypeParam) {
     ListParams params =
@@ -399,6 +711,18 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
 
   private TestDefinition createTableTestDefinition(TestNamespace ns, String name) {
     return createTestDefinition(ns, name, TestDefinitionEntityType.TABLE);
+  }
+
+  private TestDefinition createColumnTestDefinitionWithDataTypes(
+      TestNamespace ns, String name, List<ColumnDataType> supportedDataTypes) {
+    CreateTestDefinition request = new CreateTestDefinition();
+    request.setName(ns.prefix(name));
+    request.setDescription("Test definition for supportedDataType filtering");
+    request.setEntityType(TestDefinitionEntityType.COLUMN);
+    request.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
+    request.setSupportedDataTypes(supportedDataTypes);
+
+    return createEntity(request);
   }
 
   private TestDefinition createTestDefinition(

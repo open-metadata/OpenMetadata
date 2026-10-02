@@ -39,6 +39,9 @@ public final class RelationshipTypeValidator {
 
   private static void validateCharacteristics(
       final Set<RelationshipCharacteristic> characteristics) {
+    if (characteristics == null || characteristics.isEmpty()) {
+      return;
+    }
     rejectCombination(
         characteristics,
         RelationshipCharacteristic.SYMMETRIC,
@@ -47,6 +50,12 @@ public final class RelationshipTypeValidator {
         characteristics,
         RelationshipCharacteristic.REFLEXIVE,
         RelationshipCharacteristic.IRREFLEXIVE);
+    // AsymmetricProperty(R) entails IrreflexiveProperty(R) in OWL 2 DL, so combining
+    // ASYMMETRIC with REFLEXIVE is exactly as contradictory as REFLEXIVE + IRREFLEXIVE.
+    rejectCombination(
+        characteristics,
+        RelationshipCharacteristic.ASYMMETRIC,
+        RelationshipCharacteristic.REFLEXIVE);
   }
 
   private static void rejectCombination(
@@ -101,6 +110,7 @@ public final class RelationshipTypeValidator {
 
   private static boolean has(
       final RelationshipType relationshipType, final RelationshipCharacteristic characteristic) {
-    return relationshipType.getCharacteristics().contains(characteristic);
+    final Set<RelationshipCharacteristic> characteristics = relationshipType.getCharacteristics();
+    return characteristics != null && characteristics.contains(characteristic);
   }
 }

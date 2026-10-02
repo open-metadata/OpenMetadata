@@ -193,14 +193,93 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
+def test_history_ignores_a_run_measured_on_a_degraded_runner(tmp_path, capsys):
+    # One run 1.5x slower across the board would set the p75 of every test
+    # and push chromium past its shard cap (run 36754924437).
+    planner = load_script("build_playwright_shards")
+    test_count = planner.MIN_SHARED_TESTS_FOR_SLOWDOWN
+    history_files = []
+    for index, duration in enumerate((1000, 1040, 980, 1500)):
+        history = tmp_path / f"history-{index}.json"
+        history.write_text(
+            json.dumps(
+                {
+                    "mode": "full",
+                    "tests": [
+                        {"id": f"test-{test}", "durationMs": duration}
+                        for test in range(test_count)
+                    ],
+                }
+            )
+        )
+        history_files.append(history)
+
+    weights, _ = planner.load_history(history_files)
+
+    assert weights["test-0"] == 1020
+    assert "history-3.json" in capsys.readouterr().err
+
+
+def test_checked_in_baseline_augments_downloaded_history(tmp_path):
+    planner = load_script("build_playwright_shards")
+    downloaded = tmp_path / "downloaded.json"
+    baseline = tmp_path / "timing-baseline.json"
+    downloaded.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "existing-test",
+                        "file": "Features/Existing.spec.ts",
+                        "title": "existing test",
+                        "durationMs": 100,
+                    }
+                ],
+            }
+        )
+    )
+    baseline.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "existing-test",
+                        "file": "Features/Existing.spec.ts",
+                        "title": "existing test",
+                        "durationMs": 900,
+                    },
+                    {
+                        "id": "new-test",
+                        "file": "Features/New.spec.ts",
+                        "title": "new test",
+                        "durationMs": 200,
+                    }
+                ],
+            }
+        )
+    )
+
+    weights, identity_weights = planner.load_history_with_baseline(
+        [downloaded], baseline
+    )
+
+    assert weights == {"existing-test": 100, "new-test": 200}
+    assert identity_weights[("Features/Existing.spec.ts", "existing test")] == 100
+    assert identity_weights[("Features/New.spec.ts", "new test")] == 200
+    assert planner.load_history_with_baseline([downloaded, baseline], baseline) == (
+        weights,
+        identity_weights,
+    )
+
+
 def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(
-    tmp_path, monkeypatch
+    tmp_path,
 ):
     planner = load_script("build_playwright_shards")
     history = tmp_path / "history.json"
-    baseline = tmp_path / planner.CHECKED_IN_BASELINE
-    baseline.parent.mkdir(parents=True)
-    monkeypatch.setattr(planner, "SPEC_ROOT_CANDIDATES", (tmp_path,))
+    baseline = tmp_path / "timing-baseline.json"
     history.write_text(
         json.dumps(
             {
@@ -238,9 +317,8 @@ def test_versioned_baseline_fills_gaps_without_overriding_downloaded_history(
         )
     )
 
-    weights, identity_weights = planner.load_history([history])
-    planner.backfill_from_checked_in_baseline(
-        [history], weights, identity_weights
+    weights, identity_weights = planner.load_history_with_baseline(
+        [history], baseline
     )
 
     assert weights == {"existing-test": 200, "new-test": 700}
@@ -1128,6 +1206,60 @@ def test_import_export_runs_in_its_own_lane_with_two_workers():
     assert planner.LANE_WORKERS["import-export"] == 2
     assert planner.lane_bounds("import-export", "full") == (1, 8)
     assert planner.lane_bounds("import-export", "targeted") == (1, 2)
+
+
+def test_targeted_side_lane_grows_past_its_starting_cap_to_meet_the_budget():
+    # A targeted PR that touches helpers nearly every spec imports (e.g.
+    # playwright/utils/common.ts) selects a whole side lane. The targeted cap
+    # of 2 is where such a lane starts, not a ceiling: growing to the
+    # full-mode bound beats failing the plan, which is what blocked #33902
+    # ("Lane import-export needs more than 2 shards ... predicted at 21.2m").
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "ImportExport", f"ie-{index}.spec.ts", str(index), weight_ms=60_000
+        )
+        for index in range(150)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "import-export", "targeted")
+
+    workers = planner.LANE_WORKERS["import-export"]
+    assert 2 < len(shards) <= planner.lane_bounds("import-export", "full")[1]
+    assert all(
+        planner.predicted_execution_ms(shard, workers) <= planner.TARGET_MS
+        for shard in shards
+    )
+
+
+def test_targeted_side_lane_still_starts_at_its_targeted_cap():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "ImportExport", f"ie-{index}.spec.ts", str(index), weight_ms=60_000
+        )
+        for index in range(20)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "import-export", "targeted")
+
+    assert len(shards) <= planner.lane_bounds("import-export", "targeted")[1]
+
+
+def test_targeted_side_lane_reports_a_lane_the_full_ceiling_cannot_hold():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "ImportExport",
+            f"huge-{index}.spec.ts",
+            str(index),
+            weight_ms=19 * 60 * 1000,
+        )
+        for index in range(40)
+    ]
+
+    with pytest.raises(SystemExit, match=r"needs more than 8 shards"):
+        planner.assign_lane_within_budget(units, "import-export", "targeted")
 
 
 def test_source_glob_matching_is_explicit():
@@ -3083,6 +3215,237 @@ def test_playwright_summary_merge_group_fails_when_matrix_not_success(tmp_path):
         )
 
 
+def test_playwright_summary_prefers_retry_artifact_over_primary(tmp_path):
+    # The shard-side upload has a `-retry` fallback (added after run
+    # 34244326002 to sidestep the FinalizeArtifact 403 / CreateArtifact 409
+    # ghost-reservation cycle). When both `playwright-results-json-<shardId>`
+    # and `playwright-results-json-<shardId>-retry` land in the summary's
+    # download directory, the render script must:
+    #   * collapse them to a single canonical <shardId> (no
+    #     "Unexpected shard <shardId>-retry uploaded results" issue),
+    #   * prefer the retry copy (the primary is the reason we retried).
+    helper = SCRIPTS / "render_playwright_summary.cjs"
+
+    def write_shard(name, statuses):
+        d = tmp_path / "results" / f"playwright-results-json-{name}"
+        d.mkdir(parents=True)
+        (d / "results.json").write_text(
+            json.dumps(
+                {
+                    "suites": [
+                        {
+                            "file": "playwright/e2e/example.spec.ts",
+                            "specs": [
+                                {
+                                    "title": f"case-{i}",
+                                    "tests": [{"status": status, "results": [{}]}],
+                                }
+                                for i, status in enumerate(statuses)
+                            ],
+                        }
+                    ]
+                }
+            )
+        )
+        (d / "ci-status.json").write_text(
+            json.dumps({"steps": {"tests": "success"}})
+        )
+
+    # Primary reports 3 tests, one flaky; retry reports the full 5 passing
+    # (canonical "primary was incomplete, retry salvaged it" shape).
+    write_shard("chromium-01", ["expected", "flaky", "expected"])
+    write_shard("chromium-01-retry", ["expected"] * 5)
+
+    payload_path = tmp_path / "playwright-pr-comment/summary.json"
+    harness = f"""
+const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
+let failure = null;
+let summaryBody = '';
+const summary = {{
+  addRaw(body) {{ summaryBody = body; return summary; }},
+  async write() {{}},
+}};
+const core = {{
+  summary,
+  warning() {{}},
+  setFailed(message) {{ failure = message; }},
+}};
+(async () => {{
+  await renderPlaywrightSummary({{
+    github: {{}},
+    context: {{
+      eventName: 'pull_request',
+      payload: {{}},
+      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
+    }},
+    core,
+  }});
+  process.stdout.write(JSON.stringify({{ failure, summaryBody }}));
+}})().catch(e => {{ console.error(e.stack || e.message); process.exitCode = 1; }});
+"""
+    env = os.environ.copy()
+    env.update(
+        {
+            "CHECK_CHANGES_RESULT": "success",
+            "CACHE_KEYS_RESULT": "success",
+            "BUILD_RESULT": "success",
+            "DETECT_CHANGES_RESULT": "success",
+            "PLAN_RESULT": "success",
+            "FIXTURE_RESTORE_RESULT": "success",
+            "FIXTURE_RESULT": "success",
+            "PLAYWRIGHT_RESULT": "success",
+            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
+            "RUNNER_TEMP": str(tmp_path),
+            "COMMENT_PAYLOAD_PATH": str(payload_path),
+            "GITHUB_RUN_ID": "12345",
+        }
+    )
+    completed = subprocess.run(
+        ["node", "-e", harness],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    rendered = json.loads(completed.stdout)
+    payload = json.loads(payload_path.read_text())
+
+    # Retry wins: totals reflect the 5-passing retry, not the 3-with-flaky primary.
+    assert payload["totals"]["passed"] == 5, payload["totals"]
+    assert payload["totals"]["flaky"] == 0, payload["totals"]
+
+    # Shard was reported once under the canonical id, not twice.
+    shard_ids = [s["id"] for s in payload["shards"] if s["present"]]
+    assert shard_ids == ["chromium-01"], shard_ids
+
+    # No "Unexpected shard chromium-01-retry" noise.
+    assert "chromium-01-retry" not in rendered["summaryBody"]
+    assert rendered["failure"] is None, rendered["failure"]
+
+
+def test_playwright_summary_prefers_current_attempt_over_stale_retry(tmp_path):
+    # Workflow re-run scenario: attempt 1's `-retry` upload carried a
+    # `downloadDistribution: failure` status (real symptom from run
+    # 35650435023, when the artifact service 403'd during download).
+    # Attempt 2 re-ran the shard, the primary upload succeeded, but the
+    # attempt-1 `-retry` artifact remains visible to the summary job's
+    # `actions/download-artifact` step. Without attempt-awareness the
+    # renderer's "retry beats primary" tiebreaker would keep counting the
+    # stale failure — 8 phantom CI/reporting issues (4 shards × 2 messages)
+    # permanently reddened an otherwise-green required check.
+    helper = SCRIPTS / "render_playwright_summary.cjs"
+
+    def write_shard(dirname, statuses, ci_status_steps):
+        d = tmp_path / "results" / f"playwright-results-json-{dirname}"
+        d.mkdir(parents=True)
+        (d / "results.json").write_text(
+            json.dumps(
+                {
+                    "suites": [
+                        {
+                            "file": "playwright/e2e/example.spec.ts",
+                            "specs": [
+                                {
+                                    "title": f"case-{i}",
+                                    "tests": [{"status": status, "results": [{}]}],
+                                }
+                                for i, status in enumerate(statuses)
+                            ],
+                        }
+                    ]
+                }
+            )
+        )
+        (d / "ci-status.json").write_text(
+            json.dumps({"steps": ci_status_steps})
+        )
+
+    # Attempt 1 -retry: `downloadDistribution` 403'd, tests never ran.
+    write_shard(
+        "chromium-01-a1-retry",
+        ["skipped"],
+        {"downloadDistribution": "failure", "tests": "skipped"},
+    )
+    # Attempt 2 primary: green run, five tests passing.
+    write_shard(
+        "chromium-01-a2",
+        ["expected"] * 5,
+        {"downloadDistribution": "success", "tests": "success"},
+    )
+
+    payload_path = tmp_path / "playwright-pr-comment/summary.json"
+    harness = f"""
+const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
+let failure = null;
+let summaryBody = '';
+const summary = {{
+  addRaw(body) {{ summaryBody = body; return summary; }},
+  async write() {{}},
+}};
+const core = {{
+  summary,
+  warning() {{}},
+  setFailed(message) {{ failure = message; }},
+}};
+(async () => {{
+  await renderPlaywrightSummary({{
+    github: {{}},
+    context: {{
+      eventName: 'pull_request',
+      payload: {{}},
+      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
+    }},
+    core,
+  }});
+  process.stdout.write(JSON.stringify({{ failure, summaryBody }}));
+}})().catch(e => {{ console.error(e.stack || e.message); process.exitCode = 1; }});
+"""
+    env = os.environ.copy()
+    env.update(
+        {
+            "CHECK_CHANGES_RESULT": "success",
+            "CACHE_KEYS_RESULT": "success",
+            "BUILD_RESULT": "success",
+            "DETECT_CHANGES_RESULT": "success",
+            "PLAN_RESULT": "success",
+            "FIXTURE_RESTORE_RESULT": "success",
+            "FIXTURE_RESULT": "success",
+            "PLAYWRIGHT_RESULT": "success",
+            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
+            "RUNNER_TEMP": str(tmp_path),
+            "COMMENT_PAYLOAD_PATH": str(payload_path),
+            "GITHUB_RUN_ID": "12345",
+        }
+    )
+    completed = subprocess.run(
+        ["node", "-e", harness],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    rendered = json.loads(completed.stdout)
+    payload = json.loads(payload_path.read_text())
+
+    # Attempt 2's green primary wins: totals reflect the 5 passing tests,
+    # not the attempt-1 stub with a skipped test.
+    assert payload["totals"]["passed"] == 5, payload["totals"]
+    assert payload["totals"]["skipped"] == 0, payload["totals"]
+
+    # Canonical shard id — no `-a1`, `-a2`, or `-retry` leakage.
+    shard_ids = [s["id"] for s in payload["shards"] if s["present"]]
+    assert shard_ids == ["chromium-01"], shard_ids
+
+    # No stale-status CI/reporting failures leaked through.
+    assert payload["infrastructureIssueCount"] == 0, payload["infrastructureIssues"]
+    assert rendered["failure"] is None, rendered["failure"]
+    assert "downloadDistribution" not in rendered["summaryBody"]
+
+
 def test_normal_vite_build_keeps_hashed_entry_assets():
     vite_config = (
         SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts"
@@ -3419,6 +3782,68 @@ def test_generator_import_graph_and_testid_signals_produce_a_stable_output(tmp_p
         "openmetadata-ui/src/main/resources/ui/src/pages/Widget/Widget.tsx"
         in sources
     )
+
+
+def test_generator_records_playwright_helpers_a_spec_imports(tmp_path):
+    """
+    A change to a shared Playwright helper must route to the specs that import
+    it. Reproduces the #32909 shape: `playwright/utils/domain.ts` is imported
+    by a spec both directly and via a support class (as the real
+    SampleDataDomainDataProduct.spec.ts does). Recording is DIRECT ONLY —
+    depth 1 from the spec — because the helper graph is hub-shaped and
+    transitive reach collapses to the whole suite (see crawl() docstring).
+    Specs are never recorded as sources of other specs.
+    """
+    generator = load_script("generate_playwright_impact_map")
+    ui = tmp_path / "openmetadata-ui/src/main/resources/ui"
+    (ui / "playwright/utils").mkdir(parents=True)
+    (ui / "playwright/support/domain").mkdir(parents=True)
+    (ui / "playwright/e2e/Features").mkdir(parents=True)
+    (ui / "src/pages").mkdir(parents=True)
+
+    (ui / "playwright/utils/domain.ts").write_text(
+        "export const selectDomain = async (page, name) => {};\n"
+    )
+    (ui / "playwright/support/domain/Domain.ts").write_text(
+        "import { selectDomain } from '../../utils/domain';\n"
+        "export class Domain { select = selectDomain; }\n"
+    )
+    # Mirrors the real SDD spec: imports the support class AND the util.
+    (ui / "playwright/e2e/Features/Sdd.spec.ts").write_text(
+        "import { Domain } from '../../support/domain/Domain';\n"
+        "import { selectDomain } from '../../utils/domain';\n"
+        "test('domain exists', async ({ page }) => {});\n"
+    )
+    # Imports only the support class — reaches the util transitively.
+    (ui / "playwright/e2e/Features/TransitiveOnly.spec.ts").write_text(
+        "import { Domain } from '../../support/domain/Domain';\n"
+        "import { x } from './Sdd.spec';\n"
+        "test('transitive', async ({ page }) => {});\n"
+    )
+
+    result = generator.build_map(tmp_path)
+    # Entries are source→specs; accumulate per spec.
+    by_spec: dict[str, set[str]] = {}
+    for entry in result["mappings"]:
+        for spec in entry["specs"]:
+            by_spec.setdefault(spec, set()).update(entry["sources"])
+
+    P = "openmetadata-ui/src/main/resources/ui/"
+    helper = P + "playwright/utils/domain.ts"
+    support = P + "playwright/support/domain/Domain.ts"
+    sdd_spec = P + "playwright/e2e/Features/Sdd.spec.ts"
+    sdd = by_spec["playwright/e2e/Features/Sdd.spec.ts"]
+    transitive = by_spec["playwright/e2e/Features/TransitiveOnly.spec.ts"]
+
+    # Direct imports are recorded — both the util and the support class.
+    assert helper in sdd
+    assert support in sdd
+    # Depth-1 only: the transitive-only spec gets the support class it
+    # imports, but NOT the util behind it.
+    assert support in transitive
+    assert helper not in transitive
+    # A spec importing another spec never records that spec as a source.
+    assert sdd_spec not in transitive
 
 
 def test_generator_ignores_unit_tests_and_mocks_that_colocate_with_components(

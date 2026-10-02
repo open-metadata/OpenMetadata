@@ -37,3 +37,12 @@ test('documents every project token defined in tokens.css', () => {
 
   assert.deepEqual(undocumentedTokens, []);
 });
+
+test('documents utility colors as theme-aware semantic tokens', () => {
+  const reference = fs.readFileSync(REFERENCE_FILE, 'utf8');
+  const semanticSection = reference.match(
+    /## Semantic colors[\s\S]*?(?=\n## )/
+  )?.[0];
+
+  assert.match(semanticSection ?? '', /--om-color-utility-success-100/);
+});

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -25,8 +26,8 @@ import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { getDecodedFqn } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
-import Table from '../common/Table/Table';
 import { ColumnsType } from '../common/Table/Table.interface';
+import Table from '../common/Table/TableV2';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
@@ -87,7 +88,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'entityType',
         key: 'entityType',
         render: (entityType: string) => (
-          <Typography.Text>{entityType}</Typography.Text>
+          <Typography className="tw:text-primary">{entityType}</Typography>
         ),
       },
       {
@@ -98,7 +99,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
           owner ? (
             <UserPopOverCard showUserName profileWidth={24} userName={owner} />
           ) : (
-            <Typography.Text>--</Typography.Text>
+            <Typography className="tw:text-primary">--</Typography>
           ),
       },
       {
@@ -108,7 +109,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'pageViews',
         key: 'totalViews',
         render: (pageViews: number) => (
-          <Typography.Text>{pageViews}</Typography.Text>
+          <Typography className="tw:text-primary">{pageViews}</Typography>
         ),
       },
     ],

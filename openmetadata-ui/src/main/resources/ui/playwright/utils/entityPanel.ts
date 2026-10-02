@@ -12,10 +12,20 @@
  */
 import { expect, Page } from '@playwright/test';
 import { clickOutside, redirectToExplorePage } from './common';
+import {
+  applyGlossaryPicker,
+  glossaryPickerRow,
+  isGlossaryTermSelected,
+  openGlossaryPicker,
+  searchGlossaryPicker,
+} from './glossaryPicker';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
+import { ENTITY_PATH } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForSearchIndexed } from './polling';
 
 export const getEntityFqn = (
   entityInstance: EntityClass
@@ -74,8 +84,6 @@ const findOptionByScrolling = async (page: Page, endpoint: string) => {
     element.scrollTop = 0;
   });
 
-  // Returned rather than thrown: the caller runs this inside an expect.poll,
-  // and a thrown error aborts that poll outright instead of letting it retry.
   return false;
 };
 
@@ -94,6 +102,25 @@ export const openEntitySummaryPanel = async ({
   exploreTab?: string;
   dataAssetTypeLeftPanelTestId?: string;
 }) => {
+  if (!dataAssetTypeLeftPanelTestId) {
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await waitForSearchIndexed(
+        apiContext,
+        fullyQualifiedName ?? entityName,
+        endpoint
+          ? ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH]
+          : 'dataAsset',
+        {
+          matchBy: fullyQualifiedName
+            ? 'fullyQualifiedName'
+            : 'nameOrDisplayName',
+        }
+      );
+    } finally {
+      await afterAction();
+    }
+  }
   const runSearch = async () => {
     if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
       await page.getByTestId('global-search-selector').waitFor({
@@ -107,22 +134,46 @@ export const openEntitySummaryPanel = async ({
         return false;
       }
     }
+    // Two different components own the query depending on where the caller
+    // landed: /explore renders its own ExploreSearchInput and never mounts the
+    // NavBar's GlobalSearchBar, so waiting for the NavBar box there can only
+    // ever time out. Pick whichever this page actually renders.
+    // `explore-search-input` marks the field wrapper, not the field, so the
+    // textbox inside it is what accepts fill().
+    const exploreSearchWrapper = page.getByTestId('explore-search-input');
+    const searchBox =
+      (await exploreSearchWrapper.count()) > 0
+        ? exploreSearchWrapper.getByRole('textbox')
+        : page.getByTestId('searchBox');
+
+    try {
+      await searchBox.waitFor({ state: 'visible', timeout: 15_000 });
+    } catch {
+      return false;
+    }
+
     const searchResponsePromise = page.waitForResponse((response) =>
       response.url().includes('/api/v1/search/query')
     );
-    await page.getByTestId('searchBox').fill(entityName);
+    await searchBox.fill(entityName);
     await searchResponsePromise;
-    await page.getByTestId('searchBox').press('Enter');
+    await searchBox.press('Enter');
     await waitForAllLoadersToDisappear(page);
 
-    // Select the entity-type tab as part of each search attempt: for callers that
-    // pass an exploreTab without an endpoint filter (e.g. Column), the result card
-    // only renders under its tab, so the poll's visibility check must run after the
-    // tab is selected — not once, after the poll.
     if (exploreTab) {
+      // The left panel only becomes an entity-type Menu once the URL carries a
+      // search query -- ExploreV1 renders <ExploreTree> otherwise, whose items
+      // are plain divs with no menuitem role. Waiting for the query first turns
+      // "no menuitem ever appears" into a fast, legible failure instead of a
+      // callback that hangs until the whole test times out.
+      await page.waitForURL(/[?&]search=[^&]+/, {
+        waitUntil: 'domcontentloaded',
+        timeout: 30_000,
+      });
+
       const tab = page
         .getByTestId('explore-left-panel')
-        .getByRole('menuitem', { name: exploreTab });
+        .getByRole('tab', { name: exploreTab });
       await tab.waitFor({ state: 'visible' });
       await tab.click();
       await waitForAllLoadersToDisappear(page);
@@ -140,41 +191,12 @@ export const openEntitySummaryPanel = async ({
         })
         .first();
 
-  if (dataAssetTypeLeftPanelTestId) {
-    // The knowledge-center card is only revealed after selecting the KC item
-    // below, so it cannot gate the retry — issue a single search here. No poll
-    // wraps this branch, so a filter option that never rendered is fatal.
-    expect(
-      await runSearch(),
-      `Unable to select global search filter for endpoint "${endpoint}"`
-    ).toBe(true);
-  } else {
-    // Search indexing is eventually consistent and lags further under CI load, so
-    // a freshly created entity may not surface on the first query. Retry the
-    // search — reloading between attempts to force a fresh fetch — until the
-    // entity's result card appears, rather than assuming one query surfaces it.
-    let hasSearched = false;
-    await expect
-      .poll(
-        async () => {
-          if (hasSearched) {
-            await page.reload();
-            await waitForAllLoadersToDisappear(page);
-          }
-          hasSearched = true;
-
-          // A filter option that has not rendered yet is transient: let the
-          // poll reload and retry rather than failing the test outright.
-          if (!(await runSearch())) {
-            return false;
-          }
-
-          return entityResultCard.isVisible();
-        },
-        { timeout: 90_000, intervals: [2_000, 3_000, 5_000, 5_000] }
-      )
-      .toBe(true);
-  }
+  expect(
+    await runSearch(),
+    `Unable to select global search filter for endpoint "${endpoint}"`
+  ).toBe(true);
+  if (!dataAssetTypeLeftPanelTestId)
+    await expect(entityResultCard).toBeVisible();
 
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
@@ -251,7 +273,7 @@ export const waitForPatchResponse = async (page: Page) => {
 
 export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
-  const tab = summaryPanel.getByRole('menuitem', {
+  const tab = summaryPanel.getByRole('tab', {
     name: new RegExp(tabName, 'i'),
   });
 
@@ -305,7 +327,9 @@ export const editTags = async (page: Page, tagName: string) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  const tagOption = page.getByTitle(tagName);
+  const tagOption = page
+    .locator('.selectable-list-item')
+    .filter({ hasText: tagName });
   // Wait for tag option to be visible before clicking
   await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
@@ -322,14 +346,6 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
-  await page
-    .locator(
-      '[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]'
-    )
-    .first()
-    .waitFor({
-      state: 'visible',
-    });
 
   const editIcon = page.locator('[data-testid="edit-glossary-terms"]');
   // Fallback for ML Model, which uses an 'Add' chip instead of the edit icon.
@@ -345,82 +361,23 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
     })
     .toBeGreaterThan(0);
 
-  if (await editIcon.isVisible()) {
-    await editIcon.click();
-  } else {
-    await addTermChip.click();
-  }
-
-  await page
-    .locator('[data-testid="selectable-list"]')
-    .waitFor({ state: 'visible' });
+  await openGlossaryPicker(
+    page,
+    (await editIcon.isVisible()) ? editIcon : addTermChip
+  );
 
   if (termName) {
-    const searchBar = page.locator(
-      '[data-testid="glossary-term-select-search-bar"]'
-    );
-
-    await searchBar.fill(termName);
-    await waitForAllLoadersToDisappear(page);
-    const termOption = page
-      .locator('.ant-list-item')
-      .filter({ hasText: termName });
-
-    await termOption.click();
-  } else {
-    const firstTerm = page.locator('.ant-list-item').first();
-    await firstTerm.click();
+    await searchGlossaryPicker(page, termName);
   }
 
-  const patchResp = waitForPatchResponse(page);
-  await page.getByRole('button', { name: 'Update' }).click();
-  await patchResp;
-};
+  const row = termName
+    ? glossaryPickerRow(page, termName)
+    : page.locator('[data-testid^="tree-node-"]').first();
 
-export const editDomain = async (page: Page, domainName: string) => {
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-  const domainsSection = summaryPanel.locator('.domains-section');
+  await row.waitFor({ state: 'visible' });
+  await row.click();
 
-  await domainsSection
-    .locator('[data-testid="add-domain"]')
-    .scrollIntoViewIfNeeded();
-  await page.getByTestId('add-domain').waitFor({
-    state: 'visible',
-  });
-  await page.locator('[data-testid="add-domain"]').click();
-  const tree = page.getByTestId('domain-selectable-tree');
-
-  await tree.waitFor({ state: 'visible' });
-
-  const searchDomainPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`)
-  );
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domainName);
-
-  const searchDomainResponse = await searchDomainPromise;
-  expect(searchDomainResponse.status()).toBe(200);
-
-  const tagSelector = page
-    .getByTestId('domain-selectable-tree')
-    .getByText(domainName);
-  await tagSelector.waitFor({ state: 'visible' });
-
-  const patchReqPromise = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-
-  await tagSelector.click();
-
-  const patchResponse = await patchReqPromise;
-  expect(patchResponse.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
+  await applyGlossaryPicker(page);
 };
 
 export const verifyDeletedEntityNotVisible = async (
@@ -449,7 +406,9 @@ export const verifyDeletedEntityNotVisible = async (
   expect(searchResponse.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
-  const deletedItem = page.getByTitle(entityName);
+  const deletedItem = page
+    .locator('.selectable-list-item')
+    .filter({ hasText: entityName });
 
   return deletedItem;
 };
@@ -469,9 +428,7 @@ export const navigateToIncidentsTab = async (page: Page) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
   const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
-  const incidentsTabButton = tabContent
-    .locator('.ant-tabs-tab')
-    .filter({ hasText: /incident/i });
+  const incidentsTabButton = tabContent.getByRole('tab', { name: /incident/i });
 
   if (await incidentsTabButton.isVisible()) {
     await incidentsTabButton.click();
@@ -492,7 +449,9 @@ export const removeTagsFromPanel = async (
   await waitForAllLoadersToDisappear(page);
 
   for (const tagName of tagDisplayNames) {
-    const tagOption = page.getByTitle(tagName);
+    const tagOption = page
+      .locator('.selectable-list-item')
+      .filter({ hasText: tagName });
     await tagOption.waitFor({ state: 'visible' });
     await tagOption.click();
   }
@@ -510,36 +469,22 @@ export const removeGlossaryTermFromPanel = async (
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
 
-  await page.getByTestId('edit-glossary-terms').waitFor({
-    state: 'visible',
+  await openGlossaryPicker(page, page.getByTestId('edit-glossary-terms'), {
+    force: true,
   });
-  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
-  await page.getByTestId('edit-glossary-terms').click({ force: true });
 
-  await page
-    .locator('[data-testid="selectable-list"]')
-    .waitFor({ state: 'visible' });
-
-  await waitForAllLoadersToDisappear(page);
   for (const termName of termDisplayNames) {
-    const searchBar = page.getByTestId('glossary-term-select-search-bar');
-    await searchBar.fill(termName);
+    await searchGlossaryPicker(page, termName);
 
-    // Wait for the list to update with search results
-    const termItem = page
-      .locator('.ant-list-item')
-      .filter({ hasText: termName });
-    await termItem.waitFor({ state: 'visible' });
+    const row = glossaryPickerRow(page, termName);
+    await row.waitFor({ state: 'visible' });
 
-    await termItem.click();
-
-    // Clear search for next iteration if there are multiple terms
-    await searchBar.clear();
+    if (await isGlossaryTermSelected(row)) {
+      await row.click();
+    }
   }
 
-  const patchPromise = waitForPatchResponse(page);
-  await page.getByRole('button', { name: 'Update' }).click();
-  await patchPromise;
+  await applyGlossaryPicker(page);
 };
 
 export const removeOwnerFromPanel = async (
@@ -572,47 +517,13 @@ export const removeOwnerFromPanel = async (
     }
 
     const ownerItem = page
-      .locator('.ant-list-item')
+      .locator('[data-testid="owner-option"]')
       .filter({ hasText: ownerName });
     await ownerItem.waitFor({ state: 'visible' });
     await ownerItem.click();
   }
 
   const updateButton = page.getByTestId('selectable-list-update-btn');
-  if (await updateButton.isVisible()) {
-    await updateButton.click();
-  }
-
-  await patchPromise;
-};
-
-export const removeDomainFromPanel = async (page: Page, domainName: string) => {
-  await page.getByTestId('add-domain').waitFor({
-    state: 'visible',
-  });
-
-  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
-  await page.getByTestId('add-domain').click({ force: true });
-
-  const domainTree = page.getByTestId('domain-selectable-tree');
-  await domainTree.waitFor({ state: 'visible' });
-
-  const searchDomainPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`)
-  );
-
-  await domainTree.getByTestId('searchbar').fill(domainName);
-
-  await searchDomainPromise;
-
-  const domainItem = domainTree.getByText(domainName);
-  const patchPromise = waitForPatchResponse(page);
-
-  await domainItem.click();
-
-  const updateButton = page.getByRole('button', { name: 'Update' });
   if (await updateButton.isVisible()) {
     await updateButton.click();
   }

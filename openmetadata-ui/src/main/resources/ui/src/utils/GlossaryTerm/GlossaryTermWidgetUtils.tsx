@@ -11,12 +11,23 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
+import { isEmpty } from 'lodash';
 import { lazy } from 'react';
+import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import { useGenericDomainLabel } from '../../components/common/DomainLabel/useGenericDomainLabel';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../components/common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { EntityReference } from '../../generated/entity/type';
 import type { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import { getOwnerVersionLabel } from '../EntityVersionUtils';
 
 const CommonWidgets = withSuspenseFallback(
   lazy(() =>
@@ -26,20 +37,21 @@ const CommonWidgets = withSuspenseFallback(
   )
 );
 
-const DomainLabelV2 = withSuspenseFallback(
+const DomainLabel = withSuspenseFallback(
   lazy(() =>
-    import('../../components/DataAssets/DomainLabelV2/DomainLabelV2').then(
-      (module) => ({ default: module.DomainLabelV2 })
+    import('../../components/common/DomainLabel/DomainLabel.component').then(
+      (module) => ({ default: module.DomainLabel })
     )
   )
 );
 
-const OwnerLabelV2 = withSuspenseFallback(
+const UserTeamSelectableList = withSuspenseFallback(
   lazy(() =>
-    import('../../components/DataAssets/OwnerLabelV2/OwnerLabelV2').then(
-      (module) => ({ default: module.OwnerLabelV2 })
-    )
-  )
+    import(
+      '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component'
+    ).then((m) => ({ default: m.UserTeamSelectableList }))
+  ),
+  null
 );
 
 const ReviewerLabelV2 = withSuspenseFallback(
@@ -83,13 +95,81 @@ const WorkflowHistory = withSuspenseFallback(
   )
 );
 
-const GlossaryTermDomainWidget = () => {
-  const { entityRules } = useGenericContext();
+const GlossaryTermOwnerWidget = () => {
+  const { data, onUpdate, permissions, isVersionView, entityRules } =
+    useGenericContext<{ owners?: EntityReference[]; id: string }>();
+  const { t } = useTranslation();
+
+  const hasPermission = permissions?.EditOwners || permissions?.EditAll;
+
+  const handleUpdatedOwner = async (updatedOwners?: EntityReference[]) => {
+    await onUpdate({ ...data, owners: updatedOwners });
+  };
 
   return (
-    <DomainLabelV2
+    <WidgetCard
+      dataTestId="glossary-right-panel-owner-link"
+      headerExtra={
+        !isVersionView && hasPermission ? (
+          <UserTeamSelectableList
+            hasPermission={Boolean(hasPermission)}
+            listHeight={200}
+            multiple={{
+              user: entityRules.canAddMultipleUserOwners,
+              team: entityRules.canAddMultipleTeamOwner,
+            }}
+            owner={data.owners}
+            onUpdate={handleUpdatedOwner}>
+            {isEmpty(data.owners) ? (
+              <WidgetPlusButton
+                data-testid="add-owner"
+                title={t('label.add-entity', {
+                  entity: t('label.owner-plural'),
+                })}
+              />
+            ) : (
+              <WidgetEditButton
+                data-testid="edit-owner"
+                title={t('label.edit-entity', {
+                  entity: t('label.owner-plural'),
+                })}
+              />
+            )}
+          </UserTeamSelectableList>
+        ) : null
+      }
+      isExpandDisabled={isEmpty(data.owners)}
+      title={t('label.owner-plural')}>
+      {isVersionView ? (
+        // Version view needs the added/removed diff highlighting from the
+        // changeDescription; the plain <Owner> only shows current owners.
+        getOwnerVersionLabel(
+          data,
+          isVersionView,
+          TabSpecificField.OWNERS,
+          Boolean(hasPermission)
+        )
+      ) : (
+        <Owner
+          isCompactView={false}
+          owners={data.owners ?? []}
+          showLabel={false}
+        />
+      )}
+    </WidgetCard>
+  );
+};
+
+const GlossaryTermDomainWidget = () => {
+  const { entityRules } = useGenericContext();
+  const domainProps = useGenericDomainLabel();
+
+  return (
+    <DomainLabel
+      {...domainProps}
       showDomainHeading
       multiple={entityRules?.canAddMultipleDomains ?? true}
+      variant="widget"
     />
   );
 };
@@ -114,7 +194,7 @@ export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
   } else if (
     widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.OWNER)
   ) {
-    return <OwnerLabelV2 />;
+    return <GlossaryTermOwnerWidget />;
   } else if (
     widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
   ) {

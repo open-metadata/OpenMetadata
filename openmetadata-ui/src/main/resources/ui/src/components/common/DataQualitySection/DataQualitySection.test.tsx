@@ -26,28 +26,10 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Partial mock antd (only Typography.Text)
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Typography: {
-      ...actual.Typography,
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <span className={className} data-testid="typography-text" {...props}>
-            {children}
-          </span>
-        )),
-    },
-  };
-});
-
 // Mock SectionWithEdit to expose props and render children
 interface SectionWithEditProps {
   title: React.ReactNode;
+  titleExtra?: React.ReactNode;
   children: React.ReactNode;
   showEditButton?: boolean;
   onEdit?: () => void;
@@ -57,13 +39,22 @@ jest.mock('../SectionWithEdit/SectionWithEdit', () => {
   return jest
     .fn()
     .mockImplementation(
-      ({ title, children, showEditButton, onEdit }: SectionWithEditProps) => (
+      ({
+        title,
+        titleExtra,
+        children,
+        showEditButton,
+        onEdit,
+      }: SectionWithEditProps) => (
         <div
           data-show-edit={String(showEditButton)}
           data-testid="section-with-edit"
           role="presentation"
           onClick={onEdit}>
-          <div data-testid="section-title">{title}</div>
+          <div data-testid="section-title">
+            {title}
+            {titleExtra}
+          </div>
           <div data-testid="section-children">{children}</div>
         </div>
       )
@@ -92,11 +83,7 @@ describe('DataQualitySection', () => {
       screen.getByText('label.data-quality-test-plural')
     ).toBeInTheDocument();
     // total badge text
-    expect(
-      screen
-        .getAllByTestId('typography-text')
-        .some((el) => el.textContent === '6')
-    ).toBe(true);
+    expect(screen.getByText('6')).toBeInTheDocument();
   });
 
   it('renders progress segments for non-zero categories', () => {

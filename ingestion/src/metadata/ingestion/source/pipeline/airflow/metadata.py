@@ -293,7 +293,7 @@ class AirflowSource(PipelineServiceSource):
                     DagRun.state,
                 )
                 .filter(DagRun.dag_id == dag_id)
-                .order_by(db_date_column.desc())
+                .order_by(func.coalesce(db_date_column, DagRun.start_date).desc())
                 .limit(self.config.serviceConnection.root.config.numberOfStatus)  # pyright: ignore[reportAttributeAccessIssue]
                 .all()
             )
@@ -880,6 +880,12 @@ class AirflowSource(PipelineServiceSource):
         :return: Lineage from inlets and outlets
         """
 
+        # Reset before anything that can return or raise: the context is shared across
+        # sibling DAGs, so leaving the previous DAG's values in place -- on the early
+        # return below, or on a failure the topology runner swallows -- would attribute
+        # its tables to this one.
+        self._set_observability_context()
+
         # If the context is not set because of an error upstream,
         # we don't want to continue the processing
         pipeline_fqn = fqn.build(
@@ -888,10 +894,6 @@ class AirflowSource(PipelineServiceSource):
             service_name=self.context.get().pipeline_service,
             pipeline_name=self.context.get().pipeline,
         )
-        # Reset before the early return below: the context is shared across sibling
-        # DAGs, so leaving the previous DAG's values in place would attribute its
-        # tables to this one.
-        self._set_observability_context()
 
         pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
         if not pipeline_entity:

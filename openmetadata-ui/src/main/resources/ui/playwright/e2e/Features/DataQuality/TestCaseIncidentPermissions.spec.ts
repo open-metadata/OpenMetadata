@@ -72,31 +72,31 @@ const test = base.extend<{
   },
   viewIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await viewIncidentsUser.login(page);
+    await viewIncidentsUser.signIn(page);
     await use(page);
     await page.close();
   },
   editIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editIncidentsUser.login(page);
+    await editIncidentsUser.signIn(page);
     await use(page);
     await page.close();
   },
   tableEditIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await tableEditIncidentsUser.login(page);
+    await tableEditIncidentsUser.signIn(page);
     await use(page);
     await page.close();
   },
   tableViewIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await tableViewIncidentsUser.login(page);
+    await tableViewIncidentsUser.signIn(page);
     await use(page);
     await page.close();
   },
   consumerLikePage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await consumerLikeUser.login(page);
+    await consumerLikeUser.signIn(page);
     await use(page);
     await page.close();
   },

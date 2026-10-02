@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OpenLineageConnection",
   "description": "OpenLineage Connection Config",
   "type": "object",
@@ -28,7 +27,6 @@
       "description": "Event broker configuration. Choose between Kafka and Kinesis.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Kafka",
           "description": "Kafka broker configuration for OpenLineage events.",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig",
@@ -113,7 +111,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -128,9 +125,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -142,9 +137,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     },
@@ -156,9 +149,7 @@
                       "accept": [
                         ".pem",
                         ".crt",
-                        ".cer",
-                        ".der",
-                        ".p12"
+                        ".cer"
                       ],
                       "uiFieldType": "fileOrInput"
                     }
@@ -169,7 +160,6 @@
             "saslConfig": {
               "title": "SASL",
               "description": "SASL Configuration details.",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.sasl.SASLClientConfig",
               "additionalProperties": false,
@@ -178,7 +168,6 @@
                   "title": "SASL Mechanism",
                   "description": "SASL security mechanism",
                   "default": "PLAIN",
-                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "javaType": "org.openmetadata.schema.services.connections.messaging.SaslMechanismType",
                   "type": "string",
                   "enum": [
@@ -209,7 +198,6 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Kinesis",
           "description": "AWS Kinesis Data Streams configuration for OpenLineage events.",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.KinesisBrokerConfig",
@@ -224,7 +212,6 @@
             "awsConfig": {
               "title": "AWS Credentials Configuration",
               "description": "AWS credentials configuration.",
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
               "properties": {
@@ -253,7 +240,8 @@
                 "awsSessionToken": {
                   "title": "AWS Session Token",
                   "description": "AWS Session Token.",
-                  "type": "string"
+                  "type": "string",
+                  "format": "password"
                 },
                 "endPointURL": {
                   "title": "Endpoint URL",

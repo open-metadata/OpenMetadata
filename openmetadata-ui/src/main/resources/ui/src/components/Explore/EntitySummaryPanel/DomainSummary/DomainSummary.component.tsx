@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Divider, Row } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelPureUtils';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
@@ -51,14 +51,18 @@ const DomainSummary = ({
 
         <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="owner-header">
               {t('label.owner-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
-            <OwnerLabel owners={entityDetails.owners ?? []} />
+            <Owner
+              isCompactView={false}
+              owners={entityDetails.owners ?? []}
+              showLabel={false}
+            />
           </Col>
         </Row>
 
@@ -66,25 +70,23 @@ const DomainSummary = ({
 
         <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="expert-header">
               {t('label.expert-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             {experts.length > 0 ? (
-              <Space wrap size={[8, 8]}>
-                <OwnerLabel owners={experts} />
-              </Space>
+              <Owner isCompactView={false} owners={experts} showLabel={false} />
             ) : (
-              <Typography.Text
+              <Typography
                 className="text-grey-body"
                 data-testid="no-expert-header">
                 {t('label.no-entity', {
                   entity: t('label.expert-lowercase'),
                 })}
-              </Typography.Text>
+              </Typography>
             )}
           </Col>
         </Row>

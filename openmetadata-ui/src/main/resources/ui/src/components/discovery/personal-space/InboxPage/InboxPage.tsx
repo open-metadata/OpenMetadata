@@ -15,6 +15,7 @@ import {
   Box,
   EmptyPlaceholder,
   FeaturedIcon,
+  PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import React, { ReactNode, useCallback } from 'react';
@@ -22,7 +23,6 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as InboxIcon } from '../../../../assets/svg/ask-collate-nav-bar/inbox-header.svg';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
-import HeaderShell from '../../../common/HeaderShell/HeaderShell.component';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
 
 type InboxPageTab = 'triage' | 'my-data';
@@ -75,7 +75,7 @@ const InboxPage: React.FC<InboxPageProps> = ({
       className="inbox-page tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:gap-4 tw:overflow-hidden tw:p-2"
       data-testid="inbox-page"
       direction="col">
-      <HeaderShell
+      <PageLayout.PageHeader
         className="tw:mb-0! tw:pb-0"
         footer={
           <Tabs
@@ -91,7 +91,7 @@ const InboxPage: React.FC<InboxPageProps> = ({
             </Tabs.List>
           </Tabs>
         }
-        leading={
+        icon={
           <FeaturedIcon
             color="brand"
             icon={InboxIcon}
@@ -100,7 +100,6 @@ const InboxPage: React.FC<InboxPageProps> = ({
             theme="dark"
           />
         }
-        padding="comfortable"
         subtitle={t('message.inbox-desc')}
         title={t('label.inbox')}
         variant={isAiMode ? 'gradient' : 'flat'}

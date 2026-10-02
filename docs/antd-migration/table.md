@@ -40,7 +40,7 @@ compile rather than rendering a table that quietly lost a feature.
 | Prop | Change |
 |---|---|
 | `customPaginationProps` | now **requires** `pagination={false}` alongside it — the parent owns paging and has already fetched exactly this page, so slicing again would drop rows |
-| `size` | AntD `small` → core `compact`, `large` → `md`, unset → `sm`. Note that AntD tables not inside a `TableCard` were previously rendered at `md` because the core `size` prop was inert |
+| `size` | AntD `small` → core `sm`, `middle`/`large`/unset → `md`. Note that AntD tables not inside a `TableCard` were previously rendered at `md` because the core `size` prop was inert |
 
 ## Test selector contract
 
@@ -56,7 +56,7 @@ rewritten now keeps passing through the sweep:
 | selection control | `input[type="checkbox"]` | radio in single-selection mode |
 | toolbar | `[data-testid="table-toolbar"]` | TableV2 only |
 | column customize | `[data-testid="column-dropdown"]` | both |
-| pager | `[data-testid="pagination"]` | via `NextPrevious` |
+| pager | `[data-testid="pagination"]` | via `NextPrevious` only (with `customPaginationProps`); the default TableV2 pager has `[data-testid="next"]` instead |
 
 No shared hook exists for these — migrate them in the sweep PR that moves the page:
 
