@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { ClassificationTag } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +24,6 @@ import {
   getTagRedirectLink,
   updateTierTag,
 } from '../../../utils/TagsPureUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TierCard from '../TierCard/TierCard';
 import {
@@ -58,8 +56,14 @@ const TierWidget = () => {
       const updatedEntity = cloneDeep(entity);
       updatedEntity.tags = updatedTags;
       await onUpdate(updatedEntity);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+    } catch {
+      // Swallow without toasting or rethrowing: the page-level updater
+      // (handleDomainUpdate / handleDataProductUpdate) already calls
+      // showErrorToast before rethrowing, so toasting here would duplicate
+      // it. Swallowing (not rejecting) lets TierCard.updateTierData's
+      // `await updateTier?.(tier)` resolve and run its
+      // setIsLoadingTierData(false) / handleOpenChange(false) cleanup so the
+      // popover doesn't stay stuck in its loading state on reopen.
     } finally {
       setIsEditing(false);
     }
