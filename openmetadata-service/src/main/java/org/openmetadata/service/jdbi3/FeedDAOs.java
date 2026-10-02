@@ -21,6 +21,8 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Builder;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -542,8 +544,11 @@ public interface FeedDAOs {
         @Bind("afterId") String afterId);
 
     private String getAnnouncementBaseCondition(ListFilter filter) {
-      String includeCondition = filter.getIncludeCondition(getTableName());
-      return includeCondition.isEmpty() ? "TRUE" : includeCondition;
+      String condition =
+          Stream.of(filter.getIncludeCondition(getTableName()), filter.getSystemWideCondition())
+              .filter(part -> !part.isEmpty())
+              .collect(Collectors.joining(" AND "));
+      return condition.isEmpty() ? "TRUE" : condition;
     }
 
     private Boolean getActiveFlag(ListFilter filter) {

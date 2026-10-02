@@ -112,6 +112,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityLinkCondition());
     conditions.add(getActiveCondition(tableName));
     conditions.add(getAnnouncementTypeCondition());
+    conditions.add(getSystemWideCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -487,6 +488,20 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return String.format("(startTime > %d OR endTime < %d)", now, now);
+  }
+
+  /**
+   * A system-wide announcement is one with no entityLink. Package-private so AnnouncementDAO's own
+   * active-window queries can apply it too; only AnnouncementResource sets this parameter.
+   */
+  String getSystemWideCondition() {
+    String systemWide = queryParams.get("systemWide");
+    String condition = "";
+    if (systemWide != null) {
+      condition =
+          Boolean.parseBoolean(systemWide) ? "entityLink IS NULL" : "entityLink IS NOT NULL";
+    }
+    return condition;
   }
 
   private String getAnnouncementTypeCondition() {

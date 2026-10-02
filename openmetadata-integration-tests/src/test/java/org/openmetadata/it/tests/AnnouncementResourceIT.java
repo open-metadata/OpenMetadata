@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,18 +27,29 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.feed.CreateAnnouncement;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Announcement;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.AnnouncementType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
 
 @Execution(ExecutionMode.CONCURRENT)
 public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnnouncement> {
@@ -490,6 +502,140 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
     assertFalse(fetched.getOwners().isEmpty());
     assertNotNull(fetched.getDomains());
     assertFalse(fetched.getDomains().isEmpty());
+  }
+
+  /**
+   * By default only admins can write announcements at all, so the system-wide rule only bites when
+   * a custom role grants announcement writes to non-admins. Such a user keeps entity announcements
+   * but cannot create, edit, delete or restore a system-wide one, or patch one into existence.
+   */
+  @Test
+  void testSystemWideAnnouncementWritesAreAdminOnly(TestNamespace ns) throws Exception {
+    long now = System.currentTimeMillis();
+    OpenMetadataClient writer = announcementWriterClient(ns);
+    Table table = createTestTable(ns);
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
+
+    Announcement own =
+        writer
+            .announcements()
+            .create(windowed(ns.prefix("writer-entity"), now).withEntityLink(entityLink));
+    assertEquals(entityLink, own.getEntityLink());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> writer.announcements().create(windowed(ns.prefix("writer-system"), now)));
+
+    Announcement systemWide = createEntity(windowed(ns.prefix("admin-system"), now));
+    String systemId = systemWide.getId().toString();
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            writer
+                .announcements()
+                .patch(systemId, patchOp("replace", "/description", "\"edited\"")));
+    assertThrows(ForbiddenException.class, () -> writer.announcements().delete(systemId));
+    Announcement unchanged = getEntity(systemId);
+    assertEquals(systemWide.getDescription(), unchanged.getDescription());
+    assertFalse(Boolean.TRUE.equals(unchanged.getDeleted()));
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            writer
+                .announcements()
+                .patch(own.getId().toString(), patchOp("remove", "/entityLink", null)));
+    assertEquals(entityLink, getEntity(own.getId().toString()).getEntityLink());
+
+    SdkClients.adminClient().announcements().delete(systemId);
+    assertThrows(ForbiddenException.class, () -> writer.announcements().restore(systemId));
+  }
+
+  @Test
+  void testListSystemWideFilter(TestNamespace ns) throws Exception {
+    long now = System.currentTimeMillis();
+    Table table = createTestTable(ns);
+    Announcement systemWide = createEntity(windowed(ns.prefix("list-system"), now));
+    Announcement onEntity =
+        createEntity(
+            windowed(ns.prefix("list-entity"), now)
+                .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">"));
+
+    List<UUID> systemIds = listIds(true);
+    assertTrue(systemIds.contains(systemWide.getId()));
+    assertFalse(systemIds.contains(onEntity.getId()));
+
+    List<UUID> entityIds = listIds(false);
+    assertTrue(entityIds.contains(onEntity.getId()));
+    assertFalse(entityIds.contains(systemWide.getId()));
+
+    // The landing page asks for the active ones, which go through AnnouncementDAO's own SQL.
+    List<UUID> activeSystemIds =
+        listIds(
+            new ListParams().addQueryParam("systemWide", "true").addQueryParam("active", "true"));
+    assertTrue(activeSystemIds.contains(systemWide.getId()));
+    assertFalse(activeSystemIds.contains(onEntity.getId()));
+  }
+
+  private List<UUID> listIds(boolean systemWide) {
+    return listIds(new ListParams().addQueryParam("systemWide", String.valueOf(systemWide)));
+  }
+
+  private List<UUID> listIds(ListParams params) {
+    return listEntities(params.setLimit(1000)).getData().stream().map(Announcement::getId).toList();
+  }
+
+  private static CreateAnnouncement windowed(String name, long now) {
+    return new CreateAnnouncement()
+        .withName(name)
+        .withDescription("System-wide announcement test")
+        .withStartTime(now)
+        .withEndTime(now + 86400000L);
+  }
+
+  private static JsonNode patchOp(String op, String path, String jsonValue) {
+    String value = jsonValue == null ? "" : ",\"value\":" + jsonValue;
+    return JsonUtils.readTree("[{\"op\":\"" + op + "\",\"path\":\"" + path + "\"" + value + "}]");
+  }
+
+  /** A non-admin whose custom role grants announcement writes, as an org would set up for owners. */
+  private OpenMetadataClient announcementWriterClient(TestNamespace ns) {
+    String suffix = ns.uniqueShortId();
+    Rule allowAnnouncementWrites =
+        new Rule()
+            .withName("AllowAnnouncementWrites")
+            .withResources(List.of(Entity.ANNOUNCEMENT))
+            .withOperations(
+                List.of(
+                    MetadataOperation.CREATE,
+                    MetadataOperation.VIEW_ALL,
+                    MetadataOperation.EDIT_ALL,
+                    MetadataOperation.DELETE))
+            .withEffect(Rule.Effect.ALLOW);
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName("announcementWriter_" + suffix)
+                    .withRules(List.of(allowAnnouncementWrites)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName("announcementWriter_" + suffix)
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String email = "announcement-writer-" + suffix + "@test.openmetadata.org";
+    admin
+        .users()
+        .create(
+            new CreateUser()
+                .withName("announcement-writer-" + suffix)
+                .withEmail(email)
+                .withRoles(List.of(role.getId())));
+    return SdkClients.createClient(email, email, new String[] {});
   }
 
   private Table createTestTable(TestNamespace ns) throws Exception {
