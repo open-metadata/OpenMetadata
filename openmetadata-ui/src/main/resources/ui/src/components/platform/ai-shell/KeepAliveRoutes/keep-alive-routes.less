@@ -21,8 +21,9 @@
  * to hidden inside inactive cached routes; `!important` beats recharts' inline
  * (non-important) style.
  *
- * OpenMetadata renders no recharts chart any more; Collate's still run inside
- * this shell. Delete the rule once Collate drops recharts.
+ * OpenMetadata renders no recharts chart any more; Collate's recharts charts
+ * still run inside this shell. Delete the rule once Collate drops recharts.
+ * Core chart tooltips are appended to <body>, so this rule does not reach them.
  */
 [data-testid^='route-cache-'][aria-hidden='true'] .recharts-tooltip-wrapper {
   visibility: hidden !important;

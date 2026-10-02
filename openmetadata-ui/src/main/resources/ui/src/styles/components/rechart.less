@@ -13,7 +13,8 @@
 
 // OpenMetadata renders no recharts chart any more. Collate still does, inside
 // this app shell and with these global styles, so the rules stay until Collate
-// drops recharts; then delete this file and its import in globalStyles.ts.
+// drops recharts; then delete this file, its import in globalStyles.ts and
+// the `recharts-legend-item` in renderLegend (utils/DataInsightChartUtils.tsx).
 .custom-legend {
   .recharts-default-legend {
     .recharts-legend-item {
