@@ -24,6 +24,8 @@ import {
   DataType,
   PartitionIntervalTypes,
   PartitionIntervalUnit,
+  ProfileSampleType,
+  SampleConfigType,
   TableProfilerConfig,
 } from '../../../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
@@ -102,7 +104,21 @@ jest.mock('../../../SchemaEditor/SchemaEditor', () => {
 });
 
 jest.mock('../../../../common/SliderWithInput/SliderWithInput', () => {
-  return jest.fn().mockReturnValue(<div data-testid="slider-input" />);
+  return jest
+    .fn()
+    .mockImplementation(
+      ({ onChange }: { onChange: (value: number | null) => void }) => (
+        <>
+          <div data-testid="slider-input" />
+          <button data-testid="slider-zero" onClick={() => onChange(0)}>
+            set 0%
+          </button>
+          <button data-testid="slider-clear" onClick={() => onChange(null)}>
+            clear
+          </button>
+        </>
+      )
+    );
 });
 
 /**
@@ -358,5 +374,71 @@ describe('ProfilerSettingsModal partitioning round-trip', () => {
     });
 
     expect(payload.partitioning).toBeUndefined();
+  });
+});
+
+const buildStaticSampleConfig = (
+  profileSample: number
+): TableProfilerConfig => ({
+  sampleDataCount: 500,
+  profileSampleConfig: {
+    sampleConfigType: SampleConfigType.Static,
+    config: {
+      profileSample,
+      profileSampleType: ProfileSampleType.Percentage,
+    },
+  },
+});
+
+describe('ProfilerSettingsModal profile-sample round-trip', () => {
+  beforeEach(() => {
+    cleanup();
+    jest.clearAllMocks();
+  });
+
+  it('should preserve profileSampleConfig for a non-zero percentage (control)', async () => {
+    const payload = await renderAndSave(buildStaticSampleConfig(60));
+
+    expect(payload.profileSampleConfig).toEqual({
+      sampleConfigType: SampleConfigType.Static,
+      config: {
+        profileSample: 60,
+        profileSampleType: ProfileSampleType.Percentage,
+      },
+    });
+  });
+
+  it('should preserve profileSampleConfig when percentage is explicitly set to 0', async () => {
+    const payload = await renderAndSave(buildStaticSampleConfig(60), () => {
+      fireEvent.click(screen.getByTestId('slider-zero'));
+    });
+
+    expect(payload.profileSampleConfig).toEqual({
+      sampleConfigType: SampleConfigType.Static,
+      config: {
+        profileSample: 0,
+        profileSampleType: ProfileSampleType.Percentage,
+      },
+    });
+  });
+
+  it('should round-trip a stored 0% percentage through reload and save', async () => {
+    const payload = await renderAndSave(buildStaticSampleConfig(0));
+
+    expect(payload.profileSampleConfig).toEqual({
+      sampleConfigType: SampleConfigType.Static,
+      config: {
+        profileSample: 0,
+        profileSampleType: ProfileSampleType.Percentage,
+      },
+    });
+  });
+
+  it('should omit profileSampleConfig when the sample value is cleared', async () => {
+    const payload = await renderAndSave(buildStaticSampleConfig(60), () => {
+      fireEvent.click(screen.getByTestId('slider-clear'));
+    });
+
+    expect(payload.profileSampleConfig).toBeUndefined();
   });
 });

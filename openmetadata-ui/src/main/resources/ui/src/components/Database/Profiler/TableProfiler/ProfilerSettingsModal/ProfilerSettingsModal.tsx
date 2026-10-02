@@ -193,11 +193,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       form.setFieldsValue({
         profileSampleType,
         profileSamplePercentage:
-          profileSample && profileSampleType === ProfileSampleType.Percentage
+          profileSample != null &&
+          profileSampleType === ProfileSampleType.Percentage
             ? profileSample
             : undefined,
         profileSampleRows:
-          profileSample && profileSampleType === ProfileSampleType.Rows
+          profileSample != null && profileSampleType === ProfileSampleType.Rows
             ? profileSample
             : undefined,
       });
@@ -352,7 +353,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
           profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
           profileSampleConfig:
-            profileSampleType && profileSample
+            profileSampleType != null && profileSample != null
               ? {
                   sampleConfigType: SampleConfigType.Static,
                   config: {
