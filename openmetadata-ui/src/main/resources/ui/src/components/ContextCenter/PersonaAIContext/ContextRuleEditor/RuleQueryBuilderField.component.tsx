@@ -111,11 +111,7 @@ export const RuleQueryBuilderField = ({
   return (
     <DrawerPopupContainerProvider>
       <div className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3">
-        {/* Defer mounting QueryBuilder until enrichedFields is ready so RAQB's
-            load-time sanitizer (checkTree inside loadQueryBuilderTree) runs against
-            a config that already knows about every extension.<customProperty> field.
-            Rendering before the fetch resolves causes the sanitizer to field-null
-            any saved extension.<cp> rule, dropping the condition on the next onChange. */}
+        {/* Mounting before the fields arrive lets RAQB's sanitizer field-null any saved extension.<cp> rule. */}
         {enrichedFields ? (
           <QueryBuilder
             buttonPreset={PERSONA_BUTTON_PRESET}

@@ -234,11 +234,7 @@ describe('hasUnfinishedRule', () => {
     ).toBe(true);
   });
 
-  // A rule with no field at all is now flagged as unfinished: such a row only appears
-  // when RAQB's sanitizer field-nulls a condition whose field it cannot resolve (the
-  // deterministic first-paint gap that deferring QueryBuilder's mount closes). It
-  // carries no constraint and would be dropped from the emitted query, so flagging
-  // it lets the save guard fire instead of silently widening the filter.
+  // A fieldless row only appears when the sanitizer nulls one, so the save guard should fire.
   it('should report a row with no field picked at all', () => {
     expect(hasUnfinishedRule(makeBlankRule(), configWithNumberType)).toBe(true);
   });

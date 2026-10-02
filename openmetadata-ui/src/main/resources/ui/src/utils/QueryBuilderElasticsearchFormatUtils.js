@@ -1234,14 +1234,8 @@ function producesNoConstraint(clause) {
 }
 
 /**
- * Reports whether the tree holds any rule node whose field has been blanked — a row that
- * exists in the tree but carries no field at all.
- *
- * The query builder's seed row always carries a default field, so a truly blank row only
- * appears when RAQB's sanitizer field-nulls a `rule` whose field it cannot resolve (e.g. an
- * `extension.<customProperty>` field loaded before the custom-property definitions arrived).
- * Such a row represents data loss — a condition that was there and is now gone — not an
- * intentional empty state, so the save guard should fire.
+ * Reports whether any rule has been field-nulled by RAQB's sanitizer. Every row the builder
+ * creates carries `settings.defaultField`, so a fieldless row only ever means lost data.
  *
  * @param {object} tree - The immutable query-builder tree
  * @returns {boolean} - Whether any rule has a null/empty field
@@ -1278,10 +1272,7 @@ export function hasBlankRule(tree) {
  * match everything. The answer comes from asking elasticSearchFormat what the row actually
  * produces, so this check and buildEsRule cannot drift apart.
  *
- * A row whose field was blanked (nulled by the sanitizer) is also flagged: it carries no
- * constraint and would be dropped just like an unfinished row, but its presence signals
- * data loss rather than a half-entered condition. See `hasBlankRule` for the distinction
- * from the seed row.
+ * A field-nulled row is flagged too — see `hasBlankRule`.
  *
  * @param {object} tree - The immutable query-builder tree
  * @param {object} config - The same config passed to elasticSearchFormat
@@ -1297,9 +1288,7 @@ export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
   if (type === 'rule') {
     const field = tree.get('properties')?.get('field');
 
-    // A rule with no field is unfinished: it was either never filled in or field-nulled
-    // by RAQB's sanitizer. Either way, it carries no constraint and would be dropped from
-    // the emitted query.
+    // No field means no constraint, so the row would be dropped from the emitted query.
     if (!field) {
       return true;
     }

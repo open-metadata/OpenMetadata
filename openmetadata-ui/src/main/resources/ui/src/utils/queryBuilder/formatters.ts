@@ -107,11 +107,7 @@ export const isQueryTreeComplete = (
   tree: ImmutableTree,
   config: Config
 ): boolean => {
-  // A blank rule (field === null) is the sanitizer's field-nulling damage signature: a
-  // condition that was there and is now gone. It must block the save even when other
-  // rules survive, because the surviving query is silently widened by the dropped
-  // condition — not the harmless "user is still editing" case the toElasticSearchQuery
-  // fallback below exists to handle.
+  // A field-nulled rule is lost data, not a half-entered row, so it blocks the save outright.
   if (hasBlankRule(tree)) {
     return false;
   }
