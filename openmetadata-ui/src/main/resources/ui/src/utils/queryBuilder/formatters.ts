@@ -17,6 +17,7 @@ import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
 import {
   elasticSearchFormat,
+  hasBlankRule,
   hasUnfinishedRule,
 } from '../QueryBuilderElasticsearchFormatUtils';
 
@@ -106,6 +107,15 @@ export const isQueryTreeComplete = (
   tree: ImmutableTree,
   config: Config
 ): boolean => {
+  // A blank rule (field === null) is the sanitizer's field-nulling damage signature: a
+  // condition that was there and is now gone. It must block the save even when other
+  // rules survive, because the surviving query is silently widened by the dropped
+  // condition — not the harmless "user is still editing" case the toElasticSearchQuery
+  // fallback below exists to handle.
+  if (hasBlankRule(tree)) {
+    return false;
+  }
+
   if (!(hasUnfinishedRule(tree, config) as unknown as boolean)) {
     return true;
   }

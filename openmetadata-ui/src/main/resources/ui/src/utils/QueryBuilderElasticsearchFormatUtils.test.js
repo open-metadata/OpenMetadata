@@ -14,6 +14,7 @@
 import { BasicConfig, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import {
   elasticSearchFormat,
+  hasBlankRule,
   hasUnfinishedRule,
 } from './QueryBuilderElasticsearchFormatUtils';
 
@@ -233,19 +234,19 @@ describe('hasUnfinishedRule', () => {
     ).toBe(true);
   });
 
-  // The query builder creates and keeps blank rows on its own (shouldCreateEmptyGroup, and
-  // removeEmptyRulesOnLoad is off), and "Add condition" leaves one behind. They add no constraint
-  // and always have been dropped, so flagging them would block saves that have always worked.
-  it('should accept a row with no field picked at all', () => {
-    expect(hasUnfinishedRule(makeBlankRule(), configWithNumberType)).toBe(
-      false
-    );
+  // A rule with no field at all is now flagged as unfinished: such a row only appears
+  // when RAQB's sanitizer field-nulls a condition whose field it cannot resolve (the
+  // deterministic first-paint gap that deferring QueryBuilder's mount closes). It
+  // carries no constraint and would be dropped from the emitted query, so flagging
+  // it lets the save guard fire instead of silently widening the filter.
+  it('should report a row with no field picked at all', () => {
+    expect(hasUnfinishedRule(makeBlankRule(), configWithNumberType)).toBe(true);
   });
 
-  it('should accept a group holding an entered rule beside a blank row', () => {
+  it('should report a group holding an entered rule beside a blank row', () => {
     const group = makeGroup([makeTree('equal', [7]), makeBlankRule()]);
 
-    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(false);
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(true);
   });
 
   it('should report a multiselect rule with no option picked', () => {
@@ -286,6 +287,40 @@ describe('hasUnfinishedRule', () => {
     const group = makeGroup([makeTree('equal', [7]), makeTree('equal', [9])]);
 
     expect(hasUnfinishedRule(group, configWithNumberType)).toBe(false);
+  });
+});
+
+describe('hasBlankRule', () => {
+  it('should report a rule with no field', () => {
+    expect(hasBlankRule(makeBlankRule())).toBe(true);
+  });
+
+  it('should accept a rule that has a field', () => {
+    expect(hasBlankRule(makeTree('equal', [7]))).toBe(false);
+  });
+
+  it('should accept a rule whose value is unentered but whose field is set', () => {
+    expect(hasBlankRule(makeTree('equal', [undefined]))).toBe(false);
+  });
+
+  it('should find a blank rule nested inside a group', () => {
+    const group = makeGroup([makeTree('equal', [7]), makeBlankRule()]);
+
+    expect(hasBlankRule(group)).toBe(true);
+  });
+
+  it('should accept a group whose rules all have fields', () => {
+    const group = makeGroup([makeTree('equal', [7]), makeTree('equal', [9])]);
+
+    expect(hasBlankRule(group)).toBe(false);
+  });
+
+  it('should accept a group with no conditions at all', () => {
+    expect(hasBlankRule(makeGroup([]))).toBe(false);
+  });
+
+  it('should accept an undefined tree', () => {
+    expect(hasBlankRule(undefined)).toBe(false);
   });
 });
 
