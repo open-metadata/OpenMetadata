@@ -21,6 +21,7 @@ from unittest.mock import Mock, patch
 import jsonpatch
 from pydantic import BaseModel
 
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.tagLabel import (
@@ -674,3 +675,71 @@ class TestBuildPatchTagAppend:
 
         assert self._tag_fqns(result["tags"]) == ["Sensitivity.pii"]
         assert self._tag_fqns(result["columns"][0]["tags"]) == ["Sensitivity.pii"]
+
+
+class TestBuildPatchTableSchemaDefinition:
+    """A connector only returns a DDL for views, or for tables when includeDDL is on
+    and the fetch succeeds. A missing one means "not collected this run", so the
+    patch must keep the stored DDL instead of emitting `remove /schemaDefinition`.
+    The server rejects that remove, and since a JSON Patch is applied as one document
+    the column update riding along with it is lost too (#33752).
+    """
+
+    STORED_DDL = "CREATE TABLE orders (id INT)"
+    CHANGED_DDL = "CREATE TABLE orders (id INT, region STRING)"
+
+    @staticmethod
+    def _stored_table(schema_definition):
+        return Table(
+            id=str(uuid.uuid4()),
+            name="orders",
+            fullyQualifiedName="svc.db.schema.orders",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            schemaDefinition=schema_definition,
+        )
+
+    def _patch_ops(self, stored_ddl, ingested_ddl):
+        """Merge the create request over the stored table, as the sink does."""
+        original = self._stored_table(stored_ddl)
+        create_request = CreateTableRequest(
+            name="orders",
+            databaseSchema="svc.db.schema",
+            columns=[
+                Column(name="id", dataType=DataType.INT),
+                Column(name="region", dataType=DataType.STRING),
+            ],
+            schemaDefinition=ingested_ddl,
+        )
+        result = build_patch(
+            source=original,
+            destination=original.model_copy(update=create_request.__dict__),
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            skip_on_failure=False,
+        )
+
+        return result.patch if result else []
+
+    def test_missing_ddl_keeps_stored_one_and_still_updates_columns(self):
+        ops = self._patch_ops(self.STORED_DDL, None)
+
+        assert [op["path"] for op in ops] == ["/columns"]
+
+    def test_changed_ddl_is_replaced(self):
+        ops = self._patch_ops(self.STORED_DDL, self.CHANGED_DDL)
+
+        assert {
+            "op": "replace",
+            "path": "/schemaDefinition",
+            "value": self.CHANGED_DDL,
+        } in ops
+
+    def test_first_ddl_is_added(self):
+        ops = self._patch_ops(None, self.STORED_DDL)
+
+        assert {
+            "op": "add",
+            "path": "/schemaDefinition",
+            "value": self.STORED_DDL,
+        } in ops

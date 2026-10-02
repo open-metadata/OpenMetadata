@@ -220,10 +220,22 @@ export const addTestCaseToLogicalTestSuite = async (
   return response.data;
 };
 
+export type AddTestCaseListFilter = {
+  q?: string;
+  testCaseStatus?: TestCaseStatus;
+  testCaseType?: string;
+  entityLink?: string;
+  includeAllTests?: boolean;
+  columnName?: string;
+};
+
 export type AddTestCaseListSubmitPayload = {
   selectAll: boolean;
   includeIds: string[];
   excludeIds: string[];
+  // Active search/filter carried with a `selectAll` request so the backend
+  // resolves "all" to the filtered subset shown in the UI, not every test case.
+  filter?: AddTestCaseListFilter;
 };
 
 export const addTestCasesToLogicalTestSuiteBulk = async (
@@ -236,7 +248,7 @@ export const addTestCasesToLogicalTestSuiteBulk = async (
       ? BundleSuiteBulkAddMode.All
       : BundleSuiteBulkAddMode.IDS,
     selection: payload.selectAll
-      ? { filter: { excludeIds: payload.excludeIds } }
+      ? { filter: { excludeIds: payload.excludeIds, ...payload.filter } }
       : { ids: payload.includeIds },
   };
   const response = await APIClient.put<

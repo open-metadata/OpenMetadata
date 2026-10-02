@@ -289,6 +289,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
       selectAll: testCaseSelectionPayload.selectAll,
       includeIds: testCaseSelectionPayload.includeIds,
       excludeIds: testCaseSelectionPayload.excludeIds,
+      filter: testCaseSelectionPayload.filter,
     });
 
     if (formData.enableScheduler && ingestionPipeline.Create) {
