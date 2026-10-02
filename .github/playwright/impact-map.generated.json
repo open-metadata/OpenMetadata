@@ -683,6 +683,7 @@
         "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts",
         "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
@@ -2157,6 +2158,7 @@
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Features/RecentlyViewed.spec.ts",
         "playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts",
         "playwright/e2e/Features/SchemaSearch.spec.ts",
@@ -2950,6 +2952,7 @@
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Features/SearchExport.spec.ts",
@@ -3355,6 +3358,7 @@
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/RTL.spec.ts",
         "playwright/e2e/Features/RecentlyViewed.spec.ts",
@@ -3883,6 +3887,7 @@
         "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/RTL.spec.ts",
         "playwright/e2e/Features/RecentlyViewed.spec.ts",
@@ -4867,6 +4872,7 @@
         "playwright/e2e/Features/NestedColumnsExpandCollapse.spec.ts",
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Features/SearchExport.spec.ts",
@@ -9649,6 +9655,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
@@ -9670,7 +9677,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileContentHeader.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts"
       ]
     },
     {
@@ -9679,6 +9687,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
@@ -9896,6 +9905,57 @@
       ],
       "specs": [
         "playwright/e2e/Pages/BotsProfile.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/governance/GovernanceGlossaryFormPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/governance/GovernanceGlossaryList.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/governance/GovernanceIntakeFormPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Pages/IntakeForm.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/governance/GovernanceIntakeList.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Pages/IntakeForm.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/governance/GovernanceLanding.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/governance/GovernancePanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts"
       ]
     },
     {
@@ -10723,6 +10783,7 @@
         "playwright/e2e/Features/PersonaAIContextRules.spec.ts",
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Features/PersonaSessionPersistence.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/RTL.spec.ts",
         "playwright/e2e/Features/RecentlyViewed.spec.ts",
@@ -11492,6 +11553,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/GlossaryTermRelationSettings/GlossaryTermRelationSettings.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts"
       ]
     },
@@ -11501,6 +11563,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts"
       ]
@@ -11510,6 +11573,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/GlossaryTermRelationSettings/RelationshipTypeTable.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts"
       ]
     },
@@ -11524,9 +11588,18 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/IntakeForms/IntakeFormDesignerBody.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/IntakeForms/IntakeFormDesignerModal.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts"
       ]
     },
@@ -11535,6 +11608,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/IntakeForms/IntakeFormsPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts"
       ]
     },
@@ -11552,6 +11626,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts"
       ]
