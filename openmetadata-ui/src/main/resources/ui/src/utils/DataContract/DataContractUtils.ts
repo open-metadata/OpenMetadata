@@ -348,55 +348,6 @@ export const processContractExecutionData = (
   });
 };
 
-// Create custom scale function for positioning bars from left
-export const createContractExecutionCustomScale = (
-  data: DataContractProcessedResultCharts[]
-) => {
-  const domainValues = data.map((d) => d.name);
-  let rangeValues = [0, 800];
-
-  const scale = (value: string) => {
-    const index = data.findIndex((item) => item.name === value);
-    if (index === -1) {
-      return 0;
-    }
-
-    // Calculate position starting from the left edge
-    const maxBarWidth = 20; // Wider bars for better visibility
-    const spacing = 8; // More spacing between bars
-    const position = rangeValues[0] + index * (maxBarWidth + spacing);
-
-    return position;
-  };
-
-  // Implement chainable methods like d3-scale
-  scale.domain = (domain?: string[]) => {
-    if (domain === undefined) {
-      return domainValues;
-    }
-
-    return scale;
-  };
-
-  scale.range = (range?: number[]) => {
-    if (range === undefined) {
-      return rangeValues;
-    }
-    rangeValues = range;
-
-    return scale;
-  };
-
-  scale.ticks = () => [];
-  scale.tickFormat = () => formatMonth;
-  scale.bandwidth = () => 20; // Match the maxBarWidth
-  scale.copy = () => createContractExecutionCustomScale(data);
-  scale.nice = () => scale;
-  scale.type = 'band';
-
-  return scale;
-};
-
 // Generate tick positions for month labels
 export const generateMonthTickPositions = (
   processedData: DataContractProcessedResultCharts[]
