@@ -84,48 +84,43 @@ describe('getIncidentGroupByOption', () => {
 });
 
 describe('getIncidentGroupSubLine', () => {
-  it('should place a table group under the rest of its FQN', () => {
-    expect(
-      getIncidentGroupSubLine(
-        group({
-          groupBy: IncidentGroupBy.Table,
-          name: 'dim_address',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
-        })
-      )
-    ).toBe('sample_data · ecommerce_db · shopify');
+  const tables = [
+    { id: 't1', type: 'table', name: 'customers' },
+    { id: 't2', type: 'table', name: 'orders', displayName: 'Orders' },
+  ];
+  const testDefinitions = [
+    {
+      id: 'd1',
+      type: 'testDefinition',
+      name: 'rowCount',
+      displayName: 'Row count',
+    },
+    { id: 'd2', type: 'testDefinition', name: 'uniqueness' },
+  ];
+
+  it('should list the tables of a test definition group', () => {
+    expect(getIncidentGroupSubLine(group({ tables, testDefinitions }))).toBe(
+      'customers · Orders'
+    );
   });
 
-  it('should keep a quoted FQN part whole', () => {
+  it('should list the test definitions of a table group', () => {
     expect(
       getIncidentGroupSubLine(
-        group({
-          groupBy: IncidentGroupBy.Table,
-          name: 'dim_address',
-          fullyQualifiedName: 'sample_data."ecommerce.db".shopify.dim_address',
-        })
+        group({ groupBy: IncidentGroupBy.Table, tables, testDefinitions })
       )
-    ).toBe('sample_data · ecommerce.db · shopify');
+    ).toBe('Row count · uniqueness');
   });
 
-  it('should leave a test definition and an owner without a sub-line', () => {
+  it('should list the tables of an owner group', () => {
     expect(
       getIncidentGroupSubLine(
-        group({ fullyQualifiedName: 'columnValuesToBeUnique' })
+        group({ groupBy: IncidentGroupBy.Owner, tables, testDefinitions })
       )
-    ).toBe('');
-    expect(
-      getIncidentGroupSubLine(
-        group({
-          groupBy: IncidentGroupBy.Owner,
-          name: 'adam.matthews',
-          fullyQualifiedName: 'adam.matthews',
-        })
-      )
-    ).toBe('');
+    ).toBe('customers · Orders');
   });
 
-  it('should return nothing when the group carries no FQN', () => {
+  it('should return nothing when the group names no related entity', () => {
     expect(getIncidentGroupSubLine(group())).toBe('');
   });
 });

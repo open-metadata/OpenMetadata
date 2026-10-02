@@ -229,11 +229,11 @@ describe('IncidentGroupsView', () => {
     });
 
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      'label.group-count:5'
+      '5 label.group-lowercase-plural'
     );
     expect(
       screen.getByTestId('incident-groups-recurring-count')
-    ).toHaveTextContent('label.recurring-count:2');
+    ).toHaveTextContent('2 label.recurring-lowercase');
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
   });
 
@@ -311,7 +311,9 @@ describe('IncidentGroupsView', () => {
     });
 
     expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
-    expect(screen.getByTestId('incident-groups-count')).toBeEmptyDOMElement();
+    expect(
+      screen.queryByTestId('incident-groups-count')
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('incident-groups-table')
     ).not.toBeInTheDocument();
@@ -507,7 +509,7 @@ describe('IncidentGroupsView', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      'label.group-count:5'
+      '5 label.group-lowercase-plural'
     );
 
     await act(async () => {
@@ -567,7 +569,9 @@ describe('IncidentGroupsView', () => {
       screen.queryByTestId('incident-groups-table')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-loader')).toBeInTheDocument();
-    expect(screen.getByTestId('incident-groups-count')).toBeEmptyDOMElement();
+    expect(
+      screen.queryByTestId('incident-groups-count')
+    ).not.toBeInTheDocument();
 
     await act(async () => {
       resolveSwitched({ data: mockGroups.slice(0, 1), paging: { total: 1 } });
@@ -1022,7 +1026,7 @@ describe('IncidentGroupsView filters and paging', () => {
     });
 
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      'label.group-count:3'
+      '3 label.group-lowercase-plural'
     );
     expect(currentPageInput()).toHaveAttribute('max', '1');
   });
@@ -1049,5 +1053,20 @@ describe('IncidentGroupsView filters and paging', () => {
     });
 
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('1');
+  });
+
+  it('should read a single group in the singular', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: [mockGroups[0]],
+      paging: { total: 1 },
+    });
+
+    await act(async () => {
+      renderView();
+    });
+
+    expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
+      '1 label.group-lowercase'
+    );
   });
 });

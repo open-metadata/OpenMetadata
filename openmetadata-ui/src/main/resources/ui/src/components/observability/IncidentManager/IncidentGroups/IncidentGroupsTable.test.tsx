@@ -69,6 +69,29 @@ const fixtureGroup: TestCaseIncidentGroup = {
   lastSeen: 1781000000000,
   trend: [1, 0, 0, 2, 0, 1, 3, 4],
   trendDirection: IncidentTrendDirection.Rising,
+  tableCount: 1,
+  tables: [{ id: 't1', type: 'table', name: 'dim_address' }],
+  testDefinitionCount: 3,
+  testDefinitions: [
+    {
+      id: 'd1',
+      type: 'testDefinition',
+      name: 'rowCount',
+      displayName: 'Row count',
+    },
+    {
+      id: 'd2',
+      type: 'testDefinition',
+      name: 'uniqueness',
+      displayName: 'Uniqueness',
+    },
+    {
+      id: 'd3',
+      type: 'testDefinition',
+      name: 'nullCheck',
+      displayName: 'Null check',
+    },
+  ],
 };
 
 const renderTable = (
@@ -92,10 +115,10 @@ describe('IncidentGroupsTable', () => {
 
     expect(screen.getByTestId('group-name')).toHaveTextContent('Dim Address');
     expect(screen.getByTestId('group-sub-line')).toHaveTextContent(
-      'sample_data · ecommerce_db · shopify'
+      'Row count · Uniqueness · Null check'
     );
-    expect(screen.getByTestId('group-dimension')).toHaveTextContent(
-      'label.table'
+    expect(screen.getByTestId('group-related')).toHaveTextContent(
+      '3 label.type-lowercase-plural'
     );
     expect(screen.getByTestId('group-incident-count')).toHaveTextContent('5');
     expect(screen.getByTestId('group-severity')).toHaveTextContent(
@@ -146,6 +169,7 @@ describe('IncidentGroupsTable', () => {
       'columnValuesToBeUnique'
     );
     expect(screen.queryByTestId('group-sub-line')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('group-related')).not.toBeInTheDocument();
     expect(screen.getByTestId('group-severity')).toHaveTextContent(
       'label.no-entity'
     );
@@ -185,5 +209,85 @@ describe('IncidentGroupsTable', () => {
     );
 
     expect(mockOnSortTypeChange).toHaveBeenCalledWith('asc');
+  });
+
+  it('should head the related column after what it counts', () => {
+    renderTable([fixtureGroup], IncidentGroupBy.TestDefinition);
+
+    expect(
+      screen.getByRole('columnheader', { name: 'label.table-plural' })
+    ).toBeInTheDocument();
+  });
+
+  it('should head the related column with the check type for a table', () => {
+    renderTable();
+
+    expect(
+      screen.getByRole('columnheader', { name: 'label.check-type' })
+    ).toBeInTheDocument();
+  });
+
+  it('should count the tables of a test definition group', () => {
+    renderTable(
+      [
+        {
+          ...fixtureGroup,
+          groupBy: IncidentGroupBy.TestDefinition,
+          tableCount: 3,
+        },
+      ],
+      IncidentGroupBy.TestDefinition
+    );
+
+    expect(screen.getByTestId('group-related')).toHaveTextContent(
+      '3 label.table-lowercase-plural'
+    );
+    // The array is capped server-side, so the sub-line lists what it holds
+    // while the pill counts from the field.
+    expect(screen.getByTestId('group-sub-line')).toHaveTextContent(
+      'dim_address'
+    );
+  });
+
+  it('should read a single table in the singular', () => {
+    renderTable(
+      [{ ...fixtureGroup, groupBy: IncidentGroupBy.TestDefinition }],
+      IncidentGroupBy.TestDefinition
+    );
+
+    expect(screen.getByTestId('group-related')).toHaveTextContent(
+      '1 label.table-lowercase'
+    );
+  });
+
+  it('should name the only test definition of a group instead of counting it', () => {
+    renderTable(
+      [
+        {
+          ...fixtureGroup,
+          groupBy: IncidentGroupBy.Owner,
+          testDefinitionCount: 1,
+          testDefinitions: [fixtureGroup.testDefinitions?.[0]].filter(
+            Boolean
+          ) as TestCaseIncidentGroup['testDefinitions'],
+        },
+      ],
+      IncidentGroupBy.Owner
+    );
+
+    expect(screen.getByTestId('group-related')).toHaveTextContent('Row count');
+    expect(screen.getByTestId('group-sub-line')).toHaveTextContent(
+      'dim_address'
+    );
+  });
+
+  it('should count a single test definition it cannot name', () => {
+    renderTable([
+      { ...fixtureGroup, testDefinitionCount: 1, testDefinitions: [] },
+    ]);
+
+    expect(screen.getByTestId('group-related')).toHaveTextContent(
+      '1 label.type-lowercase'
+    );
   });
 });

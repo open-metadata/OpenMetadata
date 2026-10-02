@@ -13,19 +13,22 @@
 
 import {
   Avatar,
-  BadgeWithIcon,
+  Badge,
   Box,
   Table,
   Typography,
 } from '@openmetadata/ui-core-components';
-// The core-components icon barrel re-exports the design team's own SVG set
-// only; it carries no generic person glyph, so this one comes from the shared
-import { User01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Container,
+  LayersTwo01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import {
+  IncidentGroupBy,
   Severities,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
@@ -69,10 +72,11 @@ const ASSIGNEE_AVATAR_WIDTH = '24';
 const StackedCell = ({
   value,
   caption,
+  captionIcon: CaptionIcon,
   valueTestId,
   captionTestId,
 }: StackedCellProps) => (
-  <Box className="tw:gap-0.5" direction="col">
+  <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
     <Typography
       as="span"
       className="tw:text-primary"
@@ -82,16 +86,51 @@ const StackedCell = ({
       {value}
     </Typography>
     {caption && (
-      <Typography
-        as="span"
-        className="tw:text-tertiary"
-        data-testid={captionTestId}
-        size="text-xs">
-        {caption}
-      </Typography>
+      <Box align="center" className="tw:min-w-0 tw:text-tertiary" gap={1}>
+        {CaptionIcon && (
+          <CaptionIcon className="tw:size-3 tw:shrink-0 tw:text-fg-quaternary" />
+        )}
+        <Typography
+          as="span"
+          className="tw:truncate"
+          data-testid={captionTestId}
+          size="text-xs">
+          {caption}
+        </Typography>
+      </Box>
     )}
   </Box>
 );
+
+/**
+ * What the group's incidents span, counted: the tables of a test definition
+ * group, the test definitions (check types) of any other. A group with a single
+ * test definition names it instead, as the design does.
+ */
+const RelatedEntityCell = ({ group }: IncidentGroupCellProps) => {
+  const { t } = useTranslation();
+  const isTableCount = group.groupBy === IncidentGroupBy.TestDefinition;
+  const count = isTableCount ? group.tableCount : group.testDefinitionCount;
+  const onlyTestDefinition =
+    !isTableCount && count === 1 ? group.testDefinitions?.[0] : undefined;
+
+  if (count === undefined) {
+    return null;
+  }
+
+  const [singularKey, pluralKey] = isTableCount
+    ? ['label.table-lowercase', 'label.table-lowercase-plural']
+    : ['label.type-lowercase', 'label.type-lowercase-plural'];
+  const countLabel = `${count} ${t(count === 1 ? singularKey : pluralKey)}`;
+
+  return (
+    <span data-testid="group-related">
+      <Badge color="gray" size="sm" type="modern">
+        {onlyTestDefinition ? getEntityName(onlyTestDefinition) : countLabel}
+      </Badge>
+    </span>
+  );
+};
 
 /**
  * The assignee names the group carries, drawn by the app's standard avatar so a
@@ -168,12 +207,21 @@ const IncidentGroupsTable = ({
   const { t } = useTranslation();
 
   const dimension = getIncidentGroupByOption(groupBy);
-  const DimensionIcon = dimension.icon;
+  // A table group's sub-line lists check types; every other group's, tables.
+  const subLineIcon =
+    groupBy === IncidentGroupBy.Table ? LayersTwo01 : Container;
 
   const columns = useMemo(
     () => [
       { id: 'name', label: t(dimension.labelKey) },
-      { id: 'dimension', label: t('label.dimension') },
+      {
+        id: 'related',
+        label: t(
+          groupBy === IncidentGroupBy.TestDefinition
+            ? 'label.table-plural'
+            : 'label.check-type'
+        ),
+      },
       {
         id: INCIDENT_GROUPS_SORT_COLUMN,
         label: t('label.incident-plural'),
@@ -185,7 +233,7 @@ const IncidentGroupsTable = ({
       { id: 'lastSeen', label: t('label.last-seen') },
       { id: 'trend', label: t('label.trend') },
     ],
-    [dimension.labelKey, t]
+    [dimension.labelKey, groupBy, t]
   );
 
   // react-aria drives the header arrow off the descriptor; `sortType` is the
@@ -206,6 +254,7 @@ const IncidentGroupsTable = ({
         <Table.Cell>
           <StackedCell
             caption={getIncidentGroupSubLine(group) || undefined}
+            captionIcon={subLineIcon}
             captionTestId="group-sub-line"
             value={
               // The unowned bucket stands for no entity, so it is named here
@@ -218,13 +267,7 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          {/* BadgeWithIcon takes no `data-testid`, so the hook sits on a
-              wrapper rather than on the pill itself. */}
-          <span data-testid="group-dimension">
-            <BadgeWithIcon color="gray" iconLeading={DimensionIcon} size="sm">
-              {t(dimension.labelKey)}
-            </BadgeWithIcon>
-          </span>
+          <RelatedEntityCell group={group} />
         </Table.Cell>
         <Table.Cell>
           <StackedCell

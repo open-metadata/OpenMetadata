@@ -111,6 +111,7 @@ export interface IncidentGroupAssignees {
 export interface StackedCellProps {
   value: ReactNode;
   caption?: ReactNode;
+  captionIcon?: FC<{ className?: string }>;
   valueTestId: string;
   captionTestId?: string;
 }

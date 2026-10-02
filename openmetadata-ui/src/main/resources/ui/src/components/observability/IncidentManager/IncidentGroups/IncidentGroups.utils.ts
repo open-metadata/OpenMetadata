@@ -24,7 +24,7 @@ import {
   ListIncidentGroupsParams,
   OpenIncidentStatus,
 } from '../../../../rest/incidentManagerAPI';
-import Fqn from '../../../../utils/Fqn';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
@@ -128,32 +128,18 @@ export const getIncidentGroupByOption = (
   INCIDENT_GROUP_BY_OPTIONS[0];
 
 /**
- * Sub-line under the group name: everything in the FQN above the group itself,
- * which for a table group is its service, database and schema.
- *
- * Only a table is placed in a hierarchy. A test definition is named by its FQN
- * alone, and an owner's FQN is the user or team name — `adam.matthews` is one
- * name, not a name under `adam` — so both are left without a sub-line rather
- * than split on a dot that means nothing there.
- *
- * The table FQN is split on the quoting rules rather than on `.` so a part that
- * contains a dot stays whole; each part is then unquoted, as the quotes are
- * chrome of the encoding rather than part of the name.
+ * Sub-line under the group name: the related entities its open incidents span —
+ * the test definitions of a table group, the tables of any other. It lists what
+ * the server-capped array holds; the related column carries the full count.
  */
-export const getIncidentGroupSubLine = (
-  group: TestCaseIncidentGroup
-): string => {
-  const fullyQualifiedName = group.fullyQualifiedName;
-
-  if (group.groupBy !== IncidentGroupBy.Table || !fullyQualifiedName) {
-    return '';
-  }
-
-  return Fqn.split(fullyQualifiedName)
-    .slice(0, -1)
-    .map((part) => Fqn.unquoteName(part))
+export const getIncidentGroupSubLine = (group: TestCaseIncidentGroup): string =>
+  (
+    (group.groupBy === IncidentGroupBy.Table
+      ? group.testDefinitions
+      : group.tables) ?? []
+  )
+    .map(getEntityName)
     .join(INCIDENT_GROUP_SEPARATOR);
-};
 
 /**
  * The owner dimension carries one group for the incidents on test cases nobody
