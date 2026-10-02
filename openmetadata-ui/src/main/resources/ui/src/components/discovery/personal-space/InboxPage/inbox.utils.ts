@@ -323,9 +323,9 @@ export const ACTIVITY_TYPE_KEYS = [
 export const getActivityTypeKey = (activity?: ActivityEvent): string =>
   (activity && CHANGE_LABEL_KEY[activity.eventType]) ?? ACTIVITY_TYPE_OTHER;
 
-// "Today · Thu, Jul 30"
+// "Today · Thu, Jul 30", "2 days ago · Wed, Jul 28"
 export const getActivityDayLabel = (timestamp: number): string =>
-  `${getRelativeCalendar(timestamp)} · ${formatDateTimeLong(
+  `${getRelativeCalendar(timestamp, undefined, 'days')} · ${formatDateTimeLong(
     timestamp,
     ACTIVITY_DAY_FORMAT
   )}`;
