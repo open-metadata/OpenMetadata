@@ -130,15 +130,17 @@ function DestinationFormItem({
         const externalDestinations = getTestableExternalDestinations(
           formattedDestinations
         );
-        const results = await testAlertDestination({
-          destinations: externalDestinations,
-        });
-        setDestinationsWithStatus(
-          getDestinationsWithTestStatus(
-            externalDestinations,
-            results
-          ) as ModifiedDestination[]
-        );
+        if (!isEmpty(externalDestinations)) {
+          const results = await testAlertDestination({
+            destinations: externalDestinations,
+          });
+          setDestinationsWithStatus(
+            getDestinationsWithTestStatus(
+              externalDestinations,
+              results
+            ) as ModifiedDestination[]
+          );
+        }
       }
     } catch (e) {
       showErrorToast(e as AxiosError);
