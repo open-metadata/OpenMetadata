@@ -14,9 +14,18 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { forwardRef, ReactNode, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { act } from 'react-test-renderer';
+import {
+  AI_APP_MODE,
+  APP_MODE_HINT_STORAGE_KEY,
+  APP_MODE_SESSION_KEY,
+  DEFAULT_APP_MODE,
+} from '../../../constants/appMode.constants';
 import { REDIRECT_PATHNAME } from '../../../constants/router.constants';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
+import { Document } from '../../../generated/entity/docStore/document';
+import { useAppModeStore } from '../../../hooks/useAppMode';
 import axiosClient from '../../../rest/axiosClient';
+import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { fetchAuthenticationConfig } from '../../../rest/miscAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
 import {
@@ -1156,5 +1165,195 @@ describe('Sign-in routing', () => {
     });
 
     await waitFor(() => expect(useNavigate()).toHaveBeenCalledWith('/'));
+  });
+});
+
+// Hoisted to module scope (rather than declared inside the describe below)
+// so the `sonarjs/no-identical-functions` linter doesn't flag it as
+// identical to the Sign-in routing describe's `LoginTrigger` /
+// `renderProvider` — same pattern (drive `handleSuccessfulLogin` through a
+// button), distinct consumers.
+const AppModeLoginTrigger = () => {
+  const { handleSuccessfulLogin } = useAuthProvider();
+
+  return (
+    <button
+      data-testid="login"
+      onClick={() =>
+        handleSuccessfulLogin({
+          profile: { email: 'aaron@example.com', name: 'aaron' },
+        } as OidcUser)
+      }>
+      Login
+    </button>
+  );
+};
+
+const renderAppModeProvider = () =>
+  render(
+    <AuthProvider childComponentType={AppModeLoginTrigger}>
+      <AppModeLoginTrigger />
+    </AuthProvider>
+  );
+
+describe('hydrateAndResolveAppMode boot re-resolve (AI -> Classic persona downgrade)', () => {
+  const PERSONA_ID = 'persona-1';
+  const PERSONA_FQN = 'analytics';
+
+  const useApplicationStoreMock = jest.requireMock(
+    '../../../hooks/useApplicationStore'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ).useApplicationStore as any;
+  const defaultStoreImplementation =
+    useApplicationStoreMock.getMockImplementation();
+
+  const buildPersonaDoc = (appMode: string): Document =>
+    ({
+      data: {
+        personaPreferences: [
+          { personaId: PERSONA_ID, personaName: 'p', appMode },
+        ],
+      },
+    } as unknown as Document);
+
+  const loggedInUser = {
+    id: 'user-1',
+    name: 'aaron',
+    defaultPersona: {
+      id: PERSONA_ID,
+      fullyQualifiedName: PERSONA_FQN,
+      type: 'persona',
+    },
+  };
+
+  // Seeds a `'boot'` session tuple in sessionStorage (real jsdom storage).
+  const seedBootSession = (mode: string, personaAppMode: string | null) => {
+    globalThis.window.sessionStorage.setItem(
+      APP_MODE_SESSION_KEY,
+      JSON.stringify({ personaAppMode, mode, source: 'boot' })
+    );
+  };
+
+  // Makes the mocked localStorage return a fresh hint for the hint key.
+  const seedFreshHint = (mode: string) => {
+    localStorageMock.getItem.mockImplementation((key: string) =>
+      key === APP_MODE_HINT_STORAGE_KEY
+        ? JSON.stringify({ mode, ts: Date.now() })
+        : null
+    );
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // A real zustand store hands back the same references every render; the
+    // default mock builds new ones, which would re-create
+    // `handleSuccessfulLogin` on each render and hide a stale closure.
+    const stableStore = {
+      ...defaultStoreImplementation(),
+      jwtPrincipalClaims: [],
+      jwtPrincipalClaimsMapping: [],
+    };
+    useApplicationStoreMock.mockImplementation(() => stableStore);
+    (getLoggedInUser as jest.Mock).mockResolvedValue(loggedInUser);
+    useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
+    globalThis.window.sessionStorage.removeItem(APP_MODE_SESSION_KEY);
+  });
+
+  afterEach(() => {
+    useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
+    globalThis.window.sessionStorage.removeItem(APP_MODE_SESSION_KEY);
+    useApplicationStoreMock.mockImplementation(defaultStoreImplementation);
+  });
+
+  it('applies an admin persona AI -> Classic downgrade even when this tab keeps the AI hint fresh (regression)', async () => {
+    // Arrange: an alive AI tab — boot AI session, a fresh self-refreshed AI
+    // hint (kept fresh by this tab's own heartbeat), persona doc downgraded
+    // to Classic by an admin. Before the fix the resolver adopted the
+    // self-refreshed hint and returned early, never fetching the persona.
+    seedBootSession(AI_APP_MODE, AI_APP_MODE);
+    seedFreshHint(AI_APP_MODE);
+    useAppModeStore.setState({ currentMode: AI_APP_MODE });
+    (getDocumentByFQN as jest.Mock).mockResolvedValue(
+      buildPersonaDoc('classic')
+    );
+
+    await act(async () => {
+      renderAppModeProvider();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    // The 'boot' re-resolve must NOT adopt this tab's own self-refreshed
+    // AI hint — it falls through to the persona fetch and applies the
+    // admin's Classic downgrade.
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
+    });
+
+    expect(getDocumentByFQN).toHaveBeenCalledWith(`persona.${PERSONA_FQN}`);
+  });
+
+  it('still adopts a fresh AI hint from a sibling tab when this tab is in a boot Classic session (cross-tab inheritance)', async () => {
+    seedBootSession(DEFAULT_APP_MODE, DEFAULT_APP_MODE);
+    seedFreshHint(AI_APP_MODE);
+    useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
+    (getDocumentByFQN as jest.Mock).mockRejectedValue(
+      new Error('persona fetch must not run for cross-tab hint adoption')
+    );
+
+    await act(async () => {
+      renderAppModeProvider();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+    });
+
+    expect(getDocumentByFQN).not.toHaveBeenCalled();
+  });
+
+  it('still re-resolves and confirms AI when this tab keeps the AI hint fresh and the persona is still AI', async () => {
+    seedBootSession(AI_APP_MODE, AI_APP_MODE);
+    seedFreshHint(AI_APP_MODE);
+    useAppModeStore.setState({ currentMode: AI_APP_MODE });
+    (getDocumentByFQN as jest.Mock).mockResolvedValue(buildPersonaDoc('AI'));
+
+    await act(async () => {
+      renderAppModeProvider();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+    });
+
+    expect(getDocumentByFQN).toHaveBeenCalledWith(`persona.${PERSONA_FQN}`);
+  });
+
+  it('adopts a fresh AI hint on a truly fresh tab with no session tuple (cmd+click inheritance)', async () => {
+    seedFreshHint(AI_APP_MODE);
+    useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
+    (getDocumentByFQN as jest.Mock).mockRejectedValue(
+      new Error('persona fetch must not run for fresh-tab hint adoption')
+    );
+
+    await act(async () => {
+      renderAppModeProvider();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+    });
+
+    expect(getDocumentByFQN).not.toHaveBeenCalled();
   });
 });
