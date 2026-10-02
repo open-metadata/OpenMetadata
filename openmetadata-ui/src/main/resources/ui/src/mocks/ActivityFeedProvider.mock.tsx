@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useActivityFeedProvider } from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { EntityType } from '../enums/entity.enum';
 import { FeedFilter } from '../enums/mydata.enum';
 import { ReactionOperation } from '../enums/reactions.enum';
 import { ActivityEvent } from '../generated/entity/activity/activityEvent';
+import {
+  Conversation,
+  ConversationReply,
+} from '../generated/entity/feed/conversation';
 import { ReactionType } from '../generated/type/reaction';
 import { TaskStatusGroup } from '../rest/tasksAPI';
 
@@ -398,6 +402,50 @@ export const DummySetActiveActivityComponent = ({
         {selectedActivity?.id ?? 'none'}
       </span>
       <span data-testid="activity-reply-count">{activityReplies.length}</span>
+    </div>
+  );
+};
+
+const threadPost = { id: 'post', reactions: [] } as unknown as Conversation;
+const replyPost = {
+  id: 'reply-post',
+  reactions: [],
+} as unknown as ConversationReply;
+
+export const DummyConversationReactionComponent = () => {
+  const { t } = useTranslation();
+  const { updateReactions } = useActivityFeedProvider();
+  const [status, setStatus] = useState<'idle' | 'done' | 'error'>('idle');
+
+  const run = async (isThread: boolean, operation: ReactionOperation) => {
+    setStatus('idle');
+    try {
+      await updateReactions(
+        isThread ? threadPost : replyPost,
+        'feed-thread',
+        isThread,
+        ReactionType.ThumbsUp,
+        operation
+      );
+      setStatus('done');
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div>
+      <button
+        data-testid="add-conversation-reaction"
+        onClick={() => run(true, ReactionOperation.ADD)}>
+        {t('label.add-reaction')}
+      </button>
+      <button
+        data-testid="add-reply-reaction"
+        onClick={() => run(false, ReactionOperation.ADD)}>
+        {t('label.add-reaction')}
+      </button>
+      <span data-testid="reaction-call-status">{status}</span>
     </div>
   );
 };
