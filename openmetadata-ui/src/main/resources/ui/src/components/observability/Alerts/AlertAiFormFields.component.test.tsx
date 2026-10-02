@@ -1539,6 +1539,30 @@ describe('AlertAi form field components', () => {
     });
   });
 
+  it('shows required errors instead of testing an unconfigured external destination', async () => {
+    const value = {
+      ...baseValue,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          destinationType: SubscriptionType.Slack,
+          type: SubscriptionType.Slack,
+        },
+      ],
+    } as ModifiedCreateEventSubscription;
+
+    render(<AlertAiDestinationSection selectedSource="table" value={value} />);
+
+    fireEvent.click(screen.getByTestId('test-destination-button'));
+
+    expect(
+      await screen.findByText(
+        'message.field-text-is-required:label.endpoint-url'
+      )
+    ).toBeInTheDocument();
+    expect(testAlertDestination).not.toHaveBeenCalled();
+  });
+
   it('resets dependent values when source changes', () => {
     const onChange = jest.fn();
     const value: ModifiedCreateEventSubscription = {

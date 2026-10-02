@@ -50,7 +50,7 @@ function DestinationFormItem({
   isViewMode = false,
 }: Readonly<DestinationFormItemProps>) {
   const { t } = useTranslation();
-  const { control, clearErrors, formState } = useFormContext();
+  const { control, clearErrors, formState, trigger } = useFormContext();
 
   const { fields, append, remove } = useFieldArray({
     name: 'destinations',
@@ -125,29 +125,30 @@ function DestinationFormItem({
   const handleTestDestinationClick = useCallback(async () => {
     try {
       setIsDestinationStatusLoading(true);
-      const formattedDestinations = getFormattedDestinations(destinations);
-      if (formattedDestinations) {
-        const externalDestinations = getTestableExternalDestinations(
-          formattedDestinations
-        );
-        if (!isEmpty(externalDestinations)) {
-          const results = await testAlertDestination({
-            destinations: externalDestinations,
-          });
-          setDestinationsWithStatus(
-            getDestinationsWithTestStatus(
-              externalDestinations,
-              results
-            ) as ModifiedDestination[]
-          );
-        }
+      const externalDestinations = getTestableExternalDestinations(
+        getFormattedDestinations(destinations)
+      );
+      if (isEmpty(externalDestinations)) {
+        setDestinationsWithStatus(undefined);
+        await trigger('destinations');
+
+        return;
       }
+      const results = await testAlertDestination({
+        destinations: externalDestinations,
+      });
+      setDestinationsWithStatus(
+        getDestinationsWithTestStatus(
+          externalDestinations,
+          results
+        ) as ModifiedDestination[]
+      );
     } catch (e) {
       showErrorToast(e as AxiosError);
     } finally {
       setIsDestinationStatusLoading(false);
     }
-  }, [destinations]);
+  }, [destinations, trigger]);
 
   const destinationListError = (
     formState.errors.destinations as { message?: string } | undefined
