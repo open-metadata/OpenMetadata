@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../constants/constants';
 import { HELP_ITEMS_ENUM } from '../constants/Navbar.constants';
@@ -205,11 +205,9 @@ describe('NavbarUtils test', () => {
         const item = helpDropdownItems.find((item) => item.key === key);
         const labelContent = item?.label.props.children;
         const secondColumn = labelContent.props.children[1];
-
-        // Should be Typography.Text
         const textElement = secondColumn.props.children[0];
 
-        expect(textElement.type).toBe(Typography.Text);
+        expect(textElement.type).toBe(Typography);
         expect(textElement.props.className).toBe('text-base-color');
       });
     });

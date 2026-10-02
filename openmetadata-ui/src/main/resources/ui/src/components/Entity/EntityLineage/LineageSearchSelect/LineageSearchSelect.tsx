@@ -11,31 +11,39 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import { Select, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Select, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
+import { useShallow } from 'zustand/react/shallow';
 import {
   DEBOUNCE_TIMEOUT,
   INITIAL_NODE_ITEMS_LENGTH,
   NODE_ITEMS_PAGE_SIZE,
   ZOOM_TRANSITION_DURATION,
 } from '../../../../constants/Lineage.constants';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { Column } from '../../../../generated/entity/data/table';
+import { LineagePlatformView } from '../../../../hooks/lineage/types';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { useLineageHandlers } from '../../../Lineage/Lineage/LineageHandlersContext';
 
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
-  const { nodes, reactFlowInstance, onNodeClick } = useLineageProvider();
+  const { onNodeClick } = useLineageHandlers();
+  const { nodes, reactFlowInstance } = useLineageStore(
+    useShallow((s) => ({
+      nodes: s.nodes,
+      reactFlowInstance: s.reactFlowInstance,
+    }))
+  );
   const { zoomValue, isPlatformLineage, platformView, setSelectedColumn } =
     useLineageStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -65,7 +73,7 @@ const LineageSearchSelect = () => {
               src={serviceUtilClassBase.getServiceTypeLogo(node)}
               width="16px"
             />
-            <Typography.Text>{getEntityName(node)}</Typography.Text>
+            <Typography>{getEntityName(node)}</Typography>
           </Space>
         ),
         value: node.fullyQualifiedName,
@@ -96,9 +104,9 @@ const LineageSearchSelect = () => {
                   src={serviceUtilClassBase.getServiceTypeLogo(node)}
                   width="16px"
                 />
-                <Typography.Text className="text-grey-muted text-xs">
+                <Typography className="text-xs" color="secondary">
                   {getEntityName(node)}
-                </Typography.Text>
+                </Typography>
                 <RightOutlined className="text-grey-muted text-xss" />
               </div>
               <div className="d-flex items-center gap-1 ">
@@ -106,7 +114,7 @@ const LineageSearchSelect = () => {
                   node.entityType ?? '',
                   EntityIconSize.Size14
                 )}
-                <Typography.Text>{getEntityName(column)}</Typography.Text>
+                <Typography>{getEntityName(column)}</Typography>
               </div>
             </div>
           ),

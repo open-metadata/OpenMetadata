@@ -22,21 +22,31 @@ import { DashboardDataModelClass } from '../../support/entity/DashboardDataModel
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
-  assignSingleSelectDomain,
   getApiContext,
   redirectToHomePage,
+  searchDataProductOptions,
 } from '../../utils/common';
+import { setDomain } from '../../utils/domainPicker';
 import {
   softDeleteEntity,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 // Service management pages render KnowledgePanel.DataProducts only inside the
@@ -90,7 +100,9 @@ const waitForInheritedDomainOnEntityApi = async (
           );
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -115,7 +127,7 @@ const waitForInheritedDomainOnEntityApi = async (
 
 const selectDataProductsFromKnowledgePanel = async (
   page: Page,
-  domain: {
+  _domain: {
     name: string;
     displayName: string;
   },
@@ -132,23 +144,7 @@ const selectDataProductsFromKnowledgePanel = async (
     .click();
 
   for (const dataProduct of dataProducts) {
-    const tagLocator = page.getByTestId(
-      `tag-${dataProduct.fullyQualifiedName}`
-    );
-
-    await expect(async () => {
-      const searchDataProduct = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain.name))
-      );
-      await page.locator('[data-testid="data-product-selector"] input').clear();
-      await page
-        .locator('[data-testid="data-product-selector"] input')
-        .fill(dataProduct.displayName);
-      await searchDataProduct;
-      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+    const tagLocator = await searchDataProductOptions(page, dataProduct);
 
     await tagLocator.click();
   }
@@ -199,7 +195,9 @@ const waitForDataProductsOnEntityApi = async (
           );
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -307,19 +305,22 @@ const waitForInheritedDomainOnEntityPage = async (
   }).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 5_000] });
 };
 
-const entities = [
-  ApiEndpointClass,
-  TableClass,
-  StoredProcedureClass,
-  DashboardClass,
-  PipelineClass,
-  TopicClass,
-  MlModelClass,
-  ContainerClass,
-  SearchIndexClass,
-  DashboardDataModelClass,
-  ChartClass,
-] as const;
+// The test assigns a domain and data product to each entity's parent
+// (database, API collection or service), so every entity owns its parents —
+// on the shard's shared parent a concurrent test overwrites that domain.
+const entityFactories = [
+  () => new ApiEndpointClass({ service: new ApiServiceClass() }),
+  () => new TableClass({ service: new DatabaseServiceClass() }),
+  () => new StoredProcedureClass({ service: new DatabaseServiceClass() }),
+  () => new DashboardClass({ service: new DashboardServiceClass() }),
+  () => new PipelineClass({ service: new PipelineServiceClass() }),
+  () => new TopicClass({ service: new MessagingServiceClass() }),
+  () => new MlModelClass({ service: new MlmodelServiceClass() }),
+  () => new ContainerClass({ service: new StorageServiceClass() }),
+  () => new SearchIndexClass({ service: new SearchIndexServiceClass() }),
+  () => new DashboardDataModelClass({ service: new DashboardServiceClass() }),
+  () => new ChartClass({ service: new DashboardServiceClass() }),
+];
 
 test.beforeAll('setup test', async ({ browser }) => {
   domain = new Domain();
@@ -332,8 +333,8 @@ test.beforeAll('setup test', async ({ browser }) => {
   await afterAction();
 });
 
-entities.forEach((EntityClass) => {
-  const entity = new EntityClass();
+entityFactories.forEach((createEntity) => {
+  const entity = createEntity();
 
   test.describe(entity.getType(), () => {
     test.beforeAll('setup entity ' + entity.getType(), async ({ browser }) => {
@@ -376,7 +377,7 @@ entities.forEach((EntityClass) => {
         await page.getByTestId('breadcrumb').getByRole('link').first().click();
       }
 
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       await waitForAllLoadersToDisappear(page);
 
       // Entities that navigate to a parent entity page (Table/StoredProcedure →
@@ -408,12 +409,14 @@ entities.forEach((EntityClass) => {
       await expect
         .poll(
           async () => {
-            const entityResponse = page.waitForResponse(
+            const entityResponse = waitForResponseWithStatus(
+              page,
               (r) =>
-                r.url().includes(`/api/v1/${entity.endpoint}/`) &&
-                r.status() === 200
+                r.request().method() === 'GET' &&
+                r.url().includes(`/api/v1/${entity.endpoint}/`),
+              200
             );
-            await page.reload();
+            await page.reload({ waitUntil: 'domcontentloaded' });
             await entityResponse;
             await waitForAllLoadersToDisappear(page);
 

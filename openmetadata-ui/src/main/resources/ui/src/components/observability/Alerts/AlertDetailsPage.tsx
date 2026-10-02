@@ -18,10 +18,14 @@ import {
   PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
+import {
+  Edit03,
+  RefreshCw04,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { Key, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -39,7 +43,7 @@ import {
 } from '../../../generated/events/eventSubscription';
 import { useAlertDetailsData } from '../../../hooks/observability/alerts/useAlertDetailsData';
 import { useFqn } from '../../../hooks/useFqn';
-import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
+import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -102,10 +106,7 @@ const AlertDetailsPage = ({
     onEditAlert: handleEditAlert,
     onTabChange: (tab) => handleTabChange(tab),
   });
-  const alertFormState = useObservabilityAlertForm({
-    alertType: kind.alertType,
-    fqn,
-  });
+  const alertFormState = useAlertFormData({ alertType: kind.alertType, fqn });
 
   const {
     alertDetails,
@@ -216,10 +217,11 @@ const AlertDetailsPage = ({
           filterResources={alertFormState.filterResources}
           mode="view"
           shouldShowActionsSection={kind.hasTriggers}
-          shouldShowTemplateSection={!isEmpty(alertFormState.extraFormWidgets)}
           supportedFilters={selectedAlertResource?.supportedFilters}
           supportedTriggers={selectedAlertResource?.supportedActions}
+          templateResourcePermission={alertFormState.templateResourcePermission}
           templates={alertFormState.templates}
+          templatesLoading={alertFormState.loadingState.templates}
           value={alertConfigValue}
         />
       );
@@ -230,8 +232,9 @@ const AlertDetailsPage = ({
     alertConfigValue,
     alertDetails,
     fqn,
-    alertFormState.extraFormWidgets,
     alertFormState.filterResources,
+    alertFormState.loadingState.templates,
+    alertFormState.templateResourcePermission,
     alertFormState.templates,
     kind.hasTriggers,
     selectedAlertResource?.supportedActions,

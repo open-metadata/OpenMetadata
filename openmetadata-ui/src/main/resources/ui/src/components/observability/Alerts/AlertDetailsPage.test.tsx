@@ -33,16 +33,8 @@ import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
 const mockNavigate = jest.fn();
 const mockUseAlertDetailsData = jest.fn();
-const mockUseObservabilityAlertForm = jest.fn();
+const mockUseAlertFormData = jest.fn();
 const mockGetModifiedAlertDataForForm = jest.fn();
-
-jest.mock('./NotificationTemplateUtils', () => ({
-  getTemplateEntityRefObject: jest.fn((template) => ({
-    id: template.id,
-    name: template.name,
-    type: 'notificationTemplate',
-  })),
-}));
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -56,13 +48,9 @@ jest.mock('../../../hooks/observability/alerts/useAlertDetailsData', () => ({
   useAlertDetailsData: (params: unknown) => mockUseAlertDetailsData(params),
 }));
 
-jest.mock(
-  '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm',
-  () => ({
-    useObservabilityAlertForm: (params: unknown) =>
-      mockUseObservabilityAlertForm(params),
-  })
-);
+jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+  useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
+}));
 
 jest.mock('../../../utils/AlertsClassBase', () => ({
   __esModule: true,
@@ -183,7 +171,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Edit03: () => null,
   RefreshCw04: () => null,
   Trash01: () => null,
@@ -239,14 +227,14 @@ jest.mock('./AlertAiForm.component', () => ({
   default: ({
     mode,
     shouldShowActionsSection,
-    shouldShowTemplateSection,
     supportedFilters,
     supportedTriggers,
+    templateResourcePermission,
     value,
   }: {
     mode: string;
     shouldShowActionsSection?: boolean;
-    shouldShowTemplateSection?: boolean;
+    templateResourcePermission?: Record<string, boolean>;
     supportedFilters?: unknown[];
     supportedTriggers?: unknown[];
     value: ModifiedEventSubscription;
@@ -256,8 +244,8 @@ jest.mock('./AlertAiForm.component', () => ({
       <span data-testid="form-shows-triggers">
         {String(Boolean(shouldShowActionsSection))}
       </span>
-      <span data-testid="form-shows-templates">
-        {String(Boolean(shouldShowTemplateSection))}
+      <span data-testid="form-template-permission">
+        {JSON.stringify(templateResourcePermission ?? null)}
       </span>
       <span data-testid="form-name">{value.name}</span>
       <span data-testid="filters-count">{supportedFilters?.length ?? 0}</span>
@@ -421,6 +409,7 @@ const getFormState = () => ({
       supportedFilters: [{ name: 'filter' }],
     },
   ],
+  loadingState: { alerts: false, functions: false, templates: false },
   templates: [],
 });
 
@@ -438,7 +427,7 @@ describe('AlertDetailsPage', () => {
     });
     mockGetModifiedAlertDataForForm.mockReturnValue(modifiedAlert);
     mockUseAlertDetailsData.mockReturnValue(getDetailsState());
-    mockUseObservabilityAlertForm.mockReturnValue(getFormState());
+    mockUseAlertFormData.mockReturnValue(getFormState());
   });
 
   afterEach(() => queryClient.clear());
@@ -614,7 +603,7 @@ describe('AlertDetailsPage', () => {
     it('loads the alert as a notification alert', () => {
       renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
 
-      expect(mockUseObservabilityAlertForm).toHaveBeenCalledWith(
+      expect(mockUseAlertFormData).toHaveBeenCalledWith(
         expect.objectContaining({ alertType: AlertType.Notification })
       );
     });
@@ -663,15 +652,15 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent('true');
   });
 
-  it('shows the template section when a template widget is registered', () => {
-    mockUseObservabilityAlertForm.mockReturnValue({
+  it('passes the template permission to the configuration view', () => {
+    mockUseAlertFormData.mockReturnValue({
       ...getFormState(),
-      extraFormWidgets: { NotificationTemplate: () => null },
+      templateResourcePermission: { ViewAll: true },
     });
     renderPage(<AlertDetailsPage />);
 
-    expect(screen.getByTestId('form-shows-templates')).toHaveTextContent(
-      'true'
+    expect(screen.getByTestId('form-template-permission')).toHaveTextContent(
+      '{"ViewAll":true}'
     );
   });
 });

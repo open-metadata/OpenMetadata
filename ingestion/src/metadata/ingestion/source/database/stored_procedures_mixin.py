@@ -19,7 +19,7 @@ from collections import defaultdict
 from collections.abc import Iterator
 
 from sqlalchemy import text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -87,49 +87,96 @@ class StoredProcedureLineageMixin(ABC):
         """
         yield self.engine
 
+    def get_stored_procedure_sql_statements(self) -> Iterator[str]:
+        """
+        Statements to read stored-procedure query history with. Defaults to the single
+        statement returned by `get_stored_procedure_sql_statement`. Sources that split the
+        read across several statements override this.
+        """
+        yield self.get_stored_procedure_sql_statement()
+
+    def narrow_stored_procedure_statement(self, statement: str, exc: Exception) -> Iterator[str]:
+        """
+        Statements to try instead of one that failed, for sources that can read the same
+        history over a narrower window (Snowflake halves the date window when the engine
+        cancels the scan). Yielding nothing means the failure is final and is reported.
+        """
+        yield from ()
+
     def yield_stored_procedure_queries(self) -> Iterator[QueryByProcedure]:
         """
         Yield query and stored procedure object for lineage processing.
         """
         for engine in self.get_stored_procedure_engines():
-            # Built outside the guard below: a failure here is a bug in the source's
-            # statement builder, not an unreachable engine, and must not be reported
-            # as a skipped connection.
-            query = self.get_stored_procedure_sql_statement()
+            # Connecting is guarded per engine rather than per statement, so an engine we
+            # cannot reach is skipped once. It is skipped rather than reported because on an
+            # ingest-all-databases run a single database that denies VIEW SERVER STATE must
+            # not drag the whole run's success percentage down - unlike a statement that
+            # fails after connecting, which is reported below. Narrowed because SQLAlchemy
+            # wraps driver failures but mssql+pytds leaks raw OSError subclasses on connect
+            # (socket.gaierror, TimeoutError); a KeyError/AttributeError here is a code bug
+            # and must keep propagating.
             try:
-                with engine.connect() as conn:
-                    results = conn.execute(text(query)).all()
-            # Narrowed: SQLAlchemy wraps driver failures, but mssql+pytds leaks raw
-            # OSError subclasses on connect (socket.gaierror, TimeoutError) - the same
-            # types NETWORK_ERRORS matches. A KeyError/AttributeError here is a code
-            # bug and must keep propagating.
+                connection = engine.connect()
             except (SQLAlchemyError, OSError) as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning("Failed to fetch stored procedure query history from a connection, skipping it: %s", exc)
                 continue
 
-            for row in results:
-                # Bound outside the try so the handler can still name the procedure, and
-                # assigned inside it so an unreadable row cannot escape and silently drop
-                # every row after it.
-                row_data = {}
-                try:
-                    row_data = row._asdict()
-                    query_by_procedure = QueryByProcedure.model_validate(row_data)
-                    if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
-                        query_by_procedure.procedure_name = get_procedure_name_from_call(
-                            query_text=query_by_procedure.procedure_text
-                        )
-                    yield query_by_procedure
-                except Exception as exc:
-                    self.status.failed(
-                        StackTraceError(
-                            name="Stored Procedure",
-                            error=f"Error trying to get procedure name for "
-                            f"[{row_data.get('PROCEDURE_NAME') or 'unknown procedure'}] due to [{exc}]",
-                            stackTrace=traceback.format_exc(),
-                        )
+            # Statements are built inside the connection but outside the guard above: a
+            # failure here is a bug in the source's statement builder, not an unreachable
+            # engine, and must not be reported as a skipped connection.
+            with connection as conn:
+                for query in self.get_stored_procedure_sql_statements():
+                    yield from self._yield_queries_for_statement(conn, query)
+
+    def _yield_queries_for_statement(self, conn: Connection, query: str) -> Iterator[QueryByProcedure]:
+        """
+        Read one history statement. A statement that fails is retried over whatever narrower
+        statements the source offers, and otherwise recorded and skipped rather than raised:
+        the exception would otherwise escape the lineage producer and abort the whole
+        workflow, so a query history too large to scan used to cost the run its query
+        lineage as well.
+        """
+        try:
+            results = conn.execute(text(query)).all()
+        except Exception as exc:
+            narrowed = list(self.narrow_stored_procedure_statement(query, exc))
+            if not narrowed:
+                self.status.failed(
+                    StackTraceError(
+                        name="Stored Procedure",
+                        error=f"Error reading stored procedure query history due to [{exc}]",
+                        stackTrace=traceback.format_exc(),
                     )
+                )
+                return
+            for narrower_query in narrowed:
+                yield from self._yield_queries_for_statement(conn, narrower_query)
+            return
+
+        for row in results:
+            # Bound outside the try so the handler can still name the procedure, and
+            # assigned inside it so an unreadable row cannot escape and silently drop
+            # every row after it.
+            row_data = {}
+            try:
+                row_data = row._asdict()
+                query_by_procedure = QueryByProcedure.model_validate(row_data)
+                if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
+                    query_by_procedure.procedure_name = get_procedure_name_from_call(
+                        query_text=query_by_procedure.procedure_text
+                    )
+                yield query_by_procedure
+            except Exception as exc:
+                self.status.failed(
+                    StackTraceError(
+                        name="Stored Procedure",
+                        error=f"Error trying to get procedure name for "
+                        f"[{row_data.get('PROCEDURE_NAME') or 'unknown procedure'}] due to [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     @staticmethod
     def _reference_name(reference: EntityReference | None) -> str:

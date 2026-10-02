@@ -34,6 +34,7 @@ import {
   toastNotification,
   uuid,
   visitGlossaryPage,
+  waitForAntdModalToSettle,
 } from '../../utils/common';
 import {
   selectDataProduct,
@@ -65,7 +66,7 @@ test.describe(
         const adminPage = await browser.newPage({
           storageState: 'playwright/.auth/admin.json',
         });
-        await adminPage.goto('/');
+        await adminPage.goto('/', { waitUntil: 'domcontentloaded' });
         const { apiContext, afterAction } = await getApiContext(adminPage);
 
         const id = uuid();
@@ -336,7 +337,7 @@ test.describe(
     }) => {
       // Admin: Customize Table detail page for persona
       const adminPage = await browser.newPage();
-      await adminUser.login(adminPage);
+      await adminUser.signIn(adminPage);
       await redirectToHomePage(adminPage);
 
       const personaListResponse =
@@ -359,6 +360,7 @@ test.describe(
         .getByRole('dialog')
         .getByRole('button', { name: 'Add' });
       await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
+      await waitForAntdModalToSettle(adminPage);
       await expect(addButton).toBeEnabled();
       await addButton.click();
 
@@ -402,7 +404,7 @@ test.describe(
 
       // User: Validate long description in custom tab
       const userPage = await browser.newPage();
-      await regularUser.login(userPage);
+      await regularUser.signIn(userPage);
       await redirectToHomePage(userPage);
 
       await table.visitEntityPage(userPage);

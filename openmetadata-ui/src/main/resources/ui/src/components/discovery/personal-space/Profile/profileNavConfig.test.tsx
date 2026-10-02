@@ -29,6 +29,13 @@ jest.mock('./tabs/access-control/AccessControlPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('./tabs/bots/BotsPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('../../../../assets/svg/entity/bot.svg', () => ({
+  ReactComponent: () => null,
+}));
 
 import {
   DEFAULT_PROFILE_NAV_ID,
@@ -39,12 +46,13 @@ import {
 } from './profileNavConfig';
 
 describe('profileNavConfig', () => {
-  it('exposes exactly the 4 built-in nav items in order', () => {
+  it('exposes exactly the 5 built-in nav items in order', () => {
     expect(PROFILE_NAV_ITEMS.map((i) => i.id)).toEqual([
       'profile',
       'permissions',
       'access-token',
       'access-control',
+      'bots',
     ]);
   });
 
@@ -61,7 +69,7 @@ describe('profileNavConfig', () => {
       expect(typeof item.render).toBe('function');
     });
 
-    expect(ids.size).toBe(4);
+    expect(ids.size).toBe(5);
   });
 
   it('places access-control under administration group, not credentials', () => {
@@ -74,6 +82,7 @@ describe('profileNavConfig', () => {
       permissions: 'account',
       'access-token': 'credentials',
       'access-control': 'administration',
+      bots: 'administration',
     });
   });
 
@@ -86,6 +95,7 @@ describe('profileNavConfig', () => {
       'account',
       'administration',
       'workspace',
+      'application',
       'credentials',
     ]);
   });

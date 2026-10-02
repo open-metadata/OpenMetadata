@@ -580,6 +580,10 @@ export interface MlFeature {
      */
     description?: string;
     /**
+     * Display Name that identifies this ML Feature name.
+     */
+    displayName?: string;
+    /**
      * Description of the algorithm used to compute the feature, e.g., PCA, bucketing...
      */
     featureAlgorithm?: string;

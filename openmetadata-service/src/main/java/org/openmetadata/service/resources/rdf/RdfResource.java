@@ -65,7 +65,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
-import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfEntityDiffService;
 import org.openmetadata.service.rdf.RdfEntityTypeValidator;
@@ -119,7 +119,7 @@ public class RdfResource {
   private volatile RdfEntityDiffService entityDiffService;
   private volatile SemanticSearchEngine semanticSearchEngine;
   private volatile SparqlFederationGuard federationGuard;
-  private volatile boolean askCollateEnabled;
+  private volatile boolean aiEnabled;
   private volatile String configuredBaseUri = DEFAULT_RDF_BASE_URI;
 
   public static final String RDF_XML = "application/rdf+xml";
@@ -302,10 +302,7 @@ public class RdfResource {
     this.federationGuard = new SparqlFederationGuard(config.getRdfConfiguration());
     this.configuredBaseUri = rdfBaseUri(config);
     this.entityDiffService = new RdfEntityDiffService(configuredBaseUri);
-    this.askCollateEnabled =
-        config.getRdfConfiguration() != null
-            && Boolean.TRUE.equals(config.getRdfConfiguration().getAskCollateEnabled())
-            && LLMClientHolder.isEnabled();
+    this.aiEnabled = OntologyAiAvailability.isEnabled(config.getRdfConfiguration());
   }
 
   private static String rdfBaseUri(final OpenMetadataApplicationConfig config) {
@@ -358,7 +355,7 @@ public class RdfResource {
         .withStorageType(storageType)
         .withInference(inferenceStatus)
         .withProjectionState(projectionState)
-        .withAskCollateEnabled(askCollateEnabled);
+        .withAiEnabled(aiEnabled);
   }
 
   private RdfProjectionState projectionState(final boolean enabled) {

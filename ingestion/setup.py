@@ -20,8 +20,11 @@ VERSIONS = {
     # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
     # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0);
     # CVE-2026-67587 Dag-author RCE on the Scheduler via a Serde Callback deserialization
-    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1)
-    "airflow": "apache-airflow==3.3.1",
+    # gadget and CVE-2026-54183 Variables unmasked in the UI (both need 3.3.1);
+    # CVE-2026-86473 logout ignores a presented Authorization bearer token, leaving it
+    # revocable only by expiry, and CVE-2026-75158 the asset events API returns events for
+    # every Dag with no per-Dag authorization filter (both need 3.3.2)
+    "airflow": "apache-airflow==3.3.2",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     # authlib >=1.6.9 required for: CVE-2026-27962 (critical, JWS JWK header injection),
@@ -91,6 +94,7 @@ VERSIONS = {
     "sqlalchemy-vertica": "sqlalchemy-vertica[vertica-python]>=0.0.5,<1.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf>=8.2,<8.8",  # 8.8+ requires chardet>=7, conflicting with the chardet==4.0.0 profiler pin
+    "canmatrix": "canmatrix<1.3",  # 1.3 breaks importing asammdf: https://github.com/ebroecker/canmatrix/issues/926
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
@@ -107,6 +111,7 @@ COMMONS = {
     },
     "datalake": {
         VERSIONS["asammdf"],
+        VERSIONS["canmatrix"],
         VERSIONS["avro"],
         VERSIONS["boto3"],
         VERSIONS["ijson"],
@@ -180,7 +185,7 @@ base_requirements = {
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
-    "Jinja2>=2.11.3",
+    "Jinja2>=3.1.6",  # 3.1.5/3.1.6 close sandbox escapes; the Rule Library relies on the sandbox
     "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
     "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
@@ -198,8 +203,11 @@ base_requirements = {
     "PyYAML~=6.0",
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage==2.1.7",
+    # snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState, which is
+    # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
+    # Raise the ceiling once a snowflake-sqlalchemy release supports 2.1.
+    "sqlalchemy>=2.0.0,<2.1",
+    "collate-sqllineage==2.1.8",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
@@ -447,6 +455,11 @@ plugins: dict[str, set[str]] = {
     "ssrs": {"requests-ntlm"},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
+    "tableaupipeline": {
+        VERSIONS["tableau"],
+        VERSIONS["validators"],
+        VERSIONS["packaging"],
+    },
     "teradata": {VERSIONS["teradata"]},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {VERSIONS["sqlalchemy-vertica"], DATA_DIFF["vertica"]},

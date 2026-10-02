@@ -89,6 +89,10 @@ def build_not_null_validator(scope, null_count, row_count, threshold=None, unit=
     validator.get_column = MagicMock()
     validator._run_results = MagicMock(return_value=null_count)
     validator.get_row_count = MagicMock(return_value=row_count)
+    # The SQA validator folds both metrics into one query; route it back to the mocks above
+    validator._run_results_and_row_count = MagicMock(
+        return_value={Metrics.nullCount.name: null_count, Metrics.rowCount.name: row_count}
+    )
     return validator
 
 
@@ -279,6 +283,18 @@ class TestResultMessages:
 
         assert result.testCaseStatus is TestCaseStatus.Aborted
         assert "Evaluated on" not in result.result
+
+    def test_an_aborted_run_carries_the_error_details(self):
+        validator = build_validator(ColumnValuesToBeNotNullValidator, [scope_parameter(TEN_PERCENT)])
+        validator.get_column = MagicMock(side_effect=ValueError("no such column"))
+
+        result = validator.run_validation()
+
+        assert result.testCaseStatus is TestCaseStatus.Aborted
+        assert "no such column" in result.result
+        assert result.errorDetails.errorType == "ValueError"
+        assert result.errorDetails.message == "no such column"
+        assert result.errorDetails.stackTrace.rstrip().endswith("ValueError: no such column")
 
     def test_a_missing_scope_reports_the_full_table(self):
         """An older server, or a caller that does not go through the test suite interface"""

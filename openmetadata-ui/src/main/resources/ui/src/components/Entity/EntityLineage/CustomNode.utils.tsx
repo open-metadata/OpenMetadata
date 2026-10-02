@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
-import { Dataflow01, Plus } from '@untitledui/icons';
-import { Skeleton, Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Dataflow01, Plus } from '@openmetadata/ui-core-components/icons';
+import { Skeleton } from 'antd';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { DataType } from '../../../generated/entity/data/table';
@@ -26,6 +25,7 @@ import { useLineageStore } from '../../../hooks/useLineageStore';
 import { EntityChildrenItem } from '../../../interface/lineage.interface';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
+import { onColumnMouseEnter } from '../../../utils/Lineage/handlers/columnInteractions';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
@@ -199,13 +199,13 @@ const getColumnNameContent = (
           })}
         </div>
       )}
-      <Typography.Text
+      <Typography
         className="custom-node-column-label"
         ellipsis={{
           tooltip: true,
         }}>
         {getEntityName(column)}
-      </Typography.Text>
+      </Typography>
     </>
   );
 };
@@ -233,7 +233,6 @@ const ColumnContentInner = ({
   onColumnHover,
   onColumnSelect,
 }: ColumnContentProps) => {
-  const { onColumnMouseEnter } = useLineageProvider();
   const {
     selectedColumn,
     setSelectedColumn,
@@ -261,7 +260,7 @@ const ColumnContentInner = ({
     }
     onColumnHover?.(fullyQualifiedName);
     onColumnMouseEnter(fullyQualifiedName ?? '');
-  }, [fullyQualifiedName, onColumnHover, onColumnMouseEnter, selectedColumn]);
+  }, [fullyQualifiedName, onColumnHover, selectedColumn]);
 
   const handleMouseLeave = useCallback(() => {
     if (selectedColumn) {

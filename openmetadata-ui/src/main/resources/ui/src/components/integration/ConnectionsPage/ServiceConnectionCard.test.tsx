@@ -62,11 +62,15 @@ jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => (
   <span>TagsContainerV2</span>
 ));
 
+jest.mock('../../../utils/ServicePureUtils', () => ({
+  getServiceCategoryLabel: (category: string) =>
+    category === 'databaseServices' ? 'label.database-plural' : category,
+}));
+
 jest.mock('./ConnectionsPage.constants', () => ({
   CATEGORY_CONFIGS: [
     {
       key: 'databaseServices',
-      titleKey: 'label.database-service',
     },
   ],
 }));
@@ -228,7 +232,7 @@ describe('ServiceConnectionCard', () => {
     // The card is too narrow for most names, so it truncates — which is only acceptable because
     // the tooltip below carries the full one.
     expect(name).toHaveAttribute('data-ellipsis', 'true');
-    expect(screen.getByText('label.database-service')).toBeInTheDocument();
+    expect(screen.getByText('label.database-plural')).toBeInTheDocument();
     expect(screen.getByText(/Jul 18, 2026/)).toBeInTheDocument();
     expect(screen.getByTestId('owner-label')).toBeInTheDocument();
   });
@@ -309,9 +313,7 @@ describe('ServiceConnectionCard', () => {
     );
 
     // Category badge gone (redundant on a specific tab), but the rest still shows.
-    expect(
-      screen.queryByText('label.database-service')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('label.database-plural')).not.toBeInTheDocument();
     expect(screen.getByText('My Service Display')).toBeInTheDocument();
     expect(screen.getByText('Mysql')).toBeInTheDocument();
   });

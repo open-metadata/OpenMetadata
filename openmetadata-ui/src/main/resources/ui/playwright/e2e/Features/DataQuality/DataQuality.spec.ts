@@ -24,7 +24,6 @@ import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  assignSingleSelectDomain,
   clickOutside,
   createNewPage,
   descriptionBox,
@@ -32,6 +31,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForAntdPopupToSettle,
   waitForToastToDisappear,
 } from '../../../utils/common';
 import {
@@ -45,6 +45,7 @@ import {
   customFormatDateTime,
   getCurrentMillis,
 } from '../../../utils/dateTime';
+import { setDomain } from '../../../utils/domainPicker';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   glossaryFieldTrigger,
@@ -60,6 +61,7 @@ import {
   visitDataQualityTab,
   waitForTestCaseDetailsResponse,
 } from '../../../utils/testCases';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
 
 // Test data for tags and glossary terms
@@ -785,7 +787,9 @@ test.describe(
 
         await test.step('Show the no-run state before the first result', async () => {
           const testCaseDetailsResponse = waitForTestCaseDetails();
-          await page.goto(testCaseDetailsPath);
+          await page.goto(testCaseDetailsPath, {
+            waitUntil: 'domcontentloaded',
+          });
           await testCaseDetailsResponse;
 
           const banner = await verifyTestCaseLastRunBanner(page, 'not-run-yet');
@@ -830,7 +834,7 @@ test.describe(
             expect(resultResponse.ok()).toBeTruthy();
 
             const testCaseDetailsResponse = waitForTestCaseDetails();
-            await page.reload();
+            await page.reload({ waitUntil: 'domcontentloaded' });
             await testCaseDetailsResponse;
 
             const banner = await verifyTestCaseLastRunBanner(
@@ -902,7 +906,8 @@ test.describe(
           response.url().includes('/api/v1/dataQuality/testCases/name/')
         );
         await page.goto(
-          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`
+          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
         );
         await testCaseDetailsResponse;
 
@@ -991,7 +996,7 @@ test.describe(
 
       // Add domain to table
       await filterTable1.visitEntityPage(page);
-      await assignSingleSelectDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData);
       const testCases = [
         `pw_first_table_column_count_to_be_between_${uuid()}`,
         `pw_second_table_column_count_to_be_between_${uuid()}`,
@@ -1363,7 +1368,7 @@ test.describe(
         await verifyFilterTestCase(page);
         await verifyFilter2TestCase(page, true);
         const url = page.url();
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         expect(page.url()).toBe(url);
 
@@ -1374,7 +1379,7 @@ test.describe(
           page.getByTestId('platform-select-filter')
         ).not.toBeVisible();
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await expect(page.locator('[value="tier"]')).not.toBeVisible();
 
@@ -1570,13 +1575,9 @@ test.describe(
 
           // Ant Dropdown opens on hover, so a re-render that shifts the footer out
           // from under the pointer leaves the menu closed for good.
-          await expect(async () => {
-            await pageSizeDropdown.hover();
-            if (!(await pageSizeMenu.isVisible())) {
-              await pageSizeDropdown.click();
-            }
-            await expect(pageSizeMenu).toBeVisible({ timeout: 2_000 });
-          }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+          await pageSizeDropdown.hover();
+          await expect(pageSizeMenu).toBeVisible();
+          await waitForAntdPopupToSettle(page);
 
           await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
@@ -1688,16 +1689,19 @@ test.describe(
         await waitForIncidentToBeIndexed(apiContext, testCaseFqn, failedAt);
 
         const detailsResponse = waitForTestCaseDetailsResponse(page);
-        const resultsResponse = page.waitForResponse(
+        const resultsResponse = waitForResponseWithStatus(
+          page,
           (response) =>
+            response.request().method() === 'GET' &&
             response
               .url()
-              .includes('/api/v1/dataQuality/testCases/testCaseResults/') &&
-            response.status() === 200
+              .includes('/api/v1/dataQuality/testCases/testCaseResults/'),
+          200
         );
 
         await page.goto(
-          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`
+          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
         );
         await Promise.all([detailsResponse, resultsResponse]);
         await waitForAllLoadersToDisappear(page);
@@ -1747,7 +1751,9 @@ test.describe(
         }
 
         await Promise.all([
-          page.waitForURL((url) => url.pathname === incidentHref),
+          page.waitForURL((url) => url.pathname === incidentHref, {
+            waitUntil: 'domcontentloaded',
+          }),
           incidentLink.click(),
         ]);
       } finally {

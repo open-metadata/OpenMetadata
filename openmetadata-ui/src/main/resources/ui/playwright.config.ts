@@ -13,6 +13,7 @@
 import {
   defineConfig,
   devices,
+  type PlaywrightTestConfig,
   type ReporterDescription,
 } from '@playwright/test';
 import dotenv from 'dotenv';
@@ -46,6 +47,11 @@ const hasDedicatedImportExportLane =
 const isPlannedShard = Boolean(shardPlan);
 const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
 const authDependencies = hasPreseededState ? [] : ['setup'];
+// SharedInfra + LineageDataClass seeding is folded into entity-data.setup.ts
+// (via seedLineageAndSharedInfra in lineage-data.helper.ts). No separate
+// lineage-data-setup project is needed; consolidating means the CI
+// fixture-builder step — which only runs entity-data-setup — captures every
+// JSON file test workers need.
 const entityDependencies = hasPreseededState
   ? []
   : ['setup', 'entity-data-setup'];
@@ -178,7 +184,15 @@ const performanceReporter: ReporterDescription[] = isPlannedShard
     ]
   : [];
 
+type TraceMode = NonNullable<PlaywrightTestConfig['use']>['trace'];
+
+const traceMode = (process.env.PW_TRACE ?? 'on-first-retry') as TraceMode;
+
 const reporters: ReporterDescription[] = [
+  // Must stay first: it enriches the shared TestResult in place, so every
+  // reporter after it serialises the located failure rather than a bare
+  // "Test timeout of 60000ms exceeded".
+  ['./playwright/reporters/TimeoutDiagnosticsReporter.ts'],
   ['list'],
   ...htmlReporter,
   [
@@ -241,8 +255,14 @@ export default defineConfig({
      * assertions are calibrated for the default motion path. */
     reducedMotion: 'reduce',
 
-    /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'on-first-retry',
+    /* `on-first-retry` records the *retry*, which is the attempt that passed —
+     * so the attempt that actually failed is the one with no trace, and the
+     * network log that would name the failing request never exists. That is why
+     * a whole class of flakes (options detaching mid-click, requests that never
+     * fire) has stayed undiagnosed. Keep it as the default because tracing all
+     * ~4500 tests costs real wall-clock, and set PW_TRACE=retain-on-failure on a
+     * targeted rerun when you need the failing attempt's trace. */
+    trace: traceMode,
     screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
@@ -268,6 +288,10 @@ export default defineConfig({
       testMatch: '**/auth.setup.ts',
     },
     {
+      // Also seeds the Lineage graph (16 entities + 15 edges + 2 column
+      // edges) and SharedInfra parents — see the `seedLineageAndSharedInfra`
+      // helper. Consolidated here so the CI fixture cache (produced by this
+      // single seeding step) contains all three JSON files.
       name: 'entity-data-setup',
       testMatch: '**/entity-data.setup.ts',
       dependencies: ['setup'],
@@ -295,11 +319,11 @@ export default defineConfig({
       testIgnore: [
         '**/nightly/**',
         '**/Search/**',
-        // Every SSO spec lives under Auth/ and mutates the backend's
-        // authenticationConfiguration via applyProviderConfig — the main
-        // project must never pick them up, or entity/domain/search tests
-        // would race a mid-run auth swap. The `sso-auth` project owns
-        // these specs exclusively (fullyParallel:false, workers:1).
+        // Every SSO/login/auth-config spec lives under /Auth/** and
+        // runs under the `sso-auth` project (fullyParallel:false,
+        // workers:1) so its backend `authenticationConfiguration`
+        // mutations via applyProviderConfig can't race feature
+        // specs here.
         '**/Auth/**',
         '**/Http2/**',
         '**/DataAssetRulesEnabled.spec.ts',
@@ -347,12 +371,20 @@ export default defineConfig({
       // specs listed here plus the new parametrized SsoScenarios file
       // that runs 9 flows against every SsoProviderFixture in the matrix.
       name: 'sso-auth',
-      testMatch: [
-        '**/SsoScenarios.spec.ts',
-        '**/OktaSelfSignupClaims.spec.ts',
-        '**/SSOSelfSignup.spec.ts',
-        '**/SSOSessionLimit.spec.ts',
-      ],
+      // Every auth/login-related spec lives under /Auth/**. The
+      // `chromium` and `Basic` projects testIgnore that same tree,
+      // so the mid-run backend `authenticationConfiguration`
+      // mutations this suite performs can't race feature specs.
+      testMatch: ['**/Auth/**/*.spec.ts'],
+      // Login.spec.ts and LoginConfiguration.spec.ts read
+      // `playwright/.auth/admin.json` (written by auth.setup.ts) via
+      // test.use({storageState}), so the setup project must run
+      // before this one. Per-provider SsoScenarios legs that mutate
+      // the backend still work — auth.setup.ts runs BEFORE the
+      // scenario's beforeAll swaps the provider, and the Basic-only
+      // moved specs run only on the Basic leg where the setup's
+      // admin session stays valid.
+      dependencies: authDependencies,
       use: { ...devices['Desktop Chrome'], trace: 'retain-on-failure' },
       fullyParallel: false,
       workers: 1,
