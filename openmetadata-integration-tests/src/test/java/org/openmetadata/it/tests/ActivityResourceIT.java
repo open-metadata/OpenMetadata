@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -415,6 +416,49 @@ public class ActivityResourceIT {
     assertFalse(
         mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
         "Deleting the reply drops the activity");
+  }
+
+  @Test
+  void test_mentionsFeedSupportsDomainFilter(TestNamespace ns) throws Exception {
+    Domain allowedDomain = createDomain(ns, "mentions-allowed-domain");
+    Domain blockedDomain = createDomain(ns, "mentions-blocked-domain");
+    Table table = createTableInDomain(ns, "mentions-domain-table", allowedDomain);
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">", allowedDomain);
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + SharedEntities.get().USER2.getName() + "> please review");
+
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client(), allowedDomain.getFullyQualifiedName())
+            .contains(activity.getId()),
+        "Mentions in the requested domain are returned");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user2Client(), blockedDomain.getFullyQualifiedName())
+            .contains(activity.getId()),
+        "Mentions outside the requested domain are excluded");
+  }
+
+  @Test
+  void test_mentionsFeedIncludesTeamMentions(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "activity-team-mentions");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    // shared_user2 belongs to TEAM21; shared_user1 does not.
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::team::" + SharedEntities.get().TEAM21.getName() + "> please review");
+
+    assertTrue(
+        mentionedActivityIds(SdkClients.user2Client()).contains(activity.getId()),
+        "A member of the mentioned team sees the activity");
+    assertFalse(
+        mentionedActivityIds(SdkClients.user1Client()).contains(activity.getId()),
+        "A user outside the mentioned team does not");
   }
 
   @Test
@@ -1575,6 +1619,11 @@ public class ActivityResourceIT {
   }
 
   private List<UUID> mentionedActivityIds(OpenMetadataClient client) throws Exception {
+    return mentionedActivityIds(client, null);
+  }
+
+  private List<UUID> mentionedActivityIds(OpenMetadataClient client, String domainFqn)
+      throws Exception {
     String response =
         client
             .getHttpClient()
@@ -1582,7 +1631,7 @@ public class ActivityResourceIT {
                 HttpMethod.GET,
                 ACTIVITY_PATH + "/mentions",
                 null,
-                buildActivityRequestOptions(200, 1, null));
+                buildActivityRequestOptions(200, 1, domainFqn));
     return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
         .map(ActivityEvent::getId)
         .toList();
