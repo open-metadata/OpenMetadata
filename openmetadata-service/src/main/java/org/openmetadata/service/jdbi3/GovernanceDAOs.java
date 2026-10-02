@@ -432,6 +432,14 @@ public interface GovernanceDAOs {
         "SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updatedAt), 0)) FROM workflow_definition_entity")
     String workflowDefinitionEpoch();
 
+    @SqlUpdate(
+        "UPDATE change_request SET deliveryStatus = 'Pending', deliveryAttempts = 0,"
+            + " nextDeliveryAt = :now, claimToken = NULL, leaseUntil = NULL"
+            + " WHERE workflowDefinitionId = :workflowId AND status = 'Pending'"
+            + " AND deliveryStatus = 'AttentionRequired'")
+    int requeueAttentionRequired(
+        @BindUUID("workflowId") UUID workflowDefinitionId, @Bind("now") long now);
+
     // Clearing the claim makes any in-flight delivery's complete/release a no-op, so a delivery
     // that fails because of this refusal cannot put the request back to Pending.
     @SqlUpdate(

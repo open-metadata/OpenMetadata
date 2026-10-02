@@ -17,6 +17,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
 import io.github.resilience4j.core.IntervalFunction;
@@ -126,6 +127,7 @@ import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.TagLabel;
@@ -4601,6 +4603,111 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  void test_ownerApprovesAChangeThatAddsReviewersAndTheStatusStepSucceeds(TestNamespace ns)
+      throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("addsReviewer"))
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withOwners(List.of(shared.USER2_REF, shared.USER3_REF)));
+    deployStatusHookWorkflow(glossary);
+
+    // USER2 adds USER1 as a reviewer; with no reviewers yet, the other owner (USER3) reviews it.
+    String requestId =
+        submit(
+            glossary,
+            "[{\"op\":\"add\",\"path\":\"/reviewers\",\"value\":[{\"id\":\"%s\",\"type\":\"user\"}]}]"
+                .formatted(shared.USER1.getId()));
+    Task task = awaitRequestTask(requestId, glossary);
+    SdkClients.user3Client()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new org.openmetadata.schema.api.tasks.ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved));
+
+    awaitRequestStatus(requestId, "Applied");
+    await("glossary marked Approved after the reviewer list changed")
+        .atMost(Duration.ofMinutes(1))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    EntityStatus.APPROVED,
+                    SdkClients.adminClient()
+                        .glossaries()
+                        .get(glossary.getId().toString(), "reviewers")
+                        .getEntityStatus()));
+    assertEquals(
+        List.of(shared.USER1.getId()),
+        SdkClients.adminClient()
+            .glossaries()
+            .get(glossary.getId().toString(), "reviewers")
+            .getReviewers()
+            .stream()
+            .map(EntityReference::getId)
+            .toList());
+  }
+
+  // Start -> In Review -> Approve -> commit -> Approved (as the approver); reject -> discard.
+  private void deployStatusHookWorkflow(Glossary glossary) throws Exception {
+    String workflowName = "statusHook" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName, "glossary", glossary.getFullyQualifiedName(), List.of()));
+    ArrayNode nodes = (ArrayNode) workflow.get("nodes");
+    ((ObjectNode) nodes.get(1)).putArray("output").add("updatedBy");
+    nodes.add(statusNode("SetInReview", "In Review", "global"));
+    nodes.add(statusNode("SetApproved", "Approved", "Approve"));
+    ArrayNode edges = workflow.putArray("edges");
+    addEdge(edges, "Start", "SetInReview", null);
+    addEdge(edges, "SetInReview", "Approve", null);
+    addEdge(edges, "Approve", "CommitChange", "approve");
+    addEdge(edges, "CommitChange", "SetApproved", null);
+    addEdge(edges, "SetApproved", "ApprovedEnd", null);
+    addEdge(edges, "Approve", "DiscardChange", "reject");
+    addEdge(edges, "DiscardChange", "RejectedEnd", null);
+    createWorkflow(workflow, workflowName);
+  }
+
+  private void createWorkflow(ObjectNode workflow, String workflowName) throws Exception {
+    JsonNode created =
+        MAPPER.readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST,
+                    BASE_PATH,
+                    MAPPER.treeToValue(workflow, CreateWorkflowDefinition.class),
+                    RequestOptions.builder().build()));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(SdkClients.adminClient(), workflowName);
+  }
+
+  private static ObjectNode statusNode(String name, String status, String updatedByNamespace) {
+    ObjectNode node = MAPPER.createObjectNode();
+    node.put("type", "automatedTask").put("subType", "setEntityAttributeTask").put("name", name);
+    node.putObject("config").put("fieldName", "entityStatus").put("fieldValue", status);
+    node.putObject("inputNamespaceMap")
+        .put("relatedEntity", "global")
+        .put("updatedBy", updatedByNamespace);
+    return node;
+  }
+
+  private static void addEdge(ArrayNode edges, String from, String to, String condition) {
+    ObjectNode edge = edges.addObject().put("from", from).put("to", to);
+    if (condition != null) {
+      edge.put("condition", condition);
+    }
+  }
+
+  @Test
   void test_shadowModeWorkflowPublishesTheEdit(TestNamespace ns) throws Exception {
     Glossary glossary = createReviewedGlossary(ns, "shadow");
     deployHookWorkflow(
@@ -4651,7 +4758,8 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
-  void test_changeRequestWithNoOtherReviewerGoesToAdmins(TestNamespace ns) throws Exception {
+  void test_changeRequestWithNoOtherReviewerGoesToAdminsWhenTheNodeAsks(TestNamespace ns)
+      throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     // Owned only by the requester and without reviewers: the requester can never review it.
     Glossary glossary =
@@ -4662,7 +4770,18 @@ public class WorkflowDefinitionResourceIT {
                     .withName(ns.prefix("adminFallback"))
                     .withDescription(PUBLISHED_DESCRIPTION)
                     .withOwners(List.of(SharedEntities.get().USER2_REF)));
-    deployHookWorkflow(admin, "glossary", glossary.getFullyQualifiedName(), List.of("description"));
+    String workflowName = "adminFallback" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName,
+                    "glossary",
+                    glossary.getFullyQualifiedName(),
+                    List.of("description")));
+    ((ObjectNode) workflow.at("/nodes/1/config/assignees"))
+        .put("emptyAssigneeStrategy", "assignAdmins");
+    createWorkflow(workflow, workflowName);
     String requestId = submitDescription(glossary, "reviewed by an admin");
 
     Task task = awaitRequestTask(requestId, glossary);

@@ -20,7 +20,7 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 
 /** Stable identifiers derived from a change request. */
 public final class ChangeRequestKeys {
-  private static final String SUBMITTED_SIGNAL = "%s-changeRequestSubmitted";
+  private static final String SUBMITTED_SIGNAL = "changeRequestSubmitted-%s-%s";
 
   private ChangeRequestKeys() {}
 
@@ -36,8 +36,12 @@ public final class ChangeRequestKeys {
     return "%s:%s".formatted(entityId, requestedBy);
   }
 
-  /** Flowable signal that starts hook workflows for one entity type. */
-  public static String submittedSignalId(String entityType) {
-    return SUBMITTED_SIGNAL.formatted(entityType);
+  /**
+   * Flowable signal that starts one hook workflow for one entity type. Scoping it to the workflow
+   * means a request reaches only the workflow that holds it; a suspended or undeployed workflow on
+   * the same entity type cannot fail its delivery.
+   */
+  public static String submittedSignalId(String workflowName, String entityType) {
+    return SUBMITTED_SIGNAL.formatted(workflowName, entityType);
   }
 }

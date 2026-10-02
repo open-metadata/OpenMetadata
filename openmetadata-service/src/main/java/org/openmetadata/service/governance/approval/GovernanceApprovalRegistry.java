@@ -192,7 +192,9 @@ public final class GovernanceApprovalRegistry {
     JsonNode trigger = JsonUtils.valueToTree(definition.getTrigger());
     JsonNode config = trigger.path("config");
     boolean eventBased = EVENT_BASED_ENTITY.equals(trigger.path("type").asText(null));
-    if (eventBased && hasPendingChangeHook(definition)) {
+    // A suspended workflow reviews nothing, so it holds nothing back.
+    boolean active = !Boolean.TRUE.equals(definition.getSuspended());
+    if (eventBased && active && hasPendingChangeHook(definition)) {
       for (String entityType : targetEntityTypes(config)) {
         rules
             .computeIfAbsent(entityType, ignored -> new ArrayList<>())

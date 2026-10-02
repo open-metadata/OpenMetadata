@@ -74,7 +74,7 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     process.setName(triggerWorkflowId);
     attachWorkflowInstanceListeners(process);
 
-    setStartEvents(triggerWorkflowId, triggerDefinition, changeRequestHook);
+    setStartEvents(triggerWorkflowId, mainWorkflowName, triggerDefinition, changeRequestHook);
 
     ServiceTask filterTask = getFilterTask(triggerWorkflowId, triggerDefinition);
     process.addFlowElement(filterTask);
@@ -133,10 +133,12 @@ public class EventBasedEntityTrigger implements TriggerInterface {
 
   private void setStartEvents(
       String workflowTriggerId,
+      String mainWorkflowName,
       EventBasedEntityTriggerDefinition triggerDefinition,
       boolean changeRequestHook) {
     for (String entityType : getEntityTypesFromConfig(triggerDefinition.getConfig())) {
-      for (String signalId : signalIdsFor(entityType, triggerDefinition, changeRequestHook)) {
+      for (String signalId :
+          signalIdsFor(mainWorkflowName, entityType, triggerDefinition, changeRequestHook)) {
         addStartEvent(workflowTriggerId, entityType, signalId);
       }
     }
@@ -145,11 +147,12 @@ public class EventBasedEntityTrigger implements TriggerInterface {
   // A hook workflow reviews change requests only; it never starts from persisted change events,
   // and reactive workflows never start from a change request.
   private List<String> signalIdsFor(
+      String mainWorkflowName,
       String entityType,
       EventBasedEntityTriggerDefinition triggerDefinition,
       boolean changeRequestHook) {
     return changeRequestHook
-        ? List.of(ChangeRequestKeys.submittedSignalId(entityType))
+        ? List.of(ChangeRequestKeys.submittedSignalId(mainWorkflowName, entityType))
         : triggerDefinition.getConfig().getEvents().stream()
             .map(event -> getEntitySignalId(entityType, event.toString()))
             .toList();

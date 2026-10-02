@@ -18,6 +18,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowEventConsume
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.service.Entity;
@@ -52,12 +53,29 @@ final class ChangeRequestTasks {
     }
   }
 
+  private static void recordRunEnd(
+      Task task, String reason, WorkflowInstance.WorkflowStatus endedAs) {
+    if (endedAs != null && task.getWorkflowInstanceId() != null) {
+      WorkflowHandler.getInstance()
+          .endWorkflowInstance(task.getWorkflowInstanceId(), endedAs, reason);
+    }
+  }
+
   static void closeTask(UUID taskId, String reason) {
+    closeTask(taskId, reason, null);
+  }
+
+  /**
+   * Closes the review task and ends the run waiting on it. A non-null {@code endedAs} is recorded,
+   * with the reason, on that run's workflow instance while it is still running.
+   */
+  static void closeTask(UUID taskId, String reason, WorkflowInstance.WorkflowStatus endedAs) {
     if (taskId != null) {
       try {
         TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
         Task task = tasks.findCommittedTask(taskId);
         if (task != null) {
+          recordRunEnd(task, reason, endedAs);
           tasks.closeTask(task, GOVERNANCE_BOT, reason);
         }
         WorkflowHandler.getInstance().terminateTaskProcessInstance(taskId, reason);

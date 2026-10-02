@@ -163,9 +163,8 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
       // workflow family — reading only one silently leaves the other's requester on the list. For
       // non-workflow-managed tasks only, keep the requester when no one else is available so the
-      // task stays actionable; workflow-managed tasks rely on the admin fallback below instead. A
-      // change request is never given back to its requester: with no one else eligible, the commit
-      // node refuses to apply it and flags it for attention.
+      // task stays actionable; workflow-managed tasks rely on the empty-assignee strategy below
+      // instead. A change request is never given back to its requester.
       Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
       List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
       boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
@@ -180,12 +179,11 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
       // assignee was the requester and was stripped above), apply the node's configured
       // fallback. ASSIGN_ADMINS routes to all platform admins, excluding the requester so
-      // self-approval can never happen. NONE keeps the default behavior. A change request always
-      // takes the admin fallback: it cannot be auto-approved, so an empty list would leave it
-      // unreviewable.
+      // self-approval can never happen. NONE leaves the list empty, so the approval node approves
+      // automatically.
       String emptyAssigneeStrategy =
           String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
-      boolean assignAdmins = "assignAdmins".equals(emptyAssigneeStrategy) || reviewsChangeRequest;
+      boolean assignAdmins = "assignAdmins".equals(emptyAssigneeStrategy);
       if (assigneeList.isEmpty() && assignAdmins) {
         List<String> admins = resolveAdminAssignees();
         admins.removeAll(requesterEntityLinks);

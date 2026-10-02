@@ -42,6 +42,7 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRevisionStatus;
 import org.openmetadata.schema.governance.changeRequest.DecisionType;
 import org.openmetadata.schema.governance.changeRequest.LifecycleEventType;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -165,13 +166,32 @@ public final class ChangeRequestService {
     return reviewable;
   }
 
+  /**
+   * Hands pending requests whose delivery gave up back to the workflow, now that it is deployed or
+   * resumed and can receive them. The recovery scan delivers them on its next pass.
+   */
+  public static void redeliverStuck(UUID workflowDefinitionId) {
+    int requeued =
+        dao()
+            .changeRequestDAO()
+            .requeueAttentionRequired(workflowDefinitionId, System.currentTimeMillis());
+    if (requeued > 0) {
+      LOG.info(
+          "[ChangeRequest] Requeued {} stuck change requests for workflow {}",
+          requeued,
+          workflowDefinitionId);
+    }
+  }
+
   /** Closes a review task whose revision can no longer be decided, off the calling thread. */
   public static void closeStaleTask(UUID taskId) {
     AsyncService.getInstance()
         .execute(
             () ->
                 ChangeRequestTasks.closeTask(
-                    taskId, "The change request is no longer waiting for this review"));
+                    taskId,
+                    "The change request is no longer waiting for this review",
+                    WorkflowInstance.WorkflowStatus.CANCELLED));
   }
 
   /**
@@ -453,7 +473,10 @@ public final class ChangeRequestService {
       ChangeRequest request, ChangeRequestStatus status, String reason) {
     UUID taskId = request.getTaskId();
     if (status == ChangeRequestStatus.WITHDRAWN || status == ChangeRequestStatus.CANCELLED) {
-      PostCommitActionQueue.runOrDefer(() -> ChangeRequestTasks.closeTask(taskId, reason));
+      PostCommitActionQueue.runOrDefer(
+          () ->
+              ChangeRequestTasks.closeTask(
+                  taskId, reason, WorkflowInstance.WorkflowStatus.CANCELLED));
     }
   }
 
@@ -548,7 +571,9 @@ public final class ChangeRequestService {
     PostCommitActionQueue.runOrDefer(
         () ->
             ChangeRequestTasks.closeTask(
-                supersededTask, "Superseded by revision %d".formatted(number)));
+                supersededTask,
+                "Superseded by revision %d".formatted(number),
+                WorkflowInstance.WorkflowStatus.SUPERSEDED));
     return active;
   }
 

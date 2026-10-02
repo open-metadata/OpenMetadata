@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.it.tests.ChangeRequestITSupport.*;
 
@@ -32,6 +33,8 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -39,6 +42,7 @@ import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 @ExtendWith(TestNamespaceExtension.class)
 class ChangeRequestResourceIT {
@@ -101,6 +105,41 @@ class ChangeRequestResourceIT {
             () ->
                 SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus()
                     != TaskEntityStatus.Open);
+    WorkflowInstance run = awaitWorkflowInstanceOf(task, WorkflowInstance.WorkflowStatus.CANCELLED);
+    assertEquals("Withdrawn by the requester", run.getVariables().get("terminationReason"));
+  }
+
+  @Test
+  void aSuspendedHookWorkflowNeitherHoldsNorBlocksAnother(TestNamespace ns) {
+    Glossary glossary = gated(ns);
+    WorkflowDefinition suspended =
+        deployWorkflow(
+            ns,
+            Entity.GLOSSARY,
+            "\"description\"",
+            "",
+            filterScopedTo(glossary.getFullyQualifiedName()),
+            "commit",
+            true);
+    suspendWorkflow(suspended);
+
+    ChangeRequest request = stageAsUser2(glossary);
+    assertNotEquals(suspended.getId(), request.getWorkflowDefinitionId());
+    awaitOpenApprovalTask(glossary.getFullyQualifiedName());
+  }
+
+  @Test
+  void aNewRevisionSupersedesTheEarlierRun(TestNamespace ns) {
+    Glossary glossary = gated(ns);
+    stageAsUser2(glossary);
+    Task first = awaitOpenApprovalTask(glossary.getFullyQualifiedName());
+    patchAs(
+        SdkClients.user2Client(),
+        glossary.getId(),
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"revised\"}]");
+    WorkflowInstance run =
+        awaitWorkflowInstanceOf(first, WorkflowInstance.WorkflowStatus.SUPERSEDED);
+    assertEquals("Superseded by revision 2", run.getVariables().get("terminationReason"));
   }
 
   @Test

@@ -314,16 +314,15 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
-  void testChangeRequestSoleRequester_routedToAdminsNeverToRequester() {
-    // A change request cannot be auto-approved, so with no one but the requester eligible it goes
-    // to the platform admins, and never back to the requester.
+  void testChangeRequestSoleRequester_routedToAdminsWithAssignAdminsStrategy() {
     EntityReference creatorRef =
         new EntityReference().withType("user").withFullyQualifiedName("alice");
     when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
     givenChangeRequestBy("alice");
     givenAdmins("alice", "platform_admin");
     when(assigneesExpr.getValue(execution))
-        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
 
     delegate.execute(execution);
 
@@ -334,7 +333,25 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
-  void testChangeRequestWithNoReviewersOrOwners_routedToAdminsWithoutStrategy() {
+  void testChangeRequestSoleRequester_leftUnassignedWithoutStrategy() {
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    givenChangeRequestBy("alice");
+    givenAdmins("alice", "platform_admin");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    assertEquals(
+        "[]",
+        capturedVars.get("ApprovalTask_assignees"),
+        "with no strategy, no one but the requester is eligible and the change approves itself");
+  }
+
+  @Test
+  void testChangeRequestWithNoReviewersOrOwners_leftUnassignedWithoutStrategy() {
     when(mockEntity.getReviewers()).thenReturn(List.of());
     givenChangeRequestBy("alice");
     givenAdmins("platform_admin");
@@ -343,9 +360,10 @@ class SetApprovalAssigneesImplTest {
 
     delegate.execute(execution);
 
-    assertTrue(
-        ((String) capturedVars.get("ApprovalTask_assignees")).contains("platform_admin"),
-        "a change request takes the admin fallback even when the node sets no strategy");
+    assertEquals(
+        "[]",
+        capturedVars.get("ApprovalTask_assignees"),
+        "admins are added only when the node asks for them");
   }
 
   @Test
@@ -356,7 +374,8 @@ class SetApprovalAssigneesImplTest {
     givenChangeRequestBy("alice");
     givenAdmins("alice");
     when(assigneesExpr.getValue(execution))
-        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
 
     delegate.execute(execution);
 

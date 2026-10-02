@@ -69,7 +69,9 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
     GovernanceApprovalRegistry.invalidate();
-    if (!GovernanceApprovalRegistry.hasPendingChangeHook(updated)) {
+    if (GovernanceApprovalRegistry.hasPendingChangeHook(updated)) {
+      ChangeRequestService.redeliverStuck(updated.getId());
+    } else {
       ChangeRequestService.cancelAllForWorkflow(
           updated.getId(),
           "Approval workflow %s no longer reviews changes".formatted(updated.getName()));
@@ -544,10 +546,12 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       // Suspend all active process instances for this workflow
       WorkflowHandler.getInstance().suspendWorkflow(workflowName);
 
-      workflow.setSuspended(true);
+      // updatedAt moves the definition epoch, so every server drops its cached approval rules.
+      workflow.withSuspended(true).withUpdatedAt(System.currentTimeMillis());
       dao.update(workflow);
       EntityRepository.invalidateCacheForEntity(
           entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      GovernanceApprovalRegistry.invalidate();
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -569,10 +573,12 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       // Resume all suspended process instances for this workflow
       WorkflowHandler.getInstance().resumeWorkflow(workflowName);
 
-      workflow.setSuspended(false);
+      workflow.withSuspended(false).withUpdatedAt(System.currentTimeMillis());
       dao.update(workflow);
       EntityRepository.invalidateCacheForEntity(
           entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      GovernanceApprovalRegistry.invalidate();
+      ChangeRequestService.redeliverStuck(workflow.getId());
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);

@@ -250,7 +250,7 @@ class ChangeRequestApplyIT {
   }
 
   @Test
-  void changeWithOnlyTheRequesterAsReviewerGoesToAdminsAndIsNeverAutoApplied(TestNamespace ns) {
+  void changeWithOnlyTheRequesterAsReviewerIsApprovedAutomatically(TestNamespace ns) {
     var user2 = SharedEntities.get().USER2.getEntityReference();
     Glossary glossary =
         ns.trackRoot(
@@ -267,14 +267,16 @@ class ChangeRequestApplyIT {
     patchAs(SdkClients.user2Client(), glossary.getId(), replace("description", "self-reviewed"));
     ChangeRequest request = onlyPendingRequest(glossary.getId());
 
-    Task task = awaitOpenApprovalTask(glossary.getFullyQualifiedName());
-    java.util.Set<String> assignees =
-        taskAssigneeNames(glossary.getFullyQualifiedName(), task.getId());
-    assertTrue(assignees.contains("admin"), "the requester's only reviewer is replaced by admins");
-    assertTrue(!assignees.contains(user2.getName()), "never assigned to its requester");
-    assertEquals(
-        ChangeRequestStatus.PENDING, ChangeRequestService.get(request.getId()).getStatus());
-    assertEquals(PUBLISHED, descriptionOf(glossary.getId()));
+    // The requester is its only reviewer and the node sets no empty-assignee strategy, so no one
+    // is left to review it and the run approves it as governance-bot.
+    Awaitility.await("self-reviewed change approved automatically")
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () ->
+                ChangeRequestService.get(request.getId()).getStatus()
+                    == ChangeRequestStatus.APPLIED);
+    assertEquals("self-reviewed", descriptionOf(glossary.getId()));
   }
 
   private void deployDraftOnRejectWorkflow(TestNamespace ns, Glossary glossary) {

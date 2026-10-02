@@ -58,8 +58,9 @@ public final class ChangeRequestDelivery {
   private static void deliverClaimed(ChangeRequest request, String token) {
     try {
       WorkflowHandler.getInstance()
-          .triggerWithSignal(
-              ChangeRequestKeys.submittedSignalId(request.getEntityType()), variables(request));
+          .triggerWithRequiredSignal(
+              ChangeRequestKeys.submittedSignalId(workflowName(request), request.getEntityType()),
+              variables(request));
       dao().completeDelivery(request.getId(), token);
       ChangeRequestMetrics.delivery("delivered");
     } catch (Exception e) {

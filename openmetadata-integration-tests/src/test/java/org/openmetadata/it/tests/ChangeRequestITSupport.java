@@ -44,6 +44,8 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
@@ -51,6 +53,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.classification.ClassificationService;
 import org.openmetadata.sdk.services.classification.TagService;
 import org.openmetadata.service.Entity;
@@ -110,7 +113,7 @@ final class ChangeRequestITSupport {
     return JsonUtils.pojoToJson(Map.of(entityType, logic));
   }
 
-  static void deployWorkflow(
+  static WorkflowDefinition deployWorkflow(
       TestNamespace ns,
       String entityType,
       String include,
@@ -192,8 +195,17 @@ final class ChangeRequestITSupport {
                 rejectTarget,
                 hookEdges);
     CreateWorkflowDefinition request = JsonUtils.readValue(json, CreateWorkflowDefinition.class);
-    ns.trackRoot(
+    return ns.trackRoot(
         Entity.WORKFLOW_DEFINITION, SdkClients.adminClient().workflowDefinitions().create(request));
+  }
+
+  static void suspendWorkflow(WorkflowDefinition workflow) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/governance/workflowDefinitions/name/%s/suspend".formatted(workflow.getName()),
+            null);
   }
 
   static Glossary gatedGlossary(TestNamespace ns) {
@@ -311,6 +323,39 @@ final class ChangeRequestITSupport {
         .pollInterval(Duration.ofSeconds(2))
         .until(() -> !listTasks(filters).isEmpty());
     return listTasks(filters).get(0);
+  }
+
+  /** The workflow instance of the run that created {@code task}, once it has the given status. */
+  static WorkflowInstance awaitWorkflowInstanceOf(
+      Task task, WorkflowInstance.WorkflowStatus status) {
+    String definitionName =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/governance/workflowDefinitions/%s".formatted(task.getWorkflowDefinitionId()),
+                null,
+                WorkflowDefinition.class)
+            .getName();
+    String path =
+        "/v1/governance/workflowInstances?workflowDefinitionName=%s&startTs=0&endTs=%d&limit=100"
+            .formatted(definitionName, Long.MAX_VALUE);
+    Awaitility.await("workflow instance %s %s".formatted(task.getWorkflowInstanceId(), status))
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> workflowInstance(path, task.getWorkflowInstanceId()).getStatus() == status);
+    return workflowInstance(path, task.getWorkflowInstanceId());
+  }
+
+  private static WorkflowInstance workflowInstance(String path, UUID instanceId) {
+    String body =
+        SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
+    return JsonUtils.readObjects(
+            JsonUtils.readTree(body).path("data").toString(), WorkflowInstance.class)
+        .stream()
+        .filter(instance -> instanceId.equals(instance.getId()))
+        .findFirst()
+        .orElseThrow();
   }
 
   static void assertNoOpenApprovalTask(String glossaryFqn) {

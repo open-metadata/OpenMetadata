@@ -42,7 +42,7 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 public class ResolvePendingChangeImpl implements JavaDelegate {
   private static final String REJECTED_REASON = "Rejected by the review workflow";
   private static final String APPLIED = "applied";
-  private static final String NOT_APPLIED = "notApplied";
+  public static final String NOT_APPLIED = "notApplied";
   private static final String DISCARDED = "discarded";
   private Expression actionExpr;
   private Expression inputNamespaceMapExpr;
@@ -64,7 +64,8 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
   }
 
   // "applied" when the revision was published, "notApplied" when it could not be (the request stays
-  // open with its conflicts), and "discarded" when the request was rejected.
+  // open with its conflicts and the node ends the run), and "discarded" when the request was
+  // rejected.
   private String resolve(ResolvePendingChangeAction action, ChangeRequestRun run) {
     String result = DISCARDED;
     if (action == ResolvePendingChangeAction.COMMIT) {

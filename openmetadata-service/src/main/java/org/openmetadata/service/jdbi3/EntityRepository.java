@@ -56,6 +56,7 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -9885,8 +9886,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (original.getEntityStatus() == updated.getEntityStatus()) {
           return;
         }
-        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
+        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status. A workflow
+        // step (impersonated by governance-bot) applies the decision of its own approval task,
+        // whose assignees already decided who may approve; checking the entity's reviewers again
+        // would read the list as changed by the edit being approved.
         if (!consolidatingChanges
+            && !GOVERNANCE_BOT.equals(updated.getImpersonatedBy())
             && original.getEntityStatus() == EntityStatus.IN_REVIEW
             && (updated.getEntityStatus() == EntityStatus.APPROVED
                 || updated.getEntityStatus() == EntityStatus.REJECTED)) {

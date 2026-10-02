@@ -104,6 +104,13 @@ class GovernanceApprovalRegistryTest {
   }
 
   @Test
+  void doesNotGateWhileSuspended() {
+    WorkflowDefinition wd =
+        workflow(trigger("\"table\"", "\"description\"", "", "{}"), HOOK).withSuspended(true);
+    assertTrue(rulesFor("table", wd).isEmpty());
+  }
+
+  @Test
   void doesNotGateWithoutHook() {
     WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "", "{}"));
     assertTrue(rulesFor("table", wd).isEmpty());
