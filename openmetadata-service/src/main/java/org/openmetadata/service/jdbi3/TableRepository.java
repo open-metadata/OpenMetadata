@@ -2910,6 +2910,8 @@ public class TableRepository extends EntityRepository<Table> {
 
     if (fieldsParam != null && fieldsParam.contains("extension")) {
       metadataLoader.loadColumnExtensions(table.getId(), paginatedColumns);
+    } else {
+      metadataLoader.stripColumnReferences(paginatedColumns);
     }
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {
@@ -2950,6 +2952,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fieldsParam.contains("extension")) {
       metadataLoader.loadColumnExtensions(table.getId(), singleton);
+    } else {
+      metadataLoader.stripColumnReferences(singleton);
     }
     if (fieldsParam.contains("profile")) {
       setColumnProfile(singleton);
@@ -3261,6 +3265,11 @@ public class TableRepository extends EntityRepository<Table> {
 
     if (fields.contains("tags") || fields.contains("*")) {
       populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+    }
+    if (fields.contains("extension")) {
+      metadataLoader.loadColumnExtensions(table.getId(), paginatedColumns);
+    } else {
+      metadataLoader.stripColumnReferences(paginatedColumns);
     }
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {

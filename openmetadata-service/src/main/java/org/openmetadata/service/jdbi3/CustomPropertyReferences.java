@@ -180,9 +180,11 @@ public final class CustomPropertyReferences {
         (scope, references) ->
             delta.diff(
                 persisted.getOrDefault(RowScope.of(scope), Map.of()), toRows(scope, references)));
-    dao().deleteMany(delta.removed);
-    dao().updateMany(delta.changed);
+    // Target rows first, then reference rows, the same order a hard delete takes them in, so a
+    // writer and a concurrent delete cannot wait on each other in a cycle.
     dao().insertMany(provenTargets(delta.added));
+    dao().updateMany(delta.changed);
+    dao().deleteMany(delta.removed);
   }
 
   public void deleteHolders(List<UUID> holderIds) {
@@ -259,23 +261,23 @@ public final class CustomPropertyReferences {
     }
   }
 
+  /** Rows of exactly the scopes being written: entity level per holder, columns by key. */
   private Map<RowScope, Map<String, ReferenceRow>> persistedRows(Collection<Scope> scopes) {
-    Set<String> holders = new HashSet<>();
-    boolean entityLevel = false;
-    boolean columnLevel = false;
+    Set<String> entityHolders = new HashSet<>();
+    Map<UUID, Set<String>> columnKeys = new HashMap<>();
     for (Scope scope : scopes) {
-      holders.add(scope.holderId().toString());
-      entityLevel |= ENTITY_LEVEL.equals(scope.columnKey());
-      columnLevel |= !ENTITY_LEVEL.equals(scope.columnKey());
+      if (ENTITY_LEVEL.equals(scope.columnKey())) {
+        entityHolders.add(scope.holderId().toString());
+      } else {
+        columnKeys
+            .computeIfAbsent(scope.holderId(), ignored -> new HashSet<>())
+            .add(scope.columnKey());
+      }
     }
-    List<String> holderIds = new ArrayList<>(holders);
-    List<ReferenceRow> rows = new ArrayList<>();
-    if (entityLevel) {
-      rows.addAll(dao().findEntityLevel(holderIds));
-    }
-    if (columnLevel) {
-      rows.addAll(dao().findColumnLevel(holderIds));
-    }
+    List<ReferenceRow> rows =
+        new ArrayList<>(dao().findEntityLevel(new ArrayList<>(entityHolders)));
+    columnKeys.forEach(
+        (holder, keys) -> rows.addAll(dao().findColumns(holder, new ArrayList<>(keys))));
     Map<RowScope, Map<String, ReferenceRow>> byScope = new HashMap<>();
     rows.forEach(
         row ->
@@ -356,7 +358,15 @@ public final class CustomPropertyReferences {
         new HashSet<>(
             EntityDAO.queryInChunks(
                 ids, chunk -> entityDao.lockExistingIds(entityDao.getTableName(), chunk)));
-    return rows.stream().filter(row -> present.contains(row.targetId())).toList();
+    List<ReferenceRow> kept =
+        rows.stream().filter(row -> present.contains(row.targetId())).toList();
+    if (kept.size() < rows.size()) {
+      LOG.warn(
+          "Dropped {} custom-property references to {} entities that do not exist",
+          rows.size() - kept.size(),
+          type);
+    }
+    return kept;
   }
 
   /** Rows of one value scope, in the order the query returned them. */

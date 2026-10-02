@@ -580,6 +580,11 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     LOG.info("Successfully updated children in ElasticSearch for indices: {}", indexNames);
   }
 
+  /**
+   * Same request shape as {@link #buildUpdateChildrenRequest}: an async, sliced, rate-limited
+   * update-by-query, because a target referenced by many documents fans out widely. Each path is
+   * matched both as a nested field and as a plain one, so indexes that map it either way are found.
+   */
   @Override
   public void updateChildrenByNestedField(
       List<String> indexNames,
@@ -595,34 +600,27 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     Map<String, JsonData> params =
         convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
     List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
-    List<Query> perPath =
-        nestedPaths.stream()
-            .map(
-                path ->
-                    Query.of(
-                        q ->
-                            q.nested(
-                                n ->
-                                    n.path(path)
-                                        .ignoreUnmapped(true)
-                                        .query(
-                                            inner ->
-                                                inner.terms(
-                                                    t ->
-                                                        t.field(path + "." + field)
-                                                            .terms(tv -> tv.value(fieldValues)))))))
-            .toList();
+    List<Query> matches = new ArrayList<>();
+    for (String path : nestedPaths) {
+      Query terms =
+          Query.of(
+              q -> q.terms(t -> t.field(path + "." + field).terms(tv -> tv.value(fieldValues))));
+      matches.add(terms);
+      matches.add(Query.of(q -> q.nested(n -> n.path(path).ignoreUnmapped(true).query(terms))));
+    }
     client.updateByQuery(
         u ->
             u.index(indexNames)
-                .query(q -> q.bool(b -> b.should(perPath).minimumShouldMatch("1")))
+                .query(q -> q.bool(b -> b.should(matches).minimumShouldMatch("1")))
                 .conflicts(Conflicts.Proceed)
+                .waitForCompletion(false)
+                .slices(sl -> sl.computed(SlicesCalculation.Auto))
+                .requestsPerSecond(SearchPropagationLimits.REQUESTS_PER_SECOND)
                 .script(
                     s ->
                         s.source(ss -> ss.scriptString(updates.getKey()))
                             .lang(ScriptLanguage.Painless)
-                            .params(params))
-                .refresh(true));
+                            .params(params)));
   }
 
   private Query anyOfFieldQuery(String field, List<String> values) {

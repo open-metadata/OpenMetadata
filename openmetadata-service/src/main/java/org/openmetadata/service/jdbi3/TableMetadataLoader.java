@@ -145,6 +145,25 @@ public final class TableMetadataLoader {
     }
   }
 
+  /**
+   * For reads that did not ask for {@code extension}: drops reference properties from the inline
+   * copy (for example a cached row written before 2.1), so they are served only with their rows.
+   */
+  public void stripColumnReferences(final List<Column> columns) {
+    final String columnType = CustomPropertyReferences.columnTypeOf(holderType);
+    if (columnType == null || nullOrEmpty(columns)) {
+      return;
+    }
+    final Predicate<String> isReference =
+        CustomPropertyReferences.referencePropertiesOf(columnType);
+    for (final Column column : EntityUtil.getFlattenedEntityField(columns)) {
+      if (column.getExtension() != null) {
+        column.setExtension(
+            CustomPropertyReferences.withReferences(column.getExtension(), null, isReference));
+      }
+    }
+  }
+
   private void applyColumnReferences(final UUID tableId, final Map<String, List<Column>> byKey) {
     final String columnType = CustomPropertyReferences.columnTypeOf(holderType);
     if (columnType == null) {

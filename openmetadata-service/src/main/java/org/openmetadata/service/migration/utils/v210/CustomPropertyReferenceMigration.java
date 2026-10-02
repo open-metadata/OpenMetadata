@@ -34,6 +34,7 @@ import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceRow;
 import org.openmetadata.service.jdbi3.CustomPropertyReferences;
@@ -57,8 +58,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 @Slf4j
 public final class CustomPropertyReferenceMigration {
-  private static final int ENTITY_PAGE_SIZE = 500;
-  private static final int HOLDER_PAGE_SIZE = 50;
+  // Small pages: one value can hold 10k references and one table thousands of columns, and each
+  // page is held in memory and written in one transaction.
+  private static final int ENTITY_PAGE_SIZE = 100;
+  private static final int HOLDER_PAGE_SIZE = 20;
   private static final String COLUMN_EXTENSION = "columnExtension";
 
   private final Handle handle;
@@ -120,7 +123,7 @@ public final class CustomPropertyReferenceMigration {
   private record SourceRow(String id, String extension, String json) {}
 
   private void migrateEntityLevel(String holderType, String property) {
-    String key = TypeRegistryKeys.customPropertyFqn(holderType, property);
+    String key = TypeRegistry.getCustomPropertyFQN(holderType, property);
     String afterId = "";
     List<SourceRow> page = entityLevelPage(key, afterId);
     while (!page.isEmpty()) {
@@ -155,7 +158,12 @@ public final class CustomPropertyReferenceMigration {
       }
     }
     List<ReferenceRow> kept = insertExisting(rows);
-    verify(moveable.stream().map(SourceRow::id).toList(), true, kept.size());
+    long stored =
+        moveable.isEmpty()
+            ? 0
+            : dao.customPropertyReferenceDAO()
+                .countEntityLevel(moveable.stream().map(SourceRow::id).toList(), property);
+    verify(stored, kept.size(), holderType + "." + property);
     moveable.forEach(
         source ->
             dao.entityExtensionDAO().delete(UUID.fromString(source.id()), source.extension()));
@@ -203,7 +211,11 @@ public final class CustomPropertyReferenceMigration {
       }
     }
     List<ReferenceRow> kept = insertExisting(rows);
-    verify(movedHolders, false, kept.size());
+    long stored =
+        movedHolders.isEmpty()
+            ? 0
+            : dao.customPropertyReferenceDAO().countColumnLevel(movedHolders);
+    verify(stored, kept.size(), holderType + " columns");
     strips.forEach(Runnable::run);
   }
 
@@ -365,10 +377,15 @@ public final class CustomPropertyReferenceMigration {
     for (JsonNode ref : elements) {
       String type = ref.path("type").asText(null);
       String id = ref.path("id").asText(null);
-      if (type == null || id == null || !Entity.hasEntityRepository(type)) {
+      if (type == null || !Entity.hasEntityRepository(type)) {
         LOG.warn("Leaving custom property {} of {} in place: {}", property, holderId, ref);
         leftInPlace++;
         return null;
+      }
+      if (id == null) {
+        // A name that resolves to nothing names an entity that no longer exists.
+        dropped++;
+        continue;
       }
       if (seen.add(id)) {
         rows.add(
@@ -401,26 +418,12 @@ public final class CustomPropertyReferenceMigration {
   }
 
   /** Fails the page, and so leaves its sources untouched, if the rows did not all land. */
-  private void verify(List<String> holderIds, boolean entityLevel, int expected) {
-    if (holderIds.isEmpty() || expected == 0) {
-      return;
-    }
-    List<ReferenceRow> stored =
-        entityLevel
-            ? dao.customPropertyReferenceDAO().findEntityLevel(holderIds)
-            : dao.customPropertyReferenceDAO().findColumnLevel(holderIds);
-    if (stored.size() < expected) {
+  private static void verify(long stored, int expected, String what) {
+    if (stored < expected) {
       throw new IllegalStateException(
           String.format(
               "Custom-property reference migration stored %d of %d rows for %s",
-              stored.size(), expected, holderIds));
-    }
-  }
-
-  /** Property keys as entity_extension stores them; mirrors TypeRegistry without loading it. */
-  private static final class TypeRegistryKeys {
-    static String customPropertyFqn(String entityType, String propertyName) {
-      return FullyQualifiedName.build(entityType, "customProperties", propertyName);
+              stored, expected, what));
     }
   }
 }

@@ -480,6 +480,16 @@ public interface CoreRelationshipDAOs {
           : EntityDAO.queryInChunks(targetIds, this::findByTargetsInternal);
     }
 
+    @SqlQuery(
+        "SELECT COUNT(*) FROM custom_property_reference WHERE id IN (<ids>) AND columnKey = '' "
+            + "AND propertyName = :propertyName")
+    long countEntityLevel(
+        @BindList("ids") List<String> holderIds, @Bind("propertyName") String propertyName);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM custom_property_reference WHERE id IN (<ids>) AND columnKey <> ''")
+    long countColumnLevel(@BindList("ids") List<String> holderIds);
+
     @SqlUpdate("DELETE FROM custom_property_reference WHERE id IN (<ids>)")
     void deleteByHoldersInternal(@BindList("ids") List<String> ids);
 

@@ -19,7 +19,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Handle;
@@ -33,6 +35,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
+import org.openmetadata.it.util.SqlQueryCounter;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.EntityInterface;
@@ -1407,8 +1410,96 @@ public class TypeResourceIT {
     }
   }
 
+  /**
+   * A writer that proved its target under the shared lock makes a concurrent hard delete of that
+   * target wait; once the writer commits, the delete removes the new row. Driven with an explicit
+   * transaction so the interleaving is deterministic on both engines.
+   */
+  @Test
+  void test_referenceWrittenUnderShareLockIsRemovedByTheDeleteThatWaitedForIt(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team survivor = createTeam(client, ns.prefix("survivor"), CreateTeam.TeamType.GROUP, null);
+      Team doomed = createTeam(client, ns.prefix("doomed"), CreateTeam.TeamType.GROUP, null);
+      Domain domain = createDomain(client, ns, property, List.of(referenceOf(survivor)));
+      ExecutorService deleter = Executors.newSingleThreadExecutor();
+      try (Handle writer = Entity.getJdbi().open()) {
+        writer.begin();
+        CollectionDAO writerDao = writer.attach(CollectionDAO.class);
+        assertEquals(
+            List.of(id(doomed)),
+            writerDao.teamDAO().lockExistingIds("team_entity", List.of(id(doomed))));
+        writerDao
+            .customPropertyReferenceDAO()
+            .insertMany(
+                List.of(
+                    new ReferenceRow(
+                        id(domain),
+                        CustomPropertyReferences.ENTITY_LEVEL,
+                        property,
+                        id(doomed),
+                        Entity.DOMAIN,
+                        TEAM,
+                        1,
+                        JsonUtils.pojoToJson(referenceOf(doomed)))));
+
+        Future<?> delete = deleter.submit(() -> client.teams().delete(id(doomed), HARD_DELETE));
+        assertThrows(
+            TimeoutException.class,
+            () -> delete.get(3, TimeUnit.SECONDS),
+            "the hard delete waits for the writer holding the shared lock");
+        writer.commit();
+        delete.get(2, TimeUnit.MINUTES);
+      } finally {
+        deleter.shutdownNow();
+      }
+
+      assertNoReferencesTo(doomed.getId());
+      assertEquals(
+          List.of(id(survivor)),
+          referenceIds(client.domains().get(id(domain), "extension"), property));
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  /** The reference cleanup runs per delete chunk, so its statement count does not grow with size. */
+  @Test
+  void test_recursiveDeleteReferenceCleanupDoesNotGrowWithSubtreeSize(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    int small = referenceStatementsForRecursiveDelete(client, ns, "small", 2);
+    int large = referenceStatementsForRecursiveDelete(client, ns, "large", 20);
+    assertTrue(small > 0, "the counter sees the cleanup statements");
+    assertEquals(small, large);
+  }
+
+  private static int referenceStatementsForRecursiveDelete(
+      OpenMetadataClient client, TestNamespace ns, String name, int children) throws Exception {
+    Team parent = createTeam(client, ns.prefix(name), CreateTeam.TeamType.DEPARTMENT, null);
+    List<String> subtree = new ArrayList<>(List.of(id(parent)));
+    for (int i = 0; i < children; i++) {
+      subtree.add(
+          id(createTeam(client, ns.prefix(name + i), CreateTeam.TeamType.GROUP, parent.getId())));
+    }
+    // Other tests delete concurrently; count only statements bound to this subtree's ids.
+    try (var statements =
+        SqlQueryCounter.forRequests(
+            Entity.getJdbi(),
+            "delete from custom_property_reference",
+            context -> subtree.stream().anyMatch(context.getBinding().toString()::contains))) {
+      client.teams().delete(id(parent), HARD_DELETE);
+      return statements.count();
+    }
+  }
+
   /** A value stored the pre-2.1 way, in entity_extension, moves to its rows on upgrade. */
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_migration_movesLegacyValueAndDropsDeadTarget(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
@@ -1424,7 +1515,11 @@ public class TypeResourceIT {
               domain.getId(),
               key,
               "customFieldSchema",
-              JsonUtils.pojoToJson(List.of(referenceOf(first), nameOnly(second))));
+              JsonUtils.pojoToJson(
+                  List.of(
+                      referenceOf(first),
+                      nameOnly(second),
+                      Map.of("type", TEAM, "fullyQualifiedName", ns.prefix("neverExisted")))));
       client.teams().delete(first.getId().toString(), HARD_DELETE);
 
       runReferenceMigration();

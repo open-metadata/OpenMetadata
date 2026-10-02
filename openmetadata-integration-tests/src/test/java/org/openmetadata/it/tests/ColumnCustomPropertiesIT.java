@@ -1710,6 +1710,9 @@ public class ColumnCustomPropertiesIT {
    * move to their rows on upgrade; a reference to a target that is already gone is dropped.
    */
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_tableColumn_migrationMovesLegacyValueAndDropsDeadTarget(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1747,6 +1750,9 @@ public class ColumnCustomPropertiesIT {
    * migration moves those too and completes their ids.
    */
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_tableColumn_migrationMovesInlineOnlyNameOnlyValues(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String propName =
@@ -1768,6 +1774,63 @@ public class ColumnCustomPropertiesIT {
 
       TypeResourceIT.runReferenceMigration();
       assertEquals(1, referenceRowsTo(first.getId()).size());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  /**
+   * A read without {@code extension} carries a column's other values but not its references; a
+   * client that PUTs that read back must not delete the references.
+   */
+  @Test
+  void test_tableColumn_putOfAReadWithoutExtensionKeepsReferences(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String refProp = addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    String noteProp = ns.prefix("note");
+    addCustomPropertyToColumnType(client, TABLE_COLUMN, noteProp, STRING_TYPE, null);
+    try {
+      Team team = createTeam(client, ns.prefix("kept"));
+      Table table = createTestTable(ns);
+      updateColumn(
+          client,
+          table.getFullyQualifiedName() + ".id",
+          "table",
+          Map.of(refProp, List.of(teamRef(team)), noteProp, "kept note"));
+
+      Table read = tableWith(client, table, "columns");
+      assertTrue(columnReferenceIds(read, "id", refProp).isEmpty());
+      client.tables().update(table.getId().toString(), read);
+
+      assertEquals(
+          List.of(team.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", refProp));
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, refProp);
+      removeColumnTypeProperty(client, TABLE_COLUMN, noteProp);
+    }
+  }
+
+  /** Column values sent through a table PUT are not validated; a name-only one still gets its id. */
+  @Test
+  void test_tableColumn_nameOnlyReferenceThroughTablePutIsStoredWithId(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team team = createTeam(client, ns.prefix("named"));
+      Table table = createTestTable(ns);
+      Table current = tableWith(client, table, "columns,extension");
+      columnNamed(current.getColumns(), "id")
+          .setExtension(Map.of(propName, List.of(nameOnly(team))));
+      client.tables().update(table.getId().toString(), current);
+
+      assertEquals(
+          List.of(team.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
+      assertEquals(1, referenceRowsTo(team.getId()).size());
     } finally {
       removeColumnTypeProperty(client, TABLE_COLUMN, propName);
     }

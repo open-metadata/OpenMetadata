@@ -337,6 +337,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     if (fieldsParam != null && fieldsParam.contains("extension")) {
       columnExtensions.loadColumnExtensions(dataModel.getId(), paginatedColumns);
+    } else {
+      columnExtensions.stripColumnReferences(paginatedColumns);
     }
 
     // Calculate pagination metadata
@@ -357,6 +359,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     }
     if (fieldsParam.contains("extension")) {
       columnExtensions.loadColumnExtensions(dataModel.getId(), singleton);
+    } else {
+      columnExtensions.stripColumnReferences(singleton);
     }
     return column;
   }
@@ -420,6 +424,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     }
     if (fields.contains("extension")) {
       columnExtensions.loadColumnExtensions(dataModel.getId(), paginatedResults);
+    } else {
+      columnExtensions.stripColumnReferences(paginatedResults);
     }
 
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;

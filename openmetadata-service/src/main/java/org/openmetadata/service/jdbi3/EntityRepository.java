@@ -6158,16 +6158,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     String extensionKey = FullyQualifiedName.buildHash(column.getFullyQualifiedName());
-    ObjectNode values = columnExtensionFields(column);
-    ObjectNode references =
-        CustomPropertyReferences.extractReferences(values, columnReferenceTyped());
-    if (values.isEmpty()) {
-      daoCollection.entityExtensionDAO().delete(entityId, extensionKey);
-    } else {
-      daoCollection
-          .entityExtensionDAO()
-          .insert(entityId, extensionKey, "columnExtension", values.toString());
-    }
+    ObjectNode references = storeColumnValues(entityId, extensionKey, column, true);
     if (CustomPropertyReferences.columnTypeOf(entityType) != null) {
       customPropertyReferences().write(columnScope(entityId, extensionKey), references);
     }
@@ -6184,14 +6175,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         continue;
       }
       String extensionKey = FullyQualifiedName.buildHash(column.getFullyQualifiedName());
-      ObjectNode values = columnExtensionFields(column);
-      ObjectNode columnReferences =
-          CustomPropertyReferences.extractReferences(values, columnReferenceTyped());
-      if (!values.isEmpty()) {
-        daoCollection
-            .entityExtensionDAO()
-            .insert(entityId, extensionKey, "columnExtension", values.toString());
-      }
+      ObjectNode columnReferences = storeColumnValues(entityId, extensionKey, column, false);
       if (!columnReferences.isEmpty()) {
         references.put(columnScope(entityId, extensionKey), columnReferences);
       }
@@ -6212,6 +6196,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (CustomPropertyReferences.columnTypeOf(entityType) != null) {
       customPropertyReferences().deleteColumn(entityId, extensionKey);
     }
+  }
+
+  /**
+   * Stores a column's non-reference values in its {@code entity_extension} row and returns its
+   * reference values, name-only ones completed with their id. {@code replace} also deletes the row
+   * when no non-reference value is left.
+   */
+  private ObjectNode storeColumnValues(
+      UUID entityId, String extensionKey, Column column, boolean replace) {
+    ObjectNode values = columnExtensionFields(column);
+    ObjectNode references =
+        CustomPropertyReferences.extractReferences(values, columnReferenceTyped());
+    references.elements().forEachRemaining(EntityUtil::fillCustomPropertyReferenceIds);
+    if (!values.isEmpty()) {
+      daoCollection
+          .entityExtensionDAO()
+          .insert(
+              entityId,
+              extensionKey,
+              TableRepository.COLUMN_EXTENSION_JSON_SCHEMA,
+              values.toString());
+    } else if (replace) {
+      daoCollection.entityExtensionDAO().delete(entityId, extensionKey);
+    }
+    return references;
   }
 
   private static ObjectNode columnExtensionFields(Column column) {
@@ -6278,11 +6287,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  /** Removes the non-reference values; reference values are diffed by the next write. */
+  /**
+   * Removes the stored values of every property the entity has. For reference properties this only
+   * clears a legacy row left by the 2.1 migration; their rows are diffed by the next write.
+   */
   public final void removeExtension(EntityInterface entity) {
-    ObjectNode fields = extensionFields(entity);
-    CustomPropertyReferences.extractReferences(fields, referenceTyped());
-    fields.fieldNames().forEachRemaining(name -> removeCustomProperty(entity, name));
+    extensionFields(entity)
+        .fieldNames()
+        .forEachRemaining(name -> removeCustomProperty(entity, name));
   }
 
   public final void removeExtensions(List<T> entities) {
@@ -6352,7 +6364,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         fieldValue = JsonUtils.valueToTree(sortedEnumValues);
       }
 
-      objectNode.set(fieldName, fieldValue);
+      // Reference rows win over a legacy entity_extension record the migration left in place.
+      if (!objectNode.has(fieldName)) {
+        objectNode.set(fieldName, fieldValue);
+      }
     }
     return objectNode;
   }
@@ -11482,6 +11497,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           && updatedColumn.getExtension() == null
           && origColumn.getExtension() != null) {
         updatedColumn.setExtension(origColumn.getExtension());
+      } else if (operation == Operation.PUT) {
+        keepOmittedReferences(origColumn, updatedColumn);
       }
       boolean changed =
           recordChange(
@@ -11495,6 +11512,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
         } else {
           storeColumnExtension(entityId, updatedColumn);
         }
+      }
+    }
+
+    /**
+     * Reads without {@code extension} serve a column's other values but not its references, so a
+     * client that PUTs such a read back omits them; like a missing extension, that is not a delete.
+     */
+    private void keepOmittedReferences(Column origColumn, Column updatedColumn) {
+      ObjectNode original = columnExtensionFields(origColumn);
+      ObjectNode updatedValues = columnExtensionFields(updatedColumn);
+      ObjectNode references =
+          CustomPropertyReferences.extractReferences(original, columnReferenceTyped());
+      references
+          .fieldNames()
+          .forEachRemaining(name -> updatedValues.putIfAbsent(name, references.get(name)));
+      if (!references.isEmpty()) {
+        updatedColumn.setExtension(JsonUtils.treeToValue(updatedValues, Object.class));
       }
     }
 
@@ -12726,7 +12760,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (CoreRelationshipDAOs.ExtensionRecordWithId record : extensionRecords) {
         String fieldName = TypeRegistry.getPropertyName(record.extensionName());
         JsonNode extensionJsonNode = JsonUtils.readTree(record.extensionJson());
-        objectNode.set(fieldName, extensionJsonNode);
+        if (!objectNode.has(fieldName)) {
+          objectNode.set(fieldName, extensionJsonNode);
+        }
       }
 
       result.put(entityId, objectNode);
