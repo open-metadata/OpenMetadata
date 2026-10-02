@@ -488,9 +488,9 @@ public class RootCauseAnalysisTool implements McpTool {
   }
 
   /**
-   * Splits the budget across the two directions and, mirroring {@link GetLineageTool}, reclaims the
-   * other direction's unused budget so an asymmetric analysis (RCA commonly has only upstream
-   * failing edges) can use the whole budget instead of being capped at half.
+   * Splits the budget across the two directions and reclaims the other direction's unused budget so
+   * an asymmetric analysis (RCA commonly has only upstream failing edges) can use the whole budget
+   * instead of being capped at half.
    */
   private static void fitEdgeLists(
       Map<String, Object> upstream, Map<String, Object> downstream, long available) {

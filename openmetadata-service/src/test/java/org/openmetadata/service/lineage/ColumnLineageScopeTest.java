@@ -1,4 +1,4 @@
-package org.openmetadata.mcp.tools;
+package org.openmetadata.service.lineage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

@@ -1,4 +1,4 @@
-package org.openmetadata.mcp.tools;
+package org.openmetadata.service.lineage;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -13,7 +13,6 @@ import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.lineage.LineageGraphPruner;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -25,13 +24,13 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * consumer renames it - over the graph already fetched: keep the mappings that carry a column
  * already reached, then drop the edges and tables left with none.
  */
-final class ColumnLineageScope {
+public final class ColumnLineageScope {
 
   private static final String FQN_FIELD = "fullyQualifiedName";
 
   private ColumnLineageScope() {}
 
-  static String requireColumnOf(String entityFqn, String columnFqn) {
+  public static String requireColumnOf(String entityFqn, String columnFqn) {
     if (!FullyQualifiedName.isParent(columnFqn, entityFqn)) {
       throw new IllegalArgumentException(
           String.format("Column '%s' is not a column of '%s'", columnFqn, entityFqn));
@@ -45,7 +44,7 @@ final class ColumnLineageScope {
    * all - a container's columns live under {@code dataModel}, which a plain read leaves out - cannot
    * disprove the column, so only the FQN-prefix check applies there.
    */
-  static String requireColumnExists(EntityInterface entity, String columnFqn) {
+  public static String requireColumnExists(EntityInterface entity, String columnFqn) {
     List<String> fqns = JsonUtils.valueToTree(entity).findValuesAsText(FQN_FIELD);
     boolean readCarriesChildren =
         fqns.stream()
@@ -64,7 +63,7 @@ final class ColumnLineageScope {
    * @return how many edges out of tables the column reaches were left out for having no column
    *     mappings at all - whether the column flows through them is unknown, not "no"
    */
-  static int narrow(EntityLineage lineage, String columnFqn) {
+  public static int narrow(EntityLineage lineage, String columnFqn) {
     UUID rootId = lineage.getEntity().getId();
     Followed downstream =
         follow(lineage.getDownstreamEdges(), columnFqn, rootId, Direction.DOWNSTREAM);

@@ -1,0 +1,111 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/compactLineage.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CompactLineage",
+  "description": "One page of an entity's lineage, slimmed to identity and relationship info, optionally narrowed to one column, with explicit markers for anything that was not returned.",
+  "javaType": "org.openmetadata.schema.api.lineage.CompactLineage",
+  "type": "object",
+  "definitions": {
+    "compactLineageEdge": {
+      "javaType": "org.openmetadata.schema.api.lineage.CompactLineageEdge",
+      "description": "A lineage edge with both endpoints folded in by name, FQN and type.",
+      "type": "object",
+      "properties": {
+        "fromFQN": { "description": "Fully qualified name of the source entity.", "type": "string" },
+        "toFQN": { "description": "Fully qualified name of the target entity.", "type": "string" },
+        "fromName": { "description": "Display name (or name) of the source entity.", "type": "string" },
+        "toName": { "description": "Display name (or name) of the target entity.", "type": "string" },
+        "fromType": { "description": "Entity type of the source entity.", "type": "string" },
+        "toType": { "description": "Entity type of the target entity.", "type": "string" },
+        "relationshipType": {
+          "description": "'sql', or the pipeline that carries the edge as '<type>:<name>'; just '<type>' when the caller cannot view that pipeline.",
+          "type": "string"
+        },
+        "pipelineFQN": { "description": "FQN of the pipeline carrying the edge, when the caller can view it.", "type": "string" },
+        "pipelineDescription": { "description": "Description of the pipeline carrying the edge, when the caller can view it.", "type": "string" },
+        "edgeDescription": { "description": "Description of the edge itself.", "type": "string" },
+        "source": { "description": "How the edge was recorded (for example query lineage or manual).", "type": "string" },
+        "assetEdges": { "description": "Number of asset-level edges this edge stands for.", "type": "integer" },
+        "sqlQuery": { "description": "The transformation SQL, only when it was requested.", "type": "string" },
+        "sqlTruncated": { "description": "True when the returned SQL was cut.", "type": "boolean" },
+        "hasSql": { "description": "True when the edge has transformation SQL, whether or not it was returned.", "type": "boolean" },
+        "tempLineageTables": {
+          "description": "Temporary-table hops parsed from the SQL, only when the SQL was requested.",
+          "type": "array",
+          "items": { "$ref": "../../type/entityLineage.json#/definitions/tempLineageTable" }
+        },
+        "updatedAt": {
+          "description": "When the edge was last updated.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "updatedBy": { "description": "Who last updated the edge.", "type": "string" },
+        "columnsLineage": {
+          "description": "Column-level mappings on the edge, only when column lineage was requested.",
+          "type": "array",
+          "items": { "$ref": "../../type/entityLineage.json#/definitions/columnLineage" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "edgeEndpoints": {
+      "javaType": "org.openmetadata.schema.api.lineage.LineageEdgeEndpoints",
+      "description": "The two endpoints of an edge, identified by FQN.",
+      "type": "object",
+      "properties": {
+        "fromFQN": { "description": "Fully qualified name of the source entity.", "type": "string" },
+        "toFQN": { "description": "Fully qualified name of the target entity.", "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "root": { "description": "Fully qualified name of the entity the lineage is for.", "type": "string" },
+    "rootId": { "description": "Id of the entity the lineage is for.", "type": "string" },
+    "rootType": { "description": "Entity type of the entity the lineage is for.", "type": "string" },
+    "upstream": {
+      "description": "Upstream edges on this page, nearest hop first.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/compactLineageEdge" }
+    },
+    "downstream": {
+      "description": "Downstream edges on this page, nearest hop first.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/compactLineageEdge" }
+    },
+    "totalEdges": { "description": "Edges in the whole graph, across all pages.", "type": "integer", "minimum": 0 },
+    "returnedEdges": { "description": "Edges on this page.", "type": "integer", "minimum": 0 },
+    "edgesTruncated": {
+      "description": "True when this page does not complete the graph: more edges remain, or some were skipped as too large.",
+      "type": "boolean"
+    },
+    "hasMore": { "description": "True when more edges remain after this page.", "type": "boolean" },
+    "nextFrom": { "description": "Offset of the first edge of the next page, when more edges remain.", "type": "integer", "minimum": 0 },
+    "upstreamReturned": { "description": "Upstream edges on this page, set when more edges remain.", "type": "integer", "minimum": 0 },
+    "upstreamTotal": { "description": "Upstream edges in the whole graph, set when more edges remain.", "type": "integer", "minimum": 0 },
+    "downstreamReturned": { "description": "Downstream edges on this page, set when more edges remain.", "type": "integer", "minimum": 0 },
+    "downstreamTotal": { "description": "Downstream edges in the whole graph, set when more edges remain.", "type": "integer", "minimum": 0 },
+    "firstEdge": { "description": "Offset of the first edge on this page.", "type": "integer", "minimum": 0 },
+    "oversizedEdges": {
+      "description": "The first few edges skipped because no response could hold them.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/edgeEndpoints" }
+    },
+    "oversizedEdgeCount": { "description": "How many edges were skipped because no response could hold them.", "type": "integer", "minimum": 0 },
+    "columnUnmappedEdges": {
+      "description": "With a column requested: edges out of tables the column reaches that have no column mappings, left out because whether the column flows through them is unknown.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "hiddenNodes": {
+      "description": "Nodes removed because the caller may not view them, or can only reach them through such a node.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "hiddenNodesUnchecked": {
+      "description": "True when the graph exceeded the authorization limit and nodes past it were removed unchecked.",
+      "type": "boolean"
+    },
+    "uncheckedNodes": { "description": "How many of the hidden nodes lie past the authorization limit.", "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": false
+}

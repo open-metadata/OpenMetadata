@@ -10,11 +10,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.mcp.tools.GetLineageTool.SlimLineage;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.mcp.util.VectorPagingContract;
+import org.openmetadata.schema.api.lineage.CompactLineage;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -22,6 +23,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.lineage.CompactLineageSlimmer;
+import org.openmetadata.service.lineage.CompactLineageSlimmer.EdgeOptions;
 
 /**
  * Unit tests for {@link GetLineageTool} slimming. These exercise the pure transform against
@@ -30,6 +33,20 @@ import org.openmetadata.schema.utils.JsonUtils;
  * to a partial graph (never dropped to bare counts).
  */
 class GetLineageToolTest {
+
+  /** The old tool seam's default: SQL on, column lineage as asked. */
+  private static CompactLineage slim(EntityLineage lineage, boolean includeColumnLineage) {
+    return CompactLineageSlimmer.toSlim(lineage, new EdgeOptions(includeColumnLineage, true));
+  }
+
+  private static CompactLineage slim(EntityLineage lineage, EdgeOptions options) {
+    return CompactLineageSlimmer.toSlim(lineage, options);
+  }
+
+  private static CompactLineage slim(
+      EntityLineage lineage, EdgeOptions options, Predicate<EntityReference> pipelineVisible) {
+    return CompactLineageSlimmer.toSlim(lineage, options, pipelineVisible);
+  }
 
   private static EntityReference ref(String name, String fqn) {
     return new EntityReference()
@@ -103,8 +120,7 @@ class GetLineageToolTest {
     Map<String, Object> edge =
         firstUpstreamEdge(
             GetLineageTool.enforceSizeBudget(
-                GetLineageTool.toSlim(
-                    lineage, new GetLineageTool.EdgeOptions(false, false), pipeline -> false)));
+                slim(lineage, new EdgeOptions(false, false), pipeline -> false)));
 
     assertEquals(
         "pipeline",
@@ -121,8 +137,7 @@ class GetLineageToolTest {
     Map<String, Object> edge =
         firstUpstreamEdge(
             GetLineageTool.enforceSizeBudget(
-                GetLineageTool.toSlim(
-                    lineage, new GetLineageTool.EdgeOptions(false, false), pipeline -> true)));
+                slim(lineage, new EdgeOptions(false, false), pipeline -> true)));
 
     assertEquals("pipeline:nightly_etl", edge.get("relationshipType"));
     assertEquals("airflow.nightly_etl", edge.get("pipelineFQN"));
@@ -139,16 +154,14 @@ class GetLineageToolTest {
 
     Map<String, Object> withoutSql =
         firstUpstreamEdge(
-            GetLineageTool.enforceSizeBudget(
-                GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, false))));
+            GetLineageTool.enforceSizeBudget(slim(lineage, new EdgeOptions(false, false))));
     assertFalse(
         withoutSql.containsKey("tempLineageTables"),
         "SQL-derived table names must not ride the default response");
 
     Map<String, Object> withSql =
         firstUpstreamEdge(
-            GetLineageTool.enforceSizeBudget(
-                GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, true))));
+            GetLineageTool.enforceSizeBudget(slim(lineage, new EdgeOptions(false, true))));
     assertTrue(withSql.containsKey("tempLineageTables"));
   }
 
@@ -161,8 +174,7 @@ class GetLineageToolTest {
   @Test
   void slimsToTableLevelByDefault() {
     EntityLineage lineage = singleUpstreamEdge("SELECT 1", List.of());
-    Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(lineage, false));
+    Map<String, Object> response = GetLineageTool.enforceSizeBudget(slim(lineage, false));
 
     assertEquals("db.public.orders", response.get("root"));
     assertFalse(response.containsKey("nodes"), "standalone nodes array must be folded into edges");
@@ -181,8 +193,7 @@ class GetLineageToolTest {
   void returnsLongSqlInFull() {
     String longSql = "SELECT ".repeat(200);
     Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(singleUpstreamEdge(longSql, List.of()), false));
+        GetLineageTool.enforceSizeBudget(slim(singleUpstreamEdge(longSql, List.of()), false));
     Map<String, Object> edge = firstUpstreamEdge(response);
 
     assertEquals(
@@ -193,8 +204,7 @@ class GetLineageToolTest {
   @Test
   void keepsShortSqlWithoutTruncationFlag() {
     Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(singleUpstreamEdge("SELECT 1", List.of()), false));
+        GetLineageTool.enforceSizeBudget(slim(singleUpstreamEdge("SELECT 1", List.of()), false));
     Map<String, Object> edge = firstUpstreamEdge(response);
 
     assertEquals("SELECT 1", edge.get("sqlQuery"));
@@ -206,8 +216,7 @@ class GetLineageToolTest {
     String sql = "SELECT a, b FROM upstream_table";
     Map<String, Object> response =
         GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(
-                singleUpstreamEdge(sql, List.of()), new GetLineageTool.EdgeOptions(false, false)));
+            slim(singleUpstreamEdge(sql, List.of()), new EdgeOptions(false, false)));
     Map<String, Object> edge = firstUpstreamEdge(response);
 
     assertNull(edge.get("sqlQuery"), "SQL must be omitted unless includeSql is set");
@@ -222,8 +231,7 @@ class GetLineageToolTest {
     String sql = "SELECT a, b FROM upstream_table";
     Map<String, Object> response =
         GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(
-                singleUpstreamEdge(sql, List.of()), new GetLineageTool.EdgeOptions(false, true)));
+            slim(singleUpstreamEdge(sql, List.of()), new EdgeOptions(false, true)));
     Map<String, Object> edge = firstUpstreamEdge(response);
 
     assertEquals(sql, edge.get("sqlQuery"), "opting in must return the SQL in full");
@@ -234,8 +242,7 @@ class GetLineageToolTest {
   void edgeWithoutSqlCarriesNoHasSqlFlag() {
     Map<String, Object> response =
         GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(
-                singleUpstreamEdge(null, List.of()), new GetLineageTool.EdgeOptions(false, false)));
+            slim(singleUpstreamEdge(null, List.of()), new EdgeOptions(false, false)));
     Map<String, Object> edge = firstUpstreamEdge(response);
 
     assertNull(edge.get("sqlQuery"));
@@ -250,15 +257,11 @@ class GetLineageToolTest {
     int withSql =
         McpResponseTrim.serializedLength(
             GetLineageTool.enforceSizeBudget(
-                GetLineageTool.toSlim(
-                    singleUpstreamEdge(sql, List.of()),
-                    new GetLineageTool.EdgeOptions(false, true))));
+                slim(singleUpstreamEdge(sql, List.of()), new EdgeOptions(false, true))));
     int withoutSql =
         McpResponseTrim.serializedLength(
             GetLineageTool.enforceSizeBudget(
-                GetLineageTool.toSlim(
-                    singleUpstreamEdge(sql, List.of()),
-                    new GetLineageTool.EdgeOptions(false, false))));
+                slim(singleUpstreamEdge(sql, List.of()), new EdgeOptions(false, false))));
 
     assertTrue(
         withoutSql * 5 < withSql,
@@ -288,7 +291,7 @@ class GetLineageToolTest {
             .withToColumn("db.public.orders.id");
     Map<String, Object> response =
         GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(singleUpstreamEdge("SELECT 1", List.of(column)), true));
+            slim(singleUpstreamEdge("SELECT 1", List.of(column)), true));
     Map<String, Object> edge = firstUpstreamEdge(response);
 
     assertTrue(edge.containsKey("columnsLineage"), "column lineage must appear when opted in");
@@ -297,8 +300,7 @@ class GetLineageToolTest {
   @Test
   void omitsEmptyColumnLineageEvenWhenOptedIn() {
     Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(singleUpstreamEdge("SELECT 1", List.of()), true));
+        GetLineageTool.enforceSizeBudget(slim(singleUpstreamEdge("SELECT 1", List.of()), true));
     Map<String, Object> edge = firstUpstreamEdge(response);
 
     assertFalse(
@@ -331,7 +333,7 @@ class GetLineageToolTest {
     int rawSize = org.openmetadata.schema.utils.JsonUtils.pojoToJson(lineage).length();
     int slimSize =
         org.openmetadata.schema.utils.JsonUtils.pojoToJson(
-                GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(lineage, false)))
+                GetLineageTool.enforceSizeBudget(slim(lineage, false)))
             .length();
 
     assertTrue(
@@ -362,7 +364,7 @@ class GetLineageToolTest {
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> upstreamEdges =
         (List<Map<String, Object>>)
-            GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(lineage, false)).get("upstream");
+            GetLineageTool.enforceSizeBudget(slim(lineage, false)).get("upstream");
 
     assertEquals(1, upstreamEdges.size(), "identical edges must be collapsed to one");
   }
@@ -390,8 +392,7 @@ class GetLineageToolTest {
             .withUpstreamEdges(edges)
             .withDownstreamEdges(List.of());
 
-    Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(lineage, true));
+    Map<String, Object> response = GetLineageTool.enforceSizeBudget(slim(lineage, true));
 
     assertTrue(
         response.containsKey("upstream"), "oversized response must still carry partial edge data");
@@ -442,8 +443,7 @@ class GetLineageToolTest {
             .withUpstreamEdges(upstream)
             .withDownstreamEdges(downstream);
 
-    Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(lineage, true));
+    Map<String, Object> response = GetLineageTool.enforceSizeBudget(slim(lineage, true));
 
     assertTrue((int) response.get("upstreamReturned") > 0, "upstream must stay represented");
     assertTrue((int) response.get("downstreamReturned") > 0, "downstream must stay represented");
@@ -517,7 +517,7 @@ class GetLineageToolTest {
   /** The customer's ask: when a graph is clipped, the rest must be reachable, not just counted. */
   @Test
   void pagingThroughAClippedGraphReturnsEveryEdgeExactlyOnce() {
-    GetLineageTool.SlimLineage slim = GetLineageTool.toSlim(heavyGraph(40), true);
+    CompactLineage slim = slim(heavyGraph(40), true);
     List<String> seen = new ArrayList<>();
     int pages = 0;
     int from = 0;
@@ -540,8 +540,7 @@ class GetLineageToolTest {
   @Test
   void aCompleteGraphHasNoNextCursor() {
     Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(singleUpstreamEdge("SELECT 1", List.of()), false), 0);
+        GetLineageTool.enforceSizeBudget(slim(singleUpstreamEdge("SELECT 1", List.of()), false), 0);
 
     assertNull(response.get(McpResponseTrim.NEXT_CURSOR_KEY));
     assertNull(response.get(McpResponseTrim.HAS_MORE_KEY));
@@ -549,8 +548,7 @@ class GetLineageToolTest {
 
   @Test
   void anOffsetPastTheEndReturnsNoEdgesAndNoCursor() {
-    Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(heavyGraph(3), true), 500);
+    Map<String, Object> response = GetLineageTool.enforceSizeBudget(slim(heavyGraph(3), true), 500);
 
     assertEquals(0, response.get("returnedEdges"));
     assertEquals(6, response.get("totalEdges"));
@@ -577,8 +575,7 @@ class GetLineageToolTest {
             .withUpstreamEdges(List.of())
             .withDownstreamEdges(List.of(secondHop, toStage, toAudit));
 
-    Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(lineage, false), 0);
+    Map<String, Object> response = GetLineageTool.enforceSizeBudget(slim(lineage, false), 0);
 
     assertEquals(
         List.of(
@@ -620,8 +617,7 @@ class GetLineageToolTest {
                     edgeWithSql(root, first, nearHalfCap), edgeWithSql(root, second, nearHalfCap)));
 
     Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, true)), 0);
+        GetLineageTool.enforceSizeBudget(slim(lineage, new EdgeOptions(false, true)), 0);
 
     assertEquals(
         1, response.get("returnedEdges"), "two edges this close to the cap need two pages");
@@ -642,8 +638,7 @@ class GetLineageToolTest {
             .withDownstreamEdges(List.of(edgeWithSql(root, huge, hugeSql)));
 
     Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, true)), 0);
+        GetLineageTool.enforceSizeBudget(slim(lineage, new EdgeOptions(false, true)), 0);
 
     assertEquals(0, response.get("returnedEdges"));
     assertEquals(Boolean.TRUE, response.get("edgesTruncated"));
@@ -670,8 +665,7 @@ class GetLineageToolTest {
             .withDownstreamEdges(edges);
 
     Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, true)), 0);
+        GetLineageTool.enforceSizeBudget(slim(lineage, new EdgeOptions(false, true)), 0);
 
     assertEquals(10, listOf(response.get("oversizedEdges")).size());
     assertTrue(((String) response.get(McpResponseTrim.MESSAGE_KEY)).contains("12 edge(s)"));
@@ -700,7 +694,7 @@ class GetLineageToolTest {
                     edgeWithSql(root, small, "SELECT 1"),
                     edgeWithSql(root, huge, hugeSql),
                     edgeWithSql(root, after, "SELECT 2")));
-    SlimLineage slim = GetLineageTool.toSlim(lineage, new GetLineageTool.EdgeOptions(false, true));
+    CompactLineage slim = slim(lineage, new EdgeOptions(false, true));
 
     List<String> seen = new ArrayList<>();
     List<Object> oversized = new ArrayList<>();
@@ -739,8 +733,7 @@ class GetLineageToolTest {
 
   @Test
   void theClipMessageCountsFromTheFirstEdgeActuallyReturned() {
-    Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(GetLineageTool.toSlim(heavyGraph(40), true), -5);
+    Map<String, Object> response = GetLineageTool.enforceSizeBudget(slim(heavyGraph(40), true), -5);
 
     assertTrue(
         ((String) response.get(McpResponseTrim.MESSAGE_KEY)).contains("edges 1-"),
@@ -750,8 +743,7 @@ class GetLineageToolTest {
   @Test
   void lineageAlwaysStatesWhetherTheGraphIsComplete() {
     Map<String, Object> response =
-        GetLineageTool.enforceSizeBudget(
-            GetLineageTool.toSlim(singleUpstreamEdge("SELECT 1", List.of()), false));
+        GetLineageTool.enforceSizeBudget(slim(singleUpstreamEdge("SELECT 1", List.of()), false));
 
     assertEquals(
         Boolean.FALSE,
