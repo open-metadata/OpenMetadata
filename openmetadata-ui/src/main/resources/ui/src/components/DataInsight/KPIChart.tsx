@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { PlusOutlined } from '@ant-design/icons';
 import {
   chartColor,
   ChartSeries,
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';

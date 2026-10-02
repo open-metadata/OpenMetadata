@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   chartColor,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
 import { Progress, Tooltip } from 'antd';
 import { toNumber } from 'lodash';
 import React from 'react';

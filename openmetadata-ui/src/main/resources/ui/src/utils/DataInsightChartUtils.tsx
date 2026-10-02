@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   chartColor,
   type ChartPalette,
   type ChartSeries,
   type ChartTooltipRenderProps,
 } from '@openmetadata/ui-core-components/charts';
-import { Typography } from '@openmetadata/ui-core-components';
 import { Card } from 'antd';
 import { startCase, uniqBy } from 'lodash';
 import {

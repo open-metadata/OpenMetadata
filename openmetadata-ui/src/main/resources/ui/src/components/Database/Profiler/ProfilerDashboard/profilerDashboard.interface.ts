@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
+import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { ReactNode } from 'react';
 import type { TestCaseDeletionMode } from '../../../../constants/DataQuality.constants';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';

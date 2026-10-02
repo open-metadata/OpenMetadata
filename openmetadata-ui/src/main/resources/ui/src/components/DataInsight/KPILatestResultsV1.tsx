@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   chartColor,
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
 import { Col, Progress, Row, Space, Tooltip } from 'antd';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';

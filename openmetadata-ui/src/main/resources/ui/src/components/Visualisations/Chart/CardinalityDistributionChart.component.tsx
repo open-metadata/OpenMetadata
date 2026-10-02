@@ -14,11 +14,11 @@
 import { Badge } from '@openmetadata/ui-core-components';
 import {
   BarChart,
+  useChartPalette,
   type ChartSeries,
   type ChartTooltipRenderProps,
   type ChartXAxisProps,
   type ChartYAxisProps,
-  useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
