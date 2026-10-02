@@ -10,6 +10,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -26,6 +27,8 @@ import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTableProfile;
+import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -38,6 +41,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
+import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
+import org.openmetadata.schema.entity.datacontract.SlaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
@@ -64,12 +69,16 @@ import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ContractExecutionStatus;
+import org.openmetadata.schema.type.DmlOperationType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.SystemProfile;
+import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -6736,6 +6745,76 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertTrue(validation.getSchemaValidation().getFailedFields().contains("another_missing"));
   }
 
+  // Regression for the validate endpoints returning 500/404 instead of a structured
+  // ContractValidation. Before the fix, validateContractWithoutThrowing let an unguarded second
+  // validateSchemaFieldsAgainstEntity call throw (NPE for null entity, EntityNotFoundException
+  // for a missing entity id) and the endpoints returned 500/404. These inputs must now return
+  // 200 with a populated ContractValidation (valid=false).
+
+  @Test
+  void testValidateContractRequestNullEntityWithSchemaReturnsValidation(TestNamespace ns) {
+    // Variant A: entity omitted, non-empty schema -> before the fix: HTTP 500 (NPE).
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("validate_null_entity"))
+            .withSchema(List.of(new Column().withName("a").withDataType(ColumnDataType.STRING)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getEntityErrors());
+    assertTrue(
+        validation.getEntityErrors().stream().anyMatch(e -> e.contains("entity")),
+        "entityErrors must include the @NotNull violation for the null entity: "
+            + validation.getEntityErrors());
+    assertNotNull(
+        validation.getConstraintErrors(),
+        "the previously-unguarded NPE must now be collected as a constraint error");
+    assertFalse(validation.getConstraintErrors().isEmpty());
+  }
+
+  @Test
+  void testValidateContractRequestMissingEntityIdWithSchemaReturnsValidation(TestNamespace ns) {
+    // Variant B: entity present but id does not resolve (supported type), non-empty schema ->
+    // before the fix: HTTP 404 (EntityNotFoundException). A random UUID of type "table" will not
+    // resolve.
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("validate_missing_entity_id"))
+            .withEntity(new EntityReference().withId(UUID.randomUUID()).withType("table"))
+            .withSchema(List.of(new Column().withName("a").withDataType(ColumnDataType.STRING)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getConstraintErrors());
+    assertFalse(
+        validation.getConstraintErrors().isEmpty(),
+        "the EntityNotFoundException must be recorded as a constraint error, not returned as 404");
+  }
+
+  @Test
+  void testValidateContractRequestYamlNullEntityWithSchemaReturnsValidation(TestNamespace ns) {
+    // Variant A through the YAML endpoint (POST /v1/dataContracts/validate/yaml). Before the
+    // fix: HTTP 500 (NPE). The YAML body is a CreateDataContract with only name + schema.
+    String yaml =
+        "name: "
+            + ns.prefix("validate_yaml_null_entity")
+            + "\nschema:\n  - name: a\n    dataType: STRING\n";
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContractYaml(yaml);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getEntityErrors());
+    assertTrue(validation.getEntityErrors().stream().anyMatch(e -> e.contains("entity")));
+  }
+
   @Test
   void testValidateContractDoesNotCreateContract(TestNamespace ns) {
     Table table =
@@ -8215,5 +8294,181 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                 issue ->
                     issue.getSeverity() == ODCSImportIssueSeverity.BLOCKING
                         && issue.getMessage().contains(missingTable.toString())));
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Contract validation: SLA checks and semantics rule counts
+  // ---------------------------------------------------------------------------------------------
+
+  private static final long HOUR_MILLIS = Duration.ofHours(1).toMillis();
+
+  @Test
+  void testSLARefreshFrequencyIsCheckedAgainstTheSlaColumnsNewestValue(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("sla_refresh"))
+                .withEntity(table.getEntityReference())
+                .withSla(
+                    dailyRefresh()
+                        .withColumnName(
+                            FullyQualifiedName.add(table.getFullyQualifiedName(), "updated_at"))));
+    long now = System.currentTimeMillis();
+
+    addUpdatedAtProfile(
+        table, now - HOUR_MILLIS, Instant.ofEpochMilli(now - 2 * HOUR_MILLIS).toString());
+    DataContractResult fresh = SdkClients.adminClient().dataContracts().validate(contract.getId());
+    addUpdatedAtProfile(table, now, Instant.ofEpochMilli(now - 72 * HOUR_MILLIS).toString());
+    DataContractResult stale = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertEquals(Boolean.TRUE, fresh.getSlaValidation().getRefreshFrequencyMet());
+    assertEquals(
+        SlaValidation.RefreshedAtSource.SLA_COLUMN_PROFILE,
+        fresh.getSlaValidation().getRefreshedAtSource());
+    assertEquals(ContractExecutionStatus.Success, fresh.getContractExecutionStatus());
+    assertEquals(Boolean.FALSE, stale.getSlaValidation().getRefreshFrequencyMet());
+    assertEquals(ContractExecutionStatus.Failed, stale.getContractExecutionStatus());
+  }
+
+  @Test
+  void testSLAUsesTheLastWriteWhenTheNewestSystemProfileIsADelete(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("sla_latest_delete"))
+                .withEntity(table.getEntityReference())
+                .withSla(dailyRefresh()));
+    long now = System.currentTimeMillis();
+    long writtenAt = now - HOUR_MILLIS;
+    CreateTableProfile profile =
+        new CreateTableProfile()
+            .withTableProfile(
+                new TableProfile().withTimestamp(now).withRowCount(10.0).withColumnCount(4.0))
+            .withSystemProfile(
+                List.of(
+                    new SystemProfile()
+                        .withTimestamp(writtenAt)
+                        .withOperation(DmlOperationType.INSERT)
+                        .withRowsAffected(10),
+                    new SystemProfile()
+                        .withTimestamp(now)
+                        .withOperation(DmlOperationType.DELETE)
+                        .withRowsAffected(1)));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/tables/" + table.getId() + "/tableProfile", profile, Table.class);
+
+    DataContractResult result = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertEquals(
+        SlaValidation.RefreshedAtSource.SYSTEM_PROFILE,
+        result.getSlaValidation().getRefreshedAtSource());
+    assertEquals(writtenAt, result.getSlaValidation().getLastRefreshedAt());
+    assertEquals(Boolean.TRUE, result.getSlaValidation().getRefreshFrequencyMet());
+    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
+  }
+
+  @Test
+  void testSLAUsesAnEarlierColumnProfileWhenTheLatestMaximumIsUnreadable(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("sla_unreadable_max"))
+                .withEntity(table.getEntityReference())
+                .withSla(dailyRefresh().withColumnName("updated_at")));
+    long now = System.currentTimeMillis();
+    Instant refreshedAt = Instant.ofEpochMilli(now - 2 * HOUR_MILLIS);
+    addUpdatedAtProfile(table, now - HOUR_MILLIS, refreshedAt.toString());
+    addUpdatedAtProfile(table, now, "not a time");
+
+    DataContractResult result = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertEquals(
+        SlaValidation.RefreshedAtSource.SLA_COLUMN_PROFILE,
+        result.getSlaValidation().getRefreshedAtSource());
+    assertEquals(refreshedAt.toEpochMilli(), result.getSlaValidation().getLastRefreshedAt());
+    assertEquals(Boolean.TRUE, result.getSlaValidation().getRefreshFrequencyMet());
+    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
+  }
+
+  @Test
+  void testSLAIsNotEvaluatedWhenNothingRecordsARefresh(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("sla_unknown"))
+                .withEntity(table.getEntityReference())
+                .withSla(dailyRefresh()));
+
+    DataContractResult result = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertNull(result.getSlaValidation().getRefreshFrequencyMet());
+    assertTrue(result.getSlaValidation().getMessage().startsWith("Not evaluated"));
+    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
+  }
+
+  @Test
+  void testDisabledSemanticsRuleIsCountedAsSkippedNotPassed(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("semantics_skipped"))
+                .withEntity(table.getEntityReference())
+                .withSemantics(
+                    List.of(
+                        new SemanticsRule()
+                            .withName("Has a name")
+                            .withDescription("The table has a name")
+                            .withRule("{ \"!!\": { \"var\": \"name\" } }")
+                            .withEnabled(true),
+                        new SemanticsRule()
+                            .withName("Has one owner")
+                            .withDescription("The table has exactly one owner")
+                            .withRule("{\"==\":[{\"size\":{\"var\":\"owners\"}},1]}")
+                            .withEnabled(false))));
+
+    SemanticsValidation semantics =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validate(contract.getId())
+            .getSemanticsValidation();
+
+    assertEquals(2, semantics.getTotal());
+    assertEquals(1, semantics.getPassed());
+    assertEquals(0, semantics.getFailed());
+    assertEquals(1, semantics.getSkipped());
+  }
+
+  private static ContractSLA dailyRefresh() {
+    return new ContractSLA()
+        .withRefreshFrequency(
+            new RefreshFrequency().withInterval(1).withUnit(RefreshFrequency.Unit.DAY));
+  }
+
+  /** A profile of the table whose {@code updated_at} column's newest value is {@code newest}. */
+  private static void addUpdatedAtProfile(Table table, long profiledAt, String newest) {
+    CreateTableProfile profile =
+        new CreateTableProfile()
+            .withTableProfile(
+                new TableProfile()
+                    .withTimestamp(profiledAt)
+                    .withRowCount(10.0)
+                    .withColumnCount(4.0))
+            .withColumnProfile(
+                List.of(
+                    new ColumnProfile()
+                        .withName("updated_at")
+                        .withTimestamp(profiledAt)
+                        .withMax(newest)));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/tables/" + table.getId() + "/tableProfile", profile, Table.class);
   }
 }

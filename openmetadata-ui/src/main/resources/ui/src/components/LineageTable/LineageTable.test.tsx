@@ -45,6 +45,9 @@ jest.mock('./useLineageTableState');
 jest.mock('../../rest/lineageAPI');
 jest.mock('../../utils/StringUtils', () => ({
   ...jest.requireActual('../../utils/StringUtils'),
+}));
+
+jest.mock('../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((str: string) => str),
 }));
 jest.mock('../../hooks/useLineageStore', () => {

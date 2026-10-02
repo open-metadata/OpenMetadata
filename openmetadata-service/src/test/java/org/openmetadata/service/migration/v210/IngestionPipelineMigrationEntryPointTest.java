@@ -38,6 +38,7 @@ import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigr
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
 
@@ -67,6 +68,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(CustomPropertyReferenceMigration.class);
         MockedStatic<IngestionPipelineMigrationUtil> ingestionPipelineMigration =
             mockStatic(IngestionPipelineMigrationUtil.class);
+        MockedStatic<MlFeatureTagBackfill> mlFeatureTagBackfill =
+            mockStatic(MlFeatureTagBackfill.class);
         MockedStatic<SearchTermBoostRepair> searchTermBoostRepair =
             mockStatic(SearchTermBoostRepair.class)) {
       migration.runDataMigration();

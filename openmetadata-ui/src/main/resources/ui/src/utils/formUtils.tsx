@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 import {
+  Divider,
   Input as UTInput,
   Select as UTSelect,
   SelectItemType,
   Toggle,
   ToggleProps,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Checkbox,
-  Divider,
   Form,
   FormItemProps,
   Input,
@@ -28,7 +29,6 @@ import {
   Select,
   Switch,
   TooltipProps,
-  Typography,
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
@@ -387,7 +387,7 @@ export const getField = (field: FieldProp) => {
         <Form.Item className="m-b-0" {...formProps}>
           <Switch />
         </Form.Item>
-        <Typography.Text className="font-medium">{labelValue}</Typography.Text>
+        <Typography className="font-medium">{labelValue}</Typography>
       </div>
     );
   }
@@ -415,7 +415,7 @@ export const getField = (field: FieldProp) => {
         />
       )}
 
-      {hasSeparator && <Divider />}
+      {hasSeparator && <Divider className="tw:my-6" />}
     </Fragment>
   );
 };

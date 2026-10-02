@@ -281,7 +281,7 @@ class RdfResourceTest {
     assertEquals(URI.create("https://open-metadata.org/"), status.getBaseUri());
     assertEquals(false, status.getEnabled());
     assertEquals(RdfProjectionState.DISABLED, status.getProjectionState());
-    assertEquals(false, status.getAskCollateEnabled());
+    assertEquals(false, status.getAiEnabled());
     assertEquals("NONE", status.getInference().getDefaultLevel());
     verify(authorizer, never()).authorizeAdmin(securityContext);
   }

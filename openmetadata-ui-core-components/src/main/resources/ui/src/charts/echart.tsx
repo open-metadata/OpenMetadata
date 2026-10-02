@@ -93,17 +93,15 @@ export const EChart = ({
   const zoomRef = useRef<ZoomWindow>();
   const dark = useIsDarkMode(containerRef, isDark);
   const theme = buildChartTheme({ isDark: dark });
-  const resolved = useMemo(
+  const baseOption = useMemo(
     () =>
-      applyZoomWindow(
-        withAria(
-          typeof option === 'function' ? option(theme) : option,
-          ariaLabel
-        ),
-        zoomRef.current
+      withAria(
+        typeof option === 'function' ? option(theme) : option,
+        ariaLabel
       ),
     [option, theme, ariaLabel]
   );
+  const resolved = applyZoomWindow(baseOption, zoomRef.current);
   const events = useMemo(
     () => ({
       ...onEvents,

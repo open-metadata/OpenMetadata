@@ -134,7 +134,7 @@ class SearchIndexFieldCarryForwardTest {
       SearchIndex updated = searchIndex(updatedField);
 
       SearchIndexRepository.SearchIndexUpdater updater =
-          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT);
+          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT, null);
 
       updater.entitySpecificUpdate(false);
 
@@ -167,7 +167,7 @@ class SearchIndexFieldCarryForwardTest {
       SearchIndex updated = searchIndex(updatedField);
 
       SearchIndexRepository.SearchIndexUpdater updater =
-          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT);
+          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT, null);
 
       updater.entitySpecificUpdate(false);
 
@@ -201,7 +201,7 @@ class SearchIndexFieldCarryForwardTest {
       SearchIndex updated = searchIndex(updatedParent);
 
       SearchIndexRepository.SearchIndexUpdater updater =
-          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT);
+          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT, null);
 
       updater.entitySpecificUpdate(false);
 

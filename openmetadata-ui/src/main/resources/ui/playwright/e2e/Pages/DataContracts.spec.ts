@@ -2314,7 +2314,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
   const testPersona = base.extend<{ page: Page }>({
     page: async ({ browser }, use) => {
       const adminPage = await browser.newPage();
-      await adminUser.login(adminPage);
+      await adminUser.signIn(adminPage);
       await use(adminPage);
       await adminPage.close();
     },
@@ -2469,9 +2469,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               await settingClick(page, GlobalSettingOptions.PERSONA);
               await personaGetResponse;
 
-              await page.locator('.ant-skeleton-content').first().waitFor({
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
 
               // Navigate to persona details
               await navigateToPersonaWithPagination(

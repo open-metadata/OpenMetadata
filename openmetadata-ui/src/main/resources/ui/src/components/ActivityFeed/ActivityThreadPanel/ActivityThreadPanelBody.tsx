@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Switch, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -260,11 +261,11 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const renderTaskList = () =>
     tasks.length === 0 && !loading ? (
       <ErrorPlaceHolder className="mt-24" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph>
+        <Typography as="p">
           {isTaskClosed
             ? t('message.no-closed-task')
             : t('message.no-open-task')}
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     ) : (
       <div className={classNames(className, 'd-flex flex-col gap-3')}>
@@ -302,9 +303,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <Fragment>
         {(showNewConversation || hasNoConversations) && isConversationType && (
           <Space className="w-full" direction="vertical">
-            <Typography.Paragraph>
-              {t('message.new-conversation')}
-            </Typography.Paragraph>
+            <Typography as="p">{t('message.new-conversation')}</Typography>
             <ActivityFeedEditor
               placeHolder={t('message.enter-a-field', {
                 field: t('label.message-lowercase'),

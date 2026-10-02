@@ -13,6 +13,7 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Drawer,
@@ -22,7 +23,6 @@ import {
   Space,
   Switch,
   TreeSelect,
-  Typography,
 } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
@@ -46,6 +46,7 @@ import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
+  MIN_PROFILE_SAMPLE,
   PROFILER_MODAL_LABEL_STYLE,
   PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
@@ -193,11 +194,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       form.setFieldsValue({
         profileSampleType,
         profileSamplePercentage:
-          profileSample && profileSampleType === ProfileSampleType.Percentage
+          !isNil(profileSample) &&
+          profileSampleType === ProfileSampleType.Percentage
             ? profileSample
             : undefined,
         profileSampleRows:
-          profileSample && profileSampleType === ProfileSampleType.Rows
+          !isNil(profileSample) && profileSampleType === ProfileSampleType.Rows
             ? profileSample
             : undefined,
       });
@@ -352,7 +354,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
           profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
           profileSampleConfig:
-            profileSampleType && profileSample
+            !isNil(profileSampleType) && !isNil(profileSample)
               ? {
                   sampleConfigType: SampleConfigType.Static,
                   config: {
@@ -537,6 +539,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 name="profileSamplePercentage">
                 <SliderWithInput
                   className="p-x-xs"
+                  min={MIN_PROFILE_SAMPLE}
                   value={state?.profileSample}
                   onChange={handleProfileSample}
                 />
@@ -552,7 +555,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <InputNumber
                   className="w-full"
                   data-testid="metric-number-input"
-                  min={0}
+                  min={MIN_PROFILE_SAMPLE}
                   placeholder={t('label.please-enter-value', {
                     name: t('label.row-count-lowercase'),
                   })}
@@ -591,9 +594,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           />
         </Col>
         <Col data-testid="exclude-column-container" span={24}>
-          <Typography.Paragraph>
-            {t('message.enable-column-profile')}
-          </Typography.Paragraph>
+          <Typography as="p">{t('message.enable-column-profile')}</Typography>
           <p className="text-xs m-b-xss">{t('label.exclude')}:</p>
           <Select
             allowClear

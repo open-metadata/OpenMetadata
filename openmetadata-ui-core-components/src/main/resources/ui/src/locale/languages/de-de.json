@@ -7,6 +7,7 @@
     "close": "Schließen",
     "close-navigation-menu": "Navigationsmenü schließen",
     "copy-link": "Link kopieren",
+    "count-remaining": "noch {{count}}",
     "count-selected": "{{count}} ausgewählt",
     "current-page": "Aktuelle Seite",
     "date-range-picker": "Datumsbereichsauswahl",
@@ -36,6 +37,7 @@
     "select-date": "Datum auswählen",
     "select-dates": "Daten auswählen",
     "select-only-one-row": "Eine Zeile auswählen",
+    "show-count-more": "{{count}} weitere anzeigen",
     "show-hidden-breadcrumbs": "Ausgeblendete Breadcrumbs anzeigen",
     "today": "Heute",
     "tree-select": "Baumauswahl"

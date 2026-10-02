@@ -301,34 +301,6 @@ export const getIntervalInMilliseconds = (
 };
 
 /**
- * Calculates the interval between two timestamps in milliseconds
- * and returns the result as a formatted string "X Days, Y Hours".
- *
- * @param startTime - The start time in milliseconds.
- * @param endTime - The end time in milliseconds.
- * @returns A formatted string representing the interval in "X Days, Y Hours".
- */
-export const calculateInterval = (
-  startTime: number,
-  endTime: number
-): string => {
-  try {
-    const intervalInMilliseconds = getIntervalInMilliseconds(
-      startTime,
-      endTime
-    );
-
-    const duration = Duration.fromMillis(intervalInMilliseconds);
-    const days = Math.floor(duration.as('days'));
-    const hours = Math.floor(duration.as('hours')) % 24;
-
-    return `${days} Days, ${hours} Hours`;
-  } catch {
-    return 'Invalid interval';
-  }
-};
-
-/**
  * Joins the non-zero unit parts into a compact human-readable string, applying an
  * optional max-unit cap and a negative-value prefix. Returns '0s' when empty.
  */

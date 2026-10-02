@@ -83,7 +83,8 @@
     "openmetadata-ui/src/main/resources/ui/playwright/reporters/**",
     "openmetadata-ui/src/main/resources/ui/playwright/support/user/**",
     "openmetadata-ui/src/main/resources/ui/playwright/utils/**",
-    "openmetadata-ui/src/main/resources/ui/vite.config.ts"
+    "openmetadata-ui/src/main/resources/ui/vite.config.ts",
+    "openmetadata-ui/src/main/resources/ui/vite/**"
   ],
   "mappings": [
     {
