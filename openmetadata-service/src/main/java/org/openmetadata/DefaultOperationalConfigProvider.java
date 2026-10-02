@@ -69,11 +69,16 @@ public class DefaultOperationalConfigProvider {
       throw new IllegalStateException(
           "Operations configuration is missing the required 'serverUrl' block.");
     }
-    try {
-      OpenMetadataBaseUrlValidator.validateUrl(serverUrl.getOpenMetadataUrl());
-    } catch (SystemSettingsException ex) {
-      throw new IllegalStateException(
-          "Operations configuration has an invalid 'openMetadataUrl': " + ex.getMessage(), ex);
+    String openMetadataUrl = serverUrl.getOpenMetadataUrl();
+    if (openMetadataUrl == null || openMetadataUrl.isBlank()) {
+      serverUrl = getDefaultServerUrl();
+    } else {
+      try {
+        OpenMetadataBaseUrlValidator.validateUrl(openMetadataUrl);
+      } catch (SystemSettingsException ex) {
+        throw new IllegalStateException(
+            "Operations configuration has an invalid 'openMetadataUrl': " + ex.getMessage(), ex);
+      }
     }
     this.emailSettings = email;
     this.serverUrl = serverUrl;

@@ -238,7 +238,7 @@ class DefaultOperationalConfigProviderTest {
   }
 
   @Test
-  void applyConfigurationRejectsBlankServerUrl() {
+  void applyConfigurationFallsBackToDefaultWhenServerUrlIsBlank() {
     DefaultOperationalConfigProvider provider =
         new DefaultOperationalConfigProvider(new OpsConfig().withEnable(false));
 
@@ -247,11 +247,13 @@ class DefaultOperationalConfigProviderTest {
             .withEmail(new SmtpSettings())
             .withServerUrl(new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(""));
 
-    IllegalStateException ex =
-        assertThrows(IllegalStateException.class, () -> provider.applyConfiguration(configuration));
-    assertTrue(
-        ex.getMessage().contains("openMetadataUrl"),
-        "error should identify the invalid openMetadataUrl field: " + ex.getMessage());
+    provider.applyConfiguration(configuration);
+
+    assertNotNull(provider.getServerUrl(), "blank openMetadataUrl should fall back to the default");
+    assertEquals(
+        "http://localhost:8585",
+        provider.getServerUrl().getOpenMetadataUrl(),
+        "blank openMetadataUrl should resolve to the shipped default base URL");
   }
 
   @Test
