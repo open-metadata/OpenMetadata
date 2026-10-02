@@ -850,6 +850,50 @@ public class IncidentGroupsIT {
   }
 
   @Test
+  void testBulkSeverityChangeOnAssignedIncidentNamedById() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_bulk_severity_by_id_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_bulk_severity_by_id_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_bulk_severity_by_id_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    createStatus(
+        testCase,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned().withAssignee(userA.getEntityReference()));
+    Severity current = fetchStatuses(testCase).getFirst().getSeverity();
+    Severity target = current == Severity.Severity5 ? Severity.Severity4 : Severity.Severity5;
+    int chainSize = fetchStatuses(testCase).size();
+
+    // Only the id: an API caller has no reason to send the assignee's name.
+    BulkOperationResult result =
+        client
+            .testCaseResolutionStatuses()
+            .bulkCreate(
+                List.of(
+                    new CreateTestCaseResolutionStatus()
+                        .withTestCaseReference(testCase.getFullyQualifiedName())
+                        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+                        .withTestCaseResolutionStatusDetails(
+                            new Assigned()
+                                .withAssignee(
+                                    new EntityReference()
+                                        .withId(userA.getId())
+                                        .withType(Entity.USER)))
+                        .withSeverity(target)));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    List<TestCaseResolutionStatus> chain = fetchStatuses(testCase);
+    assertEquals(chainSize, chain.size(), "the same assignee by id is a severity change only");
+    assertEquals(target, chain.getFirst().getSeverity());
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned, chain.getFirst().getTestCaseResolutionStatusType());
+  }
+
+  @Test
   void testBulkNewOnOpenIncidentRejected() throws Exception {
     long ts = System.currentTimeMillis();
     Table table = createTable(schemaFqn, "incident_groups_bulk_new_" + ts);

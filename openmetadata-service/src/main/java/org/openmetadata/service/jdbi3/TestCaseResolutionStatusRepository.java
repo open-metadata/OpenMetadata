@@ -228,7 +228,17 @@ public class TestCaseResolutionStatusRepository
   private static boolean isSameStatus(
       TestCaseResolutionStatus incoming, TestCaseResolutionStatus latest) {
     return incoming.getTestCaseResolutionStatusType() == latest.getTestCaseResolutionStatusType()
-        && Objects.equals(extractAssigneeName(incoming), extractAssigneeName(latest));
+        && isSameAssignee(extractAssignee(incoming), extractAssignee(latest));
+  }
+
+  // A request may name its assignee by id alone, while the stored record carries both.
+  private static boolean isSameAssignee(EntityReference incoming, EntityReference stored) {
+    if (incoming == null || stored == null) {
+      return incoming == stored;
+    }
+    return incoming.getId() != null
+        ? incoming.getId().equals(stored.getId())
+        : Objects.equals(incoming.getName(), stored.getName());
   }
 
   // Same write as a PATCH of the severity: the stored record, without its inherited test case.
@@ -420,16 +430,18 @@ public class TestCaseResolutionStatusRepository
   }
 
   private static String extractAssigneeName(TestCaseResolutionStatus recordEntity) {
-    String result = null;
-    if (recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Assigned
-        && recordEntity.getTestCaseResolutionStatusDetails() != null) {
-      Assigned assigned =
-          JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
-      if (assigned != null && assigned.getAssignee() != null) {
-        result = assigned.getAssignee().getName();
-      }
+    EntityReference assignee = extractAssignee(recordEntity);
+    return assignee != null ? assignee.getName() : null;
+  }
+
+  private static EntityReference extractAssignee(TestCaseResolutionStatus recordEntity) {
+    if (recordEntity.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Assigned
+        || recordEntity.getTestCaseResolutionStatusDetails() == null) {
+      return null;
     }
-    return result;
+    Assigned assigned =
+        JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
+    return assigned != null ? assigned.getAssignee() : null;
   }
 
   @Override
