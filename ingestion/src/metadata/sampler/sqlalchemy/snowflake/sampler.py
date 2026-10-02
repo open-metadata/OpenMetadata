@@ -16,7 +16,6 @@ for the profiler
 import json
 from typing import Any
 
-from snowflake.sqlalchemy import VARIANT
 from sqlalchemy import Column, Table, func, text
 from sqlalchemy.sql.selectable import CTE
 
@@ -34,7 +33,11 @@ class SnowflakeSampler(SQASampler):
     """
 
     def __init__(self, *args, **kwargs):
+        # Imported here because other samplers import this module without the Snowflake extra installed.
+        from snowflake.sqlalchemy import VARIANT
+
         super().__init__(*args, **kwargs)
+        self._json_text_types = (VARIANT, CustomArray)
         self.sampling_method_type = func.bernoulli
         static = self._resolve_sample_config
         if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
@@ -62,11 +65,11 @@ class SnowflakeSampler(SQASampler):
         if (
             isinstance(value, str)
             and len(value) <= SAMPLE_DATA_MAX_CELL_LENGTH
-            and isinstance(column.type, (VARIANT, CustomArray))
+            and isinstance(column.type, self._json_text_types)
         ):
             try:
                 return json.loads(value)
-            except ValueError:
+            except (ValueError, RecursionError):
                 return value
         return value
 

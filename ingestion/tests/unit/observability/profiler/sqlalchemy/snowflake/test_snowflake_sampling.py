@@ -1,3 +1,5 @@
+import subprocess
+import sys
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
@@ -217,6 +219,7 @@ class SampleTest(TestCase):
         (CustomArray(String), '[\n  "a",\n  "b"\n]', ["a", "b"]),
         (VARIANT, None, None),
         (VARIANT, "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1), "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1)),
+        (VARIANT, "[" * 1500 + "]" * 1500, "[" * 1500 + "]" * 1500),
         (String, '{"kind": "fixture"}', '{"kind": "fixture"}'),
         (
             SQASGeography,
@@ -233,3 +236,19 @@ def test_semi_structured_samples_are_json(_build_table_orm, column_type, fetched
         entity=Table(id=uuid4(), name="user", columns=[EntityColumn(name=ColumnName("id"), dataType=DataType.INT)]),
     )
     assert sampler._process_sample_value(Column("value", column_type), fetched) == sampled
+
+
+def test_sampler_modules_import_without_the_snowflake_extra():
+    """The Postgres and Timescale samplers import this module, and their installs need not carry Snowflake."""
+    script = (
+        "import sys\n"
+        "class BlockSnowflake:\n"
+        "    def find_spec(self, name, path=None, target=None):\n"
+        "        if name == 'snowflake' or name.startswith('snowflake.'):\n"
+        "            raise ModuleNotFoundError(name)\n"
+        "sys.meta_path.insert(0, BlockSnowflake())\n"
+        "import metadata.sampler.sqlalchemy.snowflake.sampler\n"
+        "import metadata.sampler.sqlalchemy.postgres.sampler\n"
+    )
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=300, check=False)
+    assert result.returncode == 0, result.stderr
