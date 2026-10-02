@@ -20,6 +20,9 @@
  * hidden cached page and floats over the active one. Force such tooltips back
  * to hidden inside inactive cached routes; `!important` beats recharts' inline
  * (non-important) style.
+ *
+ * OpenMetadata renders no recharts chart any more; Collate's still run inside
+ * this shell. Delete the rule once Collate drops recharts.
  */
 [data-testid^='route-cache-'][aria-hidden='true'] .recharts-tooltip-wrapper {
   visibility: hidden !important;

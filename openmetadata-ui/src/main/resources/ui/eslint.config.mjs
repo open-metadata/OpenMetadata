@@ -463,7 +463,7 @@ export default [
             {
               group: ['recharts', 'recharts/*'],
               message:
-                'Use @openmetadata/ui-core-components/charts; recharts is being removed.',
+                'Use @openmetadata/ui-core-components/charts; recharts was removed.',
             },
             {
               group: [
