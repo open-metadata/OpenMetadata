@@ -17,7 +17,6 @@ import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.Set;
 import org.openmetadata.schema.entity.data.RelationshipType;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
@@ -100,9 +99,6 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     entity.setCrossGlossaryAllowed(
         entity.getCrossGlossaryAllowed() == null ? true : entity.getCrossGlossaryAllowed());
     entity.setSystemDefined(entity.getSystemDefined() == null ? false : entity.getSystemDefined());
-    if (entity.getEntityStatus() == null && Boolean.TRUE.equals(entity.getSystemDefined())) {
-      entity.setEntityStatus(EntityStatus.APPROVED);
-    }
     if (entity.getCharacteristics().contains(RelationshipCharacteristic.SYMMETRIC)
         && entity.getInverse() == null) {
       entity.setInverse(entity.getEntityReference());

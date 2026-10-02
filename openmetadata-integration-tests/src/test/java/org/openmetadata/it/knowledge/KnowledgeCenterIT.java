@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -67,6 +68,23 @@ public class KnowledgeCenterIT {
     TeamService teamService = new TeamService(adminClient.getHttpClient());
     Team org = teamService.getByName("Organization", null);
     return org.getEntityReference();
+  }
+
+  @Test
+  void testNewArticleStartsInDraftUnlessItsRequestSetsAStage(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    EntityReference orgRef = getOrganizationRef();
+
+    Page draft = createPage(rest, buildCreateRequest(ns.prefix("articleDraft"), orgRef));
+    Page requested =
+        createPage(
+            rest,
+            buildCreateRequest(ns.prefix("articleApproved"), orgRef)
+                .withEntityStatus(EntityStatus.APPROVED));
+
+    assertEquals(EntityStatus.DRAFT, draft.getEntityStatus());
+    assertEquals(EntityStatus.APPROVED, requested.getEntityStatus());
   }
 
   @Test

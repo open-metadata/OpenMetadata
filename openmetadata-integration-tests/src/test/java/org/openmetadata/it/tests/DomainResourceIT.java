@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.api.BulkAssets;
@@ -145,6 +146,11 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   @Override
   protected String getEntityType() {
     return "domain";
+  }
+
+  @Override
+  protected EntityStatus expectedInitialEntityStatus() {
+    return EntityStatus.DRAFT;
   }
 
   @Override

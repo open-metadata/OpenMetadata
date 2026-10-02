@@ -19,6 +19,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -29,8 +30,8 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -433,6 +434,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       entity.setParentMemory(parentMemory.getEntityReference());
     }
     validateSharedPrincipals(entity);
+    validateMemoryStage(entity.getEntityStatus());
     setCreatorAsDefaultOwner(entity, update);
   }
 
@@ -546,29 +548,48 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   // ------------------------------------------------------------------
 
   /**
-   * Valid status transitions:
-   *   DRAFT → ACTIVE
+   * A memory is drafted, in use (Approved) or archived. Valid stage transitions:
+   *   DRAFT → APPROVED
    *   DRAFT → ARCHIVED
-   *   ACTIVE → ARCHIVED
-   *   ARCHIVED → ACTIVE (re-activate)
+   *   APPROVED → ARCHIVED
+   *   ARCHIVED → APPROVED (re-activate)
    *
    * Invalid:
    *   ARCHIVED → DRAFT (cannot revert to draft)
-   *   ACTIVE → DRAFT (cannot revert to draft)
+   *   APPROVED → DRAFT (cannot revert to draft)
    */
-  private static final Map<ContextMemoryStatus, Set<ContextMemoryStatus>> VALID_TRANSITIONS =
-      Map.of(
-          ContextMemoryStatus.DRAFT,
-              Set.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ACTIVE, Set.of(ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ARCHIVED, Set.of(ContextMemoryStatus.ACTIVE));
+  private static final Map<EntityStatus, Set<EntityStatus>> VALID_TRANSITIONS =
+      Collections.unmodifiableMap(
+          new EnumMap<>(
+              Map.of(
+                  EntityStatus.DRAFT, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+                  EntityStatus.APPROVED, Set.of(EntityStatus.ARCHIVED),
+                  EntityStatus.ARCHIVED, Set.of(EntityStatus.APPROVED))));
 
-  /** Validate that a status transition is allowed. */
-  public static void validateStatusTransition(ContextMemoryStatus from, ContextMemoryStatus to) {
-    if (from == to) {
-      return; // No change
+  @Override
+  protected void validateEntityStatusTransition(EntityStatus from, EntityStatus to) {
+    validateStatusTransition(from, to);
+  }
+
+  /** A memory is Draft, Approved or Archived; it can be created in any of them but no other. */
+  public static void validateMemoryStage(EntityStatus stage) {
+    if (stage != null && !VALID_TRANSITIONS.containsKey(stage)) {
+      throw new BadRequestException(
+          String.format(
+              "Invalid memory status %s. A memory is one of: %s",
+              stage.value(), VALID_TRANSITIONS.keySet()));
     }
-    Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.get(from);
+  }
+
+  /**
+   * Validate that a status transition is allowed. A memory saved before it had a stage may move to
+   * any of its stages.
+   */
+  public static void validateStatusTransition(EntityStatus from, EntityStatus to) {
+    if (from == null || from == to) {
+      return;
+    }
+    Set<EntityStatus> allowed = VALID_TRANSITIONS.get(from);
     if (allowed == null) {
       throw new BadRequestException(
           String.format("No transitions defined for status %s", from.value()));
@@ -616,15 +637,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           "machineRepresentation",
           original.getMachineRepresentation(),
           updated.getMachineRepresentation());
-
-      // Validate lifecycle transition before recording status change
-      if (original.getStatus() != null
-          && updated.getStatus() != null
-          && original.getStatus() != updated.getStatus()) {
-        validateStatusTransition(original.getStatus(), updated.getStatus());
-      }
-      recordChange("status", original.getStatus(), updated.getStatus());
-
       recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig());
 
       // Relationship-backed fields: these helpers record the version change and delete only

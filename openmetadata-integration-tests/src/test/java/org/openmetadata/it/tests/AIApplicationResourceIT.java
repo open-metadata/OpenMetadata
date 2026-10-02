@@ -28,6 +28,7 @@ import org.openmetadata.schema.entity.ai.McpServerType;
 import org.openmetadata.schema.entity.ai.ModelConfiguration;
 import org.openmetadata.schema.entity.ai.ModelPurpose;
 import org.openmetadata.schema.entity.services.McpService;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.sdk.fluent.AIApplications;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -45,6 +46,18 @@ public class AIApplicationResourceIT {
   @BeforeAll
   static void setup() {
     AIApplications.setDefaultClient(SdkClients.adminClient());
+  }
+
+  @Test
+  void test_newAIApplicationStartsInDraft(TestNamespace ns) {
+    AIApplication app =
+        AIApplications.create()
+            .name(ns.prefix("draftApp"))
+            .withApplicationType(ApplicationType.Chatbot)
+            .withDescription("AI Application with no registration status")
+            .execute();
+
+    assertEquals(EntityStatus.DRAFT, app.getEntityStatus());
   }
 
   @Test

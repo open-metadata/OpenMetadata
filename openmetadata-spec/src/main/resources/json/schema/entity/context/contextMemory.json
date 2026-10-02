@@ -33,18 +33,6 @@
       ],
       "default": "EntityScoped"
     },
-    "memoryStatus": {
-      "javaType": "org.openmetadata.schema.entity.context.ContextMemoryStatus",
-      "description": "Lifecycle state of the memory. Any status may be set at creation (e.g. importing an already-archived memory); the Draft -> Active -> Archived transition rules are only enforced on subsequent updates.",
-      "type": "string",
-      "enum": ["Draft", "Active", "Archived"],
-      "javaEnums": [
-        { "name": "DRAFT" },
-        { "name": "ACTIVE" },
-        { "name": "ARCHIVED" }
-      ],
-      "default": "Active"
-    },
     "sourceType": {
       "javaType": "org.openmetadata.schema.entity.context.ContextMemorySourceType",
       "description": "How the memory was created.",
@@ -239,8 +227,9 @@
     "memoryScope": {
       "$ref": "#/definitions/memoryScope"
     },
-    "status": {
-      "$ref": "#/definitions/memoryStatus"
+    "entityStatus": {
+      "description": "Lifecycle stage of the memory: Draft, Approved (in use) or Archived. Any of these may be set at creation, for example when importing an already-archived memory; the Draft -> Approved -> Archived transition rules are enforced on later updates. When omitted at creation, the memory starts Approved.",
+      "$ref": "../../type/status.json"
     },
     "pinned": {
       "description": "Whether this memory is globally pinned in Context Center.",

@@ -411,11 +411,11 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
 
     Classification classification = createEntity(createClassification);
 
-    // Verify the classification is created with UNPROCESSED status
+    // Classifications are not reviewed before use, so they start Approved
     assertEquals(
-        EntityStatus.UNPROCESSED,
+        EntityStatus.APPROVED,
         classification.getEntityStatus(),
-        "Classification should be created with UNPROCESSED status");
+        "Classification should be created with APPROVED status");
 
     // Update the entityStatus using PATCH operation
     classification.setEntityStatus(EntityStatus.IN_REVIEW);

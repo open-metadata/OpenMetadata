@@ -82,8 +82,8 @@ export interface DataProduct {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
-     * Current lifecycle stage of the data product. Driven by the governance workflow — not
-     * directly user-editable.
+     * Deprecated: use entityStatus, the lifecycle stage every entity type shares. Kept only so
+     * ODPS imports and exports keep round-tripping.
      */
     lifecycleStage?: LifecycleStage;
     /**
@@ -499,8 +499,9 @@ export enum DataProductType {
 /**
  * Status of the Data Product.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -513,8 +514,8 @@ export enum EntityStatus {
 }
 
 /**
- * Current lifecycle stage of the data product. Driven by the governance workflow — not
- * directly user-editable.
+ * Deprecated: use entityStatus, the lifecycle stage every entity type shares. Kept only so
+ * ODPS imports and exports keep round-tripping.
  *
  * Lifecycle stage of the data product
  */

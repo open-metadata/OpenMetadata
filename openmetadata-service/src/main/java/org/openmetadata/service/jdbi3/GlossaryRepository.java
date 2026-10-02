@@ -105,6 +105,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
+    defaultEntityStatus = EntityStatus.DRAFT;
     ontologyLayerValidator =
         new OntologyLayerValidator(
             id -> Entity.getEntity(Entity.GLOSSARY, id, "", Include.NON_DELETED));

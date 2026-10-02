@@ -129,6 +129,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   public TaskResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsTags = true;
     supportsDomains = false;

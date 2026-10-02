@@ -199,8 +199,10 @@
       "$comment": "@deprecated Use GET /v1/dataProducts/{id}/assets API endpoint for paginated access to data product assets"
     },
     "lifecycleStage": {
-      "description": "Current lifecycle stage of the data product. Driven by the governance workflow — not directly user-editable.",
-      "$ref": "#/definitions/lifecycleStage"
+      "description": "Deprecated: use entityStatus, the lifecycle stage every entity type shares. Kept only so ODPS imports and exports keep round-tripping.",
+      "$ref": "#/definitions/lifecycleStage",
+      "deprecated": true,
+      "$comment": "@deprecated Use entityStatus for the data product's lifecycle stage"
     },
     "dataProductType": {
       "description": "Type of the data product (ODPS-aligned taxonomy).",
