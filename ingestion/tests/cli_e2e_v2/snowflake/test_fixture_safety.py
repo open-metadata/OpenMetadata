@@ -86,6 +86,29 @@ def test_seed_failure_removes_schema(snowflake_instance, monkeypatch):
     assert not _schema_exists(snowflake_instance, allocated[0])
 
 
+@pytest.mark.parametrize("lost", ["source", "shim"])
+def test_lost_create_response_still_removes_the_schema(snowflake_instance, monkeypatch, lost):
+    """Snowflake can commit a CREATE SCHEMA and lose the response, so cleanup must be registered before it."""
+    created = []
+    execute = source_module._execute
+
+    def lose_create_response(engine, statement):
+        execute(engine, statement)
+        if statement.startswith("CREATE SCHEMA "):
+            created.append(statement.split()[2].rsplit(".", 1)[1].strip('"'))
+            if lost == "source" or len(created) == 2:
+                raise ConnectionError("injected lost response")
+
+    monkeypatch.setattr(source_module, "_execute", lose_create_response)
+    with (
+        pytest.raises(ConnectionError, match="injected lost response"),
+        fresh_snowflake_source(snowflake_instance) as source,
+    ):
+        source.account_usage_shim()
+    assert len(created) == {"source": 1, "shim": 2}[lost]
+    assert [schema for schema in created if _schema_exists(snowflake_instance, schema)] == []
+
+
 def test_declared_constraints_are_visible_to_snowflake(snowflake_source):
     """The FK scenario is meaningless unless Snowflake itself reports the informational keys."""
     rows = snowflake_source.run(

@@ -348,12 +348,13 @@ class SnowflakeSource:
         self.require_active()
         if self._shim is None:
             shim = AccountUsageShim(self.database, f"{self.schema}{_SHIM_SUFFIX}", self.instance.admin_engine)
+            # Registered first: Snowflake can commit the CREATE and still lose the response.
+            self._cleanup.callback(
+                _execute, self.instance.admin_engine, f"DROP SCHEMA IF EXISTS {shim.qualified} CASCADE"
+            )
             _execute(
                 self.instance.admin_engine,
                 f"CREATE SCHEMA {shim.qualified} DATA_RETENTION_TIME_IN_DAYS = 0 COMMENT = '{SCHEMA_COMMENT}'",
-            )
-            self._cleanup.callback(
-                _execute, self.instance.admin_engine, f"DROP SCHEMA IF EXISTS {shim.qualified} CASCADE"
             )
             self._shim = shim
         tables = [
@@ -387,12 +388,13 @@ def fresh_snowflake_source(instance: SnowflakeInstance) -> Iterator[SnowflakeSou
     with ExitStack() as cleanup:
         source = SnowflakeSource(instance, schema, build_snowflake_baseline(instance.database, schema), cleanup)
         try:
+            # The unique name makes the drop safe to register before a CREATE whose response can be lost.
+            cleanup.callback(_execute, instance.admin_engine, f"DROP SCHEMA IF EXISTS {source.qualified} CASCADE")
             # Zero retention: a dropped schema leaves no Time Travel storage behind.
             _execute(
                 instance.admin_engine,
                 f"CREATE SCHEMA {source.qualified} DATA_RETENTION_TIME_IN_DAYS = 0 COMMENT = '{SCHEMA_COMMENT}'",
             )
-            cleanup.callback(_execute, instance.admin_engine, f"DROP SCHEMA IF EXISTS {source.qualified} CASCADE")
             _seed_source(source)
             logger.info("Owned Snowflake schema=%s.%s", instance.database, schema)
             yield source
