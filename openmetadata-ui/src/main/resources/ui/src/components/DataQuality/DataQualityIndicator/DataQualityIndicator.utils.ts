@@ -21,6 +21,12 @@ import {
 
 export const DQ_INDICATOR_FETCH_LIMIT = 100;
 
+export const OPEN_INCIDENT_STATUSES = [
+  TestCaseResolutionStatusTypes.New,
+  TestCaseResolutionStatusTypes.ACK,
+  TestCaseResolutionStatusTypes.Assigned,
+].join(',');
+
 export const EMPTY_DQ_INDICATOR_COUNTS: DataQualityIndicatorCounts = {
   failingTests: 0,
   unresolvedIncidents: 0,
@@ -32,14 +38,11 @@ export const EMPTY_DQ_INDICATOR_COUNTS: DataQualityIndicatorCounts = {
  * failure, so it is not counted again as a separate unresolved incident.
  */
 export const countUnresolvedIncidents = (
-  latestIncidents: TestCaseResolutionStatus[],
+  openIncidents: TestCaseResolutionStatus[],
   failingTestCaseIds: Set<string>
 ) =>
-  latestIncidents.filter(
-    (incident) =>
-      incident.testCaseResolutionStatusType !==
-        TestCaseResolutionStatusTypes.Resolved &&
-      !failingTestCaseIds.has(incident.testCaseReference?.id ?? '')
+  openIncidents.filter(
+    (incident) => !failingTestCaseIds.has(incident.testCaseReference?.id ?? '')
   ).length;
 
 export const getDataQualityIndicatorLevel = ({

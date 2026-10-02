@@ -105,11 +105,10 @@ describe('DataQualityIndicator', () => {
 });
 
 describe('countUnresolvedIncidents', () => {
-  it('counts open incidents but skips resolved ones and ones on currently failing tests', () => {
+  it('skips open incidents on currently failing tests', () => {
     const incidents = [
       incident('passing-new', TestCaseResolutionStatusTypes.New),
       incident('passing-ack', TestCaseResolutionStatusTypes.ACK),
-      incident('passing-resolved', TestCaseResolutionStatusTypes.Resolved),
       incident('failing-assigned', TestCaseResolutionStatusTypes.Assigned),
     ];
 

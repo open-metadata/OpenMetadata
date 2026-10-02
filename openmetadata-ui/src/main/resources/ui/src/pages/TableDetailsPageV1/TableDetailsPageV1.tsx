@@ -37,6 +37,7 @@ import {
   countUnresolvedIncidents,
   DQ_INDICATOR_FETCH_LIMIT,
   EMPTY_DQ_INDICATOR_COUNTS,
+  OPEN_INCIDENT_STATUSES,
 } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.utils';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -353,7 +354,7 @@ const TableDetailsPageV1: React.FC = () => {
     }
 
     // ponytail: incidents are classified from the first DQ_INDICATOR_FETCH_LIMIT failing tests and
-    // latest incidents only. Past that the level is still right, only the tooltip counts drift;
+    // open incidents only. Past that the level is still right, only the tooltip counts drift;
     // a server-side "open incidents on passing tests" count is the upgrade path.
     const [failingResult, incidentResult, lineageResult] =
       await Promise.allSettled([
@@ -366,6 +367,10 @@ const TableDetailsPageV1: React.FC = () => {
         getListTestCaseIncidentStatus({
           originEntityFQN: tableFqn,
           latest: true,
+          // The server picks each test case's latest status before applying this filter, so
+          // Resolved history can't fill the page. Count on `data`: `paging.total` is computed
+          // before that and still includes resolved test cases.
+          testCaseResolutionStatusType: OPEN_INCIDENT_STATUSES,
           // `latest` is only honoured together with a time range.
           startTs: 0,
           endTs: Date.now(),
