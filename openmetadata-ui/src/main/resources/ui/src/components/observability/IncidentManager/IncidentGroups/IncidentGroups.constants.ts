@@ -66,6 +66,16 @@ export const INCIDENT_GROUP_STATUS_OPTIONS: OpenIncidentStatus[] = [
 export const DEFAULT_INCIDENT_LIST_DATE_FIELD: IncidentListDateField =
   'timestamp';
 
+/** Every filter key, emptied: an absent date field reads back as the default. */
+export const CLEARED_INCIDENT_GROUP_FILTERS: Partial<IncidentGroupFilters> = {
+  testCaseFQN: undefined,
+  assignee: undefined,
+  status: [],
+  dateField: undefined,
+  startTs: undefined,
+  endTs: undefined,
+};
+
 export const INCIDENT_GROUP_BY_OPTIONS: IncidentGroupByOption[] = [
   {
     key: IncidentGroupBy.TestDefinition,

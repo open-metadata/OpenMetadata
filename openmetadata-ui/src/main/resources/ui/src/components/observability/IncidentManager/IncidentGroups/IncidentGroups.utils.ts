@@ -85,6 +85,16 @@ export const parseIncidentGroupFilters = (
   endTs: readTimestamp(params.endTs),
 });
 
+/** Whether any filter narrows the groups down from every open incident. */
+export const hasActiveIncidentGroupFilters = (
+  filters: IncidentGroupFilters
+): boolean =>
+  [filters.testCaseFQN, filters.assignee, filters.startTs, filters.endTs].some(
+    (value) => !isUndefined(value)
+  ) ||
+  filters.status.length > 0 ||
+  filters.dateField !== DEFAULT_INCIDENT_LIST_DATE_FIELD;
+
 /**
  * The filters as groups endpoint params. The date field only means something
  * next to a range, and the endpoint names the opening time `createdAt` where

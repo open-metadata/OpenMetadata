@@ -17,40 +17,55 @@ import {
   FilterSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { debounce, uniqBy } from 'lodash';
+import { ReactNode, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { OpenIncidentStatus } from '../../../../rest/incidentManagerAPI';
+import { getTeamByName } from '../../../../rest/teamsAPI';
+import { getUserByName } from '../../../../rest/userAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
+import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import { useIncidentFilterOptions } from '../../../IncidentManager/useIncidentFilterOptions';
 import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
 import {
+  CLEARED_INCIDENT_GROUP_FILTERS,
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_STATUS_OPTIONS,
 } from './IncidentGroups.constants';
 import {
-  IncidentGroupFilters,
   IncidentGroupsFiltersProps,
   IncidentListDateField,
 } from './IncidentGroups.types';
-
-// Every filter key, emptied: an absent date field reads back as the default.
-const CLEARED_FILTERS: Partial<IncidentGroupFilters> = {
-  testCaseFQN: undefined,
-  assignee: undefined,
-  status: [],
-  dateField: undefined,
-  startTs: undefined,
-  endTs: undefined,
-};
+import { hasActiveIncidentGroupFilters } from './IncidentGroups.utils';
 
 const STATUS_OPTIONS = INCIDENT_GROUP_STATUS_OPTIONS.map((status) => ({
   value: status,
   label: TEST_CASE_RESOLUTION_STATUS_LABELS[status],
 }));
 
+const TEST_CASE_SEARCH_DEBOUNCE_MS = 300;
+
 const toSelection = (value?: string) => (value ? [value] : []);
+
+/**
+ * The display name of an assignee the URL names, a user or a team. The filter
+ * keeps only the name, so a reloaded page has no option to read it from.
+ */
+const fetchAssigneeName = async (name: string) => {
+  try {
+    return getEntityName(await getUserByName(name));
+  } catch {
+    try {
+      return getEntityName(await getTeamByName(name));
+    } catch {
+      return name;
+    }
+  }
+};
 
 const FilterField = ({
   label,
@@ -82,32 +97,53 @@ const IncidentGroupsFilters = ({
 }: IncidentGroupsFiltersProps) => {
   const { t } = useTranslation();
   const {
-    assigneeOptionsWithSelected,
-    fetchUserFilterOptions,
     testCaseFilterOptions,
     isTestCaseOptionsLoading,
     fetchTestCaseFilterOptions,
   } = useIncidentFilterOptions({ filters });
+  // Incidents are assigned to users and to teams, so the filter searches both.
+  const assigneePicker = useUserTeamOptions();
+  const { data: selectedAssigneeName } = useQuery({
+    queryKey: ['incident-group-assignee-name', filters.assignee],
+    // Only runs with an assignee to name, as `enabled` below says.
+    queryFn: () => fetchAssigneeName(filters.assignee as string),
+    enabled: Boolean(filters.assignee),
+    staleTime: Infinity,
+  });
 
   const dateFieldOptions = [
     { value: 'timestamp', label: t('label.created-at') },
     { value: 'updatedAt', label: t('label.updated-at') },
   ];
 
-  const assigneeOptions = assigneeOptionsWithSelected.map((option) => ({
-    value: option.value,
-    label: option.label,
-  }));
+  const assigneeOptions = useMemo(
+    () =>
+      uniqBy(
+        [
+          ...(filters.assignee && selectedAssigneeName
+            ? [{ value: filters.assignee, label: selectedAssigneeName }]
+            : []),
+          ...assigneePicker.options.map((option) => ({
+            value: option.value.name ?? '',
+            label: option.label,
+          })),
+        ],
+        'value'
+      ),
+    [assigneePicker.options, filters.assignee, selectedAssigneeName]
+  );
 
-  const hasActiveFilters =
-    [
-      filters.testCaseFQN,
-      filters.assignee,
-      filters.startTs,
-      filters.endTs,
-    ].some((value) => value !== undefined) ||
-    filters.status.length > 0 ||
-    filters.dateField !== DEFAULT_INCIDENT_LIST_DATE_FIELD;
+  const hasActiveFilters = hasActiveIncidentGroupFilters(filters);
+  // One search per pause in typing, not one per keystroke.
+  const searchTestCases = useMemo(
+    () =>
+      debounce(
+        (text: string) => fetchTestCaseFilterOptions(text || WILD_CARD_CHAR),
+        TEST_CASE_SEARCH_DEBOUNCE_MS
+      ),
+    [fetchTestCaseFilterOptions]
+  );
+  useEffect(() => () => searchTestCases.cancel(), [searchTestCases]);
 
   return (
     <Box
@@ -128,9 +164,7 @@ const IncidentGroupsFilters = ({
           triggerVariant="input"
           onChange={([testCaseFQN]) => onChange({ testCaseFQN })}
           onOpenChange={(isOpen) => isOpen && fetchTestCaseFilterOptions()}
-          onSearch={(text) =>
-            fetchTestCaseFilterOptions(text || WILD_CARD_CHAR)
-          }
+          onSearch={searchTestCases}
         />
       </FilterField>
       <FilterField label={t('label.assignee')}>
@@ -139,14 +173,13 @@ const IncidentGroupsFilters = ({
           data-testid="incident-groups-assignee"
           label={t('label.assignee')}
           options={assigneeOptions}
+          resolveMissingLabel={(name) => selectedAssigneeName ?? name}
           selectedValues={toSelection(filters.assignee)}
           selectionMode="single"
           triggerVariant="input"
           onChange={([assignee]) => onChange({ assignee })}
-          onOpenChange={(isOpen) =>
-            isOpen && fetchUserFilterOptions(WILD_CARD_CHAR)
-          }
-          onSearch={(text) => fetchUserFilterOptions(text || WILD_CARD_CHAR)}
+          onOpenChange={(isOpen) => isOpen && assigneePicker.onFocus()}
+          onSearch={assigneePicker.onSearchChange}
         />
       </FilterField>
       <FilterField label={t('label.status')}>
@@ -194,7 +227,7 @@ const IncidentGroupsFilters = ({
           color="link-gray"
           data-testid="incident-groups-clear-filters"
           size="sm"
-          onPress={() => onChange(CLEARED_FILTERS)}>
+          onPress={() => onChange(CLEARED_INCIDENT_GROUP_FILTERS)}>
           {t('label.clear-all')}
         </Button>
       )}

@@ -24,7 +24,6 @@ import {
 import { Paging } from '../../../../generated/type/paging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import {
-  IncidentCursor,
   IncidentSortType,
   listIncidentGroups,
 } from '../../../../rest/incidentManagerAPI';
@@ -46,7 +45,6 @@ interface IncidentGroupsPage {
   /** The query the page belongs to; a page of another query is page 1. */
   queryKey: string;
   currentPage: number;
-  offset?: IncidentCursor;
 }
 
 /**
@@ -105,10 +103,9 @@ export const useIncidentGroups = ({
   );
   const [pageSize, setPageSize] = useState(INCIDENT_GROUPS_PAGE_SIZE);
   /**
-   * Any change to what is listed starts over from the first page: a cursor
-   * belongs to the query that produced it. The page is therefore tagged with
-   * its query, and read as page 1 once the query moves on — no reset effect,
-   * so no extra fetch of the stale page.
+   * Any change to what is listed starts over from the first page. The page is
+   * therefore tagged with its query, and read as page 1 once the query moves
+   * on — no reset effect, so no extra fetch of the stale page.
    */
   const queryKey = `${groupBy}|${sortType}|${pageSize}|${filtersSearch}`;
   const [page, setPage] = useState<IncidentGroupsPage>({
@@ -117,7 +114,7 @@ export const useIncidentGroups = ({
   });
   const activePage: IncidentGroupsPage =
     page.queryKey === queryKey ? page : { queryKey, currentPage: 1 };
-  const { currentPage, offset } = activePage;
+  const { currentPage } = activePage;
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   // Guards against a slow response for a dimension the user already left.
@@ -171,7 +168,7 @@ export const useIncidentGroups = ({
         groupBy,
         limit: pageSize,
         sortType,
-        offset,
+        page: currentPage,
         ...getIncidentGroupsQuery(filters),
       });
 
@@ -188,22 +185,25 @@ export const useIncidentGroups = ({
         return;
       }
 
-      if (!isBackground) {
+      if (isBackground) {
+        // The rows stay on screen, so a toast is the only sign the re-read
+        // failed; a foreground failure says so in the section itself.
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', { entity: t('label.incident-plural') })
+        );
+      } else {
         hasSettledGroups.current = false;
         setIncidentGroups([]);
         setPaging(undefined);
         setIsError(true);
       }
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.incident-plural') })
-      );
     } finally {
       if (latestRequest.current === requestId) {
         setIsLoading(false);
       }
     }
-  }, [groupBy, sortType, pageSize, offset, filters, refreshKey, t]);
+  }, [groupBy, sortType, pageSize, currentPage, filters, refreshKey, t]);
 
   useEffect(() => {
     fetchIncidentGroups();
@@ -249,26 +249,9 @@ export const useIncidentGroups = ({
     [navigate, searchParams]
   );
 
-  /**
-   * Cursors only step to a neighbouring page, so any page asked for moves one
-   * page in its direction — the same way the other cursor-paged tables do.
-   */
   const handlePageChange = useCallback(
-    (nextPage: number) => {
-      const isForward = nextPage > currentPage;
-      const cursor = isForward ? paging?.after : paging?.before;
-
-      if (nextPage === currentPage || !cursor) {
-        return;
-      }
-
-      setPage({
-        queryKey,
-        currentPage: currentPage + (isForward ? 1 : -1),
-        offset: cursor,
-      });
-    },
-    [currentPage, paging, queryKey]
+    (nextPage: number) => setPage({ queryKey, currentPage: nextPage }),
+    [queryKey]
   );
 
   return {
@@ -281,6 +264,7 @@ export const useIncidentGroups = ({
     pageSize,
     isLoading,
     isError,
+    retry: fetchIncidentGroups,
     handleGroupByChange,
     handleFiltersChange,
     handleSortTypeChange: setSortType,
