@@ -142,6 +142,14 @@ public class TestCaseResolutionStatusResource
           @QueryParam("offset")
           String offset,
       @Parameter(
+              description =
+                  "1-based page to return instead of a cursor: the page that starts at "
+                      + "`(page - 1) * limit`. Takes precedence over `offset`.",
+              schema = @Schema(type = "integer"))
+          @QueryParam("page")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          Integer page,
+      @Parameter(
               description = "Filter test case statuses after the given start timestamp",
               schema = @Schema(type = "number"))
           @QueryParam("startTs")
@@ -265,7 +273,13 @@ public class TestCaseResolutionStatusResource
       recordEndTs = Long.MAX_VALUE;
     }
 
-    return repository.list(offset, recordStartTs, recordEndTs, limitParam, filter, latest);
+    return repository.list(
+        cursorForPage(page, limitParam, offset),
+        recordStartTs,
+        recordEndTs,
+        limitParam,
+        filter,
+        latest);
   }
 
   @GET
@@ -349,6 +363,14 @@ public class TestCaseResolutionStatusResource
           @QueryParam("offset")
           String offset,
       @Parameter(
+              description =
+                  "1-based page to return instead of a cursor: the page that starts at "
+                      + "`(page - 1) * limit`. Takes precedence over `offset`.",
+              schema = @Schema(type = "integer"))
+          @QueryParam("page")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          Integer page,
+      @Parameter(
               description = "Sort type for the incident count",
               schema =
                   @Schema(
@@ -391,7 +413,8 @@ public class TestCaseResolutionStatusResource
     if (endTs != null) {
       filter.addQueryParam("incidentEndTs", String.valueOf(endTs));
     }
-    return repository.listIncidentGroups(groupByDimension, filter, sortType, limit, offset);
+    return repository.listIncidentGroups(
+        groupByDimension, filter, sortType, limit, cursorForPage(page, limit, offset));
   }
 
   @GET
@@ -954,6 +977,16 @@ public class TestCaseResolutionStatusResource
               TestCaseResolutionStatusTypes.Resolved.value()));
     }
     return result;
+  }
+
+  // The cursors these listings hand out encode a row offset. A page number is turned into the same
+  // cursor here, so a client can jump to any page without decoding the cursors it is given. A page
+  // past what an int offset can hold lands past the end, as any page beyond the last does.
+  private static String cursorForPage(Integer page, int limit, String offset) {
+    return page == null
+        ? offset
+        : RestUtil.encodeCursor(
+            String.valueOf(Math.min((long) (page - 1) * limit, Integer.MAX_VALUE)));
   }
 
   private static UUID resolveFilterEntityId(String entityType, String name) {
