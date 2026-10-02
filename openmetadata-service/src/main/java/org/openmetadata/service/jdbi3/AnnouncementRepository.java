@@ -83,24 +83,42 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
       announcement.setType(AnnouncementType.Notice);
     }
     validateTypeFields(announcement);
+    validateTimeWindow(announcement);
     announcement.setStatus(deriveStatus(announcement));
   }
 
   /**
-   * Status is a function of the time window, never of what was stored. Writing it on create and
-   * leaving it alone thereafter let the field drift: an announcement whose window had closed still
-   * reported {@code Active}, so the list filter — which derives the status — and the payload
-   * disagreed. Deriving it on both write and read keeps the stored column from mattering for
-   * correctness.
+   * The schema requires both times, but bean validation only runs on the create/PUT body. PATCH
+   * binds the patched JSON straight to the POJO, so a remove op would otherwise store an
+   * announcement with no window.
+   */
+  private void validateTimeWindow(Announcement announcement) {
+    if (announcement.getStartTime() == null || announcement.getEndTime() == null) {
+      throw new IllegalArgumentException("startTime and endTime are required for an announcement");
+    }
+  }
+
+  /**
+   * Status is a function of the time window and is never persisted: nothing rewrites a stored
+   * value when the window opens or closes, so it is derived on every read instead. A row written
+   * before PATCH enforced the window may lack a time; it gets no status rather than failing the
+   * whole list.
    */
   private AnnouncementStatus deriveStatus(Announcement announcement) {
-    long now = System.currentTimeMillis();
-    if (announcement.getEndTime() < now) {
-      return AnnouncementStatus.Expired;
+    Long startTime = announcement.getStartTime();
+    Long endTime = announcement.getEndTime();
+    AnnouncementStatus status = null;
+    if (startTime != null && endTime != null) {
+      long now = System.currentTimeMillis();
+      if (endTime < now) {
+        status = AnnouncementStatus.Expired;
+      } else if (startTime > now) {
+        status = AnnouncementStatus.Scheduled;
+      } else {
+        status = AnnouncementStatus.Active;
+      }
     }
-    return announcement.getStartTime() > now
-        ? AnnouncementStatus.Scheduled
-        : AnnouncementStatus.Active;
+    return status;
   }
 
   /**
@@ -150,7 +168,8 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
   public void storeEntity(Announcement announcement, boolean update) {
     List<EntityReference> owners = announcement.getOwners();
     List<EntityReference> domains = announcement.getDomains();
-    announcement.withOwners(null).withDomains(null);
+    AnnouncementStatus status = announcement.getStatus();
+    announcement.withOwners(null).withDomains(null).withStatus(null);
 
     if (update) {
       store(announcement, true);
@@ -162,7 +181,7 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
               announcement.getFullyQualifiedName());
     }
 
-    announcement.withOwners(owners).withDomains(domains);
+    announcement.withOwners(owners).withDomains(domains).withStatus(status);
   }
 
   @Override
@@ -284,7 +303,6 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("startTime", original.getStartTime(), updated.getStartTime());
       recordChange("endTime", original.getEndTime(), updated.getEndTime());
-      recordChange("status", original.getStatus(), updated.getStatus());
       recordChange("type", original.getType(), updated.getType());
       recordChange("color", original.getColor(), updated.getColor());
       recordChange("customTypeName", original.getCustomTypeName(), updated.getCustomTypeName());
