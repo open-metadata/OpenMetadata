@@ -2253,6 +2253,11 @@ public interface TimeSeriesDAOs {
         IncidentGroupBy groupBy, ListFilter filter, String sortOrder, int limit, int offset) {
       IncidentGroupDimension dimension = IncidentGroupDimension.from(groupBy);
       String condition = filter.getCondition();
+      // One group on its own, as a link to its drill-down reopens it: matched on the very key
+      // it is grouped under, so it counts what it counts in the full listing.
+      if (filter.getQueryParam("incidentGroupKey") != null) {
+        condition += " AND " + dimension.groupKey() + " = :incidentGroupKey";
+      }
       Map<String, Object> params = new HashMap<>(filter.getQueryParams());
       List<String> openStatusBinds = new ArrayList<>();
       List<String> statusCountExprs = new ArrayList<>();

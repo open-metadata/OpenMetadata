@@ -348,6 +348,41 @@ public class IncidentGroupsIT {
     assertNull(unowned.getFullyQualifiedName());
   }
 
+  // A link to a drill-down names its group by key alone. Narrowed to that key, the listing must
+  // return just that group, counted as the full listing counts it — in every dimension, and for
+  // the unowned bucket, whose key is empty.
+  @Test
+  void testGroupKeyReturnsThatGroupAlone() throws Exception {
+    Map<String, String> table = groupParams(GROUP_BY_TABLE);
+    table.put("group", tableA.getFullyQualifiedName());
+    List<TestCaseIncidentGroup> tableGroups = fetchGroups(table);
+    assertEquals(1, tableGroups.size());
+    assertEquals(tableA.getId(), tableGroups.getFirst().getId());
+    assertEquals(2, tableGroups.getFirst().getIncidentCount());
+
+    Map<String, String> definition = groupParams(GROUP_BY_TEST_DEFINITION);
+    definition.put("group", tableDefinition.getId().toString());
+    List<TestCaseIncidentGroup> definitionGroups = fetchGroups(definition);
+    assertEquals(1, definitionGroups.size());
+    assertEquals(tableDefinition.getId(), definitionGroups.getFirst().getId());
+    assertEquals(2, definitionGroups.getFirst().getIncidentCount());
+
+    Map<String, String> owner = groupParams(GROUP_BY_OWNER);
+    owner.put("group", userB.getId().toString());
+    List<TestCaseIncidentGroup> ownerGroups = fetchGroups(owner);
+    assertEquals(1, ownerGroups.size());
+    assertEquals(userB.getId(), ownerGroups.getFirst().getId());
+    assertEquals(2, ownerGroups.getFirst().getIncidentCount());
+
+    Map<String, String> unowned = groupParams(GROUP_BY_OWNER);
+    unowned.put("group", "");
+    unowned.put("assignee", pagerUser.getName());
+    List<TestCaseIncidentGroup> unownedGroups = fetchGroups(unowned);
+    assertEquals(1, unownedGroups.size());
+    assertNull(unownedGroups.getFirst().getId());
+    assertEquals(pagerTableFqns.size(), unownedGroups.getFirst().getIncidentCount());
+  }
+
   @Test
   void testStatusFilterNarrows() throws Exception {
     Map<String, String> assignedParams = groupParams(GROUP_BY_TABLE);
