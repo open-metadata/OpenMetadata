@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-01T03:36:53Z",
+  "generatedAt": "2026-10-02T03:26:59Z",
   "window": 10,
   "threshold": 2,
   "runs": [
@@ -13,9 +13,24 @@
       "runId": "36808101811",
       "sourceSha": "3bded8388307ee861eda07353ec99d121a085c13",
       "recordedAt": "2026-10-01T03:36:53Z"
+    },
+    {
+      "runId": "36957299462",
+      "sourceSha": "170677437861064916f8ac34ceea410bb4ca8273",
+      "recordedAt": "2026-10-02T03:26:59Z"
     }
   ],
   "entries": {
+    "Basic :: Pages/Lineage/LineageInteraction.spec.ts :: Lineage Interactions \u203a Edge Interaction \u203a Verify edge delete button in drawer": {
+      "observations": [
+        "36957299462"
+      ],
+      "project": "Basic",
+      "file": "Pages/Lineage/LineageInteraction.spec.ts",
+      "title": "Lineage Interactions \u203a Edge Interaction \u203a Verify edge delete button in drawer",
+      "lastSeenSha": "170677437861064916f8ac34ceea410bb4ca8273",
+      "hardFailure": false
+    },
     "chromium :: Features/AIMode/ProfileNotificationTab.spec.ts :: Destination should work properly": {
       "observations": [
         "36683573023"
@@ -24,6 +39,16 @@
       "file": "Features/AIMode/ProfileNotificationTab.spec.ts",
       "title": "Destination should work properly",
       "lastSeenSha": "857ded977baaf4e0662f28fb32215027964c5a6d",
+      "hardFailure": false
+    },
+    "chromium :: Features/AIMode/ProfileNotificationTab.spec.ts :: Multiple Filters Alert": {
+      "observations": [
+        "36957299462"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/ProfileNotificationTab.spec.ts",
+      "title": "Multiple Filters Alert",
+      "lastSeenSha": "170677437861064916f8ac34ceea410bb4ca8273",
       "hardFailure": false
     },
     "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Draft Persistence \u203a description: switching articles does not bleed unsaved content into next article": {
@@ -44,6 +69,16 @@
       "file": "Pages/DomainAdvanced.spec.ts",
       "title": "Domain Description Editing \u203a Admin can edit domain description",
       "lastSeenSha": "3bded8388307ee861eda07353ec99d121a085c13",
+      "hardFailure": false
+    },
+    "chromium :: Pages/Domains.spec.ts :: Domains \u203a Create DataProducts and add remove assets": {
+      "observations": [
+        "36957299462"
+      ],
+      "project": "chromium",
+      "file": "Pages/Domains.spec.ts",
+      "title": "Domains \u203a Create DataProducts and add remove assets",
+      "lastSeenSha": "170677437861064916f8ac34ceea410bb4ca8273",
       "hardFailure": false
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Delete Api Service": {
