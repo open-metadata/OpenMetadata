@@ -45,6 +45,7 @@ import {
   navigateToExploreAndSelectTable,
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
+import { waitForAntOverlayToOpen } from './waitHelpers';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -1095,17 +1096,14 @@ export const deleteCreatedProperty = async (
     page.getByRole('menuitem', { name: 'Delete' })
   );
 
-  // Checking property name is present on the delete pop-up
-  await expect(page.locator('[data-testid="body-text"]')).toContainText(
-    propertyName
-  );
+  const dialog = page.getByRole('dialog', { name: 'Delete Property' });
 
-  // Ensure the save button is visible before clicking
-  await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
+  await waitForAntOverlayToOpen(dialog);
+  await expect(dialog.getByTestId('body-text')).toContainText(propertyName);
 
   const saves = recordCustomPropertySaves(page);
 
-  await page.locator('[data-testid="save-button"]').click();
+  await dialog.getByTestId('save-button').click();
 
   // ConfirmationModal is destroyOnClose: assert the body text unmounts so
   // the modal mask is gone before the next sidebar click in callers' loops.

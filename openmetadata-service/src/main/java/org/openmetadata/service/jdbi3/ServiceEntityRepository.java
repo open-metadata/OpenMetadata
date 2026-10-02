@@ -32,6 +32,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityReference;
@@ -373,11 +374,17 @@ public abstract class ServiceEntityRepository<
 
     /**
      * {@code serviceAttributes} is a plain inline object, so recording the change is all that is
-     * needed for it to persist and appear in the change description.
+     * needed for it to persist and appear in the change description. A PUT that omits the field
+     * preserves any admin-set value instead of wiping it, mirroring the PUT guard on style and
+     * extension; send an explicit non-null {@link ServiceAttributes} (or a PATCH) to clear it.
      */
     private void updateServiceAttributes() {
-      recordChange(
-          "serviceAttributes", original.getServiceAttributes(), updated.getServiceAttributes());
+      ServiceAttributes updatedAttributes = updated.getServiceAttributes();
+      if (operation == Operation.PUT && updatedAttributes == null) {
+        updated.setServiceAttributes(original.getServiceAttributes());
+        return;
+      }
+      recordChange("serviceAttributes", original.getServiceAttributes(), updatedAttributes);
     }
 
     private void updateConnection() {

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Col, Divider, Row, Space } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
@@ -208,7 +208,10 @@ const MlModelFeaturesList = () => {
                           </Typography>{' '}
                           <Typography>{feature.dataType || '--'}</Typography>
                         </Space>
-                        <Divider className="border-gray" type="vertical" />
+                        <Divider
+                          className="tw:mx-2 tw:mt-1 tw:h-[0.9em] tw:min-h-0"
+                          orientation="vertical"
+                        />
                         <Space>
                           <Typography color="secondary">
                             {`${t('label.algorithm')} :`}

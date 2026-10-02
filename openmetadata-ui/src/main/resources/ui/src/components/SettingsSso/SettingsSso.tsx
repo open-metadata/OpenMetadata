@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Switch } from 'antd';
+import { Tabs, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -149,11 +148,7 @@ const SettingsSso = () => {
                   {t('message.allow-user-to-login-via-sso')}
                 </Typography>
               </div>
-              <Switch
-                checked={ssoEnabled}
-                size="default"
-                onChange={handleSSOToggle}
-              />
+              <Toggle isSelected={ssoEnabled} onChange={handleSSOToggle} />
             </div>
           </div>
         </div>
