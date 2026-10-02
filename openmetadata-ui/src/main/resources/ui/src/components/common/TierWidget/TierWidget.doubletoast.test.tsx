@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
 import {
   act,
   fireEvent,
@@ -18,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { showErrorToast } from '../../../utils/ToastUtils';
