@@ -14,7 +14,10 @@ import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { createNewPage, uuid } from '../../utils/common';
-import { getEncodedFqn } from '../../utils/entity';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { getAgentCard } from '../../utils/serviceIngestion';
 
 // use the admin user to login
@@ -150,64 +153,68 @@ test.describe('Service Agents visibility after a run is killed', () => {
     await afterAction();
   });
 
-  test(
-    'agents stay listed while the list refetches after a run is killed',
-    {
-      tag: '@quarantine',
-    },
-    async ({ page }) => {
-      test.slow();
+  // The ingestionPipelines?* route handler calls route.fetch() and holds the response open for
+  // REFETCH_HOLD_MS. Without draining handlers first, that in-flight fetch runs against the page
+  // that teardown just closed and throws "Target page, context or browser has been closed".
+  // `ignoreErrors` silences any handler that fires after unrouteAll begins draining.
+  test.afterEach(async ({ page }) => {
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+  });
 
-      const { refetchStarted } = await mockKillFlow(page);
+  test('agents stay listed while the list refetches after a run is killed', async ({
+    page,
+  }) => {
+    test.slow();
 
-      await page.goto(
-        `/service/databaseServices/${getEncodedFqn(
-          service.entityResponseData.fullyQualifiedName
-        )}/agents/metadata`
-      );
-      await page.getByTestId('data-assets-header').waitFor();
+    const { refetchStarted } = await mockKillFlow(page);
 
-      const runningCard = getAgentCard(page, runningAgentName);
-      const idleCard = getAgentCard(page, idleAgentName);
+    await page.goto(
+      `/service/databaseServices/${getEncodedFqn(
+        service.entityResponseData.fullyQualifiedName
+      )}/agents/metadata`
+    );
+    await waitForAllLoadersToDisappear(page);
+    await page.getByTestId('data-assets-header').waitFor();
+    // The mocked list route resolves immediately here (isKilled is still false), and the loader
+    // wait above ensures the page has settled before the agent-card assertions run.
 
+    const runningCard = getAgentCard(page, runningAgentName);
+    const idleCard = getAgentCard(page, idleAgentName);
+
+    await expect(runningCard).toBeVisible();
+    await expect(idleCard).toBeVisible();
+    await expect(runningCard.getByTestId('pipeline-status')).toContainText(
+      'Running'
+    );
+
+    await test.step('Kill the run from the agent card', async () => {
+      await runningCard.getByTestId('more-actions').click();
+      await page.getByTestId('actions-dropdown').waitFor();
+      await page.getByTestId('kill-button').click();
+    });
+
+    await refetchStarted;
+    // The refetch is held open for REFETCH_HOLD_MS from here. `Ingestion` hands the same in-flight
+    // flag to the group as `isRefreshing` and to the skeleton gate, so the refresh control going
+    // disabled is proof that the loading render has landed — the very render whose card grid the
+    // assertions below have to read. The header keeps that control outside the body that swaps
+    // between skeletons and cards, so it anchors the wait either way: on a blanked list this still
+    // resolves and the assertions fail on the skeletons, rather than timing out here.
+    await expect(page.getByTestId('agent-group-refresh')).toBeDisabled();
+
+    await test.step('Both agents are still listed while the refetch is in flight', async () => {
+      // timeout: 0 makes these assertions non-retrying — they read the DOM as it stands now,
+      // mid-refetch, without waiting for the held request to resolve.
+      await expect(page.getByTestId('agent-group-skeleton')).not.toBeVisible({
+        timeout: 0,
+      });
+      await expect(runningCard).toBeVisible({ timeout: 0 });
+      await expect(idleCard).toBeVisible({ timeout: 0 });
+    });
+
+    await test.step('Both agents survive the refetch landing', async () => {
       await expect(runningCard).toBeVisible();
       await expect(idleCard).toBeVisible();
-      await expect(runningCard.getByTestId('pipeline-status')).toContainText(
-        'Running'
-      );
-
-      await test.step('Kill the run from the agent card', async () => {
-        await runningCard.getByTestId('more-actions').click();
-        await page.getByTestId('actions-dropdown').waitFor();
-        await page.getByTestId('kill-button').click();
-      });
-
-      await refetchStarted;
-      // The refetch is held open for REFETCH_HOLD_MS from here. `Ingestion` hands the same in-flight
-      // flag to the group as `isRefreshing` and to the skeleton gate, so the refresh control going
-      // disabled is proof that the loading render has landed — the very render whose card grid the
-      // assertions below have to read. The header keeps that control outside the body that swaps
-      // between skeletons and cards, so it anchors the wait either way: on a blanked list this still
-      // resolves and the assertions fail on the skeletons, rather than timing out here.
-      await expect(page.getByTestId('agent-group-refresh')).toBeDisabled();
-
-      await test.step('Both agents are still listed while the refetch is in flight', async () => {
-        // `isVisible()` deliberately does not retry, and the web-first matchers are wrong here: they
-        // would wait the held request out and pass on a list that had been blanked for the whole
-        // window — which is the defect itself. These read the DOM as it stands right now, mid-refetch.
-        /* eslint-disable playwright/prefer-web-first-assertions -- web-first matchers retry, so they would wait the held request out and pass on a list that had been blank for the whole window; these must read the DOM as it stands. */
-        expect(await page.getByTestId('agent-group-skeleton').isVisible()).toBe(
-          false
-        );
-        expect(await runningCard.isVisible()).toBe(true);
-        expect(await idleCard.isVisible()).toBe(true);
-        /* eslint-enable playwright/prefer-web-first-assertions */
-      });
-
-      await test.step('Both agents survive the refetch landing', async () => {
-        await expect(runningCard).toBeVisible();
-        await expect(idleCard).toBeVisible();
-      });
-    }
-  );
+    });
+  });
 });

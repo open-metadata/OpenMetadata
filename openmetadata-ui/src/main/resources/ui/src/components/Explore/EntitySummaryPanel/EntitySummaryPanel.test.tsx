@@ -114,9 +114,12 @@ jest.mock('../../../utils/EntityPureUtils', () => ({
 }));
 jest.mock('../../../utils/StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
-  stringToHTML: jest.fn(),
   bytesToSize: jest.fn(),
   ordinalize: jest.fn(),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
+  stringToHTML: jest.fn(),
 }));
 
 jest.mock('react-router-dom', () => ({

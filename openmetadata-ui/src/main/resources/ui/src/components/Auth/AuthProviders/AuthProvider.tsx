@@ -59,6 +59,8 @@ import {
 } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  AppModeHint,
+  AppModeSession,
   clearAppMode,
   isAppModeHintFresh,
   readAppModeHint,
@@ -86,6 +88,15 @@ import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
 import {
+  decideReauth,
+  hasReplacedToken,
+  markReauthAttempt,
+  waitForSiblingToken,
+} from '../../../utils/Auth/AuthCoordinator/ReauthGuard';
+import { isReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
+import { isRefreshFailedError } from '../../../utils/Auth/AuthCoordinator/RefreshQueue';
+import type { RefreshFailedPayload } from '../../../utils/Auth/AuthCoordinator/types';
+import {
   getAuthConfig,
   getUrlPathnameExpiry,
   getUserManagerConfig,
@@ -100,7 +111,7 @@ import {
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
-import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
+import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsSessionUtils';
 import Loader from '../../common/Loader/Loader';
 import {
   LazyAuth0Authenticator,
@@ -139,6 +150,36 @@ const userAPIQueryFields = [
 ];
 
 const isEmailVerifyField = 'isEmailVerified';
+
+// Only this tab's own renewer can say whether a redirect to the identity
+// provider would help; a tripped circuit-breaker or a follower that ran out
+// of retries carries no such verdict.
+const isSilentReauthRecoverable = (payload: RefreshFailedPayload): boolean =>
+  payload.source === 'renewer' && isReauthRequiredError(payload.error);
+
+/**
+ * Decide whether the boot resolver should adopt a fresh cross-tab
+ * `omAppModeHint` (returning early) instead of falling through to the
+ * persona-doc fetch. The hint is a single shared `localStorage` key with
+ * no per-tab identity, and `refreshHint` writes it from THIS tab's own
+ * `currentMode` on a fixed interval + on every `visibilitychange`/`focus`.
+ *
+ * A `'boot'` session whose mode MATCHES the hint almost certainly means the
+ * hint is a self-refresh from this tab's own heartbeat — adopting it would
+ * skip the persona-doc fetch the `'boot'` re-resolve is documented to
+ * perform, so an admin's persona-`appMode` downgrade (AI → Classic) would
+ * never reach an alive AI tab on reload. Only adopt a hint that represents
+ * a *different* mode than the existing boot session (genuine cross-tab
+ * inheritance — e.g. cmd+click opened a tab whose sibling is in a different
+ * mode), or when there's no existing session at all (a truly fresh tab).
+ */
+const shouldAdoptHint = (
+  hint: AppModeHint | null,
+  existingSession: AppModeSession | null
+): boolean =>
+  isAppModeHintFresh(hint) &&
+  hint?.mode !== undefined &&
+  hint.mode !== existingSession?.mode;
 
 /**
  * Boot-time app-mode plumbing, run once `currentUser` is known (both the
@@ -191,7 +232,7 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
     return;
   }
   const hint = readAppModeHint();
-  if (isAppModeHintFresh(hint) && hint?.mode) {
+  if (shouldAdoptHint(hint, existingSession) && hint?.mode) {
     // Adopt the sibling tab's mode so this new tab renders the right
     // shell. `source: 'boot'` keeps the tuple re-resolvable on the next
     // reload and skips re-writing the hint (no self-leak).
@@ -270,6 +311,7 @@ export const AuthProvider = ({
     isApplicationLoading,
     setApplicationLoading,
     isAuthenticating,
+    setIsAuthenticating,
   } = useApplicationStore();
   const location = useCustomLocation();
   const navigate = useNavigate();
@@ -323,8 +365,17 @@ export const AuthProvider = ({
     invokeLogin();
   };
 
+  // True while a logout runs. The server revokes the session before the
+  // stored token is cleared, so a request in flight in between fails its
+  // refresh; that failure must not start a silent re-authentication, which
+  // would sign the user straight back in.
+  const isSigningOutRef = useRef(false);
+
   // Handler to perform logout within application
   const onLogoutHandler = useCallback(async () => {
+    isSigningOutRef.current = true;
+    // Same reason for an armed proactive-renewal timer firing after logout.
+    authCoordinator.pause();
     try {
       // Let SSO complete the logout process. Swallow failures so local
       // cleanup always runs — a rejected OIDC end-session call must not
@@ -377,6 +428,9 @@ export const AuthProvider = ({
 
     // Upon logout, redirect to the login page
     navigate(ROUTES.SIGNIN);
+    // From here the stored token is gone, which stops any silent
+    // re-authentication on its own.
+    isSigningOutRef.current = false;
   }, []);
 
   /**
@@ -392,28 +446,36 @@ export const AuthProvider = ({
     });
   }, []);
 
-  // Tracks the CURRENT pathname for `handleStoreProtectedRedirectPath` below.
+  // Tracks the CURRENT location for `handleStoreProtectedRedirectPath` below.
   // That callback is captured once by `authCoordinator.install` in the
-  // mount-only effect further down, so it must read the pathname via a ref
-  // rather than closing over `location.pathname` directly — otherwise a 401
-  // firing after any client-side navigation would store the pathname from
-  // the FIRST render instead of the page the user is actually on (see the
-  // install effect's comment for why the callback identity itself must stay
-  // stable). `window.location.pathname` isn't a substitute here: unlike
-  // `location` (from `useCustomLocation`), it isn't stripped of the
-  // deploy-time base path, so it would mismatch what `isProtectedRoute` and
-  // the post-login `navigate(urlPathname)` call both expect.
+  // mount-only effect further down, so it must read the location via a ref
+  // rather than closing over `location` directly — otherwise a 401 firing
+  // after any client-side navigation would store the pathname from the FIRST
+  // render instead of the page the user is actually on (see the install
+  // effect's comment for why the callback identity itself must stay stable).
+  // `window.location.pathname` isn't a substitute here: unlike `location`
+  // (from `useCustomLocation`), it isn't stripped of the deploy-time base
+  // path, so it would mismatch what `isProtectedRoute` and the post-login
+  // `navigate(urlPathname)` call both expect.
   // `handledVerifiedUser` reads it for the same reason: the memoized
   // `handleSuccessfulLogin` keeps the copy from the render it was created in,
   // so after an in-app logout it would still see the page the user left.
-  const pathnameRef = useRef(location.pathname);
+  const locationRef = useRef({
+    pathname: location.pathname,
+    search: location.search,
+  });
 
   useEffect(() => {
-    pathnameRef.current = location.pathname;
-  }, [location.pathname]);
+    locationRef.current = {
+      pathname: location.pathname,
+      search: location.search,
+    };
+  }, [location.pathname, location.search]);
 
   const handledVerifiedUser = () => {
-    if (!applicationRoutesClass.isProtectedRoute(pathnameRef.current)) {
+    if (
+      !applicationRoutesClass.isProtectedRoute(locationRef.current.pathname)
+    ) {
       // Route to `/` and let the (mode-specific) route tree render its
       // own landing page. Rendering in place at `/` is provider-agnostic
       // and lets non-default app modes (e.g. AskCollate's AI) own their
@@ -424,11 +486,13 @@ export const AuthProvider = ({
   };
 
   /**
-   * Stores redirect URL for successful login
+   * Stores redirect URL for successful login. The query string is kept so a
+   * re-authentication lands back on the same view (filters, tabs, search).
    */
   const handleStoreProtectedRedirectPath = useCallback(() => {
-    if (applicationRoutesClass.isProtectedRoute(pathnameRef.current)) {
-      storeRedirectPath(pathnameRef.current);
+    const { pathname, search } = locationRef.current;
+    if (applicationRoutesClass.isProtectedRoute(pathname)) {
+      storeRedirectPath(`${pathname}${search}`);
     }
   }, [storeRedirectPath]);
 
@@ -443,6 +507,94 @@ export const AuthProvider = ({
       showInfoToast(t('message.session-expired'));
     } else {
       navigate(ROUTES.SIGNIN);
+    }
+  };
+
+  // Set while this tab is acting on a refresh failure. Requests still in
+  // flight fail their own refreshes meanwhile; the first failure decides for
+  // all of them, so a second redirect (or a sign-out racing the redirect)
+  // never starts.
+  const isHandlingRefreshFailureRef = useRef(false);
+
+  const signOutAfterRefreshFailure = (showSessionExpired: boolean) => {
+    isHandlingRefreshFailureRef.current = false;
+    // A cold-load refresh that failed with ReauthRequiredError leaves
+    // isAuthenticating for this handler to settle (see initializeAuthState).
+    setIsAuthenticating(false);
+    resetUserDetails(showSessionExpired);
+  };
+
+  const startSilentReauth = async (invokeSilentReauth: () => Promise<void>) => {
+    // Without a persisted attempt nothing could stop a redirect that keeps
+    // failing from looping.
+    if (!markReauthAttempt()) {
+      signOutAfterRefreshFailure(true);
+
+      return;
+    }
+    authCoordinator.pause();
+    setApplicationLoading(true);
+    try {
+      await invokeSilentReauth();
+    } catch {
+      signOutAfterRefreshFailure(true);
+    }
+  };
+
+  const waitForSiblingReauth = async (staleToken: string) => {
+    setApplicationLoading(true);
+    if (await waitForSiblingToken(staleToken)) {
+      window.location.reload();
+
+      return;
+    }
+    signOutAfterRefreshFailure(true);
+  };
+
+  // A failed silent renewal does not mean the identity provider session is
+  // gone: third-party cookie blocking, blocked popups, or an ended
+  // OpenMetadata session all fail here while the provider would still sign
+  // the user straight back in. Try one top-level redirect with prompt=none
+  // before signing out; ReauthGuard bounds it to one attempt per tab per
+  // cooldown and to one tab at a time.
+  const handleRefreshFailed = async (payload: RefreshFailedPayload) => {
+    if (isSigningOutRef.current) {
+      return;
+    }
+    const invokeSilentReauth = authenticatorRef.current?.invokeSilentReauth;
+    if (!invokeSilentReauth) {
+      signOutAfterRefreshFailure(true);
+
+      return;
+    }
+    if (isHandlingRefreshFailureRef.current) {
+      return;
+    }
+    isHandlingRefreshFailureRef.current = true;
+    handleStoreProtectedRedirectPath();
+    const storedToken = await getOidcToken().catch(() => '');
+    if (!storedToken) {
+      // Signed out elsewhere (e.g. in another tab): nothing to re-establish.
+      signOutAfterRefreshFailure(false);
+
+      return;
+    }
+    const staleToken = payload.staleToken ?? storedToken;
+    if (hasReplacedToken(storedToken, staleToken)) {
+      // A sibling tab re-established the session while this (possibly
+      // throttled) tab's failure was in flight. Signing out now would end
+      // that fresh session for every tab.
+      window.location.reload();
+
+      return;
+    }
+    const decision = decideReauth();
+    if (decision === 'wait-for-sibling') {
+      await waitForSiblingReauth(staleToken);
+    } else if (decision === 'reauth' && isSilentReauthRecoverable(payload)) {
+      await startSilentReauth(invokeSilentReauth);
+    } else {
+      signOutAfterRefreshFailure(true);
     }
   };
 
@@ -474,10 +626,15 @@ export const AuthProvider = ({
       // axios response interceptor instead of being swallowed here — the old
       // unconditional `resetUserDetails()` bounced the user straight to
       // /signin on a cold-load expired token instead of ever attempting a
-      // silent refresh (Bug 1). `resetUserDetails` still runs, but only via
-      // the coordinator's `refresh-failed` event if `ensureFreshToken` itself
-      // rejects (see the mount effect above).
-      if (isRefreshableAuthError(status, url, err.response?.data)) {
+      // silent refresh (Bug 1). When that refresh fails, the queued request
+      // rejects with RefreshFailedError: the coordinator's `refresh-failed`
+      // handler owns the outcome (see the mount effect above), and resetting
+      // here would clear the token and flash /signin under a silent
+      // re-authentication it has already started.
+      if (
+        isRefreshableAuthError(status, url, err.response?.data) ||
+        isRefreshFailedError(error)
+      ) {
         throw error;
       }
 
@@ -540,8 +697,10 @@ export const AuthProvider = ({
     const offRefreshed = authCoordinator.on('refreshed', () => {
       setIsAuthenticated(true);
     });
-    const offFailed = authCoordinator.on('refresh-failed', () => {
-      resetUserDetails(true);
+    const offFailed = authCoordinator.on('refresh-failed', (payload) => {
+      handleRefreshFailed(payload).catch(() =>
+        signOutAfterRefreshFailure(true)
+      );
     });
 
     return () => {
@@ -555,6 +714,10 @@ export const AuthProvider = ({
     setIsSigningUp(false);
     setIsAuthenticated(false);
     setApplicationLoading(false);
+    // A failed silent re-authentication returns here with the pre-redirect
+    // token still stored. Clearing it stops a later cold load from trying the
+    // same dead session again and tells tabs waiting on this one to give up.
+    clearOidcToken();
     navigate(ROUTES.SIGNIN);
   };
 
@@ -562,6 +725,9 @@ export const AuthProvider = ({
     async (user: OidcUser) => {
       setApplicationLoading(true);
       setIsAuthenticated(true);
+      // The proactive renewal timer is otherwise armed only by a completed
+      // refresh, which would leave the first renewal to a request that 401s.
+      authCoordinator.syncFromStoredToken().catch(() => undefined);
       const fields =
         authConfig?.provider === AuthProviderEnum.Basic
           ? userAPIQueryFields + ',' + isEmailVerifyField
@@ -713,9 +879,12 @@ export const AuthProvider = ({
       return;
     }
 
-    // get the user details if token is present and route is not auth callback and saml callback
+    // Get the user details if a token is present, unless this is a login
+    // callback: the callback loads the user itself once it has stored the
+    // fresh token, and fetching with a token left over from before a silent
+    // re-authentication would 401 into a refresh that races it.
     if (
-      ![ROUTES.AUTH_CALLBACK, ROUTES.SILENT_CALLBACK].includes(
+      ![ROUTES.AUTH_CALLBACK, ROUTES.CALLBACK, ROUTES.SILENT_CALLBACK].includes(
         location.pathname
       )
     ) {
