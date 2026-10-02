@@ -166,6 +166,7 @@ jest.mock('../../DataQuality/Dashboard/DqDateRangeFilter', () => ({
 
 const NO_FILTERS: IncidentGroupFilters = {
   status: [],
+  severity: [],
   dateField: 'timestamp',
 };
 
@@ -394,6 +395,29 @@ describe('IncidentGroupsFilters', () => {
     });
   });
 
+  it('should offer every severity and no severity, and add a picked one', () => {
+    renderFilters({ severity: ['Severity1'] });
+
+    [
+      'Severity1',
+      'Severity2',
+      'Severity3',
+      'Severity4',
+      'Severity5',
+      'none',
+    ].forEach((severity) =>
+      expect(
+        screen.getByTestId(`incident-groups-severity-option-${severity}`)
+      ).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('incident-groups-severity-option-none'));
+
+    expect(mockOnChange).toHaveBeenLastCalledWith({
+      severity: ['Severity1', 'none'],
+    });
+  });
+
   it('should switch the date field and fall back to the creation date', () => {
     renderFilters();
 
@@ -446,6 +470,7 @@ describe('IncidentGroupsFilters', () => {
       testCaseFQN: undefined,
       assignee: undefined,
       status: [],
+      severity: [],
       dateField: undefined,
       startTs: undefined,
       endTs: undefined,

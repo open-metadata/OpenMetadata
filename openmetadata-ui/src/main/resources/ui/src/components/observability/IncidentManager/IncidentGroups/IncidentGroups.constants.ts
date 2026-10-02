@@ -38,6 +38,7 @@ import {
   IncidentGroupFilters,
   IncidentGroupSort,
   IncidentListDateField,
+  IncidentSeverityFilter,
   IncidentTrendTone,
 } from './IncidentGroups.types';
 
@@ -65,6 +66,7 @@ export const INCIDENT_GROUP_FILTER_KEYS: (keyof IncidentGroupFilters)[] = [
   'testCaseFQN',
   'assignee',
   'status',
+  'severity',
   'dateField',
   'startTs',
   'endTs',
@@ -85,6 +87,7 @@ export const CLEARED_INCIDENT_GROUP_FILTERS: Partial<IncidentGroupFilters> = {
   testCaseFQN: undefined,
   assignee: undefined,
   status: [],
+  severity: [],
   dateField: undefined,
   startTs: undefined,
   endTs: undefined,
@@ -202,6 +205,30 @@ export const BULK_INCIDENT_STATUSES: BulkIncidentStatus[] = [
 ];
 
 /** The dot each status carries in the bulk menu, in the hue of its chip. */
+export const NO_SEVERITY_FILTER = 'none';
+
+/** What the severity filter offers, most severe first, then the ungraded. */
+export const INCIDENT_SEVERITY_FILTER_OPTIONS: IncidentSeverityFilter[] = [
+  ...Object.values(Severities),
+  NO_SEVERITY_FILTER,
+];
+
+/**
+ * Dot before each severity in the filter, in the hue of its badge — the way
+ * the design prefixes each status in the Set status menu with its colour.
+ */
+export const INCIDENT_SEVERITY_DOT_CLASS: Record<
+  IncidentSeverityFilter,
+  string
+> = {
+  [Severities.Severity1]: 'tw:text-utility-error-500',
+  [Severities.Severity2]: 'tw:text-utility-orange-500',
+  [Severities.Severity3]: 'tw:text-utility-warning-500',
+  [Severities.Severity4]: 'tw:text-utility-blue-light-500',
+  [Severities.Severity5]: 'tw:text-utility-success-500',
+  [NO_SEVERITY_FILTER]: 'tw:text-utility-gray-400',
+};
+
 export const BULK_INCIDENT_STATUS_DOT_CLASS: Record<
   BulkIncidentStatus,
   string

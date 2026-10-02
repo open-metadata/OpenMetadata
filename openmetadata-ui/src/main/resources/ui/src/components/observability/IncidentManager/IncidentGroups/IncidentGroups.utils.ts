@@ -31,6 +31,7 @@ import {
   INCIDENT_GROUP_BY_OPTIONS,
   INCIDENT_GROUP_SEPARATOR,
   INCIDENT_GROUP_STATUS_OPTIONS,
+  INCIDENT_SEVERITY_FILTER_OPTIONS,
   INCIDENT_TREND_COLORS,
   SPARKLINE_HEIGHT,
   SPARKLINE_INSET,
@@ -40,6 +41,7 @@ import {
   IncidentGroupByOption,
   IncidentGroupFilters,
   IncidentGroupStatusSegment,
+  IncidentSeverityFilter,
   IncidentTrendTone,
 } from './IncidentGroups.types';
 
@@ -64,6 +66,9 @@ const readTimestamp = (value: unknown) => {
 const isOpenIncidentStatus = (value: unknown): value is OpenIncidentStatus =>
   INCIDENT_GROUP_STATUS_OPTIONS.some((status) => status === value);
 
+const isSeverityFilter = (value: unknown): value is IncidentSeverityFilter =>
+  INCIDENT_SEVERITY_FILTER_OPTIONS.some((severity) => severity === value);
+
 /**
  * The grouped view's filters out of the query string. A value the endpoint
  * would reject — `Resolved`, an unknown status, a non-numeric timestamp, a
@@ -75,6 +80,7 @@ export const parseIncidentGroupFilters = (
   testCaseFQN: readText(params.testCaseFQN),
   assignee: readText(params.assignee),
   status: uniq(castArray(params.status ?? [])).filter(isOpenIncidentStatus),
+  severity: uniq(castArray(params.severity ?? [])).filter(isSeverityFilter),
   dateField:
     params.dateField === 'updatedAt'
       ? 'updatedAt'
@@ -91,6 +97,7 @@ export const hasActiveIncidentGroupFilters = (
     (value) => !isUndefined(value)
   ) ||
   filters.status.length > 0 ||
+  filters.severity.length > 0 ||
   filters.dateField !== DEFAULT_INCIDENT_LIST_DATE_FIELD;
 
 /**
@@ -102,6 +109,7 @@ export const getIncidentGroupsQuery = ({
   testCaseFQN,
   assignee,
   status,
+  severity,
   dateField,
   startTs,
   endTs,
@@ -113,6 +121,7 @@ export const getIncidentGroupsQuery = ({
     testCaseFQN,
     assignee,
     status: status.length > 0 ? status : undefined,
+    severity: severity.length > 0 ? severity : undefined,
     dateField: hasRange ? rangeDateField : undefined,
     startTs,
     endTs,

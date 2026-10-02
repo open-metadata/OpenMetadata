@@ -82,7 +82,7 @@ const renderDrawer = (group?: TestCaseIncidentGroup) =>
   render(
     <MemoryRouter>
       <IncidentGroupDrawer
-        filters={{ status: [], dateField: 'timestamp' }}
+        filters={{ status: [], severity: [], dateField: 'timestamp' }}
         group={group}
         onClose={mockOnClose}
         onIncidentChange={mockOnIncidentChange}

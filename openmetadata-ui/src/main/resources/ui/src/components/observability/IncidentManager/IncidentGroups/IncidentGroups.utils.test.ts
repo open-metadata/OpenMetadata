@@ -35,6 +35,7 @@ import {
   getIncidentGroupSubLineTitle,
   getIncidentTrendColor,
   getIncidentTrendPoints,
+  hasActiveIncidentGroupFilters,
   isRecurring,
   isUnownedIncidentGroup,
   parseIncidentGroupBy,
@@ -332,6 +333,7 @@ describe('parseIncidentGroupFilters', () => {
         testCaseFQN: 'svc.db.schema.table.case',
         assignee: 'aaron',
         status: ['New', 'Ack'],
+        severity: ['Severity1', 'none'],
         dateField: 'updatedAt',
         startTs: '1700000000000',
         endTs: '1700086400000',
@@ -340,6 +342,7 @@ describe('parseIncidentGroupFilters', () => {
       testCaseFQN: 'svc.db.schema.table.case',
       assignee: 'aaron',
       status: [ResolutionStatusTypes.New, ResolutionStatusTypes.ACK],
+      severity: ['Severity1', 'none'],
       dateField: 'updatedAt',
       startTs: 1700000000000,
       endTs: 1700086400000,
@@ -349,8 +352,17 @@ describe('parseIncidentGroupFilters', () => {
   it('should default to no filter on an empty URL', () => {
     expect(parseIncidentGroupFilters({})).toEqual({
       status: [],
+      severity: [],
       dateField: 'timestamp',
     });
+  });
+
+  it('should drop severities the endpoint rejects, and duplicates', () => {
+    expect(
+      parseIncidentGroupFilters({
+        severity: ['Severity9', 'Severity2', 'Severity2', 'none'],
+      }).severity
+    ).toEqual(['Severity2', 'none']);
   });
 
   it('should accept a single status as well as a repeated one', () => {
@@ -375,14 +387,40 @@ describe('parseIncidentGroupFilters', () => {
         startTs: 'yesterday',
         endTs: '',
       })
-    ).toEqual({ status: [], dateField: 'timestamp' });
+    ).toEqual({ status: [], severity: [], dateField: 'timestamp' });
+  });
+});
+
+describe('severity filters', () => {
+  it('should count a severity as an active filter', () => {
+    expect(
+      hasActiveIncidentGroupFilters({
+        status: [],
+        severity: ['none'],
+        dateField: 'timestamp',
+      })
+    ).toBe(true);
+  });
+
+  it('should send the picked severities to the groups endpoint', () => {
+    expect(
+      getIncidentGroupsQuery({
+        status: [],
+        severity: ['Severity1', 'none'],
+        dateField: 'timestamp',
+      }).severity
+    ).toEqual(['Severity1', 'none']);
   });
 });
 
 describe('getIncidentGroupsQuery', () => {
   it('should send nothing for an unfiltered view', () => {
     expect(
-      getIncidentGroupsQuery({ status: [], dateField: 'timestamp' })
+      getIncidentGroupsQuery({
+        status: [],
+        severity: [],
+        dateField: 'timestamp',
+      })
     ).toEqual({});
   });
 
@@ -392,6 +430,7 @@ describe('getIncidentGroupsQuery', () => {
         testCaseFQN: 'svc.db.schema.table.case',
         assignee: 'aaron',
         status: [ResolutionStatusTypes.New, ResolutionStatusTypes.Assigned],
+        severity: [],
         dateField: 'timestamp',
       })
     ).toEqual({
@@ -405,6 +444,7 @@ describe('getIncidentGroupsQuery', () => {
     expect(
       getIncidentGroupsQuery({
         status: [],
+        severity: [],
         dateField: 'timestamp',
         startTs: 1,
         endTs: 2,
@@ -416,6 +456,7 @@ describe('getIncidentGroupsQuery', () => {
     expect(
       getIncidentGroupsQuery({
         status: [],
+        severity: [],
         dateField: 'updatedAt',
         startTs: 1,
         endTs: 2,
@@ -425,7 +466,11 @@ describe('getIncidentGroupsQuery', () => {
 
   it('should leave the date field out when no range is set', () => {
     expect(
-      getIncidentGroupsQuery({ status: [], dateField: 'updatedAt' })
+      getIncidentGroupsQuery({
+        status: [],
+        severity: [],
+        dateField: 'updatedAt',
+      })
     ).toEqual({});
   });
 });

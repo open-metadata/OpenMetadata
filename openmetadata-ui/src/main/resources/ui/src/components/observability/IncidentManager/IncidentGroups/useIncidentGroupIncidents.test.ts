@@ -33,7 +33,11 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-const FILTERS: IncidentGroupFilters = { status: [], dateField: 'timestamp' };
+const FILTERS: IncidentGroupFilters = {
+  status: [],
+  severity: [],
+  dateField: 'timestamp',
+};
 const GROUP: TestCaseIncidentGroup = {
   groupBy: IncidentGroupBy.TestDefinition,
   id: 'definition-id',

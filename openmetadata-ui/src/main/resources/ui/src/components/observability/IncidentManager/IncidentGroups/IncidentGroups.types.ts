@@ -55,10 +55,14 @@ export type IncidentListDateField = 'timestamp' | 'updatedAt';
  * Filters of the grouped view. Each key is also its query string param, shared
  * with the incident listing on the same page so both read one filter set.
  */
+/** A severity to filter by, or `none` for the incidents that carry none. */
+export type IncidentSeverityFilter = `${Severities}` | 'none';
+
 export interface IncidentGroupFilters {
   testCaseFQN?: string;
   assignee?: string;
   status: OpenIncidentStatus[];
+  severity: IncidentSeverityFilter[];
   dateField: IncidentListDateField;
   startTs?: number;
   endTs?: number;

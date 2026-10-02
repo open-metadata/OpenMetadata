@@ -25,6 +25,9 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
+  /** The severity filter value for incidents with no severity. */
+  public static final String NO_INCIDENT_SEVERITY = "none";
+
   public static final String NULL_PARAM = "null";
 
   // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
@@ -97,6 +100,8 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestCaseUnownedCondition());
     conditions.add(getIncidentListDateRangeCondition());
     conditions.add(getIncidentAssigneeCondition());
+    conditions.add(getIncidentSeverityCondition());
+    conditions.add(getIncidentListSeverityCondition());
     conditions.add(getIncidentDomainCondition());
     conditions.add(getIncidentListDomainCondition());
     conditions.add(getIncidentDateRangeCondition());
@@ -712,6 +717,43 @@ public class ListFilter extends Filter<ListFilter> {
   private String getIncidentAssigneeCondition() {
     String assignee = queryParams.get("incidentAssignee");
     return nullOrEmpty(assignee) ? "" : "assignee = :incidentAssignee";
+  }
+
+  // An incident's severity as it stands, from the groups' incident summary column; the flat
+  // listing reads the same value off the status record itself. Both take comma-separated
+  // severities, with NO_INCIDENT_SEVERITY standing for an incident that has none.
+  private String getIncidentSeverityCondition() {
+    return incidentSeverityCondition("incidentSeverity", "severity");
+  }
+
+  private String getIncidentListSeverityCondition() {
+    String severity =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.severity'))"
+            : "json->>'severity'";
+    return incidentSeverityCondition("incidentListSeverity", severity);
+  }
+
+  private String incidentSeverityCondition(String param, String severity) {
+    String value = queryParams.get(param);
+    String result = "";
+    if (!nullOrEmpty(value)) {
+      List<String> values = Arrays.stream(value.split(",")).map(String::trim).toList();
+      String graded =
+          values.stream()
+              .filter(severityValue -> !NO_INCIDENT_SEVERITY.equals(severityValue))
+              .collect(Collectors.joining(","));
+      List<String> alternatives = new ArrayList<>();
+      if (!graded.isEmpty()) {
+        alternatives.add(
+            String.format("%s IN (%s)", severity, buildIndexedBindParams(param, graded)));
+      }
+      if (values.contains(NO_INCIDENT_SEVERITY)) {
+        alternatives.add(severity + " IS NULL");
+      }
+      result = "(" + String.join(" OR ", alternatives) + ")";
+    }
+    return result;
   }
 
   private String getIncidentDomainCondition() {

@@ -45,6 +45,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
@@ -223,7 +224,14 @@ public class TestCaseResolutionStatusResource
                         TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT
                       }))
           @QueryParam("dateField")
-          String dateField) {
+          String dateField,
+      @Parameter(
+              description =
+                  "Filter incidents by their current severity. Repeatable or comma-separated; "
+                      + "`none` matches the incidents with no severity.",
+              schema = @Schema(type = "string"))
+          @QueryParam("severity")
+          List<String> severities) {
     if (unowned && !nullOrEmpty(owner)) {
       throw new IllegalArgumentException("`owner` and `unowned` cannot be combined");
     }
@@ -238,6 +246,7 @@ public class TestCaseResolutionStatusResource
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("incidentAssignee", assignee);
+    filter.addQueryParam("incidentListSeverity", parseIncidentSeverities(severities));
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
     UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
@@ -321,6 +330,13 @@ public class TestCaseResolutionStatusResource
               schema = @Schema(type = "String"))
           @QueryParam("assignee")
           String assignee,
+      @Parameter(
+              description =
+                  "Filter incidents by their current severity. Repeatable or comma-separated; "
+                      + "`none` matches the incidents with no severity.",
+              schema = @Schema(type = "string"))
+          @QueryParam("severity")
+          List<String> severities,
       @Parameter(description = "Test case fully qualified name", schema = @Schema(type = "String"))
           @QueryParam("testCaseFQN")
           String testCaseFQN,
@@ -424,6 +440,7 @@ public class TestCaseResolutionStatusResource
               .collect(Collectors.joining(",")));
     }
     filter.addQueryParam("incidentAssignee", assignee);
+    filter.addQueryParam("incidentSeverity", parseIncidentSeverities(severities));
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
     if (domainId != null) {
@@ -975,6 +992,27 @@ public class TestCaseResolutionStatusResource
               groupBy, Stream.of(IncidentGroupBy.values()).map(IncidentGroupBy::value).toList()));
     }
     return result;
+  }
+
+  // The severities a filter names, comma-joined for ListFilter, or null for no filter. Every value
+  // is checked against the severities an incident can have, so nothing unexpected reaches the SQL
+  // binds.
+  private static String parseIncidentSeverities(List<String> severities) {
+    List<String> result = new ArrayList<>();
+    for (String severityParam : listOrEmpty(severities)) {
+      for (String value : severityParam.split(",")) {
+        String severity = value.trim();
+        if (!ListFilter.NO_INCIDENT_SEVERITY.equals(severity)) {
+          try {
+            Severity.fromValue(severity);
+          } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(String.format("Invalid severity '%s'", severity));
+          }
+        }
+        result.add(severity);
+      }
+    }
+    return result.isEmpty() ? null : String.join(",", result);
   }
 
   private static List<TestCaseResolutionStatusTypes> parseIncidentStatuses(List<String> statuses) {

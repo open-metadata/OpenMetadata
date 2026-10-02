@@ -2033,17 +2033,21 @@ public interface TimeSeriesDAOs {
     default List<String> listWithOffset(
         ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean latest) {
       if (latest) {
-        // When fetching latest, we need to apply Assignee and Status filters on the outer query
+        // When fetching latest, we need to apply Assignee, Status and Severity filters on the outer
+        // query
         // i.e. after we have fetched the latest records for each testCaseFQNHash
         // We'll first get the values, remove then from `filter` and then create `outerFilter`
         String testCaseResolutionStatusType = filter.getQueryParam("testCaseResolutionStatusType");
         filter.removeQueryParam("testCaseResolutionStatusType");
         String assignee = filter.getQueryParam("incidentAssignee");
         filter.removeQueryParam("incidentAssignee");
+        String severity = filter.getQueryParam("incidentListSeverity");
+        filter.removeQueryParam("incidentListSeverity");
 
         ListFilter outerFilter = new ListFilter(null);
         outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
         outerFilter.addQueryParam("incidentAssignee", assignee);
+        outerFilter.addQueryParam("incidentListSeverity", severity);
 
         String condition = filter.getCondition();
         condition = addOriginEntityFQNJoin(filter, condition);
@@ -2075,7 +2079,7 @@ public interface TimeSeriesDAOs {
 
     @SqlQuery(
         "SELECT count(*) FROM "
-            + "(SELECT id, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
             + "FROM <table> <cond> "
             + "AND timestamp BETWEEN :startTs AND :endTs) ranked "
             + "<outerCond> AND ranked.row_num = 1")
@@ -2096,18 +2100,22 @@ public interface TimeSeriesDAOs {
         return listCount(
             getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
       }
-      // The same split as listWithOffset: the status and the assignee describe an incident as it
-      // stands, so they filter each incident's latest record rather than the records it is ranked
-      // from — or an incident resolved since would still count through its earlier open record.
+      // The same split as listWithOffset: the status, the assignee and the severity describe an
+      // incident as it stands, so they filter each incident's latest record rather than the
+      // records it is ranked from — or an incident resolved since would still count through its
+      // earlier open record.
       // The listing reads the same filter afterwards, so it is copied rather than trimmed.
       ListFilter innerFilter = new ListFilter(filter.getInclude());
       filter.getQueryParams().forEach(innerFilter::addQueryParam);
       innerFilter.removeQueryParam("testCaseResolutionStatusType");
       innerFilter.removeQueryParam("incidentAssignee");
+      innerFilter.removeQueryParam("incidentListSeverity");
       ListFilter outerFilter = new ListFilter(null);
       outerFilter.addQueryParam(
           "testCaseResolutionStatusType", filter.getQueryParam("testCaseResolutionStatusType"));
       outerFilter.addQueryParam("incidentAssignee", filter.getQueryParam("incidentAssignee"));
+      outerFilter.addQueryParam(
+          "incidentListSeverity", filter.getQueryParam("incidentListSeverity"));
       String condition = addOriginEntityFQNJoin(innerFilter, innerFilter.getCondition());
       return listCount(
           getTimeSeriesTableName(),

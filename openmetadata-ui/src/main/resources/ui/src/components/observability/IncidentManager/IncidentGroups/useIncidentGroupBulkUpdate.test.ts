@@ -63,7 +63,7 @@ const ACK: BulkIncidentChange = {
 const renderBulkUpdate = () =>
   renderHook(() =>
     useIncidentGroupBulkUpdate({
-      filters: { status: [], dateField: 'timestamp' },
+      filters: { status: [], severity: [], dateField: 'timestamp' },
     })
   );
 

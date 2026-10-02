@@ -14,11 +14,12 @@
 import {
   Box,
   Button,
+  Dot,
   FilterSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
-import { debounce, uniqBy } from 'lodash';
+import { debounce, startCase, uniqBy } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
@@ -35,10 +36,14 @@ import {
   CLEARED_INCIDENT_GROUP_FILTERS,
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_STATUS_OPTIONS,
+  INCIDENT_SEVERITY_DOT_CLASS,
+  INCIDENT_SEVERITY_FILTER_OPTIONS,
+  NO_SEVERITY_FILTER,
 } from './IncidentGroups.constants';
 import {
   IncidentGroupsFiltersProps,
   IncidentListDateField,
+  IncidentSeverityFilter,
 } from './IncidentGroups.types';
 import { hasActiveIncidentGroupFilters } from './IncidentGroups.utils';
 
@@ -96,11 +101,32 @@ const IncidentGroupsFilters = ({
   onChange,
 }: IncidentGroupsFiltersProps) => {
   const { t } = useTranslation();
+  // The same coloured dot each severity's badge is drawn in, before its name.
+  const severityOptions = useMemo(
+    () =>
+      INCIDENT_SEVERITY_FILTER_OPTIONS.map((severity) => ({
+        value: severity,
+        label:
+          severity === NO_SEVERITY_FILTER
+            ? t('label.no-entity', { entity: t('label.severity') })
+            : startCase(severity),
+        icon: (
+          <Dot
+            aria-hidden="true"
+            className={INCIDENT_SEVERITY_DOT_CLASS[severity]}
+            size="md"
+          />
+        ),
+      })),
+    [t]
+  );
   const {
     testCaseFilterOptions,
     isTestCaseOptionsLoading,
     fetchTestCaseFilterOptions,
-  } = useIncidentFilterOptions({ filters });
+  } = useIncidentFilterOptions({
+    filters: { testCaseFQN: filters.testCaseFQN, assignee: filters.assignee },
+  });
   // Incidents are assigned to users and to teams, so the filter searches both.
   const assigneePicker = useUserTeamOptions();
   const { data: selectedAssigneeName } = useQuery({
@@ -193,6 +219,20 @@ const IncidentGroupsFilters = ({
           triggerVariant="input"
           onChange={(status) =>
             onChange({ status: status as OpenIncidentStatus[] })
+          }
+        />
+      </FilterField>
+      <FilterField label={t('label.severity')}>
+        <FilterSelect
+          hideCounts
+          data-testid="incident-groups-severity"
+          label={t('label.severity')}
+          options={severityOptions}
+          selectedValues={filters.severity}
+          selectionMode="multiple"
+          triggerVariant="input"
+          onChange={(severity) =>
+            onChange({ severity: severity as IncidentSeverityFilter[] })
           }
         />
       </FilterField>
