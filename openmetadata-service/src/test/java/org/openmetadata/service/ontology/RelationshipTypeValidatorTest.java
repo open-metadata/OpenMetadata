@@ -134,10 +134,138 @@ class RelationshipTypeValidatorTest {
         BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
   }
 
+  // -------------------------------------------------------------------------
+  // validateInverse with client-supplied FQN references (id == null)
+  //
+  // The public REST API builds inverse/replacedBy references via
+  // RelationshipTypeMapper, which only populates type + fullyQualifiedName,
+  // leaving id == null. RelationshipTypeRepository.hydrateReferences resolves
+  // FQN→id before validation, but the validator must also handle a null-id
+  // reference directly (defense in depth, mirroring the bug report's
+  // recommended fix).
+  // -------------------------------------------------------------------------
+
+  @Test
+  void symmetricTypeWithClientSuppliedSelfInverseFqnIsAccepted() {
+    // Exactly what RelationshipTypeMapper produces: inverse has fqn = own name, id == null.
+    // Before the fix this was falsely rejected ("A symmetric relationship must be its own
+    // inverse") because validateInverse compared by getId() only.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "symmetricRel")
+            .withInverse(fqnReference("symmetricRel"))
+            .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC));
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void symmetricTypeWithClientSuppliedDifferentInverseFqnIsRejected() {
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "symmetricRel")
+            .withInverse(fqnReference("asymmetricRel"))
+            .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void symmetricTypeWithNullInverseIsRejected() {
+    final RelationshipType relationshipType =
+        namedRelationshipType(UUID.randomUUID(), "symmetricRel")
+            .withInverse(null)
+            .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void symmetricTypeWithFullSelfReferenceIsAccepted() {
+    // References that carry both id and fqn (as LegacyRelationshipTypeMapper produces) —
+    // both signals agree and must be accepted.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "symmetricRel")
+            .withInverse(fullReference(id, "symmetricRel"))
+            .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC));
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  // -------------------------------------------------------------------------
+  // validateReplacement with client-supplied FQN references (id == null)
+  // -------------------------------------------------------------------------
+
+  @Test
+  void clientSuppliedSelfReplacementFqnIsRejected() {
+    // Before the fix the self-replacement guard never fired because it compared by
+    // getId() and the client-supplied reference had id == null.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "replacesItself").withReplacedBy(fqnReference("replacesItself"));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void clientSuppliedDifferentReplacementFqnIsAccepted() {
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "oldType").withReplacedBy(fqnReference("newType"));
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void hydratedSelfReplacementIsRejected() {
+    // Id path guard: validateReplacement was rewritten to share isSelfReference; the id-based
+    // self-replacement rejection (which always worked) must keep working after the change.
+    final UUID id = UUID.randomUUID();
+    final RelationshipType relationshipType =
+        namedRelationshipType(id, "replacesItself").withReplacedBy(idReference(id));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+
   private static RelationshipType relationshipType(UUID id) {
     return new RelationshipType()
         .withId(id)
         .withRdfPredicate(URI.create("https://example.org/relationships/relatedTo"))
         .withCharacteristics(Set.of());
+  }
+
+  private static RelationshipType namedRelationshipType(UUID id, String name) {
+    return new RelationshipType()
+        .withId(id)
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withRdfPredicate(URI.create("https://example.org/relationships/" + name))
+        .withCharacteristics(Set.of());
+  }
+
+  private static final String RELATIONSHIP_TYPE = "relationshipType";
+
+  /** Mimics what {@code EntityUtil.getEntityReference(type, fqn)} and the mapper produce. */
+  private static EntityReference fqnReference(String fqn) {
+    return new EntityReference().withType(RELATIONSHIP_TYPE).withFullyQualifiedName(fqn);
+  }
+
+  /** Mimics a hydrated reference (id populated, no fqn — e.g. applyDefaults path). */
+  private static EntityReference idReference(UUID id) {
+    return new EntityReference().withId(id).withType(RELATIONSHIP_TYPE);
+  }
+
+  /** Mimics a fully-populated reference (id + fqn — e.g. LegacyRelationshipTypeMapper). */
+  private static EntityReference fullReference(UUID id, String fqn) {
+    return new EntityReference().withId(id).withType(RELATIONSHIP_TYPE).withFullyQualifiedName(fqn);
   }
 }
