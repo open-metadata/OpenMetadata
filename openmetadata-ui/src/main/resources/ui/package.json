@@ -57,8 +57,6 @@
     "organize-imports": "yarn organize-imports:cli tsconfig[.*].json",
     "organize-imports:playwright": "yarn organize-imports:cli './playwright/tsconfig[.*].json'",
     "playwright:run": "playwright test",
-    "playwright:affected": "python3 ../../../../../.github/scripts/plan_local_playwright.py",
-    "playwright:affected:run": "python3 ../../../../../.github/scripts/plan_local_playwright.py --run",
     "playwright:visual": "playwright test --project=visual-regression",
     "playwright:visual:update": "playwright test --project=visual-regression --update-snapshots",
     "playwright:open": "playwright test --ui",

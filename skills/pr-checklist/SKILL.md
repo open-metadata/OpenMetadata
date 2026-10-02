@@ -100,9 +100,8 @@ yarn test <ChangedComponent> --coverage
 **Playwright (UI E2E):** PR checks no longer run Playwright (the merge queue runs the full suite),
 so run the impact-mapped specs locally and record the results in the PR body:
 ```bash
-cd openmetadata-ui/src/main/resources/ui
-yarn playwright:affected                    # specs selected from .github/playwright/impact-map.json
-yarn playwright:affected:run --update-pr    # run them; writes the results block into the PR body
+make playwright_affected                          # specs selected from .github/playwright/impact-map.json
+make playwright_affected_run ARGS="--update-pr"   # run them; writes the results block into the PR body
 ```
 Without `gh`, paste `playwright/output/local-pr-results.md` between the
 `local-playwright-results` markers under "Playwright (UI) tests".

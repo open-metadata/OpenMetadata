@@ -210,7 +210,7 @@ def print_plan(plan: LocalPlan, command: list[str]) -> None:
     print("Run with:")
     print(f"  cd {UI_ROOT} && {shlex.join(command)}")
     print("Or run and record results for the PR description:")
-    print("  yarn playwright:affected:run --update-pr")
+    print('  make playwright_affected_run ARGS="--update-pr"')
 
 
 def summarize_results(

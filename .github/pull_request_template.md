@@ -87,9 +87,8 @@ List the user-visible scenarios this PR exercises. Example:
 PR checks do not run Playwright; the merge queue runs the full suite. Before requesting review, run
 the specs impacted by this PR locally (selected from `.github/playwright/impact-map.json`):
 
-  cd openmetadata-ui/src/main/resources/ui
-  yarn playwright:affected                       # list the impacted specs + the command
-  yarn playwright:affected:run --update-pr       # run them and fill the block below
+  make playwright_affected                            # list the impacted specs + the command
+  make playwright_affected_run ARGS="--update-pr"     # run them and fill the block below
 
 Without `gh`, drop `--update-pr` and paste `playwright/output/local-pr-results.md` between the markers.
 -->
