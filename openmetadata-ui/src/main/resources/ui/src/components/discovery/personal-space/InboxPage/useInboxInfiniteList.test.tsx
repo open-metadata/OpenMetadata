@@ -186,6 +186,40 @@ describe('useInboxInfiniteList', () => {
     expect(open).toHaveBeenCalledTimes(1);
   });
 
+  it('clears stale items/total and drops the cursor when a reload rejects after a prior successful load', async () => {
+    const first = jest.fn().mockResolvedValue({
+      data: [{ id: 1 }, { id: 2 }],
+      paging: { after: 'c1', total: 7 },
+    });
+    const second = jest.fn().mockRejectedValue(new Error('boom'));
+
+    const view = renderHarness(first);
+    await waitFor(() => expect(api.items.map((i) => i.id)).toEqual([1, 2]));
+
+    expect(api.total).toBe(7);
+    expect(first).toHaveBeenCalledWith(undefined);
+
+    // A key switch (e.g. a tab change) starts a new query; keepPreviousData holds
+    // the old rows on screen until the new one lands, but a rejected reload must
+    // clear them so the list reflects the failure instead of stale data.
+    view.rerender(harness(second, 'closed'));
+
+    await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalled());
+
+    expect(api.items).toHaveLength(0);
+    expect(api.total).toBe(0);
+    expect(api.isLoading).toBe(false);
+    expect(second).toHaveBeenCalledWith(undefined);
+
+    await act(async () => {
+      intersect?.();
+    });
+
+    // The failed list dropped its cursor, so loading more never reuses the old
+    // one.
+    expect(second).not.toHaveBeenCalledWith('c1');
+  });
+
   it('exposes setItems and setTotal for optimistic updates', async () => {
     const fetchPage = jest.fn().mockResolvedValue(page(1, { total: 3 }));
 

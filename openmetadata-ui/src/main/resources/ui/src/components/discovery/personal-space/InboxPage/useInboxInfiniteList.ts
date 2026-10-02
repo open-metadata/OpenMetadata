@@ -97,8 +97,16 @@ export function useInboxInfiniteList<T>(
   useEffect(() => {
     if (error) {
       showErrorToast(error as AxiosError);
+      // A failed reload leaves the previous rows on screen: a background refetch
+      // keeps the last good data, and keepPreviousData would hold a prior list's
+      // rows during a key switch. Clear the cache so the list reflects the
+      // failure — empty rows and a dropped cursor — instead of stale data.
+      queryClient.setQueryData<ListData<T>>(queryKeyRef.current, {
+        pages: [{ data: [], paging: { total: 0 } }],
+        pageParams: [undefined],
+      });
     }
-  }, [error]);
+  }, [error, queryClient]);
 
   const items = useMemo(
     () => data?.pages.flatMap((page) => page.data) ?? [],
