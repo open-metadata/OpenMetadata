@@ -115,15 +115,19 @@ export const DataQualityIndicator = ({
       triggerClassName="tw:inline-flex">
       <Link
         aria-label={title}
-        className={
-          isError
-            ? 'tw:relative tw:inline-flex tw:text-fg-error-primary'
-            : 'tw:relative tw:inline-flex tw:text-fg-warning-primary'
-        }
+        className="tw:relative tw:inline-flex"
         data-level={level}
         data-testid="dq-indicator"
         to={to}>
-        <AlertIcon height={24} width={24} />
+        {/* Colour sits on the svg, not the link: antd's global a:hover/a:focus
+            colour would otherwise turn the icon primary blue. */}
+        <AlertIcon
+          className={
+            isError ? 'tw:text-fg-error-primary' : 'tw:text-fg-warning-primary'
+          }
+          height={24}
+          width={24}
+        />
         {level === 'upstream' && (
           <ArrowUp
             aria-hidden

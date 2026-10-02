@@ -54,7 +54,11 @@ describe('DataQualityIndicator', () => {
     const indicator = screen.getByTestId('dq-indicator');
 
     expect(indicator).toHaveAttribute('data-level', 'failing');
-    expect(indicator).toHaveClass('tw:text-fg-error-primary');
+    // The svg mock renders className as a literal `classname` attribute.
+    expect(indicator.firstElementChild).toHaveAttribute(
+      'classname',
+      'tw:text-fg-error-primary'
+    );
     expect(indicator).toHaveAttribute(
       'aria-label',
       'label.data-quality-test-failing'
@@ -68,7 +72,10 @@ describe('DataQualityIndicator', () => {
     const indicator = screen.getByTestId('dq-indicator');
 
     expect(indicator).toHaveAttribute('data-level', 'incident');
-    expect(indicator).toHaveClass('tw:text-fg-warning-primary');
+    expect(indicator.firstElementChild).toHaveAttribute(
+      'classname',
+      'tw:text-fg-warning-primary'
+    );
     expect(indicator.getAttribute('href')).toContain('profiler/incidents');
     expect(
       screen.queryByTestId('dq-indicator-upstream-badge')
