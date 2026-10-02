@@ -79,12 +79,14 @@ jest.mock('./IncidentGroupsSelectionBar', () =>
     .mockImplementation(
       ({
         selectedCount,
+        incidentCount,
         onSetStatus,
         onSetSeverity,
         onClearSelection,
       }: IncidentGroupsSelectionBarProps) => (
         <div data-testid="selection-bar">
           <span data-testid="selected-count">{selectedCount}</span>
+          <span data-testid="selected-incidents">{incidentCount}</span>
           <button
             data-testid="bulk-ack"
             onClick={() => onSetStatus(CreateStatusTypes.ACK)}>
@@ -194,7 +196,9 @@ jest.mock('./IncidentGroupsTable', () =>
         onSortTypeChange,
         onGroupPreview,
         onGroupOpen,
-        onSelectionChange,
+        onGroupSelect,
+        onPageSelect,
+        selectedKeys,
       }: IncidentGroupsTableProps) => (
         <div data-testid="incident-groups-table">
           <span data-testid="table-group-count">{groups.length}</span>
@@ -209,16 +213,20 @@ jest.mock('./IncidentGroupsTable', () =>
             onClick={() => onGroupPreview(groups[0])}>
             preview
           </button>
+          <span data-testid="table-selected-count">{selectedKeys.size}</span>
           <button
             data-testid="select-first-group"
-            onClick={() =>
-              onSelectionChange(new Set([groups[0]?.id ?? groups[0]?.name]))
-            }>
+            onClick={() => onGroupSelect(groups[0], true)}>
             select
           </button>
           <button
+            data-testid="deselect-first-group"
+            onClick={() => onGroupSelect(groups[0], false)}>
+            deselect
+          </button>
+          <button
             data-testid="select-all-groups"
-            onClick={() => onSelectionChange('all')}>
+            onClick={() => onPageSelect(true)}>
             select all
           </button>
           <button
@@ -1636,6 +1644,51 @@ describe('IncidentGroupsView filters and paging', () => {
       expect(
         screen.queryByTestId('bulk-failures-modal')
       ).not.toBeInTheDocument();
+    });
+
+    it('should say how many incidents it skipped', async () => {
+      mockApplyBulkChange.mockResolvedValue({
+        total: 2,
+        passed: 2,
+        failures: [],
+        unchanged: 3,
+      });
+      await renderSelected();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('bulk-ack'));
+      });
+
+      expect(showSuccessToast).toHaveBeenCalledWith(
+        'message.bulk-incident-update-success-skipped:2'
+      );
+    });
+
+    it('should keep the selection across pages, and drop it for other filters', async () => {
+      await renderSelected();
+
+      expect(screen.getByTestId('selected-incidents')).toHaveTextContent('5');
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('next'));
+      });
+
+      expect(screen.getByTestId('selected-count')).toHaveTextContent('1');
+      expect(screen.getByTestId('table-selected-count')).toHaveTextContent('1');
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('filter-assignee'));
+      });
+
+      expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+    });
+
+    it('should drop a group from the selection', async () => {
+      await renderSelected();
+
+      fireEvent.click(screen.getByTestId('deselect-first-group'));
+
+      expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
     });
 
     it('should say so when no incident needed the change', async () => {

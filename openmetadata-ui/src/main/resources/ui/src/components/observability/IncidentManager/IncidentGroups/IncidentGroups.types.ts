@@ -12,7 +12,6 @@
  */
 
 import { FC, ReactNode } from 'react';
-import type { Selection } from 'react-aria-components';
 import {
   CreateTestCaseResolutionStatus,
   Severities as CreateSeverities,
@@ -131,6 +130,8 @@ export interface BulkIncidentOutcome {
 export interface IncidentGroupBulkStatusModalProps {
   /** The status being applied; the modal is open while there is one. */
   status?: CreateStatusTypes.Assigned | CreateStatusTypes.Resolved;
+  /** Open incidents the selected groups count, to say what Apply touches. */
+  incidentCount: number;
   isApplying: boolean;
   onCancel: () => void;
   onApply: (
@@ -140,6 +141,8 @@ export interface IncidentGroupBulkStatusModalProps {
 
 export interface IncidentGroupsSelectionBarProps {
   selectedCount: number;
+  /** Open incidents across the selected groups. */
+  incidentCount: number;
   isApplying: boolean;
   onSetStatus: (status: BulkIncidentStatus) => void;
   onSetSeverity: (severity: CreateSeverities) => void;
@@ -170,9 +173,14 @@ export interface IncidentGroupsTableProps {
   onGroupPreview: (group: TestCaseIncidentGroup) => void;
   /** The row's open affordance drills into the group. */
   onGroupOpen: (group: TestCaseIncidentGroup) => void;
-  /** Groups picked for a bulk change, by group key. */
-  selectedKeys: Selection;
-  onSelectionChange: (keys: Selection) => void;
+  /**
+   * Groups picked for a bulk change, by group key. Selection is through each
+   * row's checkbox alone, so pressing a row always previews it.
+   */
+  selectedKeys: ReadonlySet<string>;
+  onGroupSelect: (group: TestCaseIncidentGroup, isSelected: boolean) => void;
+  /** The header checkbox: every group on the page, or none of them. */
+  onPageSelect: (isSelected: boolean) => void;
 }
 
 /** One status' slice of the breakdown bar, already sized against the group. */

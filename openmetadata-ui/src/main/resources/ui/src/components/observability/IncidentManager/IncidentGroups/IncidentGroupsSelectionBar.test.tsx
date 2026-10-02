@@ -37,9 +37,10 @@ const press = (element: HTMLElement) => {
   fireEvent.click(element);
 };
 
-const renderBar = (selectedCount = 2, isApplying = false) =>
+const renderBar = (selectedCount = 2, isApplying = false, incidentCount = 42) =>
   render(
     <IncidentGroupsSelectionBar
+      incidentCount={incidentCount}
       isApplying={isApplying}
       selectedCount={selectedCount}
       onClearSelection={mockOnClearSelection}
@@ -67,6 +68,22 @@ describe('IncidentGroupsSelectionBar', () => {
     expect(
       screen.getByTestId('incident-groups-selected-count')
     ).toHaveTextContent('1 label.group-lowercase label.selected-lowercase');
+  });
+
+  it('should count the incidents the selection covers', () => {
+    renderBar();
+
+    expect(
+      screen.getByTestId('incident-groups-selected-incidents')
+    ).toHaveTextContent('42 label.incident-lowercase-plural');
+  });
+
+  it('should read a single incident in the singular', () => {
+    renderBar(1, false, 1);
+
+    expect(
+      screen.getByTestId('incident-groups-selected-incidents')
+    ).toHaveTextContent('1 label.incident-lowercase');
   });
 
   it('should offer only the statuses an open incident can move to', () => {

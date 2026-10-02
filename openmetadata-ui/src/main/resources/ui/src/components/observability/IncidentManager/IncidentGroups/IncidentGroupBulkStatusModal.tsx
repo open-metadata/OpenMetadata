@@ -19,7 +19,7 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Fragment, useEffect } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -41,6 +41,7 @@ import {
  */
 const IncidentGroupBulkStatusModal = ({
   status,
+  incidentCount,
   isApplying,
   onCancel,
   onApply,
@@ -51,10 +52,13 @@ const IncidentGroupBulkStatusModal = ({
   const form = useForm<BulkStatusFormValues>({ mode: 'onSubmit' });
   const isAssign = status === CreateStatusTypes.Assigned;
 
-  // Each opening starts from an empty form.
+  // Each opening starts from an empty form. The fields are remounted too: the
+  // pickers keep what they last showed in state of their own.
+  const [opening, setOpening] = useState(0);
   useEffect(() => {
     if (status) {
       form.reset({});
+      setOpening((count) => count + 1);
     }
   }, [form, status]);
 
@@ -108,7 +112,13 @@ const IncidentGroupBulkStatusModal = ({
           name: 'testCaseFailureComment',
           props: { 'data-testid': 'bulk-status-comment' },
           required: true,
-          rules: required(t('label.comment')),
+          rules: {
+            ...required(t('label.comment')),
+            // Spaces alone would be stored as the comment.
+            validate: (value?: string) =>
+              Boolean(value?.trim()) ||
+              t('label.field-required', { field: t('label.comment') }),
+          },
           type: FieldTypes.TEXTAREA,
         },
       ];
@@ -133,9 +143,16 @@ const IncidentGroupBulkStatusModal = ({
       title={isAssign ? t('label.assign-to') : t('label.resolve')}
       onCancel={onCancel}
       onOk={form.handleSubmit(handleSubmit)}>
-      <HookForm className="tw:flex tw:flex-col tw:gap-4" form={form}>
-        <Typography as="p" className="tw:text-tertiary" size="text-sm">
-          {t('message.bulk-incident-scope')}
+      <HookForm
+        className="tw:flex tw:flex-col tw:gap-4"
+        form={form}
+        key={opening}>
+        <Typography
+          as="p"
+          className="tw:text-tertiary"
+          data-testid="bulk-status-scope"
+          size="text-sm">
+          {t('message.bulk-incident-scope', { count: incidentCount })}
         </Typography>
         {fields.map((field) => (
           <Fragment key={field.name}>{getField(field)}</Fragment>

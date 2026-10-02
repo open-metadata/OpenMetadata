@@ -55,6 +55,7 @@ const renderModal = (
 ) =>
   render(
     <IncidentGroupBulkStatusModal
+      incidentCount={12}
       isApplying={false}
       status={status}
       onApply={mockOnApply}
@@ -131,5 +132,56 @@ describe('IncidentGroupBulkStatusModal', () => {
     press(screen.getByRole('button', { name: 'label.cancel' }));
 
     expect(mockOnCancel).toHaveBeenCalled();
+  });
+
+  it('should not resolve with a comment of spaces alone', async () => {
+    renderModal(CreateStatusTypes.Resolved);
+
+    const dialog = screen.getByRole('dialog');
+    await act(async () => {
+      press(within(dialog).getAllByRole('button', { name: /label.reason/ })[0]);
+    });
+    await act(async () => {
+      press(screen.getByRole('option', { name: 'label.false-positive' }));
+    });
+    fireEvent.change(within(dialog).getByRole('textbox'), {
+      target: { value: '   ' },
+    });
+    await apply();
+
+    expect(mockOnApply).not.toHaveBeenCalled();
+    expect(screen.getByText('label.field-required')).toBeInTheDocument();
+  });
+
+  it('should say how many incidents Apply changes', () => {
+    renderModal(CreateStatusTypes.Assigned);
+
+    expect(screen.getByTestId('bulk-status-scope')).toHaveTextContent(
+      'message.bulk-incident-scope'
+    );
+  });
+
+  it('should open empty again after a change was applied', async () => {
+    const { rerender } = renderModal(CreateStatusTypes.Resolved);
+    fireEvent.change(within(screen.getByRole('dialog')).getByRole('textbox'), {
+      target: { value: 'Expected after the backfill' },
+    });
+
+    const reopen = (status?: CreateStatusTypes.Resolved) =>
+      rerender(
+        <IncidentGroupBulkStatusModal
+          incidentCount={12}
+          isApplying={false}
+          status={status}
+          onApply={mockOnApply}
+          onCancel={mockOnCancel}
+        />
+      );
+    await act(async () => reopen());
+    await act(async () => reopen(CreateStatusTypes.Resolved));
+
+    expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveValue(
+      ''
+    );
   });
 });

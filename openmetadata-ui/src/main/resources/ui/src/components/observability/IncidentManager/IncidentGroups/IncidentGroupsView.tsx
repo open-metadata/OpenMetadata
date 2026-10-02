@@ -29,9 +29,8 @@ import {
   TrendUp01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, sumBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { TestCaseResolutionStatusTypes as CreateStatusTypes } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -122,22 +121,42 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
    */
   const isInitialLoading = isLoading && isEmpty(incidentGroups);
 
-  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set());
+  // Picked groups by key, kept across pages so a selection can span them.
+  const [selection, setSelection] = useState<
+    ReadonlyMap<string, TestCaseIncidentGroup>
+  >(new Map());
   // The status that needs more than itself (an assignee, a reason), while its
   // details are being asked for.
   const [pendingStatus, setPendingStatus] =
     useState<IncidentGroupBulkStatusModalProps['status']>();
   const [bulkOutcome, setBulkOutcome] = useState<BulkIncidentOutcome>();
 
-  // A selection is of the rows on screen; a new read replaces them.
-  useEffect(() => setSelectedKeys(new Set()), [incidentGroups]);
+  // Another dimension or other filters make other groups; a page or a sort
+  // only shows the same ones differently.
+  useEffect(() => setSelection(new Map()), [groupBy, filters]);
 
-  const selectedGroups =
-    selectedKeys === 'all'
-      ? incidentGroups
-      : incidentGroups.filter((group) =>
-          selectedKeys.has(getIncidentGroupKey(group))
-        );
+  const selectedGroups = [...selection.values()];
+  const selectedKeys = useMemo(() => new Set(selection.keys()), [selection]);
+  const selectedIncidentCount = sumBy(selectedGroups, 'incidentCount');
+  const clearSelection = () => setSelection(new Map());
+
+  const handleGroupSelect = (
+    group: TestCaseIncidentGroup,
+    isSelected: boolean
+  ) =>
+    setSelection((previous) => {
+      const next = new Map(previous);
+      if (isSelected) {
+        next.set(getIncidentGroupKey(group), group);
+      } else {
+        next.delete(getIncidentGroupKey(group));
+      }
+
+      return next;
+    });
+
+  const handlePageSelect = (isSelected: boolean) =>
+    incidentGroups.forEach((group) => handleGroupSelect(group, isSelected));
 
   const runBulkChange = async (change: BulkIncidentChange) => {
     try {
@@ -149,10 +168,17 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
         showInfoToast(t('message.bulk-incident-no-change'));
       } else {
         showSuccessToast(
-          t('message.bulk-incident-update-success', { count: outcome.passed })
+          outcome.unchanged > 0
+            ? t('message.bulk-incident-update-success-skipped', {
+                count: outcome.passed,
+                skipped: outcome.unchanged,
+              })
+            : t('message.bulk-incident-update-success', {
+                count: outcome.passed,
+              })
         );
       }
-      setSelectedKeys(new Set());
+      clearSelection();
       refresh();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -278,9 +304,10 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
       <>
         {selectedGroups.length > 0 && (
           <IncidentGroupsSelectionBar
+            incidentCount={selectedIncidentCount}
             isApplying={isApplying}
             selectedCount={selectedGroups.length}
-            onClearSelection={() => setSelectedKeys(new Set())}
+            onClearSelection={clearSelection}
             onSetSeverity={(severity) =>
               runBulkChange({ kind: 'severity', severity })
             }
@@ -295,7 +322,8 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
             sortType={sortType}
             onGroupOpen={handleOpenGroup}
             onGroupPreview={setPreviewGroup}
-            onSelectionChange={setSelectedKeys}
+            onGroupSelect={handleGroupSelect}
+            onPageSelect={handlePageSelect}
             onSortTypeChange={handleSortTypeChange}
           />
           <PaginationCardWithControls
@@ -435,6 +463,7 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
         renderDetail()
       )}
       <IncidentGroupBulkStatusModal
+        incidentCount={selectedIncidentCount}
         isApplying={isApplying}
         status={pendingStatus}
         onApply={(details) =>

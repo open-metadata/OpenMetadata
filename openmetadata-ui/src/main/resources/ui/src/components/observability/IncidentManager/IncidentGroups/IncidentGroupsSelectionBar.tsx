@@ -43,6 +43,7 @@ const SECTION_HEADER_CLASS =
  */
 const IncidentGroupsSelectionBar = ({
   selectedCount,
+  incidentCount,
   isApplying,
   onSetStatus,
   onSetSeverity,
@@ -69,16 +70,31 @@ const IncidentGroupsSelectionBar = ({
             : 'label.group-lowercase-plural'
         )} ${t('label.selected-lowercase')}`}
       </Typography>
+      <Typography
+        as="span"
+        className="tw:text-tertiary"
+        data-testid="incident-groups-selected-incidents"
+        size="text-sm">
+        {`${incidentCount} ${t(
+          incidentCount === 1
+            ? 'label.incident-lowercase'
+            : 'label.incident-lowercase-plural'
+        )}`}
+      </Typography>
       <Divider className="tw:h-4" orientation="vertical" />
       <Dropdown.Root>
         <Button
+          showTextWhileLoading
           color="secondary"
           data-testid="incident-groups-set-status"
           isDisabled={isApplying}
+          isLoading={isApplying}
           size="sm">
           {t('label.set-status')}
         </Button>
-        <Dropdown.Popover className="tw:w-max tw:min-w-48">
+        <Dropdown.Popover
+          className="tw:w-max tw:min-w-48"
+          placement="bottom left">
           <Dropdown.Menu
             onAction={(key) => onSetStatus(key as BulkIncidentStatus)}>
             <Dropdown.Section>
@@ -120,7 +136,9 @@ const IncidentGroupsSelectionBar = ({
           size="sm">
           {t('label.set-severity')}
         </Button>
-        <Dropdown.Popover className="tw:w-max tw:min-w-48">
+        <Dropdown.Popover
+          className="tw:w-max tw:min-w-48"
+          placement="bottom left">
           <Dropdown.Menu
             onAction={(key) => onSetSeverity(key as CreateSeverities)}>
             <Dropdown.Section>

@@ -39,7 +39,8 @@ jest.mock('./IncidentTrendSparkline', () => ({
 const mockOnSortTypeChange = jest.fn();
 const mockOnGroupPreview = jest.fn();
 const mockOnGroupOpen = jest.fn();
-const mockOnSelectionChange = jest.fn();
+const mockOnGroupSelect = jest.fn();
+const mockOnPageSelect = jest.fn();
 
 // Same press sequence react-aria listens for on rows and buttons.
 const press = (element: HTMLElement) => {
@@ -110,17 +111,19 @@ const fixtureGroup: TestCaseIncidentGroup = {
 
 const renderTable = (
   groups: TestCaseIncidentGroup[] = [fixtureGroup],
-  groupBy = IncidentGroupBy.Table
+  groupBy = IncidentGroupBy.Table,
+  selectedKeys: ReadonlySet<string> = new Set()
 ) =>
   render(
     <IncidentGroupsTable
       groupBy={groupBy}
       groups={groups}
-      selectedKeys={new Set()}
+      selectedKeys={selectedKeys}
       sortType="desc"
       onGroupOpen={mockOnGroupOpen}
       onGroupPreview={mockOnGroupPreview}
-      onSelectionChange={mockOnSelectionChange}
+      onGroupSelect={mockOnGroupSelect}
+      onPageSelect={mockOnPageSelect}
       onSortTypeChange={mockOnSortTypeChange}
     />
   );
@@ -356,5 +359,44 @@ describe('IncidentGroupsTable', () => {
 
     expect(mockOnGroupOpen).toHaveBeenCalledWith(fixtureGroup);
     expect(mockOnGroupPreview).not.toHaveBeenCalled();
+  });
+
+  it('should still preview a row pressed while other groups are selected', () => {
+    renderTable([fixtureGroup], IncidentGroupBy.Table, new Set(['other']));
+
+    press(screen.getByTestId('group-name'));
+
+    expect(mockOnGroupPreview).toHaveBeenCalledWith(fixtureGroup);
+    expect(mockOnGroupSelect).not.toHaveBeenCalled();
+  });
+
+  it('should select a group from its checkbox, without previewing it', () => {
+    renderTable();
+
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-entity' })
+    );
+
+    expect(mockOnGroupSelect).toHaveBeenCalledWith(fixtureGroup, true);
+    expect(mockOnGroupPreview).not.toHaveBeenCalled();
+  });
+
+  it('should show a partly selected page and select all of it', () => {
+    const second = { ...fixtureGroup, id: 'second', name: 'second' };
+    renderTable(
+      [fixtureGroup, second],
+      IncidentGroupBy.Table,
+      new Set([fixtureGroup.id as string])
+    );
+
+    const pageCheckbox = screen.getByRole('checkbox', {
+      name: 'label.select-all',
+    });
+
+    expect(pageCheckbox).toBePartiallyChecked();
+
+    fireEvent.click(pageCheckbox);
+
+    expect(mockOnPageSelect).toHaveBeenCalledWith(true);
   });
 });
