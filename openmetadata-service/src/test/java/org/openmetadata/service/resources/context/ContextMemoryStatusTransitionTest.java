@@ -16,7 +16,13 @@ class ContextMemoryStatusTransitionTest {
   @Test
   void memoryIsDraftApprovedOrArchived() {
     assertEquals(
-        Set.of(EntityStatus.DRAFT, EntityStatus.APPROVED, EntityStatus.ARCHIVED), MEMORY.stages());
+        Set.of(
+            EntityStatus.DRAFT,
+            EntityStatus.APPROVED,
+            EntityStatus.DEPRECATED,
+            EntityStatus.REJECTED,
+            EntityStatus.ARCHIVED),
+        MEMORY.stages());
   }
 
   @Test
@@ -24,7 +30,11 @@ class ContextMemoryStatusTransitionTest {
     assertTrue(MEMORY.allows(EntityStatus.DRAFT, EntityStatus.APPROVED));
     assertTrue(MEMORY.allows(EntityStatus.DRAFT, EntityStatus.ARCHIVED));
     assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.ARCHIVED));
+    assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.DEPRECATED));
+    assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.REJECTED));
     assertTrue(MEMORY.allows(EntityStatus.ARCHIVED, EntityStatus.APPROVED));
+    assertTrue(MEMORY.allows(EntityStatus.DEPRECATED, EntityStatus.APPROVED));
+    assertTrue(MEMORY.allows(EntityStatus.REJECTED, EntityStatus.APPROVED));
   }
 
   @Test
@@ -38,5 +48,13 @@ class ContextMemoryStatusTransitionTest {
     assertTrue(MEMORY.allows(null, EntityStatus.DRAFT));
     assertTrue(MEMORY.allows(null, EntityStatus.ARCHIVED));
     assertFalse(MEMORY.allows(null, EntityStatus.IN_REVIEW));
+  }
+
+  @Test
+  void retiredMemoriesCannotSkipBetweenRetiredStagesOrReturnToDraft() {
+    assertFalse(MEMORY.allows(EntityStatus.DEPRECATED, EntityStatus.REJECTED));
+    assertFalse(MEMORY.allows(EntityStatus.REJECTED, EntityStatus.DEPRECATED));
+    assertFalse(MEMORY.allows(EntityStatus.DEPRECATED, EntityStatus.DRAFT));
+    assertFalse(MEMORY.allows(EntityStatus.REJECTED, EntityStatus.DRAFT));
   }
 }

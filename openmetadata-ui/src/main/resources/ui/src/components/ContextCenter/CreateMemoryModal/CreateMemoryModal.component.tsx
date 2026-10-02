@@ -70,6 +70,7 @@ import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverC
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { ROUTES } from '../../../constants/constants';
 import {
+  MEMORY_STATUS_LABEL_KEYS,
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
@@ -79,6 +80,7 @@ import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ContextMemory,
+  EntityStatus,
   MemoryType,
   ShareVisibility,
   TagLabel,
@@ -316,22 +318,22 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
   }
 
   return (
-    <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-warning-300 tw:bg-warning-50 tw:px-3 tw:py-2.5">
+    <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-3 tw:py-2.5">
       <Lock01
-        className="tw:shrink-0 tw:text-warning-700 tw:mt-0.5"
+        className="tw:shrink-0 tw:text-fg-warning-primary tw:mt-0.5"
         size={16}
         strokeWidth={2}
       />
       <div className="tw:flex tw:flex-col">
         <Typography
-          className="tw:text-warning-700"
+          className="tw:text-utility-warning-700"
           size="text-xs"
           weight="semibold">
           {t('label.cant-edit-this-memory')}
         </Typography>
         <Typography
           as="p"
-          className="tw:text-warning-700 tw:leading-4"
+          className="tw:text-utility-warning-700 tw:leading-4"
           size="text-xs">
           {t('message.context-memory-read-only-description', {
             creatorName:
@@ -640,11 +642,93 @@ const MemoryTagsRow: FC<{
   </div>
 );
 
+const getEntityStatusColor = (
+  status: EntityStatus
+): 'error' | 'warning' | 'gray' => {
+  if (status === EntityStatus.Rejected) {
+    return 'error';
+  }
+  if (status === EntityStatus.Deprecated) {
+    return 'warning';
+  }
+
+  return 'gray';
+};
+
+const MemoryLifecycleRows: FC<{
+  memoryToEdit?: ContextMemory;
+  t: TFunc;
+}> = ({ memoryToEdit, t }) => (
+  <>
+    {memoryToEdit?.entityStatus && (
+      <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
+        <div className="tw:basis-[30%]">
+          <Typography className="tw:text-quaternary tw:w-28" size="text-sm">
+            {t('label.status')}
+          </Typography>
+        </div>
+        <Badge
+          color={getEntityStatusColor(memoryToEdit.entityStatus)}
+          data-testid="memory-lifecycle-status"
+          size="sm"
+          type="color">
+          {t(MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus])}
+        </Badge>
+      </div>
+    )}
+    {memoryToEdit?.statusReason && (
+      <div className="tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-3">
+        <div className="tw:basis-[30%]">
+          <Typography className="tw:text-quaternary tw:w-28" size="text-sm">
+            {t('label.reason')}
+          </Typography>
+        </div>
+        <Typography
+          className="tw:text-tertiary tw:whitespace-pre-wrap"
+          data-testid="memory-lifecycle-reason"
+          size="text-sm">
+          {memoryToEdit.statusReason}
+        </Typography>
+      </div>
+    )}
+    {memoryToEdit?.entityStatus === EntityStatus.Deprecated &&
+      memoryToEdit.supersededBy && (
+        <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
+          <div className="tw:basis-[30%]">
+            <Typography className="tw:text-quaternary tw:w-28" size="text-sm">
+              {t('label.superseded-by')}
+            </Typography>
+          </div>
+          {memoryToEdit.supersededBy.fullyQualifiedName ||
+          memoryToEdit.supersededBy.name ? (
+            <Link
+              className="tw:text-brand-secondary tw:hover:underline"
+              data-testid="memory-lifecycle-successor"
+              to={`${
+                ROUTES.CONTEXT_CENTER_MEMORIES
+              }?memory=${encodeURIComponent(
+                memoryToEdit.supersededBy.fullyQualifiedName ??
+                  memoryToEdit.supersededBy.name ??
+                  ''
+              )}`}>
+              {getEntityName(memoryToEdit.supersededBy)}
+            </Link>
+          ) : (
+            <Typography className="tw:text-tertiary" size="text-sm">
+              {memoryToEdit.supersededBy.id}
+            </Typography>
+          )}
+        </div>
+      )}
+  </>
+);
+
 const MemoryMetadataExtraRows: FC<{
   memoryToEdit?: ContextMemory;
   t: TFunc;
 }> = ({ memoryToEdit, t }) => (
   <>
+    <MemoryLifecycleRows memoryToEdit={memoryToEdit} t={t} />
     {Boolean(memoryToEdit?.updatedAt) && (
       <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
         <div className="tw:basis-[30%]">

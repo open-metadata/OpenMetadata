@@ -13,18 +13,23 @@
 
 package org.openmetadata.service.ontology;
 
+import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
+
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
@@ -42,9 +47,32 @@ public final class OntologyChangePreflight {
     final Set<UUID> scope = glossaryScope(changeSet);
     final List<GlossaryTerm> plannedTerms = plannedTerms(operations);
     final List<VersionGuard> versionGuards = new ArrayList<>();
+    final Set<UUID> checkedSourceMemories = new HashSet<>();
     for (final OntologyChangeOperation operation : operations) {
+      validateSourceMemories(operation, checkedSourceMemories);
       validateScope(operation, scope, plannedTerms);
       validateTargetVersion(operation, plannedTerms, versionGuards);
+    }
+  }
+
+  private void validateSourceMemories(
+      final OntologyChangeOperation operation, final Set<UUID> checkedSourceMemories) {
+    if (operation.getSourceMemoryIds() == null) {
+      return;
+    }
+    for (final UUID memoryId : operation.getSourceMemoryIds()) {
+      if (checkedSourceMemories.add(memoryId)) {
+        final ContextMemory memory =
+            (ContextMemory) entityLoader.load(Entity.CONTEXT_MEMORY, memoryId);
+        if (Boolean.TRUE.equals(memory.getDeleted())
+            || effectiveStatus(memory.getEntityStatus()) != EntityStatus.APPROVED) {
+          throw new BadRequestException(
+              "Ontology operation '"
+                  + operation.getId()
+                  + "' has an inactive source memory: "
+                  + memoryId);
+        }
+      }
     }
   }
 

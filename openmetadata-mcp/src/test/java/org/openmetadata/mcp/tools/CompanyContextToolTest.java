@@ -38,6 +38,7 @@ import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -217,6 +218,7 @@ class CompanyContextToolTest {
       assertEquals(subjectContext, subject.getValue());
       assertEquals(List.of("FileExtraction"), filters.getValue().get("sourceType"));
       assertEquals(List.of("Shared"), filters.getValue().get("visibility"));
+      assertEquals(List.of("Approved"), filters.getValue().get("entityStatus"));
     }
   }
 
@@ -282,6 +284,44 @@ class CompanyContextToolTest {
 
     assertEquals("Q", result.get("question"));
     assertEquals("A", result.get("answer"));
+  }
+
+  @Test
+  void legacySharedFilePillWithoutStoredStatusIsReadableByName() throws Exception {
+    stubMemory(
+        "legacy-pill",
+        sharedWith(
+            memory("legacy-pill", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
+                .withEntityStatus(null),
+            "bob"));
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
+    Map<String, Object> result =
+        withSubject(
+            securityContext,
+            "bob",
+            () ->
+                tool.execute(
+                    mock(Authorizer.class), securityContext, Map.of("fqn", "legacy-pill")));
+
+    assertEquals("A", result.get("answer"));
+  }
+
+  @Test
+  void supersededFilePillIsNotReturnedByName() throws Exception {
+    stubMemory(
+        "pill-fqn",
+        sharedWith(
+            memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
+                .withEntityStatus(EntityStatus.DEPRECATED),
+            "bob"));
+    Map<String, Object> result =
+        tool.execute(
+            mock(Authorizer.class), mock(CatalogSecurityContext.class), Map.of("fqn", "pill-fqn"));
+
+    assertEquals(
+        "Requested entity is not a shared Company Context knowledge pill", result.get("error"));
+    assertFalse(result.containsKey("answer"));
   }
 
   /**
@@ -423,6 +463,7 @@ class CompanyContextToolTest {
         .withFullyQualifiedName(fqn)
         .withQuestion("Q")
         .withAnswer("A")
+        .withEntityStatus(EntityStatus.APPROVED)
         .withSourceType(sourceType)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }

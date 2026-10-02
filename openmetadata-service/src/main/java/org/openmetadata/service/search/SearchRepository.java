@@ -135,6 +135,7 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -4196,6 +4197,27 @@ public class SearchRepository {
         q,
         queryString,
         subjectContext);
+  }
+
+  public SearchResultListMapper listContextMemoriesWithStatuses(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q,
+      SubjectContext subjectContext,
+      List<EntityStatus> statuses)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(Entity.CONTEXT_MEMORY);
+    return searchClient.listContextMemoriesWithStatuses(
+        filter.getCondition(Entity.CONTEXT_MEMORY),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        searchSortFilter,
+        q,
+        subjectContext,
+        statuses);
   }
 
   public SearchResultListMapper listWithDeepPagination(

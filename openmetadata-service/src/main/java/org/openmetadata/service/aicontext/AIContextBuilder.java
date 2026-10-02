@@ -891,7 +891,11 @@ public class AIContextBuilder {
   private KnowledgeItem toPillKnowledgeItem(EntityReference ref) {
     KnowledgeItem item = null;
     try {
-      ContextMemory pill = Entity.getEntity(ref, "", Include.NON_DELETED);
+      ContextMemory pill =
+          Entity.getEntity(
+              ref,
+              ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, ""),
+              Include.NON_DELETED);
       // Mirror the glossary path's approval gating: Draft/Archived memories are not settled
       // knowledge and must not reach agents as current context (issue #32260).
       if (isActivePill(pill) && canViewPill(pill)) {

@@ -14,7 +14,6 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -81,9 +81,7 @@ class ContextMemoryIndexTest {
     assertEquals("Filter the Explore page by the Certification tag.", doc.get("answer"));
     assertEquals(ContextMemoryType.FAQ.value(), doc.get("memoryType"));
     assertEquals(ContextMemoryScope.USER_GLOBAL.value(), doc.get("memoryScope"));
-    assertFalse(
-        doc.containsKey("status"),
-        "the memory's stage is indexed through the shared entityStatus field, not its own status");
+    assertEquals(EntityStatus.APPROVED.value(), doc.get("entityStatus"));
     assertEquals(true, doc.get("pinned"));
     assertEquals(ContextMemorySourceType.CHAT_PROMOTION.value(), doc.get("sourceType"));
     assertEquals(7, doc.get("usageCount"));
@@ -182,6 +180,7 @@ class ContextMemoryIndexTest {
         new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(new HashMap<>());
 
     assertNull(doc.get("visibility"));
+    assertEquals(ContextMemoryIndex.UNANCHORED, doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
     @SuppressWarnings("unchecked")
     List<String> sharedWithIds = (List<String>) doc.get("sharedWithIds");
     assertTrue(sharedWithIds.isEmpty());
@@ -222,6 +221,7 @@ class ContextMemoryIndexTest {
     EntityReference docPrimary = (EntityReference) doc.get("primaryEntity");
     assertNotNull(docPrimary);
     assertEquals("orders", docPrimary.getDisplayName());
+    assertEquals(primaryEntity.getId().toString(), doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
 
     @SuppressWarnings("unchecked")
     List<EntityReference> docRelated = (List<EntityReference>) doc.get("relatedEntities");
@@ -259,6 +259,27 @@ class ContextMemoryIndexTest {
 
     assertTrue(index.getRequiredReindexFields().contains("tags"));
     assertTrue(index.getRequiredReindexFields().contains("owners"));
+  }
+
+  @Test
+  void statusValue_treatsLegacyMissingStatusAsActive() {
+    assertEquals(
+        "Deprecated",
+        ContextMemoryIndex.statusValue(baseMemory().withEntityStatus(EntityStatus.DEPRECATED)));
+    ContextMemory legacy = baseMemory().withEntityStatus(null);
+    assertEquals(EntityStatus.APPROVED.value(), ContextMemoryIndex.statusValue(legacy));
+    assertEquals(
+        EntityStatus.APPROVED.value(),
+        new ContextMemoryIndex(legacy)
+            .buildSearchIndexDocInternal(new HashMap<>())
+            .get("entityStatus"));
+  }
+
+  @Test
+  void requiredReindexFields_includeTheRelationshipFieldsTheDocReads() {
+    Set<String> fields = new ContextMemoryIndex(baseMemory()).getRequiredReindexFields();
+
+    assertTrue(fields.containsAll(Set.of("primaryEntity", "relatedEntities", "sourceFile")));
   }
 
   private ContextMemory baseMemory() {

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -148,6 +149,18 @@ public interface SearchManagementClient {
       String q,
       String queryString,
       SubjectContext subjectContext)
+      throws IOException;
+
+  /** Authenticated Context Center listing with an explicit selection of memory statuses. */
+  SearchResultListMapper listContextMemoriesWithStatuses(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      SubjectContext subjectContext,
+      List<EntityStatus> statuses)
       throws IOException;
 
   /**

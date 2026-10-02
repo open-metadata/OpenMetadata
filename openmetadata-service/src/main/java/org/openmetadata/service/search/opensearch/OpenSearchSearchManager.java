@@ -53,6 +53,7 @@ import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
@@ -514,6 +515,44 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       String queryString,
       SubjectContext subjectContext)
       throws IOException {
+    return listWithOffsetForStatuses(
+        filter,
+        limit,
+        offset,
+        index,
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext,
+        List.of(EntityStatus.APPROVED));
+  }
+
+  @Override
+  public SearchResultListMapper listContextMemoriesWithStatuses(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      SubjectContext subjectContext,
+      List<EntityStatus> statuses)
+      throws IOException {
+    return listWithOffsetForStatuses(
+        filter, limit, offset, index, searchSortFilter, q, null, subjectContext, statuses);
+  }
+
+  private SearchResultListMapper listWithOffsetForStatuses(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext,
+      List<EntityStatus> statuses)
+      throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
     }
@@ -566,7 +605,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       }
     }
 
-    applyContextMemoryVisibility(subjectContext, requestBuilder);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -1148,12 +1187,19 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
   private void applyContextMemoryVisibility(
       SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
+    applyContextMemoryVisibility(subjectContext, requestBuilder, List.of(EntityStatus.APPROVED));
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      OpenSearchRequestBuilder requestBuilder,
+      List<EntityStatus> statuses) {
     OMQueryBuilder visibilityBuilder =
-        contextMemoryVisibility.buildVisibilityFilter(subjectContext);
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses);
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
-    // Admins get no filter but are still resolved. An unidentifiable subject is NOT resolved, so
+    // Admins still get the Active-only memory filter. An unidentifiable subject is NOT resolved, so
     // OpenSearchRequestBuilder#build falls back to its org-wide-only default instead of running the
     // search unfiltered.
     if (contextMemoryVisibility.isSubjectResolvable(subjectContext)) {

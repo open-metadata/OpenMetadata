@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,9 +21,11 @@ import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
@@ -276,7 +279,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       boolean alreadyBackfilled =
           stagedHeader != null
               && fingerprint.equals(stagedHeader.fingerprint())
-              && !docVersionStale(stagedHeader);
+              && !docVersionStale(stagedHeader)
+              && !memoryFilterChanged(entity, stagedHeader);
       if (!alreadyBackfilled) {
         String live = getChunkIndexName();
         ChunkHeader liveHeader = getChunkHeader(live, parentId);
@@ -322,13 +326,12 @@ public class OpenSearchVectorService implements VectorIndexService {
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
       boolean fingerprintChanged =
           header == null || !currentFingerprint.equals(header.fingerprint());
-      boolean chunksStale = fingerprintChanged || docVersionStale(header);
+      boolean chunksStale =
+          fingerprintChanged || docVersionStale(header) || memoryFilterChanged(entity, header);
       if (entityDocStale || chunksStale) {
-        // Reuse cached vectors only when nothing content-related changed and the chunks are stale
-        // purely by docVersion; any content change (entity doc or chunks) re-embeds for
-        // correctness.
+        // Filter or mapping changes restamp chunks with stored vectors; content changes re-embed.
         List<Map<String, Object>> chunkDocs =
-            (chunksStale && !fingerprintChanged && !entityDocStale)
+            (chunksStale && !fingerprintChanged)
                 ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
                 : VectorDocBuilder.fromEntity(entity, embeddingClient);
         if (chunksStale) {
@@ -999,9 +1002,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("embedding", embedding);
     // The three metric enums are mapped as real keywords, not source-only: they are cheap to index
     // and are the natural facets to filter a metric search on (granularity DAY vs MONTH).
-    // visibility/sharedWithIds carry context memory privacy onto the chunk
-    // docs: the memory visibility filter is applied to every vector query, so a chunk that does not
-    // index these is either unfilterable or invisible to its own owner.
+    // Memory privacy and lifecycle fields must be filterable on every chunk.
     for (String keyword :
         List.of(
             "parentId",
@@ -1014,7 +1015,9 @@ public class OpenSearchVectorService implements VectorIndexService {
             "unitOfMeasurement",
             "customUnitOfMeasurement",
             "visibility",
-            "sharedWithIds")) {
+            "sharedWithIds",
+            ContextMemoryIndex.FIELD_ANCHOR_ID,
+            ContextMemoryIndex.FIELD_STATUS)) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
     // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
@@ -1124,16 +1127,14 @@ public class OpenSearchVectorService implements VectorIndexService {
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
       boolean fingerprintChanged =
           header == null || !currentFingerprint.equals(header.fingerprint());
-      boolean docVersionStale = docVersionStale(header);
-      if (!fingerprintChanged && !docVersionStale) {
-        LOG.debug("Skipping chunk embedding for {} - fingerprint and docVersion current", parentId);
+      boolean metadataStale = docVersionStale(header) || memoryFilterChanged(entity, header);
+      if (!fingerprintChanged && !metadataStale) {
+        LOG.debug("Skipping chunk embedding for {} - content and filters current", parentId);
         return;
       }
-      // docVersion-only staleness (content unchanged) reuses the stored vectors so a mapping
-      // upgrade
-      // backfills with zero embedding-provider cost; a content change re-embeds as before.
+      // Mapping and filter updates reuse stored vectors when the embedded text is unchanged.
       List<Map<String, Object>> chunkDocs =
-          (docVersionStale && !fingerprintChanged)
+          (metadataStale && !fingerprintChanged)
               ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
               : VectorDocBuilder.fromEntity(entity, embeddingClient);
       replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
@@ -1233,7 +1234,19 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   /** Header of an entity's chunk set, read from chunk 0. */
-  private record ChunkHeader(String fingerprint, int chunkCount, int docVersion) {}
+  private record ChunkHeader(
+      String fingerprint, int chunkCount, int docVersion, String status, String anchorId) {}
+
+  private static boolean memoryFilterChanged(EntityInterface entity, ChunkHeader header) {
+    return header != null && memoryFilterChanged(entity, header.status(), header.anchorId());
+  }
+
+  static boolean memoryFilterChanged(
+      EntityInterface entity, String indexedStatus, String indexedAnchorId) {
+    return entity instanceof ContextMemory memory
+        && (!Objects.equals(ContextMemoryIndex.statusValue(memory), indexedStatus)
+            || !ContextMemoryIndex.anchorId(memory).equals(indexedAnchorId));
+  }
 
   private static boolean docVersionStale(ChunkHeader header) {
     return header != null && header.docVersion() < VectorDocBuilder.CHUNK_DOC_VERSION;
@@ -1244,9 +1257,8 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   /**
-   * Real-time by-id GET of chunk 0's fingerprint and chunkCount. A GET by id sees un-refreshed
-   * writes, so staleness checks and stale-id deletes never race the refresh interval, and it is
-   * far cheaper than the {@code _search} it replaces on the per-entity write path.
+   * Real-time by-id GET of chunk 0's content and filter metadata. It sees unrefreshed writes and
+   * avoids a search request on each entity update.
    */
   private ChunkHeader getChunkHeader(String indexName, String parentId) {
     ChunkHeader header = null;
@@ -1259,7 +1271,10 @@ public class OpenSearchVectorService implements VectorIndexService {
                       + indexName
                       + "/_doc/"
                       + parentId
-                      + "_0?_source_includes=fingerprint,chunkCount,docVersion")
+                      + "_0?_source_includes=fingerprint,chunkCount,docVersion,"
+                      + ContextMemoryIndex.FIELD_STATUS
+                      + ","
+                      + ContextMemoryIndex.FIELD_ANCHOR_ID)
               .method("GET")
               .build();
       try (var response = genericClient.execute(request)) {
@@ -1283,7 +1298,9 @@ public class OpenSearchVectorService implements VectorIndexService {
                 new ChunkHeader(
                     source.path("fingerprint").asText(null),
                     source.path("chunkCount").asInt(0),
-                    source.path("docVersion").asInt(0));
+                    source.path("docVersion").asInt(0),
+                    source.path(ContextMemoryIndex.FIELD_STATUS).asText(null),
+                    source.path(ContextMemoryIndex.FIELD_ANCHOR_ID).asText(null));
           }
         }
       }
