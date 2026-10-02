@@ -104,7 +104,7 @@ function AlertDetailsContent({
                 <div>
                   <div className="d-flex items-center flex-wrap gap-2">
                     {ownerLoading ? (
-                      <Skeleton height={24} variant="rounded" width={120} />
+                      <Skeleton height={40} variant="rounded" width={80} />
                     ) : (
                       <Owner
                         hasPermission={editOwnersPermission}

@@ -84,7 +84,7 @@ function ObservabilityAlertFormFields({
               <Col>
                 <Divider
                   dashed
-                  className="tw:mx-2 tw:h-6"
+                  className="tw:mx-2 tw:h-6 tw:border-r"
                   orientation="vertical"
                 />
               </Col>
@@ -101,7 +101,7 @@ function ObservabilityAlertFormFields({
               <Col>
                 <Divider
                   dashed
-                  className="tw:mx-2 tw:h-6"
+                  className="tw:mx-2 tw:h-6 tw:border-r"
                   orientation="vertical"
                 />
               </Col>
@@ -113,7 +113,11 @@ function ObservabilityAlertFormFields({
             </>
           )}
           <Col>
-            <Divider dashed className="tw:mx-2 tw:h-6" orientation="vertical" />
+            <Divider
+              dashed
+              className="tw:mx-2 tw:h-6 tw:border-r"
+              orientation="vertical"
+            />
           </Col>
           <Col span={24}>
             <DestinationFormItemFormBridge
@@ -144,7 +148,7 @@ function ObservabilityAlertFormFields({
                   <Col>
                     <Divider
                       dashed
-                      className="tw:mx-2 tw:h-6"
+                      className="tw:mx-2 tw:h-6 tw:border-r"
                       orientation="vertical"
                     />
                   </Col>

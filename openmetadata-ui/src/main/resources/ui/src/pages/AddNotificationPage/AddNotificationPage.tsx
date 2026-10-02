@@ -385,7 +385,7 @@ const AddNotificationPage = () => {
                               <Col>
                                 <Divider
                                   dashed
-                                  className="tw:mx-2 tw:h-6"
+                                  className="tw:mx-2 tw:h-6 tw:border-r"
                                   orientation="vertical"
                                 />
                               </Col>
@@ -401,7 +401,7 @@ const AddNotificationPage = () => {
                           <Col>
                             <Divider
                               dashed
-                              className="tw:mx-2 tw:h-6"
+                              className="tw:mx-2 tw:h-6 tw:border-r"
                               orientation="vertical"
                             />
                           </Col>
@@ -441,7 +441,7 @@ const AddNotificationPage = () => {
                                     <Col>
                                       <Divider
                                         dashed
-                                        className="tw:mx-2 tw:h-6"
+                                        className="tw:mx-2 tw:h-6 tw:border-r"
                                         orientation="vertical"
                                       />
                                     </Col>

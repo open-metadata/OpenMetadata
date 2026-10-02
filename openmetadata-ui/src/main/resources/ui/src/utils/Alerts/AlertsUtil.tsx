@@ -675,7 +675,7 @@ export const getAlertExtraInfo = (
                 className="tw:mx-2 tw:h-[0.9em] tw:self-center"
                 orientation="vertical"
               />
-              <Skeleton height={24} variant="rounded" width={120} />
+              <Skeleton height={40} variant="rounded" width={80} />
             </Fragment>
           )
         )}
