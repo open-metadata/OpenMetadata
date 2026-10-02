@@ -1403,10 +1403,7 @@ export const clearPersistedDomain = async (apiContext: APIRequestContext) => {
 /** Clears the navbar selection through the UI ("All Domains"), which also clears the persisted pick. */
 export const clearDomainFromNavbar = async (page: Page) => {
   await page.getByTestId('domain-dropdown').click();
-  await page
-    .getByTestId('domain-selectable-tree')
-    .waitFor({ state: 'visible' });
-  await page.getByTestId('all-domains-selector').click();
+  await page.getByTestId('tree-node-All Domains').click();
   await waitForAllLoadersToDisappear(page);
 };
 
