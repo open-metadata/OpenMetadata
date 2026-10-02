@@ -160,6 +160,13 @@ class OntologyMemoryDerivationServiceTest {
   }
 
   @Test
+  void requireEligibleAcceptsLegacyMemoryWithoutStoredStatus() {
+    final ContextMemory legacy = memory(MemoryVisibility.ENTITY).withStatus(null);
+
+    OntologyMemoryDerivationService.requireEligible(List.of(legacy), "bob");
+  }
+
+  @Test
   void requireEligibleRejectsRestrictedInactiveAndDerivedMemories() {
     final ContextMemory restricted = memory(MemoryVisibility.PRIVATE);
     final ContextMemory retired = memory(MemoryVisibility.ENTITY);

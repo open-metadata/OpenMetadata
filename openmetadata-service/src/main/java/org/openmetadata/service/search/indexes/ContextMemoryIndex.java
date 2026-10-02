@@ -14,6 +14,7 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -96,7 +97,7 @@ public class ContextMemoryIndex implements TaggableIndex {
   }
 
   public static String statusValue(ContextMemory memory) {
-    return memory.getStatus() == null ? null : memory.getStatus().value();
+    return effectiveStatus(memory.getStatus()).value();
   }
 
   private void applyShareConfig(Map<String, Object> doc) {

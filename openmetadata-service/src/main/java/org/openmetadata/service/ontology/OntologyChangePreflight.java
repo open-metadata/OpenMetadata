@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.ontology;
 
+import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
+
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -63,7 +65,7 @@ public final class OntologyChangePreflight {
         final ContextMemory memory =
             (ContextMemory) entityLoader.load(Entity.CONTEXT_MEMORY, memoryId);
         if (Boolean.TRUE.equals(memory.getDeleted())
-            || memory.getStatus() != ContextMemoryStatus.ACTIVE) {
+            || effectiveStatus(memory.getStatus()) != ContextMemoryStatus.ACTIVE) {
           throw new BadRequestException(
               "Ontology operation '"
                   + operation.getId()

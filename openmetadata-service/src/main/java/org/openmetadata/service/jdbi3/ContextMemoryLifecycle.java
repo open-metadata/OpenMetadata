@@ -28,7 +28,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 
 /** Lifecycle rules for status changes, supersession, and disputes. */
-final class ContextMemoryLifecycle {
+public final class ContextMemoryLifecycle {
 
   static final String FIELD_SUPERSEDED_BY = "supersededBy";
   static final String FIELD_DISPUTES = "disputes";
@@ -56,7 +56,7 @@ final class ContextMemoryLifecycle {
 
   private ContextMemoryLifecycle() {}
 
-  static ContextMemoryStatus effectiveStatus(ContextMemoryStatus status) {
+  public static ContextMemoryStatus effectiveStatus(ContextMemoryStatus status) {
     return status == null ? ContextMemoryStatus.ACTIVE : status;
   }
 

@@ -287,6 +287,27 @@ class CompanyContextToolTest {
   }
 
   @Test
+  void legacySharedFilePillWithoutStoredStatusIsReadableByName() throws Exception {
+    stubMemory(
+        "legacy-pill",
+        sharedWith(
+            memory("legacy-pill", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
+                .withStatus(null),
+            "bob"));
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
+    Map<String, Object> result =
+        withSubject(
+            securityContext,
+            "bob",
+            () ->
+                tool.execute(
+                    mock(Authorizer.class), securityContext, Map.of("fqn", "legacy-pill")));
+
+    assertEquals("A", result.get("answer"));
+  }
+
+  @Test
   void supersededFilePillIsNotReturnedByName() throws Exception {
     stubMemory(
         "pill-fqn",

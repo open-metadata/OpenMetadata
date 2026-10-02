@@ -143,6 +143,16 @@ class ContextMemoryReconcilerTest {
   }
 
   @Test
+  void keepsUnchangedLegacyPillWithoutRewritingIt() {
+    existing(pill("Q1", "A1", ContextMemorySourceType.PAGE_EXTRACTION, null));
+
+    ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(derived("Q1", "A1")));
+
+    assertEquals(1, result.kept());
+    verify(memoryRepository, never()).update(any(), any(), any(), any());
+  }
+
+  @Test
   void updatesPillInPlaceWhenAnswerChanges() {
     ContextMemory original =
         pill("Q1", "old", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.ACTIVE);

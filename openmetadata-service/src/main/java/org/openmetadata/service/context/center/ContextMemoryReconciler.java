@@ -1,5 +1,7 @@
 package org.openmetadata.service.context.center;
 
+import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -69,7 +71,7 @@ public class ContextMemoryReconciler {
 
   private boolean isReusableFileMemory(ContextMemory pill) {
     return pill.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
-        && pill.getStatus() == ContextMemoryStatus.ACTIVE
+        && effectiveStatus(pill.getStatus()) == ContextMemoryStatus.ACTIVE
         && pill.getMemoryScope() == ContextMemoryScope.ENTITY_SCOPED
         && pill.getShareConfig() != null
         && pill.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
@@ -199,7 +201,7 @@ public class ContextMemoryReconciler {
   private boolean applyDerived(ContextMemory existing, ContextMemory derived) {
     boolean changed =
         !sameContent(existing, derived)
-            || existing.getStatus() != ContextMemoryStatus.ACTIVE
+            || effectiveStatus(existing.getStatus()) != ContextMemoryStatus.ACTIVE
             || needsMetadataRepair(existing);
     if (changed) {
       ContextMemory updated = JsonUtils.deepCopy(existing, ContextMemory.class);

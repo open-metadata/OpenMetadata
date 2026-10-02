@@ -405,6 +405,18 @@ class VectorDocBuilderChunkTest {
   }
 
   @Test
+  void chunkDocs_treatLegacyMissingStatusAsActive() {
+    ContextMemory legacy = memory(MemoryVisibility.ENTITY).withDescription("revenue ".repeat(900));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(legacy, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1);
+    for (Map<String, Object> doc : docs) {
+      assertEquals(ContextMemoryStatus.ACTIVE.value(), doc.get("status"));
+    }
+  }
+
+  @Test
   void contentFingerprint_ignoresLifecycleAndAnchorFilters() {
     ContextMemory memory = memory(MemoryVisibility.ENTITY);
     String entityType = memory.getEntityReference().getType();

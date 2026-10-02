@@ -81,7 +81,6 @@ describe('canProposeFromMemory', () => {
 
   it('blocks proposals from non-Active memories', () => {
     for (const status of [
-      undefined,
       MemoryStatus.Draft,
       MemoryStatus.Archived,
       MemoryStatus.Superseded,
@@ -91,6 +90,12 @@ describe('canProposeFromMemory', () => {
 
       expect(canProposeFromMemory(retired, idle, viewer)).toBe(false);
     }
+  });
+
+  it('allows proposals from legacy memories without a stored status', () => {
+    const legacy = { ...memory(ShareVisibility.Public), status: undefined };
+
+    expect(canProposeFromMemory(legacy, idle, viewer)).toBe(true);
   });
 });
 

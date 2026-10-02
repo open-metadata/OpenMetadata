@@ -262,11 +262,15 @@ class ContextMemoryIndexTest {
   }
 
   @Test
-  void statusValue_isTheWireValueOrNull() {
+  void statusValue_treatsLegacyMissingStatusAsActive() {
     assertEquals(
         "Superseded",
         ContextMemoryIndex.statusValue(baseMemory().withStatus(ContextMemoryStatus.SUPERSEDED)));
-    assertNull(ContextMemoryIndex.statusValue(baseMemory().withStatus(null)));
+    ContextMemory legacy = baseMemory().withStatus(null);
+    assertEquals(ContextMemoryStatus.ACTIVE.value(), ContextMemoryIndex.statusValue(legacy));
+    assertEquals(
+        ContextMemoryStatus.ACTIVE.value(),
+        new ContextMemoryIndex(legacy).buildSearchIndexDocInternal(new HashMap<>()).get("status"));
   }
 
   @Test

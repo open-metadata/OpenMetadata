@@ -14,6 +14,7 @@
 package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
 
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ClientErrorException;
@@ -313,7 +314,7 @@ public final class OntologyMemoryDerivationService {
     INACTIVE(
         "Memory is not active",
         Response.Status.BAD_REQUEST,
-        (memory, user) -> memory.getStatus() != ContextMemoryStatus.ACTIVE),
+        (memory, user) -> effectiveStatus(memory.getStatus()) != ContextMemoryStatus.ACTIVE),
     RESTRICTED(
         "Restricted memory requires an owner-initiated job",
         Response.Status.BAD_REQUEST,

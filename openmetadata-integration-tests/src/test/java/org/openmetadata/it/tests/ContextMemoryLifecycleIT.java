@@ -378,6 +378,29 @@ public class ContextMemoryLifecycleIT {
   }
 
   @Test
+  void legacyStatuslessMemoryRemainsListedAfterReindex(TestNamespace ns) {
+    String query = "legacyread" + UUID.randomUUID().toString().substring(0, 8);
+    ContextMemory legacy =
+        persistWithoutStatus(admin().create(memory(ns, "legacy-search").withQuestion(query)));
+    Entity.getSearchRepository().deleteEntityIndex(legacy);
+    Entity.getSearchRepository().updateEntityIndex(legacy);
+    ListParams active =
+        new ListParams().setLimit(20).addFilter("q", query).addFilter("statuses", "Active");
+
+    Awaitility.await("legacy statusless memory is indexed as Active")
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertTrue(searchMemoryById(legacy.getId()).contains(idOf(legacy)));
+              assertTrue(
+                  admin().list(active).getData().stream()
+                      .anyMatch(memory -> memory.getId().equals(legacy.getId())));
+            });
+    assertNull(admin().get(idOf(legacy)).getStatus());
+  }
+
+  @Test
   void conversationExtraction_isGroundTruth_soContentEditsKeepTheSource(TestNamespace ns) {
     ContextMemory captured =
         admin()

@@ -2,6 +2,7 @@ package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
+import static org.openmetadata.service.jdbi3.ContextMemoryLifecycle.effectiveStatus;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -141,7 +142,7 @@ public class CompanyContextTool implements McpTool {
   private static boolean isExposablePill(
       ContextMemory memory, CatalogSecurityContext securityContext) {
     return memory.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
-        && memory.getStatus() == ContextMemoryStatus.ACTIVE
+        && effectiveStatus(memory.getStatus()) == ContextMemoryStatus.ACTIVE
         && !ContextMemoryVisibility.filterByVisibility(List.of(memory), securityContext).isEmpty();
   }
 
