@@ -12,6 +12,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { PagingResponse } from 'Models';
 import { useMemo } from 'react';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { Conversation } from '../../../../generated/entity/feed/conversation';
@@ -36,6 +37,13 @@ const INBOX_ACTIVITY_STALE_TIME = 30 * 1000;
 export interface InboxActivityResult {
   activities: ActivityEvent[];
   threads: Conversation[];
+  // Server-side totals from each response's `paging.total`, used for the
+  // Activity tab badge. The rendered `activities`/`threads` lists are page-
+  // size-capped (ACTIVITY_LIMIT 200 / CONVERSATION_LIMIT 100), so the badge
+  // must read the server total rather than the loaded list length or it
+  // understates whenever the window exceeds the cap.
+  activityTotal: number;
+  conversationTotal: number;
 }
 
 // Exactly one of `activity` or `feed`, matching ActivityFeedItem's props.
@@ -43,6 +51,22 @@ export interface InboxActivityItem {
   activity?: ActivityEvent;
   feed?: Conversation;
 }
+
+// Loaded list from a settled PagingResponse ([] on rejection). Keeps the
+// merge logic off the settled-result shape.
+const fulfilledPage = <T>(
+  res: PromiseSettledResult<PagingResponse<T[]>>
+): T[] => (res.status === 'fulfilled' ? res.value.data ?? [] : []);
+
+// Server-side total from a settled PagingResponse. Falls back to the loaded
+// page length when `paging` is absent (e.g. test mocks without it), so the badge
+// degrades to the prior behavior rather than always reading 0.
+const fulfilledTotal = <T>(
+  res: PromiseSettledResult<PagingResponse<T[]>>
+): number =>
+  res.status === 'fulfilled'
+    ? res.value.paging?.total ?? res.value.data?.length ?? 0
+    : 0;
 
 /**
  * Mirrors OSS ActivityFeedTab: the user's own activity events
@@ -56,7 +80,12 @@ export const fetchInboxActivity = async (
   endTs?: number
 ): Promise<InboxActivityResult> => {
   if (!userId) {
-    return { activities: [], threads: [] };
+    return {
+      activities: [],
+      threads: [],
+      activityTotal: 0,
+      conversationTotal: 0,
+    };
   }
   const days = getActivityWindowDays({ startTs, endTs });
   const isAll = scope === 'all';
@@ -84,12 +113,13 @@ export const fetchInboxActivity = async (
   ]);
 
   return {
-    activities:
-      activityRes.status === 'fulfilled' ? activityRes.value.data ?? [] : [],
-    threads:
-      conversationRes.status === 'fulfilled'
-        ? conversationRes.value.data ?? []
-        : [],
+    activities: fulfilledPage(activityRes),
+    threads: fulfilledPage(conversationRes),
+    // Server total drives the badge; `fulfilledTotal` falls back to the loaded
+    // page length when `paging` is absent, so the count degrades to the prior
+    // behavior instead of always 0.
+    activityTotal: fulfilledTotal(activityRes),
+    conversationTotal: fulfilledTotal(conversationRes),
   };
 };
 
@@ -148,7 +178,7 @@ export const useInboxActivity = (
 
   return {
     items,
-    total: items.length,
+    total: (data?.activityTotal ?? 0) + (data?.conversationTotal ?? 0),
     isLoading,
     refetch: () => {
       refetch();
