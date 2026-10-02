@@ -36,8 +36,8 @@ class ContextMemorySchemaTest {
     assertEquals(
         ContextMemorySourceType.CONVERSATION_EXTRACTION,
         ContextMemorySourceType.fromValue("ConversationExtraction"));
-    assertEquals(EntityStatus.SUPERSEDED, EntityStatus.fromValue("Superseded"));
-    assertEquals(EntityStatus.INVALIDATED, EntityStatus.fromValue("Invalidated"));
+    assertEquals(EntityStatus.DEPRECATED, EntityStatus.fromValue("Deprecated"));
+    assertEquals(EntityStatus.REJECTED, EntityStatus.fromValue("Rejected"));
   }
 
   @Test
@@ -53,7 +53,7 @@ class ContextMemorySchemaTest {
         new ContextMemory()
             .withId(UUID.randomUUID())
             .withName("superseded-memory")
-            .withEntityStatus(EntityStatus.SUPERSEDED)
+            .withEntityStatus(EntityStatus.DEPRECATED)
             .withSupersededBy(keeper)
             .withStatusReason("Duplicate of the keeper")
             .withDisputes(List.of(dispute));

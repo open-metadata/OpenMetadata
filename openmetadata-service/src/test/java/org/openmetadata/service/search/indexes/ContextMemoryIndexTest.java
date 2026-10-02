@@ -264,8 +264,8 @@ class ContextMemoryIndexTest {
   @Test
   void statusValue_treatsLegacyMissingStatusAsActive() {
     assertEquals(
-        "Superseded",
-        ContextMemoryIndex.statusValue(baseMemory().withEntityStatus(EntityStatus.SUPERSEDED)));
+        "Deprecated",
+        ContextMemoryIndex.statusValue(baseMemory().withEntityStatus(EntityStatus.DEPRECATED)));
     ContextMemory legacy = baseMemory().withEntityStatus(null);
     assertEquals(EntityStatus.APPROVED.value(), ContextMemoryIndex.statusValue(legacy));
     assertEquals(

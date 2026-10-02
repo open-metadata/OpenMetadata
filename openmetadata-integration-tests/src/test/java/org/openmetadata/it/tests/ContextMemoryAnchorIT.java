@@ -259,7 +259,7 @@ public class ContextMemoryAnchorIT {
         new ListParams()
             .setLimit(100)
             .addQueryParam("q", query)
-            .addQueryParam("statuses", "Invalidated");
+            .addQueryParam("statuses", "Rejected");
 
     assertEquals(owned.getId(), ownerMemories.get(owned.getId().toString()).getId());
     Awaitility.await()
@@ -275,7 +275,7 @@ public class ContextMemoryAnchorIT {
         .patch(
             owned.getId().toString(),
             JsonUtils.readTree(
-                "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Invalidated\"}]"));
+                "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Rejected\"}]"));
     Awaitility.await()
         .atMost(Duration.ofSeconds(120))
         .ignoreExceptions()

@@ -199,15 +199,15 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     });
 
     fireEvent.click(screen.getByTestId('memory-status-filter'));
-    fireEvent.click(await screen.findByText('label.invalidated'));
+    fireEvent.click(await screen.findByText('label.rejected'));
 
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({ statuses: 'Approved,Invalidated', offset: 0 })
+        expect.objectContaining({ statuses: 'Approved,Rejected', offset: 0 })
       );
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Invalidated',
+          statuses: 'Approved,Rejected',
           limit: 0,
           offset: 0,
         })
@@ -218,7 +218,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Invalidated',
+          statuses: 'Approved,Rejected',
           author: 'user-1',
         })
       );
@@ -231,7 +231,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Invalidated',
+          statuses: 'Approved,Rejected',
           q: 'missing glossary fact',
           assets: 'asset-1',
           author: 'user-1',
@@ -244,7 +244,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Invalidated',
+          statuses: 'Approved,Rejected',
           q: 'missing glossary fact',
           assets: 'asset-1',
           author: 'user-1',
@@ -271,7 +271,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     renderPage();
 
     fireEvent.click(screen.getByTestId('memory-status-filter'));
-    fireEvent.click(await screen.findByText('label.invalidated'));
+    fireEvent.click(await screen.findByText('label.rejected'));
     fireEvent.click(screen.getByTestId('memory-count-card-created-by-me'));
     fireEvent.click(screen.getByTestId('author-filter-button'));
     fireEvent.click(await screen.findByText('Other User'));
@@ -279,7 +279,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Invalidated',
+          statuses: 'Approved,Rejected',
           author: 'other-user',
         })
       );

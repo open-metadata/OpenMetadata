@@ -45,9 +45,9 @@ class ContextMemoryLifecycleTest {
       };
 
   @Test
-  void leavingSupersededDropsTheSuccessorAndStaleReason() {
+  void leavingDeprecatedDropsTheSuccessorAndStaleReason() {
     ContextMemory original =
-        memory(EntityStatus.SUPERSEDED)
+        memory(EntityStatus.DEPRECATED)
             .withSupersededBy(memoryRef())
             .withStatusReason("Duplicate of the keeper");
     ContextMemory updated = copyOf(original).withEntityStatus(EntityStatus.APPROVED);
@@ -63,7 +63,7 @@ class ContextMemoryLifecycleTest {
     ContextMemory original = memory(EntityStatus.APPROVED);
     ContextMemory updated =
         copyOf(original)
-            .withEntityStatus(EntityStatus.INVALIDATED)
+            .withEntityStatus(EntityStatus.REJECTED)
             .withStatusReason("Anchor table was deleted");
 
     ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
@@ -85,7 +85,7 @@ class ContextMemoryLifecycleTest {
   @Test
   void anUnchangedSuccessorKeepsTheStoredReference() {
     EntityReference stored = memoryRef().withName("keeper");
-    ContextMemory original = memory(EntityStatus.SUPERSEDED).withSupersededBy(stored);
+    ContextMemory original = memory(EntityStatus.DEPRECATED).withSupersededBy(stored);
     ContextMemory updated =
         copyOf(original)
             .withSupersededBy(
@@ -97,7 +97,7 @@ class ContextMemoryLifecycleTest {
   }
 
   @Test
-  void supersededNeedsASuccessorAndOnlySupersededMayHaveOne() {
+  void supersededNeedsASuccessorAndOnlyDeprecatedMayHaveOne() {
     ContextMemory active = memory(EntityStatus.APPROVED);
 
     BadRequestException missing =
@@ -105,7 +105,7 @@ class ContextMemoryLifecycleTest {
             BadRequestException.class,
             () ->
                 ContextMemoryLifecycle.applyUpdate(
-                    active, copyOf(active).withEntityStatus(EntityStatus.SUPERSEDED), RESOLVE));
+                    active, copyOf(active).withEntityStatus(EntityStatus.DEPRECATED), RESOLVE));
     BadRequestException stray =
         assertThrows(
             BadRequestException.class,
@@ -114,7 +114,7 @@ class ContextMemoryLifecycleTest {
                     active, copyOf(active).withSupersededBy(memoryRef()), RESOLVE));
 
     assertTrue(missing.getMessage().contains("requires supersededBy"));
-    assertTrue(stray.getMessage().contains("only allowed on a Superseded memory"));
+    assertTrue(stray.getMessage().contains("only allowed on a Deprecated memory"));
   }
 
   @Test
@@ -177,10 +177,10 @@ class ContextMemoryLifecycleTest {
   }
 
   @Test
-  void createCannotBeSupersededWithoutASuccessor() {
+  void createCannotBeDeprecatedWithoutASuccessor() {
     assertThrows(
         BadRequestException.class,
-        () -> ContextMemoryLifecycle.applyCreate(memory(EntityStatus.SUPERSEDED), RESOLVE));
+        () -> ContextMemoryLifecycle.applyCreate(memory(EntityStatus.DEPRECATED), RESOLVE));
   }
 
   private static ContextMemory memory(EntityStatus status) {
@@ -191,7 +191,7 @@ class ContextMemoryLifecycleTest {
   }
 
   private static ContextMemory supersededBy(ContextMemory original, EntityReference successor) {
-    return copyOf(original).withEntityStatus(EntityStatus.SUPERSEDED).withSupersededBy(successor);
+    return copyOf(original).withEntityStatus(EntityStatus.DEPRECATED).withSupersededBy(successor);
   }
 
   private static EntityReference memoryRef() {

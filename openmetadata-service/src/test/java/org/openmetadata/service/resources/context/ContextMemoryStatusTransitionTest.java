@@ -19,8 +19,8 @@ class ContextMemoryStatusTransitionTest {
         Set.of(
             EntityStatus.DRAFT,
             EntityStatus.APPROVED,
-            EntityStatus.SUPERSEDED,
-            EntityStatus.INVALIDATED,
+            EntityStatus.DEPRECATED,
+            EntityStatus.REJECTED,
             EntityStatus.ARCHIVED),
         MEMORY.stages());
   }
@@ -30,11 +30,11 @@ class ContextMemoryStatusTransitionTest {
     assertTrue(MEMORY.allows(EntityStatus.DRAFT, EntityStatus.APPROVED));
     assertTrue(MEMORY.allows(EntityStatus.DRAFT, EntityStatus.ARCHIVED));
     assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.ARCHIVED));
-    assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.SUPERSEDED));
-    assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.INVALIDATED));
+    assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.DEPRECATED));
+    assertTrue(MEMORY.allows(EntityStatus.APPROVED, EntityStatus.REJECTED));
     assertTrue(MEMORY.allows(EntityStatus.ARCHIVED, EntityStatus.APPROVED));
-    assertTrue(MEMORY.allows(EntityStatus.SUPERSEDED, EntityStatus.APPROVED));
-    assertTrue(MEMORY.allows(EntityStatus.INVALIDATED, EntityStatus.APPROVED));
+    assertTrue(MEMORY.allows(EntityStatus.DEPRECATED, EntityStatus.APPROVED));
+    assertTrue(MEMORY.allows(EntityStatus.REJECTED, EntityStatus.APPROVED));
   }
 
   @Test
@@ -52,9 +52,9 @@ class ContextMemoryStatusTransitionTest {
 
   @Test
   void retiredMemoriesCannotSkipBetweenRetiredStagesOrReturnToDraft() {
-    assertFalse(MEMORY.allows(EntityStatus.SUPERSEDED, EntityStatus.INVALIDATED));
-    assertFalse(MEMORY.allows(EntityStatus.INVALIDATED, EntityStatus.SUPERSEDED));
-    assertFalse(MEMORY.allows(EntityStatus.SUPERSEDED, EntityStatus.DRAFT));
-    assertFalse(MEMORY.allows(EntityStatus.INVALIDATED, EntityStatus.DRAFT));
+    assertFalse(MEMORY.allows(EntityStatus.DEPRECATED, EntityStatus.REJECTED));
+    assertFalse(MEMORY.allows(EntityStatus.REJECTED, EntityStatus.DEPRECATED));
+    assertFalse(MEMORY.allows(EntityStatus.DEPRECATED, EntityStatus.DRAFT));
+    assertFalse(MEMORY.allows(EntityStatus.REJECTED, EntityStatus.DRAFT));
   }
 }

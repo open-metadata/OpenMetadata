@@ -48,9 +48,9 @@ export interface ContextMemory {
      */
     domains?: EntityReference[];
     /**
-     * Lifecycle stage of the memory: Draft, Approved (in use), Superseded, Invalidated or
-     * Archived. A Superseded memory requires supersededBy. When omitted at creation, the memory
-     * starts Approved.
+     * Lifecycle stage of the memory: Draft, Approved (in use), Deprecated (replaced), Rejected
+     * (invalidated) or Archived. A Deprecated memory requires supersededBy. When omitted at
+     * creation, the memory starts Approved.
      */
     entityStatus?: EntityStatus;
     /**
@@ -146,7 +146,7 @@ export interface ContextMemory {
      */
     summary?: string;
     /**
-     * The memory that replaced this one. Set if and only if entityStatus is Superseded.
+     * The memory that replaced this one. Set if and only if entityStatus is Deprecated.
      */
     supersededBy?: EntityReference;
     /**
@@ -270,7 +270,7 @@ export interface FieldChange {
  *
  * Deprecated: use sourceEntity. The Context Center file this memory was extracted from.
  *
- * The memory that replaced this one. Set if and only if entityStatus is Superseded.
+ * The memory that replaced this one. Set if and only if entityStatus is Deprecated.
  */
 export interface EntityReference {
     /**
@@ -334,9 +334,9 @@ export interface MemoryDispute {
 }
 
 /**
- * Lifecycle stage of the memory: Draft, Approved (in use), Superseded, Invalidated or
- * Archived. A Superseded memory requires supersededBy. When omitted at creation, the memory
- * starts Approved.
+ * Lifecycle stage of the memory: Draft, Approved (in use), Deprecated (replaced), Rejected
+ * (invalidated) or Archived. A Deprecated memory requires supersededBy. When omitted at
+ * creation, the memory starts Approved.
  *
  * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
  * property. Entity types without that property have no lifecycle. When a create request
@@ -348,9 +348,7 @@ export enum EntityStatus {
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
-    Invalidated = "Invalidated",
     Rejected = "Rejected",
-    Superseded = "Superseded",
     Unprocessed = "Unprocessed",
 }
 

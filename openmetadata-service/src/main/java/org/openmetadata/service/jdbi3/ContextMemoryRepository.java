@@ -103,9 +103,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Map.of(
               EntityStatus.DRAFT, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
               EntityStatus.APPROVED,
-                  Set.of(EntityStatus.ARCHIVED, EntityStatus.SUPERSEDED, EntityStatus.INVALIDATED),
-              EntityStatus.SUPERSEDED, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
-              EntityStatus.INVALIDATED, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+                  Set.of(EntityStatus.ARCHIVED, EntityStatus.DEPRECATED, EntityStatus.REJECTED),
+              EntityStatus.DEPRECATED, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+              EntityStatus.REJECTED, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
               EntityStatus.ARCHIVED, Set.of(EntityStatus.APPROVED)));
 
   public ContextMemoryRepository() {

@@ -102,8 +102,8 @@ const getSortLabel = (
 const MEMORY_STATUSES = [
   EntityStatus.Approved,
   EntityStatus.Draft,
-  EntityStatus.Superseded,
-  EntityStatus.Invalidated,
+  EntityStatus.Deprecated,
+  EntityStatus.Rejected,
   EntityStatus.Archived,
 ];
 const CREATED_BY_ME_FILTER = 'created-by-me' as const;

@@ -313,7 +313,7 @@ class CompanyContextToolTest {
         "pill-fqn",
         sharedWith(
             memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
-                .withEntityStatus(EntityStatus.SUPERSEDED),
+                .withEntityStatus(EntityStatus.DEPRECATED),
             "bob"));
     Map<String, Object> result =
         tool.execute(

@@ -179,7 +179,7 @@ class OntologyMemoryDerivationServiceTest {
         BadRequestException.class,
         () -> OntologyMemoryDerivationService.requireEligible(List.of(restricted), "bob"));
     for (EntityStatus status :
-        List.of(EntityStatus.ARCHIVED, EntityStatus.SUPERSEDED, EntityStatus.INVALIDATED)) {
+        List.of(EntityStatus.ARCHIVED, EntityStatus.DEPRECATED, EntityStatus.REJECTED)) {
       archived.setEntityStatus(status);
       assertThrows(
           BadRequestException.class,

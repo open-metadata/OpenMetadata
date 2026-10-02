@@ -83,8 +83,8 @@ describe('canProposeFromMemory', () => {
     for (const status of [
       EntityStatus.Draft,
       EntityStatus.Archived,
-      EntityStatus.Superseded,
-      EntityStatus.Invalidated,
+      EntityStatus.Deprecated,
+      EntityStatus.Rejected,
     ]) {
       const retired = {
         ...memory(ShareVisibility.Public),

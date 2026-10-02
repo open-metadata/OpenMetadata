@@ -52,7 +52,7 @@ class OntologyChangePreflightTest {
     final OntologyChangeOperation proposal =
         createOperation(storedTerm(glossaryId, null)).withSourceMemoryIds(Set.of(memoryId));
 
-    for (final EntityStatus status : List.of(EntityStatus.SUPERSEDED, EntityStatus.INVALIDATED)) {
+    for (final EntityStatus status : List.of(EntityStatus.DEPRECATED, EntityStatus.REJECTED)) {
       final OntologyChangePreflight preflight =
           new OntologyChangePreflight(
               (entityType, id) -> new ContextMemory().withId(id).withEntityStatus(status));

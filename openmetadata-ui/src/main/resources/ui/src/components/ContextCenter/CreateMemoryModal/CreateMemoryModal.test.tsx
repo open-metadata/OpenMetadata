@@ -568,8 +568,8 @@ describe('CreateMemoryModal', () => {
   it.each([
     EntityStatus.Draft,
     EntityStatus.Archived,
-    EntityStatus.Superseded,
-    EntityStatus.Invalidated,
+    EntityStatus.Deprecated,
+    EntityStatus.Rejected,
   ])('hides proposal action for status %s', async (status) => {
     const memory = {
       id: 'memory-id',
@@ -750,7 +750,7 @@ describe('CreateMemoryModal', () => {
           memoryToEdit={{
             id: 'old-memory',
             name: 'old-memory',
-            entityStatus: EntityStatus.Superseded,
+            entityStatus: EntityStatus.Deprecated,
             statusReason: 'The replacement has the corrected definition.',
             supersededBy: {
               id: 'new-memory',
@@ -762,7 +762,7 @@ describe('CreateMemoryModal', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('label.superseded')).toBeInTheDocument();
+    expect(screen.getByText('label.deprecated')).toBeInTheDocument();
     expect(
       screen.getByText('The replacement has the corrected definition.')
     ).toBeInTheDocument();

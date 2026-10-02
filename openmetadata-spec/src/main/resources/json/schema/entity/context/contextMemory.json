@@ -251,7 +251,7 @@
       "$ref": "#/definitions/memoryScope"
     },
     "entityStatus": {
-      "description": "Lifecycle stage of the memory: Draft, Approved (in use), Superseded, Invalidated or Archived. A Superseded memory requires supersededBy. When omitted at creation, the memory starts Approved.",
+      "description": "Lifecycle stage of the memory: Draft, Approved (in use), Deprecated (replaced), Rejected (invalidated) or Archived. A Deprecated memory requires supersededBy. When omitted at creation, the memory starts Approved.",
       "$ref": "../../type/status.json"
     },
     "statusReason": {
@@ -259,7 +259,7 @@
       "type": "string"
     },
     "supersededBy": {
-      "description": "The memory that replaced this one. Set if and only if entityStatus is Superseded.",
+      "description": "The memory that replaced this one. Set if and only if entityStatus is Deprecated.",
       "$ref": "../../type/entityReference.json"
     },
     "disputes": {

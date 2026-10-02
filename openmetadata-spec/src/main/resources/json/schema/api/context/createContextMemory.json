@@ -42,7 +42,7 @@
       "$ref": "../../entity/context/contextMemory.json#/definitions/memoryScope"
     },
     "entityStatus": {
-      "description": "Lifecycle stage the memory starts in. When omitted, the memory starts Approved. A Superseded memory requires supersededBy.",
+      "description": "Lifecycle stage the memory starts in. When omitted, the memory starts Approved. A Deprecated memory requires supersededBy.",
       "$ref": "../../type/status.json"
     },
     "shareConfig": {

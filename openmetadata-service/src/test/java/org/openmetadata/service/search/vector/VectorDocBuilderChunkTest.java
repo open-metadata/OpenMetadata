@@ -393,14 +393,14 @@ class VectorDocBuilderChunkTest {
   @Test
   void chunkDocs_carryTheMemoryStatusOnEveryChunk() {
     ContextMemory memory =
-        memory(MemoryVisibility.ENTITY).withEntityStatus(EntityStatus.SUPERSEDED);
+        memory(MemoryVisibility.ENTITY).withEntityStatus(EntityStatus.DEPRECATED);
     memory.withDescription("revenue ".repeat(900));
 
     List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
 
     assertTrue(docs.size() > 1);
     for (Map<String, Object> doc : docs) {
-      assertEquals(EntityStatus.SUPERSEDED.value(), doc.get("entityStatus"));
+      assertEquals(EntityStatus.DEPRECATED.value(), doc.get("entityStatus"));
     }
   }
 
@@ -430,7 +430,7 @@ class VectorDocBuilderChunkTest {
                 + "|");
 
     assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
-    memory.setEntityStatus(EntityStatus.SUPERSEDED);
+    memory.setEntityStatus(EntityStatus.DEPRECATED);
     memory.setPrimaryEntity(new EntityReference().withId(UUID.randomUUID()).withType("table"));
     assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
   }

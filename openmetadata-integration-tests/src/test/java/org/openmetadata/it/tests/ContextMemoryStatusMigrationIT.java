@@ -7,6 +7,7 @@ import static org.openmetadata.it.tests.MetricMigrationSqlFixture.currentConnect
 import static org.openmetadata.it.tests.MetricMigrationSqlFixture.readMigrationScripts;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,11 +21,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /**
- * The 2.1.0 migration moves context memories from their own {@code status}
- * onto {@code entityStatus}, in the memory table and in its version history. Runs the shipped
+ * The 2.1.0 and 2.1.1 migrations move context memories from their own {@code status}
+ * onto the shared {@code entityStatus} vocabulary, in the memory table and its version history. Runs the shipped
  * statements against copies of those tables, twice, to prove they are complete and idempotent.
  */
-@Isolated("executes the shipped 2.1.0 migration statements against the shared database")
+@Isolated("executes the shipped memory status migration statements against the shared database")
 class ContextMemoryStatusMigrationIT {
   private static final String MEMORY_TABLE = "context_memory";
   private static final String EXTENSION_TABLE = "entity_extension";
@@ -34,7 +35,8 @@ class ContextMemoryStatusMigrationIT {
   void migrationMovesMemoryStatusOntoEntityStatus() throws Exception {
     ConnectionType connectionType = currentConnectionType();
     List<String> statements = memoryStatusStatements(connectionType);
-    assertEquals(3, statements.size(), "two memory-table updates and one version-history update");
+    assertEquals(
+        5, statements.size(), "three memory-table updates and two version-history updates");
     String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
     String memoryTable = "it_memory_status_" + suffix;
     String extensionTable = "it_memory_versions_" + suffix;
@@ -65,13 +67,17 @@ class ContextMemoryStatusMigrationIT {
 
   private static List<String> memoryStatusStatements(ConnectionType connectionType)
       throws Exception {
-    return readMigrationScripts(connectionType).postStatements().stream()
-        .filter(
-            statement ->
-                statement.contains("UPDATE " + MEMORY_TABLE)
-                    || (statement.contains("UPDATE " + EXTENSION_TABLE)
-                        && statement.contains("'" + MEMORY_SCHEMA + "'")))
-        .toList();
+    List<String> statements = new ArrayList<>();
+    statements.addAll(
+        readMigrationScripts(connectionType).postStatements().stream()
+            .filter(
+                statement ->
+                    statement.contains("UPDATE " + MEMORY_TABLE)
+                        || (statement.contains("UPDATE " + EXTENSION_TABLE)
+                            && statement.contains("'" + MEMORY_SCHEMA + "'")))
+            .toList());
+    statements.addAll(MetricMigrationSqlFixture.readSchemaStatements("2.1.1", connectionType));
+    return List.copyOf(statements);
   }
 
   private static void createFixture(
@@ -92,7 +98,7 @@ class ContextMemoryStatusMigrationIT {
     insert(handle, memoryTable, connectionType, "invalidated", "{\"status\":\"Invalidated\"}");
     insert(handle, memoryTable, connectionType, "nullStatus", "{\"status\":null}");
     insert(handle, memoryTable, connectionType, "noStatus", "{\"name\":\"noStatus\"}");
-    insert(handle, memoryTable, connectionType, "staged", "{\"entityStatus\":\"Deprecated\"}");
+    insert(handle, memoryTable, connectionType, "staged", "{\"entityStatus\":\"Superseded\"}");
     insertVersion(handle, extensionTable, connectionType, "memoryVersion", MEMORY_SCHEMA);
     insertVersion(
         handle,
@@ -155,8 +161,8 @@ class ContextMemoryStatusMigrationIT {
     assertEquals("Approved", stage(memories, "active"));
     assertEquals("Draft", stage(memories, "draft"));
     assertEquals("Archived", stage(memories, "archived"));
-    assertEquals("Superseded", stage(memories, "superseded"));
-    assertEquals("Invalidated", stage(memories, "invalidated"));
+    assertEquals("Deprecated", stage(memories, "superseded"));
+    assertEquals("Rejected", stage(memories, "invalidated"));
     assertEquals("Approved", stage(memories, "nullStatus"), "a memory without status was Active");
     assertEquals("Approved", stage(memories, "noStatus"), "a memory without status was Active");
     assertEquals("Deprecated", stage(memories, "staged"), "an existing stage is left alone");
@@ -165,7 +171,7 @@ class ContextMemoryStatusMigrationIT {
 
   private static void assertVersionHistory(Map<String, JsonNode> versions) {
     assertEquals("Draft", stage(versions, "memoryVersion"));
-    assertEquals("Superseded", stage(versions, "memoryRetiredVersion"));
+    assertEquals("Deprecated", stage(versions, "memoryRetiredVersion"));
     assertFalse(versions.get("memoryVersion").has("status"));
     assertFalse(versions.get("memoryRetiredVersion").has("status"));
     assertTrue(versions.get("termVersion").has("status"), "other entities' history is untouched");

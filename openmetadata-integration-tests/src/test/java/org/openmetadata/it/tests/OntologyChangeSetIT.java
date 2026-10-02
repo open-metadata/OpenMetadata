@@ -203,7 +203,7 @@ public class OntologyChangeSetIT {
     memories.patch(
         memory.getId().toString(),
         JsonUtils.readTree(
-            "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Invalidated\"}]"));
+            "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Rejected\"}]"));
     assertEquals(
         Set.of(memory.getId()), client.glossaryTerms().get(termId.toString()).getSourceMemoryIds());
     assertEquals(
@@ -214,7 +214,7 @@ public class OntologyChangeSetIT {
   }
 
   @Test
-  void cannotApplyAProposalAfterItsSourceMemoryIsInvalidated(TestNamespace ns) {
+  void cannotApplyAProposalAfterItsSourceMemoryIsRejected(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
     ContextMemory memory =
@@ -244,7 +244,7 @@ public class OntologyChangeSetIT {
     memories.patch(
         memory.getId().toString(),
         JsonUtils.readTree(
-            "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Invalidated\"}]"));
+            "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Rejected\"}]"));
     OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("retiredSourceEditor"));
 
     assertThrows(
@@ -256,8 +256,7 @@ public class OntologyChangeSetIT {
     assertEquals(
         OntologyChangeSetState.DRAFT,
         client.ontologyChangeSets().get(changeSet.getId()).getState());
-    assertEquals(
-        EntityStatus.INVALIDATED, memories.get(memory.getId().toString()).getEntityStatus());
+    assertEquals(EntityStatus.REJECTED, memories.get(memory.getId().toString()).getEntityStatus());
   }
 
   @Test

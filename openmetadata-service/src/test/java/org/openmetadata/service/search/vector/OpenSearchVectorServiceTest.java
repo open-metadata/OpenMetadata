@@ -40,7 +40,7 @@ class OpenSearchVectorServiceTest {
     ContextMemory memory = new ContextMemory().withEntityStatus(EntityStatus.APPROVED);
     assertFalse(OpenSearchVectorService.memoryFilterChanged(memory, "Approved", "unanchored"));
     assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, null, null));
-    assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, "Superseded", "unanchored"));
+    assertTrue(OpenSearchVectorService.memoryFilterChanged(memory, "Deprecated", "unanchored"));
 
     UUID anchorId = UUID.randomUUID();
     memory.setPrimaryEntity(new EntityReference().withId(anchorId).withType("table"));

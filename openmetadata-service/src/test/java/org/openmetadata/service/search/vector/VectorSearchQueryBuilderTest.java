@@ -129,7 +129,7 @@ class VectorSearchQueryBuilderTest {
                 10,
                 0,
                 100,
-                Map.of("entityStatus", List.of(EntityStatus.SUPERSEDED.value())),
+                Map.of("entityStatus", List.of(EntityStatus.DEPRECATED.value())),
                 0.0));
 
     assertTrue(
@@ -142,7 +142,7 @@ class VectorSearchQueryBuilderTest {
                 .path("bool")
                 .path("must"),
             "entityStatus",
-            EntityStatus.SUPERSEDED.value()));
+            EntityStatus.DEPRECATED.value()));
     assertTrue(
         memoryVisibilityClause(query.path("query"))
             .toString()

@@ -141,8 +141,8 @@ export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
   [EntityStatus.Approved]: 'label.approved',
   [EntityStatus.Archived]: 'label.archived',
   [EntityStatus.Draft]: 'label.draft',
-  [EntityStatus.Invalidated]: 'label.invalidated',
-  [EntityStatus.Superseded]: 'label.superseded',
+  [EntityStatus.Deprecated]: 'label.deprecated',
+  [EntityStatus.Rejected]: 'label.rejected',
 };
 
 export const FILTER_TABS = [

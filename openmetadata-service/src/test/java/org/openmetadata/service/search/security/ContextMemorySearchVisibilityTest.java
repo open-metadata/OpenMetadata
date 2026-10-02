@@ -183,7 +183,7 @@ class ContextMemorySearchVisibilityTest {
     OMQueryBuilder filter =
         new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
             .buildVisibilityFilter(
-                nonAdminSubject(), List.of(EntityStatus.APPROVED, EntityStatus.INVALIDATED));
+                nonAdminSubject(), List.of(EntityStatus.APPROVED, EntityStatus.REJECTED));
     DocumentContext json =
         JsonPath.parse(serializeElasticQuery(((ElasticQueryBuilder) filter).build()));
 
@@ -199,8 +199,8 @@ class ContextMemorySearchVisibilityTest {
         "retired memories keep the owner visibility constraint");
     String query = serializeElasticQuery(((ElasticQueryBuilder) filter).build());
     assertTrue(query.contains("Approved"));
-    assertTrue(query.contains("Invalidated"));
-    assertFalse(query.contains("Superseded"));
+    assertTrue(query.contains("Rejected"));
+    assertFalse(query.contains("Deprecated"));
   }
 
   @Test
@@ -384,7 +384,7 @@ class ContextMemorySearchVisibilityTest {
                 "anchorId",
                 ContextMemoryIndex.UNANCHORED,
                 "entityStatus",
-                EntityStatus.SUPERSEDED.value())),
+                EntityStatus.DEPRECATED.value())),
         "retired memories do not appear in anonymous search reads");
   }
 

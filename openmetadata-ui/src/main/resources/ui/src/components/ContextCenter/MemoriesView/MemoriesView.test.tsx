@@ -146,7 +146,7 @@ describe('MemoriesView', () => {
         data={[
           {
             ...mockMemories[0],
-            entityStatus: EntityStatus.Superseded,
+            entityStatus: EntityStatus.Deprecated,
             statusReason: 'The replacement has the corrected definition.',
           },
         ]}
@@ -154,7 +154,7 @@ describe('MemoriesView', () => {
       />
     );
 
-    expect(screen.getByText('label.superseded')).toBeInTheDocument();
+    expect(screen.getByText('label.deprecated')).toBeInTheDocument();
     expect(
       screen.getByText(/The replacement has the corrected definition/)
     ).toBeInTheDocument();
