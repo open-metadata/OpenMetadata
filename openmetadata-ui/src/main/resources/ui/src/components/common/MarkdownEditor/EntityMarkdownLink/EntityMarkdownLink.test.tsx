@@ -56,10 +56,13 @@ const mockGetEntityLink = jest.fn(
     serviceCategory?: string,
     serviceFqn?: string
   ) => {
-    // Mirror the real getEntityLink: the logs route is
-    // `/<serviceCategory>/<pipelineFqn>/logs` (pipeline fqn, not the service fqn).
+    // Mirror the real getEntityLink: an ingestion-pipeline link routes to the
+    // owning service's agents tab (`/service/<serviceCategory>/<serviceFqn>/agents`)
+    // using the service FQN — not a /logs path built from the pipeline FQN.
     if (serviceCategory && serviceFqn) {
-      return `/${serviceCategory}/${fqn}/logs`;
+      return `/service/${serviceCategory}/${encodeURIComponent(
+        serviceFqn
+      )}/agents`;
     }
 
     return `/entity/${type}/${fqn}`;
@@ -227,16 +230,18 @@ describe('EntityMarkdownLink', () => {
       mockGetEntityLink.mockClear();
     });
 
-    it('should parse ingestionPipeline link and pass serviceCategory and serviceFqn', () => {
+    it('should parse ingestionPipeline link into the full pipeline FQN and pass serviceCategory and serviceFqn', () => {
       renderWithRouter(
         <EntityMarkdownLink href="#ingestionPipeline/databaseServices/bigquery-beta/bigquery-beta-1.7047fd1d-f7a0-42d3-b689-33ab54faaccc">
           Pod Diagnostics
         </EntityMarkdownLink>
       );
 
+      // The full FQN (<serviceFqn>.<pipelineName>) is what the hover popover
+      // fetches the pipeline by; serviceCategory/serviceFqn drive the click route.
       expect(mockGetEntityLink).toHaveBeenCalledWith(
         EntityType.INGESTION_PIPELINE,
-        'bigquery-beta-1.7047fd1d-f7a0-42d3-b689-33ab54faaccc',
+        'bigquery-beta.bigquery-beta-1.7047fd1d-f7a0-42d3-b689-33ab54faaccc',
         undefined,
         undefined,
         undefined,
@@ -244,9 +249,16 @@ describe('EntityMarkdownLink', () => {
         'databaseServices',
         'bigquery-beta'
       );
+
+      // The popover must receive the full FQN so its getEntityByFqn call resolves
+      // the pipeline rather than 404ing on the bare pipeline name.
+      expect(screen.getByTestId('entity-popover-card')).toHaveAttribute(
+        'data-fqn',
+        'bigquery-beta.bigquery-beta-1.7047fd1d-f7a0-42d3-b689-33ab54faaccc'
+      );
     });
 
-    it('should render entity link with correct logs path', () => {
+    it('should route the ingestionPipeline link to the owning service agents tab', () => {
       renderWithRouter(
         <EntityMarkdownLink href="#ingestionPipeline/databaseServices/bigquery-beta/bigquery-beta-1.7047fd1d-f7a0-42d3-b689-33ab54faaccc">
           Pod Diagnostics
@@ -258,7 +270,7 @@ describe('EntityMarkdownLink', () => {
       expect(link).toBeInTheDocument();
       expect(link.closest('a')).toHaveAttribute(
         'href',
-        '/databaseServices/bigquery-beta-1.7047fd1d-f7a0-42d3-b689-33ab54faaccc/logs'
+        '/service/databaseServices/bigquery-beta/agents'
       );
     });
 
@@ -278,22 +290,47 @@ describe('EntityMarkdownLink', () => {
       );
     });
 
-    it('should decode URL-encoded characters in ingestionPipeline FQN', () => {
+    it('should render regular link when ingestionPipeline href has too many segments', () => {
+      // A literal '/' in a name is encoded as %2F upstream, so four '/' segments
+      // are malformed; the parser rejects them rather than building an ambiguous
+      // FQN that the popover can't resolve.
       renderWithRouter(
-        <EntityMarkdownLink href="#ingestionPipeline/databaseServices/my%20service/my%20service.pipeline-id">
+        <EntityMarkdownLink href="#ingestionPipeline/databaseServices/bigquery-beta/bigquery-beta-1.7047fd1d/extra">
+          Bad Link
+        </EntityMarkdownLink>
+      );
+
+      const link = screen.getByText('Bad Link');
+
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute(
+        'href',
+        '#ingestionPipeline/databaseServices/bigquery-beta/bigquery-beta-1.7047fd1d/extra'
+      );
+      expect(mockGetEntityLink).not.toHaveBeenCalled();
+    });
+
+    it('should decode URL-encoded characters and reconstruct the full ingestionPipeline FQN', () => {
+      renderWithRouter(
+        <EntityMarkdownLink href="#ingestionPipeline/databaseServices/my%20service/my%20pipeline">
           Encoded Pipeline
         </EntityMarkdownLink>
       );
 
       expect(mockGetEntityLink).toHaveBeenCalledWith(
         EntityType.INGESTION_PIPELINE,
-        'my service.pipeline-id',
+        'my service.my pipeline',
         undefined,
         undefined,
         undefined,
         undefined,
         'databaseServices',
         'my service'
+      );
+
+      expect(screen.getByTestId('entity-popover-card')).toHaveAttribute(
+        'data-fqn',
+        'my service.my pipeline'
       );
     });
   });
