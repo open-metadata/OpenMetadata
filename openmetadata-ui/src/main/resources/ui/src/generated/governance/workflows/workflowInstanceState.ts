@@ -59,6 +59,7 @@ export interface Stage {
 }
 
 export enum WorkflowStatus {
+    Cancelled = "CANCELLED",
     Exception = "EXCEPTION",
     Failure = "FAILURE",
     Finished = "FINISHED",
