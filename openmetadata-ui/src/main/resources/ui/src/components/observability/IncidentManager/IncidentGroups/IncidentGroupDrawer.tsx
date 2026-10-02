@@ -105,9 +105,11 @@ const IncidentGroupDrawer = ({
             <SlideoutMenu.Header onClose={close}>
               <Box direction="col" gap={2}>
                 <Overline>{t('label.incident-group')}</Overline>
+                {/* not-prose: Typography wraps a heading in .prose, whose h2
+                    style would replace the size given here. */}
                 <Typography
                   as="h2"
-                  className="tw:text-primary"
+                  className="not-prose tw:text-primary"
                   data-testid="incident-group-drawer-name"
                   size="text-lg"
                   weight="semibold">

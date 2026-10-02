@@ -95,9 +95,11 @@ const IncidentGroupDetail = ({
           data-testid="incident-group-detail-heading"
           ref={headingRef}
           tabIndex={-1}>
+          {/* not-prose: Typography wraps a heading in .prose, whose h2 style
+              would replace the size and margins given here. */}
           <Typography
             as="h2"
-            className="tw:text-primary"
+            className="not-prose tw:text-primary"
             size="display-xs"
             weight="semibold">
             {name}
