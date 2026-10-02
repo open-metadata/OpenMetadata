@@ -2066,19 +2066,51 @@ public interface TimeSeriesDAOs {
           endTs);
     }
 
+    @SqlQuery(
+        "SELECT count(*) FROM "
+            + "(SELECT id, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond> "
+            + "AND timestamp BETWEEN :startTs AND :endTs) ranked "
+            + "<outerCond> AND ranked.row_num = 1")
+    int listCount(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
     @Override
     default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
-      String condition = filter.getCondition();
-      condition = addOriginEntityFQNJoin(filter, condition);
-      return latest
-          ? listCount(
-              getTimeSeriesTableName(),
-              getPartitionFieldName(),
-              filter.getQueryParams(),
-              condition,
-              startTs,
-              endTs)
-          : listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+      if (!latest) {
+        String condition = addOriginEntityFQNJoin(filter, filter.getCondition());
+        return listCount(
+            getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+      }
+      // The same split as listWithOffset: the status and the assignee describe an incident as it
+      // stands, so they filter each incident's latest record rather than the records it is ranked
+      // from — or an incident resolved since would still count through its earlier open record.
+      // The listing reads the same filter afterwards, so it is copied rather than trimmed.
+      ListFilter innerFilter = new ListFilter(filter.getInclude());
+      filter.getQueryParams().forEach(innerFilter::addQueryParam);
+      innerFilter.removeQueryParam("testCaseResolutionStatusType");
+      innerFilter.removeQueryParam("incidentAssignee");
+      ListFilter outerFilter = new ListFilter(null);
+      outerFilter.addQueryParam(
+          "testCaseResolutionStatusType", filter.getQueryParam("testCaseResolutionStatusType"));
+      outerFilter.addQueryParam("incidentAssignee", filter.getQueryParam("incidentAssignee"));
+      String condition = addOriginEntityFQNJoin(innerFilter, innerFilter.getCondition());
+      return listCount(
+          getTimeSeriesTableName(),
+          innerFilter.getQueryParams(),
+          condition,
+          getPartitionFieldName(),
+          startTs,
+          endTs,
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
     }
 
     @Override
