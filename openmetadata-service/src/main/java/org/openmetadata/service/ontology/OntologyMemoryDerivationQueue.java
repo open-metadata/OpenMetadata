@@ -9,9 +9,9 @@ import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jobs.JobDAO;
 
@@ -76,7 +76,7 @@ public final class OntologyMemoryDerivationQueue {
 
   public static boolean isPublished(ContextMemory memory) {
     if (memory == null
-        || effectiveStatus(memory.getStatus()) != ContextMemoryStatus.ACTIVE
+        || memory.getEntityStatus() != EntityStatus.APPROVED
         || memory.getShareConfig() == null
         || memory.getQuestion() == null
         || memory.getQuestion().isBlank()

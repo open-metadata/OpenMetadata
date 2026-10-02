@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.AIApplicationResource;
@@ -40,6 +41,12 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
         APPLICATION_PATCH_FIELDS,
         APPLICATION_UPDATE_FIELDS);
     supportsSearch = true;
+    // Registration drives an AI asset's stage: AIAssetStatusSync derives it from the registration
+    // status when there is one, and the AI governance endpoints move it. Without one the asset
+    // starts in Draft, which sits outside the registration approval flow, so saving it records no
+    // approval.
+    defaultEntityStatus = EntityStatus.DRAFT;
+    workflowsOwnEntityStatus = false;
   }
 
   @Override

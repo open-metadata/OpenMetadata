@@ -218,6 +218,13 @@ public final class CatalogExceptionMessage {
     return String.format("User '%s' is not a reviewer", name);
   }
 
+  public static String entityStatusOwnedByWorkflow(String entityType, String fqn, String workflow) {
+    return String.format(
+        "The lifecycle stage of %s '%s' is managed by the workflow '%s' and changes only through"
+            + " it. Use its approval tasks, or suspend the workflow to change the stage directly.",
+        entityType, fqn, workflow);
+  }
+
   public static String notTaskAssignee(String name) {
     return String.format("User '%s' is not an assignee of the pending approval task", name);
   }

@@ -82,7 +82,7 @@
       "$ref": "../../type/entityReferenceList.json"
     },
     "entityStatus": {
-      "description": "Status of the tag.",
+      "description": "Lifecycle stage of the page.",
       "$ref": "../../type/status.json"
     },
     "followers": {

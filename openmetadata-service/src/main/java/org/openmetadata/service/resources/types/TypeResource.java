@@ -51,10 +51,13 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.CreateType;
+import org.openmetadata.schema.api.governance.EntityLifecycleStages;
+import org.openmetadata.schema.api.governance.EntityTypeLifecycle;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -159,6 +162,39 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               + "applicable to every entity type and a per-entity map of additional fields.")
   public WorkflowTriggerFieldsRegistry.WorkflowTriggerFieldsConfig getWorkflowTriggerFields() {
     return WorkflowTriggerFieldsRegistry.getConfig();
+  }
+
+  @GET
+  @Path("/lifecycleStages")
+  @Operation(
+      operationId = "getEntityLifecycleStages",
+      summary = "Get entity lifecycle stages",
+      description =
+          "Get the lifecycle stages every entity type shares, the entity types that have a "
+              + "lifecycle stage (an `entityStatus` field), and the active workflows that own each "
+              + "type's stage. Entity types not listed have no lifecycle.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Lifecycle stages and the entity types that have one",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityLifecycleStages.class)))
+      })
+  public EntityLifecycleStages getEntityLifecycleStages() {
+    List<EntityTypeLifecycle> entityTypes =
+        Entity.getEntityTypesWithLifecycleStage().stream()
+            .map(
+                entityType ->
+                    new EntityTypeLifecycle()
+                        .withEntityType(entityType)
+                        .withStageWorkflows(
+                            Entity.getEntityRepository(entityType).getStageWorkflows()))
+            .toList();
+    return new EntityLifecycleStages()
+        .withStages(List.of(EntityStatus.values()))
+        .withEntityTypes(entityTypes);
   }
 
   @GET

@@ -31,7 +31,6 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
@@ -922,8 +921,8 @@ public class AIContextBuilder {
    * {@link #isApproved(GlossaryTerm)} treats a missing glossary review status.
    */
   static boolean isActivePill(ContextMemory pill) {
-    ContextMemoryStatus status = pill.getStatus();
-    return status == null || status == ContextMemoryStatus.ACTIVE;
+    EntityStatus status = pill.getEntityStatus();
+    return status == null || status == EntityStatus.APPROVED;
   }
 
   private static String pillContent(ContextMemory pill) {

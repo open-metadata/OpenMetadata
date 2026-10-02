@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/api/governance/entityLifecycleStages.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EntityLifecycleStages",
+  "description": "The lifecycle stages shared by every entity type, the entity types that have a lifecycle stage (an `entityStatus` property), and the active workflows that own each type's stage. Entity types that are not listed have no lifecycle.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.governance.EntityLifecycleStages",
+  "definitions": {
+    "entityTypeLifecycle": {
+      "description": "Lifecycle of one entity type.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.governance.EntityTypeLifecycle",
+      "properties": {
+        "entityType": {
+          "description": "Entity type that has a lifecycle stage.",
+          "type": "string"
+        },
+        "stageWorkflows": {
+          "description": "Active governance workflows that own this entity type's lifecycle stage. While one of them applies to an entity, its stage changes only through that workflow and a direct change is rejected. More than one means the workflows overwrite each other's stage.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["entityType", "stageWorkflows"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "stages": {
+      "description": "Lifecycle stages an entity can be in. Every entity type with a lifecycle shares this list.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/status.json"
+      }
+    },
+    "entityTypes": {
+      "description": "Entity types that have a lifecycle stage, sorted by name.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/entityTypeLifecycle"
+      }
+    }
+  },
+  "required": ["stages", "entityTypes"],
+  "additionalProperties": false
+}

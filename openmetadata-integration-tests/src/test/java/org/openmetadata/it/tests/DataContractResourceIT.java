@@ -244,6 +244,11 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Override
+  protected EntityStatus expectedInitialEntityStatus() {
+    return EntityStatus.DRAFT;
+  }
+
+  @Override
   protected void validateCreatedEntity(DataContract entity, CreateDataContract createRequest) {
     assertEquals(createRequest.getName(), entity.getName());
     assertNotNull(entity.getEntity(), "DataContract must have an entity reference");
@@ -1241,8 +1246,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     DataContract contract = createEntity(request);
 
-    // Default status should be UNPROCESSED
-    assertEquals(EntityStatus.UNPROCESSED, contract.getEntityStatus());
+    // A new contract starts in Draft until it is reviewed
+    assertEquals(EntityStatus.DRAFT, contract.getEntityStatus());
   }
 
   @Test

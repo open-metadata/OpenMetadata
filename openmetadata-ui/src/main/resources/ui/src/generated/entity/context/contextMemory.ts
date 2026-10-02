@@ -48,6 +48,13 @@ export interface ContextMemory {
      */
     domains?: EntityReference[];
     /**
+     * Lifecycle stage of the memory: Draft, Approved (in use) or Archived. Any of these may be
+     * set at creation, for example when importing an already-archived memory; the Draft ->
+     * Approved -> Archived transition rules are enforced on later updates. When omitted at
+     * creation, the memory starts Approved.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Fully qualified name of the memory.
      */
     fullyQualifiedName?: string;
@@ -130,7 +137,6 @@ export interface ContextMemory {
      */
     sourceHumanMessage?: string;
     sourceType?:         SourceType;
-    status?:             MemoryStatus;
     /**
      * Why the memory reached its current status, e.g. the reconciliation verdict or the missing
      * anchor. Cleared by a status change that brings no reason of its own.
@@ -311,21 +317,23 @@ export interface EntityReference {
 }
 
 /**
- * A memory owned by someone else whose claim contradicts this one. Both stay Active.
+ * Lifecycle stage of the memory: Draft, Approved (in use) or Archived. Any of these may be
+ * set at creation, for example when importing an already-archived memory; the Draft ->
+ * Approved -> Archived transition rules are enforced on later updates. When omitted at
+ * creation, the memory starts Approved.
+ *
+ * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
+ * property. Entity types without that property have no lifecycle. When a create request
+ * omits the stage, the server assigns the entity type's initial stage.
  */
-export interface MemoryDispute {
-    /**
-     * When the contradiction was detected.
-     */
-    detectedAt?: number;
-    /**
-     * The contradicting context memory.
-     */
-    memory: EntityReference;
-    /**
-     * Why the two memories contradict each other.
-     */
-    reason: string;
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -476,19 +484,6 @@ export enum SourceType {
     Manual = "Manual",
     PageExtraction = "PageExtraction",
     RememberRequest = "RememberRequest",
-}
-
-/**
- * Lifecycle state of the memory. Any status but Superseded (which needs supersededBy) may
- * be set at creation; transitions are enforced on update. Superseded and Invalidated
- * memories are kept for audit and can be restored.
- */
-export enum MemoryStatus {
-    Active = "Active",
-    Archived = "Archived",
-    Draft = "Draft",
-    Invalidated = "Invalidated",
-    Superseded = "Superseded",
 }
 
 /**

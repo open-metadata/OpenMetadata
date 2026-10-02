@@ -911,43 +911,6 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     return getEntityWithFields(metricId.toString(), "reviewers");
   }
 
-  @Test
-  @Override
-  void test_entityStatus(TestNamespace ns) {
-    CreateMetric createMetric =
-        new CreateMetric()
-            .withName(ns.prefix("metric_entity_status"))
-            .withDescription("Metric for entity status test");
-    Metric metric = createEntity(createMetric);
-
-    assertEquals(
-        EntityStatus.APPROVED,
-        metric.getEntityStatus(),
-        "A Metric without reviewers should be created Approved");
-
-    metric.setEntityStatus(EntityStatus.IN_REVIEW);
-    Metric updatedMetric = patchEntity(metric.getId().toString(), metric);
-
-    assertEquals(
-        EntityStatus.IN_REVIEW,
-        updatedMetric.getEntityStatus(),
-        "Metric should be updated to IN_REVIEW status");
-
-    Metric retrievedMetric = getEntity(updatedMetric.getId().toString());
-    assertEquals(
-        EntityStatus.IN_REVIEW,
-        retrievedMetric.getEntityStatus(),
-        "Retrieved metric should maintain IN_REVIEW status");
-
-    updatedMetric.setEntityStatus(EntityStatus.DEPRECATED);
-    updatedMetric = patchEntity(updatedMetric.getId().toString(), updatedMetric);
-
-    assertEquals(
-        EntityStatus.DEPRECATED,
-        updatedMetric.getEntityStatus(),
-        "Metric should be updated to DEPRECATED status");
-  }
-
   // ===================================================================
   // SEARCH TESTS
   // ===================================================================

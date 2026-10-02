@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -33,21 +33,21 @@ public final class ContextMemoryLifecycle {
   static final String FIELD_SUPERSEDED_BY = "supersededBy";
   static final String FIELD_DISPUTES = "disputes";
 
-  private static final Map<ContextMemoryStatus, Set<ContextMemoryStatus>> VALID_TRANSITIONS =
+  private static final Map<EntityStatus, Set<EntityStatus>> VALID_TRANSITIONS =
       Map.of(
-          ContextMemoryStatus.DRAFT,
-          Set.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ACTIVE,
+          EntityStatus.DRAFT,
+          Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+          EntityStatus.APPROVED,
           Set.of(
-              ContextMemoryStatus.ARCHIVED,
-              ContextMemoryStatus.SUPERSEDED,
-              ContextMemoryStatus.INVALIDATED),
-          ContextMemoryStatus.SUPERSEDED,
-          Set.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.INVALIDATED,
-          Set.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ARCHIVED,
-          Set.of(ContextMemoryStatus.ACTIVE));
+              EntityStatus.ARCHIVED,
+              EntityStatus.SUPERSEDED,
+              EntityStatus.INVALIDATED),
+          EntityStatus.SUPERSEDED,
+          Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+          EntityStatus.INVALIDATED,
+          Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+          EntityStatus.ARCHIVED,
+          Set.of(EntityStatus.APPROVED));
 
   @FunctionalInterface
   interface MemoryResolver {
@@ -56,17 +56,24 @@ public final class ContextMemoryLifecycle {
 
   private ContextMemoryLifecycle() {}
 
-  public static ContextMemoryStatus effectiveStatus(ContextMemoryStatus status) {
-    return status == null ? ContextMemoryStatus.ACTIVE : status;
+  public static EntityStatus effectiveStatus(EntityStatus status) {
+    return status == null ? EntityStatus.APPROVED : status;
   }
 
-  static void validateTransition(ContextMemoryStatus from, ContextMemoryStatus to) {
+  static void validateMemoryStage(EntityStatus stage) {
+    if (stage != null && !VALID_TRANSITIONS.containsKey(stage)) {
+      throw new BadRequestException("Invalid memory status " + stage.value());
+    }
+  }
+
+  static void validateTransition(EntityStatus from, EntityStatus to) {
     if (to == null) {
       throw new BadRequestException("A context memory requires a status");
     }
-    ContextMemoryStatus current = effectiveStatus(from);
-    Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.get(current);
-    if (current != to && !allowed.contains(to)) {
+    EntityStatus current = effectiveStatus(from);
+    validateMemoryStage(to);
+    Set<EntityStatus> allowed = VALID_TRANSITIONS.get(current);
+    if (allowed == null || (current != to && !allowed.contains(to))) {
       throw new BadRequestException(
           String.format(
               "Invalid memory status transition from %s to %s. Allowed transitions from %s: %s",
@@ -75,10 +82,6 @@ public final class ContextMemoryLifecycle {
   }
 
   static void applyUpdate(ContextMemory original, ContextMemory updated, MemoryResolver resolver) {
-    if (original.getStatus() == null && updated.getStatus() == null) {
-      updated.setStatus(ContextMemoryStatus.ACTIVE);
-    }
-    validateTransition(original.getStatus(), updated.getStatus());
     applyStatusChange(original, updated);
     validateSupersession(updated);
     resolveReferences(original, updated, resolver);
@@ -90,8 +93,8 @@ public final class ContextMemoryLifecycle {
   }
 
   private static void applyStatusChange(ContextMemory original, ContextMemory updated) {
-    boolean statusChanged = effectiveStatus(original.getStatus()) != updated.getStatus();
-    if (statusChanged && original.getStatus() == ContextMemoryStatus.SUPERSEDED) {
+    boolean statusChanged = effectiveStatus(original.getEntityStatus()) != updated.getEntityStatus();
+    if (statusChanged && original.getEntityStatus() == EntityStatus.SUPERSEDED) {
       updated.setSupersededBy(null);
     }
     if (statusChanged && Objects.equals(original.getStatusReason(), updated.getStatusReason())) {
@@ -100,7 +103,7 @@ public final class ContextMemoryLifecycle {
   }
 
   private static void validateSupersession(ContextMemory memory) {
-    boolean superseded = memory.getStatus() == ContextMemoryStatus.SUPERSEDED;
+    boolean superseded = memory.getEntityStatus() == EntityStatus.SUPERSEDED;
     if (superseded != (memory.getSupersededBy() != null)) {
       throw new BadRequestException(
           superseded

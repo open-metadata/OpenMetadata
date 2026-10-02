@@ -34,19 +34,6 @@
       ],
       "default": "EntityScoped"
     },
-    "memoryStatus": {
-      "javaType": "org.openmetadata.schema.entity.context.ContextMemoryStatus",
-      "description": "Lifecycle state of the memory. Any status but Superseded (which needs supersededBy) may be set at creation; transitions are enforced on update. Superseded and Invalidated memories are kept for audit and can be restored.",
-      "type": "string",
-      "enum": ["Draft", "Active", "Archived", "Superseded", "Invalidated"],
-      "javaEnums": [
-        { "name": "DRAFT" },
-        { "name": "ACTIVE" },
-        { "name": "ARCHIVED" },
-        { "name": "SUPERSEDED" },
-        { "name": "INVALIDATED" }
-      ]
-    },
     "sourceType": {
       "javaType": "org.openmetadata.schema.entity.context.ContextMemorySourceType",
       "description": "How the memory was created. ConversationExtraction is captured automatically at the end of a chat turn; it is ground truth, not regenerable like a file or page pill.",
@@ -263,15 +250,16 @@
     "memoryScope": {
       "$ref": "#/definitions/memoryScope"
     },
-    "status": {
-      "$ref": "#/definitions/memoryStatus"
+    "entityStatus": {
+      "description": "Lifecycle stage of the memory: Draft, Approved (in use), Superseded, Invalidated or Archived. A Superseded memory requires supersededBy. When omitted at creation, the memory starts Approved.",
+      "$ref": "../../type/status.json"
     },
     "statusReason": {
       "description": "Why the memory reached its current status, e.g. the reconciliation verdict or the missing anchor. Cleared by a status change that brings no reason of its own.",
       "type": "string"
     },
     "supersededBy": {
-      "description": "The memory that replaced this one. Set if and only if status is Superseded.",
+      "description": "The memory that replaced this one. Set if and only if entityStatus is Superseded.",
       "$ref": "../../type/entityReference.json"
     },
     "disputes": {

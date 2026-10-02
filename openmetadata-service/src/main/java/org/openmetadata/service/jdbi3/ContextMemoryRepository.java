@@ -33,8 +33,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -115,7 +115,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       SearchSortFilter searchSortFilter,
       String q,
       SecurityContext securityContext,
-      List<ContextMemoryStatus> statuses)
+      List<EntityStatus> statuses)
       throws IOException {
     SearchResultListMapper results =
         searchRepository.listContextMemoriesWithStatuses(
@@ -474,6 +474,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       entity.setParentMemory(parentMemory.getEntityReference());
     }
     validateSharedPrincipals(entity);
+    validateMemoryStage(entity.getEntityStatus());
     setCreatorAsDefaultOwner(entity, update);
     prepareLifecycle(entity, update);
     inheritAnchorDomains(entity, update);
@@ -522,9 +523,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   private static void prepareLifecycle(ContextMemory memory, boolean update) {
     if (!update) {
-      if (memory.getStatus() == null) {
-        memory.setStatus(ContextMemoryStatus.ACTIVE);
-      }
       ContextMemoryLifecycle.applyCreate(
           memory, (reference, field) -> resolveLiveMemory(reference, field, memory.getUpdatedBy()));
     }
@@ -640,8 +638,16 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   // Lifecycle enforcement
   // ------------------------------------------------------------------
 
-  /** Rejects a status change outside the table in {@link ContextMemoryLifecycle}. */
-  public static void validateStatusTransition(ContextMemoryStatus from, ContextMemoryStatus to) {
+  @Override
+  protected void validateEntityStatusTransition(EntityStatus from, EntityStatus to) {
+    validateStatusTransition(from, to);
+  }
+
+  public static void validateMemoryStage(EntityStatus stage) {
+    ContextMemoryLifecycle.validateMemoryStage(stage);
+  }
+
+  public static void validateStatusTransition(EntityStatus from, EntityStatus to) {
     ContextMemoryLifecycle.validateTransition(from, to);
   }
 
@@ -660,7 +666,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     @Override
     protected boolean consolidateChanges(
         ContextMemory original, ContextMemory updated, Operation operation) {
-      return original.getStatus() == updated.getStatus()
+      return original.getEntityStatus() == updated.getEntityStatus()
           && super.consolidateChanges(original, updated, operation);
     }
 
@@ -757,16 +763,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
     private void updateLifecycle(boolean consolidatingChanges) {
       if (operation == Operation.PUT) {
-        if (updated.getStatus() == null) {
-          updated.setStatus(ContextMemoryLifecycle.effectiveStatus(original.getStatus()));
-        }
         updated.setStatusReason(original.getStatusReason());
         updated.setSupersededBy(original.getSupersededBy());
         updated.setDisputes(original.getDisputes());
-      }
-      // Consolidated PATCHes skip validation but must still persist the legacy default.
-      if (original.getStatus() == null && updated.getStatus() == null) {
-        updated.setStatus(ContextMemoryStatus.ACTIVE);
       }
       if (!consolidatingChanges) {
         ContextMemoryLifecycle.applyUpdate(
@@ -774,7 +773,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
             updated,
             (reference, field) -> resolveLiveMemory(reference, field, updated.getUpdatedBy()));
       }
-      recordChange("status", original.getStatus(), updated.getStatus());
       recordChange("statusReason", original.getStatusReason(), updated.getStatusReason());
       recordChange(
           ContextMemoryLifecycle.FIELD_SUPERSEDED_BY,

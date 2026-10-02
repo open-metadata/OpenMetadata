@@ -16,9 +16,9 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -146,7 +146,7 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   private String keywordQueryFilter() {
     List<Map<String, Object>> filters =
         List.of(
-            Map.of("term", Map.of("status", ContextMemoryStatus.ACTIVE.value())),
+            Map.of("term", Map.of("entityStatus", EntityStatus.APPROVED.value())),
             Map.of("term", Map.of("sourceType", ContextMemorySourceType.FILE_EXTRACTION.value())),
             Map.of("term", Map.of("visibility", MemoryVisibility.ENTITY.value())));
     return JsonUtils.pojoToJson(Map.of("bool", Map.of("filter", filters)));
@@ -182,7 +182,7 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   }
 
   private boolean isReusable(ContextMemory candidate, ContextMemory derived) {
-    return effectiveStatus(candidate.getStatus()) == ContextMemoryStatus.ACTIVE
+    return candidate.getEntityStatus() == EntityStatus.APPROVED
         && candidate.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
         && candidate.getShareConfig() != null
         && candidate.getShareConfig().getVisibility() == MemoryVisibility.ENTITY
