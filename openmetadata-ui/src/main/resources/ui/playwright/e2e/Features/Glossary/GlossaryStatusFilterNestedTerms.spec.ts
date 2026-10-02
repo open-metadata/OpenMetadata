@@ -167,14 +167,28 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     const termRow = page.locator(`[data-row-key*="${termName}"]`).first();
     await expect(termRow).toBeVisible();
 
-    const expandTrigger = termRow
-      .locator('[data-testid="expand-icon"]')
-      .first();
-    await expandTrigger.click();
-    await page
-      .locator('tr[data-row-key]')
-      .first()
-      .waitFor({ state: 'visible' });
+    const chevron = termRow.locator('[data-testid="expand-icon"]');
+    const expandedChevron = termRow.locator(
+      '[data-testid="expand-icon"][aria-expanded="true"]'
+    );
+
+    // A term listing response that lands right after the click re-renders the
+    // table with every row collapsed, so a one-shot click can be undone before
+    // the children ever load. Re-click until the row reports itself expanded.
+    await expect(async () => {
+      // While the children load the chevron is swapped for a spinner — there is
+      // nothing to click then, only the expanded state to wait for.
+      if ((await chevron.count()) > 0) {
+        const isExpanded =
+          (await chevron.first().getAttribute('aria-expanded')) === 'true';
+
+        if (!isExpanded) {
+          await chevron.first().click({ timeout: 5000 });
+        }
+      }
+
+      await expect(expandedChevron).toHaveCount(1, { timeout: 5000 });
+    }).toPass({ timeout: 30000 });
   };
 
   // Helper to click the expand-all button and wait for terms to load
