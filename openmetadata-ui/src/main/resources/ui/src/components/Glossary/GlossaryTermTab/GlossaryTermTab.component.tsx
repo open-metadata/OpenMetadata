@@ -778,11 +778,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       // filter — e.g. a listing request in flight when the user typed a query —
       // is discarded so it cannot repopulate or clear the table against the
       // user's current intent.
-      // Two requests issued for the *same* search/status context are
-      // indistinguishable to `isStaleFetchResponse`, so a superseded one
-      // finishing last would still reapply its page — and `setExpandedRowKeys([])`
-      // below would collapse a row the user has since expanded. Only the latest
-      // request may write.
+      // Only the latest request may write; a stale page re-collapses rows.
       if (requestSeq !== fetchRequestSeqRef.current) {
         return;
       }

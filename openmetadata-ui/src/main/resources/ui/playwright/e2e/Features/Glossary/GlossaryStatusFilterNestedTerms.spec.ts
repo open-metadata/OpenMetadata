@@ -172,12 +172,9 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       '[data-testid="expand-icon"][aria-expanded="true"]'
     );
 
-    // A term listing response that lands right after the click re-renders the
-    // table with every row collapsed, so a one-shot click can be undone before
-    // the children ever load. Re-click until the row reports itself expanded.
+    // A listing response landing after the click re-collapses every row.
     await expect(async () => {
-      // While the children load the chevron is swapped for a spinner — there is
-      // nothing to click then, only the expanded state to wait for.
+      // The chevron is swapped for a spinner while the children load.
       if ((await chevron.count()) > 0) {
         const isExpanded =
           (await chevron.getAttribute('aria-expanded')) === 'true';
