@@ -120,6 +120,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       />
     ),
     Select: SelectMock,
+    Toggle: jest.requireActual('@openmetadata/ui-core-components').Toggle,
     Typography: ({
       children,
       className,

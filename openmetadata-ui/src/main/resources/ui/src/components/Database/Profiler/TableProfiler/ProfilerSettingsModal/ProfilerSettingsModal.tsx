@@ -13,7 +13,7 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Drawer,
@@ -21,7 +21,6 @@ import {
   InputNumber,
   Select,
   Space,
-  Switch,
   TreeSelect,
 } from 'antd';
 import Form from 'antd/lib/form';
@@ -703,9 +702,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <Space align="center" size={12}>
                   <p>{t('label.enable-partition')}</p>
                   <Form.Item className="m-b-0" name="enablePartitioning">
-                    <Switch
-                      checked={state?.enablePartition}
+                    <Toggle
                       data-testid="enable-partition-switch"
+                      isSelected={state?.enablePartition}
+                      size="sm"
                       onChange={handleEnablePartition}
                     />
                   </Form.Item>
