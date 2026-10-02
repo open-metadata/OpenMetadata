@@ -197,4 +197,74 @@ describe('TreeSelect', () => {
       )
     );
   });
+
+  it('loads the next root page when its load-more row is activated', async () => {
+    const fetchData = vi
+      .fn()
+      .mockImplementation(async ({ after }: { after?: string }) =>
+        after
+          ? {
+              nodes: [{ id: 'g2', label: 'Second', value: 'g2', isLeaf: true }],
+              hasMore: false,
+              total: 2,
+            }
+          : {
+              nodes: [{ id: 'g1', label: 'First', value: 'g1', isLeaf: true }],
+              hasMore: true,
+              total: 2,
+              nextCursor: 'root-cursor-1',
+            }
+      );
+
+    render(
+      <TreeSelect
+        isOpen
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    const row = await screen.findByTestId('tree-node-load-more-root');
+    const treeItem = row.closest('[role="row"], [role="treeitem"]');
+
+    expect(treeItem).not.toBeNull();
+
+    fireEvent.keyDown(treeItem as Element, { key: 'Enter' });
+    fireEvent.keyUp(treeItem as Element, { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(fetchData).toHaveBeenCalledWith(
+        expect.objectContaining({ after: 'root-cursor-1' })
+      )
+    );
+    expect(await screen.findByTestId('tree-node-g2')).toBeInTheDocument();
+    expect(screen.getByTestId('tree-node-g1')).toBeInTheDocument();
+  });
+
+  // A container row is not pickable, but it is not blocked either — only a
+  // genuinely disabled row may read as forbidden.
+  it('keeps the plain cursor on an unselectable container row', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        { id: 'g', label: 'Glossary', value: 'g', allowSelection: false },
+        { id: 'd', label: 'Blocked', value: 'd', disabled: true },
+      ],
+    });
+
+    render(
+      <TreeSelect
+        isOpen
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    const container = await screen.findByTestId('tree-node-g');
+
+    expect(container.className).toContain('cursor-default');
+    expect(container.className).not.toContain('cursor-not-allowed');
+    expect(screen.getByTestId('tree-node-d').className).toContain(
+      'cursor-not-allowed'
+    );
+  });
 });
