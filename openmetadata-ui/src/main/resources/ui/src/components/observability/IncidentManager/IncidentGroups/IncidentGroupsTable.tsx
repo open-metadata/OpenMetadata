@@ -14,14 +14,14 @@
 import {
   AvatarGroup,
   Box,
-  ButtonUtility,
+  Button,
   Table,
   toOwnerRefs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   ChevronRight,
-  Container,
+  Cube01,
   LayersTwo01,
   User01,
 } from '@openmetadata/ui-core-components/icons';
@@ -37,6 +37,7 @@ import {
   formatDate,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { stopPropagationIfInteractive } from '../../../../utils/InteractiveTargetUtils';
 import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
 import {
   INCIDENT_GROUPS_SORT_COLUMN,
@@ -170,8 +171,7 @@ const IncidentGroupsTable = ({
 
   const dimension = getIncidentGroupByOption(groupBy);
   // A table group's sub-line lists check types; every other group's, tables.
-  const subLineIcon =
-    groupBy === IncidentGroupBy.Table ? LayersTwo01 : Container;
+  const subLineIcon = groupBy === IncidentGroupBy.Table ? LayersTwo01 : Cube01;
 
   const columns = useMemo(
     () => [
@@ -258,16 +258,20 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          <ButtonUtility
-            color="tertiary"
-            data-testid={`group-open-${rowId}`}
-            icon={ChevronRight}
-            size="xs"
-            tooltip={t('label.view-entity', {
-              entity: t('label.incident-plural'),
-            })}
-            onClick={() => onGroupOpen(group)}
-          />
+          {/* The row previews on activation, so the drill-down press has to
+              stay with its button. */}
+          <div role="presentation" onClick={stopPropagationIfInteractive}>
+            <Button
+              aria-label={t('label.view-entity', {
+                entity: t('label.incident-plural'),
+              })}
+              color="tertiary"
+              data-testid={`group-open-${rowId}`}
+              iconLeading={ChevronRight}
+              size="sm"
+              onPress={() => onGroupOpen(group)}
+            />
+          </div>
         </Table.Cell>
       </Table.Row>
     );

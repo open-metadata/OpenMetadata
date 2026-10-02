@@ -103,7 +103,7 @@ const IncidentGroupDrawer = ({
         group && (
           <>
             <SlideoutMenu.Header onClose={close}>
-              <Box className="tw:pb-4" direction="col" gap={2}>
+              <Box direction="col" gap={2}>
                 <Overline>{t('label.incident-group')}</Overline>
                 <Typography
                   as="h2"
@@ -116,19 +116,14 @@ const IncidentGroupDrawer = ({
                     t('label.no-entity', { entity: t('label.owner') })
                   )}
                 </Typography>
-                <Box align="center" gap={2} justify="between">
-                  <Box align="center" gap={2}>
-                    <IncidentGroupRelatedBadge group={group} />
-                    <IncidentGroupSeverityBadge severity={group.severity} />
-                  </Box>
-                  <Button
-                    color="link-color"
-                    data-testid="incident-group-view-all"
-                    size="sm"
-                    onPress={() => onViewAll(group)}>
-                    {t('label.view-all')}
-                  </Button>
+                <Box align="center" gap={2}>
+                  <IncidentGroupRelatedBadge group={group} />
+                  <IncidentGroupSeverityBadge severity={group.severity} />
                 </Box>
+              </Box>
+            </SlideoutMenu.Header>
+            <SlideoutMenu.Content>
+              <Box direction="col" gap={6}>
                 <Box gap={3}>
                   <IncidentGroupStat
                     label={t('label.incident-plural')}
@@ -154,12 +149,19 @@ const IncidentGroupDrawer = ({
                     }
                   />
                 </Box>
-              </Box>
-            </SlideoutMenu.Header>
-            <SlideoutMenu.Content>
-              <Box direction="col" gap={2}>
-                <Overline>{t('label.individual-incident-plural')}</Overline>
-                <IncidentList incidents={incidents} isLoading={isLoading} />
+                <Box direction="col" gap={2}>
+                  <Box align="center" justify="between">
+                    <Overline>{t('label.individual-incident-plural')}</Overline>
+                    <Button
+                      color="link-color"
+                      data-testid="incident-group-view-all"
+                      size="sm"
+                      onPress={() => onViewAll(group)}>
+                      {t('label.view-all')}
+                    </Button>
+                  </Box>
+                  <IncidentList incidents={incidents} isLoading={isLoading} />
+                </Box>
               </Box>
             </SlideoutMenu.Content>
             <SlideoutMenu.Footer>

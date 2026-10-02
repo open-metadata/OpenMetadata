@@ -12,7 +12,6 @@
  */
 
 import {
-  Alert,
   Badge,
   Box,
   EmptyPlaceholder,
@@ -74,9 +73,18 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
       </Box>
       <div data-testid="incident-failure-summary">
         {incident.failureSummary ? (
-          <Alert icon={AlertTriangle} iconSize="sm" variant="error">
-            {incident.failureSummary}
-          </Alert>
+          // Not the core Alert: it is a live region, and every row of the list
+          // would be announced as one. Same error tokens, in the design's
+          // compact callout.
+          <Box
+            align="start"
+            className="tw:rounded-lg tw:border tw:border-error-subtle tw:bg-error-primary tw:px-3 tw:py-2"
+            gap={2}>
+            <AlertTriangle className="tw:mt-0.5 tw:size-4 tw:shrink-0 tw:text-fg-error-primary" />
+            <Typography as="span" className="tw:text-secondary" size="text-sm">
+              {incident.failureSummary}
+            </Typography>
+          </Box>
         ) : (
           <Typography as="span" className="tw:text-tertiary" size="text-xs">
             {NO_DATA_PLACEHOLDER}
