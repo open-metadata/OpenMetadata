@@ -305,6 +305,10 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Space className="w-full" direction="vertical">
             <Typography as="p">{t('message.new-conversation')}</Typography>
             <ActivityFeedEditor
+              // Shown on demand (new conversation, or an empty panel just
+              // opened), so it takes focus as it did before FeedEditor stopped
+              // focusing itself on mount.
+              focused
               placeHolder={t('message.enter-a-field', {
                 field: t('label.message-lowercase'),
               })}

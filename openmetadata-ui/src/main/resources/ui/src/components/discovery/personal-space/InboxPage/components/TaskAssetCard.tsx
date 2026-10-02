@@ -21,6 +21,7 @@ import { Task } from '../../../../../generated/entity/tasks/task';
 import { getEntityIcon } from '../../../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import Fqn from '../../../../../utils/Fqn';
 import { TaskAboutEntity, TaskStatTilesProps } from '../taskDetail.types';
 import { formatEntityType } from '../taskList.utils';
 import TaskStatTiles from './TaskStatTiles';
@@ -66,8 +67,8 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
     return null;
   }
 
-  const parentPath = aboutRef.fullyQualifiedName
-    .split('.')
+  // Fqn.split keeps a quoted name ("my.table") whole.
+  const parentPath = Fqn.split(aboutRef.fullyQualifiedName)
     .slice(0, -1)
     .join('.');
 

@@ -22,7 +22,13 @@ const mockSetTotal = jest.fn();
 const mockInvalidateQueries = jest.fn();
 let capturedFetchPage: (after?: string) => unknown;
 let capturedQueryKey: unknown[];
-let hookState: { items: Task[]; isLoading: boolean; total: number };
+let capturedCanLoadMore: ((loaded: unknown[]) => boolean) | undefined;
+let hookState: {
+  items: Task[];
+  isLoading: boolean;
+  total: number;
+  hasMore?: boolean;
+};
 // Extra fields merged into the task the mock panel resolves with, so a test can
 // simulate resolving into a specific status/type (e.g. an Approved DAR).
 let resolvedPayload: Record<string, unknown> = {};
@@ -48,15 +54,18 @@ jest.mock('../useInboxCounts', () => ({
 jest.mock('../useInboxInfiniteList', () => ({
   useInboxInfiniteList: (
     queryKey: unknown[],
-    fetchPage: (after?: string) => unknown
+    fetchPage: (after?: string) => unknown,
+    canLoadMore?: (loaded: unknown[]) => boolean
   ) => {
     capturedQueryKey = queryKey;
     capturedFetchPage = fetchPage;
+    capturedCanLoadMore = canLoadMore;
 
     return {
       items: hookState.items,
       isLoading: hookState.isLoading,
       isLoadingMore: false,
+      hasMore: Boolean(hookState.hasMore),
       total: hookState.total,
       scrollRef: { current: null },
       sentinelRef: { current: null },
@@ -307,6 +316,36 @@ describe('TasksTab', () => {
     fireEvent.click(screen.getByText('label.clear-all'));
 
     expect(screen.getByTestId('task-t2')).toBeInTheDocument();
+  });
+
+  // Type and Status narrow loaded pages, so later pages may still match.
+  it('waits for the pages still to come before saying nothing matches', () => {
+    hookState = {
+      items: [{ id: 't2', type: 'TestCaseResolution' } as unknown as Task],
+      isLoading: false,
+      total: 30,
+      hasMore: true,
+    };
+    renderTab();
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(
+      screen.queryByTestId('inbox-tasks-no-match')
+    ).not.toBeInTheDocument();
+  });
+
+  // A short narrowed list keeps the sentinel in view; the scan must end.
+  it('stops paging a narrowed list after a bounded scan', () => {
+    renderTab();
+    const longScan = new Array(200);
+
+    expect(capturedCanLoadMore?.(longScan)).toBe(true);
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(capturedCanLoadMore?.(longScan)).toBe(false);
+    expect(capturedCanLoadMore?.([])).toBe(true);
   });
 
   it('shows the skeleton while loading', () => {

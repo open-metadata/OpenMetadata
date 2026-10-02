@@ -259,18 +259,25 @@ describe('getTaskDetailDescriptor', () => {
     expect(descriptor.callout?.text).toBe('Please take a look.');
   });
 
-  it('shows the callout description as text, not encoded markup', () => {
+  // The callout renders markdown, so the description reaches it as written.
+  it('keeps the callout description as written for the renderer', () => {
+    const description =
+      '**The 02:00 load** timed out; yesterday&#39;s numbers.';
     const descriptor = getTaskDetailDescriptor(
-      buildTask({
-        type: 'SomethingNew' as TaskType,
-        description: 'The 02:00 load timed out; yesterday&#39;s numbers.',
-      }),
+      buildTask({ type: 'SomethingNew' as TaskType, description }),
       t
     );
 
-    expect(descriptor.callout?.text).toBe(
-      "The 02:00 load timed out; yesterday's numbers."
+    expect(descriptor.callout?.text).toBe(description);
+  });
+
+  it('leaves out a description with no text in it', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({ type: 'SomethingNew' as TaskType, description: '<p> </p>' }),
+      t
     );
+
+    expect(descriptor.callout).toBeUndefined();
   });
 
   // Who resolved it reads in the byline ("Rejected by bob on …"), not twice.

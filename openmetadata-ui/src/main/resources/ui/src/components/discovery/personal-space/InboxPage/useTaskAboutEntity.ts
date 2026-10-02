@@ -140,7 +140,7 @@ export interface UseTaskAboutEntityResult {
 export const useTaskAboutEntity = (task?: Task): UseTaskAboutEntityResult => {
   const target = getAboutTarget(task);
 
-  const { data, isFetching } = useQuery({
+  const { data, isPending } = useQuery({
     // An incident's severity is per task, and two incidents can share a test
     // case, so the task keys those.
     queryKey: [
@@ -172,5 +172,7 @@ export const useTaskAboutEntity = (task?: Task): UseTaskAboutEntityResult => {
     },
   });
 
-  return { about: data, isLoading: Boolean(target) && isFetching };
+  // Only a first load shows skeletons; a background refetch keeps the cached
+  // tiles. A disabled query (no target) stays pending, hence the guard.
+  return { about: data, isLoading: Boolean(target) && isPending };
 };

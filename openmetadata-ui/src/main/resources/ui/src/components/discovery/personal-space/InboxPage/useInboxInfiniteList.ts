@@ -39,6 +39,8 @@ export interface UseInboxInfiniteList<T> {
   items: T[];
   isLoading: boolean;
   isLoadingMore: boolean;
+  // The server holds more pages than are loaded.
+  hasMore: boolean;
   total: number;
   // Attach to the scroll container and to a sentinel element at the end of the
   // list; crossing the sentinel triggers the next page fetch.
@@ -64,11 +66,9 @@ const resolve = <V>(update: SetStateAction<V>, prev: V): V =>
  * filter switch never blanks the list.
  *
  * `canLoadMore(loadedItems)` is an optional stop condition checked before every
- * page fetch. It prevents runaway pagination when the rendered list is
- * client-side filtered (e.g. a date window): without it, the filtered list
- * stays short, the sentinel never leaves the viewport, and the observer pages
- * through the entire history. Return `false` once the loaded items already
- * cover everything the active filter could show.
+ * page fetch. Pass it when the rendered list is narrowed client-side (e.g. a
+ * type filter): the narrowed list stays short, the sentinel never leaves the
+ * viewport, and the observer would otherwise page through the whole history.
  */
 export function useInboxInfiniteList<T>(
   queryKey: QueryKey,
@@ -181,6 +181,7 @@ export function useInboxInfiniteList<T>(
     // Only a list with nothing to show yet; a key switch keeps the old rows.
     isLoading: query.isPending,
     isLoadingMore: isFetchingNextPage,
+    hasMore: Boolean(hasNextPage),
     total,
     scrollRef,
     sentinelRef,

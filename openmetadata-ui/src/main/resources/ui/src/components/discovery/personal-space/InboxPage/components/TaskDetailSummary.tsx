@@ -27,8 +27,10 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
+import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import { formatInboxDate } from '../inbox.utils';
 import {
   TaskDetailCallout,
@@ -164,12 +166,12 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
           weight="semibold">
           {callout.label}
         </Typography>
-        {/* Keeps the paragraphs of a description on their own lines. */}
-        <Typography
-          className="tw:break-words tw:whitespace-pre-line"
-          size="text-sm">
-          {callout.text}
-        </Typography>
+        {/* Descriptions, reasons and suggestions are markdown, with mentions. */}
+        <RichTextEditorPreviewerV1
+          className="tw:break-words tw:text-sm"
+          enableSeeMoreVariant={false}
+          markdown={getFrontEndFormat(callout.text)}
+        />
       </Box>
     )}
   </Box>

@@ -2023,6 +2023,8 @@ export const TaskTabNew = ({
 
           {showFeedEditor ? (
             <ActivityFeedEditorNew
+              // Revealed by a click on its placeholder, so it takes focus.
+              focused
               className={feedEditorClassName}
               onSave={onSave}
               onTextChange={setComment}

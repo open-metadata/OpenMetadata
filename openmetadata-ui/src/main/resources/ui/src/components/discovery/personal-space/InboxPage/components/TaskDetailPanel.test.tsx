@@ -12,7 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ComponentProps, ReactNode } from 'react';
+import { ComponentProps, ComponentType, ReactNode } from 'react';
 
 const mockGetTaskById = jest.fn();
 const mockResolveTask = jest.fn();
@@ -177,14 +177,30 @@ jest.mock(
   })
 );
 
+// Expose what a plugin contribution changes: the stat tiles it supplies, and
+// the summary rows and callout its describe() merges in.
 jest.mock('./TaskAssetCard', () => ({
   __esModule: true,
-  default: () => <div data-testid="task-asset-card" />,
+  default: ({ StatTiles }: { StatTiles?: ComponentType }) => (
+    <div data-testid="task-asset-card">{StatTiles && <StatTiles />}</div>
+  ),
 }));
 
 jest.mock('./TaskDetailSummary', () => ({
   __esModule: true,
-  default: () => <div data-testid="task-detail-summary" />,
+  default: ({
+    rows,
+    callout,
+  }: {
+    rows: { key: string }[];
+    callout?: { label: string };
+  }) => (
+    <div
+      data-callout={callout?.label}
+      data-rows={rows.map((row) => row.key).join(',')}
+      data-testid="task-detail-summary"
+    />
+  ),
 }));
 
 jest.mock('../useTaskAboutEntity', () => ({
@@ -1230,6 +1246,68 @@ describe('TaskDetailPanel', () => {
     });
   });
 
+  describe('plugin contributions (INBOX_TASK_PANELS)', () => {
+    const contribution = (
+      overrides: Partial<Record<string, unknown>>
+    ): Record<string, unknown> => ({
+      key: 'plugin',
+      condition: () => true,
+      ...overrides,
+    });
+
+    it('merges a matching describe() and swaps in its stat tiles', async () => {
+      mockGetContributions.mockReturnValue([
+        contribution({ key: 'other', condition: () => false }),
+        contribution({
+          describe: () => ({
+            rows: [{ key: 'pluginRow' }],
+            callout: { label: 'Plugin reason', text: 'why' },
+          }),
+          stats: () => <div data-testid="plugin-stat-tiles" />,
+        }),
+      ]);
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      const summary = screen.getByTestId('task-detail-summary');
+
+      expect(summary.getAttribute('data-rows')).toMatch(/^pluginRow/);
+      expect(summary).toHaveAttribute('data-callout', 'Plugin reason');
+      expect(screen.getByTestId('plugin-stat-tiles')).toBeInTheDocument();
+    });
+
+    it('ignores a contribution whose condition does not match', async () => {
+      mockGetContributions.mockReturnValue([
+        contribution({
+          condition: () => false,
+          stats: () => <div data-testid="plugin-stat-tiles" />,
+        }),
+      ]);
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.queryByTestId('plugin-stat-tiles')).not.toBeInTheDocument();
+    });
+
+    // `component` is deprecated but still honoured, so a plugin built for the
+    // old pane keeps rendering where the summary would.
+    it('renders a deprecated component in place of the summary', async () => {
+      mockGetContributions.mockReturnValue([
+        contribution({
+          component: () => <div data-testid="legacy-plugin-panel" />,
+        }),
+      ]);
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('legacy-plugin-panel')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-detail-summary')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('legacy (non-workflow) tasks', () => {
     // No availableTransitions, so there is no transition id to name: the server
     // 400s on a fabricated one and the body must carry resolutionType + newValue.
@@ -1240,6 +1318,33 @@ describe('TaskDetailPanel', () => {
       availableTransitions: [],
       payload: { proposedChanges: { owners: { added: ['bob'] } } },
     };
+
+    // The list row carries no availableTransitions; acting on it before the
+    // full task lands could take the legacy path for a workflow task.
+    it('offers no actions until the full task has loaded', async () => {
+      const pending: { resolve?: (value: { data: unknown }) => void } = {};
+      mockGetTaskById.mockReturnValue(
+        new Promise((resolve) => {
+          pending.resolve = resolve;
+        })
+      );
+
+      await act(async () =>
+        render(
+          <TaskDetailPanel
+            fallbackTask={LEGACY_APPROVAL_TASK as never}
+            taskId="task-1"
+          />
+        )
+      );
+
+      expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(screen.queryByTestId('task-approve')).not.toBeInTheDocument();
+
+      await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
+
+      expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+    });
 
     it('resolves an approve without a transitionId, carrying newValue and the payload', async () => {
       mockGetTaskById.mockResolvedValue({ data: LEGACY_APPROVAL_TASK });

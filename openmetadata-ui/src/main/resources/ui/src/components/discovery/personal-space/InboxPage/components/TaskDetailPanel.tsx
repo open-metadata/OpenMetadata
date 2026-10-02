@@ -397,8 +397,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     [task, contribution, t]
   );
 
+  // The list row the panel opens with lacks availableTransitions, so actions
+  // wait for the full task: a legacy fallback could resolve the wrong way.
   const actions = useMemo(() => {
-    if (!task || isSyncingTransitions) {
+    if (!task || isLoading || isSyncingTransitions) {
       return [];
     }
     const effective = applyActionLabels(
@@ -422,7 +424,15 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     }
 
     return effective;
-  }, [task, isSyncingTransitions, canResolveTask, formSchema, descriptor, t]);
+  }, [
+    task,
+    isLoading,
+    isSyncingTransitions,
+    canResolveTask,
+    formSchema,
+    descriptor,
+    t,
+  ]);
 
   // Stop an in-flight sync on unmount: no state set, no timer left behind.
   useEffect(

@@ -25,6 +25,20 @@ jest.mock(
   })
 );
 
+jest.mock(
+  '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
+  () => ({
+    __esModule: true,
+    default: ({ markdown }: { markdown: string }) => (
+      <p data-testid="callout-markdown">{markdown}</p>
+    ),
+  })
+);
+
+jest.mock('../../../../../utils/FeedUtilsPure', () => ({
+  getFrontEndFormat: (message: string) => `front:${message}`,
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -57,22 +71,20 @@ describe('TaskDetailSummary', () => {
     expect(screen.getByText('dana')).toBeInTheDocument();
   });
 
-  it('keeps the callout text on its own lines', () => {
+  // Markdown and stored mentions render, not their raw markup.
+  it('renders the callout as rich text with mentions in display form', () => {
     render(
       <TaskDetailSummary
         callout={{
           label: 'Context',
-          text: 'Need access for Q3.\nOwner approved.',
+          text: '**Need access** for Q3, <#E::user::dana|[@dana](/users/dana)>',
         }}
         rows={[]}
       />
     );
 
-    const text = screen.getByText(/Need access for Q3\./);
-
-    expect(text).toHaveTextContent('Need access for Q3. Owner approved.', {
-      normalizeWhitespace: true,
-    });
-    expect(text).toHaveClass('tw:whitespace-pre-line');
+    expect(screen.getByTestId('callout-markdown')).toHaveTextContent(
+      'front:**Need access** for Q3'
+    );
   });
 });
