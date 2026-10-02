@@ -65,6 +65,7 @@
         "missingDatabase",
         "missingColumns",
         "creationDisabled",
+        "createNotAllowed",
         "notFound",
         "invalidEntity",
         "pipelineNotFound"

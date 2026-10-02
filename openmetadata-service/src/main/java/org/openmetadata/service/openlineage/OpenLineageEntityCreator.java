@@ -14,6 +14,7 @@
 package org.openmetadata.service.openlineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.CREATE_NOT_ALLOWED;
 import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.INVALID_ENTITY;
 import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.MISSING_COLUMNS;
 import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.MISSING_DATABASE;
@@ -21,9 +22,12 @@ import static org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason.S
 import static org.openmetadata.service.openlineage.OpenLineageResolution.resolved;
 import static org.openmetadata.service.openlineage.OpenLineageResolution.unresolved;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -45,24 +49,47 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.LimitsException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.databases.DatabaseMapper;
 import org.openmetadata.service.resources.databases.DatabaseSchemaMapper;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableMapper;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Creates the table an OpenLineage dataset names, together with any missing database and schema,
- * under the database service its namespace is mapped to. Everything goes through the same create
- * mappers as the REST API, so new entities carry audit fields and pass the same validation. A table
- * is only created when the event carries its columns; an empty shell is never created.
+ * under the database service its namespace is mapped to. Each entity is authorized and built the
+ * way a REST create by the same caller would be, so an event can create nothing its caller could
+ * not create directly. A table is only created when the event carries its columns, and a refusal at
+ * any level takes back what that table's creation already wrote, so no empty shell is left behind.
  */
 @Slf4j
 public class OpenLineageEntityCreator {
 
   private static final String SERVICE_FILTER = "service";
+
+  /**
+   * Checks that the caller may create an entity, as a REST create by the same caller is checked.
+   * Throws {@link AuthorizationException} when a policy denies it, or {@link LimitsException} when a
+   * plan limit does.
+   */
+  @FunctionalInterface
+  public interface CreateAuthorization {
+    void authorize(String entityType, EntityInterface entity);
+  }
+
+  /** Without a caller there is nobody to authorize a create against, so nothing is created. */
+  private static final CreateAuthorization NO_CALLER =
+      (entityType, entity) -> {
+        throw new AuthorizationException(
+            String.format("No caller to authorize creating %s %s", entityType, entity.getName()));
+      };
+
+  private record CreatedEntity(String entityType, UUID id, String fullyQualifiedName) {}
 
   /** Where a missing table goes. {@code database} is null when the dataset name omits it. */
   public record TableLocation(String service, String database, String schema, String table) {}
@@ -77,6 +104,15 @@ public class OpenLineageEntityCreator {
   private final DatabaseMapper databaseMapper = new DatabaseMapper();
   private final DatabaseSchemaMapper schemaMapper = new DatabaseSchemaMapper();
   private final TableMapper tableMapper = new TableMapper();
+  private final CreateAuthorization createAuthorization;
+
+  public OpenLineageEntityCreator(CreateAuthorization createAuthorization) {
+    this.createAuthorization = createAuthorization;
+  }
+
+  public static OpenLineageEntityCreator withoutCaller() {
+    return new OpenLineageEntityCreator(NO_CALLER);
+  }
 
   public OpenLineageResolution createTable(
       TableLocation location, DatasetFacets facets, String createdBy) {
@@ -121,36 +157,42 @@ public class OpenLineageEntityCreator {
   }
 
   /**
-   * Columns are validated before anything is written, so a table that would be rejected never
-   * leaves an empty database or schema behind.
+   * Columns are validated before anything is written. Each level is authorized against its
+   * persisted parent, as a REST create is, so a database is checked against its service before it
+   * exists and a schema against that database once it does. A refusal or rejection at any level
+   * takes back what this table's creation already wrote.
    */
   private OpenLineageResolution createValidated(
       EntityReference service, String databaseName, TableDraft draft) {
+    CreationRun run = new CreationRun(draft.createdBy());
     OpenLineageResolution result;
     try {
       DatabaseUtil.validateColumns(draft.columns());
-      Database database = findOrCreateDatabase(service, databaseName, draft.createdBy());
-      DatabaseSchema schema = findOrCreateSchema(database, draft);
-      result = resolved(findOrCreateTable(schema, draft).getEntityReference());
+      Database database = findOrCreateDatabase(run, service, databaseName);
+      DatabaseSchema schema = findOrCreateSchema(run, database, draft.location().schema());
+      result = resolved(findOrCreateTable(run, schema, draft).getEntityReference());
+    } catch (AuthorizationException | LimitsException e) {
+      run.rollBack();
+      result = unresolved(CREATE_NOT_ALLOWED, e.getMessage());
     } catch (IllegalArgumentException e) {
+      run.rollBack();
       result = unresolved(INVALID_ENTITY, e.getMessage());
     }
     return result;
   }
 
-  private Database findOrCreateDatabase(EntityReference service, String name, String createdBy) {
-    return findOrCreate(
+  private Database findOrCreateDatabase(CreationRun run, EntityReference service, String name) {
+    return run.findOrCreate(
         Entity.DATABASE,
         FullyQualifiedName.add(service.getFullyQualifiedName(), name),
         () ->
             databaseMapper.createToEntity(
                 new CreateDatabase().withName(name).withService(service.getFullyQualifiedName()),
-                createdBy));
+                run.createdBy()));
   }
 
-  private DatabaseSchema findOrCreateSchema(Database database, TableDraft draft) {
-    String name = draft.location().schema();
-    return findOrCreate(
+  private DatabaseSchema findOrCreateSchema(CreationRun run, Database database, String name) {
+    return run.findOrCreate(
         Entity.DATABASE_SCHEMA,
         FullyQualifiedName.add(database.getFullyQualifiedName(), name),
         () ->
@@ -158,10 +200,10 @@ public class OpenLineageEntityCreator {
                 new CreateDatabaseSchema()
                     .withName(name)
                     .withDatabase(database.getFullyQualifiedName()),
-                draft.createdBy()));
+                run.createdBy()));
   }
 
-  private Table findOrCreateTable(DatabaseSchema schema, TableDraft draft) {
+  private Table findOrCreateTable(CreationRun run, DatabaseSchema schema, TableDraft draft) {
     String name = draft.location().table();
     CreateTable request =
         new CreateTable()
@@ -170,17 +212,10 @@ public class OpenLineageEntityCreator {
             .withColumns(draft.columns())
             .withDescription(draft.description())
             .withOwners(draft.owners().isEmpty() ? null : draft.owners());
-    return findOrCreate(
+    return run.findOrCreate(
         Entity.TABLE,
         FullyQualifiedName.add(schema.getFullyQualifiedName(), name),
         () -> tableMapper.createToEntity(request, draft.createdBy()));
-  }
-
-  private static <T extends EntityInterface> T findOrCreate(
-      String entityType, String fqn, Supplier<T> newEntity) {
-    EntityRepository<T> repository = repository(entityType);
-    T existing = requireNotDeleted(entityType, repository.findByNameOrNull(fqn, Include.ALL));
-    return existing != null ? existing : createOrAdoptConcurrent(repository, fqn, newEntity.get());
   }
 
   /**
@@ -198,22 +233,65 @@ public class OpenLineageEntityCreator {
   }
 
   /**
-   * Two events naming the same missing entity can race to create it. The loser's insert fails on
-   * the unique name, and the winner's row is the one both events should use.
+   * One table's creation. It authorizes every entity before creating it and remembers what it
+   * created, so a refusal further down can take back what was created above.
    */
-  private static <T extends EntityInterface> T createOrAdoptConcurrent(
-      EntityRepository<T> repository, String fqn, T entity) {
-    T created;
-    try {
-      created = repository.create(null, entity);
-      LOG.info("Created {} {} from an OpenLineage event", repository.getEntityType(), fqn);
-    } catch (UnableToExecuteStatementException e) {
-      created = repository.findByNameOrNull(fqn, Include.NON_DELETED);
-      if (created == null) {
-        throw e;
+  private final class CreationRun {
+    private final String createdBy;
+    private final Deque<CreatedEntity> created = new ArrayDeque<>();
+
+    private CreationRun(String createdBy) {
+      this.createdBy = createdBy;
+    }
+
+    String createdBy() {
+      return createdBy;
+    }
+
+    <T extends EntityInterface> T findOrCreate(
+        String entityType, String fqn, Supplier<T> newEntity) {
+      EntityRepository<T> repository = repository(entityType);
+      T existing = requireNotDeleted(entityType, repository.findByNameOrNull(fqn, Include.ALL));
+      return existing != null ? existing : create(repository, fqn, newEntity.get());
+    }
+
+    /**
+     * Two events naming the same missing entity can race to create it. The loser's insert fails
+     * on the unique name, and the winner's row is the one both events should use; it is not this
+     * run's to take back.
+     */
+    private <T extends EntityInterface> T create(
+        EntityRepository<T> repository, String fqn, T entity) {
+      createAuthorization.authorize(repository.getEntityType(), entity);
+      T result;
+      try {
+        result = repository.create(null, entity);
+        created.push(new CreatedEntity(repository.getEntityType(), result.getId(), fqn));
+        LOG.info("Created {} {} from an OpenLineage event", repository.getEntityType(), fqn);
+      } catch (UnableToExecuteStatementException e) {
+        result = repository.findByNameOrNull(fqn, Include.NON_DELETED);
+        if (result == null) {
+          throw e;
+        }
+      }
+      return result;
+    }
+
+    /** Hard-deletes what this run created, newest first. Anything that gained children is kept. */
+    void rollBack() {
+      while (!created.isEmpty()) {
+        CreatedEntity entity = created.pop();
+        try {
+          repository(entity.entityType()).delete(createdBy, entity.id(), false, true);
+        } catch (IllegalArgumentException | EntityNotFoundException e) {
+          LOG.warn(
+              "Kept {} {} created for a refused OpenLineage table: {}",
+              entity.entityType(),
+              entity.fullyQualifiedName(),
+              e.getMessage());
+        }
       }
     }
-    return created;
   }
 
   /** Two rows are enough to tell "exactly one" apart from "several" without listing them all. */

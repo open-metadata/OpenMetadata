@@ -47,14 +47,22 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
@@ -66,6 +74,7 @@ import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.wrappers.FluentTable;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for OpenLineage → lineage resolution.
@@ -984,6 +993,92 @@ public class OpenLineageLineageResolutionIT {
         () -> SdkClients.adminClient().tables().getByName(schemaFqn + "." + missingName));
   }
 
+  @Test
+  @Order(27)
+  @ResourceLock(
+      value = SharedResourceLocks.OPEN_LINEAGE_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void editLineageWithoutCreate_cannotCreateTheMissingTable(TestNamespace ns) throws Exception {
+    OpenMetadataClient dataSteward =
+        clientWithRole(ns, SdkClients.adminClient().roles().getByName("DataSteward"));
+    String namespace = uniqueDatasetNamespace();
+    String suffix = uniqueSuffix();
+    String database = "ol_steward_db_" + suffix;
+    String inputName = "ol_steward_in_" + suffix;
+    Tables.create().name(inputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    JsonNode response =
+        withOpenLineageSettings(
+            autoCreateUnder(namespace),
+            () ->
+                sendAsExpectingRejection(
+                    dataSteward,
+                    completeEvent("ol_steward_ns", "ol_steward_job_" + suffix)
+                        .addInput("ecommerce_db.shopify." + inputName, namespace)
+                        .addOutput(
+                            datasetWithColumns(
+                                namespace,
+                                database + ".ol_steward_schema_" + suffix + ".ol_steward_out"))));
+
+    JsonNode unresolved = response.get("unresolvedDatasets");
+    assertEquals(1, unresolved.size(), response.toString());
+    assertEquals("createNotAllowed", unresolved.get(0).get("reason").asText());
+    assertNotFound(
+        () -> SdkClients.adminClient().databases().getByName(serviceName + "." + database));
+  }
+
+  @Test
+  @Order(28)
+  @ResourceLock(
+      value = SharedResourceLocks.OPEN_LINEAGE_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void createAllowedOnlyForDatabases_leavesNoDatabaseBehind(TestNamespace ns) throws Exception {
+    String suffix = uniqueSuffix();
+    Policy policy =
+        SdkClients.adminClient()
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName("ol_database_creator_" + suffix)
+                    .withRules(
+                        List.of(
+                            allowRule("editLineage", MetadataOperation.EDIT_LINEAGE, "All"),
+                            allowRule("createDatabases", MetadataOperation.CREATE, "database"))));
+    Role role =
+        SdkClients.adminClient()
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName("ol_database_creator_role_" + suffix)
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    OpenMetadataClient databaseCreator = clientWithRole(ns, role);
+    ns.trackRoot(Entity.ROLE, role.getId());
+    ns.trackRoot(Entity.POLICY, policy.getId());
+    String namespace = uniqueDatasetNamespace();
+    String database = "ol_rollback_db_" + suffix;
+    String inputName = "ol_rollback_in_" + suffix;
+    Tables.create().name(inputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    JsonNode response =
+        withOpenLineageSettings(
+            autoCreateUnder(namespace),
+            () ->
+                sendAsExpectingRejection(
+                    databaseCreator,
+                    completeEvent("ol_rollback_ns", "ol_rollback_job_" + suffix)
+                        .addInput("ecommerce_db.shopify." + inputName, namespace)
+                        .addOutput(
+                            datasetWithColumns(
+                                namespace,
+                                database + ".ol_rollback_schema_" + suffix + ".ol_rollback_out"))));
+
+    JsonNode unresolved = response.get("unresolvedDatasets");
+    assertEquals(1, unresolved.size(), response.toString());
+    assertEquals("createNotAllowed", unresolved.get(0).get("reason").asText());
+    assertNotFound(
+        () -> SdkClients.adminClient().databases().getByName(serviceName + "." + database));
+  }
+
   // ====================================================================================
   // Helpers
   // ====================================================================================
@@ -999,6 +1094,44 @@ public class OpenLineageLineageResolutionIT {
     assertTrue(
         entity.getUpdatedAt() >= notBefore,
         "updatedAt of auto-created " + fqn + " must be creation time, not the event time");
+  }
+
+  private static OpenMetadataClient clientWithRole(TestNamespace ns, Role role) {
+    String name = "ol_caller_" + uniqueSuffix();
+    ns.trackRoot(
+        Entity.USER,
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(name)
+                    .withEmail(name + "@test.openmetadata.org")
+                    .withRoles(List.of(role.getId()))));
+    return SdkClients.createClient(name, name, new String[] {});
+  }
+
+  private static Rule allowRule(String name, MetadataOperation operation, String resource) {
+    return new Rule()
+        .withName(name)
+        .withEffect(Rule.Effect.ALLOW)
+        .withOperations(List.of(operation))
+        .withResources(List.of(resource));
+  }
+
+  private static JsonNode sendAsExpectingRejection(
+      OpenMetadataClient caller, OpenLineage.RunEventBuilder event) throws Exception {
+    InvalidRequestException rejection =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                caller
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        "/v1/openlineage/lineage",
+                        event.build(),
+                        RequestOptions.builder().build()));
+    return MAPPER.readTree(rejection.getResponseBody());
   }
 
   private static void assertNotFound(Executable lookup) {

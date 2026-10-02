@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageBatchRequest;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageResponse;
@@ -38,6 +39,8 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.openlineage.OpenLineageEntityCreator;
 import org.openmetadata.service.openlineage.OpenLineageEntityResolver;
 import org.openmetadata.service.openlineage.OpenLineageEventPlan;
 import org.openmetadata.service.openlineage.OpenLineageMapper;
@@ -45,6 +48,7 @@ import org.openmetadata.service.openlineage.OpenLineageResponses;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
@@ -63,9 +67,11 @@ public class OpenLineageResource {
 
   private final LineageRepository lineageRepository;
   private final Authorizer authorizer;
+  private final Limits limits;
 
-  public OpenLineageResource(Authorizer authorizer) {
+  public OpenLineageResource(Authorizer authorizer, Limits limits) {
     this.authorizer = authorizer;
+    this.limits = limits;
     this.lineageRepository = Entity.getLineageRepository();
   }
 
@@ -79,7 +85,7 @@ public class OpenLineageResource {
         OpenLineageSettings.class);
   }
 
-  private OpenLineageMapper createMapper() {
+  private OpenLineageMapper createMapper(SecurityContext securityContext) {
     OpenLineageSettings settings = getSettings();
 
     boolean autoCreate =
@@ -95,8 +101,27 @@ public class OpenLineageResource {
             : null;
 
     OpenLineageEntityResolver entityResolver =
-        new OpenLineageEntityResolver(autoCreate, pipelineService, namespaceMapping);
+        new OpenLineageEntityResolver(
+            autoCreate,
+            pipelineService,
+            namespaceMapping,
+            new OpenLineageEntityCreator(
+                (entityType, entity) -> authorizeCreate(securityContext, entityType, entity)));
     return new OpenLineageMapper(entityResolver, settings);
+  }
+
+  /**
+   * EDIT_LINEAGE lets a caller post events, not create entities. Anything an event creates is held
+   * to the checks a REST create by the same caller gets: plan limits, then CREATE against the
+   * entity's persisted parent.
+   */
+  private void authorizeCreate(
+      SecurityContext securityContext, String entityType, EntityInterface entity) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    CreateResourceContext<EntityInterface> resourceContext =
+        new CreateResourceContext<>(entityType, entity);
+    limits.enforceLimits(securityContext, resourceContext, operationContext);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
   @POST
@@ -149,7 +174,7 @@ public class OpenLineageResource {
     }
 
     String updatedBy = securityContext.getUserPrincipal().getName();
-    OpenLineageMapper mapper = createMapper();
+    OpenLineageMapper mapper = createMapper(securityContext);
 
     try {
       OpenLineageEventPlan plan = mapper.mapRunEvent(event, updatedBy);
@@ -214,7 +239,7 @@ public class OpenLineageResource {
     }
 
     String updatedBy = securityContext.getUserPrincipal().getName();
-    OpenLineageMapper mapper = createMapper();
+    OpenLineageMapper mapper = createMapper(securityContext);
 
     OpenLineageResponses.BatchOutcome outcome =
         new OpenLineageResponses.BatchOutcome(batch.getEvents().size());

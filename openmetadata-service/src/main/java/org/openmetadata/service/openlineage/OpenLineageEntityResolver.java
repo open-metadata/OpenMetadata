@@ -62,6 +62,7 @@ public class OpenLineageEntityResolver {
     this(autoCreateEntities, defaultPipelineService, null);
   }
 
+  /** Resolves only: with no caller to authorize creates against, nothing is ever created. */
   public OpenLineageEntityResolver(
       boolean autoCreateEntities,
       String defaultPipelineService,
@@ -70,10 +71,10 @@ public class OpenLineageEntityResolver {
         autoCreateEntities,
         defaultPipelineService,
         namespaceToServiceMapping,
-        new OpenLineageEntityCreator());
+        OpenLineageEntityCreator.withoutCaller());
   }
 
-  OpenLineageEntityResolver(
+  public OpenLineageEntityResolver(
       boolean autoCreateEntities,
       String defaultPipelineService,
       Map<String, String> namespaceToServiceMapping,

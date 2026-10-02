@@ -130,6 +130,7 @@ export interface UnresolvedEntity {
  * Why an OpenLineage dataset or job could not be resolved to an OpenMetadata entity.
  */
 export enum UnresolvedReason {
+    CreateNotAllowed = "createNotAllowed",
     CreationDisabled = "creationDisabled",
     InvalidEntity = "invalidEntity",
     MissingColumns = "missingColumns",
