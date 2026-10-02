@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Locator,
+  Page,
+  test,
+} from '@playwright/test';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
@@ -36,6 +42,10 @@ type IncidentRecord = {
   severity?: string;
   testCaseResolutionStatusDetails?: { assignee?: { name?: string } };
 };
+
+// The checkbox input is visually hidden inside its styled box, which is what
+// takes the click.
+const selectGroup = (row: Locator) => row.getByTestId(/^group-select-/).click();
 
 const getLatestIncident = async (
   apiContext: APIRequestContext,
@@ -158,7 +168,8 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
   test('hides the groups a status filter rules out', async ({ page }) => {
     await openGroups(page, { status: 'New' });
 
-    await expect(page.getByTestId('incident-groups-empty')).toBeVisible({
+    // Filtered down to nothing, which offers to clear the filters.
+    await expect(page.getByTestId('incident-groups-no-match')).toBeVisible({
       timeout: GROUPS_TIMEOUT,
     });
   });
@@ -202,6 +213,65 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     await expect(tableGroup).toBeVisible();
   });
 
+  test('keeps the drill-down in the URL across a reload and Back', async ({
+    page,
+  }) => {
+    const groups = await openGroups(page, { groupBy: 'table' });
+    const tableGroup = groups.getByRole('row', {
+      name: table.entity.displayName,
+    });
+
+    await expect(tableGroup).toBeVisible({ timeout: GROUPS_TIMEOUT });
+
+    await tableGroup
+      .getByRole('button', { name: `View ${table.entity.displayName}` })
+      .click();
+
+    await expect(page).toHaveURL(/[?&]group=/);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    await expect(page.getByTestId('incident-group-detail-heading')).toHaveText(
+      table.entity.displayName,
+      { timeout: GROUPS_TIMEOUT }
+    );
+    await expect(page.getByTestId(/^incident-row-/)).toHaveCount(2);
+
+    await page.goBack();
+
+    await expect(tableGroup).toBeVisible({ timeout: GROUPS_TIMEOUT });
+    await expect(page).not.toHaveURL(/[?&]group=/);
+  });
+
+  test('previews a row pressed while another group is selected', async ({
+    page,
+  }) => {
+    const groups = await openGroups(page, { groupBy: 'testDefinition' });
+    const rowCountGroup = groups.getByRole('row', { name: ROW_COUNT_TYPE });
+    const columnCountGroup = groups.getByRole('row', {
+      name: COLUMN_COUNT_TYPE,
+    });
+
+    await expect(rowCountGroup).toBeVisible({ timeout: GROUPS_TIMEOUT });
+
+    await selectGroup(rowCountGroup);
+
+    await expect(page.getByTestId('incident-groups-selected-count')).toHaveText(
+      '1 group selected'
+    );
+
+    await columnCountGroup.getByRole('rowheader').click();
+
+    await expect(
+      page
+        .getByRole('dialog', { name: 'Incident group' })
+        .getByTestId('incident-group-drawer-name')
+    ).toHaveText(COLUMN_COUNT_TYPE);
+    await expect(page.getByTestId('incident-groups-selected-count')).toHaveText(
+      '1 group selected'
+    );
+  });
+
   test('sets the severity of every incident in the selected groups', async ({
     page,
     browser,
@@ -213,10 +283,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
 
     await expect(tableGroup).toBeVisible({ timeout: GROUPS_TIMEOUT });
 
-    // The selection checkbox is visually hidden behind its styled box, so it
-    // is toggled from the keyboard rather than clicked.
-    await tableGroup.getByRole('checkbox').focus();
-    await page.keyboard.press('Space');
+    await selectGroup(tableGroup);
 
     await expect(page.getByTestId('incident-groups-selected-count')).toHaveText(
       '1 group selected'
@@ -260,8 +327,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
 
     await expect(tableGroup).toBeVisible({ timeout: GROUPS_TIMEOUT });
 
-    await tableGroup.getByRole('checkbox').focus();
-    await page.keyboard.press('Space');
+    await selectGroup(tableGroup);
     await page.getByTestId('incident-groups-set-status').click();
     await page.getByTestId('incident-groups-status-Ack').click();
 
@@ -286,8 +352,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
 
     await expect(tableGroup).toBeVisible({ timeout: GROUPS_TIMEOUT });
 
-    await tableGroup.getByRole('checkbox').focus();
-    await page.keyboard.press('Space');
+    await selectGroup(tableGroup);
     await page.getByTestId('incident-groups-set-status').click();
     await page.getByTestId('incident-groups-status-Ack').click();
 

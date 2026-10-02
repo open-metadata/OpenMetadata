@@ -253,6 +253,11 @@ test.describe('AI Observability - test case detail breadcrumb origin', () => {
       'Incident Manager'
     );
     await expect(currentCrumb(page)).toHaveText(incidentTestCaseName);
+
+    // The crumb returns to the listing as it was left, filters included.
+    await firstTrailCrumb(page).click();
+
+    await expect(page).toHaveURL(/groupBy=table.*testCaseFQN=/);
   });
 
   test('falls back to the table asset trail on a deep link', async ({

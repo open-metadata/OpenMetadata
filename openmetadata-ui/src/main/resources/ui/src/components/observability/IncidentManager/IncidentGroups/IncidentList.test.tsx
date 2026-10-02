@@ -19,7 +19,6 @@ import {
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { OBSERVABILITY_ROUTES } from '../../observability.constants';
 import IncidentList from './IncidentList';
 
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
@@ -107,9 +106,12 @@ describe('IncidentList', () => {
     );
   });
 
-  it('should hand the test case page a breadcrumb back to the incidents', () => {
+  it('should hand the test case page a breadcrumb back to the listing as left', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter
+        initialEntries={[
+          '/observability/incident-manager?groupBy=table&group=svc.db.shop.customers',
+        ]}>
         <IncidentList incidents={[assigned]} isLoading={false} />
         <LocationState />
       </MemoryRouter>
@@ -123,7 +125,7 @@ describe('IncidentList', () => {
       breadcrumbData: [
         {
           name: 'label.incident-manager',
-          url: OBSERVABILITY_ROUTES.OBSERVABILITY_INCIDENT_MANAGER,
+          url: '/observability/incident-manager?groupBy=table&group=svc.db.shop.customers',
         },
       ],
     });

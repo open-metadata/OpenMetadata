@@ -35,6 +35,7 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import {
   formatDate,
   formatDateTimeLong,
@@ -43,7 +44,6 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import Loader from '../../../common/Loader/Loader';
-import { OBSERVABILITY_ROUTES } from '../../observability.constants';
 import { INCIDENT_STATUS_BADGE_COLORS } from './IncidentGroups.constants';
 import { IncidentListProps } from './IncidentGroups.types';
 import IncidentSeverityBadge from './IncidentSeverityBadge';
@@ -60,6 +60,7 @@ const getAssignee = (incident: TestCaseResolutionStatus) =>
 
 const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
   const { t } = useTranslation();
+  const { pathname, search } = useCustomLocation();
   const fqn = incident.testCaseReference?.fullyQualifiedName ?? '';
 
   return (
@@ -71,7 +72,9 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
           breadcrumbData: [
             {
               name: t('label.incident-manager'),
-              url: OBSERVABILITY_ROUTES.OBSERVABILITY_INCIDENT_MANAGER,
+              // Back to the listing as it was left: its filters, its
+              // dimension and any open drill-down are all in the URL.
+              url: `${pathname}${search}`,
             },
           ],
         }}
