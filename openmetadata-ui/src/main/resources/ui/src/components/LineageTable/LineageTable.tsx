@@ -644,11 +644,17 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ? lineageConfig.upstreamDepth
           : lineageConfig.downstreamDepth,
     });
+    // `updateURLParams` is intentionally excluded: it is a `useCallback`
+    // keyed on `location.search`, so its identity flips on every URL write
+    // (dropdown selection, fullscreen toggle, etc.). Including it would
+    // re-fire this effect and clobber a user-selected `depth` with the
+    // configured directional depth. We only want to react to real config
+    // or direction changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     lineageConfig.downstreamDepth,
     lineageConfig.upstreamDepth,
     lineageDirection,
-    updateURLParams,
   ]);
 
   const nodeDepthOptions = useMemo(() => {
