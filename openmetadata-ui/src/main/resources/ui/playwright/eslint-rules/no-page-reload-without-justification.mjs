@@ -83,7 +83,9 @@ const isPageReceiver = (receiver) => {
   if (inner.type === 'MemberExpression') {
     // `this.page`, `ctx.page`, `fixture.page`, …
     const prop = getMethodName(inner.property, inner.computed);
-    return prop !== null && (prop === 'p' || PAGE_IDENTIFIER_PATTERN.test(prop));
+    return (
+      prop !== null && (prop === 'p' || PAGE_IDENTIFIER_PATTERN.test(prop))
+    );
   }
   if (inner.type === 'CallExpression') {
     // `(await browser.newPage()).reload()` — the callee's method name

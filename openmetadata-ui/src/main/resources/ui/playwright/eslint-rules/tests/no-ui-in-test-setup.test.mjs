@@ -78,7 +78,12 @@ ruleTester.run('no-ui-in-test-setup', rule, {
         await page.goto('/settings/users');
         await page.click(createUserBtn);
       });`,
-      errors: [{ messageId: 'uiInSetup', data: { method: 'click', hook: 'beforeAll' } }],
+      errors: [
+        {
+          messageId: 'uiInSetup',
+          data: { method: 'click', hook: 'beforeAll' },
+        },
+      ],
     },
     // Fill in beforeEach — same violation shape.
     {
@@ -86,7 +91,12 @@ ruleTester.run('no-ui-in-test-setup', rule, {
         await page.goto('/');
         await page.fill(searchInput, 'query');
       });`,
-      errors: [{ messageId: 'uiInSetup', data: { method: 'fill', hook: 'beforeEach' } }],
+      errors: [
+        {
+          messageId: 'uiInSetup',
+          data: { method: 'fill', hook: 'beforeEach' },
+        },
+      ],
     },
     // Cleanup via UI is even worse — UI cleanup runs after assertions and
     // can pollute the next test.
@@ -94,7 +104,9 @@ ruleTester.run('no-ui-in-test-setup', rule, {
       code: `test.afterAll(async ({ page }) => {
         await page.click(deleteEntityBtn);
       });`,
-      errors: [{ messageId: 'uiInSetup', data: { method: 'click', hook: 'afterAll' } }],
+      errors: [
+        { messageId: 'uiInSetup', data: { method: 'click', hook: 'afterAll' } },
+      ],
     },
     // A Locator variable click is the same violation with a hoisted receiver.
     {
@@ -102,14 +114,24 @@ ruleTester.run('no-ui-in-test-setup', rule, {
         const btn = page.getByRole('button', { name: 'Create' });
         await btn.click();
       });`,
-      errors: [{ messageId: 'uiInSetup', data: { method: 'click', hook: 'beforeAll' } }],
+      errors: [
+        {
+          messageId: 'uiInSetup',
+          data: { method: 'click', hook: 'beforeAll' },
+        },
+      ],
     },
     // TypeScript wrappers must not silently erase the violation.
     {
       code: `test.beforeAll(async ({ page }) => {
         await (page as Page).selectOption(dropdown, 'value');
       });`,
-      errors: [{ messageId: 'uiInSetup', data: { method: 'selectOption', hook: 'beforeAll' } }],
+      errors: [
+        {
+          messageId: 'uiInSetup',
+          data: { method: 'selectOption', hook: 'beforeAll' },
+        },
+      ],
     },
     // Multiple UI actions in one hook — all reported.
     {
@@ -118,8 +140,14 @@ ruleTester.run('no-ui-in-test-setup', rule, {
         await page.press(nameInput, 'Enter');
       });`,
       errors: [
-        { messageId: 'uiInSetup', data: { method: 'fill', hook: 'beforeEach' } },
-        { messageId: 'uiInSetup', data: { method: 'press', hook: 'beforeEach' } },
+        {
+          messageId: 'uiInSetup',
+          data: { method: 'fill', hook: 'beforeEach' },
+        },
+        {
+          messageId: 'uiInSetup',
+          data: { method: 'press', hook: 'beforeEach' },
+        },
       ],
     },
     // Nested describe.beforeAll — the tracker must still see it as a hook.
@@ -129,7 +157,12 @@ ruleTester.run('no-ui-in-test-setup', rule, {
           await page.click(loginBtn);
         });
       });`,
-      errors: [{ messageId: 'uiInSetup', data: { method: 'click', hook: 'beforeAll' } }],
+      errors: [
+        {
+          messageId: 'uiInSetup',
+          data: { method: 'click', hook: 'beforeAll' },
+        },
+      ],
     },
   ],
 });
