@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from '@openmetadata/ui-core-components';
-import { Popover, Space, Tag, Tooltip } from 'antd';
+import { Badge, Skeleton } from '@openmetadata/ui-core-components';
+import { Popover, Space, Tooltip } from 'antd';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { Link } from 'react-router-dom';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
@@ -109,9 +109,12 @@ export const commonUserDetailColumns = (
                 }
                 overlayClassName="w-40"
                 trigger="click">
-                <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
-                  listLength - LIST_CAP
-                } more`}</Tag>
+                <Badge
+                  className="tw:inline-flex tw:mr-2 m-l-xs"
+                  color="gray"
+                  data-testid="plus-more-count"
+                  size="sm"
+                  type="color">{`+${listLength - LIST_CAP} more`}</Badge>
               </Popover>
             )}
           </Space>
@@ -161,9 +164,12 @@ export const commonUserDetailColumns = (
                 }
                 overlayClassName="w-40"
                 trigger="click">
-                <Tag className="m-l-xs" data-testid="plus-more-count">{`+${
-                  listLength - LIST_CAP
-                } more`}</Tag>
+                <Badge
+                  className="tw:inline-flex tw:mr-2 m-l-xs"
+                  color="gray"
+                  data-testid="plus-more-count"
+                  size="sm"
+                  type="color">{`+${listLength - LIST_CAP} more`}</Badge>
               </Popover>
             )}
           </Space>

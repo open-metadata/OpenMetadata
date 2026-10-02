@@ -773,11 +773,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Pages/Teams.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Pages/TestSuite.spec.ts": {
     "playwright/no-wait-for-selector": {
       "count": 1

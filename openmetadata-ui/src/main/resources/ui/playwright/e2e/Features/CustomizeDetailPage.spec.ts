@@ -259,7 +259,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Explore', { exact: true })
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
@@ -273,7 +273,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Metrics')
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
@@ -321,7 +321,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Explore', { exact: true })
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
@@ -335,7 +335,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Metrics')
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
@@ -349,7 +349,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Glossary')
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
@@ -363,7 +363,7 @@ test.describe(
         await adminPage
           .getByTestId('page-layout-v1')
           .getByText('Incident Manager')
-          .getByRole('switch')
+          .locator('[data-testid^="navigation-switch-"]')
           .click();
         await adminPage.getByTestId('save-button').click();
 
