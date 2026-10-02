@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Badge } from '@openmetadata/ui-core-components';
-import { Popover, Skeleton, Space, Tooltip } from 'antd';
+import { Badge, Skeleton } from '@openmetadata/ui-core-components';
+import { Popover, Space, Tooltip } from 'antd';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { Link } from 'react-router-dom';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
@@ -74,7 +74,7 @@ export const commonUserDetailColumns = (
 
     render: (_, record) => {
       if (isLoading) {
-        return <Skeleton active paragraph={false} />;
+        return <Skeleton height={16} />;
       }
       const listLength = record.teams?.length ?? 0;
       const hasMore = listLength > LIST_CAP;
@@ -131,7 +131,7 @@ export const commonUserDetailColumns = (
       const hasMore = listLength > LIST_CAP;
 
       if (isLoading) {
-        return <Skeleton active paragraph={false} />;
+        return <Skeleton height={16} />;
       }
 
       if (isUndefined(record.roles) || isEmpty(record.roles)) {

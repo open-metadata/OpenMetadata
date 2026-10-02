@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row } from 'antd';
+import {
+  Badge,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -102,7 +107,7 @@ const ContractSecurityCard: React.FC<{
 
           {!isEmpty(policy.rowFilters) && (
             <>
-              <Divider className="contract-dash-separator" />
+              <Divider dashed className="contract-dash-separator" />
 
               <div className="contract-security-policy-card-row-filter-container">
                 <Typography className="contract-security-policy-subtitle-label">

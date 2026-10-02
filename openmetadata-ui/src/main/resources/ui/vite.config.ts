@@ -27,6 +27,15 @@ import {
   noEnumOnlyChunks,
 } from './vite/plugins';
 
+// Test Login reuses the registered /callback redirect URI. In a packaged deployment the backend
+// owns that path; under `yarn start` Vite serves the SPA there instead. Forward only the callbacks
+// whose state carries the Test Login marker, so every real login still reaches the SPA.
+const TEST_LOGIN_STATE_PREFIX = 'omtest:';
+const isTestLoginCallback = (url = ''): boolean =>
+  new URL(url, 'http://localhost').searchParams
+    .get('state')
+    ?.startsWith(TEST_LOGIN_STATE_PREFIX) ?? false;
+
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   // `analyze` must emit the same bundle as `production` (minified, React prod
@@ -188,6 +197,11 @@ export default defineConfig(async ({ mode }) => {
           target: devServerTarget,
           changeOrigin: true,
           ws: true,
+        },
+        '/callback': {
+          target: devServerTarget,
+          changeOrigin: true,
+          bypass: (req) => (isTestLoginCallback(req.url) ? undefined : req.url),
         },
       },
       watch: {

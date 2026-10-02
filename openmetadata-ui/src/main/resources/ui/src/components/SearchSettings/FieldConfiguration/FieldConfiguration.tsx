@@ -12,12 +12,13 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Divider,
   Toggle,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button, Collapse, Divider, Select, Slider } from 'antd';
+import { Badge, Button, Collapse, Select, Slider } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -180,7 +181,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               </Tooltip>
             )}
           </div>
-          <Divider />
+          <Divider className="tw:my-6" />
 
           {/* Weight Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
@@ -201,7 +202,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               onChange={handleWeightChange}
             />
           </div>
-          <Divider />
+          <Divider className="tw:my-6" />
 
           {/* Match Type Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal, Skeleton, Space } from 'antd';
+import { Skeleton, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -111,10 +111,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'subTeams',
         render: (childrenCount: number) =>
           isFetchingAllTeamAdvancedDetails ? (
-            <Skeleton
-              active={isFetchingAllTeamAdvancedDetails}
-              paragraph={{ rows: 0 }}
-            />
+            <Skeleton height={16} width="38%" />
           ) : (
             childrenCount ?? 0
           ),
@@ -126,10 +123,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'users',
         render: (userCount: number) =>
           isFetchingAllTeamAdvancedDetails ? (
-            <Skeleton
-              active={isFetchingAllTeamAdvancedDetails}
-              paragraph={{ rows: 0 }}
-            />
+            <Skeleton height={16} width="38%" />
           ) : (
             userCount ?? 0
           ),
@@ -143,10 +137,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'owns',
         render: (fullyQualifiedName: string) =>
           isFetchingAllTeamAdvancedDetails ? (
-            <Skeleton
-              active={isFetchingAllTeamAdvancedDetails}
-              paragraph={{ rows: 0 }}
-            />
+            <Skeleton height={16} width="38%" />
           ) : (
             <Typography
               className="tw:text-primary"

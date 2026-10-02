@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Divider } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { useMemo } from 'react';
 import {
   Area,
@@ -45,7 +45,7 @@ const CustomTooltip = ({
               ? valueFormatter(payloadData['count'])
               : payloadData['count']}
           </Typography>
-          <Divider type="vertical" />
+          <Divider className="tw:h-6" orientation="vertical" />
           <Typography className="text-xs">
             {formatDate(payloadData.timestamp)}
           </Typography>
