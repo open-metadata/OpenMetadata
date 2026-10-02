@@ -589,10 +589,6 @@ public interface EntityDAO<T extends EntityInterface> {
   String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
-  /** Null when the row is missing or another transaction holds it. */
-  @SqlQuery("SELECT json FROM <table> WHERE id = :id FOR UPDATE SKIP LOCKED")
-  String findByIdForUpdateSkipLocked(@Define("table") String table, @BindUUID("id") UUID id);
-
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)
   List<EntityIdJsonPair> findByIds(
@@ -608,14 +604,11 @@ public interface EntityDAO<T extends EntityInterface> {
 
   /**
    * Existence proof a writer takes inside its own transaction: the shared lock makes a concurrent
-   * hard delete of any of these rows wait for the writer's commit, so the cross-reference the
-   * writer is about to persist cannot be validated against a row that is already gone.
+   * hard delete of these rows wait for the writer's commit, so a reference the writer stores can
+   * never point at a row that is already gone.
    */
-  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) <cond> FOR SHARE")
-  List<String> lockExistingIds(
-      @Define("table") String table,
-      @BindList("ids") List<String> ids,
-      @Define("cond") String cond);
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) FOR SHARE")
+  List<String> lockExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(

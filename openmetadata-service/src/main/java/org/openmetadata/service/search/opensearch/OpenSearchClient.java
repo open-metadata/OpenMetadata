@@ -747,6 +747,17 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildrenByNestedField(indexNames, nestedPaths, field, values, updates);
+  }
+
+  @Override
   public void updateByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     entityManager.updateByFqnPrefix(indexName, oldParentFQN, newParentFQN, prefixFieldCondition);

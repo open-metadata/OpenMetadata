@@ -30,6 +30,7 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_NESTED_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
@@ -3739,6 +3740,25 @@ public class SearchRepository {
         throw re;
       }
       throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Strips references to hard-deleted entities from every search document's custom-property
+   * values, at entity level and on columns. Called after the delete commits, only when a stored
+   * reference to one of them existed.
+   */
+  public void removeCustomPropertyReferences(List<UUID> deletedIds) {
+    List<String> ids = deletedIds.stream().map(UUID::toString).toList();
+    try {
+      searchClient.updateChildrenByNestedField(
+          List.of(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+          List.of("customPropertiesTyped", "columns.customPropertiesTyped"),
+          "refId",
+          ids,
+          new ImmutablePair<>(REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT, Map.of("ids", ids)));
+    } catch (IOException | RuntimeException e) {
+      LOG.error("Failed to remove custom-property references to {} from search", ids, e);
     }
   }
 

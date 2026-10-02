@@ -87,7 +87,6 @@ class EntityRepositoryRestoreTest {
 
   private CollectionDAO daoCollection;
   private CollectionDAO.EntityRelationshipDAO relationshipDAO;
-  private CollectionDAO.EntityExtensionReferenceDAO extensionReferenceDAO;
   private CollectionDAO.PipelineDAO pipelineDAO;
 
   private static class CountingPipelineRepo extends EntityRepository<Pipeline> {
@@ -165,8 +164,8 @@ class EntityRepositoryRestoreTest {
     relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
     when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
-    extensionReferenceDAO = mock(CollectionDAO.EntityExtensionReferenceDAO.class);
-    when(daoCollection.entityExtensionReferenceDAO()).thenReturn(extensionReferenceDAO);
+    when(daoCollection.customPropertyReferenceDAO())
+        .thenReturn(mock(CollectionDAO.CustomPropertyReferenceDAO.class));
     Entity.setCollectionDAO(daoCollection);
   }
 
@@ -608,8 +607,6 @@ class EntityRepositoryRestoreTest {
     // Verify the per-batch relationship + extension cleanup actually ran.
     verify(relationshipDAO, times(1)).batchDeleteRelationships(anyList(), eq(Entity.PIPELINE));
     verify(extensionDAO, times(1)).deleteAllBatch(anyList());
-    verify(extensionReferenceDAO, times(1)).deleteAllBatch(anyList());
-    verify(extensionReferenceDAO, atLeastOnce()).markPending(anyList());
     verify(pipelineDAO, times(1)).deleteByIds(anyList());
   }
 

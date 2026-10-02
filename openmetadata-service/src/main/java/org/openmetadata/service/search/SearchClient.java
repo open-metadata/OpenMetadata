@@ -142,6 +142,50 @@ public interface SearchClient
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn);" + TAG_RESEPARATION_SCRIPT;
 
+  /**
+   * Drops references to {@code params.ids} from custom-property values: {@code extension} entries
+   * (a single reference or a list), {@code customPropertiesTyped}, and the same fields on every
+   * column and nested child column. A property left without references is removed.
+   */
+  String REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT =
+      """
+      boolean dropRefs(Map holder, List ids) {
+        boolean changed = false;
+        def ext = holder.get('extension');
+        if (ext instanceof Map) {
+          List emptied = new ArrayList();
+          for (def key : ext.keySet()) {
+            def value = ext.get(key);
+            if (value instanceof List) {
+              if (value.removeIf(r -> r instanceof Map && ids.contains(r.get('id')))) {
+                changed = true;
+                if (value.isEmpty()) { emptied.add(key); }
+              }
+            } else if (value instanceof Map && ids.contains(value.get('id'))) {
+              emptied.add(key);
+              changed = true;
+            }
+          }
+          for (def key : emptied) { ext.remove(key); }
+        }
+        def typed = holder.get('customPropertiesTyped');
+        if (typed instanceof List
+            && typed.removeIf(e -> e instanceof Map && ids.contains(e.get('refId')))) {
+          changed = true;
+        }
+        for (def nestedKey : ['columns', 'children']) {
+          def nested = holder.get(nestedKey);
+          if (nested instanceof List) {
+            for (def child : nested) {
+              if (child instanceof Map && dropRefs(child, ids)) { changed = true; }
+            }
+          }
+        }
+        return changed;
+      }
+      if (!dropRefs(ctx._source, params.ids)) { ctx.op = 'noop'; }
+      """;
+
   String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
       "ctx._source.dataProducts.removeIf(product -> product.fullyQualifiedName == params.fqn)";
 

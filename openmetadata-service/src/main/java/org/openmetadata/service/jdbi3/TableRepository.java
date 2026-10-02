@@ -185,7 +185,9 @@ public class TableRepository extends EntityRepository<Table> {
     // field_relationship / tag_usage via the root cleanup() FQN prefix, so the bulk path skips the
     // per-table search dispatch and FQN-satellite deletes.
     descendantsCoveredByAncestorCascade = true;
-    metadataLoader = new TableMetadataLoader(() -> daoCollection.entityExtensionDAO());
+    metadataLoader =
+        new TableMetadataLoader(
+            () -> daoCollection.entityExtensionDAO(), this::customPropertyReferences, Entity.TABLE);
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
@@ -220,6 +222,8 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fields.contains(COLUMN_FIELD) && fields.contains("extension")) {
       metadataLoader.loadColumnExtensions(table.getId(), table.getColumns());
+    } else if (fields.contains(COLUMN_FIELD)) {
+      applyColumnReferences(List.of(table), Table::getColumns, false);
     }
   }
 
@@ -230,6 +234,9 @@ public class TableRepository extends EntityRepository<Table> {
 
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
+    if (fields.contains(COLUMN_FIELD)) {
+      applyColumnReferences(entities, Table::getColumns, fields.contains("extension"));
+    }
 
     // Column tags come from tag_usage, not table JSON — fetched via fetchAndSetColumnTags when tags
     // requested

@@ -33,7 +33,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -244,7 +243,7 @@ public class ColumnRepository {
             .orElseThrow(
                 () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
 
-    applyColumnUpdates(parentEntityRef.getId(), column, updateColumn, TABLE_COLUMN, true);
+    applyColumnUpdates(column, updateColumn, TABLE_COLUMN, true);
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, updatedTable);
 
@@ -299,8 +298,7 @@ public class ColumnRepository {
             .orElseThrow(
                 () -> new EntityNotFoundException("Column not found: %s".formatted(columnFQN)));
 
-    applyColumnUpdates(
-        parentEntityRef.getId(), column, updateColumn, DASHBOARD_DATA_MODEL_COLUMN, false);
+    applyColumnUpdates(column, updateColumn, DASHBOARD_DATA_MODEL_COLUMN, false);
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
     authorizeAndPatch(securityContext, DASHBOARD_DATA_MODEL, parentEntityRef, jsonPatch);
@@ -313,7 +311,6 @@ public class ColumnRepository {
   }
 
   private void applyColumnUpdates(
-      UUID holderId,
       Column column,
       UpdateColumn updateColumn,
       String columnEntityType,
@@ -338,15 +335,8 @@ public class ColumnRepository {
     Optional.ofNullable(updateColumn.getExtension())
         .ifPresent(
             ext -> {
-              Object live =
-                  new ColumnExtensionReferences(Entity.getCollectionDAO())
-                      .dropPending(
-                          holderId,
-                          ColumnExtensionReferences.holderTypeOfColumnType(columnEntityType),
-                          column.getFullyQualifiedName(),
-                          ext);
               Object transformedExtension =
-                  EntityRepository.validateAndTransformExtension(live, columnEntityType);
+                  EntityRepository.validateAndTransformExtension(ext, columnEntityType);
               column.setExtension(transformedExtension);
             });
   }

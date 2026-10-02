@@ -69,7 +69,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
     // The loader's column-extension read is keyed by column FQN hash, not by entity type, so it
     // serves data model columns exactly as it does table columns.
-    columnExtensions = new TableMetadataLoader(() -> daoCollection.entityExtensionDAO());
+    columnExtensions =
+        new TableMetadataLoader(
+            () -> daoCollection.entityExtensionDAO(),
+            this::customPropertyReferences,
+            Entity.DASHBOARD_DATA_MODEL);
   }
 
   @Override
@@ -155,6 +159,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fields.contains("columns") && fields.contains("extension")) {
       columnExtensions.loadColumnExtensions(
           dashboardDataModel.getId(), dashboardDataModel.getColumns());
+    } else if (fields.contains("columns")) {
+      applyColumnReferences(List.of(dashboardDataModel), DashboardDataModel::getColumns, false);
     }
   }
 
@@ -202,6 +208,10 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     fetchAndSetFields(dataModels, fields);
     setInheritedFields(dataModels, fields);
+    if (fields.contains("columns")) {
+      applyColumnReferences(
+          dataModels, DashboardDataModel::getColumns, fields.contains("extension"));
+    }
 
     // Bulk fetch tags for columns if needed
     fetchAndSetColumnTags(dataModels, fields);
@@ -407,6 +417,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fields.contains("tags") || fields.contains("*")) {
       populateEntityFieldTags(
           entityType, paginatedResults, dataModel.getFullyQualifiedName(), true);
+    }
+    if (fields.contains("extension")) {
+      columnExtensions.loadColumnExtensions(dataModel.getId(), paginatedResults);
     }
 
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;

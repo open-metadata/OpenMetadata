@@ -3,11 +3,13 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +22,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import org.awaitility.Awaitility;
+import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -54,10 +57,12 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
-import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceKey;
-import org.openmetadata.service.jdbi3.EntityExtensionReferenceCompaction;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceRow;
+import org.openmetadata.service.jdbi3.CustomPropertyReferences;
 import org.openmetadata.service.jdbi3.TypeRepository;
-import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceBackfill;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1235,16 +1240,15 @@ public class TypeResourceIT {
           createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
-      awaitSettled(domain.getId());
 
       assertEquals(
           List.of(second.getId().toString()),
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
-      awaitStoredValue(domain, property, stored -> stored != null && stored.size() == 1);
+      assertStoredValue(domain, property, stored -> stored != null && stored.size() == 1);
       assertEquals(
           second.getId().toString(), storedValue(domain, property).get(0).get("id").asText());
-      assertTrue(ledgerRowsFor(first.getId()).isEmpty());
-      assertEquals(1, ledgerRowsFor(second.getId()).size());
+      assertTrue(referenceRowsTo(first.getId()).isEmpty());
+      assertEquals(1, referenceRowsTo(second.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1259,13 +1263,12 @@ public class TypeResourceIT {
       Domain domain = createDomain(client, ns, property, referenceOf(team));
 
       client.teams().delete(team.getId().toString(), HARD_DELETE);
-      awaitSettled(domain.getId());
 
       assertTrue(
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
               .isEmpty());
-      awaitStoredValue(domain, property, stored -> stored == null);
-      assertTrue(ledgerRowsFor(team.getId()).isEmpty());
+      assertStoredValue(domain, property, stored -> stored == null);
+      assertTrue(referenceRowsTo(team.getId()).isEmpty());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1288,7 +1291,7 @@ public class TypeResourceIT {
           List.of(team.getId().toString()),
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
       assertEquals(team.getId().toString(), storedValue(domain, property).get("id").asText());
-      assertEquals(1, ledgerRowsFor(team.getId()).size());
+      assertEquals(1, referenceRowsTo(team.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1305,7 +1308,6 @@ public class TypeResourceIT {
       Domain domain =
           createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
       client.teams().delete(first.getId().toString(), HARD_DELETE);
-      awaitSettled(domain.getId());
 
       Domain current = client.domains().get(domain.getId().toString(), "extension");
       current.setExtension(Map.of(property, List.of(referenceOf(second), referenceOf(third))));
@@ -1314,26 +1316,26 @@ public class TypeResourceIT {
       assertEquals(
           List.of(second.getId().toString(), third.getId().toString()),
           referenceIds(updated, property));
-      awaitStoredValue(domain, property, stored -> stored != null && stored.size() == 2);
-      awaitLedgerEmpty(domain, first.getId());
-      assertEquals(1, ledgerRowsFor(third.getId()).size());
+      assertStoredValue(domain, property, stored -> stored != null && stored.size() == 2);
+      assertNoReferencesTo(first.getId());
+      assertEquals(1, referenceRowsTo(third.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
     }
   }
 
   @Test
-  void test_referenceList_definitionDeleteDropsLedgerRows(TestNamespace ns) throws Exception {
+  void test_referenceList_definitionDeleteDropsReferenceRows(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
     try {
       Team team = createTeam(client, ns.prefix("defined"), CreateTeam.TeamType.GROUP, null);
       createDomain(client, ns, property, List.of(referenceOf(team)));
-      assertEquals(1, ledgerRowsFor(team.getId()).size());
+      assertEquals(1, referenceRowsTo(team.getId()).size());
 
       deleteDomainProperty(client, property);
 
-      assertTrue(ledgerRowsFor(team.getId()).isEmpty());
+      assertTrue(referenceRowsTo(team.getId()).isEmpty());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1356,7 +1358,7 @@ public class TypeResourceIT {
       assertEquals(
           List.of(team.getId().toString()),
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
-      assertEquals(1, ledgerRowsFor(team.getId()).size());
+      assertEquals(1, referenceRowsTo(team.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1373,7 +1375,6 @@ public class TypeResourceIT {
           createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
-      awaitSettled(domain.getId());
 
       Domain listed = findInDomainList(client, domain.getId());
       assertNotNull(listed, "domain is listed");
@@ -1383,8 +1384,9 @@ public class TypeResourceIT {
     }
   }
 
+  /** The holder's search doc loses the reference once the delete commits, with no reindex. */
   @Test
-  void test_backfill_marksReferencesWhoseTargetIsGone(TestNamespace ns) throws Exception {
+  void test_referenceList_hardDeleteRemovesReferenceFromSearch(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
     try {
@@ -1392,23 +1394,50 @@ public class TypeResourceIT {
       Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
       Domain domain =
           createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
-      // Simulate a value written before the ledger existed: drop its rows, then lose the target.
-      Entity.getCollectionDAO().entityExtensionReferenceDAO().deleteAll(domain.getId());
-      client.teams().delete(first.getId().toString(), HARD_DELETE);
-      assertEquals(
-          2,
-          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
-              .size());
+      awaitSearchRefIds(client, domain, ids -> ids.contains(first.getId().toString()));
 
-      CustomPropertyReferenceBackfill.backfillCustomPropertyReferences(Entity.getCollectionDAO());
-      awaitSettled(domain.getId());
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+
+      awaitSearchRefIds(
+          client,
+          domain,
+          ids -> !ids.contains(first.getId().toString()) && ids.contains(id(second)));
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  /** A value stored the pre-2.1 way, in entity_extension, moves to its rows on upgrade. */
+  @Test
+  void test_migration_movesLegacyValueAndDropsDeadTarget(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team first = createTeam(client, ns.prefix("first"), CreateTeam.TeamType.GROUP, null);
+      Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
+      Domain domain = createDomain(client, ns, property, List.of(referenceOf(second)));
+      String key = TypeRegistry.getCustomPropertyFQN(Entity.DOMAIN, property);
+      Entity.getCollectionDAO().customPropertyReferenceDAO().deleteByHolders(List.of(id(domain)));
+      Entity.getCollectionDAO()
+          .entityExtensionDAO()
+          .insert(
+              domain.getId(),
+              key,
+              "customFieldSchema",
+              JsonUtils.pojoToJson(List.of(referenceOf(first), nameOnly(second))));
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+
+      runReferenceMigration();
 
       assertEquals(
           List.of(second.getId().toString()),
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
-      awaitStoredValue(domain, property, stored -> stored != null && stored.size() == 1);
-      awaitLedgerEmpty(domain, first.getId());
-      assertEquals(1, ledgerRowsFor(second.getId()).size());
+      assertNull(Entity.getCollectionDAO().entityExtensionDAO().getExtension(domain.getId(), key));
+      assertNoReferencesTo(first.getId());
+      assertEquals(1, referenceRowsTo(second.getId()).size());
+
+      runReferenceMigration();
+      assertEquals(1, referenceRowsTo(second.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1450,15 +1479,16 @@ public class TypeResourceIT {
       client.teams().delete(doomed.getId().toString(), HARD_DELETE);
       writers.shutdown();
       assertTrue(writers.awaitTermination(2, TimeUnit.MINUTES));
-      awaitSettled(domain.getId());
 
       assertFalse(
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
               .contains(doomed.getId().toString()));
-      awaitLedgerEmpty(domain, doomed.getId());
+      assertNoReferencesTo(doomed.getId());
       JsonNode stored = storedValue(domain, property);
-      for (JsonNode ref : stored) {
-        assertFalse(doomed.getId().toString().equals(ref.path("id").asText()));
+      if (stored != null) {
+        for (JsonNode ref : stored) {
+          assertFalse(doomed.getId().toString().equals(ref.path("id").asText()));
+        }
       }
     } finally {
       deleteDomainProperty(client, property);
@@ -1466,17 +1496,17 @@ public class TypeResourceIT {
   }
 
   @Test
-  void test_referenceList_holderHardDeleteDropsLedgerRows(TestNamespace ns) throws Exception {
+  void test_referenceList_holderHardDeleteDropsReferenceRows(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
     try {
       Team team = createTeam(client, ns.prefix("held"), CreateTeam.TeamType.GROUP, null);
       Domain domain = createDomain(client, ns, property, List.of(referenceOf(team)));
-      assertEquals(1, ledgerRowsFor(team.getId()).size());
+      assertEquals(1, referenceRowsTo(team.getId()).size());
 
       client.domains().delete(domain.getId().toString(), HARD_DELETE);
 
-      assertTrue(ledgerRowsFor(team.getId()).isEmpty());
+      assertTrue(referenceRowsTo(team.getId()).isEmpty());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1494,13 +1524,12 @@ public class TypeResourceIT {
       Domain domain = createDomain(client, ns, property, List.of(referenceOf(child)));
 
       client.teams().delete(parent.getId().toString(), HARD_DELETE);
-      awaitSettled(domain.getId());
 
       assertTrue(
           referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
               .isEmpty());
-      awaitStoredValue(domain, property, stored -> stored == null);
-      assertTrue(ledgerRowsFor(child.getId()).isEmpty());
+      assertStoredValue(domain, property, stored -> stored == null);
+      assertTrue(referenceRowsTo(child.getId()).isEmpty());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1526,7 +1555,6 @@ public class TypeResourceIT {
       client.domains().update(domain.getId().toString(), described);
 
       client.teams().delete(first.getId().toString(), HARD_DELETE);
-      awaitSettled(domain.getId());
 
       Domain current = client.domains().get(domain.getId().toString(), "extension");
       current.setExtension(Map.of(property, List.of(referenceOf(second), referenceOf(third))));
@@ -1535,8 +1563,8 @@ public class TypeResourceIT {
       assertEquals(
           List.of(second.getId().toString(), third.getId().toString()),
           referenceIds(updated, property));
-      awaitLedgerEmpty(domain, first.getId());
-      assertEquals(1, ledgerRowsFor(third.getId()).size());
+      assertNoReferencesTo(first.getId());
+      assertEquals(1, referenceRowsTo(third.getId()).size());
     } finally {
       deleteDomainProperty(client, property);
     }
@@ -1554,25 +1582,6 @@ public class TypeResourceIT {
       }
       params = new ListParams().setFields("extension").withLimit(100).setAfter(after);
     }
-  }
-
-  /**
-   * A hard delete marks the references; the compaction sweep rewrites the values shortly after.
-   * Tests run one compaction pass for the holder and wait until nothing is left pending.
-   */
-  private static void awaitSettled(UUID holderId) {
-    Awaitility.await("custom-property references compacted")
-        .atMost(Duration.ofSeconds(30))
-        .untilAsserted(
-            () -> {
-              new EntityExtensionReferenceCompaction(Entity.getCollectionDAO())
-                  .compactPendingFor(holderId);
-              assertTrue(
-                  Entity.getCollectionDAO()
-                      .entityExtensionReferenceDAO()
-                      .findPending(List.of(holderId.toString()))
-                      .isEmpty());
-            });
   }
 
   private static String addTeamReferenceProperty(
@@ -1682,54 +1691,72 @@ public class TypeResourceIT {
     return ids;
   }
 
+  /** The value as its rows hold it; reference values have no other home. */
   private static JsonNode storedValue(Domain domain, String property) {
-    String json =
-        Entity.getCollectionDAO()
-            .entityExtensionDAO()
-            .getExtension(
-                domain.getId(), TypeRegistry.getCustomPropertyFQN(Entity.DOMAIN, property));
-    return json == null ? null : JsonUtils.readTree(json);
+    ObjectNode values =
+        new CustomPropertyReferences(Entity.getCollectionDAO())
+            .read(Entity.DOMAIN, List.of(domain.getId()))
+            .get(domain.getId());
+    return values == null ? null : values.get(property);
   }
 
-  /** The sweep on this server may already hold the row, so run one pass and then wait. */
-  private static void awaitStoredValue(
+  private static void assertStoredValue(
       Domain domain, String property, Predicate<JsonNode> expected) {
-    Awaitility.await("custom-property value compacted")
-        .atMost(Duration.ofSeconds(30))
-        .untilAsserted(
-            () -> {
-              new EntityExtensionReferenceCompaction(Entity.getCollectionDAO())
-                  .compactPendingFor(domain.getId());
-              assertTrue(expected.test(storedValue(domain, property)));
-            });
+    assertTrue(expected.test(storedValue(domain, property)));
   }
 
-  private static void awaitLedgerEmpty(Domain domain, UUID target) {
-    Awaitility.await("ledger rows for a deleted target removed")
-        .atMost(Duration.ofSeconds(30))
-        .untilAsserted(
-            () -> {
-              new EntityExtensionReferenceCompaction(Entity.getCollectionDAO())
-                  .compactPendingFor(domain.getId());
-              assertTrue(ledgerRowsFor(target).isEmpty());
-              assertTrue(pendingRowsFor(domain.getId(), target).isEmpty());
-            });
+  private static void assertNoReferencesTo(UUID target) {
+    assertTrue(referenceRowsTo(target).isEmpty(), "no stored reference points at " + target);
   }
 
-  /** Marked rows are not live, so {@link #ledgerRowsFor} alone passes right after a delete. */
-  private static List<String> pendingRowsFor(UUID holderId, UUID target) {
+  private static List<ReferenceRow> referenceRowsTo(UUID target) {
     return Entity.getCollectionDAO()
-        .entityExtensionReferenceDAO()
-        .findPending(List.of(holderId.toString()))
-        .stream()
-        .map(row -> row.toId())
-        .filter(toId -> toId.equals(target.toString()))
-        .toList();
+        .customPropertyReferenceDAO()
+        .findByTargets(List.of(target.toString()));
   }
 
-  private static List<ReferenceKey> ledgerRowsFor(UUID target) {
-    return Entity.getCollectionDAO()
-        .entityExtensionReferenceDAO()
-        .findByToIds(List.of(target.toString()));
+  private static Map<String, Object> nameOnly(EntityInterface entity) {
+    return Map.of("type", TEAM, "fullyQualifiedName", entity.getFullyQualifiedName());
+  }
+
+  private static String id(EntityInterface entity) {
+    return entity.getId().toString();
+  }
+
+  /** Waits for the domain's search doc to carry reference ids matching {@code expected}. */
+  private static void awaitSearchRefIds(
+      OpenMetadataClient client, Domain domain, Predicate<List<String>> expected) {
+    Awaitility.await("search doc reference ids")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofMillis(500))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertTrue(expected.test(searchRefIds(client, domain))));
+  }
+
+  /** Reads the domain's search doc by id; a free-text query would expand past clause limits. */
+  private static List<String> searchRefIds(OpenMetadataClient client, Domain domain)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/search/get/domain_search_index/doc/" + domain.getId(), null);
+    List<String> ids = new ArrayList<>();
+    OBJECT_MAPPER
+        .readTree(response)
+        .path("customPropertiesTyped")
+        .forEach(entry -> ids.add(entry.path("refId").asText()));
+    return ids;
+  }
+
+  /** Runs the 2.1.0 data step the way the migrate job does, on its own handle. */
+  static void runReferenceMigration() throws Exception {
+    try (Handle handle = Entity.getJdbi().open()) {
+      ConnectionType type =
+          handle.getConnection().getMetaData().getDatabaseProductName().contains("PostgreSQL")
+              ? ConnectionType.POSTGRES
+              : ConnectionType.MYSQL;
+      CustomPropertyReferenceMigration.migrate(handle, handle.attach(CollectionDAO.class), type);
+    }
   }
 }

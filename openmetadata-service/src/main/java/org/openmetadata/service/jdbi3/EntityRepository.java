@@ -88,6 +88,7 @@ import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.TokenBuffer;
 import com.google.common.annotations.VisibleForTesting;
@@ -145,12 +146,14 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -239,7 +242,6 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
-import org.openmetadata.service.jobs.EntityExtensionReferenceCompactionScheduler;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.rdf.RdfTagUpdater;
@@ -4019,11 +4021,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // handle is held).
     flushInOneTransaction(
         () -> {
-          entities.forEach(
-              entity -> fillColumnReferenceIds(getColumnsForExtensionPersistence(entity)));
           storeEntities(entities);
           storeExtensions(entities);
-          storeColumnExtensions(entities);
+          storeColumnExtensionsOf(entities);
           storeRelationshipsInternal(entities);
         });
     setInheritedFields(entities, new Fields(allowedFields));
@@ -4069,8 +4069,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     flushInOneTransaction(
         () -> {
           updateMany(updatedEntities);
-          removeExtensions(originals);
-          storeExtensions(updatedEntities);
+          replaceExtensions(originals, updatedEntities);
           clearRelationshipsForUpdateMany(updatedEntities);
           storeRelationshipsInternal(updatedEntities);
           // Drop every cached variant for each updated entity so the next GET rebuilds from the
@@ -5054,7 +5053,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * would re-issue them.
    */
   protected final void cleanup(String deletedBy, T entityInterface) {
-    flushInOneTransaction(() -> cleanupFlushBody(deletedBy, entityInterface));
+    AtomicBoolean referenced = new AtomicBoolean();
+    flushInOneTransaction(() -> referenced.set(cleanupFlushBody(deletedBy, entityInterface)));
+    removeCustomPropertyReferencesFromSearch(referenced.get(), List.of(entityInterface.getId()));
     // Flowable commits on its own connection, so cancel only once the owning entity transaction
     // has committed: a rolled-back delete must not leave a live entity without its workflow. An
     // enclosing unit of work drains this after its own commit; without one it runs right away.
@@ -5067,11 +5068,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // (now empty) DB and observes the deletion.
     invalidate(entityInterface);
     PostCommitActionQueue.runOrDefer(() -> markEntityNotFound(entityInterface));
-    PostCommitActionQueue.runOrDefer(
-        () -> reprobeCustomPropertyReferences(List.of(entityInterface.getId())));
   }
 
-  private void cleanupFlushBody(String deletedBy, T entityInterface) {
+  /** Returns whether any custom-property value referenced the deleted entity. */
+  private boolean cleanupFlushBody(String deletedBy, T entityInterface) {
     // Perform Entity Specific Cleanup
     entitySpecificCleanup(deletedBy, entityInterface);
 
@@ -5087,7 +5087,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Delete all the extensions of entity
     daoCollection.entityExtensionDAO().deleteAll(id);
-    daoCollection.entityExtensionReferenceDAO().deleteAll(id);
 
     // The FQN-prefix deletes run together, after entity_extension, to match the table order in
     // bulkCleanupReferences(). Both paths delete the same rows for overlapping subtrees — a direct
@@ -5118,9 +5117,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Finally, delete the entity
     dao.delete(id);
-    // After the row lock, so a writer that proved this target under a shared lock either already
-    // committed its ledger row (marked here or by the post-commit re-probe) or now waits and fails.
-    markCustomPropertyReferencesPending(List.of(id));
+    return deleteCustomPropertyReferences(List.of(id));
+  }
+
+  /**
+   * Runs after the entity rows are deleted, so their X locks are held: drops the deleted entities'
+   * own reference values and every reference to them. Returns whether any reference existed.
+   */
+  private boolean deleteCustomPropertyReferences(List<UUID> ids) {
+    CustomPropertyReferences references = customPropertyReferences();
+    if (supportsExtension) {
+      references.deleteHolders(ids);
+    }
+    return references.deleteTargets(ids);
+  }
+
+  /** Search docs carry copies of the references; strip them once the delete has committed. */
+  private void removeCustomPropertyReferencesFromSearch(boolean referenced, List<UUID> ids) {
+    if (referenced && Entity.getSearchRepository() != null) {
+      PostCommitActionQueue.runOrDefer(
+          () -> Entity.getSearchRepository().removeCustomPropertyReferences(ids));
+    }
   }
 
   private void markEntityNotFound(T entity) {
@@ -5307,10 +5324,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void createNewEntityFlushBody(T entity) {
     try (var ignored = phase("createStoreEntity")) {
-      fillColumnReferenceIds(getColumnsForExtensionPersistence(entity));
       storeEntity(entity, false);
       storeExtension(entity);
-      storeExtensionReferences(entity);
       storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
     }
     try (var ignored = phase("createStoreRelationships")) {
@@ -5610,10 +5625,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void createManyEntitiesFlushBody(List<T> entities) {
     try (var ignored = phase("storeEntities")) {
-      entities.forEach(entity -> fillColumnReferenceIds(getColumnsForExtensionPersistence(entity)));
       storeEntities(entities);
       storeExtensions(entities);
-      storeColumnExtensions(entities);
+      storeColumnExtensionsOf(entities);
     }
     try (var ignored = phase("storeRelationships")) {
       storeRelationshipsInternal(entities);
@@ -5641,6 +5655,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected ObjectNode storageJsonNode(T entity) {
     ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
     node.remove(FIELDS_STORED_AS_RELATIONSHIPS);
+    // Reference values live in custom_property_reference only; reads mask this copy anyway.
+    if (node.get(FIELD_EXTENSION) instanceof ObjectNode extension) {
+      CustomPropertyReferences.extractReferences(extension, referenceTyped());
+    }
+    if (CustomPropertyReferences.columnTypeOf(entityType) != null) {
+      stripColumnReferences(node.get("columns"));
+    }
     List<String> extraStrippedFields = getFieldsStrippedFromStorageJson();
     if (!nullOrEmpty(extraStrippedFields)) {
       node.remove(extraStrippedFields);
@@ -5888,14 +5909,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
         }
         case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
-        case "entityReference" -> {
-          validateCustomPropertyEntityReference(fieldValue, fieldName);
-          EntityExtensionReferences.warnOnDisallowedType(fieldValue, fieldName, propertyConfig);
-        }
-        case "entityReferenceList" -> {
-          validateCustomPropertyEntityReferenceList(fieldValue, fieldName);
-          EntityExtensionReferences.warnOnDisallowedType(fieldValue, fieldName, propertyConfig);
-        }
+        case "entityReference" -> validateCustomPropertyEntityReference(fieldValue, fieldName);
+        case "entityReferenceList" -> validateCustomPropertyEntityReferenceList(
+            fieldValue, fieldName);
         default -> {}
       }
     }
@@ -6038,29 +6054,57 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void storeExtension(EntityInterface entity) {
-    if (entity.getExtension() == null) {
-      return;
-    }
-    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-    if (!jsonNode.isObject()) {
-      return;
-    }
-    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
-    while (customFields.hasNext()) {
-      Entry<String, JsonNode> entry = customFields.next();
-      String fieldName = entry.getKey();
-      JsonNode value = entry.getValue();
-      storeCustomProperty(entity, fieldName, value);
+    ObjectNode fields = extensionFields(entity);
+    ObjectNode references = CustomPropertyReferences.extractReferences(fields, referenceTyped());
+    fields.fields().forEachRemaining(e -> storeCustomProperty(entity, e.getKey(), e.getValue()));
+    if (!references.isEmpty()) {
+      customPropertyReferences().write(entityScope(entity), references);
     }
   }
 
   public final void storeExtensions(List<T> entities) {
+    storeNonReferenceExtensions(entities);
+    Map<CustomPropertyReferences.Scope, ObjectNode> references = new LinkedHashMap<>();
+    for (T entity : entities) {
+      ObjectNode values = referenceFields(entity);
+      if (!values.isEmpty()) {
+        references.put(entityScope(entity), values);
+      }
+    }
+    customPropertyReferences().writeMany(references);
+  }
+
+  /**
+   * Replaces a holder's stored values with the updated ones. Reference values are diffed against
+   * their rows rather than deleted and re-inserted, so a retained reference is never re-proven.
+   */
+  final void replaceExtension(EntityInterface original, EntityInterface updated) {
+    removeExtension(original);
+    ObjectNode fields = extensionFields(updated);
+    ObjectNode references = CustomPropertyReferences.extractReferences(fields, referenceTyped());
+    fields.fields().forEachRemaining(e -> storeCustomProperty(updated, e.getKey(), e.getValue()));
+    if (!references.isEmpty() || !referenceFields(original).isEmpty()) {
+      customPropertyReferences().write(entityScope(updated), references);
+    }
+  }
+
+  /** Bulk counterpart of {@link #replaceExtension}, for the import update path. */
+  final void replaceExtensions(List<T> originals, List<T> updated) {
+    removeExtensions(originals);
+    storeNonReferenceExtensions(updated);
+    Map<CustomPropertyReferences.Scope, ObjectNode> references = new LinkedHashMap<>();
+    updated.forEach(entity -> references.put(entityScope(entity), referenceFields(entity)));
+    customPropertyReferences().writeMany(references);
+  }
+
+  private void storeNonReferenceExtensions(List<T> entities) {
     List<UUID> entityIds = new ArrayList<>();
     List<String> fieldFQNs = new ArrayList<>();
     List<String> jsons = new ArrayList<>();
     for (EntityInterface entity : entities) {
-      JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-      Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
+      ObjectNode fields = extensionFields(entity);
+      CustomPropertyReferences.extractReferences(fields, referenceTyped());
+      Iterator<Entry<String, JsonNode>> customFields = fields.fields();
       while (customFields.hasNext()) {
         Entry<String, JsonNode> entry = customFields.next();
         fieldFQNs.add(TypeRegistry.getCustomPropertyFQN(entityType, entry.getKey()));
@@ -6069,7 +6113,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     storeCustomProperties(entityIds, fieldFQNs, jsons);
-    entities.forEach(this::storeExtensionReferences);
+  }
+
+  /** A copy of the entity's extension as an object node; empty when it has none. */
+  private static ObjectNode extensionFields(EntityInterface entity) {
+    JsonNode node =
+        entity.getExtension() == null ? null : JsonUtils.valueToTree(entity.getExtension());
+    return node instanceof ObjectNode objectNode
+        ? objectNode.deepCopy()
+        : JsonUtils.getObjectNode();
+  }
+
+  private ObjectNode referenceFields(EntityInterface entity) {
+    return CustomPropertyReferences.extractReferences(extensionFields(entity), referenceTyped());
+  }
+
+  private Predicate<String> referenceTyped() {
+    return CustomPropertyReferences.referencePropertiesOf(entityType);
+  }
+
+  private CustomPropertyReferences.Scope entityScope(EntityInterface entity) {
+    return new CustomPropertyReferences.Scope(
+        entityType, entity.getId(), CustomPropertyReferences.ENTITY_LEVEL);
+  }
+
+  protected final CustomPropertyReferences customPropertyReferences() {
+    return new CustomPropertyReferences(daoCollection);
   }
 
   /** Columns whose extensions are persisted on initial create. Default: empty. */
@@ -6077,17 +6146,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return Collections.emptyList();
   }
 
-  /** Upserts one column's extension. Shared by create and update paths. */
-  protected final void storeColumnExtension(UUID entityId, Column column) {
-    storeColumnExtension(entityId, column, true);
-  }
-
   /**
-   * Upserts one column's extension and, unless this is a session-consolidation pass, keeps the
-   * reference ledger in step with it; see {@link EntityUpdater#updateExtension}.
+   * Replaces one column's stored value; the update path calls it for a changed column. Reference
+   * properties go to their own rows, the rest to the column's {@code entity_extension} row.
    */
-  protected final void storeColumnExtension(
-      UUID entityId, Column column, boolean maintainReferences) {
+  protected final void storeColumnExtension(UUID entityId, Column column) {
     if (entityId == null
         || column == null
         || column.getExtension() == null
@@ -6095,132 +6158,131 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     String extensionKey = FullyQualifiedName.buildHash(column.getFullyQualifiedName());
-    JsonNode value = JsonUtils.valueToTree(column.getExtension());
-    boolean tracked =
-        maintainReferences && ColumnExtensionReferences.carriesReferences(entityType, value);
-    if (tracked) {
-      ColumnExtensionReferences.fillIds(
-          value, ColumnExtensionReferences.referencePropertiesOf(entityType));
-      column.setExtension(JsonUtils.treeToValue(value, Object.class));
+    ObjectNode values = columnExtensionFields(column);
+    ObjectNode references =
+        CustomPropertyReferences.extractReferences(values, columnReferenceTyped());
+    if (values.isEmpty()) {
+      daoCollection.entityExtensionDAO().delete(entityId, extensionKey);
+    } else {
+      daoCollection
+          .entityExtensionDAO()
+          .insert(entityId, extensionKey, "columnExtension", values.toString());
     }
-    daoCollection
-        .entityExtensionDAO()
-        .insert(
-            entityId,
-            extensionKey,
-            ColumnExtensionReferences.COLUMN_EXTENSION_SCHEMA,
-            JsonUtils.pojoToJson(column.getExtension()));
-    if (tracked) {
-      columnReferences().replace(entityId, entityType, extensionKey, value);
+    if (CustomPropertyReferences.columnTypeOf(entityType) != null) {
+      customPropertyReferences().write(columnScope(entityId, extensionKey), references);
     }
   }
 
-  /** Recursively persists extensions on all columns (and nested children). */
+  /** Persists the values of new columns (and nested children); nothing is stored for them yet. */
   protected final void storeColumnExtensions(UUID entityId, List<Column> columns) {
-    storeColumnExtensions(entityId, columns, true);
-  }
-
-  protected final void storeColumnExtensions(
-      UUID entityId, List<Column> columns, boolean maintainReferences) {
     if (entityId == null || columns == null || columns.isEmpty()) {
       return;
     }
+    Map<CustomPropertyReferences.Scope, ObjectNode> references = new LinkedHashMap<>();
     for (Column column : EntityUtil.getFlattenedEntityField(columns)) {
-      storeColumnExtension(entityId, column, maintainReferences);
+      if (column.getExtension() == null || column.getFullyQualifiedName() == null) {
+        continue;
+      }
+      String extensionKey = FullyQualifiedName.buildHash(column.getFullyQualifiedName());
+      ObjectNode values = columnExtensionFields(column);
+      ObjectNode columnReferences =
+          CustomPropertyReferences.extractReferences(values, columnReferenceTyped());
+      if (!values.isEmpty()) {
+        daoCollection
+            .entityExtensionDAO()
+            .insert(entityId, extensionKey, "columnExtension", values.toString());
+      }
+      if (!columnReferences.isEmpty()) {
+        references.put(columnScope(entityId, extensionKey), columnReferences);
+      }
     }
+    customPropertyReferences().writeMany(references);
   }
 
-  /**
-   * Drops a removed column's extension and its ledger rows. Safe on a consolidating pass too: the
-   * final pass re-inserts rows for any column the request keeps.
-   */
-  protected final void deleteColumnExtension(UUID entityId, String columnFqn) {
-    String extensionKey = FullyQualifiedName.buildHash(columnFqn);
-    daoCollection.entityExtensionDAO().delete(entityId, extensionKey);
-    columnReferences().delete(entityId, extensionKey);
-  }
-
-  private void storeColumnExtensions(List<T> entities) {
+  /** Bulk create stores column values the way single create does. */
+  private void storeColumnExtensionsOf(List<T> entities) {
     entities.forEach(
         entity -> storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity)));
   }
 
-  /** Completes name-only column references before the entity row, and its inline copy, is written. */
-  private void fillColumnReferenceIds(List<Column> columns) {
-    if (nullOrEmpty(columns)) {
+  /** Removes everything stored for one column, such as a column the update dropped. */
+  protected final void deleteColumnExtension(UUID entityId, String columnFqn) {
+    String extensionKey = FullyQualifiedName.buildHash(columnFqn);
+    daoCollection.entityExtensionDAO().delete(entityId, extensionKey);
+    if (CustomPropertyReferences.columnTypeOf(entityType) != null) {
+      customPropertyReferences().deleteColumn(entityId, extensionKey);
+    }
+  }
+
+  private static ObjectNode columnExtensionFields(Column column) {
+    JsonNode node = JsonUtils.valueToTree(column.getExtension());
+    return node instanceof ObjectNode objectNode
+        ? objectNode.deepCopy()
+        : JsonUtils.getObjectNode();
+  }
+
+  private Predicate<String> columnReferenceTyped() {
+    return CustomPropertyReferences.columnReferencePropertiesOf(entityType);
+  }
+
+  private CustomPropertyReferences.Scope columnScope(UUID entityId, String columnKey) {
+    return new CustomPropertyReferences.Scope(entityType, entityId, columnKey);
+  }
+
+  /** Reference values are kept out of the inline column copy; their rows are the only home. */
+  private void stripColumnReferences(JsonNode columns) {
+    if (!(columns instanceof ArrayNode columnArray)) {
       return;
     }
-    for (Column column : EntityUtil.getFlattenedEntityField(columns)) {
-      JsonNode value =
-          column.getExtension() == null ? null : JsonUtils.valueToTree(column.getExtension());
-      if (ColumnExtensionReferences.carriesReferences(entityType, value)) {
-        ColumnExtensionReferences.fillIds(
-            value, ColumnExtensionReferences.referencePropertiesOf(entityType));
-        column.setExtension(JsonUtils.treeToValue(value, Object.class));
+    for (JsonNode column : columnArray) {
+      if (column instanceof ObjectNode columnNode) {
+        if (columnNode.get(FIELD_EXTENSION) instanceof ObjectNode extension) {
+          CustomPropertyReferences.extractReferences(extension, columnReferenceTyped());
+          if (extension.isEmpty()) {
+            columnNode.remove(FIELD_EXTENSION);
+          }
+        }
+        stripColumnReferences(columnNode.get("children"));
       }
     }
   }
 
   /**
-   * The persisted side-table value of each column, when this holder type can carry references;
-   * null otherwise. The updater compares against it rather than the request's in-memory original,
-   * which a writer may have read before a target was deleted and the sweep cleaned the value.
+   * Bulk reads serve the inline column copy; reference values are merged in from their rows when
+   * the caller asked for {@code extension}, and dropped otherwise.
    */
-  protected final Map<String, Object> persistedColumnExtensions(
-      UUID entityId, List<Column> columns) {
-    if (nullOrEmpty(columns) || !columnsCarryReferences(columns)) {
-      return null;
-    }
-    List<String> keys =
-        columns.stream()
-            .map(Column::getFullyQualifiedName)
-            .filter(Objects::nonNull)
-            .map(FullyQualifiedName::buildHash)
-            .toList();
-    Map<String, Object> persisted = new HashMap<>();
-    daoCollection
-        .entityExtensionDAO()
-        .getExtensionsByKeys(entityId, keys)
-        .forEach(
-            record ->
-                persisted.put(
-                    record.extensionName(),
-                    JsonUtils.readValue(record.extensionJson(), Object.class)));
-    return persisted;
-  }
-
-  private boolean columnsCarryReferences(List<Column> columns) {
-    return ColumnExtensionReferences.tracksReferences(entityType)
-        || columns.stream()
-            .filter(column -> column.getExtension() != null)
-            .anyMatch(
-                column ->
-                    ColumnExtensionReferences.carriesReferences(
-                        entityType, JsonUtils.valueToTree(column.getExtension())));
-  }
-
-  /** What a column holds now: the persisted value when it was read, else the request's copy. */
-  private static Object currentColumnExtension(Column stored, Map<String, Object> persisted) {
-    if (persisted == null || stored.getFullyQualifiedName() == null) {
-      return stored.getExtension();
-    }
-    return persisted.get(FullyQualifiedName.buildHash(stored.getFullyQualifiedName()));
-  }
-
-  private ColumnExtensionReferences columnReferences() {
-    return new ColumnExtensionReferences(daoCollection);
-  }
-
-  public final void removeExtension(EntityInterface entity) {
-    if (entity.getExtension() == null) {
+  protected final void applyColumnReferences(
+      List<T> entities, Function<T, List<Column>> columnsOf, boolean includeReferences) {
+    String columnType = CustomPropertyReferences.columnTypeOf(entityType);
+    if (columnType == null || nullOrEmpty(entities)) {
       return;
     }
-    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
-    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
-    while (customFields.hasNext()) {
-      Entry<String, JsonNode> entry = customFields.next();
-      removeCustomProperty(entity, entry.getKey());
+    Map<UUID, Map<String, ObjectNode>> referencesByHolder =
+        includeReferences
+            ? customPropertyReferences().readColumns(columnType, entityIds(entities))
+            : Map.of();
+    Predicate<String> isReference = columnReferenceTyped();
+    for (T entity : entities) {
+      Map<String, ObjectNode> byColumn = referencesByHolder.getOrDefault(entity.getId(), Map.of());
+      for (Column column :
+          EntityUtil.getFlattenedEntityField(listOrEmpty(columnsOf.apply(entity)))) {
+        ObjectNode values =
+            column.getFullyQualifiedName() == null
+                ? null
+                : byColumn.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName()));
+        if (values != null || column.getExtension() != null) {
+          column.setExtension(
+              CustomPropertyReferences.withReferences(column.getExtension(), values, isReference));
+        }
+      }
     }
+  }
+
+  /** Removes the non-reference values; reference values are diffed by the next write. */
+  public final void removeExtension(EntityInterface entity) {
+    ObjectNode fields = extensionFields(entity);
+    CustomPropertyReferences.extractReferences(fields, referenceTyped());
+    fields.fieldNames().forEachRemaining(name -> removeCustomProperty(entity, name));
   }
 
   public final void removeExtensions(List<T> entities) {
@@ -6240,11 +6302,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // table-level extension would silently wipe its column-level custom properties.
     if (!entityIds.isEmpty()) {
       daoCollection.entityExtensionDAO().deleteByJsonSchemaBatch(entityIds, "customFieldSchema");
-      // Only entity-level rows: the holder's column-level rows belong to values that stay.
-      daoCollection
-          .entityExtensionReferenceDAO()
-          .deleteByExtensionPrefixBatch(
-              entityIds, TypeRegistry.getCustomPropertyFQNPrefix(entityType) + Entity.SEPARATOR);
     }
   }
 
@@ -6253,110 +6310,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .entityExtensionDAO()
         .insert(entity.getId(), fieldFQN, "customFieldSchema", JsonUtils.pojoToJson(value));
-  }
-
-  private EntityExtensionReferences extensionReferences() {
-    return new EntityExtensionReferences(daoCollection);
-  }
-
-  private static JsonNode extensionFields(EntityInterface entity) {
-    JsonNode extension =
-        entity.getExtension() == null ? null : JsonUtils.valueToTree(entity.getExtension());
-    return extension != null && extension.isObject() ? extension : JsonUtils.getObjectNode();
-  }
-
-  private void storeExtensionReferences(EntityInterface entity) {
-    extensionFields(entity)
-        .fields()
-        .forEachRemaining(
-            field -> {
-              if (EntityExtensionReferences.isReferenceProperty(entityType, field.getKey())) {
-                extensionReferences()
-                    .store(
-                        entity.getId(),
-                        entityType,
-                        TypeRegistry.getCustomPropertyFQN(entityType, field.getKey()),
-                        field.getValue());
-              }
-            });
-  }
-
-  private void replaceExtensionReferences(EntityInterface original, EntityInterface updated) {
-    JsonNode before = extensionFields(original);
-    JsonNode after = extensionFields(updated);
-    Set<String> names = new LinkedHashSet<>();
-    before.fieldNames().forEachRemaining(names::add);
-    after.fieldNames().forEachRemaining(names::add);
-    for (String name : names) {
-      if (EntityExtensionReferences.isReferenceProperty(entityType, name)) {
-        extensionReferences()
-            .replace(
-                updated.getId(),
-                entityType,
-                TypeRegistry.getCustomPropertyFQN(entityType, name),
-                after.get(name));
-      }
-    }
-  }
-
-  /** Name-only references are completed before the diff so an echoed value is not a change. */
-  private Object fillReferenceIds(Object extension) {
-    JsonNode fields = extension == null ? null : JsonUtils.valueToTree(extension);
-    if (fields == null || !fields.isObject()) {
-      return extension;
-    }
-    fields
-        .fields()
-        .forEachRemaining(
-            field -> {
-              if (EntityExtensionReferences.isReferenceProperty(entityType, field.getKey())) {
-                EntityUtil.fillCustomPropertyReferenceIds(field.getValue());
-              }
-            });
-    return JsonUtils.treeToValue(fields, Object.class);
-  }
-
-  /** Drops ids already marked dead from the reference values this request changes. */
-  private Object dropPendingReferences(UUID holderId, Object original, Object updated) {
-    JsonNode before = original == null ? null : JsonUtils.valueToTree(original);
-    JsonNode after = updated == null ? null : JsonUtils.valueToTree(updated);
-    if (before == null || !before.isObject() || !(after instanceof ObjectNode fields)) {
-      return updated;
-    }
-    List<String> names = new ArrayList<>();
-    fields.fieldNames().forEachRemaining(names::add);
-    boolean dropped = false;
-    for (String name : names) {
-      dropped |=
-          isChangedReference(name, before.get(name), fields.get(name))
-              && extensionReferences()
-                  .dropPending(
-                      fields,
-                      name::equals,
-                      holderId,
-                      TypeRegistry.getCustomPropertyFQN(entityType, name));
-    }
-    return dropped ? JsonUtils.treeToValue(fields, Object.class) : updated;
-  }
-
-  /** Only a stored value can carry marks, and only a changed one is validated again. */
-  private boolean isChangedReference(String name, JsonNode stored, JsonNode incoming) {
-    return stored != null
-        && !stored.equals(incoming)
-        && EntityExtensionReferences.isReferenceProperty(entityType, name);
-  }
-
-  private void markCustomPropertyReferencesPending(List<UUID> deletedIds) {
-    extensionReferences().markPending(deletedIds);
-  }
-
-  /**
-   * A writer that proved its target under a shared lock can still commit after this delete's own
-   * mark ran, so mark once more after commit; the sweep then rewrites whatever landed in between.
-   */
-  private void reprobeCustomPropertyReferences(List<UUID> deletedIds) {
-    extensionReferences().markPending(deletedIds);
-    EntityExtensionReferenceCompactionScheduler.requestRun();
   }
 
   private void storeCustomProperties(
@@ -6380,10 +6333,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
     List<ExtensionRecord> records =
         daoCollection.entityExtensionDAO().getExtensions(entity.getId(), fieldFQNPrefix);
-    if (records.isEmpty()) {
+    ObjectNode references =
+        customPropertyReferences().read(entityType, List.of(entity.getId())).get(entity.getId());
+    if (records.isEmpty() && references == null) {
       return null;
     }
-    ObjectNode objectNode = JsonUtils.getObjectNode();
+    ObjectNode objectNode = references == null ? JsonUtils.getObjectNode() : references;
     for (ExtensionRecord extensionRecord : records) {
       String fieldName = TypeRegistry.getPropertyName(extensionRecord.extensionName());
       JsonNode fieldValue = JsonUtils.readTree(extensionRecord.extensionJson());
@@ -7458,23 +7413,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (Entity.getJdbi() == null) {
       bulkCleanupReferences(entities);
       bulkDeleteEntityRows(entities);
-      markCustomPropertyReferencesPending(ids);
-      reprobeCustomPropertyReferences(ids);
+      deleteCustomPropertyReferences(ids);
       cancelWorkflowInstances(ids);
       return;
     }
     // Same boundary as cleanup(): deadlock retry plus a deferral scope, since the cascade rewrites
     // the same hot relationship rows and the per-entity hooks it runs defer search writes.
+    AtomicBoolean referenced = new AtomicBoolean();
     flushInOneTransaction(
         () -> {
           bulkCleanupReferences(entities);
           bulkDeleteEntityRows(entities);
-          // After the row locks, for the same reason as the single-entity cleanup.
-          markCustomPropertyReferencesPending(ids);
+          // After the entity rows' X locks, like the single-entity cleanup.
+          referenced.set(deleteCustomPropertyReferences(ids));
         });
     // Keep Flowable's separate transaction after the owning entity commit. See cleanup().
     PostCommitActionQueue.runOrDefer(() -> cancelWorkflowInstances(ids));
-    PostCommitActionQueue.runOrDefer(() -> reprobeCustomPropertyReferences(ids));
+    removeCustomPropertyReferencesFromSearch(referenced.get(), ids);
   }
 
   private List<UUID> entityIds(List<T> entities) {
@@ -7523,7 +7478,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     try (var ignored = phase("bulkHardDeleteExtensions")) {
       daoCollection.entityExtensionDAO().deleteAllBatch(entityIdStrings);
-      daoCollection.entityExtensionReferenceDAO().deleteAllBatch(entityIdStrings);
     }
     // field_relationship and tag_usage are keyed by FQN hash, so a single prefix delete on an
     // ancestor's FQN clears the whole subtree. For FQN-nested types the recursive delete root's
@@ -9291,8 +9245,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityChanged = false;
     private boolean versionChanged = false;
     private boolean entityStored = false;
-    // True while revert() replays the pre-session snapshot; the reference ledger is left alone.
-    protected boolean consolidatingPass = false;
 
     /**
      * Diff produced by THIS request. Every {@code EntityUpdater} entry point must populate this
@@ -9882,7 +9834,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
      */
     @Transaction
     private void updateInternal(boolean consolidatingChanges) {
-      consolidatingPass = consolidatingChanges;
       if (operation.isDelete()) { // Soft DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
@@ -9915,7 +9866,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     @Transaction
     private void updateInternalForImport(boolean consolidatingChanges) {
-      consolidatingPass = consolidatingChanges;
       if (operation.isDelete()) { // Soft DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
@@ -10272,13 +10222,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updated.setExtension(origExtension);
         return;
       }
-      // A consolidating pass reverts to the pre-session snapshot, which may still name a target
-      // hard-deleted since; proving it would fail the request. The final pass reconciles.
-      if (!consolidatingChanges) {
-        updatedExtension = fillReferenceIds(updatedExtension);
-        updatedExtension = dropPendingReferences(updated.getId(), origExtension, updatedExtension);
-        updated.setExtension(updatedExtension);
-      }
 
       List<JsonNode> addedFields = new ArrayList<>();
       List<JsonNode> deletedFields = new ArrayList<>();
@@ -10343,11 +10286,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!deletedFields.isEmpty()) {
         fieldDeleted(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(deletedFields));
       }
-      removeExtension(original);
-      storeExtension(updated);
-      if (!consolidatingChanges) {
-        replaceExtensionReferences(original, updated);
-      }
+      replaceExtension(original, updated);
     }
 
     protected void updateDomains() {
@@ -11459,10 +11398,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
             added.getFullyQualifiedName());
       }
       // Added columns are skipped by the existing-column loop below.
-      storeColumnExtensions(entityId, addedColumns, !consolidatingPass);
+      storeColumnExtensions(entityId, addedColumns);
 
-      Map<String, Object> persistedExtensions =
-          consolidatingPass ? null : persistedColumnExtensions(entityId, origColumns);
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
         Column stored =
@@ -11498,12 +11435,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(columnPrefix, stored, updated);
-        updateColumnExtension(
-            entityId,
-            columnPrefix,
-            stored,
-            updated,
-            currentColumnExtension(stored, persistedExtensions));
+        updateColumnExtension(entityId, columnPrefix, stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateColumns(
@@ -11535,21 +11467,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return false;
     }
 
-    /**
-     * {@code currentExtension} is the persisted value when the holder type can carry references,
-     * else the request's original. A value that differs from what is persisted is rewritten even
-     * when the original matches it: that original may predate a hard delete the sweep has since
-     * cleaned, and skipping the write would let the entity row bring the dead reference back.
-     */
     private void updateColumnExtension(
-        UUID entityId,
-        String columnPrefix,
-        Column origColumn,
-        Column updatedColumn,
-        Object currentExtension) {
+        UUID entityId, String columnPrefix, Column origColumn, Column updatedColumn) {
       if (!supportsColumnExtension()) {
-        if (!Objects.equals(currentExtension, updatedColumn.getExtension())) {
-          storeColumnExtension(entityId, updatedColumn, !consolidatingPass);
+        if (!Objects.equals(origColumn.getExtension(), updatedColumn.getExtension())) {
+          storeColumnExtension(entityId, updatedColumn);
         }
         return;
       }
@@ -11567,12 +11489,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
               origColumn.getExtension(),
               updatedColumn.getExtension(),
               true);
-      boolean stale = !Objects.equals(currentExtension, updatedColumn.getExtension());
-      if (changed || stale) {
+      if (changed) {
         if (updatedColumn.getExtension() == null) {
           deleteColumnExtension(entityId, updatedColumn.getFullyQualifiedName());
         } else {
-          storeColumnExtension(entityId, updatedColumn, !consolidatingPass);
+          storeColumnExtension(entityId, updatedColumn);
         }
       }
     }
@@ -12790,14 +12711,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
         records.stream()
             .collect(Collectors.groupingBy(CoreRelationshipDAOs.ExtensionRecordWithId::id));
 
-    Map<UUID, Object> result = new HashMap<>();
+    Map<UUID, Object> result =
+        new HashMap<>(customPropertyReferences().read(entityType, entityIds(entities)));
 
     for (Entry<UUID, List<CoreRelationshipDAOs.ExtensionRecordWithId>> entry :
         extensionsMap.entrySet()) {
       UUID entityId = entry.getKey();
       List<CoreRelationshipDAOs.ExtensionRecordWithId> extensionRecords = entry.getValue();
 
-      ObjectNode objectNode = JsonUtils.getObjectNode();
+      ObjectNode objectNode =
+          result.get(entityId) instanceof ObjectNode references
+              ? references
+              : JsonUtils.getObjectNode();
       for (CoreRelationshipDAOs.ExtensionRecordWithId record : extensionRecords) {
         String fieldName = TypeRegistry.getPropertyName(record.extensionName());
         JsonNode extensionJsonNode = JsonUtils.readTree(record.extensionJson());

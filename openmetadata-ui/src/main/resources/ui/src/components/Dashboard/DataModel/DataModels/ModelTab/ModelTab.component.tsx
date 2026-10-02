@@ -134,13 +134,13 @@ const ModelTab = () => {
           ? await searchDataModelColumnsByFQN(entityFqn, {
               limit: pageSize,
               offset,
-              fields: TabSpecificField.TAGS,
+              fields: `${TabSpecificField.TAGS},${TabSpecificField.EXTENSION}`,
               q: searchQuery,
             })
           : await getDataModelColumnsByFQN(entityFqn, {
               limit: pageSize,
               offset,
-              fields: TabSpecificField.TAGS,
+              fields: `${TabSpecificField.TAGS},${TabSpecificField.EXTENSION}`,
             });
 
         const data = pruneEmptyChildren(response.data) || [];

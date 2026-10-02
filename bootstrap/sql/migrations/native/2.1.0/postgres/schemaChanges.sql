@@ -378,21 +378,20 @@ ALTER TABLE announcement_entity
   GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Information')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
 
--- Custom-property entityReference / entityReferenceList values copy the referenced entity into
--- the holder's extension JSON with nothing linking the copy back. One row per reference lets a
--- hard delete find every holder through an index; pendingCompaction marks references whose
--- target is gone until the compaction sweep rewrites the JSON. Covers entity-level values and
--- column-level values of tables and dashboard data models; fromEntity is the holder's type.
-CREATE TABLE IF NOT EXISTS entity_extension_reference (
+-- Single source of truth for entityReference / entityReferenceList custom-property values, one row
+-- per referenced entity. columnKey is '' for entity-level values, else the column's FQN hash. A hard
+-- delete removes the rows pointing at the deleted entity through the targetId index.
+CREATE TABLE IF NOT EXISTS custom_property_reference (
     id VARCHAR(36) NOT NULL,
-    extension VARCHAR(512) NOT NULL,
-    fromEntity VARCHAR(256) NOT NULL,
-    toId VARCHAR(36) NOT NULL,
-    toEntity VARCHAR(256) NOT NULL,
-    pendingCompaction BOOLEAN NOT NULL DEFAULT FALSE,
-    PRIMARY KEY (id, extension, toId)
+    columnKey VARCHAR(256) NOT NULL DEFAULT '',
+    propertyName VARCHAR(256) NOT NULL,
+    targetId VARCHAR(36) NOT NULL,
+    holderType VARCHAR(256) NOT NULL,
+    targetType VARCHAR(256) NOT NULL,
+    position INT NOT NULL,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id, columnKey, propertyName, targetId)
 );
-CREATE INDEX IF NOT EXISTS entity_extension_reference_to_index ON entity_extension_reference (toId);
-CREATE INDEX IF NOT EXISTS entity_extension_reference_extension_index ON entity_extension_reference (extension);
-CREATE INDEX IF NOT EXISTS entity_extension_reference_pending_index
-  ON entity_extension_reference (id, extension) WHERE pendingCompaction;
+CREATE INDEX IF NOT EXISTS custom_property_reference_target ON custom_property_reference (targetId);
+CREATE INDEX IF NOT EXISTS custom_property_reference_property
+  ON custom_property_reference (holderType, propertyName);

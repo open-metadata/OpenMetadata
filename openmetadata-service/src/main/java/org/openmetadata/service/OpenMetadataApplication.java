@@ -118,7 +118,6 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityCacheRepair;
-import org.openmetadata.service.jdbi3.EntityExtensionReferenceCompaction;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
@@ -126,7 +125,6 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.BackgroundJobCleanupScheduler;
-import org.openmetadata.service.jobs.EntityExtensionReferenceCompactionScheduler;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
@@ -463,12 +461,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .manage(
             new BackgroundJobCleanupScheduler(
                 jdbi.onDemand(JobDAO.class), CsvAsyncJobManager.getInstance()));
-
-    environment
-        .lifecycle()
-        .manage(
-            new EntityExtensionReferenceCompactionScheduler(
-                new EntityExtensionReferenceCompaction(jdbi.onDemand(CollectionDAO.class))));
 
     environment
         .lifecycle()

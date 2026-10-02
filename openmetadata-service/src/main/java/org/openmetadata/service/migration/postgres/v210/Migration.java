@@ -14,7 +14,6 @@
 package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
-import static org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceBackfill.backfillCustomPropertyReferences;
 import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
@@ -31,6 +30,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
@@ -70,8 +70,8 @@ public class Migration extends MigrationProcessImpl {
     // Data contracts stored their entity reference as sent, usually without a name or FQN.
     // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
     rebuildDataContractEntityReferences(collectionDAO);
-    // Index existing custom-property entityReference values so hard deletes can find their
-    // holders, and mark references whose target is already gone. Idempotent.
-    backfillCustomPropertyReferences(collectionDAO);
+    // entityReference / entityReferenceList values move to custom_property_reference, their only
+    // home from 2.1 on, so a hard delete can remove references to the deleted entity. Restartable.
+    CustomPropertyReferenceMigration.migrate(handle, collectionDAO, POSTGRES);
   }
 }
