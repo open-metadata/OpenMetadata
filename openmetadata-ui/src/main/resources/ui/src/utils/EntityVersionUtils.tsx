@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Divider, Space } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { get, isEmpty, isObject, startCase, toString } from 'lodash';
 import type { ReactNode } from 'react';
 import { Fragment, lazy } from 'react';
@@ -238,7 +238,10 @@ export const getParameterValueDiffDisplay = (
                 {getDiffDisplayValue(diff)}
               </Typography>
               {otherParamDiffs.length - 1 !== index && (
-                <Divider type="vertical" />
+                <Divider
+                  className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                  orientation="vertical"
+                />
               )}
             </Space>
           ))

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row } from 'antd';
+import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -112,7 +112,7 @@ const KnowledgePageSummary = ({
                 </Link>
               </Col>
             </Row>
-            <Divider className="m-y-xs" />
+            <Divider className="m-y-xs summary-panel-divider" />
           </>
         )}
 
@@ -120,7 +120,7 @@ const KnowledgePageSummary = ({
           entityDetail={entityDetails as EntityUnion}
           tags={entityDetails?.tags ?? []}
         />
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
         {/* read only data assets */}
         <Row className="m-x-md" gutter={[0, 8]}>
           <Col>

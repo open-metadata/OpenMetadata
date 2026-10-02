@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Skeleton } from 'antd';
+import {
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,29 +63,32 @@ function TotalDataAssetsWidget({
           {t('message.total-data-assets-description')}
         </Typography>
       </div>
-      <Skeleton loading={isLoading}>
-        {showPlaceholder ? (
-          errorPlaceholder
-        ) : (
-          <div className="assets-list-container">
-            {totalAssetsCount?.map((entity) => (
-              <div
-                className="flex items-center justify-between"
-                key={entity.name}>
-                <div className="flex items-center gap-3">
-                  <div className="p-0 icon-container">{entity.icon}</div>
+      {isLoading && (
+        <SkeletonParagraph
+          animation={false}
+          className="total-data-assets-loader"
+        />
+      )}
+      {!isLoading && showPlaceholder && errorPlaceholder}
+      {!isLoading && !showPlaceholder && (
+        <div className="assets-list-container">
+          {totalAssetsCount?.map((entity) => (
+            <div
+              className="flex items-center justify-between"
+              key={entity.name}>
+              <div className="flex items-center gap-3">
+                <div className="p-0 icon-container">{entity.icon}</div>
 
-                  <Typography>{entity.name}</Typography>
-                </div>
-
-                <Typography data-testid={`${entity.name}-count`} weight="bold">
-                  {getReadableCountString(entity.value)}
-                </Typography>
+                <Typography>{entity.name}</Typography>
               </div>
-            ))}
-          </div>
-        )}
-      </Skeleton>
+
+              <Typography data-testid={`${entity.name}-count`} weight="bold">
+                {getReadableCountString(entity.value)}
+              </Typography>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }

@@ -45,6 +45,7 @@ import {
   restoreTestCase,
   updateTestCaseById,
 } from '../../../rest/testAPI';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import {
   fetchEntityTaskCountsInto,
@@ -115,7 +116,7 @@ export const useTestCaseDetailPage = ({
   const queryClient = useQueryClient();
 
   const {
-    tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS,
+    tab: urlTab = TestCasePageTabs.TEST_CASE_RESULTS,
     version,
     dimensionKey,
   } = useRequiredParams<{
@@ -264,11 +265,6 @@ export const useTestCaseDetailPage = ({
       .catch((error) => showErrorToast(error as AxiosError));
   }, [isVersionPage, testCaseData?.id]);
 
-  const isExpandViewSupported = useMemo(
-    () => activeTab === TestCasePageTabs.TEST_CASE_RESULTS,
-    [activeTab]
-  );
-
   const toggleTabExpanded = useCallback(() => {
     setIsTabExpanded(!isTabExpanded);
   }, [isTabExpanded, setIsTabExpanded]);
@@ -288,6 +284,21 @@ export const useTestCaseDetailPage = ({
     testCase?.dimensionColumns,
     isVersionPage,
   ]);
+
+  // The URL tab may not be rendered (e.g. `issues` on a version page), so every
+  // consumer reads the tab actually on screen; navigation keeps the URL tab.
+  const activeTab = useMemo(
+    () =>
+      getRenderedActiveTab<EntityTabs | TestCasePageTabs>(
+        tabs,
+        urlTab,
+        TestCasePageTabs.TEST_CASE_RESULTS
+      ),
+    [tabs, urlTab]
+  );
+
+  const isExpandViewSupported =
+    activeTab === TestCasePageTabs.TEST_CASE_RESULTS;
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -411,7 +422,7 @@ export const useTestCaseDetailPage = ({
         : observabilityRouterClassBase.getTestCaseVersionPath(
             testCaseFQN,
             toString(testCase?.version) ?? '',
-            activeTab
+            urlTab
           ),
       { state: location.state }
     );
@@ -423,12 +434,12 @@ export const useTestCaseDetailPage = ({
         observabilityRouterClassBase.getTestCaseVersionPath(
           testCaseFQN,
           toString(newVersion),
-          activeTab
+          urlTab
         ),
         { state: location.state }
       );
     },
-    [testCaseFQN, activeTab, location.state]
+    [testCaseFQN, urlTab, location.state]
   );
   const fetchCurrentVersion = async (id: string) => {
     try {
