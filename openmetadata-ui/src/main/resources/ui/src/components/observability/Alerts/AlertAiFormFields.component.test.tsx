@@ -1409,6 +1409,38 @@ describe('AlertAi form field components', () => {
     expect(resultDest.downstreamDepth).toBeUndefined();
   });
 
+  it('keeps the configured destination when the destination selection is cleared', () => {
+    const onChange = jest.fn();
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          destinationType: SubscriptionType.Slack,
+          type: SubscriptionType.Slack,
+          config: { endpoint: 'https://hooks.slack.com/services/T00/B00/XXX' },
+        } as ModifiedDestination,
+      ],
+      resources: ['table'],
+    };
+
+    render(
+      <AlertAiFormFields
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        filterResources={[{ name: 'table' }]}
+        value={value}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('destination-category-select-0'), {
+      target: { value: '' },
+    });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('blocks submit of a switched-but-unconfigured destination so stale fields never reach onSubmit', async () => {
     const onChange = jest.fn();
     const onSubmit = jest.fn();
