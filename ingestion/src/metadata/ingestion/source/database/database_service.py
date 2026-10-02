@@ -262,10 +262,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         classification_description: str,
         tag_description: str,
         entity_fqn: str | None = None,
+        mutually_exclusive: bool = False,
     ) -> TagDefinition | None:
         """Resolve and register a tag definition, or return None when it cannot be stored.
 
         ``entity_fqn`` is the entity the tag is being attached to, named in the warning for a skipped tag.
+        The classification is mutually exclusive when the definition or the source asks for it.
         """
         if not tag_name or not tag_name.strip():
             return None
@@ -288,7 +290,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             tag_name=tag_name,
             classification_description=classification_description,
             tag_description=tag_description,
-            mutually_exclusive=self.tag_classifications_mutually_exclusive,
+            mutually_exclusive=mutually_exclusive or self.tag_classifications_mutually_exclusive,
         )
         self.tags_registry.define(tag)
         return tag
@@ -310,6 +312,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 classification_description=definition.classification_description,
                 tag_description=definition.tag_description,
                 entity_fqn=entity_fqn,
+                mutually_exclusive=definition.mutually_exclusive,
             )
             if tag is not None:
                 self.attach_tag(entity_fqn=entity_fqn, tag=tag)
