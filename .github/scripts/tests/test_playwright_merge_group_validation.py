@@ -289,6 +289,25 @@ def test_merge_queue_flaky_tests_alert_pw_health_from_annotations():
     assert permissions.get("checks") == "read"
 
 
+def test_daily_report_reads_queue_results_and_posts_with_a_fallback():
+    daily = workflow("playwright-flaky-daily-report.yml")
+    assert daily["permissions"] == {"actions": "read", "checks": "read", "contents": "read"}
+    steps = daily["jobs"]["report"]["steps"]
+    post = next(s for s in steps if s["name"].startswith("Post to Slack"))
+    # An absent input compares equal to false, so the schedule is named explicitly.
+    assert post["if"] == "${{ github.event_name == 'schedule' || inputs.post_to_slack }}"
+    # A failed HTML upload must not end the job before the text fallback posts.
+    assert post.get("continue-on-error") is True
+    fallback = next(s for s in steps if s["name"].startswith("Post a text fallback"))
+    assert fallback["if"] == "${{ steps.post.outcome == 'failure' }}"
+    assert fallback["with"]["method"] == "chat.postMessage"
+    assert fallback["with"]["payload-file-path"].endswith("/slack-fallback.json")
+    # The fallback message tells readers which artifact to download.
+    upload = next(s for s in steps if s["name"] == "Upload the report")
+    assert upload["with"]["name"] == "playwright-flaky-report"
+    assert steps.index(upload) < steps.index(post)
+
+
 def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
     # GitHub keeps only 10 warning annotations per step; one per test would
     # silently drop the rest before the queue's #pw-health alert reads them.

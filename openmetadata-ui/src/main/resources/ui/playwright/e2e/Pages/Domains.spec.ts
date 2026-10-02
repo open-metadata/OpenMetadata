@@ -115,7 +115,7 @@ const test = base.extend<{
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await setPage(page);
     await page.close();
   },
@@ -3441,7 +3441,10 @@ test.describe('Domain asset dryRun — add confirmation', () => {
       .getByTestId('searchbar')
       .fill(name);
     await searchRes;
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   };
 
   test('shows preview modal on cross-domain move and commits on Move Anyway', async ({

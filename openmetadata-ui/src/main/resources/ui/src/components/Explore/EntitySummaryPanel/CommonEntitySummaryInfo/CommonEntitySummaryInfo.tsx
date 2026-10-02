@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,7 @@ import { ICON_DIMENSION } from '../../../../constants/constants';
 import { getSafeHttpUrl } from '../../../../utils/StringUtils';
 import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interface';
 
+import { Typography } from '@openmetadata/ui-core-components';
 import './common-entity-summary.less';
 
 function CommonEntitySummaryInfo({
@@ -70,11 +71,11 @@ function CommonEntitySummaryInfo({
           );
         } else {
           valueContent = (
-            <Typography.Text
+            <Typography
               className={classNames('summary-item-value text-grey-body')}
               data-testid={`${info.name}-value`}>
               {info.value}
-            </Typography.Text>
+            </Typography>
           );
         }
 
@@ -82,11 +83,11 @@ function CommonEntitySummaryInfo({
           <Col key={info.name} span={24}>
             <Row gutter={[16, 32]}>
               <Col span={8}>
-                <Typography.Text
+                <Typography
                   className="summary-item-key font-semibold"
                   data-testid={`${info.name}-label`}>
                   {info.name}
-                </Typography.Text>
+                </Typography>
               </Col>
               <Col span={16}>{valueContent}</Col>
             </Row>

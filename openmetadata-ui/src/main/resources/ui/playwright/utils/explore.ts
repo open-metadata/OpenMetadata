@@ -213,9 +213,10 @@ export const expandServiceInExploreTree = async (
     );
     // Tree rows carry count badges, so match by testid instead of exact text
     await page
-      .locator('.ant-tree-treenode')
+      .getByTestId('explore-tree')
+      .getByRole('row')
       .filter({ has: page.getByTestId('explore-tree-title-mysql') })
-      .locator('.ant-tree-switcher svg')
+      .getByTestId('tree-expand-btn')
       .click();
     await serviceNameRes;
   }
@@ -225,9 +226,10 @@ export const expandServiceInExploreTree = async (
     '/api/v1/search/query?q=&index=dataAsset*serviceType*'
   );
   await page
-    .locator('.ant-tree-treenode')
+    .getByTestId('explore-tree')
+    .getByRole('row')
     .filter({ hasText: serviceName })
-    .locator('.ant-tree-switcher svg')
+    .getByTestId('tree-expand-btn')
     .click();
   await databaseRes;
 };
@@ -241,9 +243,10 @@ export const expandDatabaseInExploreTree = async (
     '/api/v1/search/query?q=&index=dataAsset*database.displayName*'
   );
   await page
-    .locator('.ant-tree-treenode')
+    .getByTestId('explore-tree')
+    .getByRole('row')
     .filter({ hasText: dbName })
-    .locator('.ant-tree-switcher svg')
+    .getByTestId('tree-expand-btn')
     .click();
   await databaseSchemaRes;
 };
@@ -256,9 +259,10 @@ export const expandSchemaInExploreTree = async (
     '/api/v1/search/query?q=&index=dataAsset*databaseSchema.displayName*'
   );
   await page
-    .locator('.ant-tree-treenode')
+    .getByTestId('explore-tree')
+    .getByRole('row')
     .filter({ hasText: schemaName })
-    .locator('.ant-tree-switcher svg')
+    .getByTestId('tree-expand-btn')
     .click();
   await schemaRes;
 };
@@ -271,9 +275,10 @@ export const expandTableInExploreTree = async (
     '/api/v1/search/query?*entityType*tableColumn*'
   );
   await page
-    .locator('.ant-tree-treenode')
+    .getByTestId('explore-tree')
+    .getByRole('row')
     .filter({ hasText: tableName })
-    .locator('.ant-tree-switcher svg')
+    .getByTestId('tree-expand-btn')
     .click();
   await columnRes;
 };
@@ -422,7 +427,7 @@ export const navigateToExploreAndSelectEntity = async ({
 };
 
 export const getExportModalContent = (page: Page) =>
-  page.getByTestId('export-scope-modal').locator('.ant-modal-content');
+  page.getByTestId('export-scope-modal');
 
 export const openExportScopeModal = async (page: Page) => {
   await page.getByRole('button', { name: 'Tools' }).click();

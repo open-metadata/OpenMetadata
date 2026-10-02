@@ -964,6 +964,11 @@ export const validateImportStatus = async (
   page: Page,
   status: { passed: string; failed: string; processed: string }
 ) => {
+  // `processed-row` is rendered from the async CSV-import job result delivered over the
+  // CSV_IMPORT websocket channel, not from the importAsync PUT response. The IMPORT_STATUS_TIMEOUT
+  // here is the ceiling for that job to complete and the socket message to land. Residual infra
+  // risk: a backend job that legitimately runs longer, or a dropped/reconnecting socket, will time
+  // out here regardless of test code — it is not a locator/selector problem.
   await page
     .getByTestId('processed-row')
     .waitFor({ timeout: IMPORT_STATUS_TIMEOUT });

@@ -60,6 +60,14 @@ import AlertAiRuleSection from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
 
+// The AI form's onChange is a functional updater (prev) => next; apply the latest updater to the
+// value the component rendered with to get the committed value the assertions check.
+const applyLastUpdater = (
+  onChange: jest.Mock,
+  prev: ModifiedCreateEventSubscription
+): ModifiedCreateEventSubscription =>
+  onChange.mock.calls[onChange.mock.calls.length - 1][0](prev);
+
 jest.mock('../../../rest/alertsAPI', () => ({
   testAlertDestination: jest.fn().mockResolvedValue([]),
 }));
@@ -890,7 +898,7 @@ describe('AlertAi form field components', () => {
       { target: { value: 'Success' } }
     );
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         input: expect.objectContaining({
           actions: [
@@ -1073,7 +1081,7 @@ describe('AlertAi form field components', () => {
       key: 'Enter',
     });
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [
           expect.objectContaining({
@@ -1110,7 +1118,7 @@ describe('AlertAi form field components', () => {
     });
     fireEvent.blur(screen.getByTestId('email-input-0'));
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [
           expect.objectContaining({
@@ -1177,8 +1185,14 @@ describe('AlertAi form field components', () => {
     );
 
     const lastConfig = () =>
-      onChange.mock.calls[onChange.mock.calls.length - 1][0].destinations[0]
-        .config;
+      (
+        applyLastUpdater(onChange, value)
+          .destinations?.[0] as ModifiedDestination
+      ).config as {
+        headers?: { key: string; value: string }[];
+        httpMethod?: string;
+        queryParams?: { key: string; value: string }[];
+      };
 
     expect(screen.getByTestId('header-key-input-0-0')).toHaveValue('X-Token');
 
@@ -1234,7 +1248,7 @@ describe('AlertAi form field components', () => {
       screen.getByRole('checkbox', { name: 'label.notify-downstream' })
     );
 
-    expect(onChange).toHaveBeenLastCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [
           expect.objectContaining({
@@ -1333,7 +1347,7 @@ describe('AlertAi form field components', () => {
       target: { value: 'pipeline' },
     });
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [],
         input: {},

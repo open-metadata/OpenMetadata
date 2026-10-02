@@ -153,7 +153,8 @@ export const addAssetsToTag = async (
     await searchRes;
 
     await assetSelectionModal
-      .locator(`[data-testid="table-data-card_${fqn}"] input`)
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
       .check();
 
     await expect(
@@ -221,7 +222,10 @@ export const removeAssetsFromTag = async (
     // a repositioning target.
     await waitForAllLoadersToDisappear(page);
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);
@@ -676,7 +680,10 @@ export const verifyEntityTypeFilterInTagAssets = async (
     // repositioning target.
     await waitForAllLoadersToDisappear(page);
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"]`)
+      .getByTestId('asset-checkbox')
+      .check();
   }
 
   const clearResponse = page.waitForResponse('/api/v1/search/query?q=*');

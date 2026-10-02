@@ -311,75 +311,91 @@ export const MOCK_EXPLORE_SEARCH_RESULTS: SearchResponse<ExploreSearchIndex> = {
   },
 };
 
+const MockTabIcon = () => null;
+
 export const MOCK_EXPLORE_TAB_ITEMS = [
   {
     key: 'dataProduct',
     label: 'Data Products',
     count: 0,
+    icon: MockTabIcon,
   },
   {
     key: 'table',
     label: 'Tables',
     count: 60,
+    icon: MockTabIcon,
   },
   {
     key: 'database',
     label: 'Databases',
     count: 1,
+    icon: MockTabIcon,
   },
   {
     key: 'databaseSchema',
     label: 'Database Schemas',
     count: 1,
+    icon: MockTabIcon,
   },
   {
     key: 'storedProcedure',
     label: 'Stored Procedures',
     count: 6,
+    icon: MockTabIcon,
   },
   {
     key: 'dashboard',
     label: 'Dashboards',
     count: 42,
+    icon: MockTabIcon,
   },
   {
     key: 'dashboardDataModel',
     label: 'Data Models',
     count: 18,
+    icon: MockTabIcon,
   },
   {
     key: 'pipeline',
     label: 'Pipelines',
     count: 24,
+    icon: MockTabIcon,
   },
   {
     key: 'topic',
     label: 'Topics',
     count: 30,
+    icon: MockTabIcon,
   },
   {
     key: 'mlmodel',
     label: 'Ml Models',
     count: 6,
+    icon: MockTabIcon,
   },
   {
     key: 'container',
     label: 'Containers',
     count: 51,
+    icon: MockTabIcon,
   },
   {
     key: 'glossaryTerm',
     label: 'Glossaries',
     count: 0,
+    icon: MockTabIcon,
   },
   {
     key: 'tag',
     label: 'Tags',
     count: 40,
+    icon: MockTabIcon,
   },
   {
     key: 'searchIndex',
     label: 'Search Indexes',
     count: 3,
+    icon: MockTabIcon,
   },
 ];

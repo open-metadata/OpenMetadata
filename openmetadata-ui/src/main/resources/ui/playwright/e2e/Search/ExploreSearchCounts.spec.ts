@@ -17,6 +17,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { createAdminApiContext } from '../../utils/admin';
 import { okJson } from '../../utils/apiResponse';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const names = ['customer', 'customer_archive', 'custoner'];
 
@@ -124,6 +125,116 @@ for (const { index, tab, path } of [
     });
 
     if (index === 'databaseSchema') {
+      test(
+        'preserves badges across cached tab switches when counts fail',
+        { tag: '@Discovery' },
+        async ({ page }) => {
+          // A tab switch drops quick filters other than owner and tags, which would change the
+          // search. Every tab keeps the browse path, so the switches below stay in one search.
+          const params = new URLSearchParams({
+            search: 'customer',
+            sort: '_score',
+            sortOrder: 'desc',
+            browsePath: JSON.stringify([
+              {
+                key: 'service.displayName.keyword',
+                label: 'Service',
+                value: [
+                  { key: fixture.service.name, label: fixture.service.name },
+                ],
+              },
+            ]),
+          });
+          const now = Date.now();
+          await page.clock.setFixedTime(now);
+          await page.goto(`/explore/databaseSchema?${params}`);
+          await expect(
+            page.getByTestId('entity-header-display-name')
+          ).toHaveText(['customer', 'customer_archive']);
+          await expect(page.getByTestId('database schemas-tab')).toHaveText(
+            /Database Schemas\s*2/
+          );
+          await expect(page.getByTestId('tables-tab')).toHaveText(/Tables\s*1/);
+
+          // Expire shared counts while the per-tab results still qualify for revalidation.
+          await page.clock.setFixedTime(now + 3000);
+          let releaseCounts = () => {};
+          const countsReleased = new Promise<void>((resolve) => {
+            releaseCounts = resolve;
+          });
+          await page.route(
+            '**/api/v1/search/entityTypeCounts?*',
+            async (route) => {
+              await countsReleased;
+              await route.fulfill({
+                status: 503,
+                json: { message: 'Count unavailable' },
+              });
+            }
+          );
+          try {
+            for (const target of [
+              { index: 'table', tab: 'tables', names: ['custoner'] },
+              {
+                index: 'databaseSchema',
+                tab: 'database schemas',
+                names: ['customer', 'customer_archive'],
+              },
+              { index: 'table', tab: 'tables', names: ['custoner'] },
+            ]) {
+              await test.step(`Revalidate ${target.tab} without a count response`, async () => {
+                const resultsResponse = waitForResponseWithStatus(
+                  page,
+                  (response) => {
+                    const url = new URL(response.url());
+
+                    return (
+                      url.pathname === '/api/v1/search/query' &&
+                      response.request().method() === 'GET' &&
+                      url.searchParams.get('index') === target.index &&
+                      url.searchParams.get('q') === 'customer' &&
+                      url.searchParams.get('track_total_hits') === 'true'
+                    );
+                  },
+                  200
+                );
+                const failedCounts = waitForResponseWithStatus(
+                  page,
+                  (response) =>
+                    response
+                      .url()
+                      .includes('/api/v1/search/entityTypeCounts?') &&
+                    response.request().method() === 'GET',
+                  503
+                );
+                await page.getByTestId(`${target.tab}-tab`).click();
+                await resultsResponse;
+                await expect(
+                  page.getByTestId('entity-header-display-name')
+                ).toHaveText(target.names);
+                await expect(
+                  page.getByTestId('database schemas-tab')
+                ).toHaveText(/Database Schemas\s*2/);
+                await expect(page.getByTestId('tables-tab')).toHaveText(
+                  /Tables\s*1/
+                );
+                releaseCounts();
+                await failedCounts;
+                await expect(
+                  page.getByTestId('database schemas-tab')
+                ).toHaveText(/Database Schemas\s*2/);
+                await expect(page.getByTestId('tables-tab')).toHaveText(
+                  /Tables\s*1/
+                );
+              });
+            }
+          } finally {
+            releaseCounts();
+            await page.unrouteAll({ behavior: 'wait' });
+          }
+        }
+      );
+
       test('selects the matching tab when entering Explore without a tab', async ({
         page,
       }) => {

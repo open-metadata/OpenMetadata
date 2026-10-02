@@ -58,4 +58,28 @@ class LLMClientHolderTest {
             .withProvider(LLMProvider.NOOP));
     assertFalse(LLMClientHolder.isMemoryExtractionEnabled());
   }
+
+  @Test
+  void ontologyMemoryDerivationNeedsBothSwitches() {
+    LLMClientHolder.initialize(
+        new LLMConfiguration()
+            .withEnabled(true)
+            .withMemoryExtractionEnabled(true)
+            .withProvider(LLMProvider.NOOP));
+    assertFalse(LLMClientHolder.isOntologyMemoryDerivationEnabled());
+
+    LLMClientHolder.initialize(
+        new LLMConfiguration()
+            .withEnabled(true)
+            .withOntologyMemoryDerivationEnabled(true)
+            .withProvider(LLMProvider.NOOP));
+    assertTrue(LLMClientHolder.isOntologyMemoryDerivationEnabled());
+
+    LLMClientHolder.initialize(
+        new LLMConfiguration()
+            .withEnabled(false)
+            .withOntologyMemoryDerivationEnabled(true)
+            .withProvider(LLMProvider.NOOP));
+    assertFalse(LLMClientHolder.isOntologyMemoryDerivationEnabled());
+  }
 }

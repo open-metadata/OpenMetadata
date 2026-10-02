@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,21 @@
  *  limitations under the License.
  */
 
-.entity-summary-details {
-  .ant-space-item {
-    position: relative;
-  }
+import { OntologyMemoryProposalStatus } from '../../../../generated/api/data/ontologyMemoryProposalStatus';
+import { ContextMemory } from '../../../../generated/entity/context/contextMemory';
+
+export interface MemoryDerivedOntologyProps {
+  memory: ContextMemory;
+  status?: OntologyMemoryProposalStatus;
+  canPropose: boolean;
+  isProposing: boolean;
+  proposeError?: string;
+  onNavigate: () => void;
+  onPropose: () => void;
+}
+
+export interface ProposeAccess {
+  isOwner: boolean;
+  canCreateDrafts: boolean;
+  isViewOnly: boolean;
 }
