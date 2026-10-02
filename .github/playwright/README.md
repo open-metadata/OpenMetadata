@@ -23,7 +23,7 @@ make playwright_affected_run ARGS="--update-pr --workers=2"      # also upsert t
 
 Where CI escalates unmapped code paths to the full suite, the local plan instead runs the targeted set plus one canary per project and lists the unmapped files as impact-map gaps. Close a gap by adding a mapping here rather than running the full suite locally.
 
-The command passes spec files without `--project`, so Playwright routes each file to every project that claims it, as a normal local run does. Flags passed through `ARGS` that the script does not recognise (`--workers`, `--headed`, `--debug`) are forwarded to `npx playwright test`. The results block, delimited by `<!-- local-playwright-results:start/end -->` under "Playwright (UI) tests" in the PR template, records the tested commit, a warning for uncommitted changes, totals, and a per-spec table; selected specs that produced no results are listed as "not run" and mark the run as failed.
+The command passes spec files without `--project`, so Playwright routes each file to every project that claims it, as a normal local run does. Flags passed through `ARGS` that the script does not recognise (`--workers`, `--headed`, `--debug`) are forwarded to `npx playwright test`. Like every CI lane, the run sets `PLAYWRIGHT_IS_OSS=true` unless you export it yourself; without it `auth.setup.ts` calls the Collate-only ingestion-runner API and fails before any spec runs. The results block, delimited by `<!-- local-playwright-results:start/end -->` under "Playwright (UI) tests" in the PR template, records the tested commit, a warning for uncommitted changes, totals, and a per-spec table; selected specs that produced no results are listed as "not run" and mark the run as failed.
 
 ## Duration-balanced plans
 

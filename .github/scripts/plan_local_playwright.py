@@ -75,7 +75,13 @@ def git(repo_root: Path, *args: str) -> str:
 
 
 def collect_changed_files(repo_root: Path, base: str) -> list[str]:
-    merge_base = git(repo_root, "merge-base", base, "HEAD")
+    try:
+        merge_base = git(repo_root, "merge-base", base, "HEAD")
+    except subprocess.CalledProcessError:
+        sys.exit(
+            f"No merge base between '{base}' and HEAD. Fetch it first "
+            "(git fetch origin main) or pass another ref with --base."
+        )
     # --no-renames reports both sides of a rename, so a moved spec or source
     # file maps through its old path as well as its new one.
     tracked = git(
@@ -430,7 +436,11 @@ def main(argv: list[str] | None = None) -> int:
     results_path = ui_root / RESULTS_JSON
     results_path.unlink(missing_ok=True)
     print(f"\n$ {shlex.join(command)}\n", flush=True)
-    exit_code = subprocess.run(command, cwd=ui_root, check=False).returncode
+    # Every CI lane sets PLAYWRIGHT_IS_OSS; without it auth.setup.ts calls the
+    # Collate-only ingestionRunners API and fails before any spec runs.
+    env = {**os.environ}
+    env.setdefault("PLAYWRIGHT_IS_OSS", "true")
+    exit_code = subprocess.run(command, cwd=ui_root, env=env, check=False).returncode
     if not results_path.exists():
         print(
             f"Playwright did not write {RESULTS_JSON}; no results block produced.",

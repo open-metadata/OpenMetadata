@@ -192,3 +192,12 @@ def test_upsert_block_appends_when_body_has_no_heading() -> None:
     block = f"{PLANNER.BLOCK_START}\nx\n{PLANNER.BLOCK_END}"
 
     assert PLANNER.upsert_block("Plain body", block) == f"Plain body\n\n{block}\n"
+
+
+def test_missing_base_ref_exits_with_fetch_hint() -> None:
+    try:
+        PLANNER.collect_changed_files(REPO_ROOT, "no-such-remote/no-such-branch")
+    except SystemExit as error:
+        assert "git fetch origin main" in str(error.code)
+    else:
+        raise AssertionError("expected SystemExit for an unknown base ref")
