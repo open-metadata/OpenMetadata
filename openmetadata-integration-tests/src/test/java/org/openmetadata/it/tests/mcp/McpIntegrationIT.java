@@ -535,11 +535,11 @@ public class McpIntegrationIT extends McpTestBase {
   @Test
   void lineagePagesThroughAGraphTooLargeForOneResponse() throws Exception {
     String suffix = UUID.randomUUID().toString().substring(0, 8);
-    Table root = createServiceDatabaseSchemaTable("mcp_page_root_" + suffix);
+    Table root = createServiceDatabaseSchemaTable("mcp_paging_root_" + suffix);
     String largeSql = "SELECT " + "customer_id, order_total, ".repeat(800) + "1";
     List<String> expected = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
-      Table consumer = createServiceDatabaseSchemaTable("mcp_page_" + i + "_" + suffix);
+      Table consumer = createServiceDatabaseSchemaTable("mcp_paging_" + i + "_" + suffix);
       addSqlLineageEdge(root, consumer, largeSql);
       expected.add(consumer.getFullyQualifiedName());
     }
