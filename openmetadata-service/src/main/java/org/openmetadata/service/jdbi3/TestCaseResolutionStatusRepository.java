@@ -943,6 +943,11 @@ public class TestCaseResolutionStatusRepository
             page.counts().stream()
                 .flatMap(count -> rankByOccurrence(count.tables()).stream())
                 .collect(Collectors.toSet()));
+    Map<String, EntityReference> assignees =
+        findAssignees(
+            page.counts().stream()
+                .flatMap(count -> parseAssignees(count.assignees()).stream())
+                .collect(Collectors.toSet()));
     Map<String, EntityReference> testDefinitions =
         findReferences(
             Entity.TEST_DEFINITION,
@@ -958,6 +963,11 @@ public class TestCaseResolutionStatusRepository
                             count,
                             parseIncidentCreatedAt(count),
                             references.get(count.groupKey()))
+                        .withAssigneeReferences(
+                            parseAssignees(count.assignees()).stream()
+                                .map(assignees::get)
+                                .filter(Objects::nonNull)
+                                .toList())
                         .withTableCount(count.tableCount())
                         .withTables(relatedTables(count, tables))
                         .withTestDefinitionCount(count.testDefinitionCount())
@@ -1151,6 +1161,26 @@ public class TestCaseResolutionStatusRepository
         for (EntityReference reference : entityDAO.findReferencesByIds(ids, Include.ALL)) {
           result.put(reference.getId().toString(), reference);
         }
+      }
+    }
+    return result;
+  }
+
+  // An incident row keeps only its assignee's name, which a user or a team holds. Their references
+  // carry the type and display name the groups show; users are looked up first, as the incident
+  // workflow assigns users far more often than teams.
+  private static Map<String, EntityReference> findAssignees(Collection<String> names) {
+    Map<String, EntityReference> result = new HashMap<>();
+    List<String> fqns = names.stream().map(FullyQualifiedName::quoteName).toList();
+    for (String entityType : List.of(Entity.USER, Entity.TEAM)) {
+      if (result.size() == names.size()) {
+        break;
+      }
+      for (EntityReference reference :
+          Entity.getEntityRepository(entityType)
+              .getDao()
+              .findReferencesByFqns(fqns, Include.NON_DELETED)) {
+        result.putIfAbsent(reference.getName(), reference);
       }
     }
     return result;

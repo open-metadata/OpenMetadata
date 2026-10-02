@@ -93,6 +93,13 @@
         "type": "string"
       }
     },
+    "assigneeReferences": {
+      "description": "The current assignees of the group's open incidents as users and teams, in the order of `assignees`. A name no user or team holds any more is left out.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/entityReference.json"
+      }
+    },
     "assigneeCount": {
       "description": "Number of distinct current assignees across the group's open incidents.",
       "type": "integer"

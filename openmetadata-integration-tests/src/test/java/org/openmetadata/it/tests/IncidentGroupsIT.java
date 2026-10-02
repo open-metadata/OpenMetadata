@@ -35,6 +35,7 @@ import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
@@ -189,6 +191,92 @@ public class IncidentGroupsIT {
       pagerTableFqns.add(pagerTable.getFullyQualifiedName());
     }
     pagerTableFqns = pagerTableFqns.stream().sorted().toList();
+  }
+
+  @Test
+  void testPageNumberJumpsToThatPage() throws Exception {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("groupBy", GROUP_BY_TABLE);
+    params.put("assignee", pagerUser.getName());
+    params.put("limit", "2");
+    params.put("page", "3");
+    ListResponse<TestCaseIncidentGroup> last =
+        client.testCaseResolutionStatuses().listIncidentGroups(params);
+    assertEquals(
+        List.of(pagerTableFqns.get(4)),
+        convertGroups(last).stream().map(TestCaseIncidentGroup::getFullyQualifiedName).toList(),
+        "page 3 of 2 is the fifth group, reached without walking the cursors");
+    assertEquals(5, last.getPaging().getTotal());
+    assertNull(last.getPaging().getAfter());
+
+    params.put("page", "2");
+    ListResponse<TestCaseIncidentGroup> middle =
+        client.testCaseResolutionStatuses().listIncidentGroups(params);
+    assertEquals(
+        pagerTableFqns.subList(2, 4),
+        convertGroups(middle).stream().map(TestCaseIncidentGroup::getFullyQualifiedName).toList());
+
+    params.put("page", "9");
+    assertTrue(
+        convertGroups(client.testCaseResolutionStatuses().listIncidentGroups(params)).isEmpty(),
+        "a page past the last is empty");
+
+    ListResponse<TestCaseResolutionStatus> incidents =
+        client
+            .testCaseResolutionStatuses()
+            .list(
+                latestOpenParams()
+                    .withLimit(2)
+                    .addFilter("assignee", pagerUser.getName())
+                    .addFilter("page", "3"));
+    assertEquals(1, incidents.getData().size(), "the incident list jumps the same way");
+    assertEquals(5, incidents.getPaging().getTotal());
+  }
+
+  @Test
+  void testGroupAssigneesCarryTheirReferences() throws Exception {
+    long ts = System.currentTimeMillis();
+    Team team =
+        client
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName("incident_groups_team_" + ts)
+                    .withDisplayName("Incident Groups Team")
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    Table table = createTable(schemaFqn, "incident_groups_assignee_refs_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_assignee_refs_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase toTeam =
+        createTestCase("incident_groups_team_case", tableLink(table), definition, List.of());
+    TestCase toUser =
+        createTestCase("incident_groups_user_case", tableLink(table), definition, List.of());
+    for (TestCase testCase : List.of(toTeam, toUser)) {
+      createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    }
+    createStatus(
+        toTeam,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned().withAssignee(team.getEntityReference()));
+    createStatus(
+        toUser,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned().withAssignee(userA.getEntityReference()));
+
+    TestCaseIncidentGroup group =
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), table.getFullyQualifiedName());
+
+    Map<String, String> typesByName =
+        group.getAssigneeReferences().stream()
+            .collect(Collectors.toMap(EntityReference::getName, EntityReference::getType));
+    assertEquals(
+        Map.of(team.getName(), Entity.TEAM, userA.getName(), Entity.USER),
+        typesByName,
+        "each assignee name resolves to its user or team");
+    assertTrue(
+        group.getAssigneeReferences().stream()
+            .anyMatch(reference -> "Incident Groups Team".equals(reference.getDisplayName())));
   }
 
   @Test
