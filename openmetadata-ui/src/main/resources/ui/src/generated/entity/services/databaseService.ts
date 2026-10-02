@@ -839,6 +839,9 @@ export interface Connection {
      * Choose how to authenticate with SAP SuccessFactors OData API.
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+     *
+     * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+     * Fabric SQL endpoint.
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
     /**
@@ -1315,8 +1318,6 @@ export interface Connection {
     paginationLimit?: number;
     /**
      * Azure Application client secret for service principal authentication.
-     *
-     * Azure Application client secret for Service Principal authentication.
      */
     clientSecret?: string;
     /**
@@ -1449,6 +1450,15 @@ export enum AuthMechanismEnum {
  *
  * Authentication configuration for self-hosted Dremio Software using username and password.
  * Dremio Software is deployed on-premises or in your own cloud infrastructure.
+ *
+ * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+ * Fabric SQL endpoint.
+ *
+ * Authenticate the service principal with a client secret of its Microsoft Entra ID
+ * application.
+ *
+ * Authenticate the service principal with an X.509 certificate registered on its Microsoft
+ * Entra ID application.
  */
 export interface AuthenticationType {
     /**
@@ -1472,6 +1482,9 @@ export interface AuthenticationType {
     /**
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
+     *
+     * Client secret value (not the secret ID) from the application's Certificates & secrets
+     * page in Microsoft Entra ID.
      */
     clientSecret?: string;
     /**
@@ -1529,6 +1542,21 @@ export interface AuthenticationType {
      * permissions to access metadata.
      */
     username?: string;
+    /**
+     * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
+     * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
+     */
+    certificate?: string;
+    /**
+     * PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN
+     * ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding
+     * both the key and the certificate can be supplied in both fields.
+     */
+    privateKey?: string;
+    /**
+     * Passphrase of an encrypted private key. Leave empty when the private key is not encrypted.
+     */
+    privateKeyPassphrase?: string;
 }
 
 /**
