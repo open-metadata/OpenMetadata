@@ -19,7 +19,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,6 +36,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
@@ -84,6 +84,17 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     ContextMemoryBodyTextContributor.INSTANCE.register();
   }
 
+  /**
+   * A memory is drafted, approved for agents to use, and archived once it no longer holds; an
+   * archived memory can be approved again, but no memory goes back to Draft.
+   */
+  public static final EntityLifecycle LIFECYCLE =
+      new EntityLifecycle(
+          Map.of(
+              EntityStatus.DRAFT, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
+              EntityStatus.APPROVED, Set.of(EntityStatus.ARCHIVED),
+              EntityStatus.ARCHIVED, Set.of(EntityStatus.APPROVED)));
+
   public ContextMemoryRepository() {
     super(
         ContextMemoryResource.COLLECTION_PATH,
@@ -93,6 +104,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    entityLifecycle = LIFECYCLE;
   }
 
   @Override
@@ -434,7 +446,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       entity.setParentMemory(parentMemory.getEntityReference());
     }
     validateSharedPrincipals(entity);
-    validateMemoryStage(entity.getEntityStatus());
     setCreatorAsDefaultOwner(entity, update);
   }
 
@@ -546,61 +557,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   // ------------------------------------------------------------------
   // Lifecycle enforcement
   // ------------------------------------------------------------------
-
-  /**
-   * A memory is drafted, in use (Approved) or archived. Valid stage transitions:
-   *   DRAFT → APPROVED
-   *   DRAFT → ARCHIVED
-   *   APPROVED → ARCHIVED
-   *   ARCHIVED → APPROVED (re-activate)
-   *
-   * Invalid:
-   *   ARCHIVED → DRAFT (cannot revert to draft)
-   *   APPROVED → DRAFT (cannot revert to draft)
-   */
-  private static final Map<EntityStatus, Set<EntityStatus>> VALID_TRANSITIONS =
-      Collections.unmodifiableMap(
-          new EnumMap<>(
-              Map.of(
-                  EntityStatus.DRAFT, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
-                  EntityStatus.APPROVED, Set.of(EntityStatus.ARCHIVED),
-                  EntityStatus.ARCHIVED, Set.of(EntityStatus.APPROVED))));
-
-  @Override
-  protected void validateEntityStatusTransition(EntityStatus from, EntityStatus to) {
-    validateStatusTransition(from, to);
-  }
-
-  /** A memory is Draft, Approved or Archived; it can be created in any of them but no other. */
-  public static void validateMemoryStage(EntityStatus stage) {
-    if (stage != null && !VALID_TRANSITIONS.containsKey(stage)) {
-      throw new BadRequestException(
-          String.format(
-              "Invalid memory status %s. A memory is one of: %s",
-              stage.value(), VALID_TRANSITIONS.keySet()));
-    }
-  }
-
-  /**
-   * Validate that a status transition is allowed. A memory saved before it had a stage may move to
-   * any of its stages.
-   */
-  public static void validateStatusTransition(EntityStatus from, EntityStatus to) {
-    if (from == null || from == to) {
-      return;
-    }
-    Set<EntityStatus> allowed = VALID_TRANSITIONS.get(from);
-    if (allowed == null) {
-      throw new BadRequestException(
-          String.format("No transitions defined for status %s", from.value()));
-    }
-    if (!allowed.contains(to)) {
-      throw new BadRequestException(
-          String.format(
-              "Invalid memory status transition from %s to %s. Allowed transitions from %s: %s",
-              from.value(), to.value(), from.value(), allowed));
-    }
-  }
 
   @Override
   public EntityUpdater getUpdater(

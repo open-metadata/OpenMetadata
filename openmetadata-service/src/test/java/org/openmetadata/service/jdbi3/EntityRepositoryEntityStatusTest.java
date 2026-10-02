@@ -12,10 +12,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
-import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,8 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -67,18 +70,17 @@ class EntityRepositoryEntityStatusTest {
     protected void storeRelationships(Metric entity) {}
   }
 
-  /** Starts new metrics in Draft and never lets a draft be deprecated directly. */
+  /** Starts new metrics in Draft, which must be approved before it can be deprecated. */
   private static class ReviewedMetricRepo extends TestMetricRepo {
     ReviewedMetricRepo(CollectionDAO.MetricDAO dao) {
       super(dao);
       defaultEntityStatus = EntityStatus.DRAFT;
-    }
-
-    @Override
-    protected void validateEntityStatusTransition(EntityStatus from, EntityStatus to) {
-      if (from == EntityStatus.DRAFT && to == EntityStatus.DEPRECATED) {
-        throw new BadRequestException("A draft metric cannot be deprecated");
-      }
+      entityLifecycle =
+          new EntityLifecycle(
+              Map.of(
+                  EntityStatus.DRAFT, Set.of(EntityStatus.APPROVED),
+                  EntityStatus.APPROVED, Set.of(EntityStatus.DEPRECATED),
+                  EntityStatus.DEPRECATED, Set.of()));
     }
   }
 
@@ -151,6 +153,15 @@ class EntityRepositoryEntityStatusTest {
   }
 
   @Test
+  void newEntityInAStageItsTypeDoesNotUseIsRejected() {
+    Metric inReview = metric().withEntityStatus(EntityStatus.IN_REVIEW);
+
+    assertThrows(
+        BadRequestException.class,
+        () -> new ReviewedMetricRepo(metricDAO).assignInitialEntityStatus(inReview));
+  }
+
+  @Test
   void newEntityAskingForAStageAWorkflowOwnsStartsInItsTypesStage() {
     TestMetricRepo repo = ownedByStageWorkflow(new ReviewedMetricRepo(metricDAO));
     Metric owned = metric().withEntityStatus(EntityStatus.APPROVED);
@@ -213,6 +224,22 @@ class EntityRepositoryEntityStatusTest {
         newUpdater(new ReviewedMetricRepo(metricDAO), original, updated);
 
     assertThrows(BadRequestException.class, () -> updater.updateEntityStatus(false));
+  }
+
+  @Test
+  void entitySavedWithoutAStageCanTakeOnlyAStageOfItsTypesLifecycle() {
+    TestMetricRepo repo = new ReviewedMetricRepo(metricDAO);
+    Metric unstaged = metric().withEntityStatus(null);
+
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            newUpdater(repo, unstaged, movedBy(unstaged, EntityStatus.IN_REVIEW, REVIEWER))
+                .updateEntityStatus(false));
+    assertDoesNotThrow(
+        () ->
+            newUpdater(repo, unstaged, movedBy(unstaged, EntityStatus.DEPRECATED, REVIEWER))
+                .updateEntityStatus(false));
   }
 
   @Test

@@ -355,7 +355,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
 
     InvalidRequestException exception =
         assertThrows(InvalidRequestException.class, () -> createEntity(request));
-    assertTrue(exception.getMessage().contains("Invalid memory status"));
+    assertTrue(exception.getMessage().contains("is not a lifecycle stage of contextMemory"));
   }
 
   @Test
