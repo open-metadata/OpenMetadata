@@ -14,11 +14,12 @@ Test Sample behavior
 """
 
 import os
+import struct
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Integer, Numeric, String, func
+from sqlalchemy import TEXT, Column, Integer, LargeBinary, Numeric, String, TypeDecorator, func
 from sqlalchemy.orm import DeclarativeBase
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
@@ -594,6 +595,38 @@ class SampleTest(TestCase):
             assert sampler.fetch_sample_data().rows == [[1, "not a number"]]
         finally:
             QueriedAmount.__table__.drop(bind=self.engine)
+
+    def test_user_query_keeps_values_whose_conversion_raises_any_error(self, sampler_mock):
+        """A processor can fail outside the usual conversion errors, as rowversion unpacking does on a short value."""
+
+        class RowVersion(TypeDecorator):
+            impl = LargeBinary
+            cache_ok = True
+
+            def process_result_value(self, value, dialect):
+                return struct.unpack("@Q", value)[0]
+
+        class QueriedVersion(Base):
+            __tablename__ = "queried_version"
+            id = Column(Integer, primary_key=True)
+            version = Column(RowVersion)
+
+        QueriedVersion.__table__.create(bind=self.engine)
+        try:
+            self.session.add(QueriedVersion(id=1, version=b"\x00" * 8))
+            self.session.commit()
+            with patch.object(SQASampler, "build_table_orm", return_value=QueriedVersion):
+                sampler = SQASampler(
+                    service_connection_config=self.sqlite_conn,
+                    ometa_client=None,
+                    entity=None,
+                    config=DatabaseSamplerConfig(
+                        sample_query="SELECT id, version, x'0102' AS VERSION FROM queried_version"
+                    ),
+                )
+            assert sampler.fetch_sample_data().rows == [[1, 0, b"\x01\x02"]]
+        finally:
+            QueriedVersion.__table__.drop(bind=self.engine)
 
     def test_enum_samples_keep_values_the_column_type_does_not_list(self, sampler_mock):
         """An ENUM column maps to an Enum type that lists no values, so its lookup must not reject sampled values."""

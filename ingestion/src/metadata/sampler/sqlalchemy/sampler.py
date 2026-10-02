@@ -418,10 +418,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if column is None:
             return self._truncate_cell(cell)
         if processor is not None:
+            # Processors include custom types that fail with their own errors (rowversion unpacking raises
+            # struct.error), and a cell the column type cannot convert is still a valid sample.
             try:
                 cell = processor(cell)
-            except (TypeError, ValueError, ArithmeticError):
-                logger.debug("Keeping the raw %s value the column type cannot convert", column.name)
+            except Exception as exc:
+                logger.debug("Keeping the raw %s value the column type cannot convert: %r", column.name, exc)
         return self._truncate_cell(self._process_sample_value(column, cell))
 
     def _rdn_sample_from_user_query(self) -> Query:
