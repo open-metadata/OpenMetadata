@@ -69,11 +69,25 @@ export const ContractSemanticFormTab: React.FC<{
     | null
   >(null);
 
+  // Track whether the user has genuinely interacted with the form. The
+  // semantics watch effect below propagates form state to the parent, but it
+  // must not fire on mount/re-seed — e.g. the placeholder rule
+  // `{ enabled: true }` seeded when `initialValues.semantics` is empty. Because
+  // `setFieldsValue` does not trigger `onValuesChange`, the seeding effect
+  // would otherwise re-resolve `Form.useWatch` and emit a spurious `onChange`
+  // that falsely enables the parent's Save button (and injects an empty
+  // `semantics: []` op on save). Only real user edits set this flag.
+  const userTouchedRef = useRef(false);
+  const markTouched = useCallback(() => {
+    userTouchedRef.current = true;
+  }, []);
+
   const handleAddQueryBuilderRule = (actionFunctions: Actions) => {
     setQueryBuilderAddRule(actionFunctions);
   };
 
   const handleAddSemantic = () => {
+    markTouched();
     addFunctionRef.current?.({
       enabled: true,
       rule: '',
@@ -83,23 +97,26 @@ export const ContractSemanticFormTab: React.FC<{
 
   const handleDeleteSemantic = useCallback(
     (key: number) => {
+      markTouched();
       const filteredValue =
         semanticsFormData?.filter((_item, idx) => idx !== key) ?? [];
       form.setFieldsValue({ semantics: filteredValue });
       onChange({ semantics: filteredValue });
     },
-    [semanticsFormData]
+    [semanticsFormData, markTouched, onChange]
   );
 
   const handleAddNewRule = useCallback(() => {
+    markTouched();
     queryBuilderAddRule?.addRule([]);
-  }, [queryBuilderAddRule]);
+  }, [queryBuilderAddRule, markTouched]);
 
   const handleQueryBuilderChange = (
     field: FormListFieldData,
     rule: string,
     tree?: JsonTree
   ) => {
+    markTouched();
     let modifyRule = '';
     if (rule) {
       try {
@@ -169,8 +186,16 @@ export const ContractSemanticFormTab: React.FC<{
     : undefined;
 
   useEffect(() => {
+    // Skip propagation on mount/re-seed (programmatic `setFieldsValue` in the
+    // seeding effect). Only emit after the user has actually touched the form,
+    // so navigating to the Semantics tab is a no-op and does not falsely
+    // enable the parent's Save button.
+    if (!userTouchedRef.current) {
+      return;
+    }
+
     onChange({ semantics: semanticsFormData });
-  }, [semanticsFormData]);
+  }, [semanticsFormData, onChange]);
 
   return (
     <>
@@ -202,7 +227,8 @@ export const ContractSemanticFormTab: React.FC<{
           className="new-form-style"
           form={form}
           layout="vertical"
-          validateMessages={VALIDATION_MESSAGES}>
+          validateMessages={VALIDATION_MESSAGES}
+          onValuesChange={markTouched}>
           <Form.List name="semantics">
             {(fields, { add }) => {
               // Store the add function so it can be used outside
