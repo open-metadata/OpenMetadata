@@ -1346,6 +1346,34 @@ describe('TaskDetailPanel', () => {
       expect(screen.getByTestId('task-approve')).toBeInTheDocument();
     });
 
+    // Only the first load gates the actions; a reload after a comment must not
+    // blank the buttons (or flip the status label) while it runs.
+    it('keeps its actions while a comment reloads the task', async () => {
+      mockGetTaskById.mockResolvedValueOnce({ data: LEGACY_APPROVAL_TASK });
+      mockAddComment.mockResolvedValue({});
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+
+      const pending: { resolve?: (value: { data: unknown }) => void } = {};
+      mockGetTaskById.mockReturnValueOnce(
+        new Promise((resolve) => {
+          pending.resolve = resolve;
+        })
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('comment-editor'));
+      });
+
+      expect(mockGetTaskById).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+
+      await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
+
+      expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+    });
+
     it('resolves an approve without a transitionId, carrying newValue and the payload', async () => {
       mockGetTaskById.mockResolvedValue({ data: LEGACY_APPROVAL_TASK });
       mockResolveTask.mockResolvedValue({
