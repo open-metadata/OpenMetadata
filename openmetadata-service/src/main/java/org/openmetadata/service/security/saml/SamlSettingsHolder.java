@@ -39,6 +39,7 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class SamlSettingsHolder {
+  private static final String DEFAULT_DOMAIN = "openmetadata.org";
   private static volatile Saml2Settings saml2Settings;
   private static final Object lock = new Object();
   @Getter private String relayState;
@@ -59,7 +60,7 @@ public class SamlSettingsHolder {
 
   /**
    * Builds OneLogin settings for a SAML configuration without touching the process-wide settings.
-   * Login installs the result for the live configuration; the configuration check builds a throwaway
+   * Login installs the result for the live configuration; the Test Login dry-run builds a throwaway
    * one for a candidate, which must never replace the live settings.
    */
   public static Saml2Settings buildSettings(SamlSSOClientConfig samlConfig)
@@ -233,16 +234,21 @@ public class SamlSettingsHolder {
 
       if (authzConfig == null) {
         LOG.error("AuthorizerConfiguration is null in getDomain()");
-        return "openmetadata.org"; // Default fallback
       }
-
-      String domain = authzConfig.getPrincipalDomain();
-      LOG.debug("Retrieved principal domain: {}", domain);
-      return domain != null ? domain : "openmetadata.org";
+      return domainFor(authzConfig);
 
     } catch (Exception e) {
       LOG.error("Error retrieving domain dynamically", e);
-      return "openmetadata.org"; // Default fallback
+      return DEFAULT_DOMAIN;
     }
+  }
+
+  /**
+   * The domain appended to a NameID that is not an email. Shared with the Test Login dry-run, which
+   * must derive it from the candidate configuration rather than the live one.
+   */
+  public static String domainFor(AuthorizerConfiguration authzConfig) {
+    String domain = authzConfig == null ? null : authzConfig.getPrincipalDomain();
+    return domain != null ? domain : DEFAULT_DOMAIN;
   }
 }

@@ -519,11 +519,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     if (omUser.getAuthenticationMechanism() == null) {
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
-    @SuppressWarnings("unchecked")
-    LinkedHashMap<String, String> storedData =
-        (LinkedHashMap<String, String>) omUser.getAuthenticationMechanism().getConfig();
-    String storedHashPassword = storedData.get("password");
-    if (!BCrypt.verifyer().verify(reqPassword.toCharArray(), storedHashPassword).verified) {
+    if (!matchesStoredPassword(omUser, reqPassword)) {
       // record Failed Login Attempts
       recordFailedLoginAttempt(omUser.getEmail(), omUser.getName());
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
@@ -544,6 +540,21 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             .isEmpty()) {
       throw new AuthenticationException(EMAIL_CONFIRMATION_PENDING);
     }
+  }
+
+  /**
+   * The password check alone, with none of login's failed-attempt bookkeeping — so the Test Login
+   * dry-run can verify a password without ever counting towards locking the account.
+   */
+  static boolean matchesStoredPassword(User omUser, String password) {
+    if (omUser.getAuthenticationMechanism() == null) {
+      return false;
+    }
+    @SuppressWarnings("unchecked")
+    LinkedHashMap<String, String> storedData =
+        (LinkedHashMap<String, String>) omUser.getAuthenticationMechanism().getConfig();
+    String storedHashPassword = storedData.get("password");
+    return BCrypt.verifyer().verify(password.toCharArray(), storedHashPassword).verified;
   }
 
   @Override
