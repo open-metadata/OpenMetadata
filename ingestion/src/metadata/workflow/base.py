@@ -299,7 +299,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         4. Update the pipeline status at the end
         """
         pipeline_state = PipelineState.success
-        self.timer.trigger()
         diagnostics.install(self)
         # Emit a "run started" update immediately. The reporting timer's first
         # tick is a full REPORTS_INTERVAL_SECONDS away, so without this a run
@@ -313,6 +312,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # carries this attribute at runtime).
         pipeline_fqn = getattr(self.config, "ingestionPipelineFQN", None)
         try:
+            self.timer.trigger()
             with (
                 diagnostics.operation("workflow.execute", fqn=pipeline_fqn),
                 diagnostics.dump_on_memory_error(),
