@@ -31,6 +31,7 @@ import {
   buildLineOption,
   toNumberOrNull,
 } from './cartesian';
+import { dataZoomFor } from './common';
 
 interface Row {
   day: string;
@@ -78,6 +79,30 @@ describe('toNumberOrNull', () => {
     expect(toNumberOrNull('')).toBeNull();
     expect(toNumberOrNull('abc')).toBeNull();
     expect(toNumberOrNull(Number.NaN)).toBeNull();
+  });
+});
+
+describe('dataZoomFor', () => {
+  it('sets labelFormatter on the slider only when one is given', () => {
+    const [inside, slider] = dataZoomFor(
+      40,
+      { labelFormatter: (value) => `run ${value}` },
+      20
+    );
+    const format = slider.labelFormatter as (
+      value: number,
+      valueStr: string
+    ) => string;
+
+    expect(format(3, 'a_3')).toBe('run a_3');
+    expect(inside).not.toHaveProperty('labelFormatter');
+    expect(slider.end).toBe(50);
+  });
+
+  it('keeps the slider labels as ECharts defaults them without one', () => {
+    dataZoomFor(40, {}).forEach((zoom) =>
+      expect(zoom).not.toHaveProperty('labelFormatter')
+    );
   });
 });
 
@@ -591,6 +616,46 @@ describe('buildLineOption', () => {
       buildLineOption({ ...base, zoom: true }, LIGHT_CHART_THEME).dataZoom
     ).toBeDefined();
     expect(buildLineOption(base, LIGHT_CHART_THEME).dataZoom).toBeUndefined();
+  });
+
+  it('labels the zoom slider with the category axis formatter', () => {
+    const option = buildBarOption(
+      {
+        ...base,
+        zoom: true,
+        xAxis: { formatter: (value) => `day ${value}` },
+      },
+      LIGHT_CHART_THEME
+    );
+    const [inside, slider] = option.dataZoom as DataZoomComponentOption[];
+    const labelFormatter = slider.labelFormatter as (
+      value: number,
+      valueStr: string
+    ) => string;
+
+    expect(labelFormatter(1, 'Tue')).toBe('day Tue');
+    expect(inside).not.toHaveProperty('labelFormatter');
+  });
+
+  it('leaves the zoom slider labels alone without an axis formatter', () => {
+    const option = buildBarOption({ ...base, zoom: true }, LIGHT_CHART_THEME);
+    const zooms = option.dataZoom as DataZoomComponentOption[];
+
+    zooms.forEach((zoom) => expect(zoom).not.toHaveProperty('labelFormatter'));
+  });
+
+  it('leaves the zoom slider labels alone on a time axis', () => {
+    const option = buildLineOption(
+      {
+        ...base,
+        zoom: true,
+        xAxis: { type: 'time', formatter: (value) => `t ${value}` },
+      },
+      LIGHT_CHART_THEME
+    );
+    const zooms = option.dataZoom as DataZoomComponentOption[];
+
+    zooms.forEach((zoom) => expect(zoom).not.toHaveProperty('labelFormatter'));
   });
 
   it('merges a per-series seriesOption into that series only', () => {

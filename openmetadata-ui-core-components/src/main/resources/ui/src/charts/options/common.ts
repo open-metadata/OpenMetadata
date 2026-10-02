@@ -217,20 +217,36 @@ export const gridFor = ({
   };
 };
 
+export interface ZoomLayout extends Omit<GridLayout, 'hasZoom'> {
+  /**
+   * Formats the slider's edge labels. Without it ECharts shows the raw
+   * category, which is an id rather than a label when the axis formats ticks.
+   */
+  labelFormatter?: (value: string) => string;
+}
+
 export const dataZoomFor = (
   pointCount: number,
-  { legend, horizontal }: Omit<GridLayout, 'hasZoom'>,
+  { legend, horizontal, labelFormatter }: ZoomLayout,
   visiblePoints = DATAZOOM_THRESHOLD
 ): DataZoomComponentOption[] => {
   const end = Math.min(100, (visiblePoints / pointCount) * 100);
   const legendBottom = Boolean(legend?.show) && legend?.top !== 0;
   const axis = horizontal ? { yAxisIndex: 0 } : { xAxisIndex: 0 };
-  const slider = horizontal
-    ? { right: SLIDER_GAP, width: SLIDER_HEIGHT }
-    : {
-        bottom: (legendBottom ? LEGEND_BAND : 0) + SLIDER_GAP,
-        height: SLIDER_HEIGHT,
-      };
+  const slider = {
+    ...(horizontal
+      ? { right: SLIDER_GAP, width: SLIDER_HEIGHT }
+      : {
+          bottom: (legendBottom ? LEGEND_BAND : 0) + SLIDER_GAP,
+          height: SLIDER_HEIGHT,
+        }),
+    ...(labelFormatter
+      ? {
+          labelFormatter: (_value: number, valueStr: string) =>
+            labelFormatter(valueStr),
+        }
+      : {}),
+  };
 
   // Fixed ids let a re-render re-apply the user's window (applyZoomWindow).
   return [

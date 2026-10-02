@@ -437,6 +437,11 @@ export const buildCartesianOption = <T extends object>(
   const values = valueAxes(theme, input, horizontal);
   const valueSlot = values.length === 1 ? values[0] : values;
   const layout = { legend, horizontal };
+  // The slider reads like the category axis; a time axis formats its own.
+  const axisFormatter = isTime ? undefined : input.xAxis?.formatter;
+  const sliderLabel = axisFormatter
+    ? (value: string) => axisFormatter(value)
+    : undefined;
 
   const option: ChartOption = {
     aria: {
@@ -456,7 +461,13 @@ export const buildCartesianOption = <T extends object>(
       ? (category as YAXisComponentOption)
       : (valueSlot as YAXisComponentOption),
     ...(hasZoom
-      ? { dataZoom: dataZoomFor(input.data.length, layout, visiblePoints) }
+      ? {
+          dataZoom: dataZoomFor(
+            input.data.length,
+            { ...layout, labelFormatter: sliderLabel },
+            visiblePoints
+          ),
+        }
       : {}),
     series,
   };
