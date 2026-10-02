@@ -23,6 +23,7 @@ import {
 // The core-components icon barrel re-exports the design team's own SVG set
 import {
   AlertCircle,
+  Search,
   ShieldTick,
   TrendUp02,
 } from '@openmetadata/ui-core-components/icons';
@@ -32,9 +33,15 @@ import { useTranslation } from 'react-i18next';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import Loader from '../../../common/Loader/Loader';
 import IncidentGroupByDropdown from './IncidentGroupByDropdown';
-import { INCIDENT_GROUPS_PAGE_SIZE_OPTIONS } from './IncidentGroups.constants';
+import {
+  CLEARED_INCIDENT_GROUP_FILTERS,
+  INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
+} from './IncidentGroups.constants';
 import { IncidentGroupsViewProps } from './IncidentGroups.types';
-import { countRecurringIncidentGroups } from './IncidentGroups.utils';
+import {
+  countRecurringIncidentGroups,
+  hasActiveIncidentGroupFilters,
+} from './IncidentGroups.utils';
 import IncidentGroupsFilters from './IncidentGroupsFilters';
 import IncidentGroupsTable from './IncidentGroupsTable';
 import { useIncidentGroups } from './useIncidentGroups';
@@ -56,6 +63,7 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     pageSize,
     isLoading,
     isError,
+    retry,
     handleGroupByChange,
     handleFiltersChange,
     handleSortTypeChange,
@@ -84,7 +92,10 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
   const renderContent = () => {
     if (isInitialLoading) {
       return (
-        <Box className="tw:py-8" data-testid="incident-groups-loader">
+        // As tall as the empty and error states, so the page does not jump.
+        <Box
+          className="tw:min-h-80 tw:items-center tw:justify-center"
+          data-testid="incident-groups-loader">
           <Loader />
         </Box>
       );
@@ -96,6 +107,14 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
           className="tw:relative tw:min-h-80 tw:w-full"
           data-testid="incident-groups-error">
           <EmptyPlaceholder
+            actions={[
+              {
+                key: 'retry',
+                color: 'secondary',
+                label: t('label.retry'),
+                onPress: retry,
+              },
+            ]}
             icon={<AlertCircle className="tw:text-fg-error-primary" />}
             title={t('server.entity-fetch-error', {
               entity: t('label.incident-plural'),
@@ -107,7 +126,28 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     }
 
     if (isEmpty(incidentGroups)) {
-      return (
+      // Filtered down to nothing is not the same as having no incidents.
+      return hasActiveIncidentGroupFilters(filters) ? (
+        <Box
+          className="tw:relative tw:min-h-80 tw:w-full"
+          data-testid="incident-groups-no-match">
+          <EmptyPlaceholder
+            actions={[
+              {
+                key: 'clear-filters',
+                color: 'secondary',
+                label: t('label.clear-filter-plural'),
+                onPress: () =>
+                  handleFiltersChange(CLEARED_INCIDENT_GROUP_FILTERS),
+              },
+            ]}
+            description={t('message.try-adjusting-filter')}
+            icon={<Search className="tw:text-fg-quaternary" />}
+            title={t('message.no-match-found')}
+            variant="blank"
+          />
+        </Box>
+      ) : (
         <Box
           className="tw:relative tw:min-h-80 tw:w-full"
           data-testid="incident-groups-empty">

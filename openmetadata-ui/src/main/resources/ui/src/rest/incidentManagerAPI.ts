@@ -111,6 +111,8 @@ export type TestCaseIncidentStatusParams = ListParams & {
    * `/search/list` variant takes a numeric row offset.
    */
   offset?: number | IncidentCursor;
+  /** 1-based page, an alternative to `offset` that can jump to any page. */
+  page?: number;
   originEntityFQN?: string;
   domain?: string;
   /** Test definition of the incident's test case, by name or FQN. */
@@ -136,6 +138,8 @@ export type ListIncidentGroupsParams = {
   limit?: number;
   /** Opaque cursor from a previous `paging.before`/`paging.after`. */
   offset?: IncidentCursor;
+  /** 1-based page, an alternative to `offset` that can jump to any page. */
+  page?: number;
   sortType?: IncidentSortType;
 };
 

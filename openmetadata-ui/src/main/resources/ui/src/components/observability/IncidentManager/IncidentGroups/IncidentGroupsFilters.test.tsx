@@ -11,24 +11,58 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
-import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getTeamByName } from '../../../../rest/teamsAPI';
+import { getUserByName } from '../../../../rest/userAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { IncidentGroupFilters } from './IncidentGroups.types';
 import IncidentGroupsFilters from './IncidentGroupsFilters';
 
 const mockSearchQuery = searchQuery as jest.Mock;
-const mockGetUserAndTeamSearch = getUserAndTeamSearch as jest.Mock;
+const mockGetUserByName = getUserByName as jest.Mock;
+const mockGetTeamByName = getTeamByName as jest.Mock;
 const mockOnChange = jest.fn();
+const mockOnAssigneeFocus = jest.fn();
+const mockOnAssigneeSearch = jest.fn();
 
 jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
-jest.mock('../../../../rest/miscAPI', () => ({
-  getUserAndTeamSearch: jest.fn(),
+jest.mock('../../../../rest/userAPI', () => ({
+  getUserByName: jest.fn(),
+}));
+
+jest.mock('../../../../rest/teamsAPI', () => ({
+  getTeamByName: jest.fn(),
+}));
+
+jest.mock('../../../Glossary/hooks/useEntityReferenceOptions', () => ({
+  useUserTeamOptions: () => ({
+    options: [
+      {
+        id: 'user-aaron',
+        label: 'Aaron Johnson',
+        value: { id: 'user-aaron', type: 'user', name: 'aaron' },
+      },
+      {
+        id: 'team-platform',
+        label: 'Data Platform',
+        value: { id: 'team-platform', type: 'team', name: 'data-platform' },
+      },
+      // A reference without a name cannot be filtered on; it lists as blank.
+      {
+        id: 'nameless',
+        label: 'Nameless',
+        value: { id: 'nameless', type: 'user' },
+      },
+    ],
+    onFocus: mockOnAssigneeFocus,
+    onSearchChange: mockOnAssigneeSearch,
+  }),
 }));
 
 interface MockFilterSelectProps {
@@ -136,7 +170,7 @@ const NO_FILTERS: IncidentGroupFilters = {
 };
 
 const renderFilters = (filters: Partial<IncidentGroupFilters> = {}) =>
-  render(
+  renderWithQueryClient(
     <IncidentGroupsFilters
       filters={{ ...NO_FILTERS, ...filters }}
       onChange={mockOnChange}
@@ -159,21 +193,11 @@ describe('IncidentGroupsFilters', () => {
         ],
       },
     });
-    mockGetUserAndTeamSearch.mockResolvedValue({
-      data: {
-        hits: {
-          hits: [
-            {
-              _source: {
-                name: 'aaron',
-                displayName: 'Aaron Johnson',
-                entityType: 'user',
-              },
-            },
-          ],
-        },
-      },
+    mockGetUserByName.mockResolvedValue({
+      name: 'aaron',
+      displayName: 'Aaron Johnson',
     });
+    mockGetTeamByName.mockRejectedValue(new Error('not found'));
   });
 
   it('should caption every filter of the design', () => {
@@ -207,22 +231,29 @@ describe('IncidentGroupsFilters', () => {
       )
     ).toHaveTextContent('Row count');
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('incident-groups-test-case-search'));
-    });
+    const callsOnOpen = mockSearchQuery.mock.calls.length;
+    fireEvent.click(screen.getByTestId('incident-groups-test-case-search'));
+    fireEvent.click(screen.getByTestId('incident-groups-test-case-search'));
+
+    // One search per pause in typing.
+    expect(mockSearchQuery).toHaveBeenCalledTimes(callsOnOpen);
+
+    await waitFor(() =>
+      expect(mockSearchQuery).toHaveBeenCalledTimes(callsOnOpen + 1)
+    );
 
     expect(mockSearchQuery).toHaveBeenLastCalledWith(
       expect.objectContaining({ query: 'query' })
     );
 
-    await act(async () => {
-      fireEvent.click(
-        screen.getByTestId('incident-groups-test-case-search-empty')
-      );
-    });
+    fireEvent.click(
+      screen.getByTestId('incident-groups-test-case-search-empty')
+    );
 
-    expect(mockSearchQuery).toHaveBeenLastCalledWith(
-      expect.objectContaining({ query: '*' })
+    await waitFor(() =>
+      expect(mockSearchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: '*' })
+      )
     );
   });
 
@@ -268,58 +299,73 @@ describe('IncidentGroupsFilters', () => {
     ).toHaveTextContent('row_count');
   });
 
-  it('should search assignees and filter by the picked one', async () => {
+  it('should search users and teams and filter by the picked one', () => {
     renderFilters();
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('incident-groups-assignee-open'));
-    });
+    fireEvent.click(screen.getByTestId('incident-groups-assignee-open'));
 
-    expect(mockGetUserAndTeamSearch).toHaveBeenLastCalledWith('*', true);
+    expect(mockOnAssigneeFocus).toHaveBeenCalled();
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('incident-groups-assignee-search'));
-    });
+    fireEvent.click(screen.getByTestId('incident-groups-assignee-search'));
 
-    expect(mockGetUserAndTeamSearch).toHaveBeenLastCalledWith('query', true);
-
-    await act(async () => {
-      fireEvent.click(
-        screen.getByTestId('incident-groups-assignee-search-empty')
-      );
-    });
-
-    expect(mockGetUserAndTeamSearch).toHaveBeenLastCalledWith('*', true);
+    expect(mockOnAssigneeSearch).toHaveBeenLastCalledWith('query');
+    expect(
+      screen.getByTestId('incident-groups-assignee-option-data-platform')
+    ).toHaveTextContent('Data Platform');
 
     fireEvent.click(
       screen.getByTestId('incident-groups-assignee-option-aaron')
     );
 
     expect(mockOnChange).toHaveBeenLastCalledWith({ assignee: 'aaron' });
-    expect(
-      screen.getByTestId('incident-groups-assignee-option-aaron')
-    ).toHaveTextContent('Aaron Johnson');
   });
 
-  it('should not search assignees when the menu closes', async () => {
+  it('should not start searching assignees when the menu closes', () => {
     renderFilters();
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('incident-groups-assignee-close'));
-    });
+    fireEvent.click(screen.getByTestId('incident-groups-assignee-close'));
 
-    expect(mockGetUserAndTeamSearch).not.toHaveBeenCalled();
+    expect(mockOnAssigneeFocus).not.toHaveBeenCalled();
   });
 
-  it('should show an assignee restored from the URL as selected', () => {
+  it('should name an assignee restored from the URL by their display name', async () => {
     renderFilters({ assignee: 'aaron' });
 
     expect(
       screen.getByTestId('incident-groups-assignee-selected')
     ).toHaveTextContent('aaron');
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('incident-groups-assignee-selected-label')
+      ).toHaveTextContent('Aaron Johnson')
+    );
+  });
+
+  it('should name a team assignee from the URL, and an unknown one by its name', async () => {
+    mockGetUserByName.mockRejectedValue(new Error('not found'));
+    mockGetTeamByName.mockResolvedValueOnce({
+      name: 'finance-data',
+      displayName: 'Finance Data',
+    });
+    const { unmount } = renderFilters({ assignee: 'finance-data' });
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('incident-groups-assignee-selected-label')
+      ).toHaveTextContent('Finance Data')
+    );
+
+    unmount();
+    renderFilters({ assignee: 'ghost' });
+
+    await waitFor(() =>
+      expect(mockGetTeamByName).toHaveBeenLastCalledWith('ghost')
+    );
+
     expect(
-      screen.getByTestId('incident-groups-assignee-option-aaron')
-    ).toBeInTheDocument();
+      screen.getByTestId('incident-groups-assignee-selected-label')
+    ).toHaveTextContent('ghost');
   });
 
   it('should offer only the open statuses and add to the selection', () => {

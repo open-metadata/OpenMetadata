@@ -253,6 +253,7 @@ describe('IncidentGroupsView', () => {
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 10,
       sortType: 'asc',
+      page: 1,
     });
   });
 
@@ -316,6 +317,52 @@ describe('IncidentGroupsView', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should say so in the section, not in a toast, when the first read fails, and retry it', async () => {
+    mockListIncidentGroups.mockRejectedValueOnce(new Error('failure'));
+
+    await act(async () => {
+      renderView();
+    });
+
+    expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+    });
+
+    expect(mockListIncidentGroups).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+  });
+
+  it('should tell filtered-out groups from having no incidents, and clear the filters', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+
+    await act(async () => {
+      renderView('/observability/incident-manager?assignee=aaron');
+    });
+
+    expect(screen.getByTestId('incident-groups-no-match')).toHaveTextContent(
+      'message.no-match-found'
+    );
+    expect(
+      screen.queryByTestId('incident-groups-empty')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.clear-filter-plural' })
+      );
+    });
+
+    expect(screen.getByTestId('location-search')).not.toHaveTextContent(
+      'assignee'
+    );
+  });
+
   it('should not raise an error toast for a request that settles after unmount', async () => {
     let rejectGroups: (reason: unknown) => void = jest.fn();
     mockListIncidentGroups.mockReturnValue(
@@ -344,6 +391,7 @@ describe('IncidentGroupsView', () => {
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 10,
       sortType: 'desc',
+      page: 1,
     });
     expect(screen.getByTestId('selected-group-by')).toHaveTextContent(
       IncidentGroupBy.TestDefinition
@@ -359,6 +407,7 @@ describe('IncidentGroupsView', () => {
       groupBy: IncidentGroupBy.Table,
       limit: 10,
       sortType: 'desc',
+      page: 1,
     });
     expect(screen.getByTestId('selected-group-by')).toHaveTextContent(
       IncidentGroupBy.Table
@@ -374,6 +423,7 @@ describe('IncidentGroupsView', () => {
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 10,
       sortType: 'desc',
+      page: 1,
     });
   });
 
@@ -398,6 +448,7 @@ describe('IncidentGroupsView', () => {
       groupBy: IncidentGroupBy.Owner,
       limit: 10,
       sortType: 'desc',
+      page: 1,
       assignee: 'adam',
     });
   });
@@ -699,6 +750,7 @@ describe('IncidentGroupsView filters and paging', () => {
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 10,
       sortType: 'desc',
+      page: 1,
       testCaseFQN: 'svc.db.schema.orders.row_count',
       assignee: 'aaron',
       status: [
@@ -741,6 +793,7 @@ describe('IncidentGroupsView filters and paging', () => {
       groupBy: IncidentGroupBy.Table,
       limit: 10,
       sortType: 'desc',
+      page: 1,
       status: [
         TestCaseResolutionStatusTypes.New,
         TestCaseResolutionStatusTypes.ACK,
@@ -758,6 +811,7 @@ describe('IncidentGroupsView filters and paging', () => {
       groupBy: IncidentGroupBy.Table,
       limit: 10,
       sortType: 'desc',
+      page: 1,
     });
   });
 
@@ -778,7 +832,7 @@ describe('IncidentGroupsView filters and paging', () => {
     expect(mockListIncidentGroups).toHaveBeenCalledTimes(callCount);
   });
 
-  it('should page forward with the after cursor, passed back verbatim', async () => {
+  it('should page forward by page number', async () => {
     await act(async () => {
       renderView();
     });
@@ -791,12 +845,12 @@ describe('IncidentGroupsView filters and paging', () => {
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 10,
       sortType: 'desc',
-      offset: 'cursor-2',
+      page: 2,
     });
     expect(currentPageInput()).toHaveValue('2');
   });
 
-  it('should page back with the before cursor', async () => {
+  it('should page back by page number', async () => {
     await act(async () => {
       renderView();
     });
@@ -810,29 +864,28 @@ describe('IncidentGroupsView filters and paging', () => {
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 10,
       sortType: 'desc',
-      offset: 'cursor-1',
+      page: 1,
     });
     expect(currentPageInput()).toHaveValue('1');
   });
 
-  it('should not page past a boundary the server reports no cursor for', async () => {
-    mockListIncidentGroups.mockResolvedValue({
-      data: mockGroups,
-      paging: { total: 25 },
-    });
-
+  it('should jump straight to any page and stop at the last one', async () => {
     await act(async () => {
       renderView();
     });
 
-    const callCount = mockListIncidentGroups.mock.calls.length;
-
     await act(async () => {
-      fireEvent.click(screen.getByTestId('next'));
+      fireEvent.click(screen.getByRole('button', { name: 'Page 3' }));
     });
 
-    expect(mockListIncidentGroups).toHaveBeenCalledTimes(callCount);
-    expect(currentPageInput()).toHaveValue('1');
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+      groupBy: IncidentGroupBy.TestDefinition,
+      limit: 10,
+      sortType: 'desc',
+      page: 3,
+    });
+    expect(currentPageInput()).toHaveValue('3');
+    expect(screen.getByTestId('next')).toBeDisabled();
   });
 
   it('should go back to the first page when a filter changes', async () => {
@@ -849,6 +902,7 @@ describe('IncidentGroupsView filters and paging', () => {
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 10,
       sortType: 'desc',
+      page: 1,
       assignee: 'aaron',
     });
     expect(currentPageInput()).toHaveValue('1');
@@ -868,6 +922,7 @@ describe('IncidentGroupsView filters and paging', () => {
       groupBy: IncidentGroupBy.Owner,
       limit: 10,
       sortType: 'desc',
+      page: 1,
     });
     expect(currentPageInput()).toHaveValue('1');
   });
@@ -886,6 +941,7 @@ describe('IncidentGroupsView filters and paging', () => {
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 10,
       sortType: 'asc',
+      page: 1,
     });
     expect(currentPageInput()).toHaveValue('1');
   });
@@ -909,6 +965,7 @@ describe('IncidentGroupsView filters and paging', () => {
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 25,
       sortType: 'desc',
+      page: 1,
     });
     expect(currentPageInput()).toHaveValue('1');
   });
@@ -939,7 +996,7 @@ describe('IncidentGroupsView filters and paging', () => {
       groupBy: IncidentGroupBy.TestDefinition,
       limit: 10,
       sortType: 'desc',
-      offset: 'cursor-2',
+      page: 2,
     });
     expect(currentPageInput()).toHaveValue('2');
   });
