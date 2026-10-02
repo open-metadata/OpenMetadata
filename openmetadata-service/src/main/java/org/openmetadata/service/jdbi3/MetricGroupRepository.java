@@ -291,6 +291,7 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
 
   @Override
   protected void postUpdate(MetricGroup original, MetricGroup updated) {
+    setFieldsInternal(updated, new EntityUtil.Fields(Set.of(FIELD_METRIC_COUNT)));
     super.postUpdate(original, updated);
     if (Boolean.TRUE.equals(original.getDeleted()) && !Boolean.TRUE.equals(updated.getDeleted())) {
       List<EntityReference> restoredMembers = getMetrics(updated);
