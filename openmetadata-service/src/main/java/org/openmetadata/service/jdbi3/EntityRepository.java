@@ -1495,8 +1495,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void validateEntityStatusChange(T current, T change, EntityStatus from, EntityStatus to) {
     requireMoveInLifecycle(from, to);
     checkEntityStatusNotOwnedByWorkflow(current, change);
+    // A workflow's approval task already decided who may approve (reviewers, owners or named
+    // candidates), so the reviewer rule only guards direct edits and imports.
     if (from == EntityStatus.IN_REVIEW
-        && (to == EntityStatus.APPROVED || to == EntityStatus.REJECTED)) {
+        && (to == EntityStatus.APPROVED || to == EntityStatus.REJECTED)
+        && !EntityStatusWorkflows.isWorkflowChange(change)) {
       checkUpdatedByReviewer(current, change.getUpdatedBy());
     }
   }
@@ -1516,8 +1519,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityStatus to = updated.getEntityStatus();
       if (from != to) {
         updated.setUpdatedBy(importedBy);
+        loadReviewersForStageCheck(original, from);
         validateEntityStatusChange(original, updated, from, to);
       }
+    }
+  }
+
+  // An import row is matched from stored JSON, which holds no relationship fields, so the reviewer
+  // rule would see an entity without reviewers. Load them the way a PATCH does, inherited ones
+  // included, before checking who may move the entity out of review.
+  private void loadReviewersForStageCheck(T original, EntityStatus from) {
+    if (supportsReviewers && from == EntityStatus.IN_REVIEW) {
+      T withReviewers =
+          get(null, original.getId(), getFields(FIELD_REVIEWERS), Include.NON_DELETED, false);
+      original.setReviewers(withReviewers.getReviewers());
     }
   }
 
