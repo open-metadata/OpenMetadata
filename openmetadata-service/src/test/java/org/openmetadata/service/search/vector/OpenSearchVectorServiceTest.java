@@ -667,6 +667,7 @@ class OpenSearchVectorServiceTest {
     method.setAccessible(true);
     JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
 
+    assertEquals(7, body.path("_meta").path("chunkDocVersion").asInt());
     assertEquals("keyword", body.path("properties").path("entityStatus").path("type").asText());
   }
 

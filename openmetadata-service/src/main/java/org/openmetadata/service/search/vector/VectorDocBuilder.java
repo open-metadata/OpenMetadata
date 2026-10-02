@@ -53,7 +53,7 @@ public class VectorDocBuilder {
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
-  public static final int CHUNK_DOC_VERSION = 6;
+  public static final int CHUNK_DOC_VERSION = 7;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
