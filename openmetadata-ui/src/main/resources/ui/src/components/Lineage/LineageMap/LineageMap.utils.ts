@@ -49,7 +49,7 @@ const LENS_CONTAINER_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.DataProduct,
 ]);
 
-const COUNT_SUBTITLE_LEVEL_KINDS = new Set<LineageLevelKind>([
+const CONTAINER_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.Service,
   LineageLevelKind.Database,
   LineageLevelKind.Schema,
@@ -476,11 +476,30 @@ const getLowercaseLabel = (
   ).toLocaleLowerCase();
 };
 
-export const getSceneNodeCountSubtitle = (
+export const isContainerSceneNode = (node: LineageSceneNode) =>
+  CONTAINER_LEVEL_KINDS.has(node.levelKind);
+
+// Container nodes (service, database, schema, domain, data product) say what
+// they are under the name and how many assets they hold in a count pill.
+export const getSceneNodeTypeSubtitle = (
   node: LineageSceneNode,
   t: TFunction
 ) => {
-  if (!COUNT_SUBTITLE_LEVEL_KINDS.has(node.levelKind)) {
+  if (!isContainerSceneNode(node)) {
+    return undefined;
+  }
+  const kind = getLowercaseLabel(t, node.levelKind);
+
+  return node.serviceType
+    ? t('label.lineage-map-node-type-subtitle', {
+        type: node.serviceType,
+        kind,
+      })
+    : kind;
+};
+
+export const getSceneNodeCount = (node: LineageSceneNode, t: TFunction) => {
+  if (!isContainerSceneNode(node)) {
     return undefined;
   }
 
@@ -493,17 +512,13 @@ export const getSceneNodeCountSubtitle = (
     return undefined;
   }
 
-  const totalCount = countEntries.reduce((sum, entry) => sum + entry.count, 0);
+  const count = countEntries.reduce((sum, entry) => sum + entry.count, 0);
   const countedLevelKind =
     countEntries.length === 1
       ? countEntries[0].levelKind
       : LineageLevelKind.Asset;
 
-  return t('label.lineage-map-node-count-subtitle', {
-    kind: getLowercaseLabel(t, node.levelKind),
-    count: totalCount,
-    entity: getLowercaseLabel(t, countedLevelKind, totalCount),
-  });
+  return { count, entity: getLowercaseLabel(t, countedLevelKind, count) };
 };
 
 const LEVEL_LABEL_KEYS: Partial<Record<LineageLevelKind, string>> = {

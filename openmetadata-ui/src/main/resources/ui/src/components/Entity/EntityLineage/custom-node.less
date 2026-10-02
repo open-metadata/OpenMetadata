@@ -73,6 +73,11 @@
     .lineage-node-content {
       min-height: 66px;
 
+      // The Layer-band drill button is always shown, 14px in and 22px wide.
+      &.has-scene-drill-button .label-container {
+        padding-right: var(--om-space-44);
+      }
+
       // No .has-lineage-node-menu offset needed here: Layer-band scene nodes
       // are never editable (canEditScene excludes LineageBand.Layer), so
       // LineageNodeMenu never renders alongside this drill button variant.
@@ -235,6 +240,11 @@
     // menu with enough gap that the two hit areas never overlap.
     &.has-lineage-node-menu .lineage-scene-drill-button {
       right: 34px;
+    }
+
+    // Keep the label row, and a container's count pill, clear of the drill button.
+    &.has-scene-drill-button .label-container {
+      padding-right: var(--om-space-36);
     }
 
     .label-container {

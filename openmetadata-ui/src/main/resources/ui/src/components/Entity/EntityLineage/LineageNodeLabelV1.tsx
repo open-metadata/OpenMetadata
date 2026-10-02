@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   BadgeWithIcon,
   Box,
   Breadcrumbs,
@@ -39,6 +40,7 @@ import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 interface LineageNodeLabelProps {
@@ -49,6 +51,29 @@ interface LineageNodeLabelProps {
   toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
+
+const NodeCountBadge = ({
+  count,
+}: {
+  count: LineageNodeType['lineageMapCount'];
+}) =>
+  count ? (
+    <Badge
+      className="tw:ml-2 tw:shrink-0"
+      color="gray"
+      data-testid="lineage-node-count"
+      size="sm"
+      type="pill-color">
+      {/* Badge is a flex container, which drops the leading space of a bare text node. */}
+      <span>
+        <Transi18next
+          i18nKey="label.lineage-map-node-count-badge"
+          renderElement={<strong className="tw:font-semibold" />}
+          values={count}
+        />
+      </span>
+    </Badge>
+  ) : null;
 
 const EntityLabel = ({
   node,
@@ -95,8 +120,13 @@ const EntityLabel = ({
   return (
     <div
       className={classNames(
-        'items-center entity-label-container',
-        childrenCount > 0 ? 'with-footer' : ''
+        'items-center entity-label-container tw:min-w-0 tw:flex-1',
+        {
+          'with-footer': childrenCount > 0,
+          // Container nodes have no footer, so centre the name, subtitle and
+          // count pill instead of the leaf layout's top-weighted padding.
+          'tw:flex tw:items-center tw:py-3!': Boolean(node.lineageMapCount),
+        }
       )}>
       <div className="d-flex items-center flex-auto">
         {!node.isTempTable && (
@@ -104,7 +134,7 @@ const EntityLabel = ({
             {getServiceIcon(node)}
           </div>
         )}
-        <Box className="flex-1 tw:min-w-0" direction="col">
+        <Box className="flex-1 tw:min-w-0 tw:text-left" direction="col">
           <Typography
             ellipsis
             as="span"
@@ -128,8 +158,9 @@ const EntityLabel = ({
 
           {subtitle ? (
             <Typography
+              ellipsis
               as="span"
-              className="lineage-service-subtitle"
+              className="lineage-service-subtitle tw:block tw:max-w-full"
               size="text-xs">
               {subtitle}
             </Typography>
@@ -144,6 +175,7 @@ const EntityLabel = ({
             />
           ) : null}
         </Box>
+        <NodeCountBadge count={node.lineageMapCount} />
         {showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">
             <IconDBTModel />

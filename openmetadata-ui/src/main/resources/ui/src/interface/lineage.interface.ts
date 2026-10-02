@@ -111,6 +111,7 @@ export interface LineageNodeType
   fields?: SearchIndexField[];
   isTempTable?: boolean;
   lineageMapSubtitle?: string;
+  lineageMapCount?: { count: number; entity: string };
 }
 
 export interface EntityLineageResponse {

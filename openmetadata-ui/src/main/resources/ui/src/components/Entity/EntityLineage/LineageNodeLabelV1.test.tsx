@@ -26,6 +26,12 @@ jest.mock('../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn(),
 }));
 
+jest.mock('../../../utils/i18next/LocalUtil', () => ({
+  Transi18next: ({ values }: { values: { count: number; entity: string } }) => (
+    <span>{`${values.count} ${values.entity}`}</span>
+  ),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
@@ -161,6 +167,37 @@ describe('LineageNodeLabelV1', () => {
   });
 
   describe('EntityLabel Component', () => {
+    it('shows the asset count of a container node as a pill', () => {
+      render(
+        <LineageNodeLabelV1
+          isChildrenListExpanded={false}
+          node={{
+            ...mockBasicNode,
+            lineageMapSubtitle: 'Snowflake · service',
+            lineageMapCount: { count: 146, entity: 'tables' },
+          }}
+        />
+      );
+
+      expect(screen.getByTestId('lineage-node-count')).toHaveTextContent(
+        '146 tables'
+      );
+      expect(screen.getByText('Snowflake · service')).toBeInTheDocument();
+    });
+
+    it('shows no count pill for a node without a count', () => {
+      render(
+        <LineageNodeLabelV1
+          isChildrenListExpanded={false}
+          node={mockBasicNode}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('lineage-node-count')
+      ).not.toBeInTheDocument();
+    });
+
     it('should render entity label with display name', () => {
       render(
         <LineageNodeLabelV1

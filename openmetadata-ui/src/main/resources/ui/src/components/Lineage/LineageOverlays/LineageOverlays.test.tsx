@@ -158,7 +158,10 @@ describe('LineageOverlays', () => {
       ...mockEdge,
       data: { ...mockEdge.data, isEditable: true },
     } as Edge;
-    const getDrawerProps = () => mockEdgeInfoDrawer.mock.lastCall[0];
+    const getDrawerProps = () =>
+      mockEdgeInfoDrawer.mock.calls[
+        mockEdgeInfoDrawer.mock.calls.length - 1
+      ][0];
 
     it('lets an editor edit the pipeline or delete an editable edge', () => {
       useLineageStore.setState({

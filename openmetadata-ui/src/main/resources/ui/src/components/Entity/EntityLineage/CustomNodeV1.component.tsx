@@ -398,6 +398,9 @@ const CustomNodeV1 = (props: NodeProps) => {
       <div
         className={classNames('lineage-node-content', {
           'has-lineage-node-menu': hasLineageNodeMenu,
+          'has-scene-drill-button': Boolean(
+            sceneNode?.isExpandable && onSceneDrill
+          ),
         })}>
         <SceneDrillButton
           label={sceneDrillLabel}
