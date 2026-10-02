@@ -379,7 +379,22 @@ public class TestCaseResolutionStatusResource
           @Min(value = 1, message = "must be greater than or equal to 1")
           Integer page,
       @Parameter(
-              description = "Sort type for the incident count",
+              description =
+                  "What the groups are ordered by. `severity` descending puts the most severe "
+                      + "first, and the groups with no severity last",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {
+                        TestCaseResolutionStatusRepository.INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT,
+                        TestCaseResolutionStatusRepository.INCIDENT_GROUP_SORT_FIELD_SEVERITY,
+                        TestCaseResolutionStatusRepository.INCIDENT_GROUP_SORT_FIELD_LAST_SEEN
+                      }))
+          @QueryParam("sortField")
+          @DefaultValue(TestCaseResolutionStatusRepository.INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT)
+          String sortField,
+      @Parameter(
+              description = "Direction of the `sortField` ordering",
               schema =
                   @Schema(
                       type = "string",
@@ -423,7 +438,7 @@ public class TestCaseResolutionStatusResource
     }
     filter.addQueryParam("incidentGroupKey", group);
     return repository.listIncidentGroups(
-        groupByDimension, filter, sortType, limit, cursorForPage(page, limit, offset));
+        groupByDimension, filter, sortField, sortType, limit, cursorForPage(page, limit, offset));
   }
 
   @GET

@@ -36,7 +36,7 @@ jest.mock('./IncidentTrendSparkline', () => ({
     ),
 }));
 
-const mockOnSortTypeChange = jest.fn();
+const mockOnSortChange = jest.fn();
 const mockOnGroupPreview = jest.fn();
 const mockOnGroupOpen = jest.fn();
 const mockOnGroupSelect = jest.fn();
@@ -119,12 +119,12 @@ const renderTable = (
       groupBy={groupBy}
       groups={groups}
       selectedKeys={selectedKeys}
-      sortType="desc"
+      sort={{ field: 'incidentCount', type: 'desc' }}
       onGroupOpen={mockOnGroupOpen}
       onGroupPreview={mockOnGroupPreview}
       onGroupSelect={mockOnGroupSelect}
       onPageSelect={mockOnPageSelect}
-      onSortTypeChange={mockOnSortTypeChange}
+      onSortChange={mockOnSortChange}
     />
   );
 
@@ -249,14 +249,41 @@ describe('IncidentGroupsTable', () => {
     ).toBeInTheDocument();
   });
 
-  it('should hand the flipped ordering back as a sortType', () => {
+  it('should flip the ordering of the column it is sorted by', () => {
     renderTable();
 
     fireEvent.click(
       screen.getByRole('columnheader', { name: /label.incident-plural/ })
     );
 
-    expect(mockOnSortTypeChange).toHaveBeenCalledWith('asc');
+    expect(mockOnSortChange).toHaveBeenCalledWith({
+      field: 'incidentCount',
+      type: 'asc',
+    });
+  });
+
+  it.each([
+    ['label.severity', 'severity'],
+    ['label.last-seen', 'lastSeen'],
+  ])(
+    'should open the %s column on its useful end, worst or latest first',
+    (header, field) => {
+      renderTable();
+
+      fireEvent.click(
+        screen.getByRole('columnheader', { name: new RegExp(header) })
+      );
+
+      expect(mockOnSortChange).toHaveBeenCalledWith({ field, type: 'desc' });
+    }
+  );
+
+  it('should leave the other columns unsortable', () => {
+    renderTable();
+
+    fireEvent.click(screen.getByRole('columnheader', { name: 'label.status' }));
+
+    expect(mockOnSortChange).not.toHaveBeenCalled();
   });
 
   it('should head the related column after what it counts', () => {

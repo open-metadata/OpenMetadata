@@ -543,6 +543,51 @@ public class IncidentGroupsIT {
     assertSorted(fetchGroups(descParams), false);
   }
 
+  // Table B's open incident is Severity2 and table A's carry none, so worst-first puts B first and
+  // the reverse ordering puts A first, wherever other suites' groups land around them.
+  @Test
+  void testSortBySeverityPutsTheMostSevereFirst() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("sortField", "severity");
+    List<String> worstFirst = groupFqns(fetchGroups(params));
+    assertTrue(
+        worstFirst.indexOf(tableB.getFullyQualifiedName())
+            < worstFirst.indexOf(tableA.getFullyQualifiedName()),
+        "the Severity2 group comes before the group with no severity");
+
+    params.put("sortType", "asc");
+    List<String> mildestFirst = groupFqns(fetchGroups(params));
+    assertTrue(
+        mildestFirst.indexOf(tableA.getFullyQualifiedName())
+            < mildestFirst.indexOf(tableB.getFullyQualifiedName()),
+        "the group with no severity comes first in the reverse ordering");
+  }
+
+  // The pager tables each open one incident, one after the other, so their last-seen times follow
+  // the order they were created in — the order of their sorted names.
+  @Test
+  void testSortByLastSeenPutsTheLatestFirst() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("assignee", pagerUser.getName());
+    params.put("sortField", "lastSeen");
+
+    List<String> latestFirst = groupFqns(fetchGroups(params));
+    assertEquals(pagerTableFqns.reversed(), latestFirst);
+
+    params.put("sortType", "asc");
+    assertEquals(pagerTableFqns, groupFqns(fetchGroups(params)));
+  }
+
+  @Test
+  void testUnknownSortFieldRejected() {
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("sortField", "name");
+
+    OpenMetadataException error =
+        assertThrows(OpenMetadataException.class, () -> fetchGroups(params));
+    assertEquals(400, error.getStatusCode());
+  }
+
   @Test
   void testPagination() throws Exception {
     Map<String, String> params = groupParams(GROUP_BY_TABLE);
@@ -1758,6 +1803,10 @@ public class IncidentGroupsIT {
 
   private static List<Integer> statusCounts(TestCaseIncidentGroup group) {
     return group.getStatusCounts().stream().map(IncidentStatusCount::getCount).toList();
+  }
+
+  private static List<String> groupFqns(List<TestCaseIncidentGroup> groups) {
+    return groups.stream().map(TestCaseIncidentGroup::getFullyQualifiedName).toList();
   }
 
   private TestCaseIncidentGroup findGroup(

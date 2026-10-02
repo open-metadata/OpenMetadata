@@ -81,7 +81,7 @@ const IncidentGroupsView = () => {
     filters,
     incidentGroups,
     paging,
-    sortType,
+    sort,
     currentPage,
     pageSize,
     isLoading,
@@ -94,7 +94,7 @@ const IncidentGroupsView = () => {
     closeGroup,
     handleGroupByChange,
     handleFiltersChange,
-    handleSortTypeChange,
+    handleSortChange,
     handlePageChange,
     handlePageSizeChange,
   } = useIncidentGroups();
@@ -327,12 +327,12 @@ const IncidentGroupsView = () => {
             groupBy={groupBy}
             groups={incidentGroups}
             selectedKeys={selectedKeys}
-            sortType={sortType}
+            sort={sort}
             onGroupOpen={handleOpenGroup}
             onGroupPreview={setPreviewGroup}
             onGroupSelect={handleGroupSelect}
             onPageSelect={handlePageSelect}
-            onSortTypeChange={handleSortTypeChange}
+            onSortChange={handleSortChange}
           />
           <PaginationCardWithControls
             className="tw:border-0"

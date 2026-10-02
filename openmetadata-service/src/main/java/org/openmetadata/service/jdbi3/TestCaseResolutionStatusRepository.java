@@ -76,6 +76,9 @@ public class TestCaseResolutionStatusRepository
   public static final String INCIDENT_DATE_FIELD_UPDATED_AT = "updatedAt";
   public static final String INCIDENT_SORT_TYPE_ASC = "asc";
   public static final String INCIDENT_SORT_TYPE_DESC = "desc";
+  public static final String INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT = "incidentCount";
+  public static final String INCIDENT_GROUP_SORT_FIELD_SEVERITY = "severity";
+  public static final String INCIDENT_GROUP_SORT_FIELD_LAST_SEEN = "lastSeen";
   private static final int TREND_BUCKET_COUNT = 8;
   // Related tables and test definitions a group names inline; its counts carry the full number.
   private static final int INCIDENT_GROUP_RELATED_LIMIT = 5;
@@ -930,12 +933,18 @@ public class TestCaseResolutionStatusRepository
   }
 
   public ResultList<TestCaseIncidentGroup> listIncidentGroups(
-      IncidentGroupBy groupBy, ListFilter filter, String sortType, int limit, String offset) {
+      IncidentGroupBy groupBy,
+      ListFilter filter,
+      String sortField,
+      String sortType,
+      int limit,
+      String offset) {
     int offsetInt = getOffset(offset);
     CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO dao =
         (CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao;
     CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage page =
-        dao.listIncidentGroups(groupBy, filter, incidentGroupSortOrder(sortType), limit, offsetInt);
+        dao.listIncidentGroups(
+            groupBy, filter, incidentGroupOrderBy(sortField, sortType), limit, offsetInt);
     Map<String, EntityReference> references = resolveIncidentGroupEntities(page.counts());
     Map<String, EntityReference> tables =
         findReferences(
@@ -982,6 +991,32 @@ public class TestCaseResolutionStatusRepository
         getBeforeOffset(offsetInt, limit),
         getAfterOffset(offsetInt, limit, page.total()),
         page.total());
+  }
+
+  // The ordering is rendered into the SQL, so it is spelled out here from fixed strings and never
+  // taken from the request. Severity1 is the most severe and the values compare as strings, so
+  // "descending" severity — the worst first — is the lowest value first, with the groups that
+  // carry no severity after every graded one. Ties fall back to the larger group first.
+  private static String incidentGroupOrderBy(String sortField, String sortType) {
+    String direction = incidentGroupSortOrder(sortType);
+    boolean descending = "DESC".equals(direction);
+    String field = sortField == null ? INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT : sortField;
+    return switch (field) {
+      case INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT -> "incidentCount " + direction;
+      case INCIDENT_GROUP_SORT_FIELD_SEVERITY -> descending
+          ? "MIN(i.severity) IS NULL, MIN(i.severity) ASC, incidentCount DESC"
+          : "MIN(i.severity) IS NOT NULL, MIN(i.severity) DESC, incidentCount DESC";
+      case INCIDENT_GROUP_SORT_FIELD_LAST_SEEN -> "MAX(i.updatedAt) "
+          + direction
+          + ", incidentCount DESC";
+      default -> throw new IllegalArgumentException(
+          String.format(
+              "Invalid sortField '%s'. Must be one of [%s, %s, %s]",
+              sortField,
+              INCIDENT_GROUP_SORT_FIELD_INCIDENT_COUNT,
+              INCIDENT_GROUP_SORT_FIELD_SEVERITY,
+              INCIDENT_GROUP_SORT_FIELD_LAST_SEEN));
+    };
   }
 
   private static String incidentGroupSortOrder(String sortType) {

@@ -29,13 +29,14 @@ import {
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { TestCaseResolutionStatusTypes as ResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
-  IncidentSortType,
+  IncidentGroupSortField,
   OpenIncidentStatus,
 } from '../../../../rest/incidentManagerAPI';
 import {
   BulkIncidentStatus,
   IncidentGroupByOption,
   IncidentGroupFilters,
+  IncidentGroupSort,
   IncidentListDateField,
   IncidentTrendTone,
 } from './IncidentGroups.types';
@@ -107,13 +108,21 @@ export const INCIDENT_GROUP_BY_OPTIONS: IncidentGroupByOption[] = [
   },
 ];
 
-/**
- * The listing opens on the groups with the most open incidents; `sortType` is
- * the only ordering the endpoint takes, and it applies to the incident count.
- */
-export const DEFAULT_INCIDENT_SORT_TYPE: IncidentSortType = 'desc';
+/** The listing opens on the groups with the most open incidents. */
+export const DEFAULT_INCIDENT_GROUP_SORT: IncidentGroupSort = {
+  field: 'incidentCount',
+  type: 'desc',
+};
 
-export const INCIDENT_GROUPS_SORT_COLUMN = 'incidentCount';
+/**
+ * Columns the groups can be ordered by. Each column id is the endpoint's
+ * `sortField` value, so a header press maps straight onto a request.
+ */
+export const INCIDENT_GROUP_SORTABLE_COLUMNS: IncidentGroupSortField[] = [
+  'incidentCount',
+  'severity',
+  'lastSeen',
+];
 
 /** Avatars drawn before the stack collapses into a `+N` bubble. */
 export const INCIDENT_GROUP_MAX_AVATARS = 3;
