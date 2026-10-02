@@ -19,6 +19,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
@@ -859,5 +860,46 @@ describe('QueryBuilder – a saved filter the config cannot express', () => {
     );
 
     await waitFor(() => expect(onLoadErrors).toHaveBeenCalledWith([]));
+  });
+});
+
+// An embedder that passes an inline callback and stores the result gets a new callback identity
+// on every render; reporting unconditionally would drive that into an endless loop.
+describe('QueryBuilder – onLoadErrors with an inline callback', () => {
+  const Host = () => {
+    const [fields, setFields] = useState<string[]>([]);
+
+    return (
+      <>
+        <span data-testid="dropped-fields">{fields.join(',')}</span>
+        <QueryBuilder
+          entityType={EntityType.TABLE}
+          groupMode="flat"
+          outputType={SearchOutputType.ElasticSearch}
+          showCountPreview={false}
+          onLoadErrors={(errors) =>
+            setFields(errors.map((error) => error.field ?? ''))
+          }
+        />
+      </>
+    );
+  };
+
+  it('should report once rather than on every render', async () => {
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    render(<Host />);
+
+    await screen.findByTestId('dropped-fields');
+
+    expect(
+      consoleError.mock.calls.filter((call) =>
+        String(call[0]).includes('Maximum update depth')
+      )
+    ).toHaveLength(0);
+
+    consoleError.mockRestore();
   });
 });

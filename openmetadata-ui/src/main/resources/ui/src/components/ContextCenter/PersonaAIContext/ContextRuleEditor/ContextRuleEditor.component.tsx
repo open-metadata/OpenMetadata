@@ -30,7 +30,8 @@ import {
   InfoCircle,
   LinkExternal01,
 } from '@openmetadata/ui-core-components/icons';
-import { compact, isEmpty, uniq } from 'lodash';
+import { compact, isEmpty, isEqual, uniq } from 'lodash';
+import type { QueryBuilderLoadError } from '../../../../utils/queryBuilder/tree';
 import {
   FC,
   ReactNode,
@@ -198,6 +199,15 @@ export const ContextRuleEditor = ({
   const queryFilter = useWatch({ control: form.control, name: 'queryFilter' });
   const [filterIncomplete, setFilterIncomplete] = useState(false);
   const [droppedFilterFields, setDroppedFilterFields] = useState<string[]>([]);
+  const handleFilterLoadErrors = useCallback(
+    (errors: QueryBuilderLoadError[]) =>
+      setDroppedFilterFields((previous) => {
+        const next = uniq(compact(errors.map((error) => error.field)));
+
+        return isEqual(previous, next) ? previous : next;
+      }),
+    []
+  );
   const [filterErrorShown, setFilterErrorShown] = useState(false);
   const clearFilterState = useCallback(() => {
     setFilterIncomplete(false);
@@ -490,11 +500,7 @@ export const ContextRuleEditor = ({
               shouldDirty: true,
             });
           }}
-          onLoadErrors={(errors) =>
-            setDroppedFilterFields(
-              uniq(compact(errors.map((error) => error.field)))
-            )
-          }
+          onLoadErrors={handleFilterLoadErrors}
           onValidityChange={(isValid) => {
             setFilterIncomplete(!isValid);
             if (isValid) {

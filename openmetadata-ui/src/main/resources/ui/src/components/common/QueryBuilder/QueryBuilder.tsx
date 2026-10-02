@@ -35,6 +35,7 @@ import {
   formatQuery,
   isQueryTreeComplete,
 } from '../../../utils/queryBuilder/formatters';
+import type { QueryBuilderLoadError } from '../../../utils/queryBuilder/tree';
 import { loadQueryBuilderTree } from '../../../utils/queryBuilder/tree';
 import {
   QUERY_BUILDER_CONJUNCTION_MODE,
@@ -151,8 +152,15 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   );
   const [loadErrors, setLoadErrors] = useState(initialLoad.errors);
 
+  const reportedErrorsRef = useRef<QueryBuilderLoadError[]>();
+
   // Reported from an effect, not from the load itself, which runs inside a state initialiser.
+  // Compared by content so an embedder passing an inline callback cannot drive a render loop.
   useEffect(() => {
+    if (isEqual(reportedErrorsRef.current, loadErrors)) {
+      return;
+    }
+    reportedErrorsRef.current = loadErrors;
     onLoadErrors?.(loadErrors);
   }, [loadErrors, onLoadErrors]);
 
