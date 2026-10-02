@@ -22,6 +22,8 @@ import yaml
 
 _CONDITION_CLAUSE = re.compile(r"^matrix\.connector (==|!=) '([a-z]+)'$")
 _TEST_STEP_IDS = ("e2e-v2-test", "e2e-v2-bigquery-test", "e2e-v2-snowflake-test")
+_SECRET_REFERENCE = re.compile(r"secrets\.([A-Za-z0-9_]+)")
+_E2E_WORKFLOWS = (".github/workflows/py-cli-e2e-tests-v2.yml", ".github/workflows/py-cli-e2e-tests.yml")
 _SNOWFLAKE_CONCURRENCY_GROUP = re.compile(
     r"^\$\{\{ matrix\.(?P<key>[a-z0-9-]+) == 'snowflake' && '(?P<group>[a-z0-9-]+)' "
     r"\|\| format\('\{0\}-\{1\}-\{2\}', github\.workflow, github\.run_id, matrix\.(?P=key)\) \}\}$"
@@ -140,11 +142,16 @@ def test_ci_defaults_to_all_connectors_and_limits_each_connectors_secrets():
     for owner, secrets in secrets_by_step.items():
         for key, secret in secrets.items():
             assert key not in job["env"]
-            for step_id in _TEST_STEP_IDS:
-                if step_id == owner:
-                    assert steps[step_id]["env"][key] == f"${{{{ secrets.{secret} }}}}"
-                else:
-                    assert key not in steps[step_id]["env"]
+            assert steps[owner]["env"][key] == f"${{{{ secrets.{secret} }}}}"
+    # Every field of the job and of every step is scanned, so no other step can read a connector's
+    # secrets under any variable name, input or script.
+    owners = {"TEST_BQ_": "e2e-v2-bigquery-test", "TEST_SNOWFLAKE_": "e2e-v2-snowflake-test"}
+    scopes = [("the job", {key: value for key, value in job.items() if key != "steps"})]
+    scopes += [(step.get("id", step["name"]), step) for step in job["steps"]]
+    for scope_name, scope in scopes:
+        for secret in _SECRET_REFERENCE.findall(yaml.safe_dump(scope)):
+            owner = next((step_id for prefix, step_id in owners.items() if secret.startswith(prefix)), scope_name)
+            assert owner == scope_name, f"secrets.{secret} reaches {scope_name}"
 
 
 @pytest.mark.parametrize(
@@ -184,3 +191,13 @@ def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
         assert match["key"] == matrix_key
         groups.add(match["group"])
     assert len(groups) == 1
+
+
+def test_ci_reruns_these_meta_tests_when_a_workflow_they_read_changes():
+    """The shared Python workflow runs these tests only for changed paths in its filters."""
+    root = Path(__file__).resolve().parents[4]
+    shared = yaml.safe_load((root / ".github/workflows/py-tests-shared.yml").read_text())
+    step = next(step for job in shared["jobs"].values() for step in job.get("steps", []) if step.get("id") == "filter")
+    filters = yaml.safe_load(step["with"]["filters"])
+    for name in ("python", "e2e"):
+        assert set(_E2E_WORKFLOWS) <= set(filters[name]), name
