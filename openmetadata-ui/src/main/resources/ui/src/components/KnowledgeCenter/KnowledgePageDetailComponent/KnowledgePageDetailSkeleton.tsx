@@ -10,19 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from 'antd';
+import { Skeleton, SkeletonParagraph } from '@openmetadata/ui-core-components';
 
 const KnowledgePageDetailSkeleton = () => {
   return (
     <div className="tw:h-full tw:overflow-y-auto">
       <div className="content-container m-b-md">
-        <Skeleton.Input active block className="rounded-4" size="large" />
         <Skeleton
-          active
-          className="m-t-sm"
-          paragraph={{ rows: 10 }}
-          title={false}
+          className="rounded-4"
+          height={40}
+          variant="rounded"
+          width="100%"
         />
+        <SkeletonParagraph className="m-t-sm" rows={10} title={false} />
       </div>
     </div>
   );

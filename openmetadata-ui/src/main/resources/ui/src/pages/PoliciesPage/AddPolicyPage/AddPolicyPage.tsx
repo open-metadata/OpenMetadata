@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Form, Input, Space } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -162,11 +162,15 @@ const AddPolicyPage = () => {
 
                 {getField(descriptionField)}
 
-                <Divider data-testid="add-rule-divider">
-                  {t('label.add-entity', {
-                    entity: t('label.rule'),
-                  })}
-                </Divider>
+                <Divider
+                  className="tw:my-4"
+                  data-testid="add-rule-divider"
+                  label={
+                    <span className="tw:text-md tw:font-medium tw:text-primary">
+                      {t('label.add-entity', { entity: t('label.rule') })}
+                    </span>
+                  }
+                />
                 <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
                 <Space align="center" className="w-full justify-end">

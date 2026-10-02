@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Col, Collapse, Row, Skeleton, Space } from 'antd';
+import { Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Collapse, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -37,7 +37,7 @@ const renderAgentStatusExpandIcon = (
     className="expand-icon-container"
     data-testid="agent-status-widget-expand-icon">
     {isLoading ? (
-      <Skeleton.Input active size="small" />
+      <Skeleton height={24} variant="rounded" width={120} />
     ) : (
       <div className="agent-status-summary-container">
         {Object.entries(agentStatusSummary).map(([key, value]) => (
@@ -126,7 +126,7 @@ function AgentsStatusWidget({
               ).map((skeletonKey) => (
                 <Col key={skeletonKey} span={6}>
                   <Card className="agent-status-card">
-                    <Skeleton.Input active />
+                    <Skeleton height={32} variant="rounded" width={160} />
                   </Card>
                 </Col>
               ))

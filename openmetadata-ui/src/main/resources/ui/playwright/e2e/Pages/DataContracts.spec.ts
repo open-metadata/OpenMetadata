@@ -2469,9 +2469,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               await settingClick(page, GlobalSettingOptions.PERSONA);
               await personaGetResponse;
 
-              await page.locator('.ant-skeleton-content').first().waitFor({
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
 
               // Navigate to persona details
               await navigateToPersonaWithPagination(
