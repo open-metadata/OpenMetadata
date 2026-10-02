@@ -341,6 +341,41 @@ public class IncidentGroupsIT {
   }
 
   @Test
+  void testDomainInheritedFromTheTable() throws Exception {
+    long ts = System.currentTimeMillis();
+    Domain tableDomain = createDomain("incident_groups_table_domain_" + ts);
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName("incident_groups_domain_table_" + ts)
+                    .withDatabaseSchema(schemaFqn)
+                    .withDomains(List.of(tableDomain.getFullyQualifiedName()))
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+    TestDefinition definition =
+        createTestDefinition("incident_groups_domain_def_" + ts, TestDefinitionEntityType.TABLE);
+    // No domain of its own: the test case is in its table's domain, as test cases usually are.
+    TestCase testCase =
+        createTestCase("incident_groups_domain_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("domain", tableDomain.getFullyQualifiedName());
+    List<TestCaseIncidentGroup> groups = fetchGroups(params);
+    assertEquals(1, groups.size(), "only the domain's table holds incidents in that domain");
+    assertEquals(1, findGroup(groups, table.getFullyQualifiedName()).getIncidentCount());
+
+    assertEquals(
+        Set.of(testCase.getFullyQualifiedName()),
+        statusTestCaseFqns(
+            listStatuses(
+                latestOpenParams().addFilter("domain", tableDomain.getFullyQualifiedName()))),
+        "the drill-down lists the incidents its domain-scoped group counts");
+  }
+
+  @Test
   void testSortTypeOrdersByIncidentCount() throws Exception {
     Map<String, String> ascParams = groupParams(GROUP_BY_TABLE);
     ascParams.put("sortType", "asc");
