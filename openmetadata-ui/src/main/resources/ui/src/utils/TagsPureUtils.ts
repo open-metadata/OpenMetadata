@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isString, omit } from 'lodash';
+import { omit } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
@@ -478,17 +478,4 @@ export const getClassificationTags = (
 ): TagLabel[] =>
   tags?.filter((tag) => tag.source === TagSource.Classification) ?? [];
 
-export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
-  if (isString(tag)) {
-    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-      ? tag.split(FQN_SEPARATOR_CHAR)[1]
-      : tag;
-  } else {
-    return {
-      ...tag,
-      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
-        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-        : tag.tagFQN,
-    };
-  }
-};
+export const getTagValue = (tag: string | TagLabel): string | TagLabel => tag;

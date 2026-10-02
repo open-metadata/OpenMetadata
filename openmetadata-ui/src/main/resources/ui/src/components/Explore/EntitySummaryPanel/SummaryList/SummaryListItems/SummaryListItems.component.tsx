@@ -15,6 +15,7 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { Col, Row, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
+import { isTierTag } from '../../../../../utils/TablePureUtils';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
 import { getTagValue } from '../../../../../utils/TagsPureUtils';
 import AppBadge from '../../../../common/Badge/Badge.component';
@@ -94,7 +95,9 @@ function SummaryListItem({
             <Col className="flex-grow" data-testid="tags-viewer" span={24}>
               <TagsViewer
                 sizeCap={2}
-                tags={(entityDetails.tags || []).map((tag) => getTagValue(tag))}
+                tags={(entityDetails.tags || [])
+                  .filter((tag) => !isTierTag(tag.tagFQN))
+                  .map((tag) => getTagValue(tag))}
               />
             </Col>
           )}
