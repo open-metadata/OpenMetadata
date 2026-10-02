@@ -31,7 +31,6 @@ import {
   LinkExternal01,
 } from '@openmetadata/ui-core-components/icons';
 import { compact, isEmpty, isEqual, uniq } from 'lodash';
-import type { QueryBuilderLoadError } from '../../../../utils/queryBuilder/tree';
 import {
   FC,
   ReactNode,
@@ -68,6 +67,7 @@ import {
   isKnowledgeContextRule,
   isSearchScopedRule,
 } from '../../../../utils/PersonaAIContextUtils';
+import type { QueryBuilderLoadError } from '../../../../utils/queryBuilder/tree';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';

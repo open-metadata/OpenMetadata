@@ -43,7 +43,7 @@ const savedTreeWithCustomProperty = JSON.stringify({
       id: 'r1',
       properties: {
         field: CUSTOM_PROPERTY_FIELD,
-        operator: 'select_equals',
+        operator: 'equal',
         value: ['Finance'],
         valueSrc: ['value'],
       },
@@ -147,6 +147,8 @@ describe('RuleQueryBuilderField', () => {
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
 
+    // The value too, not just the field: a sanitiser-stripped rule keeps its field name.
     expect(onChange.mock.calls.at(-1)?.[1]).toContain(CUSTOM_PROPERTY_FIELD);
+    expect(onChange.mock.calls.at(-1)?.[1]).toContain('Finance');
   });
 });
