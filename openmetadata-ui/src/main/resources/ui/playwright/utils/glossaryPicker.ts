@@ -12,6 +12,7 @@
  */
 import { expect, Locator, Page, Response } from '@playwright/test';
 import { clickOutside } from './common';
+import { clickUntilVisible } from './waitHelpers';
 
 // Drives the picker popover: portaled, and nothing is saved until Apply.
 
@@ -71,16 +72,8 @@ export const searchGlossaryPicker = async (
   await box.fill(term);
 };
 
-// Opens the picker and waits for the treegrid to render.
-//
-// The picker uses TreeSelect's custom-trigger path (renderTrigger + onClick={toggle}),
-// so the trigger never carries `aria-expanded` — the popover's open state is only
-// observable via the treegrid appearing. Both attempts have a bounded timeout so a
-// genuine failure surfaces as "treegrid never rendered" instead of "browser closed"
-// from the enclosing 180s test timeout (which is what the old retry — an unbounded
-// waitFor after `force: true` — produced under merge-group shard load).
-//
-// Issue: https://github.com/open-metadata/OpenMetadata/issues/33640
+// Opens the picker. The trigger carries no `aria-expanded`, so the treegrid
+// rendering is the only observable open state. Issue: #33640
 export const openGlossaryPicker = async (
   page: Page,
   trigger: Locator,
@@ -89,22 +82,10 @@ export const openGlossaryPicker = async (
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
 
-  const treeLocator = tree(page);
-
-  const clickAndAwaitOpen = async (clickOptions?: { force?: boolean }) => {
-    await trigger.click(clickOptions);
-    await treeLocator.waitFor({ state: 'visible', timeout: 5_000 });
-  };
-
-  try {
-    await clickAndAwaitOpen({ force: options?.force });
-  } catch {
-    // Retry: first click didn't open the popover (react-aria trigger race on
-    // slow shards); force is the last resort before we give up. The
-    // `no-force-option` rule pattern-matches literal `click({ force: true })`
-    // call sites — this one hides behind `clickAndAwaitOpen`, so no suppress.
-    await clickAndAwaitOpen({ force: true });
-  }
+  await clickUntilVisible(trigger, tree(page), {
+    force: options?.force ? 'always' : 'onRetry',
+    timeout: 15_000,
+  });
 };
 
 // Search results arrive nested and pre-expanded, so no manual expanding.

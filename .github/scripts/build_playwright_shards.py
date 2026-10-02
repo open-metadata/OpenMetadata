@@ -94,6 +94,15 @@ COMMON_MAX_SHARDS = 28
 # suite. 30 s preserves a reasonable margin so the first plan after re-enable
 # does not silently over-pack the shard.
 FALLBACK_TEST_MS = 30_000
+# A history run whose tests are, at the median, this much slower than the same
+# tests in the other runs measured a degraded runner, not the suite. Weights are
+# p75 across runs, so with 3-4 runs one such run sets most of them: run
+# 36754924437 was 1.48x slower and alone pushed chromium past COMMON_MAX_SHARDS,
+# failing planning (and ejecting the merge group) for content that fits in 26.
+# Healthy runs sit within ~0.9-1.05 of each other.
+MAX_HISTORY_RUN_SLOWDOWN = 1.3
+# Fewer shared tests than this and a run's slowdown is noise, so it is kept.
+MIN_SHARED_TESTS_FOR_SLOWDOWN = 100
 CHECKED_IN_TIMING_BASELINE = (
     Path(__file__).resolve().parents[1] / "playwright/timing-baseline.json"
 )
@@ -328,17 +337,61 @@ def percentile_75(values: list[int]) -> int:
     return round(quartiles[2])
 
 
+def timed_tests(payload: dict[str, Any]) -> dict[str, int]:
+    return {
+        test["id"]: int(test["durationMs"])
+        for test in payload.get("tests", [])
+        if test.get("id") and int(test.get("durationMs", 0)) > 0
+    }
+
+
+def run_slowdown(run: dict[str, int], others: list[dict[str, int]]) -> float | None:
+    """Median ratio of a run's test durations to the other runs' median, or
+    None when too few tests are shared to tell."""
+    ratios = [
+        duration / statistics.median(other[test_id] for other in shared)
+        for test_id, duration in run.items()
+        if (shared := [other for other in others if test_id in other])
+    ]
+    if len(ratios) < MIN_SHARED_TESTS_FOR_SLOWDOWN:
+        return None
+    return statistics.median(ratios)
+
+
+def drop_slow_history_runs(
+    runs: list[tuple[Path, dict[str, Any]]],
+) -> list[tuple[Path, dict[str, Any]]]:
+    timed = [timed_tests(payload) for _, payload in runs]
+    kept = []
+    for index, run in enumerate(runs):
+        others = timed[:index] + timed[index + 1 :]
+        slowdown = run_slowdown(timed[index], others)
+        if slowdown is not None and slowdown > MAX_HISTORY_RUN_SLOWDOWN:
+            print(
+                f"::warning::Ignoring timing history {run[0]}: its tests ran "
+                f"{slowdown:.2f}x slower than the other runs "
+                f"(limit {MAX_HISTORY_RUN_SLOWDOWN}x), so it measured the runner, "
+                "not the suite.",
+                file=sys.stderr,
+            )
+        else:
+            kept.append(run)
+    return kept
+
+
 def load_history(
     paths: list[Path],
 ) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
     durations: dict[str, list[int]] = defaultdict(list)
     identity_durations: dict[tuple[str, str], list[int]] = defaultdict(list)
+    runs = []
     for path in paths:
         if not path.exists():
             continue
         payload = json.loads(path.read_text(encoding="utf-8"))
-        if payload.get("mode") != "full":
-            continue
+        if payload.get("mode") == "full":
+            runs.append((path, payload))
+    for _, payload in drop_slow_history_runs(runs):
         for test in payload.get("tests", []):
             test_id = test.get("id")
             duration = max(0, int(test.get("durationMs", 0)))

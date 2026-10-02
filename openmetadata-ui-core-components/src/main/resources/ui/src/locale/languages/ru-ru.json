@@ -7,6 +7,7 @@
     "close": "Закрыть",
     "close-navigation-menu": "Закрыть меню навигации",
     "copy-link": "Скопировать ссылку",
+    "count-remaining": "Осталось: {{count}}",
     "count-selected": "Выбрано: {{count}}",
     "current-page": "Текущая страница",
     "date-range-picker": "Выбор диапазона дат",
@@ -36,6 +37,7 @@
     "select-date": "Выбрать дату",
     "select-dates": "Выбрать даты",
     "select-only-one-row": "Выберите одну строку",
+    "show-count-more": "Показать ещё {{count}}",
     "show-hidden-breadcrumbs": "Показать скрытые хлебные крошки",
     "today": "Сегодня",
     "tree-select": "Выбор из дерева"

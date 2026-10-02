@@ -49,6 +49,7 @@ import os.org.opensearch.client.opensearch.core.SearchResponse;
 public class OpenSearchAggregationManager implements AggregationManagementClient {
   private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
       new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+  private static final String MATCH_ALL_TEXT = "*";
 
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
@@ -123,6 +124,27 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
   }
 
+  /**
+   * A bare query_string searches every field in the mapping, which on large data-asset mappings can
+   * exceed the cluster's max_clause_count, so data-asset text goes through the configured fields
+   * instead. {@code *} and other indexes keep the bare query_string.
+   */
+  private static Query plainTextQuery(String index, String text) {
+    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
+    if (!MATCH_ALL_TEXT.equals(text.trim()) && SearchUtils.usesDataAssetSearchBuilder(indexName)) {
+      return configuredFieldsQuery(index, text);
+    }
+    return Query.of(q -> q.queryString(qs -> qs.query(text)));
+  }
+
+  private static Query configuredFieldsQuery(String index, String text) {
+    SearchSettings searchSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    return new OpenSearchSourceBuilderFactory(searchSettings)
+        .getSearchSourceBuilderV2(index, text, 0, 0, false, false)
+        .query();
+  }
+
   private String praseJsonQuery(String jsonQuery) throws JsonProcessingException {
     JsonNode rootNode = mapper.readTree(jsonQuery);
     String queryToProcess = jsonQuery;
@@ -161,19 +183,12 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
             throw new IOException("Failed to parse JSON query: " + e.getMessage(), e);
           }
         } else {
-          query = Query.of(q -> q.queryString(qs -> qs.query(request.getQuery())));
+          query = plainTextQuery(request.getIndex(), request.getQuery());
         }
       }
 
       if (!CommonUtil.nullOrEmpty(request.getQueryText())) {
-        SearchSettings searchSettings =
-            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-        OpenSearchSourceBuilderFactory searchBuilderFactory =
-            new OpenSearchSourceBuilderFactory(searchSettings);
-        OpenSearchRequestBuilder textQueryBuilder =
-            searchBuilderFactory.getSearchSourceBuilderV2(
-                request.getIndex(), request.getQueryText(), 0, 0, false, false);
-        Query textQuery = textQueryBuilder.query();
+        Query textQuery = configuredFieldsQuery(request.getIndex(), request.getQueryText());
         if (textQuery != null) {
           if (query != null) {
             final Query finalQuery = query;

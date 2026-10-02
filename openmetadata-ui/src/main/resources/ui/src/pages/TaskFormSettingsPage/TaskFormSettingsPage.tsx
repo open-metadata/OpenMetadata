@@ -25,18 +25,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Tabs } from '@openmetadata/ui-core-components';
-import {
-  Alert,
-  Button,
-  Card,
-  Form,
-  Input,
-  Select,
-  Space,
-  Spin,
-  Typography,
-} from 'antd';
+import { Tabs, Typography } from '@openmetadata/ui-core-components';
+import { Alert, Button, Card, Form, Input, Select, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -209,9 +199,9 @@ const SchemaSidebarCard: FC<{
             );
           })
         ) : (
-          <Typography.Text className="text-grey-muted">
+          <Typography color="secondary">
             {t('message.no-task-forms-found')}
-          </Typography.Text>
+          </Typography>
         )}
       </div>
     )}
@@ -235,12 +225,12 @@ const TransitionFormsPane: FC<{
   <div className="task-form-settings-transition-pane">
     <div className="task-form-settings-section-header">
       <div>
-        <Typography.Title className="m-b-xs" level={5}>
+        <Typography as="h5" className="m-b-xs" size="text-md" weight="semibold">
           {t('label.transition-form-plural')}
-        </Typography.Title>
-        <Typography.Paragraph className="m-b-0 text-grey-muted">
+        </Typography>
+        <Typography as="p" className="m-b-0" color="secondary">
           {t('message.transition-forms-help')}
-        </Typography.Paragraph>
+        </Typography>
       </div>
       <Button
         data-testid="task-form-transition-add-button"
@@ -326,9 +316,9 @@ const TransitionFormsPane: FC<{
         ))}
       </div>
     ) : (
-      <Typography.Text className="text-grey-muted">
+      <Typography color="secondary">
         {t('message.no-transition-forms-configured')}
-      </Typography.Text>
+      </Typography>
     )}
   </div>
 );
@@ -341,12 +331,12 @@ const WorkflowStagesPane: FC<{
   <div className="task-form-settings-stage-pane">
     <div className="task-form-settings-section-header">
       <div>
-        <Typography.Title className="m-b-xs" level={5}>
+        <Typography as="h5" className="m-b-xs" size="text-md" weight="semibold">
           {t('label.stage-to-status-mapping')}
-        </Typography.Title>
-        <Typography.Paragraph className="m-b-0 text-grey-muted">
+        </Typography>
+        <Typography as="p" className="m-b-0" color="secondary">
           {t('message.stage-status-mapping-help')}
-        </Typography.Paragraph>
+        </Typography>
       </div>
       <Button
         data-testid="task-form-stage-mapping-add-button"
@@ -423,9 +413,9 @@ const WorkflowStagesPane: FC<{
         ))}
       </div>
     ) : (
-      <Typography.Text className="text-grey-muted">
+      <Typography color="secondary">
         {t('message.no-stage-mappings-configured')}
-      </Typography.Text>
+      </Typography>
     )}
   </div>
 );
@@ -840,9 +830,13 @@ const TaskFormSettingsPage = () => {
       label: 'Advanced JSON',
       children: (
         <div className="task-form-settings-json-pane">
-          <Typography.Title className="m-b-sm" level={5}>
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.resolve-form-schema')}
-          </Typography.Title>
+          </Typography>
           <CodeEditor
             editorClass="task-form-schema-editor"
             value={formSchemaValue}
@@ -859,9 +853,13 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography.Title className="m-b-sm" level={5}>
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.resolve-ui-schema')}
-          </Typography.Title>
+          </Typography>
           <CodeEditor
             editorClass="task-form-ui-schema-editor"
             value={uiSchemaValue}
@@ -878,9 +876,13 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography.Title className="m-b-sm" level={5}>
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.create-form-schema')}
-          </Typography.Title>
+          </Typography>
           <CodeEditor
             editorClass="task-form-create-schema-editor"
             value={createFormSchemaValue}
@@ -897,9 +899,13 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography.Title className="m-b-sm" level={5}>
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.create-ui-schema')}
-          </Typography.Title>
+          </Typography>
           <CodeEditor
             editorClass="task-form-create-ui-schema-editor"
             value={createUiSchemaValue}
@@ -916,9 +922,13 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography.Title className="m-b-sm" level={5}>
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.transition-form-plural')}
-          </Typography.Title>
+          </Typography>
           <CodeEditor
             editorClass="task-form-transition-forms-editor"
             value={transitionFormsValue}
@@ -936,9 +946,13 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography.Title className="m-b-sm" level={5}>
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.default-stage-mappings')}
-          </Typography.Title>
+          </Typography>
           <CodeEditor
             editorClass="task-form-stage-mappings-editor"
             value={defaultStageMappingsValue}
@@ -956,9 +970,13 @@ const TaskFormSettingsPage = () => {
             }}
           />
 
-          <Typography.Title className="m-b-sm" level={5}>
+          <Typography
+            as="h5"
+            className="m-b-sm"
+            size="text-md"
+            weight="semibold">
             {t('label.workflow-definition-json')}
-          </Typography.Title>
+          </Typography>
           <CodeEditor
             editorClass="task-form-workflow-definition-editor"
             value={workflowDefinitionValue}
@@ -994,21 +1012,23 @@ const TaskFormSettingsPage = () => {
             <section className="task-form-settings-main">
               <div className="task-form-settings-hero">
                 <div className="task-form-settings-hero__copy">
-                  <Typography.Text className="task-form-settings-hero__eyebrow">
+                  <Typography className="task-form-settings-hero__eyebrow">
                     {t('label.form-builder')}
-                  </Typography.Text>
-                  <Typography.Title
-                    className="task-form-settings-hero__title"
-                    level={2}>
+                  </Typography>
+                  <Typography
+                    as="h2"
+                    className="task-form-settings-hero__title">
                     {schemaHeading}
-                  </Typography.Title>
-                  <Typography.Paragraph className="task-form-settings-hero__description">
+                  </Typography>
+                  <Typography
+                    as="p"
+                    className="task-form-settings-hero__description">
                     {pageDescription}
-                  </Typography.Paragraph>
+                  </Typography>
                   {schemaSubtitle ? (
-                    <Typography.Text className="task-form-settings-hero__meta">
+                    <Typography className="task-form-settings-hero__meta">
                       {schemaSubtitle}
-                    </Typography.Text>
+                    </Typography>
                   ) : null}
                 </div>
                 <Space

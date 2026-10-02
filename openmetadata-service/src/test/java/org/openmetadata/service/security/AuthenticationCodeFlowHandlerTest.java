@@ -3,13 +3,18 @@ package org.openmetadata.service.security;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.mockingDetails;
@@ -20,6 +25,13 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 
+import com.nimbusds.common.contenttype.ContentType;
+import com.nimbusds.oauth2.sdk.TokenRequest;
+import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
+import com.nimbusds.oauth2.sdk.auth.Secret;
+import com.nimbusds.oauth2.sdk.http.HTTPResponse;
+import com.nimbusds.oauth2.sdk.id.ClientID;
+import com.nimbusds.oauth2.sdk.token.BearerAccessToken;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,6 +43,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,21 +54,30 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -61,13 +86,17 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
+import org.pac4j.oidc.credentials.OidcCredentials;
 import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 
 @ExtendWith(MockitoExtension.class)
@@ -76,6 +105,19 @@ class AuthenticationCodeFlowHandlerTest {
 
   private static final String TEST_SERVER_URL = "https://om.test";
   private static final String MCP_CALLBACK = "/mcp/callback";
+  private static final String DISCOVERY_DOCUMENT =
+      """
+      {
+        "issuer": "https://idp.test",
+        "authorization_endpoint": "https://idp.test/authorize",
+        "token_endpoint": "https://idp.test/token",
+        "jwks_uri": "https://idp.test/keys",
+        "response_types_supported": ["code"],
+        "subject_types_supported": ["public"],
+        "id_token_signing_alg_values_supported": ["RS256"],
+        "token_endpoint_auth_methods_supported": ["client_secret_post"]
+      }
+      """;
 
   @Mock private SessionService sessionService;
   @Mock private HttpServletRequest request;
@@ -736,6 +778,659 @@ class AuthenticationCodeFlowHandlerTest {
     handler.handleLogin(request, response);
 
     assertTrue(capturedLoginRedirect().contains("prompt=consent"));
+  }
+
+  @Test
+  void normalizeMaxAge_treatsBlankAndZeroAsUnsetAndKeepsPositiveValues() {
+    // max_age=0 makes the IdP demand a fresh login on every authorize request, so the "0" older
+    // configurations ship with would turn every silent re-authentication into a password prompt.
+    assertNull(AuthenticationCodeFlowHandler.normalizeMaxAge(null));
+    assertNull(AuthenticationCodeFlowHandler.normalizeMaxAge(""));
+    assertNull(AuthenticationCodeFlowHandler.normalizeMaxAge("  "));
+    assertNull(AuthenticationCodeFlowHandler.normalizeMaxAge("0"));
+    assertNull(AuthenticationCodeFlowHandler.normalizeMaxAge(" 0 "));
+    assertEquals("3600", AuthenticationCodeFlowHandler.normalizeMaxAge("3600"));
+  }
+
+  @Test
+  void normalizePrompt_treatsBlankAsUnset() {
+    assertNull(AuthenticationCodeFlowHandler.normalizePrompt(null));
+    assertNull(AuthenticationCodeFlowHandler.normalizePrompt(" "));
+    assertEquals("login", AuthenticationCodeFlowHandler.normalizePrompt("login"));
+  }
+
+  @Test
+  void handleLogin_shippedDefaults_sendNeitherPromptNorMaxAge() throws Exception {
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "maxAge", AuthenticationCodeFlowHandler.normalizeMaxAge("0"));
+    setField(handler, "promptType", AuthenticationCodeFlowHandler.normalizePrompt(""));
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertFalse(location.contains("prompt="), location);
+    assertFalse(location.contains("max_age="), location);
+  }
+
+  @Test
+  void handleLogin_keepsAConfiguredPositiveMaxAge() throws Exception {
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "maxAge", AuthenticationCodeFlowHandler.normalizeMaxAge("3600"));
+
+    handler.handleLogin(request, response);
+
+    assertTrue(capturedLoginRedirect().contains("max_age=3600"));
+  }
+
+  @Test
+  void handleLogin_promptNoneRequest_overridesTheConfiguredPromptForWebLogin() throws Exception {
+    // The browser asks for prompt=none when it silently re-authenticates a user whose
+    // OpenMetadata session ended; a configured prompt=consent would otherwise force a dialog.
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "promptType", "consent");
+    when(request.getParameter(AuthenticationCodeFlowHandler.PROMPT_KEY)).thenReturn("none");
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertTrue(location.contains("prompt=none"), location);
+    assertFalse(location.contains("prompt=consent"), location);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"login", "consent login"})
+  void handleLogin_promptNoneRequest_keepsAConfiguredLoginPrompt(String configuredPrompt)
+      throws Exception {
+    // prompt=login is the admin asking for credentials on every sign-in. The re-login after an
+    // OpenMetadata session ends must honour it rather than signing the user back in silently.
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "promptType", configuredPrompt);
+    when(request.getParameter(AuthenticationCodeFlowHandler.PROMPT_KEY)).thenReturn("none");
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertTrue(
+        location.contains("prompt=" + configuredPrompt.replace(" ", "+"))
+            || location.contains("prompt=" + configuredPrompt.replace(" ", "%20")),
+        location);
+    assertFalse(location.contains("prompt=none"), location);
+  }
+
+  @Test
+  void handleLogin_promptRequest_isIgnoredOnTheMcpFlow() throws Exception {
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    when(request.getParameter(AuthenticationCodeFlowHandler.PROMPT_KEY)).thenReturn("none");
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "consent");
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertTrue(location.contains("prompt=consent"), location);
+    assertFalse(location.contains("prompt=none"), location);
+  }
+
+  @Test
+  void handleLogin_unsupportedPromptRequest_isIgnored() throws Exception {
+    // Only prompt=none may be requested by the caller; anything else (login, consent, ...) is
+    // admin policy, so an unknown value falls back to the configured prompt.
+    AuthenticationCodeFlowHandler handler = createWebLoginHandler();
+    setField(handler, "promptType", "select_account");
+    when(request.getParameter(AuthenticationCodeFlowHandler.PROMPT_KEY)).thenReturn("login");
+
+    handler.handleLogin(request, response);
+
+    String location = capturedLoginRedirect();
+    assertTrue(location.contains("prompt=select_account"), location);
+    assertFalse(location.contains("prompt=login"), location);
+  }
+
+  @Test
+  void handleRefresh_expiredOmRefreshToken_returns401AndRevokesTheSession() throws Exception {
+    stubLeasedRefreshSession();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().minusSeconds(60));
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      // A 401 lets the browser re-authenticate at the IdP; the old 500 only signed it out.
+      verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      verify(sessionService).revokeSession(request, response);
+      verify(sessionService, never()).releaseRefreshLease(any());
+      verify(tokens, never()).insertToken(any());
+      assertTrue(captureOutputStream.getCapturedOutput().contains("Expired token"));
+    }
+  }
+
+  @Test
+  void handleRefresh_unknownOmRefreshToken_returns401AndRevokesTheSession() throws Exception {
+    stubLeasedRefreshSession();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      when(tokens.findByToken(OM_REFRESH_TOKEN))
+          .thenThrow(new EntityNotFoundException("Invalid Request Token"));
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      verify(sessionService).revokeSession(request, response);
+      verify(sessionService, never()).releaseRefreshLease(any());
+    }
+  }
+
+  @Test
+  void handleRefresh_unexpectedFailure_releasesTheLeaseAndHidesTheCause() throws Exception {
+    UserSession session = stubLeasedRefreshSession();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      when(tokens.findByToken(OM_REFRESH_TOKEN))
+          .thenThrow(new IllegalStateException("token table unavailable"));
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      verify(sessionService).releaseRefreshLease(session);
+      verify(sessionService, never()).revokeSession(any(), any());
+      assertFalse(captureOutputStream.getCapturedOutput().contains("token table unavailable"));
+    }
+  }
+
+  @Test
+  void handleRefresh_validSession_rotatesTheRefreshTokenAndIssuesASessionJwt() throws Exception {
+    stubLeasedRefreshSession();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      stubSessionJwt(jwt);
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      verify(tokens).deleteToken(OM_REFRESH_TOKEN);
+      verify(tokens).insertToken(any());
+      verify(sessionService, never()).revokeSession(any(), any());
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+      assertTrue(captureOutputStream.getCapturedOutput().contains("om-session-jwt"));
+    }
+  }
+
+  @Test
+  void handleRefresh_providerRenewalDue_renewsItAndEndsTheTokenBeforeTheProvidersLapse()
+      throws Exception {
+    UserSession session =
+        stubLeasedRefreshSession("provider-refresh", System.currentTimeMillis() - 1_000);
+    AtomicInteger providerCalls = new AtomicInteger();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+      long before = System.currentTimeMillis();
+
+      createRefreshHandler(
+              providerAnswering(providerCalls, renewedResponse("provider-rotated", 300)))
+          .handleRefresh(request, response);
+
+      assertEquals(1, providerCalls.get());
+      SessionService.ProviderTokenUpdate.Replaced renewed =
+          assertInstanceOf(
+              SessionService.ProviderTokenUpdate.Replaced.class, completedProviderTokens(session));
+      assertEquals("provider-rotated", renewed.refreshToken());
+      assertTrue(renewed.renewalDueAt() >= before + 300_000);
+      // The browser comes back before the provider's 5-minute tokens lapse, so a provider session
+      // with a short idle timeout stays alive while the user is active here.
+      assertTrue(issuedTokenValidity(generator) <= 300);
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+    }
+  }
+
+  @Test
+  void handleRefresh_providerRejectsTheGrant_endsTheSessionWith401() throws Exception {
+    stubLeasedRefreshSession("provider-refresh", null);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+
+      createRefreshHandler(
+              providerAnswering(
+                  new AtomicInteger(), jsonResponse(400, "{\"error\":\"invalid_grant\"}")))
+          .handleRefresh(request, response);
+
+      // Checked before rotation: nothing new is minted, and the ended session's own refresh
+      // token is dropped with it.
+      verify(tokens, never()).insertToken(any());
+      verify(tokens).deleteToken(OM_REFRESH_TOKEN);
+      verify(sessionService, never()).completeRefresh(any(), any(), any());
+      verify(sessionService).revokeSession(request, response);
+      verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      assertTrue(
+          captureOutputStream.getCapturedOutput().contains("Identity provider session ended"));
+    }
+  }
+
+  @Test
+  void handleRefresh_providerGivesNoVerdict_keepsTheSessionAndAsksAgainSoon() throws Exception {
+    UserSession session = stubLeasedRefreshSession("provider-refresh", null);
+    HTTPResponse outage = new HTTPResponse(503);
+    outage.setEntityContentType(ContentType.TEXT_PLAIN);
+    outage.setBody("upstream unavailable");
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+      long before = System.currentTimeMillis();
+
+      createRefreshHandler(providerAnswering(new AtomicInteger(), outage))
+          .handleRefresh(request, response);
+
+      // The provider's refresh token stays valid; only the next attempt moves.
+      SessionService.ProviderTokenUpdate.Rescheduled retry =
+          assertInstanceOf(
+              SessionService.ProviderTokenUpdate.Rescheduled.class,
+              completedProviderTokens(session));
+      long retryAfterMillis = TimeUnit.SECONDS.toMillis(ProviderTokenSchedule.RETRY_AFTER_SECONDS);
+      assertTrue(retry.renewalDueAt() >= before + retryAfterMillis);
+      assertTrue(issuedTokenValidity(generator) <= ProviderTokenSchedule.RETRY_AFTER_SECONDS);
+      verify(sessionService, never()).revokeSession(any(), any());
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+    }
+  }
+
+  @Test
+  void handleRefresh_providerTokensOutliveTheNextToken_neverContactsTheProvider() throws Exception {
+    UserSession session =
+        stubLeasedRefreshSession(
+            "provider-refresh", System.currentTimeMillis() + TimeUnit.HOURS.toMillis(2));
+    AtomicInteger providerCalls = new AtomicInteger();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+
+      createRefreshHandler(providerAnswering(providerCalls, renewedResponse(null, 300)))
+          .handleRefresh(request, response);
+
+      assertEquals(0, providerCalls.get());
+      verify(sessionService)
+          .completeRefresh(eq(session), anyString(), eq(SessionService.ProviderTokenUpdate.NONE));
+      assertEquals(3600, issuedTokenValidity(generator));
+    }
+  }
+
+  @Test
+  void handleRefresh_providerRenewsWithoutRotating_keepsTheStoredProviderToken() throws Exception {
+    UserSession session =
+        stubLeasedRefreshSession("provider-refresh", System.currentTimeMillis() - 1_000);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      stubSessionJwt(jwt);
+      long before = System.currentTimeMillis();
+
+      createRefreshHandler(providerAnswering(new AtomicInteger(), renewedResponse(null, 300)))
+          .handleRefresh(request, response);
+
+      SessionService.ProviderTokenUpdate.Rescheduled renewed =
+          assertInstanceOf(
+              SessionService.ProviderTokenUpdate.Rescheduled.class,
+              completedProviderTokens(session));
+      assertTrue(renewed.renewalDueAt() >= before + 300_000);
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+    }
+  }
+
+  @Test
+  void handleRefresh_withoutProviderRefreshToken_neverContactsTheProvider() throws Exception {
+    // Providers that issue no refresh token keep the session's fixed expiry; the browser's silent
+    // re-authentication covers the end of it.
+    UserSession session = stubLeasedRefreshSession(null, null);
+    AtomicInteger providerCalls = new AtomicInteger();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+
+      createRefreshHandler(providerAnswering(providerCalls, renewedResponse(null, 300)))
+          .handleRefresh(request, response);
+
+      assertEquals(0, providerCalls.get());
+      verify(sessionService)
+          .completeRefresh(eq(session), anyString(), eq(SessionService.ProviderTokenUpdate.NONE));
+      assertEquals(3600, issuedTokenValidity(generator));
+    }
+  }
+
+  @Test
+  void providerTokensAtLogin_schedulesTheFirstRenewalFromTheLoginsExpiresIn() throws Exception {
+    long now = System.currentTimeMillis();
+
+    SessionService.ProviderTokenUpdate.Replaced providerTokens =
+        assertInstanceOf(
+            SessionService.ProviderTokenUpdate.Replaced.class,
+            endingSessionsWithProvider(createRefreshHandler())
+                .providerTokensAtLogin(providerLoginCredentials(), now));
+
+    assertEquals("idp-refresh", providerTokens.refreshToken());
+    assertEquals(now + 300_000, providerTokens.renewalDueAt());
+  }
+
+  @Test
+  void providerTokensAtLogin_byDefault_storesNothingFromTheProvider() throws Exception {
+    // Unless the admin opts in, a session lasts sessionExpiry whatever the provider does, so there
+    // is no provider token to keep and no renewal to schedule.
+    assertEquals(
+        SessionService.ProviderTokenUpdate.NONE,
+        createRefreshHandler()
+            .providerTokensAtLogin(providerLoginCredentials(), System.currentTimeMillis()));
+  }
+
+  @Test
+  void providerTokensAtLogin_followsTheConfiguredEndSessionWithProvider(@TempDir Path directory)
+      throws Exception {
+    // Startup and every SSO settings save build a new handler from the saved configuration.
+    Path discoveryDocument =
+        Files.writeString(directory.resolve("openid-configuration"), DISCOVERY_DOCUMENT);
+    OidcClientConfig oidcConfig =
+        new OidcClientConfig()
+            .withId("om-client")
+            .withSecret("om-secret")
+            .withDiscoveryUri("file:" + discoveryDocument.toAbsolutePath())
+            .withServerUrl(TEST_SERVER_URL)
+            .withCallbackUrl(TEST_SERVER_URL + "/callback");
+    long now = System.currentTimeMillis();
+
+    assertEquals(
+        SessionService.ProviderTokenUpdate.NONE,
+        configuredHandler(oidcConfig).providerTokensAtLogin(providerLoginCredentials(), now));
+
+    oidcConfig.setEndSessionWithProvider(true);
+
+    assertInstanceOf(
+        SessionService.ProviderTokenUpdate.Replaced.class,
+        configuredHandler(oidcConfig).providerTokensAtLogin(providerLoginCredentials(), now));
+  }
+
+  @Test
+  void handleRefresh_byDefault_neverContactsTheProviderAndIssuesFullLengthTokens()
+      throws Exception {
+    // A session from while the setting was on still holds an overdue renewal. With it off, the
+    // provider is left alone and the token is no longer cut short to that schedule.
+    UserSession session =
+        stubLeasedRefreshSession("provider-refresh", System.currentTimeMillis() - 1_000);
+    AtomicInteger providerCalls = new AtomicInteger();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class)) {
+      stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+      JWTTokenGenerator generator = stubSessionJwt(jwt);
+      AuthenticationCodeFlowHandler handler = createRefreshHandler();
+      setField(
+          handler,
+          "providerTokenRefresher",
+          providerAnswering(providerCalls, jsonResponse(400, "{\"error\":\"invalid_grant\"}")));
+
+      handler.handleRefresh(request, response);
+
+      assertEquals(0, providerCalls.get());
+      verify(sessionService)
+          .completeRefresh(eq(session), anyString(), eq(SessionService.ProviderTokenUpdate.NONE));
+      verify(sessionService, never()).revokeSession(any(), any());
+      assertEquals(3600, issuedTokenValidity(generator));
+      verify(response).setStatus(HttpServletResponse.SC_OK);
+    }
+  }
+
+  @Test
+  void providerTokensAtLogin_withoutAProviderRefreshToken_hasNothingToRenew() throws Exception {
+    OidcCredentials credentials = new OidcCredentials();
+    credentials.setAccessTokenObject(new BearerAccessToken("idp-access", 300, null));
+
+    assertEquals(
+        SessionService.ProviderTokenUpdate.NONE,
+        endingSessionsWithProvider(createRefreshHandler())
+            .providerTokensAtLogin(credentials, System.currentTimeMillis()));
+  }
+
+  @Test
+  void handleRefresh_sessionEndedWhileRefreshing_dropsTheRotatedTokenAndAnswers401()
+      throws Exception {
+    // The session was revoked or expired while this refresh held its lease, so the rotated refresh
+    // token belongs to no session.
+    stubLeasedRefreshSession();
+    doReturn(Optional.empty()).when(sessionService).completeRefresh(any(), anyString(), any());
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      TokenRepository tokens = stubRefreshEntities(entity, Instant.now().plusSeconds(3600));
+
+      createRefreshHandler().handleRefresh(request, response);
+
+      ArgumentCaptor<TokenInterface> rotated = ArgumentCaptor.forClass(TokenInterface.class);
+      verify(tokens).insertToken(rotated.capture());
+      verify(tokens).deleteToken(rotated.getValue().getToken().toString());
+      verify(sessionService).revokeSession(request, response);
+      verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      assertTrue(
+          captureOutputStream
+              .getCapturedOutput()
+              .contains(AuthenticationCodeFlowHandler.SESSION_REVOKED_DURING_REFRESH));
+    }
+  }
+
+  @Test
+  void handleRefresh_revokedSession_answersSessionRevoked() throws Exception {
+    // The browser signs out on this answer instead of re-authenticating silently, which would
+    // evict another of the user's sessions under the per-user cap.
+    when(sessionService.acquireRefreshLease(request, response)).thenReturn(Optional.empty());
+    when(sessionService.describeMissingSession(request)).thenReturn(SessionService.SESSION_REVOKED);
+
+    createRefreshHandler().handleRefresh(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    assertTrue(captureOutputStream.getCapturedOutput().contains(SessionService.SESSION_REVOKED));
+  }
+
+  private static final String OM_REFRESH_TOKEN = "om-refresh-token";
+  private static final String SESSION_USERNAME = "alice";
+
+  /** Web-flow handler wired to reach the provider redirect, with no active session to reuse. */
+  private AuthenticationCodeFlowHandler createWebLoginHandler() throws Exception {
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+    return createLoginHandler();
+  }
+
+  private AuthenticationCodeFlowHandler createRefreshHandler() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "tokenValidity", 3600);
+    return handler;
+  }
+
+  /**
+   * A REFRESHING session whose stored refresh token the mocked SessionService "decrypts" as-is, and
+   * whose completeRefresh persists what it is given.
+   */
+  private UserSession stubLeasedRefreshSession() {
+    return stubLeasedRefreshSession(null, null);
+  }
+
+  /**
+   * A REFRESHING session whose stored tokens the mocked SessionService "decrypts" as-is, and whose
+   * completeRefresh persists what it is given.
+   */
+  private UserSession stubLeasedRefreshSession(
+      String providerRefreshToken, Long providerRenewalDueAt) {
+    UserSession session =
+        UserSession.builder()
+            .id("r".repeat(43))
+            .status(SessionStatus.REFRESHING)
+            .username(SESSION_USERNAME)
+            .omRefreshToken(OM_REFRESH_TOKEN)
+            .providerRefreshToken(providerRefreshToken)
+            .providerRenewalDueAt(providerRenewalDueAt)
+            .version(1L)
+            .build();
+    when(sessionService.acquireRefreshLease(request, response)).thenReturn(Optional.of(session));
+    when(sessionService.decryptOmRefreshToken(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0, UserSession.class).getOmRefreshToken());
+    when(sessionService.decryptProviderRefreshToken(any()))
+        .thenAnswer(
+            invocation -> invocation.getArgument(0, UserSession.class).getProviderRefreshToken());
+    when(sessionService.completeRefresh(any(), anyString(), any()))
+        .thenAnswer(
+            invocation -> {
+              UserSession leased = invocation.getArgument(0, UserSession.class);
+              SessionService.ProviderTokenUpdate providerTokens = invocation.getArgument(2);
+              return Optional.of(
+                  leased.toBuilder()
+                      .status(SessionStatus.ACTIVE)
+                      .omRefreshToken(invocation.getArgument(1, String.class))
+                      .providerRenewalDueAt(renewalDueAtAfter(leased, providerTokens))
+                      .build());
+            });
+    return session;
+  }
+
+  private static Long renewalDueAtAfter(
+      UserSession leased, SessionService.ProviderTokenUpdate providerTokens) {
+    return switch (providerTokens) {
+      case SessionService.ProviderTokenUpdate.None none -> leased.getProviderRenewalDueAt();
+      case SessionService.ProviderTokenUpdate.Rescheduled rescheduled -> rescheduled.renewalDueAt();
+      case SessionService.ProviderTokenUpdate.Replaced replaced -> replaced.renewalDueAt();
+    };
+  }
+
+  private SessionService.ProviderTokenUpdate completedProviderTokens(UserSession session) {
+    ArgumentCaptor<SessionService.ProviderTokenUpdate> providerTokens =
+        ArgumentCaptor.forClass(SessionService.ProviderTokenUpdate.class);
+    verify(sessionService).completeRefresh(eq(session), anyString(), providerTokens.capture());
+    return providerTokens.getValue();
+  }
+
+  private static long issuedTokenValidity(JWTTokenGenerator generator) {
+    ArgumentCaptor<Long> validitySeconds = ArgumentCaptor.forClass(Long.class);
+    verify(generator)
+        .generateJWTTokenForSession(
+            anyString(),
+            any(),
+            anyBoolean(),
+            anyString(),
+            validitySeconds.capture(),
+            any(),
+            anyString());
+    return validitySeconds.getValue();
+  }
+
+  private TokenRepository stubRefreshEntities(MockedStatic<Entity> entity, Instant expiry) {
+    TokenRepository tokens = mock(TokenRepository.class);
+    RefreshToken stored =
+        new RefreshToken()
+            .withToken(UUID.randomUUID())
+            .withExpiryDate(expiry.truncatedTo(ChronoUnit.MILLIS).toEpochMilli());
+    when(tokens.findByToken(OM_REFRESH_TOKEN)).thenReturn(stored);
+    entity.when(Entity::getTokenRepository).thenReturn(tokens);
+    entity
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.USER), eq(SESSION_USERNAME), anyString(), eq(NON_DELETED)))
+        .thenReturn(
+            new User()
+                .withId(UUID.randomUUID())
+                .withName(SESSION_USERNAME)
+                .withEmail(SESSION_USERNAME + "@example.com"));
+    return tokens;
+  }
+
+  private static JWTTokenGenerator stubSessionJwt(MockedStatic<JWTTokenGenerator> jwt) {
+    JWTTokenGenerator generator = mock(JWTTokenGenerator.class);
+    jwt.when(JWTTokenGenerator::getInstance).thenReturn(generator);
+    when(generator.generateJWTTokenForSession(
+            anyString(), any(), anyBoolean(), anyString(), anyLong(), any(), anyString()))
+        .thenReturn(
+            new JWTAuthMechanism()
+                .withJWTToken("om-session-jwt")
+                .withJWTTokenExpiresAt(Instant.now().plusSeconds(3600).toEpochMilli()));
+    return generator;
+  }
+
+  /** A handler whose sessions end with the identity provider's, renewing through the refresher. */
+  private AuthenticationCodeFlowHandler createRefreshHandler(
+      OidcProviderTokenRefresher providerTokenRefresher) throws Exception {
+    AuthenticationCodeFlowHandler handler = endingSessionsWithProvider(createRefreshHandler());
+    setField(handler, "providerTokenRefresher", providerTokenRefresher);
+    return handler;
+  }
+
+  /** Turns on {@code endSessionWithProvider} for a handler built without its constructor. */
+  private static AuthenticationCodeFlowHandler endingSessionsWithProvider(
+      AuthenticationCodeFlowHandler handler) throws Exception {
+    setField(handler, "endsSessionWithProvider", true);
+    return handler;
+  }
+
+  private AuthenticationCodeFlowHandler configuredHandler(OidcClientConfig oidcConfig) {
+    AuthenticationConfiguration authConfig =
+        new AuthenticationConfiguration()
+            .withProvider(AuthProvider.CUSTOM_OIDC)
+            .withOidcConfiguration(oidcConfig);
+    return new AuthenticationCodeFlowHandler(
+        authConfig, new AuthorizerConfiguration(), sessionService);
+  }
+
+  private static OidcCredentials providerLoginCredentials() {
+    OidcCredentials credentials = new OidcCredentials();
+    credentials.setAccessTokenObject(new BearerAccessToken("idp-access", 300, null));
+    credentials.setRefreshTokenObject(
+        new com.nimbusds.oauth2.sdk.token.RefreshToken("idp-refresh"));
+    return credentials;
+  }
+
+  /** A real refresher whose only stub is the identity provider's token endpoint. */
+  private static OidcProviderTokenRefresher providerAnswering(
+      AtomicInteger calls, HTTPResponse tokenEndpointResponse) {
+    return new OidcProviderTokenRefresher(
+        grant ->
+            new TokenRequest(
+                URI.create("https://idp.example.com/token"),
+                new ClientSecretBasic(new ClientID("om-client"), new Secret("om-secret")),
+                grant),
+        request -> {
+          calls.incrementAndGet();
+          return tokenEndpointResponse;
+        });
+  }
+
+  private static HTTPResponse renewedResponse(String rotatedRefreshToken, int expiresInSeconds) {
+    String refreshToken =
+        rotatedRefreshToken == null ? "" : ",\"refresh_token\":\"" + rotatedRefreshToken + "\"";
+    return jsonResponse(
+        200,
+        "{\"access_token\":\"idp-access\",\"token_type\":\"Bearer\",\"expires_in\":"
+            + expiresInSeconds
+            + refreshToken
+            + "}");
+  }
+
+  private static HTTPResponse jsonResponse(int status, String body) {
+    HTTPResponse tokenResponse = new HTTPResponse(status);
+    tokenResponse.setEntityContentType(ContentType.APPLICATION_JSON);
+    tokenResponse.setBody(body);
+    return tokenResponse;
   }
 
   @Test

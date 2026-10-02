@@ -150,9 +150,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Hint: () => <span data-testid="hint-icon" />,
-}));
-
-jest.mock('@untitledui/icons', () => ({
   Settings02: () => <span data-testid="settings-icon" />,
 }));
 

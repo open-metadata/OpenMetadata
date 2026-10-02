@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -32,6 +33,7 @@ import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -692,6 +694,7 @@ public interface AccessControlDAOs {
       }
       return listCount(
           getTableName(),
+          filter.getQueryParams(),
           mySqlCondition,
           postgresCondition,
           teamIdsCsv != null ? null : team,
@@ -770,6 +773,7 @@ public interface AccessControlDAOs {
       }
       return listBefore(
           getTableName(),
+          filter.getQueryParams(),
           mySqlCondition,
           postgresCondition,
           teamIdsCsv != null ? null : team,
@@ -850,6 +854,7 @@ public interface AccessControlDAOs {
       }
       return listAfter(
           getTableName(),
+          filter.getQueryParams(),
           mySqlCondition,
           postgresCondition,
           teamIdsCsv != null ? null : team,
@@ -883,6 +888,7 @@ public interface AccessControlDAOs {
         connectionType = POSTGRES)
     int listCount(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("postgresCond") String postgresCond,
         @BindFQN("team") String team,
@@ -920,6 +926,7 @@ public interface AccessControlDAOs {
         connectionType = POSTGRES)
     List<String> listBefore(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("postgresCond") String postgresCond,
         @BindFQN("team") String team,
@@ -956,6 +963,7 @@ public interface AccessControlDAOs {
         connectionType = POSTGRES)
     List<String> listAfter(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("postgresCond") String postgresCond,
         @BindFQN("team") String team,

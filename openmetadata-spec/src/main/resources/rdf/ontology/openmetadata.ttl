@@ -3775,6 +3775,10 @@ om:sourceId a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "sourceId" .
 
+om:sourceMemoryIds a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceMemoryIds" .
+
 om:sourcePythonClass a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "sourcePythonClass" .
