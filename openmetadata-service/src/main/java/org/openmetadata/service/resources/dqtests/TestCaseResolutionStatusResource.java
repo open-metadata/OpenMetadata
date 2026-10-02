@@ -349,6 +349,14 @@ public class TestCaseResolutionStatusResource
       @Parameter(description = "Filter incidents by domain", schema = @Schema(type = "String"))
           @QueryParam("domain")
           String domain,
+      @Parameter(
+              description =
+                  "Return only the group with this key: the table's fully qualified name, the "
+                      + "test definition's or the owner's id, or empty for the test cases nobody "
+                      + "owns",
+              schema = @Schema(type = "String"))
+          @QueryParam("group")
+          String group,
       @Parameter(description = "Limit the number of groups returned. (1 to 1000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -413,6 +421,7 @@ public class TestCaseResolutionStatusResource
     if (endTs != null) {
       filter.addQueryParam("incidentEndTs", String.valueOf(endTs));
     }
+    filter.addQueryParam("incidentGroupKey", group);
     return repository.listIncidentGroups(
         groupByDimension, filter, sortType, limit, cursorForPage(page, limit, offset));
   }
