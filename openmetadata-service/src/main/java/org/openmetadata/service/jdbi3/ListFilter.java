@@ -113,6 +113,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAnnouncementStatusCondition());
+    conditions.add(getSystemWideCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getExcludeProviderCondition(tableName));
@@ -510,6 +511,17 @@ public class ListFilter extends Filter<ListFilter> {
    * <p>Read from {@code announcementStatus} rather than {@code status} so the generic status
    * condition, which other resources share, keeps matching the column it means.
    */
+  /** A system-wide announcement is one with no entityLink; only AnnouncementResource sets this. */
+  private String getSystemWideCondition() {
+    String systemWide = queryParams.get("systemWide");
+    String condition = "";
+    if (systemWide != null) {
+      condition =
+          Boolean.parseBoolean(systemWide) ? "entityLink IS NULL" : "entityLink IS NOT NULL";
+    }
+    return condition;
+  }
+
   private String getAnnouncementStatusCondition() {
     String status = queryParams.get("announcementStatus");
     if (status == null) {

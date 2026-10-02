@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.feeds;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -20,7 +22,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -61,6 +66,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Path("/v1/announcements")
@@ -72,6 +78,14 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
 
   public static final String COLLECTION_PATH = "v1/announcements/";
   static final String FIELDS = "";
+  private static final String ENTITY_LINK_FIELD = "entityLink";
+  private static final String ENTITY_LINK_PATH = "/" + ENTITY_LINK_FIELD;
+  private static final String PATCH_OP = "op";
+  private static final String PATCH_PATH = "path";
+  private static final String PATCH_FROM = "from";
+  private static final String PATCH_VALUE = "value";
+  private static final String PATCH_REMOVE = "remove";
+  private static final String PATCH_MOVE = "move";
 
   public AnnouncementResource(Authorizer authorizer, Limits limits) {
     super(Entity.ANNOUNCEMENT, authorizer, limits);
@@ -114,6 +128,12 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Parameter(description = "Filter active announcements") @QueryParam("active") Boolean active,
       @Parameter(description = "Filter by announcement type") @QueryParam("type")
           AnnouncementType type,
+      @Parameter(
+              description =
+                  "true lists only system-wide announcements (no entityLink), false only"
+                      + " entity announcements")
+          @QueryParam("systemWide")
+          Boolean systemWide,
       @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Limit the number results")
           @DefaultValue("10")
@@ -142,6 +162,9 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
     }
     if (type != null) {
       filter.addQueryParam("announcementType", type.value());
+    }
+    if (systemWide != null) {
+      filter.addQueryParam("systemWide", String.valueOf(systemWide));
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -241,6 +264,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Valid CreateAnnouncement create) {
     Announcement announcement =
         getAnnouncement(create, securityContext.getUserPrincipal().getName());
+    authorizeSystemWideWrite(securityContext, announcement);
     return create(uriInfo, securityContext, announcement);
   }
 
@@ -263,6 +287,11 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Valid CreateAnnouncement create) {
     Announcement announcement =
         getAnnouncement(create, securityContext.getUserPrincipal().getName());
+    authorizeSystemWideWrite(securityContext, announcement);
+    authorizeSystemWideWrite(
+        securityContext,
+        repository.findByNameOrNull(
+            FullyQualifiedName.quoteName(announcement.getName()), Include.ALL));
     return createOrUpdate(uriInfo, securityContext, announcement);
   }
 
@@ -281,6 +310,10 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       JsonPatch patch) {
+    authorizeSystemWideWrite(securityContext, repository.find(id, Include.NON_DELETED));
+    if (dropsEntityLink(patch)) {
+      authorizer.authorizeAdmin(securityContext);
+    }
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -295,6 +328,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @QueryParam("hardDelete") @DefaultValue("false") boolean hardDelete) {
+    authorizeSystemWideWrite(securityContext, repository.find(id, Include.ALL));
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -305,7 +339,52 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
+    authorizeSystemWideWrite(securityContext, repository.find(restore.getId(), Include.ALL));
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  /**
+   * An announcement with no entityLink is system-wide: it is shown to every user rather than on one
+   * asset, so writing one (create, update, delete, restore, or a patch that drops the entityLink) is
+   * admin-only, on top of the usual policy check.
+   */
+  private void authorizeSystemWideWrite(
+      SecurityContext securityContext, Announcement announcement) {
+    if (announcement != null && nullOrEmpty(announcement.getEntityLink())) {
+      authorizer.authorizeAdmin(securityContext);
+    }
+  }
+
+  /**
+   * Inspects the operations rather than applying the patch: the stored announcement has no owners
+   * or domains (they are relationships), so a patch computed against the full entity would not
+   * apply to it.
+   */
+  private static boolean dropsEntityLink(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(JsonValue::asJsonObject)
+        .anyMatch(AnnouncementResource::dropsEntityLink);
+  }
+
+  private static boolean dropsEntityLink(JsonObject operation) {
+    String op = operation.getString(PATCH_OP, "");
+    String path = operation.getString(PATCH_PATH, "");
+    boolean clearsField =
+        ENTITY_LINK_PATH.equals(path) && (PATCH_REMOVE.equals(op) || isEmptyValue(operation));
+    boolean movesField =
+        PATCH_MOVE.equals(op) && ENTITY_LINK_PATH.equals(operation.getString(PATCH_FROM, ""));
+    boolean replacesDocument =
+        path.isEmpty()
+            && operation.get(PATCH_VALUE) instanceof JsonObject document
+            && nullOrEmpty(document.getString(ENTITY_LINK_FIELD, null));
+    return clearsField || movesField || replacesDocument;
+  }
+
+  private static boolean isEmptyValue(JsonObject operation) {
+    JsonValue value = operation.get(PATCH_VALUE);
+    return value != null
+        && (value.getValueType() == JsonValue.ValueType.NULL
+            || (value instanceof JsonString text && text.getString().isEmpty()));
   }
 
   private Announcement getAnnouncement(CreateAnnouncement create, String userName) {
