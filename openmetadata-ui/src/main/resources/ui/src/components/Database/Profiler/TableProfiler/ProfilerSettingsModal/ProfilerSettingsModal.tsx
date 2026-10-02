@@ -78,6 +78,10 @@ import {
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
 
+// Ingestion treats a 0 sample as "no sampling" and profiles the full table,
+// overriding any schema/database/pipeline sampling.
+const MIN_PROFILE_SAMPLE = 1;
+
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../SchemaEditor/SchemaEditor'))
 );
@@ -193,12 +197,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       form.setFieldsValue({
         profileSampleType,
         profileSamplePercentage:
-          profileSample != null &&
+          !isNil(profileSample) &&
           profileSampleType === ProfileSampleType.Percentage
             ? profileSample
             : undefined,
         profileSampleRows:
-          profileSample != null && profileSampleType === ProfileSampleType.Rows
+          !isNil(profileSample) && profileSampleType === ProfileSampleType.Rows
             ? profileSample
             : undefined,
       });
@@ -353,7 +357,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
           profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
           profileSampleConfig:
-            profileSampleType != null && profileSample != null
+            !isNil(profileSampleType) && !isNil(profileSample)
               ? {
                   sampleConfigType: SampleConfigType.Static,
                   config: {
@@ -538,6 +542,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 name="profileSamplePercentage">
                 <SliderWithInput
                   className="p-x-xs"
+                  min={MIN_PROFILE_SAMPLE}
                   value={state?.profileSample}
                   onChange={handleProfileSample}
                 />
@@ -553,7 +558,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <InputNumber
                   className="w-full"
                   data-testid="metric-number-input"
-                  min={0}
+                  min={MIN_PROFILE_SAMPLE}
                   placeholder={t('label.please-enter-value', {
                     name: t('label.row-count-lowercase'),
                   })}

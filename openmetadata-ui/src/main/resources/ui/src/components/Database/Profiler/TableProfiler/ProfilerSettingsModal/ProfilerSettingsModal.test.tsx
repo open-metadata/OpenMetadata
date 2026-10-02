@@ -103,24 +103,6 @@ jest.mock('../../../SchemaEditor/SchemaEditor', () => {
     ));
 });
 
-jest.mock('../../../../common/SliderWithInput/SliderWithInput', () => {
-  return jest
-    .fn()
-    .mockImplementation(
-      ({ onChange }: { onChange: (value: number | null) => void }) => (
-        <>
-          <div data-testid="slider-input" />
-          <button data-testid="slider-zero" onClick={() => onChange(0)}>
-            set 0%
-          </button>
-          <button data-testid="slider-clear" onClick={() => onChange(null)}>
-            clear
-          </button>
-        </>
-      )
-    );
-});
-
 /**
  * Renders the modal with `config` already persisted, waits for it to load, and
  * returns the payload `putTableProfileConfig` was called with after a Save.
@@ -378,14 +360,15 @@ describe('ProfilerSettingsModal partitioning round-trip', () => {
 });
 
 const buildStaticSampleConfig = (
-  profileSample: number
+  profileSample: number,
+  profileSampleType = ProfileSampleType.Percentage
 ): TableProfilerConfig => ({
   sampleDataCount: 500,
   profileSampleConfig: {
     sampleConfigType: SampleConfigType.Static,
     config: {
       profileSample,
-      profileSampleType: ProfileSampleType.Percentage,
+      profileSampleType,
     },
   },
 });
@@ -408,35 +391,72 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
     });
   });
 
-  it('should preserve profileSampleConfig when percentage is explicitly set to 0', async () => {
+  it('should not allow a 0 percentage because ingestion would scan the full table', async () => {
+    (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableProfilerConfig: buildStaticSampleConfig(60),
+    });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    expect(await screen.findByTestId('slider-input')).toHaveAttribute(
+      'aria-valuemin',
+      '1'
+    );
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuemin', '1');
+  });
+
+  it('should clamp a typed 0 percentage up to 1 on blur', async () => {
     const payload = await renderAndSave(buildStaticSampleConfig(60), () => {
-      fireEvent.click(screen.getByTestId('slider-zero'));
+      const input = screen.getByTestId('slider-input');
+      fireEvent.change(input, { target: { value: '0' } });
+      fireEvent.blur(input);
     });
 
-    expect(payload.profileSampleConfig).toEqual({
-      sampleConfigType: SampleConfigType.Static,
-      config: {
-        profileSample: 0,
-        profileSampleType: ProfileSampleType.Percentage,
-      },
-    });
+    expect(payload.profileSampleConfig?.config?.profileSample).toBe(1);
   });
 
-  it('should round-trip a stored 0% percentage through reload and save', async () => {
-    const payload = await renderAndSave(buildStaticSampleConfig(0));
-
-    expect(payload.profileSampleConfig).toEqual({
-      sampleConfigType: SampleConfigType.Static,
-      config: {
-        profileSample: 0,
-        profileSampleType: ProfileSampleType.Percentage,
-      },
+  it('should not allow 0 rows', async () => {
+    (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableProfilerConfig: buildStaticSampleConfig(500, ProfileSampleType.Rows),
     });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    expect(await screen.findByTestId('metric-number-input')).toHaveAttribute(
+      'aria-valuemin',
+      '1'
+    );
   });
+
+  // Configs saved before the minimum existed may hold 0; saving the modal
+  // untouched must write back what is stored rather than a clamped value.
+  it.each([
+    [ProfileSampleType.Percentage, 0],
+    [ProfileSampleType.Rows, 500],
+    [ProfileSampleType.Rows, 0],
+  ])(
+    'should round-trip a stored %s sample of %d through reload and save',
+    async (profileSampleType, profileSample) => {
+      const payload = await renderAndSave(
+        buildStaticSampleConfig(profileSample, profileSampleType)
+      );
+
+      expect(payload.profileSampleConfig).toEqual({
+        sampleConfigType: SampleConfigType.Static,
+        config: { profileSample, profileSampleType },
+      });
+    }
+  );
 
   it('should omit profileSampleConfig when the sample value is cleared', async () => {
     const payload = await renderAndSave(buildStaticSampleConfig(60), () => {
-      fireEvent.click(screen.getByTestId('slider-clear'));
+      fireEvent.click(screen.getByTestId('clear-slider-input'));
     });
 
     expect(payload.profileSampleConfig).toBeUndefined();
