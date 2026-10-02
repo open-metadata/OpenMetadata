@@ -13,11 +13,13 @@
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
+import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import {
   IncidentGroupBy,
   IncidentTrendDirection,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
+import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { listIncidentGroups } from '../../../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
@@ -1068,5 +1070,24 @@ describe('IncidentGroupsView filters and paging', () => {
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
       '1 label.group-lowercase'
     );
+  });
+
+  it('should scope the groups to the active domain', async () => {
+    useDomainStore.setState({ activeDomain: 'Marketing' });
+
+    try {
+      await act(async () => {
+        renderView();
+      });
+
+      expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
+        groupBy: IncidentGroupBy.TestDefinition,
+        limit: 10,
+        sortType: 'desc',
+        domain: 'Marketing',
+      });
+    } finally {
+      useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
+    }
   });
 });

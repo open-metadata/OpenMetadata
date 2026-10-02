@@ -17,12 +17,14 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import {
   IncidentGroupBy,
   TestCaseIncidentGroup,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { Paging } from '../../../../generated/type/paging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { useDomainStore } from '../../../../hooks/useDomainStore';
 import {
   IncidentSortType,
   listIncidentGroups,
@@ -65,6 +67,10 @@ export const useIncidentGroups = ({
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
+  const { activeDomain } = useDomainStore();
+  // The groups follow the domain scope picked in the app nav, like every other listing.
+  const domain =
+    activeDomain === DEFAULT_DOMAIN_VALUE ? undefined : activeDomain;
 
   const searchParams = useMemo(
     () =>
@@ -107,7 +113,7 @@ export const useIncidentGroups = ({
    * therefore tagged with its query, and read as page 1 once the query moves
    * on — no reset effect, so no extra fetch of the stale page.
    */
-  const queryKey = `${groupBy}|${sortType}|${pageSize}|${filtersSearch}`;
+  const queryKey = `${groupBy}|${sortType}|${pageSize}|${domain}|${filtersSearch}`;
   const [page, setPage] = useState<IncidentGroupsPage>({
     queryKey,
     currentPage: 1,
@@ -169,6 +175,7 @@ export const useIncidentGroups = ({
         limit: pageSize,
         sortType,
         page: currentPage,
+        domain,
         ...getIncidentGroupsQuery(filters),
       });
 
@@ -203,7 +210,7 @@ export const useIncidentGroups = ({
         setIsLoading(false);
       }
     }
-  }, [groupBy, sortType, pageSize, currentPage, filters, refreshKey, t]);
+  }, [groupBy, sortType, pageSize, currentPage, filters, domain, refreshKey, t]);
 
   useEffect(() => {
     fetchIncidentGroups();
