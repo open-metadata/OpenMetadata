@@ -51,7 +51,6 @@ import {
   isColumnMenuTarget,
   openImpactAnalysisTab,
   openLineageNodeDrawer,
-  rearrangeNodes,
   removeColumnLineage,
   revealColumn,
   verifyColumnLineageInCSV,
@@ -202,7 +201,6 @@ test.describe('Data asset lineage', () => {
             `lineage-node-${lineageEntity.entityResponseData.fullyQualifiedName}`
           )
           .waitFor();
-        await rearrangeNodes(page);
         await fitToScreen(page);
 
         for (const entity of entities) {
@@ -272,8 +270,7 @@ test.describe('Data asset lineage', () => {
       });
 
       await test.step('should create lineage with edge having pipeline', async () => {
-        await page.getByTestId('fit-screen').click();
-        await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+        await fitToScreen(page);
         await waitForAllLoadersToDisappear(page);
 
         for (const entity of entities) {
@@ -297,8 +294,7 @@ test.describe('Data asset lineage', () => {
         await lineageRes;
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByTestId('fit-screen').click();
-        await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+        await fitToScreen(page);
         await waitForAllLoadersToDisappear(page);
 
         await fitToScreen(page);
@@ -628,8 +624,7 @@ test.describe('Temp lineage table nodes', () => {
     await visitLineageTab(page);
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByTestId('fit-screen').click();
-    await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+    await fitToScreen(page);
 
     for (const tempTableName of TEMP_TABLE_NAMES) {
       await expect(

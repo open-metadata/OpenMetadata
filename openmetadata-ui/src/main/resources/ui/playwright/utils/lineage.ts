@@ -438,12 +438,12 @@ export const deleteEdgeBetweenNodesViaAPI = (
 };
 
 /**
- * Pans the canvas so the target sits at the pane centre when something else is
- * painted over its midpoint. The zoom-band rail and its label float over the
- * pane's right edge, and a lone node fitted to the screen is zoomed wide enough
- * for its ⋮ to end up underneath them.
+ * Pans the canvas so the target sits at the pane centre when it is off-screen or
+ * something else is painted over its midpoint. The canvas never scrolls, so a
+ * plain click cannot bring an off-screen node into view, and the panels float
+ * over the pane's edges.
  */
-const panTargetIntoOpenCanvas = async (page: Page, target: Locator) => {
+export const panIntoCanvasView = async (page: Page, target: Locator) => {
   const isHitTarget = () =>
     target.evaluate((element) => {
       const bounds = element.getBoundingClientRect();
@@ -486,7 +486,7 @@ export const openLineageMenu = async (
 ) => {
   const menuButton = trigger.getByTestId(menuTestId);
 
-  await panTargetIntoOpenCanvas(page, menuButton);
+  await panIntoCanvasView(page, menuButton);
   // The column ⋮ is only revealed by CSS hover/focus on its row.
   await trigger.hover();
   await menuButton.click();
@@ -536,6 +536,7 @@ export const revealColumn = async (
     '.only-show-columns-with-lineage-filter-button.active'
   );
   if (await lineageOnlyFilter.isVisible()) {
+    await panIntoCanvasView(page, lineageOnlyFilter);
     await lineageOnlyFilter.click();
     await clickOutside(page);
   }
@@ -543,6 +544,7 @@ export const revealColumn = async (
     '.children-info-dropdown-label.collapsed'
   );
   if (await collapsedColumns.isVisible()) {
+    await panIntoCanvasView(page, collapsedColumns);
     await collapsedColumns.click();
   }
 
@@ -628,21 +630,8 @@ export const addLineageViaMenu = async (
   await expect(popover).not.toBeVisible();
 };
 
-export const rearrangeNodes = async (page: Page) => {
-  await page.getByTestId('fit-screen').click();
-  await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
-};
-
 export const fitToScreen = async (page: Page) => {
-  const fitToScreenItem = page.getByRole('menuitem', { name: 'Fit to screen' });
-
   await page.getByTestId('fit-screen').click();
-  await fitToScreenItem.click();
-
-  // The menu closes with an exit animation, so without this it lingers in the
-  // DOM as a second [role="dialog"] -- and any caller that later asserts on a
-  // dialog trips strict mode against a popover already on its way out.
-  await fitToScreenItem.waitFor({ state: 'detached' });
 };
 
 export const connectEdgeBetweenNodes = async (

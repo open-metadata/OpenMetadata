@@ -988,7 +988,7 @@
   },
   "playwright/utils/lineage.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 4
     }
   },
   "playwright/utils/logsViewer.ts": {

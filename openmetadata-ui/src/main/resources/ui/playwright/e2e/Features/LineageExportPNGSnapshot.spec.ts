@@ -67,11 +67,6 @@ test.describe(
 
       // perform fit view to ensure all the nodes are in view
       await page.getByTestId('fit-screen').click();
-      await expect(
-        page.getByRole('menu', { name: 'Lineage View Options' })
-      ).toBeVisible();
-
-      await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
       // perform zoom out to add breathing space around
       await performZoomOut(page, 2);

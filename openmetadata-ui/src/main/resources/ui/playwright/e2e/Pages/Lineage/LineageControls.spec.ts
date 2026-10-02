@@ -126,25 +126,22 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(zoomOutBtn).toBeVisible();
   });
 
-  test('Verify fit view options menu', async ({ page }) => {
-    await page.getByTestId('fit-screen').click();
-    await expect(
-      page.getByRole('menu', { name: 'Lineage View Options' })
-    ).toBeVisible();
-
-    await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
-
+  test('Verify fit to screen brings the root node into view', async ({
+    page,
+  }) => {
     const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
-    await page.getByTestId(`lineage-node-${tableFqn}`).dispatchEvent('click');
+    const tableNode = page.getByTestId(`lineage-node-${tableFqn}`);
+    const zoomLevel = page.getByTestId('zoom-level');
+
+    for (let i = 0; i < 5; i++) {
+      await page.getByTestId('zoom-in').click();
+    }
+    const zoomedIn = await zoomLevel.textContent();
 
     await page.getByTestId('fit-screen').click();
-    await page.getByRole('menuitem', { name: 'Refocused to selected' }).click();
 
-    await page.getByTestId('fit-screen').click();
-    await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
-
-    await page.getByTestId('fit-screen').click();
-    await page.getByRole('menuitem', { name: 'Refocused to home' }).click();
+    await expect(zoomLevel).not.toHaveText(zoomedIn ?? '');
+    await expect(tableNode).toBeInViewport();
   });
 
   test('Verify minimap toggle functionality', async ({ page }) => {
@@ -162,12 +159,12 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // before each step has fullscreen=true
     expect(page.url()).toContain('fullscreen=true');
 
-    await page.getByTestId('exit-full-screen').click();
+    await page.getByRole('button', { name: 'Exit Full Screen' }).click();
 
-    expect(page.url()).not.toContain('fullscreen=true');
-    await page.getByTestId('full-screen').click();
+    await expect.poll(() => page.url()).not.toContain('fullscreen=true');
+    await page.getByRole('button', { name: 'Full Screen View' }).click();
 
-    expect(page.url()).toContain('fullscreen=true');
+    await expect.poll(() => page.url()).toContain('fullscreen=true');
   });
 });
 

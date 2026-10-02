@@ -40,7 +40,6 @@ import {
   fitToScreen,
   openImpactAnalysisTab,
   performZoomOut,
-  rearrangeNodes,
   setLineageDepthAndVerify,
   visitLineageTab,
 } from '../../../utils/lineage';
@@ -195,7 +194,6 @@ test.describe('Lineage Filters', () => {
     await waitForAllLoadersToDisappear(page);
     await setLineageDepthAndVerify(page, 2, 2);
     await waitForAllLoadersToDisappear(page);
-    await rearrangeNodes(page);
     await fitToScreen(page);
     await expect(
       page.getByTestId(
@@ -392,7 +390,6 @@ test.describe('Lineage Filters', () => {
           await page.getByTestId('update-btn').click();
           await lineageRes;
 
-          await rearrangeNodes(page);
           await fitToScreen(page);
 
           for (const entity of entitiesToShow) {
@@ -669,7 +666,6 @@ test.describe('Lineage Filters', () => {
         await page.getByTestId('update-btn').click();
         await expect(page.getByTestId('update-btn')).toBeHidden();
 
-        await rearrangeNodes(page);
         await fitToScreen(page);
 
         for (const entity of entitiesToShow) {
@@ -836,7 +832,6 @@ test.describe('Lineage Filters', () => {
         await page.getByTestId('update-btn').click();
         await waitForAllLoadersToDisappear(page);
 
-        await rearrangeNodes(page);
         await fitToScreen(page);
 
         for (const entity of entitiesToShow) {
@@ -935,7 +930,6 @@ test.describe('Lineage Filters', () => {
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
-      await rearrangeNodes(page);
       await fitToScreen(page);
 
       // filtered service node should be visible
@@ -987,7 +981,6 @@ test.describe('Lineage Filters', () => {
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
-      await rearrangeNodes(page);
       await fitToScreen(page);
 
       // filtered service node should be visible
@@ -1036,7 +1029,6 @@ test.describe('Lineage Filters', () => {
       await page.getByTestId('update-btn').click();
       await lineageRes;
 
-      await rearrangeNodes(page);
       await fitToScreen(page);
 
       // filtered service node should be visible

@@ -639,7 +639,9 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         const table3Column = page.getByTestId(`column-${table3Col}`);
         const table4Column = page.getByTestId(`column-${table4Col}`);
-        await table3Column.click();
+        // table3 and table4 sit on opposite sides of the scene; panning to one
+        // pushes the other out of the rendered viewport, so fire the click in place.
+        await table3Column.dispatchEvent('click');
 
         await expect(table3Column).toHaveClass(
           /custom-node-header-column-tracing/
