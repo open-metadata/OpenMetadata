@@ -17,7 +17,7 @@ export interface RDFStatus {
     /**
      * Whether optional AI-assisted Ontology routes may be rendered.
      */
-    askCollateEnabled: boolean;
+    aiEnabled: boolean;
     /**
      * Configured base URI used for canonical RDF entity identifiers.
      */

@@ -186,7 +186,7 @@ const AlertAiDestinationSection = ({
                     value,
                     onChange,
                     ['destinations'],
-                    [...destinations, EMPTY_ALERT_AI_DESTINATION]
+                    [...destinations, { ...EMPTY_ALERT_AI_DESTINATION }]
                   )
                 }>
                 {t('label.add-entity', {

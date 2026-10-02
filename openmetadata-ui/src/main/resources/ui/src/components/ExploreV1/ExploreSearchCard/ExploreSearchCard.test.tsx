@@ -141,10 +141,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         )}
       </nav>
     )),
+    Button: actual.Button,
     Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+    Checkbox: actual.Checkbox,
     Owner: jest.fn().mockReturnValue(null),
     toOwnerRef: actual.toOwnerRef,
     toOwnerRefs: actual.toOwnerRefs,
+    Typography: actual.Typography,
   };
 });
 

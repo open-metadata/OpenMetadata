@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isEmpty, isNil, lowerCase } from 'lodash';
-import React from 'react';
-import { SearchHitCounts } from '../components/Explore/ExplorePage.interface';
+import { isEmpty } from 'lodash';
+import type { Dispatch, SetStateAction } from 'react';
+import {
+  ExploreTabItem,
+  SearchHitCounts,
+} from '../components/Explore/ExplorePage.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { useExploreCache } from '../hooks/useExploreCache';
@@ -35,7 +36,6 @@ import {
   searchEntityTypeCounts,
   searchQuery,
 } from '../rest/searchAPI';
-import { getCountBadge } from './EntityDisplayPureUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import {
   findActiveSearchIndex,
@@ -107,53 +107,15 @@ export const getAggregationOptions = async (
  */
 export const generateTabItems = (
   tabsInfo: Record<string, TabsInfoData>,
-  searchHitCounts: SearchHitCounts | undefined,
-  searchIndex: ExploreSearchIndex
-) => {
-  return Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => {
-    const Icon = tabDetail.icon as React.FC<{ className?: string }>;
-
-    return {
-      key: tabSearchIndex,
-      label: (
-        <div
-          className="d-flex items-center justify-between"
-          data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-          <div className="explore-tab-label">
-            <span className="d-flex m-r-xs">
-              <Icon
-                className={classNames(
-                  'tw:h-4 tw:w-4',
-                  tabDetail.iconClassName,
-                  {
-                    'text-primary': tabSearchIndex === searchIndex,
-                  }
-                )}
-              />
-            </span>
-            <Typography.Text
-              className={tabSearchIndex === searchIndex ? 'text-primary' : ''}
-              ellipsis={{ tooltip: true }}>
-              {tabDetail.label}
-            </Typography.Text>
-          </div>
-          <span>
-            {!isNil(searchHitCounts)
-              ? getCountBadge(
-                  searchHitCounts[tabSearchIndex as ExploreSearchIndex],
-                  '',
-                  tabSearchIndex === searchIndex
-                )
-              : getCountBadge()}
-          </span>
-        </div>
-      ),
-      count: searchHitCounts
-        ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
-        : 0,
-    };
-  });
-};
+  searchHitCounts: SearchHitCounts | undefined
+): ExploreTabItem[] =>
+  Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => ({
+    key: tabSearchIndex,
+    label: tabDetail.label,
+    icon: tabDetail.icon as ExploreTabItem['icon'],
+    iconClassName: tabDetail.iconClassName,
+    count: searchHitCounts?.[tabSearchIndex as ExploreSearchIndex] ?? 0,
+  }));
 
 /**
  * Common function to fetch entity count and search results
@@ -196,7 +158,7 @@ export const fetchEntityData = async ({
   tab: string;
   TABS_SEARCH_INDEXES: ExploreSearchIndex[];
   EntityTypeSearchIndexMapping: Record<EntityType, ExploreSearchIndex>;
-  setSearchHitCounts: (counts: SearchHitCounts) => void;
+  setSearchHitCounts: Dispatch<SetStateAction<SearchHitCounts | undefined>>;
   setAutoSelectedSearchIndex: (
     searchIndex: ExploreSearchIndex | undefined
   ) => void;
@@ -283,12 +245,17 @@ export const fetchEntityData = async ({
       let currentCounts: SearchHitCounts | undefined;
       let resultCount: { index: ExploreSearchIndex; total: number } | undefined;
       const publishCounts = () => {
-        if (currentCounts || resultCount) {
-          const counts = { ...currentCounts } as SearchHitCounts;
-          if (resultCount) {
-            counts[resultCount.index] = resultCount.total;
-          }
-          setSearchHitCounts(counts);
+        const latestCounts = currentCounts;
+        const activeResultCount = resultCount;
+        if (latestCounts || activeResultCount) {
+          setSearchHitCounts((previous) => {
+            const counts = { ...(latestCounts ?? previous) } as SearchHitCounts;
+            if (activeResultCount) {
+              counts[activeResultCount.index] = activeResultCount.total;
+            }
+
+            return counts;
+          });
         }
       };
 

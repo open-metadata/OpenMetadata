@@ -91,6 +91,12 @@ p {
   border-radius: @border-rad-base;
   color: @error-color;
   background-color: @error-light-color;
+
+  // The light error-600 on a salmon tint reads too dim on dark surfaces.
+  .dark-mode & {
+    color: var(--om-color-text-error);
+    background-color: var(--om-color-bg-error);
+  }
 }
 
 .page-container {
@@ -921,7 +927,8 @@ a[href].link-text-grey,
 // fonts.less at 0,1,1) aren't caught by the base-specificity `:where(.dark-mode) a`.
 // Retint them in dark at a higher specificity that wins regardless of load order.
 .dark-mode a.ant-typography,
-.dark-mode .ant-typography a {
+.dark-mode .ant-typography a,
+.dark-mode .prose-typography a {
   color: var(--om-color-link);
 }
 
@@ -1091,7 +1098,8 @@ a[href].link-text-grey,
     flex-wrap: wrap;
 
     &:hover {
-      .ant-typography {
+      .ant-typography,
+      > * {
         color: @primary-color;
       }
     }

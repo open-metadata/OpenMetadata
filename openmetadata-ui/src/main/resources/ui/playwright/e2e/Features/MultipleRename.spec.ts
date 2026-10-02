@@ -116,7 +116,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     let currentName = glossary.data.name;
 
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await redirectToHomePage(page);
 
       // Navigate to glossary using displayName
@@ -176,7 +176,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const page = await browser.newPage();
 
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await redirectToHomePage(page);
 
       // Navigate to glossary term using displayName
@@ -228,7 +228,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     let currentName = classification.data.name;
 
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await redirectToHomePage(page);
 
       // Navigate to classification using side panel and displayName
@@ -297,7 +297,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const page = await browser.newPage();
 
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await redirectToHomePage(page);
 
       // Navigate to tag using side panel and displayName

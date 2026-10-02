@@ -79,6 +79,22 @@ public abstract class SessionStoreContractTest {
   }
 
   @Test
+  void create_thenFindById_keepsTheProviderTokensAndRenewalSchedule() {
+    long renewalDueAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(5);
+    UserSession session =
+        sample(UUID.randomUUID().toString(), SessionStatus.ACTIVE).toBuilder()
+            .providerRefreshToken("fernet:encrypted-provider-token")
+            .providerRenewalDueAt(renewalDueAt)
+            .build();
+    store.create(session);
+
+    UserSession found = store.findById(session.getId()).orElseThrow();
+
+    assertEquals("fernet:encrypted-provider-token", found.getProviderRefreshToken());
+    assertEquals(renewalDueAt, found.getProviderRenewalDueAt());
+  }
+
+  @Test
   void findById_returnsEmptyForUnknownId() {
     assertTrue(store.findById(UUID.randomUUID().toString()).isEmpty());
   }

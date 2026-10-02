@@ -29,6 +29,7 @@ jest.mock('./i18next/LocalUtil', () => ({
 }));
 
 import { AxiosError } from 'axios';
+import { stringToHTML, stripMarkdown } from './RichTextStringUtils';
 import {
   decodeHtmlEntities,
   escapeESReservedCharacters,
@@ -45,8 +46,6 @@ import {
   removeAttachmentsWithoutUrl,
   replaceCallback,
   slugify,
-  stringToHTML,
-  stripMarkdown,
 } from './StringUtils';
 
 describe('StringUtils', () => {

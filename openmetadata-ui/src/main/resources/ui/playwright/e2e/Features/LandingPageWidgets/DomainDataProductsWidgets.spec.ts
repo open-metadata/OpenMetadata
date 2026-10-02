@@ -64,7 +64,7 @@ const topic = new TopicClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -233,7 +233,8 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await waitForAllLoadersToDisappear(page);
 
     await page
-      .locator(`[data-testid="table-data-card_${topicFqn}"] input`)
+      .locator(`[data-testid="table-data-card_${topicFqn}"]`)
+      .getByTestId('asset-checkbox')
       .check();
     // Clear so delete-all's post-flow sees the domain-wide state, not
     // a filtered subset (delete-all acts on selectedItems, but the
@@ -310,7 +311,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
     const attachedCount = await assetCard.count();
     for (let i = 0; i < attachedCount; i++) {
-      await assetCard.nth(i).locator('input[type="checkbox"]').check();
+      await assetCard.nth(i).getByTestId('asset-checkbox').check();
     }
 
     const removeRes = page.waitForResponse('**/assets/remove');

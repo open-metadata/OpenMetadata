@@ -247,7 +247,7 @@ $$section
 - **Minimum:** 1 second
 - **Example:** 3600 (1 hour)
 - **Why it matters:** Controls the lifetime of the token used for OpenMetadata API requests.
-- **Note:** This value is not inherited from the Azure token lifetime.
+- **Note:** This value is not inherited from the Azure token lifetime, but while **End Session With Identity Provider** is on it is an upper bound: OpenMetadata tokens never outlive Azure's access token, so each refresh can renew the Azure tokens in time.
 $$
 
 $$section
@@ -287,7 +287,9 @@ $$section
 - **Definition:** Maximum authentication age (in seconds) before re-authentication is required.
 - **Example:** 3600
 - **Why it matters:** Controls how often users must re-authenticate.
-- **Note:** Leave empty for no specific max age requirement
+- **Note:**
+  - Leave empty (recommended) so users who are still signed in at Azure AD get straight back in.
+  - `0` is treated as empty: it would make Azure AD ask for credentials on every sign-in, including the silent re-authentication OpenMetadata performs when its own session ends. To force a fresh login every time, set **OIDC Prompt** to `login` instead.
 $$
 
 $$section
@@ -298,6 +300,7 @@ $$section
 - **Example:** select_account
 - **Why it matters:** Affects user experience during authentication.
 - **Note:**
+  - Leave empty (recommended): OpenMetadata sends `none` by itself when it re-authenticates a user in the background, so a value set here only changes interactive sign-ins.
   - `login`: Always prompt for credentials
   - `consent`: Prompt for permissions
   - `select_account`: Show account picker
@@ -311,6 +314,18 @@ $$section
 - **Example:** 604800
 - **Why it matters:** Controls how often users need to re-authenticate.
 - **Note:** Only applies to confidential clients
+$$
+
+$$section
+### End Session With Identity Provider $(id="endSessionWithProvider")
+
+- **Definition:** Ends the OpenMetadata session when Azure AD stops renewing the user's tokens.
+- **Default:** Off
+- **Why it matters:** When on, OpenMetadata renews the Azure AD tokens on Azure AD's schedule while the user is active, and signs the user out once Azure AD rejects its refresh token, for example after the token expires or is revoked, or the user is disabled. When off, a session lasts the configured session expiry whatever happens at Azure AD.
+- **Note:**
+  - Only applies to confidential clients
+  - Signing out of Azure AD does not revoke its refresh tokens, so it does not end the OpenMetadata session; revoking the user's sessions in Azure AD does.
+  - While on, OpenMetadata access tokens never outlive Azure AD's access tokens, so browsers refresh them more often.
 
 ## Authorizer Configuration
 $$

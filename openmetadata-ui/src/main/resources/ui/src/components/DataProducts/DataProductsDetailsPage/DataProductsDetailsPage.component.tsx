@@ -15,8 +15,9 @@ import {
   Avatar,
   Button as CoreButton,
   Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -436,12 +437,12 @@ function DataProductActionButtons(
               data-testid="version-button"
               icon={<Icon component={VersionIcon} />}
               onClick={handleVersionClick}>
-              <Typography.Text
+              <Typography
                 className={classNames('', {
                   'text-primary': version,
                 })}>
                 {toString(dataProduct.version)}
-              </Typography.Text>
+              </Typography>
             </Button>
           </Tooltip>
         )}
