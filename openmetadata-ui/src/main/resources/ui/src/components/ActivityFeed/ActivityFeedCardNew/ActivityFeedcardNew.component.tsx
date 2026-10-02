@@ -525,6 +525,8 @@ const ActivityFeedCardNew = ({
       )}
       {showFeedEditor ? (
         <ActivityFeedEditorNew
+          // Revealed by a click on its placeholder, so it takes focus.
+          focused
           className={classNames(
             'm-t-md feed-editor activity-feed-editor-container-new',
             {
