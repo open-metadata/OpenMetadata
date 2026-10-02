@@ -15,6 +15,7 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   AlertProps,
   Checkbox,
@@ -24,7 +25,6 @@ import {
   Select,
   Skeleton,
   Tooltip,
-  Typography,
 } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
@@ -645,7 +645,7 @@ export const getAlertRecentEventsFilterOptions = () => {
     const label = getAlertEventsFilterLabels(status);
 
     return {
-      label: <Typography.Text>{label}</Typography.Text>,
+      label: <Typography>{label}</Typography>,
       key: status,
     };
   });

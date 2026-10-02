@@ -15,6 +15,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { MetricClass } from '../../support/entity/MetricClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -38,7 +39,9 @@ test.describe.configure({ mode: 'default' });
 
 const domain = new Domain();
 const dataProduct = new DataProduct([domain]);
-const table = new TableClass();
+// Quick-filter assertions read table.serviceResponseData.name to
+// resolve the service the filter selects — needs a unique service.
+const table = new TableClass({ service: new DatabaseServiceClass() });
 const tier = new TagClass({
   classification: 'Tier',
 });
@@ -462,7 +465,9 @@ test.describe('Filter persistence after bug fixes', () => {
     });
 
     await test.step('Verify the Databases node is marked as selected', async () => {
-      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+      await expect(
+        page.getByTestId('explore-tree').getByRole('row', { selected: true })
+      ).toBeVisible();
     });
 
     await test.step('Apply Tag filter from top dropdown', async () => {
@@ -484,7 +489,9 @@ test.describe('Filter persistence after bug fixes', () => {
     });
 
     await test.step('Verify Databases node selection is still preserved after filter change', async () => {
-      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+      await expect(
+        page.getByTestId('explore-tree').getByRole('row', { selected: true })
+      ).toBeVisible();
     });
   });
 

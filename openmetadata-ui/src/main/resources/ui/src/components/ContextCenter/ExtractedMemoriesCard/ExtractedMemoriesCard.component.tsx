@@ -49,7 +49,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
         setIsLoading(true);
         const response = await getListContextMemories({
           sourceEntityId: sourceId,
-          fields: 'owners,sourceEntity',
+          fields: 'owners,sourceEntity,derivedEntities',
           limit: 50,
         });
         if (!isCancelled?.()) {

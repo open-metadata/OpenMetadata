@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -294,9 +293,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlHyperParameters = useMemo(() => {
     return (
       <>
-        <Typography.Title level={5}>
+        <Typography
+          as="h5"
+          className="tw:mb-2!"
+          size="text-md"
+          weight="semibold">
           {t('label.hyper-parameter-plural')}{' '}
-        </Typography.Title>
+        </Typography>
         {isEmpty(mlModelDetail.mlHyperParameters) ? (
           <ErrorPlaceHolder size={SIZE.MEDIUM} />
         ) : (
@@ -316,7 +319,13 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlModelStore = useMemo(() => {
     return (
       <>
-        <Typography.Title level={5}>{t('label.model-store')}</Typography.Title>
+        <Typography
+          as="h5"
+          className="tw:mb-2!"
+          size="text-md"
+          weight="semibold">
+          {t('label.model-store')}
+        </Typography>
         {mlModelDetail.mlStore ? (
           <Table
             columns={mlModelStoreColumn}

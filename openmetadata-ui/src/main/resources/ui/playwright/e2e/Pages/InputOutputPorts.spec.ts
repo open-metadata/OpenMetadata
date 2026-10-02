@@ -392,7 +392,8 @@ test.describe('Input Output Ports', () => {
         await searchRes1;
 
         await page
-          .locator(`[data-testid="table-data-card_${table1Fqn}"] input`)
+          .locator(`[data-testid="table-data-card_${table1Fqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         const searchRes2 = page.waitForResponse(
@@ -404,7 +405,8 @@ test.describe('Input Output Ports', () => {
         await searchRes2;
 
         await page
-          .locator(`[data-testid="table-data-card_${table2Fqn}"] input`)
+          .locator(`[data-testid="table-data-card_${table2Fqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         const addRes = page.waitForResponse(
@@ -1675,6 +1677,10 @@ test.describe('Input Output Ports', () => {
           tables[0],
           'entityResponseData.fullyQualifiedName'
         );
+        // The asset card body streams tags/owners/counts async — wait
+        // for loaders so the manage-button click doesn't retry
+        // "element is not stable" through the reflow.
+        await waitForAllLoadersToDisappear(page);
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
@@ -1821,7 +1827,8 @@ test.describe('Input Output Ports', () => {
           'entityResponseData.fullyQualifiedName'
         );
         await page
-          .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
+          .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         await page.getByTestId('delete-all-button').click();

@@ -122,19 +122,19 @@ const test = base.extend<{
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataStewardPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataStewardUser.login(page);
+    await dataStewardUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -503,7 +503,7 @@ test.describe('User with Data Consumer Roles', () => {
 
     await dataConsumerUser.logout(dataConsumerPage);
 
-    await dataConsumerUser.login(
+    await dataConsumerUser.signIn(
       dataConsumerPage,
       dataConsumerUser.data.email,
       updatedUserDetails.newPassword
@@ -584,7 +584,7 @@ test.describe('User with Data Steward Roles', () => {
 
     await dataStewardUser.logout(dataStewardPage);
 
-    await dataStewardUser.login(
+    await dataStewardUser.signIn(
       dataStewardPage,
       dataStewardUser.data.email,
       updatedUserDetails.newPassword
@@ -892,7 +892,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
       // Get text of all personas to verify sorting
       const personaTexts = await personaLabels
-        .locator('.ant-typography')
+        .locator('.default-persona-container .prose')
         .allTextContents();
 
       // Verify first one contains the default persona name
@@ -930,7 +930,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     // Get the current default persona name for later verification
     const originalDefaultPersonaText = await personaLabels
       .first()
-      .locator('.ant-typography')
+      .locator('.default-persona-container .prose')
       .textContent();
 
     // Close dropdown
@@ -981,7 +981,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     );
     const newDefaultPersonaLocator = updatedPersonaLabels
       .first()
-      .locator('.ant-typography');
+      .locator('.default-persona-container .prose');
 
     await expect(newDefaultPersonaLocator).toContainText(
       persona2.responseData.displayName
