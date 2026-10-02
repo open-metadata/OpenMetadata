@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Skeleton,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
 import { Lock01 } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Skeleton, Space } from 'antd';
+import { Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import { RefObject, useEffect, useMemo, useState } from 'react';
@@ -167,39 +171,32 @@ const KnowledgeCenterFilterPage = () => {
                 <Row gutter={[16, 16]}>
                   <Col span={24}>
                     <Space>
-                      <Skeleton avatar paragraph={{ rows: 1 }} title={false} />
-                      <Skeleton
-                        paragraph={{ rows: 1, width: 150 }}
-                        title={false}
-                      />
+                      <div className="tw:flex tw:gap-4">
+                        <Skeleton
+                          animation={false}
+                          variant="circular"
+                          width={40}
+                        />
+                        <div className="tw:flex-1">
+                          <Skeleton animation={false} height={16} />
+                        </div>
+                      </div>
+                      <Skeleton animation={false} height={16} width={150} />
                     </Space>
                   </Col>
                   <Col span={24}>
-                    <Skeleton
-                      active
+                    <SkeletonParagraph
                       className="m-b-sm"
-                      paragraph={{ rows: 1 }}
+                      rows={1}
                       title={false}
                     />
-                    <Skeleton active paragraph={{ rows: 2 }} title={false} />
+                    <SkeletonParagraph rows={2} title={false} />
                   </Col>
                   <Col span={24}>
                     <Space>
-                      <Skeleton
-                        active
-                        paragraph={{ rows: 1, width: 100 }}
-                        title={false}
-                      />
-                      <Skeleton
-                        active
-                        paragraph={{ rows: 1, width: 100 }}
-                        title={false}
-                      />
-                      <Skeleton
-                        active
-                        paragraph={{ rows: 1, width: 100 }}
-                        title={false}
-                      />
+                      <Skeleton height={16} width={100} />
+                      <Skeleton height={16} width={100} />
+                      <Skeleton height={16} width={100} />
                     </Space>
                   </Col>
                 </Row>
