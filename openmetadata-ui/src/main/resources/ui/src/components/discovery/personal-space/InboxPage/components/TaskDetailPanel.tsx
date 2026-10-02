@@ -282,6 +282,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const { extensionRegistry } = useApplicationsProvider();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
+  // The task id whose full record has loaded. The list row the panel opens with
+  // lacks availableTransitions, so actions wait for it — but only the first
+  // time: a reload after a comment keeps the buttons and status steady.
+  const [loadedTaskId, setLoadedTaskId] = useState<string>();
   // Gates DAR approve/reject/resolve so a self-approval deny (isTaskFiler) hides
   // the buttons. Fail closed: false until the permission resolves so a self-filed
   // DAR never flashes the buttons. Non-DAR tasks are never gated below.
@@ -303,6 +307,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     try {
       const res = await getTaskById(taskId, { fields: TASK_FIELDS });
       setTask(res.data);
+      setLoadedTaskId(taskId);
       result = res.data;
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -397,10 +402,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     [task, contribution, t]
   );
 
-  // The list row the panel opens with lacks availableTransitions, so actions
-  // wait for the full task: a legacy fallback could resolve the wrong way.
+  // Actions wait for the full task: from the list row alone a workflow task
+  // would offer the legacy resolve path.
+  const hasFullTask = loadedTaskId === taskId;
   const actions = useMemo(() => {
-    if (!task || isLoading || isSyncingTransitions) {
+    if (!task || !hasFullTask || isSyncingTransitions) {
       return [];
     }
     const effective = applyActionLabels(
@@ -426,7 +432,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     return effective;
   }, [
     task,
-    isLoading,
+    hasFullTask,
     isSyncingTransitions,
     canResolveTask,
     formSchema,
