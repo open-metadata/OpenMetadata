@@ -31,6 +31,9 @@ jest.mock('../date-time/DateTimeUtils', () => ({
 
     return monthNames[new Date(timestamp).getMonth()];
   }),
+  customFormatDateTime: jest.fn(
+    (milliseconds: number, format: string) => `${format}@${milliseconds}`
+  ),
   getCurrentMillis: jest.fn(() => 1640995200000),
   getEpochMillisForPastDays: jest.fn(
     (days) => 1640995200000 - days * 24 * 60 * 60 * 1000
@@ -50,6 +53,7 @@ import { DataContractResult } from '../../generated/entity/datacontract/dataCont
 import { ContractExecutionStatus } from '../../generated/type/contractExecutionStatus';
 import {
   downloadContractYamlFile,
+  formatContractExecutionDayTick,
   formatContractExecutionTick,
   generateMonthTickPositions,
   generateSelectOptionsFromString,
@@ -231,6 +235,14 @@ describe('DataContractUtils', () => {
       const result = formatContractExecutionTick('invalid_0');
 
       expect(result).toBeUndefined(); // formatMonth returns undefined for NaN
+    });
+  });
+
+  describe('formatContractExecutionDayTick', () => {
+    it("formats the run's timestamp as its day", () => {
+      expect(formatContractExecutionDayTick('1640995200000_7')).toBe(
+        'MMM d@1640995200000'
+      );
     });
   });
 

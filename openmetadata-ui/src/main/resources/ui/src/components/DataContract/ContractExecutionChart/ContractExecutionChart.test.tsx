@@ -104,6 +104,9 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 
     return monthNames[new Date(Number(timestamp)).getMonth()];
   }),
+  formatContractExecutionDayTick: jest.fn(
+    (value: string) => `day ${value.split('_')[0]}`
+  ),
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
@@ -199,6 +202,16 @@ const mockContractResults: DataContractResult[] = [
   },
 ] as unknown as DataContractResult[];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// `count` successful runs, one a day from 1 Jan 2022.
+const dailyRuns = (count: number) =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `run-${i}`,
+    timestamp: Date.UTC(2022, 0, 1) + i * DAY_MS,
+    contractExecutionStatus: ContractExecutionStatus.Success,
+  }));
+
 describe('ContractExecutionChart', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -243,6 +256,24 @@ describe('ContractExecutionChart', () => {
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(mockError);
       });
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+    });
+
+    it('clears the previous range when refetching it fails', async () => {
+      const mockError = new AxiosError('API Error');
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().data).toHaveLength(3));
+
+      (getAllContractResults as jest.Mock).mockRejectedValueOnce(mockError);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('change-date-range'));
+      });
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+
+      expect(showErrorToast).toHaveBeenCalledWith(mockError);
+      expect(lastChartProps().data).toEqual([]);
     });
 
     it('should refetch data when date range changes', async () => {
@@ -264,6 +295,8 @@ describe('ContractExecutionChart', () => {
         endTs: 1640995200000,
         limit: 10000,
       });
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
     });
   });
 
@@ -370,7 +403,7 @@ describe('ContractExecutionChart', () => {
       [ContractExecutionStatus.Aborted, 'warning'],
       [ContractExecutionStatus.PartialSuccess, 'warning'],
       [ContractExecutionStatus.Running, 'info'],
-      [ContractExecutionStatus.Queued, 'neutral'],
+      [ContractExecutionStatus.Queued, 'muted'],
     ])('colours a %s run as %s', async (executionStatus, chartStatus) => {
       render(<ContractExecutionChart contract={mockContract} />);
 
@@ -381,14 +414,14 @@ describe('ContractExecutionChart', () => {
       );
     });
 
-    it('keeps the series colour for an unknown status, so the bar still shows', async () => {
+    it('draws an unknown status muted, so it reads as no known state', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
       await waitFor(() => expect(lastChartProps().loading).toBe(false));
 
-      expect(
-        lastChartProps().getBarStatus?.(rowWith('SomethingNew'), 0)
-      ).toBeUndefined();
+      expect(lastChartProps().getBarStatus?.(rowWith('SomethingNew'), 0)).toBe(
+        'muted'
+      );
     });
 
     it('labels only the first run of each month, across a year boundary', async () => {
@@ -415,17 +448,58 @@ describe('ContractExecutionChart', () => {
       expect(
         lastChartProps().data.map((row, i) => interval(i, row.name))
       ).toEqual([true, false, true]);
-      expect(lastChartProps().xAxis?.formatter).toBeDefined();
+      // Mid-month, so the mocked month name is the same in every timezone.
+      expect(
+        lastChartProps().xAxis?.formatter?.(`${Date.UTC(2022, 0, 15)}_0`)
+      ).toBe('Jan');
     });
 
-    it('opens a zoom window above 31 runs', async () => {
+    it('labels zoomed runs by day above 31 runs, so every window has labels', async () => {
+      (getAllContractResults as jest.Mock).mockResolvedValue({
+        data: dailyRuns(32),
+      });
+
       render(<ContractExecutionChart contract={mockContract} />);
 
-      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+      await waitFor(() => expect(lastChartProps().data).toHaveLength(32));
+      const { xAxis } = lastChartProps();
 
-      expect(lastChartProps().zoom).toBe('auto');
-      expect(lastChartProps().zoomVisiblePoints).toBe(31);
+      expect(xAxis?.axisLabel).toEqual(
+        expect.objectContaining({ interval: 'auto' })
+      );
+      expect(xAxis?.formatter?.('1640995200000_0')).toBe('day 1640995200000');
     });
+
+    it('keeps month-start labels at 31 runs', async () => {
+      (getAllContractResults as jest.Mock).mockResolvedValue({
+        data: dailyRuns(31),
+      });
+
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().data).toHaveLength(31));
+
+      expect(
+        typeof (lastChartProps().xAxis?.axisLabel as { interval: unknown })
+          .interval
+      ).toBe('function');
+    });
+
+    it.each([3, 32])(
+      "hands core zoom 'auto' with a 31-run window for %i runs",
+      async (count) => {
+        (getAllContractResults as jest.Mock).mockResolvedValue({
+          data: dailyRuns(count),
+        });
+
+        render(<ContractExecutionChart contract={mockContract} />);
+
+        await waitFor(() => expect(lastChartProps().data).toHaveLength(count));
+
+        expect(lastChartProps().zoom).toBe('auto');
+        expect(lastChartProps().zoomVisiblePoints).toBe(31);
+      }
+    );
 
     it('renders the hovered run in the tooltip with its status name and colour', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
@@ -442,6 +516,19 @@ describe('ContractExecutionChart', () => {
       expect(html).toContain('#a00000');
     });
 
+    it('renders an unknown status in the tooltip by name, with the muted colour', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
+      const html = renderToStaticMarkup(
+        <>{lastChartProps().tooltip?.render?.([], rowWith('SomethingNew'))}</>
+      );
+
+      expect(html).toContain('SomethingNew');
+      // Muted status colour of the mocked core palette.
+      expect(html).toContain('#909090');
+    });
+
     it('renders nothing in the tooltip without a hovered run', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
@@ -452,7 +539,7 @@ describe('ContractExecutionChart', () => {
   });
 
   describe('Date Range Handling', () => {
-    it('should initialize with default date range', () => {
+    it('should initialize with default date range', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
       expect(getAllContractResults).toHaveBeenCalledWith('contract-1', {
@@ -460,6 +547,8 @@ describe('ContractExecutionChart', () => {
         endTs: 1640995200000, // Fixed current time
         limit: 10000,
       });
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
     });
 
     it('should not refetch data if date range is the same', async () => {
@@ -477,6 +566,8 @@ describe('ContractExecutionChart', () => {
       });
 
       expect(getAllContractResults).toHaveBeenCalledTimes(2);
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
     });
   });
 
@@ -491,6 +582,8 @@ describe('ContractExecutionChart', () => {
           />
         );
       }).not.toThrow();
+
+      await waitFor(() => expect(lastChartProps().loading).toBe(false));
     });
   });
 });

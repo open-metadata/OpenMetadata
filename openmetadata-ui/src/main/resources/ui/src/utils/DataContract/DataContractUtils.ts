@@ -34,7 +34,7 @@ import {
   DataContractResult,
   SlaValidation,
 } from '../../generated/entity/datacontract/dataContractResult';
-import { formatMonth } from '../date-time/DateTimeUtils';
+import { customFormatDateTime, formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
 import { withGlossaryTermField } from '../queryBuilderWidgets/glossaryTermQueryField';
@@ -367,13 +367,22 @@ export const generateMonthTickPositions = (
   return tickPositions;
 };
 
-// Format tick value for month display
-export const formatContractExecutionTick = (value: string) => {
-  // Extract timestamp from the unique name (format: timestamp_index)
-  const timestamp = value.split('_')[0];
+// Extract timestamp from the unique name (format: timestamp_index)
+const contractExecutionTimestamp = (value: string) =>
+  Number(value.split('_')[0]);
 
-  return formatMonth(Number(timestamp));
-};
+// Format tick value for month display
+export const formatContractExecutionTick = (value: string) =>
+  formatMonth(contractExecutionTimestamp(value));
+
+const CONTRACT_EXECUTION_DAY_TICK_FORMAT = 'MMM d';
+
+// Format tick value for day display
+export const formatContractExecutionDayTick = (value: string) =>
+  customFormatDateTime(
+    contractExecutionTimestamp(value),
+    CONTRACT_EXECUTION_DAY_TICK_FORMAT
+  );
 
 // Utility function to convert string to options array for Ant Design Select
 export const generateSelectOptionsFromString = (

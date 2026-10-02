@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import {
   BarChart,
   ChartSeries,
+  ChartStatus,
   ChartTooltipRenderProps,
   ChartXAxisProps,
   ChartYAxisProps,
@@ -36,6 +37,7 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { getAllContractResults } from '../../../rest/contractAPI';
 import {
+  formatContractExecutionDayTick,
   formatContractExecutionTick,
   generateMonthTickPositions,
   processContractExecutionData,
@@ -54,8 +56,11 @@ import ContractExecutionChartTooltip from './ContractExecutionChartTooltip.compo
 // Every bar has value 1: height carries no information, so the axis has no labels.
 const Y_AXIS: ChartYAxisProps = { max: 1, axisLabel: { show: false } };
 
+// A status the chart does not know yet still draws, distinct from Running.
+const UNKNOWN_RUN_STATUS: ChartStatus = 'muted';
+
 const runStatus = (row: DataContractProcessedResultCharts) =>
-  CONTRACT_EXECUTION_CHART_STATUS[row.status]?.status;
+  CONTRACT_EXECUTION_CHART_STATUS[row.status]?.status ?? UNKNOWN_RUN_STATUS;
 
 const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
   const { t } = useTranslation();
@@ -94,6 +99,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
       });
       setContractExecutionResultList(sortBy(results.data, 'timestamp'));
     } catch (err) {
+      setContractExecutionResultList([]);
       showErrorToast(err as AxiosError);
     } finally {
       setIsLoading(false);
@@ -122,15 +128,24 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
     [t]
   );
 
-  // A label at the first run of each month only.
+  // Up to a zoom window of runs, a label at the first run of each month only.
+  // Past that a zoomed window may hold no month start, so label runs by day.
+  const isZoomed = processedChartData.length > CONTRACT_EXECUTION_VISIBLE_RUNS;
   const xAxis = useMemo<ChartXAxisProps>(
-    () => ({
-      axisLabel: {
-        interval: (_index: number, value: string) => monthStarts.has(value),
-      },
-      formatter: (value) => formatContractExecutionTick(String(value)),
-    }),
-    [monthStarts]
+    () =>
+      isZoomed
+        ? {
+            axisLabel: { interval: 'auto' },
+            formatter: (value) => formatContractExecutionDayTick(String(value)),
+          }
+        : {
+            axisLabel: {
+              interval: (_index: number, value: string) =>
+                monthStarts.has(value),
+            },
+            formatter: (value) => formatContractExecutionTick(String(value)),
+          },
+    [isZoomed, monthStarts]
   );
 
   const tooltip = useMemo<
@@ -145,7 +160,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
 
         return (
           <ContractExecutionChartTooltip
-            color={chartColor(palette, 0, entry?.status)}
+            color={chartColor(palette, 0, runStatus(row))}
             datum={row}
             label={t('label.contract-execution-status')}
             statusLabel={entry ? t(entry.label) : row.status}

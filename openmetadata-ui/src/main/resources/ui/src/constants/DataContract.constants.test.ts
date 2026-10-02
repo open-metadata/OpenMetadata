@@ -34,7 +34,7 @@ describe('CONTRACT_EXECUTION_CHART_STATUS', () => {
       'label.partial-success',
     ],
     [ContractExecutionStatus.Running, 'info', 'label.running'],
-    [ContractExecutionStatus.Queued, 'neutral', 'label.queued'],
+    [ContractExecutionStatus.Queued, 'muted', 'label.queued'],
   ])('%s is drawn as %s and named %s', (executionStatus, status, label) => {
     expect(CONTRACT_EXECUTION_CHART_STATUS[executionStatus]).toEqual({
       status,

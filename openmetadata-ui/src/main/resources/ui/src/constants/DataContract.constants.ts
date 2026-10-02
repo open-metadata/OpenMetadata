@@ -110,8 +110,9 @@ export const CONTRACT_EXECUTION_CHART_STATUS: Record<
     label: 'label.partial-success',
   },
   [ContractExecutionStatus.Running]: { status: 'info', label: 'label.running' },
+  // Muted, not neutral: neutral's light grey all but vanishes on the plot.
   [ContractExecutionStatus.Queued]: {
-    status: 'neutral',
+    status: 'muted',
     label: 'label.queued',
   },
 };
