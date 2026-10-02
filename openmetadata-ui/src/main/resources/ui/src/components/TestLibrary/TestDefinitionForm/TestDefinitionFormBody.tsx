@@ -70,7 +70,24 @@ const toOptions = (values: string[]): FormSelectItem[] =>
 // lost and the popover closed with the field left empty.
 const ENTITY_TYPE_OPTIONS = toOptions(Object.values(EntityType));
 const TEST_PLATFORM_OPTIONS = toOptions(Object.values(TestPlatform));
-const SUPPORTED_SERVICE_OPTIONS = toOptions(Object.values(DatabaseServiceType));
+// `Dbt` and `QueryLog` are pseudo-types: they exist in the generated `DatabaseServiceType`
+// enum but have no entry in the backend `databaseService.json` connection `oneOf` (no
+// `dbtConnection.json` / `queryLogConnection.json`), so there is no connector to ingest
+// them and no `Table` can ever live under such a service. The backend treats a non-empty
+// `supportedServices` as a whitelist (JSON `LIKE` substring match) when listing test
+// definitions for "Add Test Case", so a definition restricted to *only* a pseudo-type
+// matches no real table and silently vanishes from the picker. Filter only these two —
+// every other enum member (including wizard-"unsupported" real connectors like `Dremio`
+// or `Synapse`) has a connection schema and may legitimately host tables a test targets.
+const NON_SERVICE_TYPES: DatabaseServiceType[] = [
+  DatabaseServiceType.Dbt,
+  DatabaseServiceType.QueryLog,
+];
+const SUPPORTED_SERVICE_OPTIONS = toOptions(
+  (Object.values(DatabaseServiceType) as DatabaseServiceType[]).filter(
+    (type) => !NON_SERVICE_TYPES.includes(type)
+  )
+);
 const SUPPORTED_DATA_TYPE_OPTIONS = toOptions(Object.values(DataType));
 const TEST_DATA_TYPE_OPTIONS = toOptions(Object.values(TestDataType));
 
