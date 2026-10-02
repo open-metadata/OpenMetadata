@@ -30,6 +30,7 @@ import {
   InfoCircle,
   LinkExternal01,
 } from '@openmetadata/ui-core-components/icons';
+import { compact, isEmpty, uniq } from 'lodash';
 import {
   FC,
   ReactNode,
@@ -196,6 +197,7 @@ export const ContextRuleEditor = ({
   const maxAssets = useWatch({ control: form.control, name: 'maxAssets' });
   const queryFilter = useWatch({ control: form.control, name: 'queryFilter' });
   const [filterIncomplete, setFilterIncomplete] = useState(false);
+  const [droppedFilterFields, setDroppedFilterFields] = useState<string[]>([]);
   const [filterErrorShown, setFilterErrorShown] = useState(false);
   const clearFilterState = useCallback(() => {
     setFilterIncomplete(false);
@@ -488,6 +490,11 @@ export const ContextRuleEditor = ({
               shouldDirty: true,
             });
           }}
+          onLoadErrors={(errors) =>
+            setDroppedFilterFields(
+              uniq(compact(errors.map((error) => error.field)))
+            )
+          }
           onValidityChange={(isValid) => {
             setFilterIncomplete(!isValid);
             if (isValid) {
@@ -495,6 +502,16 @@ export const ContextRuleEditor = ({
             }
           }}
         />
+        {!isEmpty(droppedFilterFields) && (
+          <Typography
+            className="tw:mt-1.5 tw:text-error-primary"
+            data-testid="context-rule-filter-dropped"
+            size="text-sm">
+            {t('message.persona-context-rule-filter-conditions-dropped', {
+              fields: droppedFilterFields.join(', '),
+            })}
+          </Typography>
+        )}
         {shouldShowFilterError(filterErrorShown, filterIncomplete) && (
           <Typography
             className="tw:mt-1.5 tw:text-error-primary"

@@ -4825,6 +4825,7 @@
     "persona-context-prompt-placeholder": "p. ej., Ayudas a usuarios de negocio de Acme. Conocen las métricas de ingresos y de abandono de clientes, y son responsables de la planificación trimestral.",
     "persona-context-restore-confirmation": "¿Restaurar el contexto de IA a v{{version}}? Esto crea una nueva versión con las reglas y ajustes de esa versión.",
     "persona-context-rule-deleted": "Regla de contexto de IA eliminada.",
+    "persona-context-rule-filter-conditions-dropped": "Some saved conditions could not be loaded with the current field settings and were removed: {{fields}}. Add them again if they are still needed.",
     "persona-context-rule-filter-incomplete": "Complete o elimine la condición incompleta antes de guardar. Una condición incompleta se ignora, lo que ampliaría esta regla para que coincida con todo.",
     "persona-context-rule-saved": "Regla de contexto de IA guardada.",
     "persona-context-rule-subtitle": "Seleccione los metadatos que esta regla añade al documento de contexto.",

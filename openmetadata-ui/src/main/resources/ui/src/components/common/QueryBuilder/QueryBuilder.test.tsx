@@ -392,7 +392,7 @@ describe('QueryBuilder – with a complete rule', () => {
           id: 'r1',
           properties: {
             field: 'description',
-            operator: 'like',
+            operator: 'match_phrase',
             value: [value],
             valueSrc: ['value'],
           },
@@ -493,7 +493,7 @@ describe('QueryBuilder – defaults', () => {
                 id: 'r1',
                 properties: {
                   field: 'description',
-                  operator: 'like',
+                  operator: 'match_phrase',
                   value: ['sales'],
                   valueSrc: ['value'],
                 },
@@ -757,7 +757,7 @@ describe('QueryBuilder – a count left over from a cleared filter', () => {
         id: 'r1',
         properties: {
           field: 'description',
-          operator: 'like',
+          operator: 'match_phrase',
           value: ['sales'],
           valueSrc: ['value'],
         },
@@ -796,5 +796,68 @@ describe('QueryBuilder – a count left over from a cleared filter', () => {
 
     expect(searchQuery).not.toHaveBeenCalled();
     expect(countBanner()).toBeNull();
+  });
+});
+
+// `description` allows match_phrase, not like, so the saved condition cannot be loaded as written.
+describe('QueryBuilder – a saved filter the config cannot express', () => {
+  const staleTree = {
+    id: 'root',
+    type: 'group',
+    properties: { conjunction: 'AND', not: false },
+    children1: {
+      r1: {
+        type: 'rule',
+        id: 'r1',
+        properties: {
+          field: 'description',
+          operator: 'like',
+          value: ['sales'],
+          valueSrc: ['value'],
+        },
+      },
+    },
+  } as never;
+
+  it('should report the dropped condition and the field it named', async () => {
+    const onLoadErrors = jest.fn();
+
+    render(
+      <QueryBuilder
+        entityType={EntityType.TABLE}
+        groupMode="flat"
+        outputType={SearchOutputType.ElasticSearch}
+        showCountPreview={false}
+        tree={staleTree}
+        onLoadErrors={onLoadErrors}
+      />
+    );
+
+    await waitFor(() =>
+      expect(onLoadErrors).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: 'UNSUPPORTED_OPERATOR_FOR_FIELD',
+            field: 'description',
+          }),
+        ])
+      )
+    );
+  });
+
+  it('should report nothing for a filter that loads cleanly', async () => {
+    const onLoadErrors = jest.fn();
+
+    render(
+      <QueryBuilder
+        entityType={EntityType.TABLE}
+        groupMode="flat"
+        outputType={SearchOutputType.ElasticSearch}
+        showCountPreview={false}
+        onLoadErrors={onLoadErrors}
+      />
+    );
+
+    await waitFor(() => expect(onLoadErrors).toHaveBeenCalledWith([]));
   });
 });

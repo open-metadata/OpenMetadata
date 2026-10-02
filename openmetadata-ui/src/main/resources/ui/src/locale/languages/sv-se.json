@@ -4825,6 +4825,7 @@
     "persona-context-prompt-placeholder": "t.ex. Du hjälper affärsanvändare på Acme. De förstår intäkts- och kundbortfallsmått och ansvarar för kvartalsplaneringen.",
     "persona-context-restore-confirmation": "Återställa AI-kontexten till v{{version}}? Detta skapar en ny version med den versionens regler och inställningar.",
     "persona-context-rule-deleted": "AI-kontextregeln har tagits bort.",
+    "persona-context-rule-filter-conditions-dropped": "Some saved conditions could not be loaded with the current field settings and were removed: {{fields}}. Add them again if they are still needed.",
     "persona-context-rule-filter-incomplete": "Slutför eller ta bort det ofullständiga villkoret innan du sparar. Ett ofullständigt villkor ignoreras, vilket skulle utöka regeln till att matcha allt.",
     "persona-context-rule-saved": "AI-kontextregeln har sparats.",
     "persona-context-rule-subtitle": "Välj vilka metadata den här regeln lägger till i kontextdokumentet.",

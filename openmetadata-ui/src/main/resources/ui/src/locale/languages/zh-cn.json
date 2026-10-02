@@ -4825,6 +4825,7 @@
     "persona-context-prompt-placeholder": "例如：你正在为 Acme 的业务用户提供帮助。他们了解收入和客户流失指标，并负责季度规划。",
     "persona-context-restore-confirmation": "将 AI 上下文恢复到 v{{version}}？这将使用该版本的规则和设置创建一个新版本。",
     "persona-context-rule-deleted": "已删除 AI 上下文规则。",
+    "persona-context-rule-filter-conditions-dropped": "Some saved conditions could not be loaded with the current field settings and were removed: {{fields}}. Add them again if they are still needed.",
     "persona-context-rule-filter-incomplete": "保存前请完成或删除未完成的条件。未完成的条件会被忽略，这将使该规则匹配所有内容。",
     "persona-context-rule-saved": "已保存 AI 上下文规则。",
     "persona-context-rule-subtitle": "选择此规则添加到上下文文档中的元数据。",

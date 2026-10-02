@@ -18,6 +18,7 @@ import type {
 import type { EntityType } from '../../../enums/entity.enum';
 import type { QueryFilterInterface } from '../../../interface/queryFilter.interface';
 import type { QueryBuilderConfigOverrides } from '../../../utils/queryBuilder/config';
+import type { QueryBuilderLoadError } from '../../../utils/queryBuilder/tree';
 import type {
   ConjunctionMode,
   GroupMode,
@@ -81,4 +82,6 @@ export interface QueryBuilderProps {
   onActionsReady?: (actions: Actions) => void;
   // False while a rule is incomplete.
   onValidityChange?: (isValid: boolean) => void;
+  // Conditions the saved filter held that the current config cannot express, so they were dropped.
+  onLoadErrors?: (errors: QueryBuilderLoadError[]) => void;
 }

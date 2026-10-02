@@ -4825,6 +4825,7 @@
     "persona-context-prompt-placeholder": "e.g. You are assisting business users at Acme. They understand revenue and churn metrics and are responsible for quarterly planning.",
     "persona-context-restore-confirmation": "Restore the AI context to v{{version}}? This creates a new version with that version's rules and settings.",
     "persona-context-rule-deleted": "AI context rule deleted.",
+    "persona-context-rule-filter-conditions-dropped": "Some saved conditions could not be loaded with the current field settings and were removed: {{fields}}. Add them again if they are still needed.",
     "persona-context-rule-filter-incomplete": "Finish or remove the unfinished condition before saving. An unfinished condition is ignored, which would widen this rule to match everything.",
     "persona-context-rule-saved": "AI context rule saved.",
     "persona-context-rule-subtitle": "Select the metadata this rule adds to the context document.",

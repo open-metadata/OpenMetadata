@@ -171,6 +171,18 @@ export const getEmptyQueryBuilderTree = ({
     : getEmptyFlatJsonTree(defaultField);
 };
 
+// A condition the current config cannot express, named so the screen can say which one went.
+export interface QueryBuilderLoadError {
+  key: string;
+  field?: string;
+  operator?: string;
+}
+
+export interface LoadedQueryBuilderTree {
+  tree: ImmutableTree;
+  errors: QueryBuilderLoadError[];
+}
+
 interface LoadTreeOptions extends EmptyTreeOptions {
   config: Config;
   // Serialised ES filter or JSONLogic, as persisted by the caller.
@@ -187,6 +199,18 @@ const parseValue = (value: string): Record<string, unknown> | undefined => {
   }
 };
 
+// RAQB reports one entry per repaired item, each holding the per-side errors for that row.
+const collectLoadErrors = (
+  sanitized: ReturnType<typeof QbUtils.Validation.sanitizeTree>
+): QueryBuilderLoadError[] =>
+  [...sanitized.fixedErrors, ...sanitized.nonFixedErrors].flatMap((item) =>
+    (item.errors ?? []).map((error) => ({
+      key: String(error.key),
+      field: (error.args as { field?: string })?.field,
+      operator: (error.args as { operator?: string })?.operator,
+    }))
+  );
+
 // Rehydrates a builder tree from whatever the caller persisted.
 export const loadQueryBuilderTree = ({
   config,
@@ -196,9 +220,9 @@ export const loadQueryBuilderTree = ({
   groupMode,
   defaultField,
   subField,
-}: LoadTreeOptions): ImmutableTree => {
-  const emptyTree = () =>
-    QbUtils.checkTree(
+}: LoadTreeOptions): LoadedQueryBuilderTree => {
+  const emptyTree = (): LoadedQueryBuilderTree => ({
+    tree: QbUtils.checkTree(
       QbUtils.loadTree(
         getEmptyQueryBuilderTree({
           outputType,
@@ -208,10 +232,19 @@ export const loadQueryBuilderTree = ({
         })
       ),
       config
+    ),
+    errors: [],
+  });
+
+  // sanitizeTree, not checkTree: checkTree leaves a row it cannot repair in place, carrying a
+  // stale operator with its value stripped, and reports nothing about it.
+  if (tree) {
+    const sanitized = QbUtils.Validation.sanitizeTree(
+      QbUtils.loadTree(tree),
+      config
     );
 
-  if (tree) {
-    return QbUtils.checkTree(QbUtils.loadTree(tree), config);
+    return { tree: sanitized.fixedTree, errors: collectLoadErrors(sanitized) };
   }
 
   if (isEmpty(value)) {
@@ -234,8 +267,12 @@ export const loadQueryBuilderTree = ({
       return emptyTree();
     }
 
-    return QbUtils.Validation.sanitizeTree(QbUtils.loadTree(parsedTree), config)
-      .fixedTree;
+    const sanitized = QbUtils.Validation.sanitizeTree(
+      QbUtils.loadTree(parsedTree),
+      config
+    );
+
+    return { tree: sanitized.fixedTree, errors: collectLoadErrors(sanitized) };
   }
 
   try {
@@ -243,9 +280,13 @@ export const loadQueryBuilderTree = ({
     // field is renamed or an entity type narrows its allow-list.
     const loaded = QbUtils.loadFromJsonLogic(migrateJsonLogic(parsed), config);
 
-    return loaded
-      ? QbUtils.Validation.sanitizeTree(loaded, config).fixedTree
-      : emptyTree();
+    if (!loaded) {
+      return emptyTree();
+    }
+
+    const sanitized = QbUtils.Validation.sanitizeTree(loaded, config);
+
+    return { tree: sanitized.fixedTree, errors: collectLoadErrors(sanitized) };
   } catch {
     return emptyTree();
   }

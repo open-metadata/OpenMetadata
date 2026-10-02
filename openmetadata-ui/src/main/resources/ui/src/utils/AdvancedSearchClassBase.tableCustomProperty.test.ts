@@ -154,7 +154,7 @@ describe('a table custom property', () => {
           groupMode: QUERY_BUILDER_GROUP_MODE.FLAT,
           outputType: SearchOutputType.JSONLogic,
           value: saved,
-        }),
+        }).tree,
         config,
         SearchOutputType.JSONLogic
       ).value

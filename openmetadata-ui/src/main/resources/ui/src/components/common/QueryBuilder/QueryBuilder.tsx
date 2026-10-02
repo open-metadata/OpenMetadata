@@ -83,6 +83,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   onChange,
   onActionsReady,
   onValidityChange,
+  onLoadErrors,
 }) => {
   const [matchedCount, setMatchedCount] = useState<number>();
   const [isCountLoading, setIsCountLoading] = useState(false);
@@ -134,7 +135,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   const lastEmittedTreeRef = useRef<JsonTree>();
   const actionsRef = useRef<Actions>();
 
-  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(() =>
+  const [initialLoad] = useState(() =>
     loadQueryBuilderTree({
       config,
       value,
@@ -145,6 +146,15 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
       subField,
     })
   );
+  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
+    initialLoad.tree
+  );
+  const [loadErrors, setLoadErrors] = useState(initialLoad.errors);
+
+  // Reported from an effect, not from the load itself, which runs inside a state initialiser.
+  useEffect(() => {
+    onLoadErrors?.(loadErrors);
+  }, [loadErrors, onLoadErrors]);
 
   useEffect(() => {
     setTreeInternal((current) => QbUtils.checkTree(current, config));
@@ -158,17 +168,19 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
       return;
     }
     lastEmittedTreeRef.current = undefined;
-    setTreeInternal(
-      loadQueryBuilderTree({
-        config: configRef.current,
-        value: valueRef.current,
-        tree,
-        outputType,
-        groupMode,
-        defaultField,
-        subField,
-      })
-    );
+
+    const loaded = loadQueryBuilderTree({
+      config: configRef.current,
+      value: valueRef.current,
+      tree,
+      outputType,
+      groupMode,
+      defaultField,
+      subField,
+    });
+
+    setTreeInternal(loaded.tree);
+    setLoadErrors(loaded.errors);
   }, [tree, outputType, groupMode, defaultField, subField]);
 
   const countRequestRef = useRef(0);

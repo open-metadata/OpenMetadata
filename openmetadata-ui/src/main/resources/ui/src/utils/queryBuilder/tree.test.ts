@@ -214,7 +214,7 @@ describe('loadQueryBuilderTree', () => {
       config,
       tree: saved,
       outputType: SearchOutputType.ElasticSearch,
-    });
+    }).tree;
 
     expect(rootType(loaded)).toBe('group');
   });
@@ -224,7 +224,7 @@ describe('loadQueryBuilderTree', () => {
       config,
       outputType: SearchOutputType.ElasticSearch,
       groupMode: 'flat',
-    });
+    }).tree;
 
     expect(rootType(loaded)).toBe('group');
   });
@@ -235,7 +235,7 @@ describe('loadQueryBuilderTree', () => {
       config,
       value: 'not json at all',
       outputType: SearchOutputType.ElasticSearch,
-    });
+    }).tree;
 
     expect(rootType(loaded)).toBe('group');
   });
@@ -245,9 +245,76 @@ describe('loadQueryBuilderTree', () => {
       config,
       value: JSON.stringify({ query: { bool: { must: [] } } }),
       outputType: SearchOutputType.ElasticSearch,
-    });
+    }).tree;
 
     expect(rootType(loaded)).toBe('group');
+  });
+
+  // `description` allows match_phrase, not like, so the saved rule cannot be loaded as written.
+  it('should drop a condition the config cannot express and name its field', () => {
+    const loaded = loadQueryBuilderTree({
+      config,
+      outputType: SearchOutputType.ElasticSearch,
+      tree: {
+        id: 'root',
+        type: 'group',
+        properties: { conjunction: 'AND', not: false },
+        children1: {
+          r1: {
+            type: 'rule',
+            id: 'r1',
+            properties: {
+              field: 'description',
+              operator: 'like',
+              value: ['sales'],
+              valueSrc: ['value'],
+            },
+          },
+        },
+      } as never,
+    });
+
+    expect(loaded.errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'UNSUPPORTED_OPERATOR_FOR_FIELD',
+          field: 'description',
+          operator: 'like',
+        }),
+      ])
+    );
+    expect(
+      (QbUtils.getTree(loaded.tree) as { children1?: unknown[] }).children1
+    ).toHaveLength(0);
+  });
+
+  it('should report no errors for a condition the config still supports', () => {
+    const loaded = loadQueryBuilderTree({
+      config,
+      outputType: SearchOutputType.ElasticSearch,
+      tree: {
+        id: 'root',
+        type: 'group',
+        properties: { conjunction: 'AND', not: false },
+        children1: {
+          r1: {
+            type: 'rule',
+            id: 'r1',
+            properties: {
+              field: 'description',
+              operator: 'match_phrase',
+              value: ['sales'],
+              valueSrc: ['value'],
+            },
+          },
+        },
+      } as never,
+    });
+
+    expect(loaded.errors).toEqual([]);
+    expect(
+      (QbUtils.getTree(loaded.tree) as { children1?: unknown[] }).children1
+    ).toHaveLength(1);
   });
 
   // RAQB throws outright when a saved rule names a field the config no longer
@@ -257,7 +324,7 @@ describe('loadQueryBuilderTree', () => {
       config,
       value: JSON.stringify({ '==': [{ var: 'no.such.field' }, 'x'] }),
       outputType: SearchOutputType.JSONLogic,
-    });
+    }).tree;
 
     expect(rootType(loaded)).toBe('group');
   });
@@ -319,7 +386,7 @@ describe('loadQueryBuilderTree – fallbacks', () => {
       config: esConfig,
       value: JSON.stringify({ query: { bool: { must: [] } } }),
       outputType: SearchOutputType.ElasticSearch,
-    });
+    }).tree;
 
     expect(rootType(loaded)).toBe('group');
   });
@@ -334,7 +401,7 @@ describe('loadQueryBuilderTree – fallbacks', () => {
         config: jsonLogicConfig,
         value: JSON.stringify({ '==': [1, 1] }),
         outputType: SearchOutputType.JSONLogic,
-      });
+      }).tree;
 
       expect(rootType(loaded)).toBe('group');
     } finally {
@@ -354,7 +421,7 @@ describe('loadQueryBuilderTree – fallbacks', () => {
         config: jsonLogicConfig,
         value: JSON.stringify({ '==': [1, 1] }),
         outputType: SearchOutputType.JSONLogic,
-      });
+      }).tree;
 
       expect(rootType(loaded)).toBe('group');
     } finally {
@@ -379,7 +446,7 @@ describe('loadQueryBuilderTree – fallbacks', () => {
         },
       }),
       outputType: SearchOutputType.ElasticSearch,
-    });
+    }).tree;
 
     expect(rootType(loaded)).toBe('group');
   });
@@ -395,7 +462,7 @@ describe('loadQueryBuilderTree – fallbacks', () => {
         config: jsonLogicConfig,
         value: JSON.stringify({ '==': [1, 1] }),
         outputType: SearchOutputType.JSONLogic,
-      });
+      }).tree;
 
       expect(rootType(loaded)).toBe('group');
     } finally {
@@ -408,7 +475,7 @@ describe('loadQueryBuilderTree – fallbacks', () => {
       config: jsonLogicConfig,
       value: JSON.stringify({ '==': [{ var: 'noSuchField' }, 'x'] }),
       outputType: SearchOutputType.JSONLogic,
-    });
+    }).tree;
 
     expect(rootType(loaded)).toBe('group');
   });
@@ -418,7 +485,7 @@ describe('loadQueryBuilderTree – fallbacks', () => {
       config: jsonLogicConfig,
       value: JSON.stringify({ '==': null }),
       outputType: SearchOutputType.JSONLogic,
-    });
+    }).tree;
 
     expect(rootType(loaded)).toBe('group');
   });

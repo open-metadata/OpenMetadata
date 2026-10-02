@@ -4825,6 +4825,7 @@
     "persona-context-prompt-placeholder": "Например: Вы помогаете бизнес-пользователям Acme. Они разбираются в метриках выручки и оттока клиентов и отвечают за квартальное планирование.",
     "persona-context-restore-confirmation": "Восстановить контекст ИИ до v{{version}}? Будет создана новая версия с правилами и настройками этой версии.",
     "persona-context-rule-deleted": "Правило контекста ИИ удалено.",
+    "persona-context-rule-filter-conditions-dropped": "Some saved conditions could not be loaded with the current field settings and were removed: {{fields}}. Add them again if they are still needed.",
     "persona-context-rule-filter-incomplete": "Завершите или удалите незаконченное условие перед сохранением. Незаконченное условие игнорируется, из-за чего это правило будет соответствовать всему.",
     "persona-context-rule-saved": "Правило контекста ИИ сохранено.",
     "persona-context-rule-subtitle": "Выберите метаданные, которые это правило добавляет в документ контекста.",
