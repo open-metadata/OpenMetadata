@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createTeam } from '../../../../../../rest/teamsAPI';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -29,36 +30,46 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock(
-  '../../../../../common/RichTextEditor/RichTextEditor',
-  () =>
-    jest.fn().mockReturnValue(<div data-testid="rich-text-editor" />)
+jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
+  jest.fn().mockReturnValue(<div data-testid="rich-text-editor" />)
 );
 
 import MembersAddTeamForm from './MembersAddTeamForm';
 
 describe('MembersAddTeamForm', () => {
-
   it('renders form container and footer buttons', () => {
-    render(
-      <MembersAddTeamForm onCancel={jest.fn()} onSave={jest.fn()} />
-    );
+    render(<MembersAddTeamForm onCancel={jest.fn()} onSave={jest.fn()} />);
 
-    expect(
-      screen.getByTestId('add-team-container')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('add-team-container')).toBeInTheDocument();
     expect(screen.getByTestId('cancel-btn')).toBeInTheDocument();
     expect(screen.getByTestId('submit-btn')).toBeInTheDocument();
   });
 
   it('renders the description rich text editor', () => {
-    render(
-      <MembersAddTeamForm onCancel={jest.fn()} onSave={jest.fn()} />
-    );
+    render(<MembersAddTeamForm onCancel={jest.fn()} onSave={jest.fn()} />);
 
-    expect(
-      screen.getByTestId('rich-text-editor')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('rich-text-editor')).toBeInTheDocument();
   });
 
+  it('submits teamType as the enum string, not the select option object', async () => {
+    const onSave = jest.fn();
+    const { container } = render(
+      <MembersAddTeamForm onCancel={jest.fn()} onSave={onSave} />
+    );
+
+    const nameInput = container.querySelector(
+      'input[name="name"]'
+    ) as HTMLInputElement;
+    const displayNameInput = container.querySelector(
+      'input[name="displayName"]'
+    ) as HTMLInputElement;
+    fireEvent.change(nameInput, { target: { value: 'team-a' } });
+    fireEvent.change(displayNameInput, { target: { value: 'Team A' } });
+    fireEvent.click(screen.getByTestId('submit-btn'));
+
+    await waitFor(() => expect(createTeam).toHaveBeenCalled());
+
+    expect((createTeam as jest.Mock).mock.calls[0][0].teamType).toBe('Group');
+    expect(onSave).toHaveBeenCalled();
+  });
 });

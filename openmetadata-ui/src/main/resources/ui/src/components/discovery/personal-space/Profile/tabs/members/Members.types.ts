@@ -13,11 +13,14 @@
 
 import { FC } from 'react';
 
+export type MembersImportType = 'teams' | 'users';
+
 export type MembersView =
   | { type: 'landing' }
   | { type: 'teams' }
   | { type: 'team-detail'; fqn: string; name: string }
   | { type: 'teams-add'; parentFqn?: string }
+  | { type: 'teams-import'; fqn: string; importType: MembersImportType }
   | { type: 'users' }
   | { type: 'admins' }
   | { type: 'user-create'; isAdmin?: boolean }

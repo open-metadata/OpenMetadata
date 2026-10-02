@@ -123,7 +123,7 @@ describe('PersonaSelect', () => {
     expect(nodes).toHaveLength(1);
   });
 
-  it('should call onUpdate with the picked persona reference', () => {
+  it('should call onUpdate with only the schema-required ref fields', () => {
     const { onUpdate } = renderSelect();
 
     lastProps().onChange({
@@ -133,7 +133,7 @@ describe('PersonaSelect', () => {
       data: personaRef,
     });
 
-    expect(onUpdate).toHaveBeenCalledWith(personaRef);
+    expect(onUpdate).toHaveBeenCalledWith({ id: 'p1', type: 'persona' });
   });
 
   it('should call onUpdate with undefined when the selection is cleared', () => {
