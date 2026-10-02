@@ -189,7 +189,8 @@ const getMetricVersionExtraInfo = (
   );
 
   const displayUnitOfMeasurement =
-    unitOfMeasurement === UnitOfMeasurement.Other && customUnitOfMeasurement
+    metricDetails.unitOfMeasurement === UnitOfMeasurement.Other &&
+    customUnitOfMeasurement
       ? customUnitOfMeasurement
       : unitOfMeasurement;
 
