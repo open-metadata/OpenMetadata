@@ -45,6 +45,7 @@ import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
+  MIN_PROFILE_SAMPLE,
   PROFILER_MODAL_LABEL_STYLE,
   PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
@@ -192,11 +193,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       form.setFieldsValue({
         profileSampleType,
         profileSamplePercentage:
-          profileSample && profileSampleType === ProfileSampleType.Percentage
+          !isNil(profileSample) &&
+          profileSampleType === ProfileSampleType.Percentage
             ? profileSample
             : undefined,
         profileSampleRows:
-          profileSample && profileSampleType === ProfileSampleType.Rows
+          !isNil(profileSample) && profileSampleType === ProfileSampleType.Rows
             ? profileSample
             : undefined,
       });
@@ -351,7 +353,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
           profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
           profileSampleConfig:
-            profileSampleType && profileSample
+            !isNil(profileSampleType) && !isNil(profileSample)
               ? {
                   sampleConfigType: SampleConfigType.Static,
                   config: {
@@ -536,6 +538,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 name="profileSamplePercentage">
                 <SliderWithInput
                   className="p-x-xs"
+                  min={MIN_PROFILE_SAMPLE}
                   value={state?.profileSample}
                   onChange={handleProfileSample}
                 />
@@ -551,7 +554,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <InputNumber
                   className="w-full"
                   data-testid="metric-number-input"
-                  min={0}
+                  min={MIN_PROFILE_SAMPLE}
                   placeholder={t('label.please-enter-value', {
                     name: t('label.row-count-lowercase'),
                   })}
