@@ -296,6 +296,21 @@ class SsoRedirectBoundaryTest {
         SERVER_URL + "/signin", onForgedHost.headers().firstValue("Location").orElseThrow());
   }
 
+  /** #26311: with serverUrl stale, signin stays on the primary callback host it arrived on. */
+  @Test
+  void oidcCallbackWithoutPendingSessionSendsSigninToThePrimaryHostWhenServerUrlIsStale()
+      throws Exception {
+    URI baseUri =
+        startServer(newOidcHandler(new InMemorySessionStore(), List.of(), "http://localhost:8585"));
+    URI callback = baseUri.resolve("/callback?code=authorization-code&state=state-abc");
+
+    HttpResponse<String> response = get(callback, null, arrivingVia("openmetadata.example.com"));
+
+    assertEquals(
+        "https://openmetadata.example.com/signin",
+        response.headers().firstValue("Location").orElseThrow());
+  }
+
   @Test
   void samlLoginSendsTheAcsRegisteredForTheRequestHost() throws Exception {
     InMemorySessionStore store = new InMemorySessionStore();

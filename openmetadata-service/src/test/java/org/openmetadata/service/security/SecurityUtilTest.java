@@ -1512,6 +1512,40 @@ class SecurityUtilTest {
   }
 
   @Test
+  void registeredCallbackUrl_returnsThePrimaryOnItsOwnHost() {
+    assertEquals(
+        PRIMARY_CALLBACK,
+        SecurityUtil.registeredCallbackUrl(
+            "https://om.example.com", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
+  }
+
+  /** The identity provider compares the registered spelling, so it must come back untouched. */
+  @Test
+  void registeredCallbackUrl_matchesThePrimaryAcrossADefaultPort() {
+    assertEquals(
+        "https://om.example.com:443/callback",
+        SecurityUtil.registeredCallbackUrl(
+            "https://om.example.com", "https://om.example.com:443/callback", List.of()));
+  }
+
+  @Test
+  void registeredCallbackUrl_returnsTheAdditionalEntryOnItsHost() {
+    assertEquals(
+        DR_CALLBACK,
+        SecurityUtil.registeredCallbackUrl(
+            "https://dr.example.com", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
+  }
+
+  @Test
+  void registeredCallbackUrl_returnsNullForAnUnregisteredOrUnknownHost() {
+    assertNull(
+        SecurityUtil.registeredCallbackUrl(
+            "https://evil.example.com", PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
+    assertNull(SecurityUtil.registeredCallbackUrl(null, PRIMARY_CALLBACK, List.of(DR_CALLBACK)));
+    assertNull(SecurityUtil.registeredCallbackUrl("https://om.example.com", null, List.of()));
+  }
+
+  @Test
   void isAlternativeCallbackUrl_acceptsAnotherHostWithThePrimaryPath() {
     assertTrue(SecurityUtil.isAlternativeCallbackUrl(DR_CALLBACK, PRIMARY_CALLBACK));
   }

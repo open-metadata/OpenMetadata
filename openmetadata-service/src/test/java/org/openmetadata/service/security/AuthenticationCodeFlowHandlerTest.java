@@ -708,6 +708,62 @@ class AuthenticationCodeFlowHandlerTest {
         invokeOwnUrl(handler, proxiedRequest("https", "evil.example.com"), "/signin"));
   }
 
+  /**
+   * The #26311 setup: serverUrl left at its localhost default while the primary callback URL names
+   * the real host. Signin and logout on that host must stay there instead of bouncing to serverUrl.
+   */
+  @Test
+  void ownUrl_staysOnThePrimaryCallbackHostWhenServerUrlIsStale() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(
+            "http://localhost:8585", "https://om.example.org/callback", List.of(), List.of());
+
+    assertEquals(
+        "https://om.example.org/logout",
+        invokeOwnUrl(handler, proxiedRequest("https", "om.example.org"), "/logout"));
+  }
+
+  /** serverUrl carries a deployment's base path, so the callback URL's base must keep it too. */
+  @Test
+  void ownUrl_keepsTheBasePathOfTheCallbackUrl() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(
+            "http://localhost:8585",
+            "https://om.example.org/openmetadata/callback",
+            List.of(),
+            List.of());
+
+    assertEquals(
+        "https://om.example.org/openmetadata/signin",
+        invokeOwnUrl(handler, proxiedRequest("https", "om.example.org"), "/signin"));
+  }
+
+  @Test
+  void ownUrl_givesAnUnregisteredHostServerUrlEvenWhenItIsStale() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(
+            "http://localhost:8585", "https://om.example.org/callback", List.of(), List.of());
+
+    assertEquals(
+        "http://localhost:8585/signin",
+        invokeOwnUrl(handler, proxiedRequest("https", "evil.example.com"), "/signin"));
+  }
+
+  /** A callback URL that is not the /callback servlet has no base to derive, so serverUrl stays. */
+  @Test
+  void ownUrl_fallsBackToServerUrlWhenTheCallbackUrlIsNotTheCallbackServlet() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler(
+            "https://om-internal.example.org",
+            "https://om.example.org/oidc/return",
+            List.of(),
+            List.of());
+
+    assertEquals(
+        "https://om-internal.example.org/signin",
+        invokeOwnUrl(handler, proxiedRequest("https", "om.example.org"), "/signin"));
+  }
+
   @Test
   void handleLogout_redirectsToLogoutOnTheRegisteredRequestHost() throws Exception {
     when(oidcClient.getCallbackUrl()).thenReturn(PRIMARY_CALLBACK);

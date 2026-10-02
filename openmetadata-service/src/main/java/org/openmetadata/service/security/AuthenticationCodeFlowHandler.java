@@ -143,6 +143,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private static final String MCP_CALLBACK_PATH = "/mcp/callback";
   private static final String AUTH_CALLBACK_PATH = "/auth/callback";
+  private static final String CALLBACK_SERVLET_PATH = "/callback";
   private static final String SIGNIN_PATH = "/signin";
   private static final String LOGOUT_PATH = "/logout";
 
@@ -572,13 +573,33 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   /**
    * {@code path} on the host this request arrived on when that host has a registered callback URL,
-   * so signin and logout on a secondary site do not bounce the user to {@code serverUrl}. Any other
-   * origin, forged or not, gets {@code serverUrl}. The origin is copied from the configured callback
-   * URL that matched, never from the request headers that selected it.
+   * primary or additional, so signin and logout do not bounce the user to a {@code serverUrl} that
+   * may be stale (#26311) or name another site. Any other origin, forged or not, gets {@code
+   * serverUrl}. The base URL is copied from the configured callback URL that matched, never from
+   * the request headers that selected it.
    */
   private String ownUrl(HttpServletRequest req, String path) {
-    String registeredOrigin = SecurityUtil.originOf(additionalCallbackUrlFor(req));
-    return (registeredOrigin == null ? serverUrl : registeredOrigin) + path;
+    String registeredBaseUrl =
+        baseUrlOf(
+            SecurityUtil.registeredCallbackUrl(
+                SecurityUtil.requestOrigin(req),
+                client.getCallbackUrl(),
+                listOrEmpty(authenticationConfiguration.getAdditionalCallbackUrls())));
+    return (registeredBaseUrl == null ? serverUrl : registeredBaseUrl) + path;
+  }
+
+  /**
+   * The URL a callback URL's deployment is served under: the callback URL minus its trailing {@code
+   * /callback}, so a deployment under a base path keeps it, as {@code serverUrl} would. {@code null}
+   * when the URL is not the callback servlet's.
+   */
+  private static String baseUrlOf(String callbackUrl) {
+    String origin = SecurityUtil.originOf(callbackUrl);
+    String path = origin == null ? null : URI.create(callbackUrl.trim()).getPath();
+    boolean isCallbackServletUrl = path != null && path.endsWith(CALLBACK_SERVLET_PATH);
+    return isCallbackServletUrl
+        ? origin + path.substring(0, path.length() - CALLBACK_SERVLET_PATH.length())
+        : null;
   }
 
   private void persistMcpPendingState(HttpServletRequest req, PendingLoginContext context) {

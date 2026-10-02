@@ -786,6 +786,21 @@ public final class SecurityUtil {
    * whether {@link #sameOriginCallbackUrl} could ever select it: an absolute http(s) URL with a host,
    * no user-info or fragment, and the primary's path.
    */
+  /**
+   * The configured callback URL on {@code requestOrigin}'s host, primary or additional, or {@code
+   * null}. As with {@link #sameOriginCallbackUrl}, the client-influenced origin only selects among
+   * URLs the operator configured.
+   */
+  public static String registeredCallbackUrl(
+      String requestOrigin, String primaryCallbackUrl, List<String> additionalCallbackUrls) {
+    URI origin = parseOrNull(requestOrigin);
+    URI primary = parseOrNull(primaryCallbackUrl);
+    boolean isOnPrimaryHost = origin != null && primary != null && sameOrigin(origin, primary);
+    return isOnPrimaryHost
+        ? primaryCallbackUrl.trim()
+        : sameOriginCallbackUrl(requestOrigin, primaryCallbackUrl, additionalCallbackUrls);
+  }
+
   public static boolean isAlternativeCallbackUrl(String candidate, String primaryCallbackUrl) {
     URI primary = parseOrNull(primaryCallbackUrl);
     return primary != null
