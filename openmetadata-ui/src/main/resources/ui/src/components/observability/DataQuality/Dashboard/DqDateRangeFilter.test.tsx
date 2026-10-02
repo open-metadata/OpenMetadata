@@ -162,4 +162,29 @@ describe('DqDateRangeFilter', () => {
 
     expect(screen.getByTestId('picker-value')).not.toHaveTextContent('null');
   });
+
+  it('should leave the trigger at its own width by default', () => {
+    const { container } = render(<DqDateRangeFilter onApply={onApply} />);
+
+    expect(container.firstChild).toBe(screen.getByTestId('date-range-picker'));
+  });
+
+  it('should stretch the trigger across its field when asked to', () => {
+    const { container } = render(
+      <DqDateRangeFilter fullWidth onApply={onApply} />
+    );
+
+    expect(container.firstChild).toHaveClass('tw:w-full');
+  });
+
+  it('should combine the small size with the full width', () => {
+    const { container } = render(
+      <DqDateRangeFilter fullWidth size="sm" onApply={onApply} />
+    );
+
+    expect(container.firstChild).toHaveClass(
+      'tw:w-full',
+      'tw:[&_button]:py-2!'
+    );
+  });
 });
