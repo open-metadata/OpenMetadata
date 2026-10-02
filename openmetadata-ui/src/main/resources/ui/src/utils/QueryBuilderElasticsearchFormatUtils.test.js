@@ -12,10 +12,21 @@
  */
 
 import { BasicConfig, Utils as QbUtils } from '@react-awesome-query-builder/ui';
+import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { buildQueryBuilderConfig } from './queryBuilder/config';
+import { isQueryTreeComplete } from './queryBuilder/formatters';
 import {
   elasticSearchFormat,
+  ES_6_SYNTAX,
   hasUnfinishedRule,
 } from './QueryBuilderElasticsearchFormatUtils';
+
+// setupTests.js globally stubs `getQbConfigs` to `{}`; the stale-operator suite needs the real one.
+jest.mock('./AdvancedSearchClassBase', () =>
+  jest.requireActual('./AdvancedSearchClassBase')
+);
 
 // Minimal Immutable-compatible tree stub.
 // elasticSearchFormat only calls .get() on the tree and its properties map.
@@ -649,5 +660,87 @@ describe('elasticSearchFormat – entityReference custom properties', () => {
 
     expect(json).not.toContain('"customPropertiesTyped.name":"displayName"');
     expect(json).not.toContain('"customPropertiesTyped.name":"keyword"');
+  });
+});
+
+// checkTree keeps an operator the field no longer allows but strips its value; building from
+// that interpolated `undefined` into the clause instead of dropping the rule.
+describe('a saved rule whose operator is no longer valid for its field', () => {
+  const config = buildQueryBuilderConfig({
+    outputType: SearchOutputType.ElasticSearch,
+    searchIndex: SearchIndex.TABLE,
+    entityType: EntityType.TABLE,
+    groupMode: 'flat',
+    conjunctionMode: 'editable',
+    readonly: false,
+  });
+
+  // `description` allows match_phrase, not like, so checkTree strips the value.
+  const load = (operator) =>
+    QbUtils.checkTree(
+      QbUtils.loadTree({
+        id: 'root',
+        type: 'group',
+        properties: { conjunction: 'AND', not: false },
+        children1: {
+          r1: {
+            type: 'rule',
+            id: 'r1',
+            properties: {
+              field: 'description',
+              operator,
+              value: ['sales'],
+              valueSrc: ['value'],
+            },
+          },
+        },
+      }),
+      config
+    );
+
+  it('should emit no clause rather than a wildcard on the string "undefined"', () => {
+    expect(
+      elasticSearchFormat(load('like'), config, ES_6_SYNTAX)
+    ).toBeUndefined();
+  });
+
+  it('should block the save instead of persisting a filter that matches nothing', () => {
+    expect(isQueryTreeComplete(load('like'), config)).toBe(false);
+  });
+
+  // is_null is the one operator that needs no value, so it must survive the new guard.
+  it('should leave an is_null rule alone', () => {
+    const tree = QbUtils.checkTree(
+      QbUtils.loadTree({
+        id: 'root',
+        type: 'group',
+        properties: { conjunction: 'AND', not: false },
+        children1: {
+          r1: {
+            type: 'rule',
+            id: 'r1',
+            properties: {
+              field: 'description',
+              operator: 'is_null',
+              value: [],
+              valueSrc: [],
+            },
+          },
+        },
+      }),
+      config
+    );
+
+    expect(elasticSearchFormat(tree, config, ES_6_SYNTAX)).toBeDefined();
+    expect(isQueryTreeComplete(tree, config)).toBe(true);
+  });
+
+  it('should leave a rule whose operator is still valid alone', () => {
+    const tree = load('match_phrase');
+
+    expect(elasticSearchFormat(tree, config, ES_6_SYNTAX)).toEqual({
+      bool: { must: [{ match_phrase: { description: 'sales' } }] },
+    });
+    expect(isQueryTreeComplete(tree, config)).toBe(true);
   });
 });
