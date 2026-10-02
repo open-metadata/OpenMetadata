@@ -4906,6 +4906,7 @@
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TaskFormSettings.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts",
+        "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/Search/SearchNightly.spec.ts",
         "playwright/e2e/Search/SearchRelevance.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"

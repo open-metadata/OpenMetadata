@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
+import type { Dispatch, SetStateAction } from 'react';
 import {
   ExploreTabItem,
   SearchHitCounts,
@@ -157,7 +158,7 @@ export const fetchEntityData = async ({
   tab: string;
   TABS_SEARCH_INDEXES: ExploreSearchIndex[];
   EntityTypeSearchIndexMapping: Record<EntityType, ExploreSearchIndex>;
-  setSearchHitCounts: (counts: SearchHitCounts) => void;
+  setSearchHitCounts: Dispatch<SetStateAction<SearchHitCounts | undefined>>;
   setAutoSelectedSearchIndex: (
     searchIndex: ExploreSearchIndex | undefined
   ) => void;
@@ -244,12 +245,17 @@ export const fetchEntityData = async ({
       let currentCounts: SearchHitCounts | undefined;
       let resultCount: { index: ExploreSearchIndex; total: number } | undefined;
       const publishCounts = () => {
-        if (currentCounts || resultCount) {
-          const counts = { ...currentCounts } as SearchHitCounts;
-          if (resultCount) {
-            counts[resultCount.index] = resultCount.total;
-          }
-          setSearchHitCounts(counts);
+        const latestCounts = currentCounts;
+        const activeResultCount = resultCount;
+        if (latestCounts || activeResultCount) {
+          setSearchHitCounts((previous) => {
+            const counts = { ...(latestCounts ?? previous) } as SearchHitCounts;
+            if (activeResultCount) {
+              counts[activeResultCount.index] = activeResultCount.total;
+            }
+
+            return counts;
+          });
         }
       };
 
