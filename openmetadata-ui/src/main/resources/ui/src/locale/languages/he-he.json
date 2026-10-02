@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "ייבוא בכמות הושלם",
-    "bulk-incident-no-change": "לכל התקריות בקבוצות שנבחרו כבר יש ערך זה.",
+    "bulk-incident-no-change": "אף אירוע בקבוצות שנבחרו אינו יכול לקבל את השינוי הזה: לכל אחד כבר יש אותו או שהוא עבר את השלב הזה.",
     "bulk-incident-partial-failure": "לא ניתן היה לעדכן {{failed}} מתוך {{total}} תקריות.",
     "bulk-incident-scope": "חל על כל תקרית פתוחה בקבוצות שנבחרו.",
     "bulk-incident-update-success": "תקריות שעודכנו: {{count}}",

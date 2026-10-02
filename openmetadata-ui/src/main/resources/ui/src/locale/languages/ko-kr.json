@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "대량 가져오기 완료",
-    "bulk-incident-no-change": "선택한 그룹의 모든 사고에 이미 해당 값이 있습니다.",
+    "bulk-incident-no-change": "선택한 그룹의 어떤 인시던트에도 이 변경을 적용할 수 없습니다. 모두 이미 해당 값이거나 그 단계를 지났습니다.",
     "bulk-incident-partial-failure": "{{total}}건 중 {{failed}}건의 사고를 업데이트할 수 없습니다.",
     "bulk-incident-scope": "선택한 그룹의 모든 미해결 사고에 적용됩니다.",
     "bulk-incident-update-success": "업데이트된 사고: {{count}}",

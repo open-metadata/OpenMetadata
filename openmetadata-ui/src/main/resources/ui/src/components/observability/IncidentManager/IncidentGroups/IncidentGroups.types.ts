@@ -124,7 +124,7 @@ export interface BulkIncidentOutcome {
   total: number;
   passed: number;
   failures: BulkResponse[];
-  /** Incidents left out because the change would not alter them. */
+  /** Incidents left out: the change would not alter them, or they cannot take it. */
   unchanged: number;
 }
 

@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "Bulkimport Voltooid",
-    "bulk-incident-no-change": "Alle incidenten in de geselecteerde groepen hebben die waarde al.",
+    "bulk-incident-no-change": "Geen enkel incident in de geselecteerde groepen kan die wijziging krijgen: elk heeft die al of is die fase al voorbij.",
     "bulk-incident-partial-failure": "{{failed}} van {{total}} incidenten konden niet worden bijgewerkt.",
     "bulk-incident-scope": "Geldt voor elk open incident in de geselecteerde groepen.",
     "bulk-incident-update-success": "Bijgewerkte incidenten: {{count}}",

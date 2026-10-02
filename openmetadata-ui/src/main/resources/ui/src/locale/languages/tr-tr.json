@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "Toplu İçe Aktarma Tamamlandı",
-    "bulk-incident-no-change": "Seçilen gruplardaki tüm olaylar zaten bu değere sahip.",
+    "bulk-incident-no-change": "Seçilen gruplardaki hiçbir olay bu değişikliği alamaz: her biri zaten buna sahip ya da o aşamayı geçmiş.",
     "bulk-incident-partial-failure": "{{total}} olaydan {{failed}} tanesi güncellenemedi.",
     "bulk-incident-scope": "Seçilen gruplardaki tüm açık olaylara uygulanır.",
     "bulk-incident-update-success": "Güncellenen olaylar: {{count}}",

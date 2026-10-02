@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "اكتمل الاستيراد المجمع",
-    "bulk-incident-no-change": "كل الحوادث في المجموعات المحددة لها هذه القيمة بالفعل.",
+    "bulk-incident-no-change": "لا يمكن تطبيق هذا التغيير على أي حادثة في المجموعات المحددة: فكل حادثة إما لديها هذه القيمة بالفعل أو تجاوزت تلك المرحلة.",
     "bulk-incident-partial-failure": "تعذّر تحديث {{failed}} من أصل {{total}} حادثة.",
     "bulk-incident-scope": "ينطبق على كل حادثة مفتوحة في المجموعات المحددة.",
     "bulk-incident-update-success": "الحوادث المحدّثة: {{count}}",

@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "Bulk Import Completed",
-    "bulk-incident-no-change": "Every incident in the selected groups already has that value.",
+    "bulk-incident-no-change": "No incident in the selected groups can take that change: each already has it or is past that stage.",
     "bulk-incident-partial-failure": "{{failed}} of {{total}} incidents could not be updated.",
     "bulk-incident-scope": "Applies to every open incident in the selected groups.",
     "bulk-incident-update-success": "Incidents updated: {{count}}",

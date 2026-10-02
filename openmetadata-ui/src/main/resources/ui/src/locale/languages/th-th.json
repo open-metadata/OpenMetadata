@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "นำเข้าจำนวนมากเสร็จสมบูรณ์",
-    "bulk-incident-no-change": "เหตุการณ์ทั้งหมดในกลุ่มที่เลือกมีค่านั้นอยู่แล้ว",
+    "bulk-incident-no-change": "ไม่มีเหตุการณ์ใดในกลุ่มที่เลือกที่รับการเปลี่ยนแปลงนี้ได้ เพราะทุกเหตุการณ์มีค่านี้อยู่แล้วหรือผ่านขั้นตอนนั้นไปแล้ว",
     "bulk-incident-partial-failure": "ไม่สามารถอัปเดตเหตุการณ์ {{failed}} จาก {{total}} รายการ",
     "bulk-incident-scope": "มีผลกับเหตุการณ์ที่เปิดอยู่ทั้งหมดในกลุ่มที่เลือก",
     "bulk-incident-update-success": "เหตุการณ์ที่อัปเดต: {{count}}",

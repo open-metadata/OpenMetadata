@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "Massenimport Abgeschlossen",
-    "bulk-incident-no-change": "Alle Vorfälle in den ausgewählten Gruppen haben diesen Wert bereits.",
+    "bulk-incident-no-change": "Kein Vorfall in den ausgewählten Gruppen kann diese Änderung übernehmen: Jeder hat sie bereits oder ist über diese Phase hinaus.",
     "bulk-incident-partial-failure": "{{failed}} von {{total}} Vorfällen konnten nicht aktualisiert werden.",
     "bulk-incident-scope": "Gilt für alle offenen Vorfälle in den ausgewählten Gruppen.",
     "bulk-incident-update-success": "Aktualisierte Vorfälle: {{count}}",

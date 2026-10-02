@@ -60,6 +60,19 @@ const isUnchanged = (
   );
 };
 
+/**
+ * The incident workflow only moves forward, and an assigned incident has no
+ * `ack` edge: acknowledging it is a change it cannot take.
+ */
+const cannotTake = (
+  incident: TestCaseResolutionStatus,
+  change: BulkIncidentChange
+) =>
+  change.kind === 'status' &&
+  change.status === CreateStatusTypes.ACK &&
+  incident.testCaseResolutionStatusType ===
+    TestCaseResolutionStatusTypes.Assigned;
+
 const toEntry = (
   incident: TestCaseResolutionStatus,
   change: BulkIncidentChange
@@ -88,15 +101,16 @@ const toEntry = (
 
 /**
  * One bulk entry per incident the change would actually alter. The endpoint
- * rejects an entry that changes nothing, so those are counted aside rather
- * than sent and reported back as failures.
+ * rejects an entry that changes nothing or that the workflow has no edge for,
+ * so those are counted aside rather than sent and reported back as failures.
  */
 export const buildBulkIncidentEntries = (
   incidents: TestCaseResolutionStatus[],
   change: BulkIncidentChange
 ) => {
   const changed = incidents.filter(
-    (incident) => !isUnchanged(incident, change)
+    (incident) =>
+      !isUnchanged(incident, change) && !cannotTake(incident, change)
   );
 
   return {

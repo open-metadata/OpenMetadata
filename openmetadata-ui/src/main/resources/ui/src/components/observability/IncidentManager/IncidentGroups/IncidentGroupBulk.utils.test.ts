@@ -62,6 +62,22 @@ describe('buildBulkIncidentEntries', () => {
     expect(
       buildBulkIncidentEntries([fresh, acked, assignedToAaron], {
         kind: 'status',
+        status: CreateStatusTypes.Resolved,
+      })
+    ).toEqual({
+      entries: [fresh, acked, assignedToAaron].map((incident) => ({
+        testCaseReference: incident.testCaseReference?.fullyQualifiedName,
+        testCaseResolutionStatusType: CreateStatusTypes.Resolved,
+        testCaseResolutionStatusDetails: undefined,
+      })),
+      unchanged: 0,
+    });
+  });
+
+  it('should acknowledge only the incidents still new', () => {
+    expect(
+      buildBulkIncidentEntries([fresh, acked, assignedToAaron], {
+        kind: 'status',
         status: CreateStatusTypes.ACK,
       })
     ).toEqual({
@@ -71,14 +87,18 @@ describe('buildBulkIncidentEntries', () => {
           testCaseResolutionStatusType: CreateStatusTypes.ACK,
           testCaseResolutionStatusDetails: undefined,
         },
-        {
-          testCaseReference: 'svc.db.shop.orders.assigned',
-          testCaseResolutionStatusType: CreateStatusTypes.ACK,
-          testCaseResolutionStatusDetails: undefined,
-        },
       ],
-      unchanged: 1,
+      unchanged: 2,
     });
+  });
+
+  it('should leave out assigned incidents, which the workflow cannot acknowledge', () => {
+    expect(
+      buildBulkIncidentEntries([assignedToAaron], {
+        kind: 'status',
+        status: CreateStatusTypes.ACK,
+      })
+    ).toEqual({ entries: [], unchanged: 1 });
   });
 
   it('should carry the assignee, and skip incidents already assigned to them', () => {

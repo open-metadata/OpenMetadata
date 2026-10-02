@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "Massimport slutförd",
-    "bulk-incident-no-change": "Alla incidenter i de valda grupperna har redan det värdet.",
+    "bulk-incident-no-change": "Ingen incident i de valda grupperna kan ta emot den ändringen: alla har den redan eller har passerat det steget.",
     "bulk-incident-partial-failure": "{{failed}} av {{total}} incidenter kunde inte uppdateras.",
     "bulk-incident-scope": "Gäller alla öppna incidenter i de valda grupperna.",
     "bulk-incident-update-success": "Uppdaterade incidenter: {{count}}",

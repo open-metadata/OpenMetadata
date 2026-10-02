@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "批量导入完成",
-    "bulk-incident-no-change": "所选分组中的每个事件都已是该值。",
+    "bulk-incident-no-change": "所选组中没有事件可以应用此更改：每个事件都已是该值，或已过了该阶段。",
     "bulk-incident-partial-failure": "{{total}} 个事件中有 {{failed}} 个未能更新。",
     "bulk-incident-scope": "适用于所选分组中的每个未解决事件。",
     "bulk-incident-update-success": "已更新事件：{{count}}",

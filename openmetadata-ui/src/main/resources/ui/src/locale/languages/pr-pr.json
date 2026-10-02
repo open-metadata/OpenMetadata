@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "افزودن برچسب‌ها...",
     "bulk-edit-tags-search-placeholder": "جستجوی برچسب‌ها...",
     "bulk-import-completed": "واردات دسته‌ای تکمیل شد",
-    "bulk-incident-no-change": "همه حادثه‌های گروه‌های انتخاب‌شده از قبل این مقدار را دارند.",
+    "bulk-incident-no-change": "هیچ رخدادی در گروه‌های انتخاب‌شده نمی‌تواند این تغییر را بپذیرد: هر کدام یا از قبل آن را دارد یا از آن مرحله گذشته است.",
     "bulk-incident-partial-failure": "{{failed}} از {{total}} حادثه به‌روزرسانی نشد.",
     "bulk-incident-scope": "برای همه حادثه‌های باز در گروه‌های انتخاب‌شده اعمال می‌شود.",
     "bulk-incident-update-success": "حادثه‌های به‌روزشده: {{count}}",

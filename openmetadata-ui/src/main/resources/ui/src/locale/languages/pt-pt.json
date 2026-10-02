@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "Importação em Massa Concluída",
-    "bulk-incident-no-change": "Todos os incidentes dos grupos selecionados já têm esse valor.",
+    "bulk-incident-no-change": "Nenhum incidente dos grupos selecionados pode receber essa alteração: cada um já a tem ou já passou dessa fase.",
     "bulk-incident-partial-failure": "Não foi possível atualizar {{failed}} de {{total}} incidentes.",
     "bulk-incident-scope": "Aplica-se a todos os incidentes abertos dos grupos selecionados.",
     "bulk-incident-update-success": "Incidentes atualizados: {{count}}",

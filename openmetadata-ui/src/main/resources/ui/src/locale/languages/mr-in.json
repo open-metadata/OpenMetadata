@@ -3664,7 +3664,7 @@
     "bulk-edit-tags-placeholder": "Add tags...",
     "bulk-edit-tags-search-placeholder": "Search tags...",
     "bulk-import-completed": "मोठ्या प्रमाणात आयात पूर्ण झाली",
-    "bulk-incident-no-change": "निवडलेल्या गटांतील प्रत्येक घटनेचे मूल्य आधीच तेच आहे.",
+    "bulk-incident-no-change": "निवडलेल्या गटांमधील कोणत्याही घटनेवर हा बदल लागू होऊ शकत नाही: प्रत्येकाकडे तो आधीच आहे किंवा ती त्या टप्प्याच्या पुढे गेली आहे.",
     "bulk-incident-partial-failure": "{{total}} पैकी {{failed}} घटना अद्यतनित करता आल्या नाहीत.",
     "bulk-incident-scope": "निवडलेल्या गटांतील प्रत्येक खुल्या घटनेला लागू होते.",
     "bulk-incident-update-success": "अद्यतनित घटना: {{count}}",
