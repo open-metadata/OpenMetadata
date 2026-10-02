@@ -190,23 +190,39 @@ def _error_with(**attrs):
 @pytest.mark.parametrize(
     "error",
     [
-        PermissionDenied("no access to the tables endpoint"),
         NotFound("endpoint does not exist"),
-        _error_with(error_code="PERMISSION_DENIED"),
         _error_with(error_code="NOT_FOUND"),
-        _error_with(response=SimpleNamespace(status_code=403)),
         _error_with(response=SimpleNamespace(status_code=404)),
     ],
-    ids=["sdk-403", "sdk-404", "code-denied", "code-missing", "http-403", "http-404"],
+    ids=["sdk-404", "code-missing", "http-404"],
 )
-def test_permission_and_missing_endpoint_failures_latch(error):
-    # A revoked permission or an older Unity Catalog fails for every schema, and each
-    # attempt burns the full SDK retry budget, so the first failure stands for the run.
+def test_missing_endpoint_failure_latches(error):
+    # An older Unity Catalog has no such REST route at all, so it 404s for every
+    # schema, and each attempt burns the full SDK retry budget.
     source = _make_source()
     source.client.api_client.do = Mock(side_effect=error)
     assert UnitycatalogSource._iceberg_table_names(source, "demo", "s1") is None
     assert UnitycatalogSource._iceberg_table_names(source, "demo", "s2") is None
     assert source.client.api_client.do.call_count == 1
+    assert source.status.warning.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        PermissionDenied("no access to the tables endpoint"),
+        _error_with(error_code="PERMISSION_DENIED"),
+        _error_with(response=SimpleNamespace(status_code=403)),
+    ],
+    ids=["sdk-403", "code-denied", "http-403"],
+)
+def test_permission_failure_is_scoped_to_its_schema(error):
+    # Unity Catalog grants are per-securable, so a denial on one schema says nothing
+    # about the next; latching on it drops Delta detection for fully-granted schemas.
+    source = _source_with_pages(error, {"tables": REAL_LIST_ROWS})
+    assert UnitycatalogSource._iceberg_table_names(source, "demo", "s1") is None
+    assert UnitycatalogSource._iceberg_table_names(source, "demo", "s2") == {"managed_iceberg"}
+    assert source.client.api_client.do.call_count == 2
     assert source.status.warning.call_count == 1
 
 

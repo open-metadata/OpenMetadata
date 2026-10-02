@@ -19,7 +19,7 @@ from functools import partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
 
-from databricks.sdk.errors import NotFound, PermissionDenied
+from databricks.sdk.errors import NotFound
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
 from sqlalchemy import text
@@ -136,15 +136,17 @@ UNITY_CATALOG_TAG_MAPPING = TagMappingConfig(
 def _is_workspace_wide_failure(exc: Exception) -> bool:
     """Whether an Iceberg-listing failure will repeat for every other schema.
 
-    A denied grant or an absent endpoint is a property of the workspace, so
-    retrying it per schema only burns the SDK retry budget. Everything else
-    (throttling, a 5xx, a timeout) can succeed on the next schema.
+    Only an absent endpoint qualifies: an older Unity Catalog has no such REST
+    route at all, so every schema 404s and each attempt burns the full SDK retry
+    budget. Everything else can succeed on the next schema -- including a denial,
+    because Unity Catalog grants are per-securable, so being refused one schema
+    says nothing about the rest.
     """
-    if isinstance(exc, (PermissionDenied, NotFound)):
+    if isinstance(exc, NotFound):
         return True
-    if getattr(getattr(exc, "response", None), "status_code", None) in (403, 404):
+    if getattr(getattr(exc, "response", None), "status_code", None) == 404:
         return True
-    return str(getattr(exc, "error_code", "") or "").upper() in ("PERMISSION_DENIED", "NOT_FOUND")
+    return str(getattr(exc, "error_code", "") or "").upper() == "NOT_FOUND"
 
 
 # pylint: disable=protected-access
@@ -502,10 +504,11 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         ``None`` (as opposed to an empty set) tells the caller it learned nothing, so
         it must not read DELTA as proof of Delta Lake.
 
-        A permission or missing-endpoint failure is a property of the workspace
-        (revoked grant, an older Unity Catalog), not of the schema, and each attempt
-        burns the full SDK retry budget, so that one stands for the rest of the run.
-        Any other failure is scoped to this schema and the next one is still tried.
+        A missing endpoint is a property of the workspace (an older Unity Catalog),
+        not of the schema, and each attempt burns the full SDK retry budget, so that
+        one stands for the rest of the run. Any other failure -- a denial included,
+        since grants are per-securable -- is scoped to this schema and the next one
+        is still tried.
         """
         if self._iceberg_lookup_unavailable:
             return None
