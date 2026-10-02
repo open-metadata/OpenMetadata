@@ -271,6 +271,15 @@ def _make_partition_engine(rows):
     return engine, conn
 
 
+def _make_inspector(column_names):
+    """Build a mock inspector whose `get_columns` returns column dicts for the
+    given names, mirroring the SQLAlchemy inspector row shape (``{"name": ...}``)
+    used by `get_table_partition_details` to validate split partition tokens."""
+    inspector = MagicMock()
+    inspector.get_columns.return_value = [{"name": name} for name in column_names]
+    return inspector
+
+
 class cockroachUnitTest(TestCase):  # noqa: N801
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(self, methodName, test_connection) -> None:  # noqa: N803
@@ -449,6 +458,21 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         self.assertIn("tables.name = :table_name", COCKROACH_GET_PARTITION_DETAILS)
         self.assertIn("tables.schema_name = :schema_name", COCKROACH_GET_PARTITION_DETAILS)
 
+    def test_partition_query_restricts_to_primary_index_and_top_level(self):
+        """The query must join `crdb_internal.table_indexes` and restrict to the
+        primary index (`index_type = 'primary'`) and top-level partitions
+        (`parent_name IS NULL`).
+
+        Without the primary-index filter, `result[0]` could sample a
+        secondary-index partition row with a different `column_names`, making the
+        fix non-deterministic. The top-level filter avoids sampling subpartition
+        rows whose `column_names` covers only the additional subpartition columns.
+        """
+        self.assertIn("crdb_internal.table_indexes", COCKROACH_GET_PARTITION_DETAILS)
+        self.assertIn("partitions.index_id = table_indexes.index_id", COCKROACH_GET_PARTITION_DETAILS)
+        self.assertIn("table_indexes.index_type = 'primary'", COCKROACH_GET_PARTITION_DETAILS)
+        self.assertIn("partitions.parent_name IS NULL", COCKROACH_GET_PARTITION_DETAILS)
+
     def test_get_table_partition_details_binds_schema_name_param(self):
         """The override must forward `schema_name` to the executed statement.
 
@@ -458,41 +482,52 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         engine, conn = _make_partition_engine(PARTITION_ROWS)
         self.cockroach_source.engine = engine
 
-        self.cockroach_source.get_table_partition_details("events", "public", MagicMock())
+        self.cockroach_source.get_table_partition_details("events", "public", _make_inspector(["region"]))
 
         self.assertEqual(conn.execute.call_count, 1)
         params = conn.execute.call_args.args[1]
         self.assertEqual(params, {"table_name": "events", "schema_name": "public"})
 
     def test_partition_details_public_events_excludes_analytics_columns(self):
-        """`public.events` must carry only `public`'s partition columns."""
+        """`public.events` must carry only `public`'s partition columns.
+
+        Two partitions exist on the same `region` column; the fix takes a single
+        representative row (`result[0]`) and splits it, so `region` is emitted
+        exactly once (no duplicates) rather than once per partition.
+        """
         engine, _ = _make_partition_engine(PARTITION_ROWS)
         self.cockroach_source.engine = engine
 
-        is_partitioned, partition = self.cockroach_source.get_table_partition_details("events", "public", MagicMock())
+        is_partitioned, partition = self.cockroach_source.get_table_partition_details(
+            "events", "public", _make_inspector(["region", "id"])
+        )
 
         self.assertTrue(is_partitioned)
         self.assertIsNotNone(partition)
         column_names = [col.columnName for col in partition.columns]
-        self.assertEqual(column_names, ["region", "region"])
+        self.assertEqual(column_names, ["region"])
         for col in partition.columns:
             self.assertEqual(col.intervalType, PartitionIntervalTypes.COLUMN_VALUE)
         # No leakage from analytics.events (partitioned by `id`, range)
         self.assertNotIn("id", column_names)
 
     def test_partition_details_analytics_events_excludes_public_columns(self):
-        """`analytics.events` must carry only `analytics`'s partition columns."""
+        """`analytics.events` must carry only `analytics`'s partition columns.
+
+        Two range partitions exist on the same `id` column; the fix deduplicates
+        them to a single `id` entry.
+        """
         engine, _ = _make_partition_engine(PARTITION_ROWS)
         self.cockroach_source.engine = engine
 
         is_partitioned, partition = self.cockroach_source.get_table_partition_details(
-            "events", "analytics", MagicMock()
+            "events", "analytics", _make_inspector(["id"])
         )
 
         self.assertTrue(is_partitioned)
         self.assertIsNotNone(partition)
         column_names = [col.columnName for col in partition.columns]
-        self.assertEqual(column_names, ["id", "id"])
+        self.assertEqual(column_names, ["id"])
         for col in partition.columns:
             self.assertEqual(col.intervalType, PartitionIntervalTypes.TIME_UNIT)
         # No leakage from public.events (partitioned by `region`, list)
@@ -535,22 +570,94 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
     def test_partition_details_interval_type_mapping_and_fallback(self):
         """Verify INTERVAL_TYPE_MAP mapping for ``list``/``range`` and the
-        ``COLUMN_VALUE`` fallback for unknown partition strategies."""
+        ``COLUMN_VALUE`` fallback for an unknown partition strategy.
+
+        A single table's partitions share one partition strategy, so the fix
+        takes the strategy from the representative first row. Each scenario
+        below is a separate table whose first (and only) row carries the
+        strategy under test.
+        """
+        for partition_type, expected in [
+            ("list", PartitionIntervalTypes.COLUMN_VALUE),
+            ("range", PartitionIntervalTypes.TIME_UNIT),
+            ("weird", PartitionIntervalTypes.COLUMN_VALUE),  # unknown -> fallback
+        ]:
+            rows = [("p", "region", partition_type, "t", "db", "public")]
+            engine, _ = _make_partition_engine(rows)
+            self.cockroach_source.engine = engine
+
+            _, partition = self.cockroach_source.get_table_partition_details("t", "public", _make_inspector(["region"]))
+
+            self.assertEqual([col.intervalType for col in partition.columns], [expected])
+
+    def test_partition_details_splits_multi_column_partition_key(self):
+        """A multi-column partition key is comma-joined in `column_names`
+        (e.g. "region, kind"); the fix must split it into one
+        `PartitionColumnDetails` per key column instead of emitting a single
+        malformed `"region, kind"` name.
+
+        Regression for the hard ingestion failure where `"region, kind"` was
+        rejected by the server as an invalid column name.
+        """
         rows = [
-            ("p_list", "region", "list", "t", "db", "public"),
-            ("p_range", "ts", "range", "t", "db", "public"),
-            ("p_unknown", "k", "weird", "t", "db", "public"),
+            ("us_east_a", "region, kind", "list", "events", "default", "public"),
+            ("us_west_b", "region, kind", "list", "events", "default", "public"),
         ]
         engine, _ = _make_partition_engine(rows)
         self.cockroach_source.engine = engine
 
-        _, partition = self.cockroach_source.get_table_partition_details("t", "public", MagicMock())
-
-        self.assertEqual(
-            [col.intervalType for col in partition.columns],
-            [
-                PartitionIntervalTypes.COLUMN_VALUE,  # list
-                PartitionIntervalTypes.TIME_UNIT,  # range
-                PartitionIntervalTypes.COLUMN_VALUE,  # unknown -> fallback
-            ],
+        is_partitioned, partition = self.cockroach_source.get_table_partition_details(
+            "events", "public", _make_inspector(["region", "kind", "id"])
         )
+
+        self.assertTrue(is_partitioned)
+        column_names = [col.columnName for col in partition.columns]
+        self.assertEqual(column_names, ["region", "kind"])
+        # The malformed comma-joined name must never be published
+        self.assertNotIn("region, kind", column_names)
+        # Multi-column partitions collapse to a single representative row, so
+        # each key column appears exactly once despite two partitions
+        self.assertEqual(len(column_names), len(set(column_names)))
+
+    def test_partition_details_trims_whitespace_around_split_tokens(self):
+        """`column_names` joins names with ", " (comma + space); splitting on
+        "," must trim surrounding whitespace so tokens match real columns."""
+        rows = [("p", " region , kind ", "list", "t", "db", "public")]
+        engine, _ = _make_partition_engine(rows)
+        self.cockroach_source.engine = engine
+
+        _, partition = self.cockroach_source.get_table_partition_details(
+            "t", "public", _make_inspector(["region", "kind"])
+        )
+
+        self.assertEqual([col.columnName for col in partition.columns], ["region", "kind"])
+
+    def test_partition_details_drops_tokens_not_in_table_columns(self):
+        """Split tokens that are not real table columns are dropped, guarding
+        against publishing an invalid `columnName` (e.g. a pathological quoted
+        identifier containing a comma that the naive split mis-tokenizes)."""
+        rows = [("p", "region, ghost_col", "list", "t", "db", "public")]
+        engine, _ = _make_partition_engine(rows)
+        self.cockroach_source.engine = engine
+
+        _, partition = self.cockroach_source.get_table_partition_details(
+            "t", "public", _make_inspector(["region", "kind"])
+        )
+
+        # Only the real column survives; the phantom token is dropped
+        self.assertEqual([col.columnName for col in partition.columns], ["region"])
+
+    def test_partition_details_returns_false_none_when_all_tokens_invalid(self):
+        """If every split token fails validation against the table's columns,
+        no partition is published (graceful omission), avoiding a
+        `TablePartition` with an empty `columns` list."""
+        rows = [("p", "ghost_a, ghost_b", "list", "t", "db", "public")]
+        engine, _ = _make_partition_engine(rows)
+        self.cockroach_source.engine = engine
+
+        is_partitioned, partition = self.cockroach_source.get_table_partition_details(
+            "t", "public", _make_inspector(["region", "kind"])
+        )
+
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition)

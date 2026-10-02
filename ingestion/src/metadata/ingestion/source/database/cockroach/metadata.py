@@ -222,15 +222,35 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
                 {"table_name": table_name, "schema_name": schema_name},
             ).all()
         if result:
-            partition_details = TablePartition(
-                columns=[
-                    PartitionColumnDetails(
-                        columnName=row[1],
-                        intervalType=INTERVAL_TYPE_MAP.get(row[2], PartitionIntervalTypes.COLUMN_VALUE),
-                        interval=None,
-                    )
-                    for row in result
-                ]
-            )
-            return True, partition_details
+            # `crdb_internal.partitions.column_names` is a single STRING that joins
+            # the partition key column names with ", " (e.g. "region" for a
+            # single-column key, "a, b" for a multi-column key). The query is
+            # restricted to the primary index and top-level partitions, so every
+            # surviving row carries the same `column_names`; the first row is
+            # therefore a representative sample, mirroring how StarRocks/Doris
+            # take `result[0]`/`.first()` before splitting and deduplicating.
+            row = result[0]
+            column_names = [name.strip() for name in str(row[1]).split(",") if name.strip()]
+            # Validate the split tokens against the table's real columns so we
+            # never publish an invalid `columnName`. This also guards the
+            # pathological case of a quoted identifier containing a literal
+            # comma, which the naive split would mis-tokenize: such a column
+            # simply drops out of the partition list rather than producing an
+            # invalid name that fails ingestion.
+            table_column_names = {
+                col["name"] for col in inspector.get_columns(table_name=table_name, schema=schema_name)
+            }
+            partition_columns = [name for name in column_names if name in table_column_names]
+            if partition_columns:
+                partition_details = TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=name,
+                            intervalType=INTERVAL_TYPE_MAP.get(row[2], PartitionIntervalTypes.COLUMN_VALUE),
+                            interval=None,
+                        )
+                        for name in partition_columns
+                    ]
+                )
+                return True, partition_details
         return False, None
