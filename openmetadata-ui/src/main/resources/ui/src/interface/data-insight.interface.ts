@@ -37,62 +37,11 @@ export interface ChartFilter {
   endTs: number;
 }
 
-/**
- * One series value handed to a Data Insight tooltip. Structural, so recharts'
- * tooltip payload (Collate) still fits.
- */
-export interface DataInsightTooltipEntry {
-  name?: string | number;
-  dataKey?: string | number;
-  value?: number | string | Array<number | string>;
-  color?: string;
-  // The hovered row, any shape.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload?: any;
-}
-
-export interface DataInsightChartTooltipProps {
-  active?: boolean;
-  payload?: DataInsightTooltipEntry[];
-  cardStyles?: React.CSSProperties;
-  customValueKey?: string;
-  displayDateInHeader?: boolean;
-  dateTimeFormatter?: (date?: number, format?: string) => string;
-  isPercentage?: boolean;
-  isTier?: boolean;
-  listContainerStyles?: React.CSSProperties;
-  timeStampKey?: string;
-  titleStyles?: React.CSSProperties;
-  labelStyles?: React.CSSProperties;
-  valueStyles?: React.CSSProperties;
-  transformLabel?: boolean;
-  valueFormatter?: (value: number | string, key?: string) => string | number;
-}
-
-export interface DataInsightLegendEntry {
-  value: string;
-  color?: string;
-}
-
-/** Structural, so recharts' `LegendProps` (Collate) still fits. */
-export interface DataInsightLegendProps {
-  payload?: DataInsightLegendEntry[];
-  onClick?: (
-    entry: DataInsightLegendEntry,
-    index: number,
-    event: React.MouseEvent
-  ) => void;
-  onMouseEnter?: (
-    entry: DataInsightLegendEntry,
-    index: number,
-    event: React.MouseEvent
-  ) => void;
-  onMouseLeave?: (
-    entry: DataInsightLegendEntry,
-    index: number,
-    event: React.MouseEvent
-  ) => void;
-}
+/** Formats one tooltip value; `key` is the series it belongs to. */
+export type DataInsightValueFormatter = (
+  value: number | string,
+  key?: string
+) => string | number;
 
 export interface UIKpiResult extends KpiResult {
   target: number;

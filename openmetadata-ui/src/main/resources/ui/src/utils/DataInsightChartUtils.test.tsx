@@ -12,115 +12,19 @@
  */
 
 import { LIGHT_CHART_PALETTE } from '@openmetadata/ui-core-components/charts';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import {
   DEFAULT_CHART_OPACITY,
   HOVER_CHART_OPACITY,
 } from '../constants/constants';
 import {
-  CustomTooltip,
   dataInsightColor,
   getDataInsightLineSeries,
   getDataInsightTooltip,
-  renderLegend,
 } from './DataInsightChartUtils';
 
 const palette = LIGHT_CHART_PALETTE;
 const keys = ['table', 'topic', 'dashboard'];
-
-describe('renderLegend', () => {
-  it('renders one swatch per entry and greys out inactive ones', () => {
-    const onClick = jest.fn();
-    render(
-      renderLegend(
-        {
-          payload: [
-            { value: 'table', color: '#111111' },
-            { value: 'topic', color: '#222222' },
-          ],
-          onClick,
-        },
-        ['table'],
-        undefined,
-        '#959595'
-      )
-    );
-
-    const swatches = document.querySelectorAll('svg rect');
-
-    expect(swatches[0]).toHaveAttribute('fill', '#111111');
-    expect(swatches[1]).toHaveAttribute('fill', '#959595');
-
-    fireEvent.click(screen.getByText('topic'));
-
-    expect(onClick).toHaveBeenCalledWith(
-      expect.objectContaining({ value: 'topic' }),
-      1,
-      expect.anything()
-    );
-  });
-
-  it('applies the active theme muted color to inactive legends', () => {
-    render(
-      renderLegend(
-        { payload: [{ color: '#abcdef', value: 'Table' }] },
-        ['Dashboard'],
-        undefined,
-        '#345678'
-      )
-    );
-
-    expect(screen.getByText('Table')).toHaveStyle({ color: '#345678' });
-  });
-});
-
-describe('CustomTooltip', () => {
-  it('uses the semantic text color for tooltip titles', () => {
-    render(
-      <CustomTooltip
-        active
-        payload={[
-          {
-            color: '#abcdef',
-            dataKey: 'count',
-            name: 'Description coverage',
-            payload: { term: 'Sep 1, 2026' },
-            value: 76.27,
-          },
-        ]}
-        timeStampKey="term"
-      />
-    );
-
-    expect(screen.getByRole('heading', { name: 'Sep 1, 2026' })).toHaveClass(
-      'custom-data-insight-tooltip-title'
-    );
-  });
-
-  it('renders a row per series from a structural payload', () => {
-    render(
-      <CustomTooltip
-        active
-        payload={[
-          {
-            dataKey: 'table',
-            name: 'table',
-            value: 4,
-            color: '#111111',
-            payload: { timestampValue: 1696118400000 },
-          },
-        ]}
-      />
-    );
-
-    expect(screen.getByText('Table')).toBeInTheDocument();
-    expect(screen.getByText('4')).toBeInTheDocument();
-    expect(document.querySelector('svg rect')).toHaveAttribute(
-      'fill',
-      '#111111'
-    );
-  });
-});
 
 describe('getDataInsightLineSeries', () => {
   it('gives every key its palette colour by rank', () => {

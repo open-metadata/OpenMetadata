@@ -11,158 +11,22 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
 import {
   chartColor,
   type ChartPalette,
   type ChartSeries,
   type ChartTooltipRenderProps,
 } from '@openmetadata/ui-core-components/charts';
-import { Card } from 'antd';
-import { startCase, uniqBy } from 'lodash';
 import {
   DEFAULT_CHART_OPACITY,
-  GRAYED_OUT_COLOR,
   HOVER_CHART_OPACITY,
 } from '../constants/constants';
-import {
-  DataInsightChartTooltipProps,
-  DataInsightLegendProps,
-} from '../interface/data-insight.interface';
-import './DataInsightChartUtils.style.less';
-import { getEntryFormattedValue } from './DataInsightPureUtils';
+import { DataInsightValueFormatter } from '../interface/data-insight.interface';
 import {
   chartTooltipRows,
   DQTooltipContent,
 } from './DataQuality/CustomDQTooltip.component';
 import { formatDate } from './date-time/DateTimeUtils';
-
-export const renderLegend = (
-  legendData: DataInsightLegendProps,
-  activeKeys = [] as string[],
-  valueFormatter?: (value: string) => string,
-  inactiveColor = GRAYED_OUT_COLOR
-) => {
-  const { payload = [] } = legendData;
-
-  return (
-    <ul className="custom-data-insight-legend">
-      {payload.map((entry, index) => {
-        const isActive =
-          activeKeys.length === 0 || activeKeys.includes(entry.value);
-
-        return (
-          <li
-            className="recharts-legend-item custom-data-insight-legend-item"
-            key={`item-${entry.value}`}
-            role="presentation"
-            onClick={(e) =>
-              legendData.onClick && legendData.onClick(entry, index, e)
-            }
-            onMouseEnter={(e) =>
-              legendData.onMouseEnter &&
-              legendData.onMouseEnter(entry, index, e)
-            }
-            onMouseLeave={(e) =>
-              legendData.onMouseLeave &&
-              legendData.onMouseLeave(entry, index, e)
-            }>
-            <svg aria-hidden className="m-r-xss" height={14} width={14}>
-              <rect
-                fill={isActive ? entry.color : inactiveColor}
-                height="14"
-                rx="2"
-                width="14"
-              />
-            </svg>
-            <span style={{ color: isActive ? 'inherit' : inactiveColor }}>
-              {valueFormatter ? valueFormatter(entry.value) : entry.value}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
-  );
-};
-
-export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const {
-    active,
-    cardStyles,
-    customValueKey,
-    dateTimeFormatter = formatDate,
-    isPercentage,
-    labelStyles,
-    listContainerStyles,
-    payload = [],
-    timeStampKey = 'timestampValue',
-    titleStyles,
-    transformLabel = true,
-    valueFormatter,
-    valueStyles,
-  } = props;
-
-  if (active && payload && payload.length) {
-    const timestamp =
-      timeStampKey === 'term'
-        ? payload[0].payload[timeStampKey]
-        : dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
-    const payloadValue = uniqBy(payload, 'dataKey');
-
-    return (
-      <Card
-        className="custom-data-insight-tooltip"
-        style={cardStyles}
-        title={
-          <Typography
-            as="h5"
-            className="custom-data-insight-tooltip-title"
-            size="text-md"
-            style={titleStyles}
-            weight="semibold">
-            {timestamp}
-          </Typography>
-        }>
-        <ul
-          className="custom-data-insight-tooltip-container"
-          style={listContainerStyles}>
-          {payloadValue.map((entry) => {
-            const value = customValueKey
-              ? entry.payload[customValueKey]
-              : entry.value;
-
-            return (
-              <li
-                className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-                key={`item-${entry.name ?? entry.dataKey}`}>
-                <span className="flex items-center text-grey-muted">
-                  <svg aria-hidden className="mr-2" height={12} width={12}>
-                    <rect fill={entry.color} height="14" rx="2" width="14" />
-                  </svg>
-                  <span style={labelStyles}>
-                    {transformLabel
-                      ? startCase((entry.name ?? entry.dataKey) as string)
-                      : entry.name ?? (entry.dataKey as string)}
-                  </span>
-                </span>
-                <span className="font-medium" style={valueStyles}>
-                  {valueFormatter
-                    ? valueFormatter(
-                        value,
-                        (entry.name ?? entry.dataKey) as string
-                      )
-                    : getEntryFormattedValue(value, isPercentage)}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
-    );
-  }
-
-  return null;
-};
 
 // The chart title already names the card and the side panel is the legend, so
 // the built-in one stays off.
@@ -186,8 +50,7 @@ export interface DataInsightLineSeriesInput {
   visibleKeys?: string[];
 }
 
-// Same rule the recharts charts used: with keys toggled, only those (and the
-// hovered one) are drawn.
+// With keys toggled, only those (and the hovered one) are drawn.
 const isShown = (key: string, activeKeys: string[], hoverKey: string) =>
   activeKeys.length === 0 || key === hoverKey || activeKeys.includes(key);
 
@@ -225,7 +88,7 @@ export interface DataInsightTooltipOptions<T> {
   /** Field of the row holding the epoch millis shown as the header. */
   timeKey: keyof T & string;
   isPercentage?: boolean;
-  valueFormatter?: DataInsightChartTooltipProps['valueFormatter'];
+  valueFormatter?: DataInsightValueFormatter;
   className?: string;
 }
 

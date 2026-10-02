@@ -15,7 +15,7 @@ import type { ChartTooltipItem } from '@openmetadata/ui-core-components/charts';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { ReactNode } from 'react';
-import { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
+import { DataInsightValueFormatter } from '../../interface/data-insight.interface';
 import { getEntryFormattedValue } from '../DataInsightPureUtils';
 
 export interface DQTooltipRow {
@@ -30,7 +30,7 @@ export interface DQTooltipContentProps {
   rows: DQTooltipRow[];
   transformLabel?: boolean;
   isPercentage?: boolean;
-  valueFormatter?: DataInsightChartTooltipProps['valueFormatter'];
+  valueFormatter?: DataInsightValueFormatter;
   className?: string;
 }
 
