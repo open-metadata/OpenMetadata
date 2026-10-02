@@ -19,6 +19,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { disableEtagConditionalReads, uuid } from '../../utils/common';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { waitForSearchIndexed } from '../../utils/polling';
 import {
   exploreShouldShowEntity,
@@ -34,7 +35,13 @@ const newStrippedPage = async (browser: Browser) => {
   return page;
 };
 
-for (const entity of searchRBACEntities) {
+for (const entity of pickEntityMatrix(
+  __filename,
+  searchRBACEntities,
+  searchRBACEntities.filter(
+    ({ class: EntityClass }) => EntityClass === TableClass
+  )
+)) {
   const entityObj = new entity.class();
 
   test.describe(entity.name, () => {

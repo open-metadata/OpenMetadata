@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space, Tag } from 'antd';
+import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -128,9 +128,14 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
 
     return isEmpty(schemaTypeDiffText) ? undefined : (
-      <Tag data-testid="schema-type-diff">
+      <Badge
+        className="tw:inline-flex tw:mr-2"
+        color="gray"
+        data-testid="schema-type-diff"
+        size="sm"
+        type="color">
         {stringToHTML(schemaTypeDiffText)}
-      </Tag>
+      </Badge>
     );
   }, [changeDescription, currentVersionData]);
 

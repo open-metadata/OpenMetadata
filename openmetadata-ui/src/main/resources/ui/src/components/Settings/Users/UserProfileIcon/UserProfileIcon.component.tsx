@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Radio, Tag, Tooltip } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Radio, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, orderBy } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
@@ -184,11 +184,14 @@ export const UserProfileIcon = () => {
             </Typography>
 
             {isDefaultPersona && (
-              <Tag
-                className="m-l-xs default-persona-tag"
-                data-testid="default-persona-tag">
+              <Badge
+                className="tw:mr-2 tw:ml-1 tw:font-medium tw:shadow-xs"
+                color="brand"
+                data-testid="default-persona-tag"
+                size="sm"
+                type="color">
                 {t('label.default')}
-              </Tag>
+              </Badge>
             )}
           </div>
 

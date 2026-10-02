@@ -778,6 +778,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       // filter — e.g. a listing request in flight when the user typed a query —
       // is discarded so it cannot repopulate or clear the table against the
       // user's current intent.
+      // Only the latest request may write; a stale page re-collapses rows.
+      if (requestSeq !== fetchRequestSeqRef.current) {
+        return;
+      }
+
       if (
         isStaleFetchResponse(
           data,

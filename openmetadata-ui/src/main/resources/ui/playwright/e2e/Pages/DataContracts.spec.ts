@@ -85,6 +85,7 @@ import {
   assignTier,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import {
   glossaryFieldTrigger,
   pickGlossaryTermInField,
@@ -117,6 +118,12 @@ const entitiesWithDataContracts = [
   DatabaseSchemaClass,
 ] as const;
 
+const dataContractEntities = pickEntityMatrix(
+  __filename,
+  entitiesWithDataContracts,
+  [TableClass]
+);
+
 // Helper function to check if entity supports specific features
 const entitySupportsSchema = (entityType: string): boolean => {
   return ['Table', 'Topic', 'DashboardDataModel', 'ApiEndpoint'].includes(
@@ -141,7 +148,7 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
   });
 
-  entitiesWithDataContracts.forEach((EntityClass) => {
+  dataContractEntities.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
     const testDetails = entitySupportsQuality(entityType)
@@ -2306,7 +2313,7 @@ description:
   });
 });
 
-entitiesWithDataContracts.forEach((EntityClass) => {
+dataContractEntities.forEach((EntityClass) => {
   const adminUser = new UserClass();
   const entity = new EntityClass();
   const entityType = entity.getType();
