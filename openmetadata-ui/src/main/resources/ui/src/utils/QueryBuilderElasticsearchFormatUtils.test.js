@@ -663,8 +663,7 @@ describe('elasticSearchFormat – entityReference custom properties', () => {
   });
 });
 
-// checkTree keeps an operator the field no longer allows but strips its value; building from
-// that interpolated `undefined` into the clause instead of dropping the rule.
+// checkTree keeps an operator the field no longer allows but strips its value.
 describe('a saved rule whose operator is no longer valid for its field', () => {
   const config = buildQueryBuilderConfig({
     outputType: SearchOutputType.ElasticSearch,
@@ -708,7 +707,7 @@ describe('a saved rule whose operator is no longer valid for its field', () => {
     expect(isQueryTreeComplete(load('like'), config)).toBe(false);
   });
 
-  // is_null is the one operator that needs no value, so it must survive the new guard.
+  // is_null needs no value, so it must survive the guard.
   it('should leave an is_null rule alone', () => {
     const tree = QbUtils.checkTree(
       QbUtils.loadTree({

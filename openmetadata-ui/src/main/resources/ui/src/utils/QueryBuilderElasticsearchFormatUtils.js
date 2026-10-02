@@ -1035,9 +1035,7 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
 
   const hasValue = Array.isArray(value) && value.length > 0;
 
-  // Only is_null/is_not_null (queryType `exists`) need no value. For every other operator an
-  // empty list means the value was stripped — checkTree does that when a saved operator is no
-  // longer valid for its field — and building from it interpolates `undefined` into the clause.
+  // Only `exists` operators need no value; elsewhere an empty list means checkTree stripped it.
   if (elasticSearchQueryType !== 'exists' && !hasValue) {
     return undefined;
   }
