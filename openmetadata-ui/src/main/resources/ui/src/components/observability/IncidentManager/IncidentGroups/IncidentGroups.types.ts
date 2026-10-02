@@ -71,6 +71,8 @@ export interface IncidentGroupsFiltersProps {
 export interface IncidentListProps {
   incidents: TestCaseResolutionStatus[];
   isLoading: boolean;
+  /** An incident's status or severity was changed from its row. */
+  onIncidentChange?: () => void;
 }
 
 export interface IncidentGroupDrawerProps {
@@ -79,6 +81,8 @@ export interface IncidentGroupDrawerProps {
   filters: IncidentGroupFilters;
   onClose: () => void;
   onViewAll: (group: TestCaseIncidentGroup) => void;
+  /** One of the group's incidents was changed, so the groups are stale. */
+  onIncidentChange: () => void;
 }
 
 export interface IncidentGroupDetailProps {
@@ -86,6 +90,8 @@ export interface IncidentGroupDetailProps {
   filters: IncidentGroupFilters;
   onBack: () => void;
   onClearFilters: () => void;
+  /** One of the group's incidents was changed, so the groups are stale. */
+  onIncidentChange: () => void;
 }
 
 export interface IncidentGroupStatProps {

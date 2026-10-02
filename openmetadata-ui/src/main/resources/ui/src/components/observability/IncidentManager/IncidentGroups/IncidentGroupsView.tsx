@@ -193,6 +193,15 @@ const IncidentGroupsView = () => {
 
   const [previewGroup, setPreviewGroup] = useState<TestCaseIncidentGroup>();
   const isRouteVisible = useIsRouteVisible();
+  // The groups are re-read after an incident in the drawer changes; it shows
+  // the latest copy of its group, or the one it opened with once that is gone.
+  const shownPreviewGroup =
+    previewGroup &&
+    (incidentGroups.find(
+      (group) =>
+        getIncidentGroupKey(group) === getIncidentGroupKey(previewGroup)
+    ) ??
+      previewGroup);
   // The row the user drilled in from, to hand focus back to on the way out.
   const [returnFocusKey, setReturnFocusKey] = useState<string>();
 
@@ -355,6 +364,7 @@ const IncidentGroupsView = () => {
           onClearFilters={() =>
             handleFiltersChange(CLEARED_INCIDENT_GROUP_FILTERS)
           }
+          onIncidentChange={refresh}
         />
       );
     }
@@ -480,8 +490,9 @@ const IncidentGroupsView = () => {
         // The app keeps this page mounted, hidden, while another route shows,
         // but the drawer is portaled above everything: it waits for the page to
         // come back, as open as it was left.
-        group={isRouteVisible ? previewGroup : undefined}
+        group={isRouteVisible ? shownPreviewGroup : undefined}
         onClose={() => setPreviewGroup(undefined)}
+        onIncidentChange={refresh}
         onViewAll={handleOpenGroup}
       />
     </Box>

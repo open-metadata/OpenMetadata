@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
@@ -59,6 +59,8 @@ export const useIncidentGroupIncidents = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const latestRequest = useRef(0);
+  // Bumped to re-read the page in hand, e.g. after an incident on it changed.
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!group) {
@@ -104,7 +106,9 @@ export const useIncidentGroupIncidents = ({
     return () => {
       latestRequest.current += 1;
     };
-  }, [group, filters, domain, pageSize, currentPage, t]);
+  }, [group, filters, domain, pageSize, currentPage, refreshKey, t]);
+
+  const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
 
   return {
     incidents,
@@ -115,5 +119,6 @@ export const useIncidentGroupIncidents = ({
     isError,
     handlePageChange: goToPage,
     handlePageSizeChange: setPageSize,
+    refresh,
   };
 };

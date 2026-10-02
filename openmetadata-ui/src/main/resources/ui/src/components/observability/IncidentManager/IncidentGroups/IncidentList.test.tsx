@@ -11,19 +11,75 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import {
   Severities,
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
+import { updateTestCaseIncidentById } from '../../../../rest/incidentManagerAPI';
+import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import IncidentList from './IncidentList';
 
-import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
+const mockGetEntityPermissionByFqn = jest.fn();
+const mockOnIncidentChange = jest.fn();
+
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
+  }),
+}));
+
+jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  updateTestCaseIncidentById: jest.fn().mockResolvedValue({}),
+}));
+
+// The chips own their popovers and workflow calls; a row only has to hand
+// them the incident and hear back.
+jest.mock(
+  '../../../DataQuality/IncidentManager/TestCaseStatus/InlineTestCaseIncidentStatus.component',
+  () => ({
+    __esModule: true,
+    default: ({ onSubmit }: { onSubmit: () => void }) => (
+      <button data-testid="status-chip" onClick={onSubmit}>
+        status
+      </button>
+    ),
+  })
+);
+
+jest.mock(
+  '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component',
+  () => ({
+    __esModule: true,
+    default: ({ onSubmit }: { onSubmit: (severity?: string) => void }) => (
+      <button data-testid="severity-chip" onClick={() => onSubmit('Severity2')}>
+        severity
+      </button>
+    ),
+  })
+);
 
 const TEST_CASE_FQN = 'svc.db.shop.customers.customers_row_count';
+
+// Only the first test case may be edited.
+const grantEditOnFirstTestCase = () =>
+  mockGetEntityPermissionByFqn.mockImplementation(
+    async (_resource: string, fqn: string) => ({
+      EditStatus: fqn === TEST_CASE_FQN,
+      EditAll: false,
+      ViewAll: true,
+    })
+  );
 
 const assigned: TestCaseResolutionStatus = {
   id: 'incident-1',
@@ -73,11 +129,24 @@ const renderList = (
 ) =>
   render(
     <MemoryRouter>
-      <IncidentList incidents={incidents} isLoading={isLoading} />
+      <IncidentList
+        incidents={incidents}
+        isLoading={isLoading}
+        onIncidentChange={mockOnIncidentChange}
+      />
     </MemoryRouter>
   );
 
 describe('IncidentList', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetEntityPermissionByFqn.mockResolvedValue({
+      EditStatus: false,
+      EditAll: false,
+      ViewAll: true,
+    });
+  });
+
   it('should render one row per incident under the design columns', () => {
     renderList();
 
@@ -209,5 +278,109 @@ describe('IncidentList', () => {
 
     expect(screen.getByTestId('incident-row-state-3')).toBeInTheDocument();
     expect(screen.getByTestId('incident-assignee')).toHaveTextContent('team-1');
+  });
+
+  describe('editing an incident in its row', () => {
+    beforeEach(grantEditOnFirstTestCase);
+
+    it('should offer the chips only where the test case may be edited', async () => {
+      renderList();
+
+      const editable = screen.getByTestId('incident-row-incident-1');
+      const readOnly = screen.getByTestId('incident-row-incident-2');
+
+      await waitFor(() =>
+        expect(within(editable).getByTestId('status-chip')).toBeInTheDocument()
+      );
+
+      expect(within(editable).getByTestId('severity-chip')).toBeInTheDocument();
+      expect(within(readOnly).queryByRole('button')).not.toBeInTheDocument();
+      expect(within(readOnly).getByTestId('incident-status')).toHaveTextContent(
+        'label.new'
+      );
+    });
+
+    it('should patch a severity picked in the row and say so', async () => {
+      renderList();
+      const row = screen.getByTestId('incident-row-incident-1');
+      await waitFor(() =>
+        expect(within(row).getByTestId('severity-chip')).toBeInTheDocument()
+      );
+
+      await act(async () => {
+        fireEvent.click(within(row).getByTestId('severity-chip'));
+      });
+
+      expect(updateTestCaseIncidentById).toHaveBeenCalledWith('incident-1', [
+        { op: 'replace', path: '/severity', value: 'Severity2' },
+      ]);
+      expect(mockOnIncidentChange).toHaveBeenCalledTimes(1);
+    });
+
+    it('should report a severity the server refused', async () => {
+      (updateTestCaseIncidentById as jest.Mock).mockRejectedValueOnce(
+        new Error('denied')
+      );
+      renderList();
+      const row = screen.getByTestId('incident-row-incident-1');
+      await waitFor(() =>
+        expect(within(row).getByTestId('severity-chip')).toBeInTheDocument()
+      );
+
+      await act(async () => {
+        fireEvent.click(within(row).getByTestId('severity-chip'));
+      });
+
+      expect(mockOnIncidentChange).not.toHaveBeenCalled();
+    });
+
+    it('should keep a row read-only when its permission cannot be read', async () => {
+      mockGetEntityPermissionByFqn.mockRejectedValue(new Error('forbidden'));
+      renderList([assigned]);
+
+      await waitFor(() =>
+        expect(mockGetEntityPermissionByFqn).toHaveBeenCalled()
+      );
+
+      expect(
+        within(screen.getByTestId('incident-row-incident-1')).queryByRole(
+          'button'
+        )
+      ).not.toBeInTheDocument();
+    });
+
+    it('should still edit when nobody listens for the change', async () => {
+      const { id: _id, ...withoutId } = assigned;
+      render(
+        <MemoryRouter>
+          <IncidentList incidents={[withoutId]} isLoading={false} />
+        </MemoryRouter>
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('status-chip')).toBeInTheDocument()
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('status-chip'));
+        fireEvent.click(screen.getByTestId('severity-chip'));
+      });
+
+      expect(updateTestCaseIncidentById).toHaveBeenCalledWith(
+        '',
+        expect.any(Array)
+      );
+    });
+
+    it('should say so once a status was changed from the row', async () => {
+      renderList();
+      const row = screen.getByTestId('incident-row-incident-1');
+      await waitFor(() =>
+        expect(within(row).getByTestId('status-chip')).toBeInTheDocument()
+      );
+
+      fireEvent.click(within(row).getByTestId('status-chip'));
+
+      expect(mockOnIncidentChange).toHaveBeenCalledTimes(1);
+    });
   });
 });

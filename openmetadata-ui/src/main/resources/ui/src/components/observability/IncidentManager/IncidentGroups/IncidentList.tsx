@@ -25,17 +25,23 @@ import {
   Database01,
   ShieldTick,
 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { FqnPart } from '../../../../enums/entity.enum';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   Assigned,
+  Severities,
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { updateTestCaseIncidentById } from '../../../../rest/incidentManagerAPI';
 import {
   formatDate,
   formatDateTimeLong,
@@ -43,7 +49,13 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
+import InlineSeverity from '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component';
+import InlineTestCaseIncidentStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/InlineTestCaseIncidentStatus.component';
+import { useIncidentRowPermissions } from '../../../IncidentManager/useIncidentRowPermissions';
 import { INCIDENT_STATUS_BADGE_COLORS } from './IncidentGroups.constants';
 import { IncidentListProps } from './IncidentGroups.types';
 import IncidentSeverityBadge from './IncidentSeverityBadge';
@@ -110,11 +122,54 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
 
 /**
  * The incidents of a group, one row each, as the drawer and the drill-down
- * both list them. Read-only: an incident is worked on from its test case,
- * which every row links to, or in bulk from the group table.
+ * both list them. Status and severity are edited in the row by whoever may
+ * edit the incident's test case — the status chip also assigns and reassigns
+ * — and read-only otherwise; `onIncidentChange` hears of every change.
  */
-const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
+const IncidentList = ({
+  incidents,
+  isLoading,
+  onIncidentChange,
+}: IncidentListProps) => {
   const { t } = useTranslation();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const listData = useMemo(
+    () => ({ data: incidents, isLoading }),
+    [incidents, isLoading]
+  );
+  const { isPermissionLoading, testCasePermissions } =
+    useIncidentRowPermissions({
+      testCaseListData: listData,
+      getEntityPermissionByFqn,
+    });
+
+  // `EditStatus` on the test case, as the incident table elsewhere gates it:
+  // a role can work incidents while the test case itself stays read-only.
+  const canEdit = (incident: TestCaseResolutionStatus) =>
+    !isPermissionLoading &&
+    getDerivedPermissionFlags(
+      testCasePermissions.find(
+        (permission) =>
+          permission.fullyQualifiedName ===
+          incident.testCaseReference?.fullyQualifiedName
+      ) ?? DEFAULT_ENTITY_PERMISSION,
+      false
+    ).can(Operation.EditStatus);
+
+  const handleSeveritySubmit = async (
+    incident: TestCaseResolutionStatus,
+    severity?: Severities
+  ) => {
+    try {
+      await updateTestCaseIncidentById(
+        incident.id ?? '',
+        compare(incident, { ...incident, severity })
+      );
+      onIncidentChange?.();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const columns = useMemo(
     () => [
@@ -157,7 +212,12 @@ const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
         )}
       </Table.Header>
       <Table.Body
-        dependencies={[incidents, isLoading]}
+        dependencies={[
+          incidents,
+          isLoading,
+          isPermissionLoading,
+          testCasePermissions,
+        ]}
         items={incidents}
         renderEmptyState={renderEmptyState}>
         {(incident) => {
@@ -165,6 +225,7 @@ const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
           const status = incident.testCaseResolutionStatusType;
           const rowId = incident.id ?? incident.stateId;
           const lastUpdated = incident.updatedAt ?? incident.timestamp;
+          const isEditable = canEdit(incident);
 
           return (
             <Table.Row
@@ -192,17 +253,35 @@ const IncidentList = ({ incidents, isLoading }: IncidentListProps) => {
               </Table.Cell>
               <Table.Cell>
                 <span data-testid="incident-status">
-                  <Badge
-                    color={INCIDENT_STATUS_BADGE_COLORS[status]}
-                    size="sm"
-                    type="pill-color">
-                    {TEST_CASE_RESOLUTION_STATUS_LABELS[status]}
-                  </Badge>
+                  {isEditable ? (
+                    <InlineTestCaseIncidentStatus
+                      hasEditPermission
+                      data={incident}
+                      onSubmit={() => onIncidentChange?.()}
+                    />
+                  ) : (
+                    <Badge
+                      color={INCIDENT_STATUS_BADGE_COLORS[status]}
+                      size="sm"
+                      type="pill-color">
+                      {TEST_CASE_RESOLUTION_STATUS_LABELS[status]}
+                    </Badge>
+                  )}
                 </span>
               </Table.Cell>
               <Table.Cell>
                 <span data-testid="incident-severity">
-                  <IncidentSeverityBadge severity={incident.severity} />
+                  {isEditable ? (
+                    <InlineSeverity
+                      hasEditPermission
+                      severity={incident.severity}
+                      onSubmit={(severity) =>
+                        handleSeveritySubmit(incident, severity)
+                      }
+                    />
+                  ) : (
+                    <IncidentSeverityBadge severity={incident.severity} />
+                  )}
                 </span>
               </Table.Cell>
               <Table.Cell className="tw:whitespace-nowrap">

@@ -76,6 +76,7 @@ const IncidentGroupDrawer = ({
   filters,
   onClose,
   onViewAll,
+  onIncidentChange,
 }: IncidentGroupDrawerProps) => {
   const { t } = useTranslation();
   const {
@@ -86,6 +87,7 @@ const IncidentGroupDrawer = ({
     isLoading,
     handlePageChange,
     handlePageSizeChange,
+    refresh,
   } = useIncidentGroupIncidents({
     group,
     filters,
@@ -164,7 +166,14 @@ const IncidentGroupDrawer = ({
                       {t('label.view-all')}
                     </Button>
                   </Box>
-                  <IncidentList incidents={incidents} isLoading={isLoading} />
+                  <IncidentList
+                    incidents={incidents}
+                    isLoading={isLoading}
+                    onIncidentChange={() => {
+                      refresh();
+                      onIncidentChange();
+                    }}
+                  />
                 </Box>
               </Box>
             </SlideoutMenu.Content>
