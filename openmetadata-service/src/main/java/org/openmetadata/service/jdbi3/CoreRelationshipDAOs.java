@@ -425,13 +425,15 @@ public interface CoreRelationshipDAOs {
 
     @ConnectionAwareSqlBatch(
         value =
-            "UPDATE custom_property_reference SET position = :position, json = :json "
+            "UPDATE custom_property_reference SET position = :position, json = :json, "
+                + "targetType = :targetType "
                 + "WHERE id = :id AND columnKey = :columnKey AND propertyName = :propertyName "
                 + "AND targetId = :targetId",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
-            "UPDATE custom_property_reference SET position = :position, json = (:json :: jsonb) "
+            "UPDATE custom_property_reference SET position = :position, json = (:json :: jsonb), "
+                + "targetType = :targetType "
                 + "WHERE id = :id AND columnKey = :columnKey AND propertyName = :propertyName "
                 + "AND targetId = :targetId",
         connectionType = POSTGRES)
@@ -580,6 +582,11 @@ public interface CoreRelationshipDAOs {
       String targetType,
       int position,
       String json) {
+    /** The table's primary key: one row per holder, column, property and target id. */
+    String primaryKey() {
+      return id + '\u0000' + columnKey + '\u0000' + propertyName + '\u0000' + targetId;
+    }
+
     /** A reference is the same only if both its target id and type are. */
     String key() {
       return propertyName + '\u0000' + targetId + '\u0000' + targetType;

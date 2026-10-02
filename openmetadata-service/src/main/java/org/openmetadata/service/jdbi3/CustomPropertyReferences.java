@@ -179,17 +179,34 @@ public final class CustomPropertyReferences {
     }
     Map<RowScope, Map<String, ReferenceRow>> persisted = persistedRows(referencesByScope.keySet());
     Delta delta = new Delta();
+    Set<String> dropped = new HashSet<>();
     referencesByScope.forEach(
         (scope, references) ->
             delta.diff(
-                persisted.getOrDefault(RowScope.of(scope), Map.of()), toRows(scope, references)));
+                persisted.getOrDefault(RowScope.of(scope), Map.of()),
+                toRows(scope, references, dropped)));
     // Target rows first, then reference rows, the same order a hard delete takes them in, so a
     // writer and a concurrent delete cannot wait on each other in a cycle.
     List<ReferenceRow> proven = provenTargets(delta.added);
-    dao().insertMany(proven);
-    dao().updateMany(delta.changed);
-    dao().deleteMany(delta.removed);
-    Set<String> dropped = new HashSet<>();
+    // A proven type change keeps its primary key, so it is an update of the old row, not an
+    // insert that the old row would block followed by a delete of that row.
+    Set<String> removedKeys = new HashSet<>();
+    delta.removed.forEach(row -> removedKeys.add(row.primaryKey()));
+    Set<String> retypedKeys = new HashSet<>();
+    List<ReferenceRow> changed = new ArrayList<>(delta.changed);
+    for (ReferenceRow row : proven) {
+      if (removedKeys.contains(row.primaryKey())) {
+        retypedKeys.add(row.primaryKey());
+        changed.add(row);
+      }
+    }
+    dao()
+        .insertMany(
+            proven.stream().filter(row -> !retypedKeys.contains(row.primaryKey())).toList());
+    dao().updateMany(changed);
+    dao()
+        .deleteMany(
+            delta.removed.stream().filter(row -> !retypedKeys.contains(row.primaryKey())).toList());
     delta.added.forEach(row -> dropped.add(row.targetId()));
     proven.forEach(row -> dropped.remove(row.targetId()));
     return dropped;
@@ -302,7 +319,9 @@ public final class CustomPropertyReferences {
   }
 
   /** One row per target and property, in list order; a repeated target keeps its first position. */
-  private static Map<String, ReferenceRow> toRows(Scope scope, ObjectNode references) {
+  /** Ids that are not UUIDs are skipped and added to {@code dropped}. */
+  private static Map<String, ReferenceRow> toRows(
+      Scope scope, ObjectNode references, Set<String> dropped) {
     Map<String, ReferenceRow> rows = new LinkedHashMap<>();
     if (references == null) {
       return rows;
@@ -318,6 +337,8 @@ public final class CustomPropertyReferences {
                 if (row != null) {
                   position++;
                   rows.putIfAbsent(row.key(), row);
+                } else if (isReference(ref)) {
+                  dropped.add(ref.get(FIELD_ID).asText());
                 }
               }
             });
@@ -396,13 +417,18 @@ public final class CustomPropertyReferences {
     if (value instanceof ArrayNode list) {
       Iterator<JsonNode> elements = list.elements();
       while (elements.hasNext()) {
-        if (targetIds.contains(canonicalId(elements.next().path(FIELD_ID).asText("")))) {
+        if (matches(elements.next(), targetIds)) {
           elements.remove();
         }
       }
       return list.isEmpty();
     }
-    return value != null && targetIds.contains(canonicalId(value.path(FIELD_ID).asText("")));
+    return value != null && matches(value, targetIds);
+  }
+
+  private static boolean matches(JsonNode ref, Set<String> targetIds) {
+    String id = ref.path(FIELD_ID).asText("");
+    return targetIds.contains(id) || targetIds.contains(canonicalId(id));
   }
 
   /**

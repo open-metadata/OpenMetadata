@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -135,6 +136,44 @@ class CustomPropertyReferencesTest {
     List<ReferenceRow> inserted = captureInserted();
     assertEquals(List.of(LIVE, KEPT), targets(inserted));
     assertEquals(List.of(0, 1), inserted.stream().map(ReferenceRow::position).toList());
+  }
+
+  @Test
+  void aProvenTypeChangeUpdatesTheRowInPlace() {
+    EntityDAO<?> userDao = mock(EntityDAO.class);
+    when(userDao.getTableName()).thenReturn("user_entity");
+    when(userDao.lockExistingIds(eq("user_entity"), anyList())).thenReturn(List.of(KEPT));
+    EntityRepository<?> userRepository = mock(EntityRepository.class);
+    when(userRepository.getDao()).thenAnswer(ignored -> userDao);
+    entity.when(() -> Entity.hasEntityRepository(Entity.USER)).thenReturn(true);
+    entity.when(() -> Entity.getEntityRepository(Entity.USER)).thenAnswer(i -> userRepository);
+    when(dao.findEntityLevel(anyList())).thenReturn(List.of(row("owningTeams", KEPT, 0)));
+
+    references.write(
+        SCOPE,
+        (ObjectNode)
+            JsonUtils.readTree(
+                String.format("{\"owningTeams\":[{\"id\":\"%s\",\"type\":\"user\"}]}", KEPT)));
+
+    ArgumentCaptor<List<ReferenceRow>> updated = rowsCaptor();
+    verify(dao).updateMany(updated.capture());
+    assertEquals(
+        List.of(Entity.USER), updated.getValue().stream().map(ReferenceRow::targetType).toList());
+    assertTrue(captureInserted().isEmpty());
+    assertTrue(captureDeleted().isEmpty());
+  }
+
+  @Test
+  void anIdThatIsNotAUuidIsReportedAsDropped() {
+    when(dao.findEntityLevel(anyList())).thenReturn(List.of());
+
+    assertEquals(
+        Set.of("not-a-uuid"),
+        references.write(
+            SCOPE,
+            (ObjectNode)
+                JsonUtils.readTree(
+                    "{\"owningTeams\":[{\"id\":\"not-a-uuid\",\"type\":\"team\"}]}")));
   }
 
   @Test
