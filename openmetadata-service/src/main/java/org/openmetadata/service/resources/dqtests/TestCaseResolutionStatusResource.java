@@ -193,7 +193,32 @@ public class TestCaseResolutionStatusResource
                   "Filter incidents by a direct owner (user or team name) of their test case",
               schema = @Schema(type = "String"))
           @QueryParam("owner")
-          String owner) {
+          String owner,
+      @Parameter(
+              description =
+                  "Only list incidents of test cases with no direct owner, i.e. the `No Owner` "
+                      + "incident group. Cannot be combined with `owner`.",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("unowned")
+          @DefaultValue("false")
+          boolean unowned,
+      @Parameter(
+              description =
+                  "Incident timestamp the `startTs`/`endTs` range applies to, as in "
+                      + "`incidentGroups`. When set, the range filters by when each incident was "
+                      + "opened or last updated instead of by status record timestamp.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {
+                        TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT,
+                        TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT
+                      }))
+          @QueryParam("dateField")
+          String dateField) {
+    if (unowned && !nullOrEmpty(owner)) {
+      throw new IllegalArgumentException("`owner` and `unowned` cannot be combined");
+    }
     ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
     ResourceContextInterface entityResourceContext =
         buildEntityResourceContext(testCaseFQN, testCaseId, originEntityFQN);
@@ -216,8 +241,28 @@ public class TestCaseResolutionStatusResource
     if (testCaseOwnerId != null) {
       filter.addQueryParam("testCaseOwnerId", testCaseOwnerId.toString());
     }
+    if (unowned) {
+      filter.addQueryParam("testCaseUnowned", Boolean.TRUE.toString());
+    }
 
-    return repository.list(offset, startTs, endTs, limitParam, filter, latest);
+    // With a date field the range applies to the incidents themselves, the way the groups apply
+    // it, so the records are no longer filtered by their own timestamp. The record range is
+    // opened up rather than dropped: `latest` is only honoured over a range.
+    Long recordStartTs = startTs;
+    Long recordEndTs = endTs;
+    if (dateField != null) {
+      filter.addQueryParam("incidentListDateField", dateField);
+      if (startTs != null) {
+        filter.addQueryParam("incidentListStartTs", String.valueOf(startTs));
+      }
+      if (endTs != null) {
+        filter.addQueryParam("incidentListEndTs", String.valueOf(endTs));
+      }
+      recordStartTs = 0L;
+      recordEndTs = Long.MAX_VALUE;
+    }
+
+    return repository.list(offset, recordStartTs, recordEndTs, limitParam, filter, latest);
   }
 
   @GET
@@ -556,7 +601,7 @@ public class TestCaseResolutionStatusResource
           AuthorizationLogic.ANY);
 
       TestCaseResolutionStatus status = mapper.createToEntity(createRequest, updatedBy, testCase);
-      repository.createNewRecord(status, testCase.getFullyQualifiedName());
+      repository.applyBulkStatus(status, testCase.getFullyQualifiedName());
       successes.add(new BulkResponse().withRequest(createRequest));
     } catch (AuthorizationException e) {
       failures.add(

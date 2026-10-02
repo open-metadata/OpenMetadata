@@ -703,6 +703,206 @@ public class IncidentGroupsIT {
         "the bulk entry must append an Ack record to the case's incident chain");
   }
 
+  // A group names the tables and test definitions its open incidents span, whatever it is grouped
+  // by: a definition group lists the tables it fired on, a table group the definitions on it.
+  @Test
+  void testGroupsNameTheirRelatedTablesAndDefinitions() throws Exception {
+    TestCaseIncidentGroup tableDefGroup =
+        findGroup(
+            fetchGroups(groupParams(GROUP_BY_TEST_DEFINITION)),
+            tableDefinition.getFullyQualifiedName());
+    assertEquals(2, tableDefGroup.getTableCount(), "cases 1 and 3 are open on tables A and B");
+    assertEquals(
+        Set.of(tableA.getFullyQualifiedName(), tableB.getFullyQualifiedName()),
+        referenceFqns(tableDefGroup.getTables()));
+    assertEquals(1, tableDefGroup.getTestDefinitionCount());
+    assertEquals(
+        Set.of(tableDefinition.getFullyQualifiedName()),
+        referenceFqns(tableDefGroup.getTestDefinitions()));
+
+    TestCaseIncidentGroup tableAGroup =
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), tableA.getFullyQualifiedName());
+    assertEquals(1, tableAGroup.getTableCount());
+    assertEquals(
+        2, tableAGroup.getTestDefinitionCount(), "a table-level and a column-level definition");
+    assertEquals(
+        Set.of(tableDefinition.getFullyQualifiedName(), columnDefinition.getFullyQualifiedName()),
+        referenceFqns(tableAGroup.getTestDefinitions()));
+  }
+
+  @Test
+  void testRelatedTablesRankByIncidentsAndAreCapped() throws Exception {
+    long ts = System.currentTimeMillis();
+    TestDefinition definition =
+        createTestDefinition("incident_groups_related_def_" + ts, TestDefinitionEntityType.TABLE);
+    Table busiest = null;
+    for (int i = 0; i < 6; i++) {
+      Table table = createTable(schemaFqn, "incident_groups_related_" + i + "_" + ts);
+      TestCase testCase =
+          createTestCase("incident_groups_related_case", tableLink(table), definition, List.of());
+      createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+      busiest = table;
+    }
+    TestCase second =
+        createTestCase("incident_groups_related_extra", tableLink(busiest), definition, List.of());
+    createStatus(second, TestCaseResolutionStatusTypes.New, null);
+
+    TestCaseIncidentGroup group =
+        findGroup(
+            fetchGroups(groupParams(GROUP_BY_TEST_DEFINITION)), definition.getFullyQualifiedName());
+
+    assertEquals(6, group.getTableCount(), "the count is exact whatever the list holds");
+    assertEquals(5, group.getTables().size(), "the group names only a handful of its tables");
+    assertEquals(
+        busiest.getFullyQualifiedName(),
+        group.getTables().getFirst().getFullyQualifiedName(),
+        "the table with the most open incidents comes first");
+    assertEquals(busiest.getId(), group.getTables().getFirst().getId());
+  }
+
+  // The "No Owner" group stands for no entity, so it cannot be drilled into by owner; `unowned`
+  // lists exactly the incidents that group counts.
+  @Test
+  void testDbListUnownedMatchesNoOwnerGroup() throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_OWNER);
+    params.put("assignee", pagerUser.getName());
+    TestCaseIncidentGroup unownedGroup = fetchGroups(params).getFirst();
+
+    List<TestCaseResolutionStatus> statuses =
+        listStatuses(
+            latestOpenParams()
+                .addFilter("unowned", "true")
+                .addFilter("assignee", pagerUser.getName()));
+
+    assertEquals(unownedGroup.getIncidentCount(), statusTestCaseFqns(statuses).size());
+    assertEquals(pagerTableFqns.size(), statuses.size());
+  }
+
+  @Test
+  void testDbListOwnerAndUnownedRejected() {
+    ListParams params =
+        new ListParams()
+            .withLimit(10)
+            .addFilter("owner", userA.getName())
+            .addFilter("unowned", "true");
+    assertThrows(OpenMetadataException.class, () -> listStatuses(params));
+  }
+
+  // With a date field the flat list applies the range to the incidents, as the groups do, so a
+  // drill-down under an active range lists what the group counted.
+  @Test
+  void testDbListDateFieldMatchesGroupCounts() throws Exception {
+    String endTs = String.valueOf(System.currentTimeMillis() + 60_000);
+    for (String dateField :
+        List.of(
+            TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT,
+            TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT)) {
+      assertEquals(
+          pagerIncidentCount(dateField, "0", endTs),
+          pagerIncidents(dateField, "0", endTs).size(),
+          "a range covering every incident (" + dateField + ")");
+      assertEquals(
+          pagerIncidentCount(dateField, "0", "1"),
+          pagerIncidents(dateField, "0", "1").size(),
+          "a range ending before any incident (" + dateField + ")");
+    }
+    assertEquals(0, pagerIncidents("createdAt", "0", "1").size());
+  }
+
+  @Test
+  void testBulkSeverityChangeKeepsTheStatus() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_bulk_severity_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_bulk_severity_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_bulk_severity_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    Severity current = fetchStatuses(testCase).getFirst().getSeverity();
+    Severity target = current == Severity.Severity5 ? Severity.Severity4 : Severity.Severity5;
+    CreateTestCaseResolutionStatus severityOnly =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+            .withSeverity(target);
+
+    BulkOperationResult result =
+        client.testCaseResolutionStatuses().bulkCreate(List.of(severityOnly));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    List<TestCaseResolutionStatus> chain = fetchStatuses(testCase);
+    assertEquals(1, chain.size(), "a severity change adds no record to the incident chain");
+    assertEquals(target, chain.getFirst().getSeverity());
+    assertEquals(
+        target,
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), table.getFullyQualifiedName())
+            .getSeverity(),
+        "the group reads the new severity");
+
+    BulkOperationResult repeat =
+        client.testCaseResolutionStatuses().bulkCreate(List.of(severityOnly));
+    assertEquals(
+        ApiStatus.FAILURE,
+        repeat.getStatus(),
+        "an entry that changes nothing is reported, not counted as applied");
+  }
+
+  @Test
+  void testBulkNewOnOpenIncidentRejected() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_bulk_new_" + ts);
+    TestDefinition definition =
+        createTestDefinition("incident_groups_bulk_new_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase("incident_groups_bulk_new_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    createStatus(testCase, TestCaseResolutionStatusTypes.Ack, null);
+
+    BulkOperationResult result =
+        client
+            .testCaseResolutionStatuses()
+            .bulkCreate(
+                List.of(
+                    new CreateTestCaseResolutionStatus()
+                        .withTestCaseReference(testCase.getFullyQualifiedName())
+                        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)));
+
+    assertEquals(ApiStatus.FAILURE, result.getStatus());
+    assertEquals(
+        TestCaseResolutionStatusTypes.Ack,
+        fetchStatuses(testCase).getFirst().getTestCaseResolutionStatusType());
+  }
+
+  @Test
+  void testPatchedSeverityReachesTheGroup() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_patch_severity_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_patch_severity_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_patch_severity_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+    TestCaseResolutionStatus latest = fetchStatuses(testCase).getFirst();
+    Severity target =
+        latest.getSeverity() == Severity.Severity1 ? Severity.Severity2 : Severity.Severity1;
+
+    client
+        .testCaseResolutionStatuses()
+        .patch(
+            latest.getId(),
+            JsonUtils.readTree(
+                "[{\"op\":\"add\",\"path\":\"/severity\",\"value\":\"" + target.value() + "\"}]"));
+
+    assertEquals(
+        target,
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), table.getFullyQualifiedName())
+            .getSeverity());
+  }
+
   @Test
   void testFailedResultDenormalizesFailureSummary() throws Exception {
     long ts = System.currentTimeMillis();
@@ -1227,6 +1427,48 @@ public class IncidentGroupsIT {
       statuses.add(JsonUtils.convertValue(item, TestCaseResolutionStatus.class));
     }
     return statuses;
+  }
+
+  // The flat list the way a drill-down asks it: the latest record of each open incident.
+  private ListParams latestOpenParams() {
+    return new ListParams()
+        .withLimit(100)
+        .withLatest(true)
+        .addFilter("startTs", "0")
+        .addFilter("endTs", String.valueOf(System.currentTimeMillis() + 60_000))
+        .addFilter(
+            "testCaseResolutionStatusType",
+            TestCaseResolutionStatusTypes.New.value()
+                + ","
+                + TestCaseResolutionStatusTypes.Ack.value()
+                + ","
+                + TestCaseResolutionStatusTypes.Assigned.value());
+  }
+
+  private int pagerIncidentCount(String dateField, String startTs, String endTs) throws Exception {
+    Map<String, String> params = groupParams(GROUP_BY_OWNER);
+    params.put("assignee", pagerUser.getName());
+    params.put("dateField", dateField);
+    params.put("startTs", startTs);
+    params.put("endTs", endTs);
+    return fetchGroups(params).stream().mapToInt(TestCaseIncidentGroup::getIncidentCount).sum();
+  }
+
+  private List<TestCaseResolutionStatus> pagerIncidents(
+      String dateField, String startTs, String endTs) throws Exception {
+    return listStatuses(
+        latestOpenParams()
+            .addFilter("unowned", "true")
+            .addFilter("assignee", pagerUser.getName())
+            .addFilter("dateField", dateField)
+            .addFilter("startTs", startTs)
+            .addFilter("endTs", endTs));
+  }
+
+  private static Set<String> referenceFqns(List<EntityReference> references) {
+    return references.stream()
+        .map(EntityReference::getFullyQualifiedName)
+        .collect(Collectors.toSet());
   }
 
   private Set<String> statusTestCaseFqns(List<TestCaseResolutionStatus> statuses) {
