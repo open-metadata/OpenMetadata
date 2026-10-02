@@ -894,6 +894,45 @@ public class IncidentGroupsIT {
   }
 
   @Test
+  void testBulkAssignByIdStoresTheFullAssignee() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table table = createTable(schemaFqn, "incident_groups_bulk_assign_by_id_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_bulk_assign_by_id_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_bulk_assign_by_id_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    BulkOperationResult result =
+        client
+            .testCaseResolutionStatuses()
+            .bulkCreate(
+                List.of(
+                    new CreateTestCaseResolutionStatus()
+                        .withTestCaseReference(testCase.getFullyQualifiedName())
+                        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+                        .withTestCaseResolutionStatusDetails(
+                            new Assigned()
+                                .withAssignee(
+                                    new EntityReference()
+                                        .withId(userB.getId())
+                                        .withType(Entity.USER)))));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    TestCaseResolutionStatus latest = fetchStatuses(testCase).getFirst();
+    Assigned assigned =
+        JsonUtils.convertValue(latest.getTestCaseResolutionStatusDetails(), Assigned.class);
+    assertEquals(userB.getName(), assigned.getAssignee().getName());
+    assertEquals(
+        List.of(userB.getName()),
+        findGroup(fetchGroups(groupParams(GROUP_BY_TABLE)), table.getFullyQualifiedName())
+            .getAssignees(),
+        "the group counts the assignee a request named by id");
+  }
+
+  @Test
   void testBulkNewOnOpenIncidentRejected() throws Exception {
     long ts = System.currentTimeMillis();
     Table table = createTable(schemaFqn, "incident_groups_bulk_new_" + ts);
