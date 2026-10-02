@@ -1271,9 +1271,9 @@ const AssetsTabs = forwardRef(
                   data-testid="loader"
                   direction="vertical"
                   size={16}>
-                  <SkeletonParagraph />
-                  <SkeletonParagraph />
-                  <SkeletonParagraph />
+                  <SkeletonParagraph animation={false} />
+                  <SkeletonParagraph animation={false} />
+                  <SkeletonParagraph animation={false} />
                 </Space>
               </Col>
             ) : (

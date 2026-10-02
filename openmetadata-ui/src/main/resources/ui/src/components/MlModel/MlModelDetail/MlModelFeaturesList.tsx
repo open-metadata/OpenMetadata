@@ -209,7 +209,7 @@ const MlModelFeaturesList = () => {
                           <Typography>{feature.dataType || '--'}</Typography>
                         </Space>
                         <Divider
-                          className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                          className="tw:mx-2 tw:mt-1 tw:h-[0.9em] tw:min-h-0"
                           orientation="vertical"
                         />
                         <Space>

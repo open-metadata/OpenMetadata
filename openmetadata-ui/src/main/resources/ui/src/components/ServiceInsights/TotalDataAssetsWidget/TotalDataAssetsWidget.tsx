@@ -63,7 +63,12 @@ function TotalDataAssetsWidget({
           {t('message.total-data-assets-description')}
         </Typography>
       </div>
-      {isLoading && <SkeletonParagraph />}
+      {isLoading && (
+        <SkeletonParagraph
+          animation={false}
+          className="total-data-assets-loader"
+        />
+      )}
       {!isLoading && showPlaceholder && errorPlaceholder}
       {!isLoading && !showPlaceholder && (
         <div className="assets-list-container">

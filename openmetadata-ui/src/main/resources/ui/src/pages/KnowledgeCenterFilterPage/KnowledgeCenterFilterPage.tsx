@@ -175,7 +175,7 @@ const KnowledgeCenterFilterPage = () => {
                         <Skeleton
                           animation={false}
                           variant="circular"
-                          width={32}
+                          width={40}
                         />
                         <div className="tw:flex-1">
                           <Skeleton animation={false} height={16} />

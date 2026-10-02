@@ -148,7 +148,7 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
         <div className="version-data">
           <Space direction="vertical" style={{ width: '650px' }}>
             <div className="tw:flex tw:gap-4">
-              <Skeleton className="tw:shrink-0" variant="circular" width={32} />
+              <Skeleton className="tw:shrink-0" variant="circular" width={40} />
               <div className="tw:flex-1">
                 <SkeletonParagraph rows={2} title={false} />
               </div>

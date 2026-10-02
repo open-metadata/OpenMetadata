@@ -44,7 +44,7 @@ const AppInstallVerifyCard = ({
         <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         <Divider
           dashed
-          className="tw:w-44 app-card-divider"
+          className="tw:w-44 tw:gap-0 app-card-divider"
           label={<CheckCircleTwoTone twoToneColor={LIGHT_GREEN_COLOR} />}
         />
         <Avatar

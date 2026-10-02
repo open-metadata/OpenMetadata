@@ -23,7 +23,11 @@ const FeedListSeparator: FC<FeedListSeparatorProp> = ({
 }) => {
   return (
     <Divider
-      className={classNames('feed-list-separator tw:my-4', className)}
+      className={classNames(
+        'feed-list-separator tw:gap-0',
+        relativeDay ? 'tw:my-4' : 'tw:my-6',
+        className
+      )}
       data-testid="separator"
       label={
         relativeDay ? (

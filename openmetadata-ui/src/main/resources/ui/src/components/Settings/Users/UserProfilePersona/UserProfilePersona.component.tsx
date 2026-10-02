@@ -152,7 +152,7 @@ const UserProfilePersonas = ({
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <div className="d-flex flex-center user-page-icon">
-          <Divider className="tw:h-full" orientation="vertical" />
+          <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
 
         <Chip

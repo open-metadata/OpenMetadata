@@ -112,7 +112,7 @@ const KnowledgePageSummary = ({
                 </Link>
               </Col>
             </Row>
-            <Divider className="m-y-xs" />
+            <Divider className="m-y-xs summary-panel-divider" />
           </>
         )}
 
@@ -120,7 +120,7 @@ const KnowledgePageSummary = ({
           entityDetail={entityDetails as EntityUnion}
           tags={entityDetails?.tags ?? []}
         />
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
         {/* read only data assets */}
         <Row className="m-x-md" gutter={[0, 8]}>
           <Col>

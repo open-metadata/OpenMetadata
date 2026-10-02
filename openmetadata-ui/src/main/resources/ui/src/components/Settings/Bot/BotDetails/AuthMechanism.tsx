@@ -215,7 +215,7 @@ const AuthMechanism: FC<Props> = ({
           )}
         </Space>
       </Space>
-      <Divider className={isSCIMBot ? undefined : 'tw:my-6'} />
+      <Divider className="tw:my-6" />
 
       {!isSCIMBot && <Typography as="p">{t('message.jwt-token')}</Typography>}
       {isSCIMBot && (

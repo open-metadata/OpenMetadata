@@ -349,7 +349,7 @@ const AddNotificationPage = () => {
                   validateMessages={VALIDATION_MESSAGES}
                   onFinish={handleSave}>
                   {isLoading ? (
-                    <SkeletonParagraph rows={8} />
+                    <SkeletonParagraph animation={false} rows={8} />
                   ) : (
                     <Row gutter={[20, 20]}>
                       <Col span={24}>

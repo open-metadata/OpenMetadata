@@ -105,7 +105,7 @@ const KnowledgePageListSkeleton = () => (
           <Col span={24}>
             <Space>
               <div className="tw:flex tw:items-center tw:gap-4">
-                <Skeleton animation={false} variant="circular" width={32} />
+                <Skeleton animation={false} variant="circular" width={40} />
                 <Skeleton animation={false} height={16} width={100} />
               </div>
               <Skeleton animation={false} height={16} width={150} />

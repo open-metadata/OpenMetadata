@@ -24,7 +24,7 @@ const TestSuiteSummaryWidget = ({
   size?: 'medium' | 'small';
 }) => {
   if (isLoading) {
-    return <Skeleton height={24} variant="rounded" width={48} />;
+    return <Skeleton height={36} variant="rounded" width={72} />;
   }
 
   return (

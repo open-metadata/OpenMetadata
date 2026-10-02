@@ -185,7 +185,7 @@ const getColumnNameContent = (
   isLoading: boolean
 ) => {
   if (isLoading) {
-    return <Skeleton height={32} variant="rounded" width={48} />;
+    return <Skeleton height={32} variant="rounded" width={72} />;
   }
 
   return (

@@ -175,7 +175,7 @@ function AlertConfigDetails({
             <Col>
               <Divider
                 dashed
-                className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                className="tw:mx-2 tw:h-6"
                 orientation="vertical"
               />
             </Col>
@@ -194,7 +194,7 @@ function AlertConfigDetails({
             <Col>
               <Divider
                 dashed
-                className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                className="tw:mx-2 tw:h-6"
                 orientation="vertical"
               />
             </Col>
@@ -207,11 +207,7 @@ function AlertConfigDetails({
           </>
         )}
         <Col>
-          <Divider
-            dashed
-            className="tw:mx-2 tw:h-[0.9em] tw:self-center"
-            orientation="vertical"
-          />
+          <Divider dashed className="tw:mx-2 tw:h-6" orientation="vertical" />
         </Col>
         <Col span={24}>
           <DestinationFormItemFormBridge
@@ -241,7 +237,7 @@ function AlertConfigDetails({
                 <Col>
                   <Divider
                     dashed
-                    className="tw:mx-2 tw:h-[0.9em] tw:self-center"
+                    className="tw:mx-2 tw:h-6"
                     orientation="vertical"
                   />
                 </Col>

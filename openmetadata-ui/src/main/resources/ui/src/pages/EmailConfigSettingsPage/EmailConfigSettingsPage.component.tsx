@@ -142,7 +142,7 @@ function EmailConfigSettingsPage() {
     return (
       <>
         {loading ? (
-          <SkeletonParagraph rows={8} />
+          <SkeletonParagraph animation={false} rows={8} />
         ) : (
           <Row align="middle" gutter={[16, 16]}>
             {configValues}

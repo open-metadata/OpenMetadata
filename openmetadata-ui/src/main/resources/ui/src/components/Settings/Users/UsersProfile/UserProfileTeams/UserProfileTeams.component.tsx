@@ -215,7 +215,7 @@ const UserProfileTeams = ({
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <div className="user-page-icon d-flex-center">
-          <Divider className="tw:h-full" orientation="vertical" />
+          <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
         {teamsRenderElement}
       </div>

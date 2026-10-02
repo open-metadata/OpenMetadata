@@ -35,7 +35,7 @@ export const TableDetailsPageSkeleton = () => {
       data-testid="loader"
       gutter={[0, 12]}>
       <Col className="p-x-lg p-t-md" span={24}>
-        <div className="tw:flex tw:flex-col tw:gap-3">
+        <div className="tw:flex tw:flex-col tw:gap-6">
           <Skeleton height={16} width="15%" />
           <Skeleton height={16} width="30%" />
         </div>
@@ -46,7 +46,7 @@ export const TableDetailsPageSkeleton = () => {
             <Col flex="auto">
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 <Skeleton height={40} variant="rounded" width={40} />
-                <div className="tw:flex tw:flex-col tw:gap-3">
+                <div className="tw:flex tw:flex-col tw:gap-6">
                   <Skeleton height={16} width="40%" />
                   <Skeleton height={16} width="60%" />
                 </div>
@@ -56,21 +56,21 @@ export const TableDetailsPageSkeleton = () => {
               <Space>
                 <Skeleton
                   className="tw:rounded-full"
-                  height={24}
+                  height={36}
                   variant="rounded"
-                  width={48}
+                  width={72}
                 />
                 <Skeleton
                   className="tw:rounded-full"
-                  height={24}
+                  height={36}
                   variant="rounded"
-                  width={48}
+                  width={72}
                 />
                 <Skeleton
                   className="tw:rounded-full"
-                  height={24}
+                  height={36}
                   variant="rounded"
-                  width={48}
+                  width={72}
                 />
               </Space>
             </Col>
@@ -80,14 +80,14 @@ export const TableDetailsPageSkeleton = () => {
       <Col className="p-x-lg" span={24}>
         <Space size={24}>
           {[0, 1, 2, 3, 4].map((i) => (
-            <Skeleton height={24} key={i} variant="rounded" width={48} />
+            <Skeleton height={36} key={i} variant="rounded" width={72} />
           ))}
         </Space>
       </Col>
       <Col className="p-x-lg" span={24}>
         <Card>
-          <div className="tw:flex tw:flex-col tw:gap-3">
-            <Skeleton height={16} width="20%" />
+          <div className="tw:flex tw:flex-col tw:gap-4">
+            <Skeleton className="tw:mb-2" height={16} width="20%" />
             {CONTENT_ROW_WIDTHS.map((width) => (
               <Skeleton height={16} key={width} width={width} />
             ))}

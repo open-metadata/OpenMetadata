@@ -171,7 +171,7 @@ const GithubStarCard = () => {
               <Button className="github-modal-action-button">
                 {isLoading ? (
                   <div data-testid="skeleton-loader">
-                    <Skeleton height={24} variant="rounded" width={48} />
+                    <Skeleton height={36} variant="rounded" width={72} />
                   </div>
                 ) : (
                   starredCount
