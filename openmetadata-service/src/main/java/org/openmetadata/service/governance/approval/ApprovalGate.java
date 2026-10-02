@@ -19,6 +19,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowEventConsume
 import com.fasterxml.jackson.databind.JsonNode;
 import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -71,6 +73,7 @@ public final class ApprovalGate {
           "incrementalChangeDescription",
           "changeSummary");
   private static final String TAGS = Entity.FIELD_TAGS;
+  public static final String PENDING_APPROVAL = "Pending approval";
   private static final String EXTENSION = Entity.FIELD_EXTENSION;
   private static final String EXTENSION_PREFIX = EXTENSION + Entity.SEPARATOR;
 
@@ -115,43 +118,144 @@ public final class ApprovalGate {
     }
   }
 
+  /** One asset's part of a bulk relationship write, e.g. adding a domain or a tag to it. */
+  @FunctionalInterface
+  public interface AssetEdit {
+    void apply(EntityInterface asset);
+  }
+
   /**
    * Bulk relationship writes (add/remove a tag, glossary term, domain or data product on many
-   * assets) cannot be staged per asset, so an asset whose {@code field} a workflow gates for this
-   * human actor is removed from {@code assets} and returned as a refused item. Editing the asset
-   * itself submits the change for approval.
+   * assets) hold every asset whose {@code field} a workflow gates for this human actor: the edit of
+   * that asset becomes its own change request, the asset is removed from {@code assets} so the bulk
+   * write skips it, and it is returned as a pending item. A dry run reports the assets that would be
+   * held without submitting anything. An asset whose edit cannot be submitted is returned as a
+   * failed item.
    */
-  public static List<BulkResponse> refuseGatedAssets(
-      List<EntityReference> assets, String field, String user) {
-    List<BulkResponse> refused = new ArrayList<>();
+  public static List<BulkResponse> holdGatedAssets(
+      List<EntityReference> assets, String field, String user, boolean dryRun, AssetEdit edit) {
+    List<BulkResponse> held = new ArrayList<>();
     if (assets != null && !isBotChange(user, null)) {
       Set<UUID> gated = gatedAssetIds(assets, field);
       Iterator<EntityReference> candidates = assets.iterator();
       while (candidates.hasNext()) {
         EntityReference asset = candidates.next();
         if (gated.contains(asset.getId())) {
-          candidates.remove();
-          refused.add(refusal(asset, field));
+          Optional<BulkResponse> item = hold(asset, field, user, dryRun, edit);
+          if (item.isPresent()) {
+            candidates.remove();
+            held.add(item.get());
+          }
         }
       }
     }
-    return refused;
+    return held;
   }
 
-  /** Folds refused assets into a bulk result as failed items. */
-  public static BulkOperationResult withRefused(
-      BulkOperationResult result, List<BulkResponse> refused) {
-    if (!refused.isEmpty()) {
-      List<BulkResponse> failed = new ArrayList<>(listOrEmpty(result.getFailedRequest()));
-      failed.addAll(refused);
-      boolean anySucceeded = !listOrEmpty(result.getSuccessRequest()).isEmpty();
-      result
-          .withFailedRequest(failed)
-          .withNumberOfRowsFailed(orZero(result.getNumberOfRowsFailed()) + refused.size())
-          .withNumberOfRowsProcessed(orZero(result.getNumberOfRowsProcessed()) + refused.size())
-          .withStatus(anySucceeded ? ApiStatus.PARTIAL_SUCCESS : ApiStatus.FAILURE);
+  private static Optional<BulkResponse> hold(
+      EntityReference asset, String field, String user, boolean dryRun, AssetEdit edit) {
+    Optional<BulkResponse> item;
+    try {
+      EntityInterface original = Entity.getEntity(asset, field, Include.NON_DELETED);
+      EntityInterface updated =
+          JsonUtils.readValue(JsonUtils.pojoToJson(original), original.getClass());
+      edit.apply(updated);
+      Optional<StagedChange> staged =
+          dryRun ? preview(original, updated, user) : admit(original, updated, user, null);
+      item =
+          staged.map(
+              change ->
+                  pendingItem(asset, dryRun ? null : ChangeRequestService.submit(change).getId()));
+    } catch (WebApplicationException e) {
+      item =
+          Optional.of(
+              new BulkResponse()
+                  .withRequest(asset)
+                  .withStatus(e.getResponse().getStatus())
+                  .withMessage(e.getMessage()));
+    }
+    return item;
+  }
+
+  /** {@code refs} with {@code ref} added, unless an entry with its id is already there. */
+  public static List<EntityReference> withReference(
+      List<EntityReference> refs, EntityReference ref) {
+    List<EntityReference> result = new ArrayList<>(listOrEmpty(refs));
+    if (result.stream().noneMatch(r -> ref.getId().equals(r.getId()))) {
+      result.add(ref);
     }
     return result;
+  }
+
+  /** {@code refs} without the entry whose id is {@code id}. */
+  public static List<EntityReference> withoutReference(List<EntityReference> refs, UUID id) {
+    return listOrEmpty(refs).stream().filter(r -> !id.equals(r.getId())).toList();
+  }
+
+  /** {@code tags} with {@code label} added, unless a label with its FQN is already there. */
+  public static List<TagLabel> withTag(List<TagLabel> tags, TagLabel label) {
+    List<TagLabel> result = new ArrayList<>(listOrEmpty(tags));
+    if (result.stream().noneMatch(t -> label.getTagFQN().equals(t.getTagFQN()))) {
+      result.add(label);
+    }
+    return result;
+  }
+
+  /** {@code tags} without the label whose FQN is {@code tagFqn}. */
+  public static List<TagLabel> withoutTag(List<TagLabel> tags, String tagFqn) {
+    return listOrEmpty(tags).stream().filter(t -> !tagFqn.equals(t.getTagFQN())).toList();
+  }
+
+  private static BulkResponse pendingItem(EntityReference asset, UUID changeRequestId) {
+    return new BulkResponse()
+        .withRequest(asset)
+        .withStatus(Response.Status.OK.getStatusCode())
+        .withMessage(
+            changeRequestId == null
+                ? PENDING_APPROVAL
+                : "%s: change request %s".formatted(PENDING_APPROVAL, changeRequestId));
+  }
+
+  /**
+   * Folds held assets into a bulk result: pending items count as successful and pending approval,
+   * and any asset whose edit could not be submitted counts as failed.
+   */
+  public static BulkOperationResult withHeld(BulkOperationResult result, List<BulkResponse> held) {
+    if (!held.isEmpty()) {
+      List<BulkResponse> pending =
+          held.stream().filter(r -> r.getStatus() == Response.Status.OK.getStatusCode()).toList();
+      List<BulkResponse> notHeld =
+          held.stream().filter(r -> r.getStatus() != Response.Status.OK.getStatusCode()).toList();
+      // With every asset held the bulk write ran on nothing and may report a placeholder item.
+      List<BulkResponse> succeeded = new ArrayList<>();
+      listOrEmpty(result.getSuccessRequest()).stream()
+          .filter(r -> r.getRequest() != null)
+          .forEach(succeeded::add);
+      succeeded.addAll(pending);
+      List<BulkResponse> failed = new ArrayList<>(listOrEmpty(result.getFailedRequest()));
+      failed.addAll(notHeld);
+      result
+          .withSuccessRequest(succeeded)
+          .withFailedRequest(failed)
+          .withNumberOfRowsProcessed(orZero(result.getNumberOfRowsProcessed()) + held.size())
+          .withNumberOfRowsPassed(orZero(result.getNumberOfRowsPassed()) + pending.size())
+          .withNumberOfRowsFailed(orZero(result.getNumberOfRowsFailed()) + notHeld.size())
+          .withNumberOfRowsPendingApproval(
+              orZero(result.getNumberOfRowsPendingApproval()) + pending.size())
+          .withStatus(bulkStatus(result.getStatus(), succeeded, failed));
+    }
+    return result;
+  }
+
+  private static ApiStatus bulkStatus(
+      ApiStatus current, List<BulkResponse> succeeded, List<BulkResponse> failed) {
+    ApiStatus status = current;
+    if (!failed.isEmpty()) {
+      status = succeeded.isEmpty() ? ApiStatus.FAILURE : ApiStatus.PARTIAL_SUCCESS;
+    } else if (!succeeded.isEmpty()) {
+      status = ApiStatus.SUCCESS;
+    }
+    return status;
   }
 
   // Assets are read once per entity type, and only for the types a workflow gates for this field.
@@ -183,15 +287,6 @@ public final class ApprovalGate {
           }
         });
     return gated;
-  }
-
-  private static BulkResponse refusal(EntityReference asset, String field) {
-    return new BulkResponse()
-        .withRequest(asset)
-        .withStatus(Response.Status.FORBIDDEN.getStatusCode())
-        .withMessage(
-            "Changing %s on %s requires approval; edit the asset to submit the change for review"
-                .formatted(field, asset.getFullyQualifiedName()));
   }
 
   private static int orZero(Integer value) {

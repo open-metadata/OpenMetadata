@@ -289,21 +289,34 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    List<BulkResponse> refused =
-        ApprovalGate.refuseGatedAssets(request.getAssets(), FIELD_DOMAINS, userName);
-    return ApprovalGate.withRefused(
+    EntityReference domainRef = domain.getEntityReference();
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            FIELD_DOMAINS,
+            userName,
+            Boolean.TRUE.equals(request.getDryRun()),
+            asset -> asset.setDomains(ApprovalGate.withReference(asset.getDomains(), domainRef)));
+    return ApprovalGate.withHeld(
         bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true, userName),
-        refused);
+        held);
   }
 
   public BulkOperationResult bulkRemoveAssets(
       String domainName, BulkAssets request, String userName) {
     Domain domain = getByName(null, domainName, getFields("id"));
-    List<BulkResponse> refused =
-        ApprovalGate.refuseGatedAssets(request.getAssets(), FIELD_DOMAINS, userName);
-    return ApprovalGate.withRefused(
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            FIELD_DOMAINS,
+            userName,
+            Boolean.TRUE.equals(request.getDryRun()),
+            asset ->
+                asset.setDomains(
+                    ApprovalGate.withoutReference(asset.getDomains(), domain.getId())));
+    return ApprovalGate.withHeld(
         bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false, userName),
-        refused);
+        held);
   }
 
   public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {

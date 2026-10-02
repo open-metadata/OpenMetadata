@@ -89,6 +89,23 @@ describe('WorkflowValidationService.buildWorkflowForSave', () => {
     expect(config.approvalMode).toBe('Shadow');
   });
 
+  it('saves the approval mode chosen on the start node', async () => {
+    const { config } = await savedConfig(
+      [
+        startNode({
+          userModified: true,
+          triggerType: WorkflowType.EVENT_BASED,
+          dataAssets: ['glossary'],
+          eventType: ['Updated'],
+          approvalMode: 'Enforce',
+        }),
+      ],
+      savedWorkflow({ approvalMode: 'Shadow' })
+    );
+
+    expect(config.approvalMode).toBe('Enforce');
+  });
+
   it('writes no approval mode when none was saved', async () => {
     const { config } = await savedConfig([startNode({})], savedWorkflow({}));
 

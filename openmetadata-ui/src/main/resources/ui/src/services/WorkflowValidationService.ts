@@ -168,6 +168,15 @@ const resolveEventBasedFilter = (
   return existingTriggerConfig?.filter;
 };
 
+const resolveApprovalMode = (
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig: Record<string, unknown> | undefined,
+  hasUserChanges: boolean
+) =>
+  hasUserChanges && startNodeConfig.approvalMode
+    ? startNodeConfig.approvalMode
+    : existingTriggerConfig?.approvalMode;
+
 const buildEventBasedTriggerConfig = (
   startNodeConfig: NodeConfigWithMetadata,
   existingTriggerConfig: Record<string, unknown> | undefined,
@@ -224,9 +233,13 @@ const buildEventBasedTriggerConfig = (
     finalTriggerConfig.filter = filter;
   }
 
-  // The builder has no control for the approval mode yet; keep whatever was saved.
-  if (existingTriggerConfig?.approvalMode) {
-    finalTriggerConfig.approvalMode = existingTriggerConfig.approvalMode;
+  const approvalMode = resolveApprovalMode(
+    startNodeConfig,
+    existingTriggerConfig,
+    hasUserChanges
+  );
+  if (approvalMode) {
+    finalTriggerConfig.approvalMode = approvalMode;
   }
 
   return finalTriggerConfig;

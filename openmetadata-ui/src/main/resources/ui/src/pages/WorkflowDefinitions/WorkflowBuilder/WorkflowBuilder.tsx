@@ -47,6 +47,7 @@ import {
   useWorkflowModeContext,
   WorkflowModeProvider,
 } from '../../../contexts/WorkflowModeContext';
+import { NodeSubType } from '../../../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
@@ -155,6 +156,14 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   const startEventDataAssets = useMemo(() => {
     return startEventNode?.data?.dataAssets || [];
   }, [startEventNode]);
+
+  const hasPendingChangeHook = useMemo(
+    () =>
+      nodes.some(
+        (n: Node) => n.data?.subType === NodeSubType.ResolvePendingChangeTask
+      ),
+    [nodes]
+  );
 
   const startEventTriggerType = useMemo(() => {
     return startEventNode?.data?.triggerType || '';
@@ -547,6 +556,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
           dataAssets: startEventDataAssets,
           triggerType: startEventTriggerType,
         }}
+        hasPendingChangeHook={hasPendingChangeHook}
         isOpen={isConfigSidebarOpen}
         node={selectedNode}
         setEdges={setEdges}

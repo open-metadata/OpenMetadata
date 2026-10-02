@@ -111,6 +111,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   workflowMetadata,
   onWorkflowMetadataUpdate,
   triggerFieldsConfig,
+  hasPendingChangeHook = false,
 }) => {
   const {
     allowFullStartNodeConfiguration,
@@ -489,6 +490,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
         config={effectiveConfig}
         fieldGroups={excludeFieldGroups}
         handleEventTypeChange={handleEventTypeChange}
+        hasPendingChangeHook={hasPendingChangeHook}
         removeDataAssetFilter={removeDataAssetFilter}
         removeFromArray={removeFromArray}
         updateConfig={updateConfig}

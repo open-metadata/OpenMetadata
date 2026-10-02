@@ -16,6 +16,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
+import { ApprovalMode } from '../../../../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
 
 jest.mock('./TriggerConfigSection', () => ({
@@ -67,6 +68,15 @@ jest.mock('./EventTriggerFilterSection', () => ({
     <div
       data-lock-fields={String(!!lockFields)}
       data-testid="event-trigger-filter-section-mock"
+    />
+  ),
+}));
+
+jest.mock('./ApprovalModeSection', () => ({
+  ApprovalModeSection: ({ approvalMode }: { approvalMode?: string }) => (
+    <div
+      data-approval-mode={approvalMode ?? ''}
+      data-testid="approval-mode-section-mock"
     />
   ),
 }));
@@ -229,5 +239,60 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
     expect(
       screen.getByTestId('event-trigger-filter-section-mock')
     ).toHaveAttribute('data-lock-fields', 'false');
+  });
+
+  describe('approval mode', () => {
+    const eventConfig: NodeConfig = {
+      name: 'W',
+      description: '',
+      dataAssets: ['glossary'],
+      triggerType: WorkflowType.EVENT_BASED,
+      eventType: ['Updated'],
+      dataAssetFilters: [],
+      approvalMode: ApprovalMode.Shadow,
+    };
+
+    const renderForm = (config: NodeConfig, hasPendingChangeHook: boolean) =>
+      renderWithWorkflowMode(
+        <WorkflowConfigFormV1
+          {...baseHandlers}
+          allowFullStartNodeConfiguration
+          allowScheduledTrigger
+          allowStartNodeFilterScheduleAndBatchEdit
+          availableDataAssets={[]}
+          availableEventTypes={[]}
+          availableExcludeFields={[]}
+          config={config}
+          hasPendingChangeHook={hasPendingChangeHook}
+        />
+      );
+
+    it('shows the saved approval mode for a workflow with a Resolve Pending Change step', () => {
+      renderForm(eventConfig, true);
+
+      expect(screen.getByTestId('approval-mode-section-mock')).toHaveAttribute(
+        'data-approval-mode',
+        ApprovalMode.Shadow
+      );
+    });
+
+    it('hides the approval mode for a workflow without a Resolve Pending Change step', () => {
+      renderForm(eventConfig, false);
+
+      expect(
+        screen.queryByTestId('approval-mode-section-mock')
+      ).not.toBeInTheDocument();
+    });
+
+    it('hides the approval mode for a periodic batch trigger', () => {
+      renderForm(
+        { ...eventConfig, triggerType: WorkflowType.PERIODIC_BATCH },
+        true
+      );
+
+      expect(
+        screen.queryByTestId('approval-mode-section-mock')
+      ).not.toBeInTheDocument();
+    });
   });
 });

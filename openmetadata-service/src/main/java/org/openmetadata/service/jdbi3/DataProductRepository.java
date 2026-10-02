@@ -353,14 +353,22 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
-    List<BulkResponse> refused =
-        ApprovalGate.refuseGatedAssets(request.getAssets(), FIELD_DATA_PRODUCTS, userName);
+    EntityReference productRef = dataProduct.getEntityReference();
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            FIELD_DATA_PRODUCTS,
+            userName,
+            Boolean.TRUE.equals(request.getDryRun()),
+            asset ->
+                asset.setDataProducts(
+                    ApprovalGate.withReference(asset.getDataProducts(), productRef)));
     BulkOperationResult result =
         bulkAssetsOperation(
             dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true, userName);
-    // Refused assets were removed from the request; the ones added still get their lineage.
+    // Held assets were removed from the request; the ones added now get their lineage.
     boolean added = result.getStatus().equals(ApiStatus.SUCCESS);
-    ApprovalGate.withRefused(result, refused);
+    ApprovalGate.withHeld(result, held);
     if (added) {
       for (EntityReference ref : listOrEmpty(request.getAssets())) {
         LineageUtil.addDataProductsLineage(
@@ -373,12 +381,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public BulkOperationResult bulkRemoveAssets(
       String domainName, BulkAssets request, String userName) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
-    List<BulkResponse> refused =
-        ApprovalGate.refuseGatedAssets(request.getAssets(), FIELD_DATA_PRODUCTS, userName);
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            FIELD_DATA_PRODUCTS,
+            userName,
+            Boolean.TRUE.equals(request.getDryRun()),
+            asset ->
+                asset.setDataProducts(
+                    ApprovalGate.withoutReference(asset.getDataProducts(), dataProduct.getId())));
     BulkOperationResult result =
         bulkAssetsOperation(
             dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false, userName);
-    ApprovalGate.withRefused(result, refused);
+    ApprovalGate.withHeld(result, held);
     for (BulkResponse response : listOrEmpty(result.getSuccessRequest())) {
       EntityReference ref = (EntityReference) response.getRequest();
       LineageUtil.removeDataProductsLineage(

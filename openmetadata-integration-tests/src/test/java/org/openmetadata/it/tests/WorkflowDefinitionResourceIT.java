@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.util.TestUtils.simulateWork;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -59,6 +60,7 @@ import org.openmetadata.it.factories.MlModelServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateAPICollection;
@@ -121,6 +123,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.APIRequestMethod;
 import org.openmetadata.schema.type.ApiConnection;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -130,6 +133,8 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -4801,6 +4806,132 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(result.getImportResultsCsv().contains(requests.get(0).get("id").asText()));
   }
 
+  @Test
+  void test_bulkDomainAssignmentHoldsGatedAssetsAsChangeRequests(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = gatedTable(admin, ns, "bulkdomain");
+    Domain domain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("bulk_gate_domain"))
+                    .withDescription("Domain for bulk asset holds")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    String path = "/v1/domains/%s/assets/add".formatted(domain.getFullyQualifiedName());
+
+    BulkOperationResult dryRun =
+        bulkAssets(
+            admin,
+            path,
+            new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true));
+    assertEquals(1, dryRun.getNumberOfRowsPendingApproval());
+    assertEquals(0, dryRun.getNumberOfRowsFailed());
+    assertEquals("Pending approval", dryRun.getSuccessRequest().get(0).getMessage());
+    assertEquals(0, changeRequestsOn(table).size(), "a dry run never submits");
+
+    BulkOperationResult result =
+        bulkAssets(admin, path, new BulkAssets().withAssets(List.of(table.getEntityReference())));
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsPendingApproval());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    JsonNode requests = changeRequestsOn(table);
+    assertEquals(1, requests.size());
+    assertEquals("Pending", requests.get(0).get("status").asText());
+    assertEquals(
+        "Pending approval: change request " + requests.get(0).get("id").asText(),
+        result.getSuccessRequest().get(0).getMessage());
+    assertTrue(
+        listOrEmpty(admin.tables().get(table.getId().toString(), "domains").getDomains()).isEmpty(),
+        "the domain assignment is held");
+  }
+
+  @Test
+  void test_bulkGlossaryTermAssignmentHoldsGatedAssetsAsChangeRequests(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = gatedTable(admin, ns, "bulkterm");
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("bulk_gate_glossary"))
+                    .withDescription("Glossary for bulk asset holds"));
+    GlossaryTerm term =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("bulk_gate_term")
+                    .withDescription("Term for bulk asset holds")
+                    .withGlossary(glossary.getFullyQualifiedName()));
+
+    BulkOperationResult result =
+        bulkAssets(
+            admin,
+            "/v1/glossaryTerms/%s/assets/add".formatted(term.getId()),
+            new AddGlossaryToAssetsRequest()
+                .withAssets(List.of(table.getEntityReference()))
+                .withDryRun(false));
+    assertEquals(1, result.getNumberOfRowsPendingApproval());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    JsonNode requests = changeRequestsOn(table);
+    assertEquals(1, requests.size());
+    assertTrue(
+        result
+            .getSuccessRequest()
+            .get(0)
+            .getMessage()
+            .endsWith(requests.get(0).get("id").asText()));
+    assertTrue(
+        listOrEmpty(admin.tables().get(table.getId().toString(), "tags").getTags()).isEmpty(),
+        "the glossary term assignment is held");
+  }
+
+  private Table gatedTable(OpenMetadataClient admin, TestNamespace ns, String name)
+      throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    DatabaseService service =
+        admin.databaseServices().create(createDatabaseServiceRequest(ns.prefix(name + "_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(name + "_db")
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(name + "_schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        admin
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(name + "_table")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withOwners(List.of(shared.USER2_REF, shared.USER3_REF))
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+    deployHookWorkflow(admin, "table", table.getFullyQualifiedName(), List.of());
+    return table;
+  }
+
+  private static BulkOperationResult bulkAssets(OpenMetadataClient client, String path, Object body)
+      throws Exception {
+    return MAPPER.readValue(
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.PUT, path, body, RequestOptions.builder().build()),
+        BulkOperationResult.class);
+  }
+
   private static final String PUBLISHED_DESCRIPTION = "published description";
 
   // Owned by USER2 (requester) and USER3 (another editor), reviewed by USER1.
@@ -4899,14 +5030,15 @@ public class WorkflowDefinitionResourceIT {
     return types;
   }
 
-  private JsonNode changeRequestsOn(Glossary glossary) throws Exception {
+  private JsonNode changeRequestsOn(org.openmetadata.schema.EntityInterface entity)
+      throws Exception {
     return MAPPER
         .readTree(
             SdkClients.adminClient()
                 .getHttpClient()
                 .executeForString(
                     HttpMethod.GET,
-                    "/v1/changeRequests?entityId=" + glossary.getId(),
+                    "/v1/changeRequests?entityId=" + entity.getId(),
                     null,
                     RequestOptions.builder().build()))
         .get("data");
