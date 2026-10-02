@@ -16,29 +16,26 @@ import { DateRangeObject } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Bar,
   BarChart,
-  CartesianGrid,
-  Rectangle,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-} from 'recharts';
-import {
-  BLUE_1,
-  GREEN_4,
-  RED_3,
-  YELLOW_3,
-} from '../../../constants/Color.constants';
+  ChartSeries,
+  ChartTooltipRenderProps,
+  ChartXAxisProps,
+  ChartYAxisProps,
+  chartColor,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { ES_MAX_PAGE_SIZE } from '../../../constants/constants';
-import { DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS } from '../../../constants/DataContract.constants';
+import {
+  CONTRACT_EXECUTION_CHART_HEIGHT,
+  CONTRACT_EXECUTION_CHART_STATUS,
+  CONTRACT_EXECUTION_VISIBLE_RUNS,
+  DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS,
+} from '../../../constants/DataContract.constants';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
-import { useChartColors } from '../../../hooks/useChartColors';
 import { getAllContractResults } from '../../../rest/contractAPI';
 import {
-  createContractExecutionCustomScale,
   formatContractExecutionTick,
   generateMonthTickPositions,
   processContractExecutionData,
@@ -50,13 +47,19 @@ import {
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
-import Loader from '../../common/Loader/Loader';
 import './contract-execution-chart.less';
+import { DataContractProcessedResultCharts } from './ContractExecutionChart.interface';
 import ContractExecutionChartTooltip from './ContractExecutionChartTooltip.component';
+
+// Every bar has value 1: height carries no information, so the axis has no labels.
+const Y_AXIS: ChartYAxisProps = { max: 1, axisLabel: { show: false } };
+
+const runStatus = (row: DataContractProcessedResultCharts) =>
+  CONTRACT_EXECUTION_CHART_STATUS[row.status]?.status;
 
 const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
   const { t } = useTranslation();
-  const { grid } = useChartColors();
+  const palette = useChartPalette();
   const defaultRange = useMemo(
     () => ({
       initialRange: {
@@ -97,24 +100,61 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
     }
   };
 
-  const { processedChartData, executionMonthThicks, customScale } =
-    useMemo(() => {
-      const processed = processContractExecutionData(
-        contractExecutionResultList
-      );
+  const { processedChartData, monthStarts } = useMemo(() => {
+    const processed = processContractExecutionData(contractExecutionResultList);
 
-      // Create custom scale for positioning bars from the left
-      const customScaleFunction = createContractExecutionCustomScale(processed);
+    return {
+      processedChartData: processed,
+      monthStarts: new Set(generateMonthTickPositions(processed)),
+    };
+  }, [contractExecutionResultList]);
 
-      // Generate tick positions for month labels
-      const tickPositions = generateMonthTickPositions(processed);
+  const series = useMemo<ChartSeries[]>(
+    () => [
+      {
+        key: 'value',
+        name: t('label.contract-execution-status'),
+        seriesOption: {
+          barMaxWidth: DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS.barMaxWidth,
+        },
+      },
+    ],
+    [t]
+  );
 
-      return {
-        processedChartData: processed,
-        executionMonthThicks: tickPositions,
-        customScale: customScaleFunction,
-      };
-    }, [contractExecutionResultList]);
+  // A label at the first run of each month only.
+  const xAxis = useMemo<ChartXAxisProps>(
+    () => ({
+      axisLabel: {
+        interval: (_index: number, value: string) => monthStarts.has(value),
+      },
+      formatter: (value) => formatContractExecutionTick(String(value)),
+    }),
+    [monthStarts]
+  );
+
+  const tooltip = useMemo<
+    ChartTooltipRenderProps<DataContractProcessedResultCharts>
+  >(
+    () => ({
+      render: (_items, row) => {
+        if (!row) {
+          return null;
+        }
+        const entry = CONTRACT_EXECUTION_CHART_STATUS[row.status];
+
+        return (
+          <ContractExecutionChartTooltip
+            color={chartColor(palette, 0, entry?.status)}
+            datum={row}
+            label={t('label.contract-execution-status')}
+            statusLabel={entry ? t(entry.label) : row.status}
+          />
+        );
+      },
+    }),
+    [palette, t]
+  );
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
@@ -135,62 +175,22 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
           handleDateRangeChange={handleDateRangeChange}
         />
       </div>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <ResponsiveContainer className="contract-execution-chart">
-          <BarChart data={processedChartData}>
-            <CartesianGrid stroke={grid} strokeDasharray="0" vertical={false} />
-            <Tooltip
-              content={<ContractExecutionChartTooltip />}
-              position={{ y: 100 }}
-              wrapperStyle={{ pointerEvents: 'auto' }}
-            />
-            <XAxis
-              axisLine={false}
-              dataKey="name"
-              domain={[dateRangeObject.startTs, dateRangeObject.endTs]}
-              scale={customScale}
-              tickFormatter={formatContractExecutionTick}
-              tickMargin={10}
-              ticks={executionMonthThicks}
-            />
-            <Bar
-              activeBar={<Rectangle fill={GREEN_4} stroke={GREEN_4} />}
-              dataKey="success"
-              fill={GREEN_4}
-              name={t('label.success')}
-              stackId="single"
-              {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
-            />
-            <Bar
-              activeBar={<Rectangle fill={RED_3} stroke={RED_3} />}
-              dataKey="failed"
-              fill={RED_3}
-              name={t('label.failed')}
-              stackId="single"
-              {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
-            />
-            <Bar
-              activeBar={<Rectangle fill={YELLOW_3} stroke={YELLOW_3} />}
-              dataKey="aborted"
-              fill={YELLOW_3}
-              name={t('label.aborted')}
-              stackId="single"
-              {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
-            />
-
-            <Bar
-              activeBar={<Rectangle fill={BLUE_1} stroke={BLUE_1} />}
-              dataKey="running"
-              fill={BLUE_1}
-              name={t('label.running')}
-              stackId="single"
-              {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      )}
+      <BarChart
+        ariaLabel={t('label.execution-history')}
+        data={processedChartData}
+        data-testid="contract-execution-chart"
+        getBarStatus={runStatus}
+        height={CONTRACT_EXECUTION_CHART_HEIGHT}
+        loading={isLoading}
+        radius={DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS.radius}
+        series={series}
+        tooltip={tooltip}
+        xAxis={xAxis}
+        xKey="name"
+        yAxis={Y_AXIS}
+        zoom="auto"
+        zoomVisiblePoints={CONTRACT_EXECUTION_VISIBLE_RUNS}
+      />
     </div>
   );
 };

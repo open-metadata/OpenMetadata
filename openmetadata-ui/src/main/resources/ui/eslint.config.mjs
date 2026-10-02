@@ -451,17 +451,10 @@ export default [
   },
 
   {
-    // Charts go through @openmetadata/ui-core-components/charts. The ignores
-    // list the files still on recharts; each migration PR removes its files
-    // from it, and the recharts removal PR deletes the list. Placed before the
-    // Metric block, which replaces this rule for Metric files (no charts there).
+    // Charts go through @openmetadata/ui-core-components/charts; recharts and
+    // raw echarts imports are banned. Placed before the Metric block, which
+    // replaces this rule for Metric files (no charts there).
     files: ['src/**/*.{ts,tsx}'],
-    ignores: [
-      'src/components/DataContract/ContractExecutionChart/ContractExecutionChart.component.tsx',
-      'src/components/DataContract/ContractExecutionChart/ContractExecutionChartTooltip.component.tsx',
-      'src/components/DataContract/ContractExecutionChart/ContractExecutionChartTooltip.test.tsx',
-      'src/constants/DataContract.constants.ts',
-    ],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
