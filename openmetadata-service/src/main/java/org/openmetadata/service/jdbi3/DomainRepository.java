@@ -65,6 +65,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -550,6 +551,13 @@ public class DomainRepository extends EntityRepository<Domain> {
       domainHardDeleteSubtree.set(
           new DomainHardDeleteContext(collectDomainSubtreeIds(List.of(id)), updatedBy));
     }
+    // Users whose navbar selection points into the subtree: deleting the domains removes those
+    // DEFAULTS_TO rows, but their cached user context still holds the selection.
+    List<String> usersToEvict =
+        rootDomainHardDelete
+            ? ((UserRepository) Entity.getEntityRepository(Entity.USER))
+                .listUsersDefaultingTo(domainHardDeleteSubtree.get().deletingDomainIds)
+            : List.of();
     boolean deleted = false;
     try {
       super.deleteChildren(id, recursive, hardDelete, updatedBy);
@@ -559,11 +567,8 @@ public class DomainRepository extends EntityRepository<Domain> {
         DomainHardDeleteContext context = domainHardDeleteSubtree.get();
         domainHardDeleteSubtree.remove();
         reindexDetachedDataProducts(context);
-        // Only a completed cascade orphans the persisted selections; a failed one leaves the
-        // domains (and the picks pointing at them) in place.
         if (deleted) {
-          ((UserRepository) Entity.getEntityRepository(Entity.USER))
-              .clearDefaultDomainReferences(context.deletingDomainIds);
+          usersToEvict.forEach(SubjectCache::invalidateUserContext);
         }
       }
     }

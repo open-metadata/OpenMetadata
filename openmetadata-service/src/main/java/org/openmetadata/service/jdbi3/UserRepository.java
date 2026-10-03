@@ -21,7 +21,6 @@ import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
@@ -30,7 +29,6 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
-import com.google.common.collect.Lists;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -171,6 +169,7 @@ public class UserRepository extends EntityRepository<User> {
     this.fieldFetchers.put("follows", this::fetchAndSetFollows);
     this.fieldFetchers.put("personas", this::fetchAndSetPersonas);
     this.fieldFetchers.put("defaultPersona", this::fetchAndSetDefaultPersona);
+    this.fieldFetchers.put("defaultDomain", this::fetchAndSetDefaultDomain);
     this.fieldFetchers.put("inheritedPersonas", this::fetchAndSetInheritedPersonas);
     this.fieldFetchers.put("domains", this::fetchAndSetDomains);
 
@@ -287,27 +286,26 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /**
-   * Drops the persisted navbar selection of every user pointing at one of {@code domainIds} — a
-   * deleted domain must not linger as a selection, or that user's lists would scope to nothing.
-   * Evicts the cached subject so the change is visible on the next request.
+   * Names of users whose navbar selection ({@code defaultDomain}) is one of {@code domainIds}. The
+   * selection is a {@code DEFAULTS_TO} relationship, so deleting the domain removes it; callers use
+   * this only to evict those users' cached context.
    */
-  public void clearDefaultDomainReferences(Collection<UUID> domainIds) {
-    List<String> ids = domainIds.stream().map(UUID::toString).toList();
-    for (List<String> chunk : Lists.partition(ids, PAGE_SIZE)) {
-      for (String userId : daoCollection.userDAO().listUserIdsByDefaultDomains(chunk)) {
-        clearDefaultDomain(UUID.fromString(userId));
-      }
-    }
-  }
-
-  private void clearDefaultDomain(UUID userId) {
-    User user = get(null, userId, getFields("defaultDomain"), ALL, false);
-    if (user.getDefaultDomain() == null) {
-      return;
-    }
-    User updated = JsonUtils.deepCopy(user, User.class).withDefaultDomain(null);
-    patch(null, user.getId(), ADMIN_USER_NAME, JsonUtils.getJsonPatch(user, updated));
-    SubjectCache.invalidateUserContext(user.getName());
+  public List<String> listUsersDefaultingTo(Collection<UUID> domainIds) {
+    List<String> userIds =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                domainIds.stream().map(UUID::toString).toList(),
+                Relationship.DEFAULTS_TO.ordinal(),
+                Entity.DOMAIN,
+                USER)
+            .stream()
+            .map(CollectionDAO.EntityRelationshipObject::getToId)
+            .distinct()
+            .toList();
+    return batchResolveRefs(USER, userIds.stream().map(UUID::fromString).toList()).values().stream()
+        .map(EntityReference::getName)
+        .toList();
   }
 
   /** A navbar selection must resolve to a real domain; anything else is rejected up front. */
@@ -340,7 +338,8 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona");
+    return List.of(
+        "roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona", "defaultDomain");
   }
 
   @Override
@@ -458,6 +457,7 @@ public class UserRepository extends EntityRepository<User> {
     assignRoles(user, user.getRoles());
     assignTeams(user, user.getTeams());
     assignDefaultPersona(user, user.getDefaultPersona());
+    assignDefaultDomain(user, user.getDefaultDomain());
     assignPersonas(user, user.getPersonas());
     user.setInheritedRoles(getInheritedRoles(user));
     user.setInheritedPersonas(getInheritedPersonas(user));
@@ -493,6 +493,8 @@ public class UserRepository extends EntityRepository<User> {
     user.setPersonas(fields.contains("personas") ? getPersonas(user) : user.getPersonas());
     user.setDefaultPersona(
         fields.contains("defaultPersona") ? getDefaultPersona(user) : user.getDefaultPersona());
+    user.setDefaultDomain(
+        fields.contains("defaultDomain") ? getDefaultDomain(user) : user.getDefaultDomain());
     user.withInheritedRoles(
         fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
     user.setInheritedPersonas(
@@ -515,6 +517,7 @@ public class UserRepository extends EntityRepository<User> {
     user.setLastLoginTime(fields.contains("lastLoginTime") ? user.getLastLoginTime() : null);
     user.setPersonas(fields.contains("personas") ? user.getPersonas() : null);
     user.setDefaultPersona(fields.contains("defaultPersona") ? user.getDefaultPersona() : null);
+    user.setDefaultDomain(fields.contains("defaultDomain") ? user.getDefaultDomain() : null);
     user.setInheritedPersonas(fields.contains("personas") ? user.getInheritedPersonas() : null);
     user.setDomains(fields.contains("domains") ? user.getDomains() : null);
   }
@@ -743,6 +746,10 @@ public class UserRepository extends EntityRepository<User> {
     return findFrom(user.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
   }
 
+  public EntityReference getDefaultDomain(User user) {
+    return getFromEntityRef(user.getId(), USER, Relationship.DEFAULTS_TO, Entity.DOMAIN, false);
+  }
+
   public EntityReference getDefaultPersona(User user) {
     EntityReference userDefaultPersona =
         getFromEntityRef(user.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
@@ -920,6 +927,12 @@ public class UserRepository extends EntityRepository<User> {
   private void assignPersonas(User user, List<EntityReference> personas) {
     for (EntityReference persona : listOrEmpty(personas)) {
       addRelationship(persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.APPLIED_TO);
+    }
+  }
+
+  private void assignDefaultDomain(User user, EntityReference domain) {
+    if (domain != null) {
+      addRelationship(domain.getId(), user.getId(), Entity.DOMAIN, USER, Relationship.DEFAULTS_TO);
     }
   }
 
@@ -1298,6 +1311,28 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> personaRefs = userToPersonas.get(user.getId());
       user.setPersonas(personaRefs != null ? personaRefs : new ArrayList<>());
     }
+  }
+
+  private void fetchAndSetDefaultDomain(List<User> users, Fields fields) {
+    if (!fields.contains("defaultDomain") || users == null || users.isEmpty()) {
+      return;
+    }
+    List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(userIds, Relationship.DEFAULTS_TO.ordinal(), Entity.DOMAIN, USER);
+    Map<UUID, EntityReference> domainsById =
+        batchResolveRefs(
+            Entity.DOMAIN, records.stream().map(r -> UUID.fromString(r.getFromId())).toList());
+    Map<UUID, EntityReference> userToDomain = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference domainRef = domainsById.get(UUID.fromString(record.getFromId()));
+      if (domainRef != null) {
+        userToDomain.put(UUID.fromString(record.getToId()), domainRef);
+      }
+    }
+    users.forEach(user -> user.setDefaultDomain(userToDomain.get(user.getId())));
   }
 
   private void fetchAndSetDefaultPersona(List<User> users, Fields fields) {
@@ -1841,11 +1876,7 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdate("teams", () -> updateTeams(original, updated));
       compareAndUpdate("personas", () -> updatePersonas(original, updated));
       compareAndUpdate("defaultPersona", () -> updateDefaultPersona(original, updated));
-      compareAndUpdate(
-          "defaultDomain",
-          () ->
-              recordChange(
-                  "defaultDomain", original.getDefaultDomain(), updated.getDefaultDomain(), true));
+      compareAndUpdate("defaultDomain", () -> updateDefaultDomain(original, updated));
       compareAndUpdate(
           "profile",
           () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
@@ -2002,6 +2033,15 @@ public class UserRepository extends EntityRepository<User> {
           added,
           deleted,
           EntityUtil.entityReferenceMatch);
+    }
+
+    private void updateDefaultDomain(User original, User updated) {
+      // The relationship is: domain --DEFAULTS_TO--> user
+      EntityReference originalDefaultDomain = getDefaultDomain(original);
+      EntityReference updatedDefaultDomain = updated.getDefaultDomain();
+      deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.DOMAIN);
+      assignDefaultDomain(updated, updatedDefaultDomain);
+      recordChange("defaultDomain", originalDefaultDomain, updatedDefaultDomain, true);
     }
 
     private void updateDefaultPersona(User original, User updated) {

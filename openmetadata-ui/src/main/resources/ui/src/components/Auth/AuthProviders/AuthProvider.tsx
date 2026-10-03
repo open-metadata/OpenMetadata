@@ -144,6 +144,7 @@ const userAPIQueryFields = [
   TabSpecificField.ROLES,
   TabSpecificField.PERSONAS,
   TabSpecificField.DEFAULT_PERSONA,
+  TabSpecificField.DEFAULT_DOMAIN,
   TabSpecificField.DOMAINS,
 ];
 

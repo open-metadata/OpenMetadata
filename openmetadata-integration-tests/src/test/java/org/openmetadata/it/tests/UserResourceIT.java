@@ -611,7 +611,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
     patchEntity(user.getId().toString(), user);
 
-    User reread = getEntity(user.getId().toString());
+    User reread = Users.get(user.getId().toString(), "defaultDomain");
     assertNotNull(reread.getDefaultDomain(), "defaultDomain must persist through PATCH");
     assertEquals(domain.getId(), reread.getDefaultDomain().getId());
     assertEquals(domain.getFullyQualifiedName(), reread.getDefaultDomain().getFullyQualifiedName());
@@ -619,7 +619,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     // Clearing the selection must persist too.
     reread.setDefaultDomain(null);
     patchEntity(reread.getId().toString(), reread);
-    assertNull(getEntity(user.getId().toString()).getDefaultDomain());
+    assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
   }
 
   @Test
@@ -627,7 +627,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     User user = createEntity(createMinimalRequest(ns));
     user.setDefaultDomain(new EntityReference().withId(UUID.randomUUID()).withType("domain"));
     assertThrows(Exception.class, () -> patchEntity(user.getId().toString(), user));
-    assertNull(getEntity(user.getId().toString()).getDefaultDomain());
+    assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
   }
 
   @Test
@@ -645,7 +645,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     User user = createEntity(createMinimalRequest(ns));
     user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
     patchEntity(user.getId().toString(), user);
-    assertNotNull(getEntity(user.getId().toString()).getDefaultDomain());
+    assertNotNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
 
     SdkClients.adminClient()
         .domains()
@@ -654,7 +654,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     // The stale selection is cleared on read; listing as this user is unfiltered again.
     assertNull(
-        getEntity(user.getId().toString()).getDefaultDomain(),
+        Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain(),
         "a deleted domain must not linger as the user's selection");
   }
 
