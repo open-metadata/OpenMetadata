@@ -23,6 +23,7 @@ import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerA
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { getIncidentGroupIncidentsQuery } from './IncidentGroupIncidents.utils';
 import { IncidentGroupFilters } from './IncidentGroups.types';
+import { getPageAfterEmptyRead } from './IncidentGroups.utils';
 import { useIncidentPaging } from './useIncidentPaging';
 
 interface UseIncidentGroupIncidentsProps {
@@ -93,12 +94,24 @@ export const useIncidentGroupIncidents = ({
       page: currentPage,
     })
       .then((response) => {
-        if (isCurrent()) {
+        if (!isCurrent()) {
+          return;
+        }
+        // Resolving the last incidents on a page leaves it past the end.
+        const pageAfterEmptyRead = getPageAfterEmptyRead(
+          response.data.length,
+          currentPage,
+          pageSize,
+          response.paging.total
+        );
+        if (pageAfterEmptyRead === undefined) {
           setRead({
             groupKey,
             incidents: response.data,
             paging: response.paging,
           });
+        } else {
+          goToPage(pageAfterEmptyRead);
         }
       })
       .catch((error: AxiosError) => {
@@ -122,7 +135,16 @@ export const useIncidentGroupIncidents = ({
     return () => {
       latestRequest.current += 1;
     };
-  }, [groupKey, filters, domain, pageSize, currentPage, refreshKey, t]);
+  }, [
+    groupKey,
+    filters,
+    domain,
+    pageSize,
+    currentPage,
+    goToPage,
+    refreshKey,
+    t,
+  ]);
 
   const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
 

@@ -177,4 +177,23 @@ describe('useIncidentGroupIncidents', () => {
     expect(mockList).toHaveBeenCalledTimes(1);
     expect(result.current.incidents).toEqual(INCIDENTS);
   });
+
+  it('should step back to the last page when a refresh empties the current one', async () => {
+    const { result } = renderIncidents(GROUP);
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.handlePageChange(3));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    mockList.mockResolvedValueOnce({ data: [], paging: { total: 5 } });
+    act(() => result.current.refresh());
+
+    await waitFor(() =>
+      expect(mockList).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 })
+      )
+    );
+
+    expect(result.current.currentPage).toBe(2);
+  });
 });
