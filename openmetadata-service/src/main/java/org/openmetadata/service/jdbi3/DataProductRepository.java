@@ -32,6 +32,7 @@ import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
+import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -92,10 +93,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String UPDATE_FIELDS =
       "experts,domains"; // Domain can now be updated with asset migration
 
-  private static final String DATA_PRODUCT_DOMAIN_VALIDATION_RULE =
-      "Data Product Domain Validation";
+  // Identifies the "Data Product Domain Validation" rule by its operation, not its editable name.
+  private static final String DATA_PRODUCT_DOMAIN_MATCH_OPERATION =
+      "validateDataProductDomainMatch";
 
-  // Max descendants whose domains/data-products are hydrated at once while reconciling a level.
+  // Max parents / descendants whose children, domains and data products are read in one batch.
   // Bounds peak heap to ~O(chunk * tree-depth) instead of O(widest level) — the same reason
   // bulkHardDeleteSubtree chunks each level (a database with hundreds of thousands of tables would
   // otherwise load the whole level into the heap in one shot).
@@ -1063,7 +1065,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // Validation" on every later edit. Detach those, mirroring the Domain page cleanup. Only when
       // the rule is enabled; with it off the mismatch is a legal configuration and is left as-is.
       if (!assetRecords.isEmpty()
-          && RuleEngine.getInstance().isRuleEnabled(DATA_PRODUCT_DOMAIN_VALIDATION_RULE)) {
+          && RuleEngine.getInstance().isOperationEnabled(DATA_PRODUCT_DOMAIN_MATCH_OPERATION)) {
         detachConflictingDataProductsAfterDomainChange(
             findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS, null));
       }
@@ -1209,7 +1211,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     List<EntityReference> reindexQueue = new ArrayList<>();
     Map<UUID, Set<UUID>> directDomains = batchFetchDomainIds(refIds(assets));
     reconcileConflicts(assets, directDomains, reindexQueue);
-    reconcileInheritingDescendants(assets, directDomains, reindexQueue);
+    // Roots are reconciled above; seeding them as visited stops a root reached again as another
+    // root's descendant from being re-reconciled against inherited domains it doesn't use.
+    reconcileInheritingDescendants(
+        assets, directDomains, new HashSet<>(directDomains.keySet()), reindexQueue);
     if (searchRepository != null && !reindexQueue.isEmpty()) {
       // This runs inside the domain-change @Transaction. Defer the batched reindex until commit so
       // its re-reads see the committed (post-detach) rows rather than the in-flight transaction
@@ -1224,78 +1229,65 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   /**
-   * Walk the containment subtree of {@code roots} one level at a time, reconciling every descendant
-   * that inherits its domain (no domain of its own) against the domains it inherits. A descendant
-   * that carries its own domain is unaffected and prunes its subtree, so the walk stops there. Reads
-   * are batched per level (children, their domains, their data products, and those data products'
-   * domains), so the cost is O(tree depth), not O(node count).
+   * Reconcile every descendant of {@code parents} that inherits its domain (no domain of its own)
+   * against the domains it inherits. A descendant with its own domain is unaffected and prunes its
+   * subtree. Like bulkHardDeleteSubtree, parents are processed in bounded chunks and each chunk
+   * recurses depth-first, so no query or hydration spans a whole tree level (e.g. a database with
+   * hundreds of thousands of tables) — only one chunk's children at a time.
    */
   private void reconcileInheritingDescendants(
-      List<EntityReference> roots,
+      List<EntityReference> parents,
       Map<UUID, Set<UUID>> inheritedByParent,
+      Set<UUID> visited,
       List<EntityReference> reindexQueue) {
-    List<EntityReference> frontier = roots;
-    Map<UUID, Set<UUID>> inherited = inheritedByParent;
-    // Roots are reconciled by the caller; guard against revisiting a node reached by another parent
-    // or via a containment cycle, so the walk always terminates.
-    Set<UUID> visited = new HashSet<>(inheritedByParent.keySet());
-    while (!frontier.isEmpty()) {
-      // Discover this level's children, reduced to lightweight (id, type) refs; the heavy
-      // relationship rows are released before the per-chunk work below.
-      Map<UUID, UUID> parentOf = new HashMap<>();
-      List<EntityReference> candidates = fetchUnvisitedChildren(frontier, visited, parentOf);
-      if (candidates.isEmpty()) {
-        return;
-      }
-      List<EntityReference> nextFrontier = new ArrayList<>();
-      Map<UUID, Set<UUID>> nextInherited = new HashMap<>();
-      // Hydrate domains/data-products and detach in bounded chunks so peak heap stays ~O(chunk),
-      // not O(widest level) — mirroring bulkHardDeleteSubtree's per-level chunking.
-      for (int start = 0; start < candidates.size(); start += DESCENDANT_RECONCILE_CHUNK_SIZE) {
-        List<EntityReference> chunk =
-            candidates.subList(
-                start, Math.min(start + DESCENDANT_RECONCILE_CHUNK_SIZE, candidates.size()));
-        Map<UUID, Set<UUID>> chunkOwnDomains = batchFetchDomainIds(refIds(chunk));
-        List<EntityReference> inheritingChunk = new ArrayList<>();
-        Map<UUID, Set<UUID>> chunkEffective = new HashMap<>();
-        for (EntityReference child : chunk) {
-          // A child with its own explicit domain (and its subtree) is unaffected by the move.
-          if (!chunkOwnDomains.getOrDefault(child.getId(), Set.of()).isEmpty()) {
-            continue;
-          }
-          Set<UUID> inheritedSet = inherited.getOrDefault(parentOf.get(child.getId()), Set.of());
-          inheritingChunk.add(child);
-          chunkEffective.put(child.getId(), inheritedSet);
-          nextInherited.put(child.getId(), inheritedSet);
-        }
-        reconcileConflicts(inheritingChunk, chunkEffective, reindexQueue);
-        nextFrontier.addAll(inheritingChunk);
-      }
-      frontier = nextFrontier;
-      inherited = nextInherited;
+    for (List<EntityReference> chunk : Lists.partition(parents, DESCENDANT_RECONCILE_CHUNK_SIZE)) {
+      Map<UUID, Set<UUID>> inheritedByChild = new HashMap<>();
+      List<EntityReference> children =
+          fetchUnvisitedChildren(chunk, inheritedByParent, visited, inheritedByChild);
+      reconcileInheritingChildren(children, inheritedByChild, visited, reindexQueue);
+    }
+  }
+
+  private void reconcileInheritingChildren(
+      List<EntityReference> children,
+      Map<UUID, Set<UUID>> inheritedByChild,
+      Set<UUID> visited,
+      List<EntityReference> reindexQueue) {
+    for (List<EntityReference> chunk : Lists.partition(children, DESCENDANT_RECONCILE_CHUNK_SIZE)) {
+      Map<UUID, Set<UUID>> ownDomains = batchFetchDomainIds(refIds(chunk));
+      List<EntityReference> inheriting =
+          chunk.stream()
+              .filter(child -> ownDomains.getOrDefault(child.getId(), Set.of()).isEmpty())
+              .toList();
+      reconcileConflicts(inheriting, inheritedByChild, reindexQueue);
+      reconcileInheritingDescendants(inheriting, inheritedByChild, visited, reindexQueue);
     }
   }
 
   /**
-   * One query for the CONTAINS children of {@code frontier}, returned as lightweight (id, type)
-   * references with each child's parent recorded in {@code parentOf} for inheritance. Children
-   * already in {@code visited} (reached via another parent or a cycle) are skipped. The heavy
-   * relationship rows are consumed inline and not retained.
+   * One query for the CONTAINS children of {@code parents}, returned as lightweight (id, type)
+   * references; each child's inherited domains (its parent's) are recorded in {@code
+   * inheritedByChild}. Children already in {@code visited} (reached via another parent or a cycle)
+   * are skipped, so the walk always terminates.
    */
   private List<EntityReference> fetchUnvisitedChildren(
-      List<EntityReference> frontier, Set<UUID> visited, Map<UUID, UUID> parentOf) {
-    List<EntityReference> candidates = new ArrayList<>();
+      List<EntityReference> parents,
+      Map<UUID, Set<UUID>> inheritedByParent,
+      Set<UUID> visited,
+      Map<UUID, Set<UUID>> inheritedByChild) {
+    List<EntityReference> children = new ArrayList<>();
     for (CollectionDAO.EntityRelationshipObject row :
         daoCollection
             .relationshipDAO()
-            .findToBatchAllTypes(refIds(frontier), Relationship.CONTAINS.ordinal(), NON_DELETED)) {
+            .findToBatchAllTypes(refIds(parents), Relationship.CONTAINS.ordinal(), NON_DELETED)) {
       UUID childId = UUID.fromString(row.getToId());
       if (visited.add(childId)) {
-        candidates.add(new EntityReference().withId(childId).withType(row.getToEntity()));
-        parentOf.put(childId, UUID.fromString(row.getFromId()));
+        children.add(new EntityReference().withId(childId).withType(row.getToEntity()));
+        inheritedByChild.put(
+            childId, inheritedByParent.getOrDefault(UUID.fromString(row.getFromId()), Set.of()));
       }
     }
-    return candidates;
+    return children;
   }
 
   /**
