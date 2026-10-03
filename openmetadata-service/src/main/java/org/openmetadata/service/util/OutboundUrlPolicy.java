@@ -146,7 +146,8 @@ public class OutboundUrlPolicy {
     if (address.isLinkLocalAddress() || isMetadataAddress(address) || isNat64Metadata(address)) {
       return String.format("%s resolves to a link-local or metadata address", host);
     }
-    if (literal && (address.isLoopbackAddress() || isPrivateAddress(address))) {
+    if (literal
+        && (address.isLoopbackAddress() || isPrivateAddress(address) || isNat64Internal(address))) {
       return "URL targeting private/internal network not allowed";
     }
     return null;
@@ -177,6 +178,28 @@ public class OutboundUrlPolicy {
     try {
       InetAddress embedded = InetAddress.getByAddress(ipv4);
       return embedded.isLinkLocalAddress() || isMetadataAddress(embedded);
+    } catch (UnknownHostException e) {
+      return false;
+    }
+  }
+
+  /** 64:ff9b::/96 wrapping a loopback or private IPv4 — see through it so the literal rule still holds. */
+  private static boolean isNat64Internal(InetAddress address) {
+    byte[] bytes = address.getAddress();
+    if (!(address instanceof Inet6Address) || bytes[0] != 0 || bytes[1] != 0x64) {
+      return false;
+    }
+    if (bytes[2] != (byte) 0xff || bytes[3] != (byte) 0x9b) {
+      return false;
+    }
+    for (int i = 4; i < 12; i++) {
+      if (bytes[i] != 0) {
+        return false;
+      }
+    }
+    try {
+      InetAddress embedded = InetAddress.getByAddress(Arrays.copyOfRange(bytes, 12, 16));
+      return embedded.isLoopbackAddress() || isPrivateAddress(embedded);
     } catch (UnknownHostException e) {
       return false;
     }
