@@ -813,7 +813,9 @@ test.describe('Domain Breadcrumb Navigation', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct.responseData);
 
-      const domainLink = page.locator('[data-testid="domain-link"]').first();
+      const domainLink = page.getByTestId(
+        `domain-link-${domain.data.displayName}`
+      );
 
       if (await domainLink.isVisible()) {
         await domainLink.click();

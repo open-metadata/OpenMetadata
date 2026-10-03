@@ -162,8 +162,10 @@ test.describe('Ingestion Bot', () => {
             ingestionBotPage.getByTestId('permission-error-placeholder')
           ).toBeHidden();
           await expect(
-            ingestionBotPage.getByTestId('domain-link').first()
-          ).toHaveText(domain.data.displayName);
+            ingestionBotPage.getByTestId(
+              `domain-link-${domain.data.displayName}`
+            )
+          ).toBeVisible();
         });
       } finally {
         await assetCleanup();
