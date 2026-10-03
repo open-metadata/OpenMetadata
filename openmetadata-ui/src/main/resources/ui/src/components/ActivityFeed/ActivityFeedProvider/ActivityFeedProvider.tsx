@@ -175,7 +175,9 @@ const fetchTaskList = (
   const scoped = { statusGroup: taskStatusGroup, ...common };
 
   if (feedFilterType === FeedFilter.MENTIONS) {
-    return listTasks({ ...mentionedTaskParams(scope), ...common });
+    // `scoped`, not `common`: mentioned tasks are status-filtered like every
+    // other branch. mentionedTaskParams never sets statusGroup, so no collision.
+    return listTasks({ ...mentionedTaskParams(scope), ...scoped });
   }
 
   if (isOwnProfile(scope)) {
