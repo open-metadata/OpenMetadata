@@ -47,6 +47,32 @@ import {
 } from './IncidentGroups.utils';
 import { useIncidentPaging } from './useIncidentPaging';
 
+/** The last read of the group a drill-down names. */
+interface DetailRead {
+  key: string;
+  group?: TestCaseIncidentGroup;
+  isError?: boolean;
+}
+
+/**
+ * What the drill-down shows: the group as read, or the row's own group while
+ * the read is out or once it failed; loading and failed only with neither.
+ */
+const resolveDetail = (
+  detailKey: string | undefined,
+  detail: DetailRead | undefined,
+  loadedGroup: TestCaseIncidentGroup | undefined
+) => {
+  const hasRead = detailKey !== undefined && detail?.key === detailKey;
+  const detailGroup = hasRead && !detail?.isError ? detail?.group : loadedGroup;
+
+  return {
+    detailGroup,
+    isDetailLoading: detailKey !== undefined && !hasRead && !detailGroup,
+    isDetailError: hasRead && Boolean(detail?.isError) && !detailGroup,
+  };
+};
+
 /**
  * Owns the grouped incident listing: the grouping dimension and the filters are
  * read from and written to the URL, and every change to them refires the fetch
@@ -94,10 +120,9 @@ export const useIncidentGroups = () => {
   const detailParam = searchParams[INCIDENT_GROUP_DETAIL_PARAM];
   const detailKey = isString(detailParam) ? detailParam : undefined;
   // The group last read for the drill-down, with the key it was read for.
-  const [detail, setDetail] = useState<{
-    key: string;
-    group?: TestCaseIncidentGroup;
-  }>();
+  const [detail, setDetail] = useState<DetailRead>();
+  // Bumped to read the open group again after its read failed.
+  const [detailAttempt, setDetailAttempt] = useState(0);
 
   const [incidentGroups, setIncidentGroups] = useState<TestCaseIncidentGroup[]>(
     []
@@ -262,22 +287,16 @@ export const useIncidentGroups = () => {
           setDetail({ key: detailKey, group: data[0] });
         }
       })
-      .catch((error: AxiosError) => {
+      .catch(() => {
         if (isCurrent) {
-          setDetail({ key: detailKey });
-          showErrorToast(
-            error,
-            t('server.entity-fetch-error', {
-              entity: t('label.incident-plural'),
-            })
-          );
+          setDetail({ key: detailKey, isError: true });
         }
       });
 
     return () => {
       isCurrent = false;
     };
-  }, [detailKey, groupBy, domain, filters, refreshKey, t]);
+  }, [detailKey, groupBy, domain, filters, refreshKey, detailAttempt]);
 
   // A group opened from a row is on screen already, so it shows at once; the
   // read above then keeps it current.
@@ -287,8 +306,11 @@ export const useIncidentGroups = () => {
       : incidentGroups.find(
           (group) => getIncidentGroupFilterKey(group) === detailKey
         );
-  const hasReadDetail = detailKey !== undefined && detail?.key === detailKey;
-  const detailGroup = hasReadDetail ? detail?.group : loadedDetailGroup;
+  const { detailGroup, isDetailLoading, isDetailError } = resolveDetail(
+    detailKey,
+    detail,
+    loadedDetailGroup
+  );
 
   const openGroup = useCallback(
     (group: TestCaseIncidentGroup) =>
@@ -323,6 +345,11 @@ export const useIncidentGroups = () => {
             { replace: true }
           ),
     [location.state, navigate, searchParams]
+  );
+
+  const retryDetail = useCallback(
+    () => setDetailAttempt((attempt) => attempt + 1),
+    []
   );
 
   const handleGroupByChange = useCallback(
@@ -379,7 +406,9 @@ export const useIncidentGroups = () => {
     retry: fetchIncidentGroups,
     detailKey,
     detailGroup,
-    isDetailLoading: detailKey !== undefined && !hasReadDetail && !detailGroup,
+    isDetailLoading,
+    isDetailError,
+    retryDetail,
     openGroup,
     closeGroup,
     handleGroupByChange,

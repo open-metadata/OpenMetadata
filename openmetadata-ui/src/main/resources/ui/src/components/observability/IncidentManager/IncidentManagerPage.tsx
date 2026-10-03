@@ -16,6 +16,7 @@ import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -46,9 +47,12 @@ const IncidentManagerPage = () => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
 
-  const hasViewPermission = getDerivedPermissionFlags(
+  const testCasePermissionFlags = getDerivedPermissionFlags(
     permissions.testCase ?? DEFAULT_ENTITY_PERMISSION
-  ).hasViewAccess;
+  );
+  const hasViewPermission = testCasePermissionFlags.hasViewAccess;
+  // The bulk actions change incident statuses and severities.
+  const canEditIncidents = testCasePermissionFlags.can(Operation.EditStatus);
 
   return (
     <ObservabilityPageShell
@@ -84,7 +88,7 @@ const IncidentManagerPage = () => {
         <IncidentManagerPageWidgets />
       </div>
       {hasViewPermission ? (
-        <IncidentGroupsView />
+        <IncidentGroupsView canEditIncidents={canEditIncidents} />
       ) : (
         <ErrorPlaceHolder
           className="border-none"

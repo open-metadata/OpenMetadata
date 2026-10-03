@@ -17,12 +17,13 @@ import {
   FilterSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { useQuery } from '@tanstack/react-query';
-import { debounce, uniqBy } from 'lodash';
-import { ReactNode, useEffect, useMemo } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { uniqBy } from 'lodash';
+import { ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
+import { useDebouncedValue } from '../../../../hooks/common/useDebouncedValue';
 import { OpenIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getTeamByName } from '../../../../rest/teamsAPI';
 import { getUserByName } from '../../../../rest/userAPI';
@@ -48,6 +49,7 @@ const STATUS_OPTIONS = INCIDENT_GROUP_STATUS_OPTIONS.map((status) => ({
 }));
 
 const TEST_CASE_SEARCH_DEBOUNCE_MS = 300;
+const NO_OPTIONS: { value: string; label: string }[] = [];
 
 const toSelection = (value?: string) => (value ? [value] : []);
 
@@ -67,24 +69,38 @@ const fetchAssigneeName = async (name: string) => {
   }
 };
 
+/**
+ * A captioned filter. The caption names the group its control sits in, so a
+ * trigger showing only the picked value is still announced with its field.
+ */
 const FilterField = ({
   label,
   children,
 }: {
   label: string;
   children: ReactNode;
-}) => (
-  <Box className="tw:min-w-40 tw:flex-1" direction="col" gap={2}>
-    <Typography
-      as="span"
-      className="tw:text-secondary"
-      size="text-sm"
-      weight="medium">
-      {label}
-    </Typography>
-    {children}
-  </Box>
-);
+}) => {
+  const captionId = useId();
+
+  return (
+    <Box
+      aria-labelledby={captionId}
+      className="tw:min-w-40 tw:flex-1"
+      direction="col"
+      gap={2}
+      role="group">
+      <Typography
+        as="span"
+        className="tw:text-secondary"
+        id={captionId}
+        size="text-sm"
+        weight="medium">
+        {label}
+      </Typography>
+      {children}
+    </Box>
+  );
+};
 
 /**
  * The filter row above the incident groups. Every control reports a partial
@@ -96,11 +112,28 @@ const IncidentGroupsFilters = ({
   onChange,
 }: IncidentGroupsFiltersProps) => {
   const { t } = useTranslation();
-  const {
-    testCaseFilterOptions,
-    isTestCaseOptionsLoading,
-    fetchTestCaseFilterOptions,
-  } = useIncidentFilterOptions({ filters });
+  const { searchTestCases } = useIncidentFilterOptions({ filters });
+  const [isTestCasePickerOpened, setIsTestCasePickerOpened] = useState(false);
+  const [testCaseSearch, setTestCaseSearch] = useState('');
+  const debouncedTestCaseSearch = useDebouncedValue(
+    testCaseSearch,
+    TEST_CASE_SEARCH_DEBOUNCE_MS
+  );
+  // One query per search text, so a slow older search never overwrites the
+  // results of a newer one.
+  const { data: testCaseOptions = NO_OPTIONS, isFetching: isTestCaseLoading } =
+    useQuery({
+      queryKey: ['incident-group-test-case-options', debouncedTestCaseSearch],
+      queryFn: async () =>
+        (await searchTestCases(debouncedTestCaseSearch || WILD_CARD_CHAR))
+          .filter((result) => Boolean(result.value))
+          .map((result) => ({
+            value: result.value as string,
+            label: result.label,
+          })),
+      enabled: isTestCasePickerOpened,
+      placeholderData: keepPreviousData,
+    });
   // Incidents are assigned to users and to teams, so the filter searches both.
   const assigneePicker = useUserTeamOptions();
   const { data: selectedAssigneeName } = useQuery({
@@ -134,16 +167,6 @@ const IncidentGroupsFilters = ({
   );
 
   const hasActiveFilters = hasActiveIncidentGroupFilters(filters);
-  // One search per pause in typing, not one per keystroke.
-  const searchTestCases = useMemo(
-    () =>
-      debounce(
-        (text: string) => fetchTestCaseFilterOptions(text || WILD_CARD_CHAR),
-        TEST_CASE_SEARCH_DEBOUNCE_MS
-      ),
-    [fetchTestCaseFilterOptions]
-  );
-  useEffect(() => () => searchTestCases.cancel(), [searchTestCases]);
 
   return (
     <Box
@@ -155,16 +178,18 @@ const IncidentGroupsFilters = ({
         <FilterSelect
           searchable
           data-testid="incident-groups-test-case"
-          isLoading={isTestCaseOptionsLoading}
+          isLoading={isTestCaseLoading}
           label={t('label.test-case')}
-          options={testCaseFilterOptions}
+          options={testCaseOptions}
           resolveMissingLabel={getNameFromFQN}
           selectedValues={toSelection(filters.testCaseFQN)}
           selectionMode="single"
           triggerVariant="input"
           onChange={([testCaseFQN]) => onChange({ testCaseFQN })}
-          onOpenChange={(isOpen) => isOpen && fetchTestCaseFilterOptions()}
-          onSearch={searchTestCases}
+          onOpenChange={(isOpen) =>
+            isOpen ? setIsTestCasePickerOpened(true) : setTestCaseSearch('')
+          }
+          onSearch={setTestCaseSearch}
         />
       </FilterField>
       <FilterField label={t('label.assignee')}>

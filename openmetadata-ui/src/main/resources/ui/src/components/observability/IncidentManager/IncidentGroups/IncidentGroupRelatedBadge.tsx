@@ -33,10 +33,12 @@ const IncidentGroupRelatedBadge = ({ group }: IncidentGroupCellProps) => {
     return null;
   }
 
-  const [singularKey, pluralKey] = isTableCount
-    ? ['label.table-lowercase', 'label.table-lowercase-plural']
-    : ['label.type-lowercase', 'label.type-lowercase-plural'];
-  const countLabel = `${count} ${t(count === 1 ? singularKey : pluralKey)}`;
+  const countLabel = t(
+    isTableCount ? 'label.table-count' : 'label.type-count',
+    {
+      count,
+    }
+  );
 
   return (
     <span data-testid="group-related">

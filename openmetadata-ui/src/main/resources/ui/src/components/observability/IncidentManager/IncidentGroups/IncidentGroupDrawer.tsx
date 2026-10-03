@@ -29,6 +29,7 @@ import {
   IncidentGroupStatProps,
 } from './IncidentGroups.types';
 import { getIncidentGroupName } from './IncidentGroups.utils';
+import IncidentGroupsLoadError from './IncidentGroupsLoadError';
 import IncidentList from './IncidentList';
 import IncidentSeverityBadge from './IncidentSeverityBadge';
 import { useIncidentGroupIncidents } from './useIncidentGroupIncidents';
@@ -84,8 +85,10 @@ const IncidentGroupDrawer = ({
     currentPage,
     pageSize,
     isLoading,
+    isError,
     handlePageChange,
     handlePageSizeChange,
+    refresh,
   } = useIncidentGroupIncidents({
     group,
     filters,
@@ -164,7 +167,14 @@ const IncidentGroupDrawer = ({
                       {t('label.view-all')}
                     </Button>
                   </Box>
-                  <IncidentList incidents={incidents} isLoading={isLoading} />
+                  {isError ? (
+                    <IncidentGroupsLoadError
+                      data-testid="incident-group-incidents-error"
+                      onRetry={refresh}
+                    />
+                  ) : (
+                    <IncidentList incidents={incidents} isLoading={isLoading} />
+                  )}
                 </Box>
               </Box>
             </SlideoutMenu.Content>

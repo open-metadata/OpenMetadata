@@ -24,17 +24,20 @@ import { Key, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
 import {
   INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
+  INCIDENT_GROUP_SEPARATOR,
 } from './IncidentGroups.constants';
 import { IncidentGroupDetailProps } from './IncidentGroups.types';
 import {
   getIncidentGroupName,
   hasActiveIncidentGroupFilters,
 } from './IncidentGroups.utils';
+import IncidentGroupsLoadError from './IncidentGroupsLoadError';
 import IncidentList from './IncidentList';
 import IncidentSeverityBadge from './IncidentSeverityBadge';
 import { useIncidentGroupIncidents } from './useIncidentGroupIncidents';
@@ -60,8 +63,10 @@ const IncidentGroupDetail = ({
     currentPage,
     pageSize,
     isLoading,
+    isError,
     handlePageChange,
     handlePageSizeChange,
+    refresh,
   } = useIncidentGroupIncidents({
     group,
     filters,
@@ -119,15 +124,18 @@ const IncidentGroupDetail = ({
             className="tw:text-tertiary"
             data-testid="incident-group-summary"
             size="text-sm">
-            <Typography as="span" className="tw:text-primary" weight="semibold">
-              {group.incidentCount}
-            </Typography>{' '}
-            {t(
-              group.incidentCount === 1
-                ? 'label.incident-lowercase'
-                : 'label.incident-lowercase-plural'
-            )}
-            {' · '}
+            <Transi18next
+              i18nKey="label.incident-count"
+              renderElement={
+                <Typography
+                  as="span"
+                  className="tw:text-primary"
+                  weight="semibold"
+                />
+              }
+              values={{ count: group.incidentCount }}
+            />
+            {INCIDENT_GROUP_SEPARATOR}
             {t('message.incident-group-seen-range', {
               firstSeen: group.firstSeen
                 ? formatDate(group.firstSeen)
@@ -161,7 +169,14 @@ const IncidentGroupDetail = ({
         )}
       </Box>
       <TableCard.Root>
-        <IncidentList incidents={incidents} isLoading={isLoading} />
+        {isError ? (
+          <IncidentGroupsLoadError
+            data-testid="incident-group-incidents-error"
+            onRetry={refresh}
+          />
+        ) : (
+          <IncidentList incidents={incidents} isLoading={isLoading} />
+        )}
         <PaginationCardWithControls
           className="tw:border-0"
           page={currentPage}

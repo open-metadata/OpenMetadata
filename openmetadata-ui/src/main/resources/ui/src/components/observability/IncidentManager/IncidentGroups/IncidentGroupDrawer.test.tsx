@@ -99,7 +99,7 @@ describe('IncidentGroupDrawer', () => {
       'Row count'
     );
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '3 label.table-lowercase-plural'
+      'label.table-count'
     );
     expect(screen.getByTestId('incident-group-stat-count')).toHaveTextContent(
       '5'
@@ -117,6 +117,26 @@ describe('IncidentGroupDrawer', () => {
         limit: 4,
       })
     );
+  });
+
+  it('should say a failed read in place, not as no incidents, and retry it', async () => {
+    mockList.mockRejectedValueOnce(new Error('failure'));
+
+    await act(async () => {
+      renderDrawer(GROUP);
+    });
+
+    expect(
+      screen.getByTestId('incident-group-incidents-error')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('incident-list-empty')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+    });
+
+    expect(mockList).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('incident-row-incident-1')).toBeInTheDocument();
   });
 
   it('should open the full drill-down of the group', async () => {

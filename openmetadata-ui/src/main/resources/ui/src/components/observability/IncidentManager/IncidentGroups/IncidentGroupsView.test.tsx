@@ -114,14 +114,21 @@ jest.mock('./IncidentGroupBulkStatusModal', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ status, onApply, onCancel }: IncidentGroupBulkStatusModalProps) =>
-        status ? (
+      ({ change, onApply, onCancel }: IncidentGroupBulkStatusModalProps) =>
+        change ? (
           <div data-testid="bulk-status-modal">
-            <span data-testid="bulk-status-modal-status">{status}</span>
+            <span data-testid="bulk-status-modal-status">
+              {change.kind === 'status' ? change.status : change.severity}
+            </span>
             <button
               data-testid="bulk-status-modal-apply"
               onClick={() =>
-                onApply({ assignee: { id: 'user-a', type: 'user' } })
+                onApply(
+                  change.kind === 'status' &&
+                    change.status === CreateStatusTypes.Assigned
+                    ? { assignee: { id: 'user-a', type: 'user' } }
+                    : undefined
+                )
               }>
               apply
             </button>
@@ -162,6 +169,17 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
+  Transi18next: ({
+    i18nKey,
+    values,
+  }: {
+    i18nKey: string;
+    values: { count: number };
+  }) => `${i18nKey}:${values.count}`,
+}));
+
 jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
@@ -199,6 +217,7 @@ jest.mock('./IncidentGroupsTable', () =>
         onGroupSelect,
         onPageSelect,
         selectedKeys,
+        isSelectable,
       }: IncidentGroupsTableProps) => (
         <div data-testid="incident-groups-table">
           <span data-testid="table-group-count">{groups.length}</span>
@@ -214,6 +233,7 @@ jest.mock('./IncidentGroupsTable', () =>
             preview
           </button>
           <span data-testid="table-selected-count">{selectedKeys.size}</span>
+          <span data-testid="table-is-selectable">{String(isSelectable)}</span>
           <button
             data-testid="select-first-group"
             onClick={() => onGroupSelect(groups[0], true)}>
@@ -264,14 +284,19 @@ jest.mock('./IncidentGroupDrawer', () =>
 jest.mock('./IncidentGroupDetail', () =>
   jest
     .fn()
-    .mockImplementation(({ group, onBack }: IncidentGroupDetailProps) => (
-      <div data-testid="incident-group-detail">
-        <span data-testid="detail-group">{`${group.name}:${group.incidentCount}`}</span>
-        <button data-testid="detail-back" onClick={onBack}>
-          back
-        </button>
-      </div>
-    ))
+    .mockImplementation(
+      ({ group, onBack, onClearFilters }: IncidentGroupDetailProps) => (
+        <div data-testid="incident-group-detail">
+          <span data-testid="detail-group">{`${group.name}:${group.incidentCount}`}</span>
+          <button data-testid="detail-back" onClick={onBack}>
+            back
+          </button>
+          <button data-testid="detail-clear-filters" onClick={onClearFilters}>
+            clear
+          </button>
+        </div>
+      )
+    )
 );
 
 jest.mock('./IncidentGroupsFilters', () =>
@@ -369,7 +394,7 @@ const mockGroups = [
 const renderView = (initialEntry = '/observability/incident-manager') =>
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <IncidentGroupsView />
+      <IncidentGroupsView canEditIncidents />
       <LocationSearch />
     </MemoryRouter>
   );
@@ -377,8 +402,9 @@ const renderView = (initialEntry = '/observability/incident-manager') =>
 // A bulk change that went through is what re-reads the groups on screen.
 const applyBulkAck = async () => {
   fireEvent.click(screen.getByTestId('select-first-group'));
+  fireEvent.click(screen.getByTestId('bulk-ack'));
   await act(async () => {
-    fireEvent.click(screen.getByTestId('bulk-ack'));
+    fireEvent.click(screen.getByTestId('bulk-status-modal-apply'));
   });
 };
 
@@ -419,11 +445,11 @@ describe('IncidentGroupsView', () => {
     });
 
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      '5 label.group-lowercase-plural'
+      'label.group-count:5'
     );
     expect(
       screen.getByTestId('incident-groups-recurring-count')
-    ).toHaveTextContent('2 label.recurring-lowercase');
+    ).toHaveTextContent('label.recurring-count:2');
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
   });
 
@@ -671,7 +697,7 @@ describe('IncidentGroupsView', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      '5 label.group-lowercase-plural'
+      'label.group-count:5'
     );
 
     await act(async () => {
@@ -1144,7 +1170,7 @@ describe('IncidentGroupsView filters and paging', () => {
     });
 
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      '3 label.group-lowercase-plural'
+      'label.group-count:3'
     );
     expect(currentPageInput()).toHaveAttribute('max', '1');
   });
@@ -1184,7 +1210,7 @@ describe('IncidentGroupsView filters and paging', () => {
     });
 
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      '1 label.group-lowercase'
+      'label.group-count:1'
     );
   });
 
@@ -1252,6 +1278,28 @@ describe('IncidentGroupsView filters and paging', () => {
     await waitFor(() =>
       expect(screen.getByTestId('group-open-def-unique')).toHaveFocus()
     );
+  });
+
+  it('should keep filters cleared in the drill-down once it is closed', async () => {
+    await act(async () => {
+      renderView('/observability/incident-manager?assignee=aaron');
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('group-open-def-unique'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('detail-clear-filters'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('detail-back'));
+    });
+
+    const search = screen.getByTestId('location-search').textContent;
+
+    expect(search).not.toContain('assignee=aaron');
+    expect(search).not.toContain('group=');
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
   });
 
   it('should keep the groups page across a drill-down', async () => {
@@ -1354,6 +1402,42 @@ describe('IncidentGroupsView filters and paging', () => {
     );
   });
 
+  it('should say a failed read of the linked group in place and retry it', async () => {
+    let isDown = true;
+    mockListIncidentGroups.mockImplementation(
+      async ({ group }: { group?: string }) => {
+        if (group === undefined) {
+          return { data: mockGroups.slice(0, 2), paging: { total: 25 } };
+        }
+        if (isDown) {
+          throw new Error('failure');
+        }
+
+        return { data: [mockGroups[2]], paging: { total: 1 } };
+      }
+    );
+
+    await act(async () => {
+      renderView('/observability/incident-manager?group=def-not-null');
+    });
+
+    expect(
+      screen.getByTestId('incident-group-detail-error')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('incident-group-detail-missing')
+    ).not.toBeInTheDocument();
+
+    isDown = false;
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+    });
+
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeNotNull:1'
+    );
+  });
+
   it('should say so when the linked group has no open incident left', async () => {
     mockListIncidentGroups.mockImplementation(
       async ({ group }: { group?: string }) =>
@@ -1415,16 +1499,17 @@ describe('IncidentGroupsView filters and paging', () => {
       renderView('/observability/incident-manager?group=def-unique');
     });
 
-    expect(showErrorToast).toHaveBeenCalled();
+    // The view says so in place, so no toast repeats it.
+    expect(showErrorToast).not.toHaveBeenCalled();
     expect(
-      screen.getByTestId('incident-group-detail-missing')
+      screen.getByTestId('incident-group-detail-error')
     ).toBeInTheDocument();
   });
 
   it('should hide the drawer while the page is kept hidden behind another route', async () => {
     const { rerender } = render(
       <MemoryRouter initialEntries={['/observability/incident-manager']}>
-        <IncidentGroupsView />
+        <IncidentGroupsView canEditIncidents />
       </MemoryRouter>
     );
     await act(async () => {
@@ -1438,7 +1523,7 @@ describe('IncidentGroupsView filters and paging', () => {
     rerender(
       <MemoryRouter initialEntries={['/observability/incident-manager']}>
         <RouteVisibilityProvider isVisible={false}>
-          <IncidentGroupsView />
+          <IncidentGroupsView canEditIncidents />
         </RouteVisibilityProvider>
       </MemoryRouter>
     );
@@ -1446,6 +1531,24 @@ describe('IncidentGroupsView filters and paging', () => {
     expect(
       screen.queryByTestId('incident-group-drawer')
     ).not.toBeInTheDocument();
+  });
+
+  it('should offer no selection to a user who cannot change incidents', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          <IncidentGroupsView canEditIncidents={false} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('table-is-selectable')).toHaveTextContent(
+      'false'
+    );
+
+    fireEvent.click(screen.getByTestId('select-first-group'));
+
+    expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
   });
 
   describe('bulk changes', () => {
@@ -1457,6 +1560,13 @@ describe('IncidentGroupsView filters and paging', () => {
         unchanged: 0,
       });
     });
+
+    const pickAndConfirm = async (testId: string) => {
+      fireEvent.click(screen.getByTestId(testId));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('bulk-status-modal-apply'));
+      });
+    };
 
     const renderSelected = async () => {
       await act(async () => {
@@ -1491,13 +1601,11 @@ describe('IncidentGroupsView filters and paging', () => {
       expect(screen.getByTestId('selected-count')).toHaveTextContent('3');
     });
 
-    it('should acknowledge the selected groups straight away and re-read them', async () => {
+    it('should acknowledge the selected groups once confirmed and re-read them', async () => {
       await renderSelected();
       const reads = mockListIncidentGroups.mock.calls.length;
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-ack'));
-      });
+      await pickAndConfirm('bulk-ack');
 
       expect(mockApplyBulkChange).toHaveBeenCalledWith([mockGroups[0]], {
         kind: 'status',
@@ -1508,6 +1616,34 @@ describe('IncidentGroupsView filters and paging', () => {
       );
       expect(mockListIncidentGroups.mock.calls.length).toBeGreaterThan(reads);
       expect(screen.queryByTestId('selection-bar')).not.toBeInTheDocument();
+    });
+
+    it('should not acknowledge until the change is confirmed', async () => {
+      await renderSelected();
+
+      fireEvent.click(screen.getByTestId('bulk-ack'));
+
+      expect(mockApplyBulkChange).not.toHaveBeenCalled();
+      expect(screen.getByTestId('bulk-status-modal-status')).toHaveTextContent(
+        CreateStatusTypes.ACK
+      );
+
+      fireEvent.click(screen.getByTestId('bulk-status-modal-cancel'));
+
+      expect(mockApplyBulkChange).not.toHaveBeenCalled();
+      expect(screen.getByTestId('selection-bar')).toBeInTheDocument();
+    });
+
+    it('should re-read the groups even when the change fails part way', async () => {
+      mockApplyBulkChange.mockRejectedValue(new Error('failure'));
+      await renderSelected();
+      const reads = mockListIncidentGroups.mock.calls.length;
+
+      await pickAndConfirm('bulk-ack');
+
+      expect(showErrorToast).toHaveBeenCalled();
+      expect(mockListIncidentGroups.mock.calls.length).toBeGreaterThan(reads);
+      expect(screen.queryByTestId('bulk-status-modal')).not.toBeInTheDocument();
     });
 
     it('should ask for the assignee before assigning', async () => {
@@ -1545,9 +1681,7 @@ describe('IncidentGroupsView filters and paging', () => {
     it('should change the severity of the selected groups', async () => {
       await renderSelected();
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-severity'));
-      });
+      await pickAndConfirm('bulk-severity');
 
       expect(mockApplyBulkChange).toHaveBeenCalledWith([mockGroups[0]], {
         kind: 'severity',
@@ -1564,9 +1698,7 @@ describe('IncidentGroupsView filters and paging', () => {
       });
       await renderSelected();
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-ack'));
-      });
+      await pickAndConfirm('bulk-ack');
 
       expect(screen.getByTestId('bulk-failures-count')).toHaveTextContent('2');
       expect(showSuccessToast).not.toHaveBeenCalled();
@@ -1587,9 +1719,7 @@ describe('IncidentGroupsView filters and paging', () => {
       });
       await renderSelected();
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-ack'));
-      });
+      await pickAndConfirm('bulk-ack');
 
       expect(showSuccessToast).toHaveBeenCalledWith(
         'message.bulk-incident-update-success-skipped:2'
@@ -1648,9 +1778,7 @@ describe('IncidentGroupsView filters and paging', () => {
       });
       await renderSelected();
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-ack'));
-      });
+      await pickAndConfirm('bulk-ack');
 
       expect(showInfoToast).toHaveBeenCalledWith(
         'message.bulk-incident-no-change'
@@ -1661,9 +1789,7 @@ describe('IncidentGroupsView filters and paging', () => {
       mockApplyBulkChange.mockRejectedValue(new Error('failure'));
       await renderSelected();
 
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('bulk-ack'));
-      });
+      await pickAndConfirm('bulk-ack');
 
       expect(mockShowError).toHaveBeenCalled();
     });

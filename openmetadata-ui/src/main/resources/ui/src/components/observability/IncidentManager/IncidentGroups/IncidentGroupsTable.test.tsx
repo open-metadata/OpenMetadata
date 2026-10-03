@@ -23,6 +23,17 @@ import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { IncidentTrendSparklineProps } from './IncidentGroups.types';
 import IncidentGroupsTable from './IncidentGroupsTable';
 
+// The global mock drops the interpolated values; the related badge is a count,
+// so this one keeps it to assert what the badge was handed.
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string, options?: { count?: number }) =>
+      options?.count === undefined ? key : `${key}:${options.count}`,
+    i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
+  }),
+}));
+
 jest.mock('./IncidentTrendSparkline', () => ({
   __esModule: true,
   default: jest
@@ -112,12 +123,14 @@ const fixtureGroup: TestCaseIncidentGroup = {
 const renderTable = (
   groups: TestCaseIncidentGroup[] = [fixtureGroup],
   groupBy = IncidentGroupBy.Table,
-  selectedKeys: ReadonlySet<string> = new Set()
+  selectedKeys: ReadonlySet<string> = new Set(),
+  isSelectable = true
 ) =>
   render(
     <IncidentGroupsTable
       groupBy={groupBy}
       groups={groups}
+      isSelectable={isSelectable}
       selectedKeys={selectedKeys}
       sortType="desc"
       onGroupOpen={mockOnGroupOpen}
@@ -139,7 +152,7 @@ describe('IncidentGroupsTable', () => {
       'Row count · Uniqueness · Null check'
     );
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '3 label.type-lowercase-plural'
+      'label.type-count:3'
     );
     expect(screen.getByTestId('group-incident-count')).toHaveTextContent('5');
     expect(screen.getByTestId('group-severity')).toHaveTextContent(
@@ -288,7 +301,7 @@ describe('IncidentGroupsTable', () => {
     );
 
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '3 label.table-lowercase-plural'
+      'label.table-count:3'
     );
     // The array is capped server-side, so the sub-line lists what it holds
     // while the pill counts from the field.
@@ -304,7 +317,7 @@ describe('IncidentGroupsTable', () => {
     );
 
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '1 label.table-lowercase'
+      'label.table-count:1'
     );
   });
 
@@ -335,7 +348,7 @@ describe('IncidentGroupsTable', () => {
     ]);
 
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '1 label.type-lowercase'
+      'label.type-count:1'
     );
   });
 
@@ -379,6 +392,13 @@ describe('IncidentGroupsTable', () => {
 
     expect(mockOnGroupSelect).toHaveBeenCalledWith(fixtureGroup, true);
     expect(mockOnGroupPreview).not.toHaveBeenCalled();
+  });
+
+  it('should offer no checkboxes to a user who cannot change incidents', () => {
+    renderTable([fixtureGroup], IncidentGroupBy.Table, new Set(), false);
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.getByTestId('group-severity')).toBeInTheDocument();
   });
 
   it('should show a partly selected page and select all of it', () => {
