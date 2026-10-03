@@ -1578,7 +1578,8 @@ export const fillRecursiveColumnDetails = async (
 export const firstTimeGridAddRowAction = async (page: Page) => {
   const firstRow = page.getByTestId('rdg-row-0');
   if ((await firstRow.count()) > 0) {
-    const firstCell = firstRow.locator(`.${getGridColumnClass('name')}`);
+    // eslint-disable-next-line om-playwright/no-positional-locator -- react-data-grid virtualises columns, so the name column is not always rendered; the leftmost rendered cell is what the focus assertions below are about
+    const firstCell = firstRow.locator('.rdg-cell').first();
     const hasFirstRowContent = await firstRow
       .locator('.rdg-cell')
       .evaluateAll((cells) =>
@@ -1740,7 +1741,8 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
   });
 
   const firstRow = page.getByTestId('rdg-row-0');
-  const firstCell = firstRow.locator(`.${getGridColumnClass('displayName')}`);
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see firstTimeGridAddRowAction: column virtualisation means a column class may not be rendered
+  const firstCell = firstRow.locator('.rdg-cell').nth(1);
 
   await displayNameHeader.click();
 
