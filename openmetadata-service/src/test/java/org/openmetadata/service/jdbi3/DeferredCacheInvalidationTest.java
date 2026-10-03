@@ -195,7 +195,7 @@ class DeferredCacheInvalidationTest {
   }
 
   private static String readThroughL1(final Pipeline pipeline) {
-    return EntityRepository.CACHE_WITH_ID.getUnchecked(idKey(pipeline));
+    return EntityRepository.CACHE_WITH_ID.get(idKey(pipeline));
   }
 
   private static Pair<String, UUID> idKey(final Pipeline pipeline) {

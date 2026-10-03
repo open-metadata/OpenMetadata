@@ -1,5 +1,6 @@
 package org.openmetadata.service.cache;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.lettuce.core.LettuceFutures;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisFuture;
@@ -12,6 +13,8 @@ import io.lettuce.core.api.sync.RedisCommands;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -50,6 +53,7 @@ public class RedisCacheProvider implements CacheProvider {
   private static final int FAILURE_THRESHOLD = 5;
   private static final long FAILURE_WINDOW_MS = 30_000L;
   private static final int RECOVERY_THRESHOLD = 3;
+  private static final int MAX_UNCONFIRMED_KEYS = 20_000;
 
   private final CacheConfig config;
   private final CacheKeys keys;
@@ -74,6 +78,13 @@ public class RedisCacheProvider implements CacheProvider {
   // write, and vice versa. The methods themselves are not on the hot path (one call per Redis
   // op outcome), so the lock cost is negligible compared to the round-trip we're already paying.
   private final Object stateLock = new Object();
+
+  // A write skipped while unavailable, or one that failed, leaves Redis holding the value from
+  // before it for up to the entity TTL (an hour by default), and every server reads it once the
+  // provider recovers. Each health check deletes these keys, before it reports Redis healthy again.
+  // setIfAbsent/deleteIfValue are not tracked: they guard locks, which expire on their own, and a
+  // late delete could release a lock another server has acquired since.
+  private final UnconfirmedWrites unconfirmedWrites = new UnconfirmedWrites(MAX_UNCONFIRMED_KEYS);
 
   // Serializes pipelined operations (currently {@link #mget}) that toggle
   // {@code setAutoFlushCommands(false)} on the shared Lettuce connection. Without this lock
@@ -125,26 +136,85 @@ public class RedisCacheProvider implements CacheProvider {
         this::healthCheck, intervalMs, intervalMs, TimeUnit.MILLISECONDS);
   }
 
-  private void healthCheck() {
+  @VisibleForTesting
+  void healthCheck() {
     try {
       String reply = syncCommands.ping();
       if (!"PONG".equalsIgnoreCase(reply)) {
         recordFailure(new IllegalStateException("Unexpected PING reply: " + reply));
         return;
       }
+      deleteUnconfirmedWrites();
       recordSuccess();
     } catch (Exception e) {
       recordFailure(e);
     }
   }
 
+  private void deleteUnconfirmedWrites() {
+    if (unconfirmedWrites.isEmpty()) {
+      return;
+    }
+    Map<String, Long> batch = unconfirmedWrites.snapshot(MAX_UNCONFIRMED_KEYS);
+    // One UNLINK per key, pipelined: a multi-key UNLINK fails with CROSSSLOT on a clustered
+    // endpoint, the same reason mget issues per-key GETs.
+    List<RedisFuture<?>> deletes = new ArrayList<>(batch.size());
+    batch.keySet().forEach(key -> deletes.add(asyncCommands.unlink(key)));
+    awaitAll(deletes);
+    unconfirmedWrites.forget(batch);
+    logDeletedUnconfirmedWrites(batch.size(), unconfirmedWrites.takeUntrackedCount());
+  }
+
+  private static void logDeletedUnconfirmedWrites(int deleted, long untracked) {
+    LOG.info("Deleted {} Redis keys whose last write may not have reached Redis", deleted);
+    if (untracked > 0) {
+      LOG.warn(
+          "{} more writes did not reach Redis beyond the {}-key tracking limit; those keys keep"
+              + " their older value until their TTL",
+          untracked,
+          MAX_UNCONFIRMED_KEYS);
+    }
+  }
+
+  /** Whether a write must be skipped; if so its keys are remembered for deletion on recovery. */
+  private boolean skippedWhileUnavailable(String... writtenKeys) {
+    return skippedWhileUnavailable(Arrays.asList(writtenKeys));
+  }
+
+  private boolean skippedWhileUnavailable(Collection<String> writtenKeys) {
+    return !available && recordIfStillUnavailable(writtenKeys);
+  }
+
+  /**
+   * Re-checks under {@link #stateLock}, which the recovery flip also takes: a write that saw the
+   * provider down is either recorded before recovery becomes visible or sent to Redis after it.
+   */
+  private boolean recordIfStillUnavailable(Collection<String> writtenKeys) {
+    synchronized (stateLock) {
+      boolean skipped = !available;
+      if (skipped) {
+        unconfirmedWrites.record(writtenKeys);
+      }
+      return skipped;
+    }
+  }
+
+  private void recordWriteFailure(Exception e, String... writtenKeys) {
+    recordWriteFailure(e, Arrays.asList(writtenKeys));
+  }
+
+  private void recordWriteFailure(Exception e, Collection<String> writtenKeys) {
+    unconfirmedWrites.record(writtenKeys);
+    recordFailure(e);
+  }
+
   /**
    * Record a successful Redis operation (real op or health-check PING). When the provider is in
    * the unavailable state, this counts toward {@link #RECOVERY_THRESHOLD}; once we've seen that
-   * many consecutive successes the flag flips back. While available, success just trims the
-   * failure-window deque. Critical that single-PING-success no longer flips us back: that
-   * caused the flapping behaviour where every health-check window let one more real op pay a
-   * timeout before going to fast-fail again.
+   * many consecutive successes and deleted every tracked write, the flag flips back. While
+   * available, success just trims the failure-window deque. Critical that single-PING-success no
+   * longer flips us back: that caused the flapping behaviour where every health-check window let
+   * one more real op pay a timeout before going to fast-fail again.
    *
    * <p>Synchronized with {@link #recordFailure(Exception)} on {@link #stateLock} so a concurrent
    * failure can't be racing with the {@code consecutiveSuccesses}/{@code available} transitions.
@@ -153,7 +223,10 @@ public class RedisCacheProvider implements CacheProvider {
     synchronized (stateLock) {
       if (!available) {
         int n = consecutiveSuccesses.incrementAndGet();
-        if (n >= RECOVERY_THRESHOLD) {
+        // Skipped writes are recorded under this lock too. If a write arrived during cleanup,
+        // keep reads disabled until the next health check deletes it. Publishing availability
+        // before a second cleanup let readers cache the stale value in that gap.
+        if (n >= RECOVERY_THRESHOLD && unconfirmedWrites.isEmpty()) {
           available = true;
           failureTimestamps.clear();
           consecutiveSuccesses.set(0);
@@ -294,7 +367,12 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public void set(String key, String value, Duration ttl) {
-    if (!available) return;
+    trySet(key, value, ttl);
+  }
+
+  @Override
+  public boolean trySet(String key, String value, Duration ttl) {
+    if (skippedWhileUnavailable(key)) return false;
 
     CacheMetrics m = metrics();
     Timer.Sample sample = startWriteTimer(m);
@@ -303,10 +381,12 @@ public class RedisCacheProvider implements CacheProvider {
       syncCommands.set(key, value, args);
       if (m != null) m.recordWrite();
       recordSuccess();
+      return true;
     } catch (Exception e) {
       if (m != null) m.recordError();
-      recordFailure(e);
+      recordWriteFailure(e, key);
       LOG.error("Error setting key: {}", key, e);
+      return false;
     } finally {
       stopWriteTimer(m, sample);
     }
@@ -337,7 +417,7 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public void del(String... keys) {
-    if (!available || keys.length == 0) return;
+    if (keys.length == 0 || skippedWhileUnavailable(keys)) return;
 
     CacheMetrics m = metrics();
     Timer.Sample sample = startWriteTimer(m);
@@ -347,7 +427,7 @@ public class RedisCacheProvider implements CacheProvider {
       recordSuccess();
     } catch (Exception e) {
       if (m != null) m.recordError();
-      recordFailure(e);
+      recordWriteFailure(e, keys);
       LOG.error("Error deleting keys", e);
     } finally {
       stopWriteTimer(m, sample);
@@ -409,7 +489,12 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public void hset(String key, Map<String, String> fields, Duration ttl) {
-    if (!available || fields.isEmpty()) return;
+    tryHset(key, fields, ttl);
+  }
+
+  @Override
+  public boolean tryHset(String key, Map<String, String> fields, Duration ttl) {
+    if (fields.isEmpty() || skippedWhileUnavailable(key)) return false;
 
     CacheMetrics m = metrics();
     Timer.Sample sample = startWriteTimer(m);
@@ -420,10 +505,12 @@ public class RedisCacheProvider implements CacheProvider {
       }
       if (m != null) m.recordWrite();
       recordSuccess();
+      return true;
     } catch (Exception e) {
       if (m != null) m.recordError();
-      recordFailure(e);
+      recordWriteFailure(e, key);
       LOG.error("Error setting hash fields: {}", key, e);
+      return false;
     } finally {
       stopWriteTimer(m, sample);
     }
@@ -431,7 +518,7 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public void hset(String key, Map<String, String> fields) {
-    if (!available || fields.isEmpty()) return;
+    if (fields.isEmpty() || skippedWhileUnavailable(key)) return;
     CacheMetrics m = metrics();
     Timer.Sample sample = startWriteTimer(m);
     try {
@@ -442,7 +529,7 @@ public class RedisCacheProvider implements CacheProvider {
       recordSuccess();
     } catch (Exception e) {
       if (m != null) m.recordError();
-      recordFailure(e);
+      recordWriteFailure(e, key);
       LOG.error("Error setting hash fields (no-ttl): {}", key, e);
     } finally {
       stopWriteTimer(m, sample);
@@ -451,7 +538,7 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public boolean expireIfAbsent(String key, Duration ttl) {
-    if (!available || ttl == null || ttl.getSeconds() <= 0) return false;
+    if (ttl == null || ttl.getSeconds() <= 0 || skippedWhileUnavailable(key)) return false;
     try {
       // EXPIRE key seconds NX — only set when no prior TTL exists. Available since Redis 7.0;
       // Lettuce exposes it via ExpireArgs.Builder.nx(). Returns true on the first writer to
@@ -474,7 +561,7 @@ public class RedisCacheProvider implements CacheProvider {
         recordSuccess();
         return result;
       } catch (Exception fallback) {
-        recordFailure(fallback);
+        recordWriteFailure(fallback, key);
         LOG.debug("Plain EXPIRE fallback also failed for key={}", key, fallback);
         return false;
       }
@@ -483,7 +570,7 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public void hdel(String key, String... fields) {
-    if (!available || fields.length == 0) return;
+    if (fields.length == 0 || skippedWhileUnavailable(key)) return;
 
     CacheMetrics m = metrics();
     Timer.Sample sample = startWriteTimer(m);
@@ -493,7 +580,7 @@ public class RedisCacheProvider implements CacheProvider {
       recordSuccess();
     } catch (Exception e) {
       if (m != null) m.recordError();
-      recordFailure(e);
+      recordWriteFailure(e, key);
       LOG.error("Error deleting hash fields: {}", key, e);
     } finally {
       stopWriteTimer(m, sample);
@@ -502,7 +589,7 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public void pipelineSet(Map<String, String> keyValues, Duration ttl) {
-    if (!available || keyValues.isEmpty()) return;
+    if (keyValues.isEmpty() || skippedWhileUnavailable(keyValues.keySet())) return;
 
     CacheMetrics m = metrics();
     Timer.Sample sample = startWriteTimer(m);
@@ -519,7 +606,7 @@ public class RedisCacheProvider implements CacheProvider {
       recordSuccess();
     } catch (RuntimeException e) {
       if (m != null) m.recordError();
-      recordFailure(e);
+      recordWriteFailure(e, keyValues.keySet());
       LOG.error("Error on pipelineSet (batch={})", keyValues.size(), e);
       throw e;
     } finally {
@@ -529,7 +616,7 @@ public class RedisCacheProvider implements CacheProvider {
 
   @Override
   public void pipelineHset(Map<String, Map<String, String>> keyFields, Duration ttl) {
-    if (!available || keyFields.isEmpty()) return;
+    if (keyFields.isEmpty() || skippedWhileUnavailable(keyFields.keySet())) return;
 
     CacheMetrics m = metrics();
     Timer.Sample sample = startWriteTimer(m);
@@ -549,7 +636,7 @@ public class RedisCacheProvider implements CacheProvider {
       recordSuccess();
     } catch (RuntimeException e) {
       if (m != null) m.recordError();
-      recordFailure(e);
+      recordWriteFailure(e, keyFields.keySet());
       LOG.error("Error on pipelineHset (batch={})", keyFields.size(), e);
       throw e;
     } finally {
