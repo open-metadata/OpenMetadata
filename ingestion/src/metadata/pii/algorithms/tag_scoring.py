@@ -125,20 +125,31 @@ class TagScorer:
         ]
 
         recognizer_id = None
-        for recognizer_config in analysis.tag.recognizers or []:
-            if isinstance(recognizer_config.recognizerConfig.root, PredefinedRecognizer):
-                config_name = recognizer_config.recognizerConfig.root.name.value
-                # Predefined recognizers may be wrapped by subclasses at runtime (e.g.
-                # DateRecognizer → ValidatedDateRecognizer). Accept both an exact match
-                # and a suffix match so the configured name is always resolved correctly.
-                if recognizer_name == config_name or recognizer_name.endswith(config_name):
-                    recognizer_id = recognizer_config.id
-                    recognizer_name = config_name
-                    break
-            else:
-                if recognizer_config.name.root == recognizer_name:
-                    recognizer_id = recognizer_config.id
-                    break
+        configs = analysis.tag.recognizers or []
+
+        def _config_name(cfg) -> str:
+            if isinstance(cfg.recognizerConfig.root, PredefinedRecognizer):
+                return cfg.recognizerConfig.root.name.value
+            return cfg.name.root
+
+        # Pass 1: exact match across all configs (prevents custom recognizers named
+        # like "CustomEmailRecognizer" from being stolen by a predefined "EmailRecognizer"
+        # via the suffix fallback in pass 2).
+        for recognizer_config in configs:
+            if _config_name(recognizer_config) == recognizer_name:
+                recognizer_id = recognizer_config.id
+                break
+
+        # Pass 2: suffix match for predefined recognizers only (handles runtime subclasses
+        # like DateRecognizer → ValidatedDateRecognizer that prepend a qualifier).
+        if not recognizer_id:
+            for recognizer_config in configs:
+                if isinstance(recognizer_config.recognizerConfig.root, PredefinedRecognizer):
+                    config_name = recognizer_config.recognizerConfig.root.name.value
+                    if recognizer_name.endswith(config_name):
+                        recognizer_id = recognizer_config.id
+                        recognizer_name = config_name
+                        break
 
         if not recognizer_id:
             return None

@@ -771,3 +771,42 @@ class TestBuildRecognizerMetadata:
         assert meta is not None
         assert meta.recognizerId == configured_id
         assert meta.recognizerName == Name.CreditCardRecognizer.value
+
+    def test_custom_recognizer_not_stolen_by_predefined_suffix_match(self):
+        """Custom recognizer named 'CustomEmailRecognizer' must NOT be mis-attributed
+        to a predefined 'EmailRecognizer' via the suffix fallback when the exact
+        custom name should match first."""
+        # Build a tag with a predefined EmailRecognizer first, then a custom one
+        pred_rec = RecognizerFactory.create(
+            name=Name.EmailRecognizer.value,
+            recognizerConfig=PredefinedRecognizerFactory.create(name=Name.EmailRecognizer),
+            target=Target.content,
+        )
+        pat = PatternFactory.create(name="p", regex=".*", score=0.9)
+        pat_rec = PatternRecognizerFactory.create(
+            patterns=[pat], context=[], supportedLanguage=ClassificationLanguage.en
+        )
+        custom_rec = RecognizerFactory.create(
+            name="CustomEmailRecognizer",
+            recognizerConfig=pat_rec,
+            target=Target.content,
+        )
+        tag = TagFactory.create(
+            tag_name="TestTag",
+            autoClassificationEnabled=True,
+            recognizers=[pred_rec, custom_rec],
+        )
+        custom_id = custom_rec.id
+
+        analysis = TagAnalysis(
+            tag=tag,
+            score=0.9,
+            explanation=None,
+            recognizer_results=[self._make_result("CustomEmailRecognizer", 0.9)],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        # Must be attributed to the custom recognizer, not the predefined one
+        assert meta.recognizerId == custom_id
+        assert meta.recognizerName == "CustomEmailRecognizer"
