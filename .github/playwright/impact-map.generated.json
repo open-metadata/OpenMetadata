@@ -6360,6 +6360,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/TestSummary/TestSummary.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
       ]
     },

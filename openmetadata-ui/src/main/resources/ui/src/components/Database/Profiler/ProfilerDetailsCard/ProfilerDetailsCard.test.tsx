@@ -11,30 +11,26 @@
  *  limitations under the License.
  */
 
+import {
+  AreaChart,
+  LineChart,
+  type CartesianChartProps,
+} from '@openmetadata/ui-core-components/charts';
 import { queryByAttribute, render, screen } from '@testing-library/react';
-import '../../../../test/unit/mocks/recharts.mock';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
 
-jest.mock('../../../../hooks/useChartColors', () => ({
-  useChartColors: jest.fn().mockReturnValue({ grid: '#234567' }),
-}));
-
-// Mock utility functions
 jest.mock('../../../../utils/ChartUtils', () => ({
-  axisTickFormatter: jest.fn(),
-  tooltipFormatter: jest.fn(),
-  updateActiveChartFilter: jest.fn(),
-  createHorizontalGridLineRenderer: jest.fn(() => jest.fn()),
+  axisTickFormatter: jest.fn(
+    (value: number, unit?: string) => `${value}${unit ?? ''}`
+  ),
+  tooltipFormatter: jest.fn((value: number | string) => `fmt:${value}`),
 }));
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
-  formatDateTimeLong: jest.fn(),
-  getEpochMillisForPastDays: jest.fn().mockReturnValue(1609459200000),
-  getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
+  formatDateTimeLong: jest.fn((ts: number) => `date:${ts}`),
 }));
 
-// Existing mocks
 jest.mock('../ProfilerLatestValue/ProfilerLatestValue', () =>
   jest.fn(() => <div>ProfilerLatestValue</div>)
 );
@@ -43,72 +39,115 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../../../utils/DataInsightUtils', () => ({
-  CustomTooltip: jest.fn(() => <div>CustomTooltip</div>),
+jest.mock('../../../../constants/profiler.constant', () => ({
+  PROFILER_CHART_DATA_SIZE: 500,
 }));
-jest.mock('../../../../constants/profiler.constant', () => {
-  return {
-    PROFILER_CHART_DATA_SIZE: 500,
-    DEFAULT_SELECTED_RANGE: {
-      key: 'last7Days',
-      title: 'Last 7 days',
-      days: 7,
-    },
-  };
-});
 
-// Improve mock data to be minimal
+type Row = Record<string, string | number | undefined>;
+const lineProps = () =>
+  (
+    LineChart as unknown as jest.Mock<null, [CartesianChartProps<Row>]>
+  ).mock.calls.at(-1)?.[0] as CartesianChartProps<Row>;
+const areaProps = () =>
+  (
+    AreaChart as unknown as jest.Mock<null, [CartesianChartProps<Row>]>
+  ).mock.calls.at(-1)?.[0] as CartesianChartProps<Row>;
+
 const mockProps: ProfilerDetailsCardProps = {
   chartCollection: {
-    data: [{ name: 'test', value: 1 }],
-    information: [{ dataKey: 'value', title: 'Test', color: '#000' }],
+    data: [{ name: 'Mon', timestamp: 1, value: 1, other: 2 }],
+    information: [
+      { dataKey: 'value', title: 'Value' },
+      { dataKey: 'other', title: 'Other', status: 'warning' },
+    ],
   },
   name: 'rowCount',
+  title: 'Data count',
 };
 
-const mockData = Array.from({ length: 501 }, (_, index) => ({
-  name: `test ${index}`,
-  value: index,
-}));
+describe('ProfilerDetailsCard', () => {
+  beforeEach(() => jest.clearAllMocks());
 
-describe('ProfilerDetailsCard Test', () => {
-  it('Component should render', async () => {
+  it('renders a line chart with one series per metric', () => {
     const { container } = render(<ProfilerDetailsCard {...mockProps} />);
 
     expect(
-      await screen.findByTestId('profiler-details-card-container')
+      screen.getByTestId('profiler-details-card-container')
     ).toBeInTheDocument();
     expect(
-      queryByAttribute('id', container, `${mockProps.name}_graph`)
+      queryByAttribute('id', container, 'rowCount_graph')
     ).toBeInTheDocument();
-    expect(screen.queryByText('Brush')).not.toBeInTheDocument();
+    expect(lineProps().series).toEqual([
+      { key: 'value', name: 'Value', status: undefined },
+      { key: 'other', name: 'Other', status: 'warning' },
+    ]);
+    expect(lineProps().xKey).toBe('name');
+    expect(lineProps().ariaLabel).toBe('Data count');
+    expect(lineProps().zoom).toBe('auto');
+    expect(lineProps().zoomVisiblePoints).toBe(500);
   });
 
-  it('Component should render brush when data length is greater than PROFILER_CHART_DATA_SIZE', async () => {
+  it('renders an area chart for chartType area', () => {
+    render(<ProfilerDetailsCard {...mockProps} chartType="area" />);
+
+    expect(areaProps().series).toHaveLength(2);
+    expect(LineChart).not.toHaveBeenCalled();
+  });
+
+  it('formats ticks with the unit and uses a category axis for strings', () => {
+    const { rerender } = render(
+      <ProfilerDetailsCard {...mockProps} tickFormatter="%" />
+    );
+
+    expect(lineProps().yAxis).toEqual(
+      expect.objectContaining({ type: 'value' })
+    );
+    expect(
+      (lineProps().yAxis as { formatter: (v: number) => string }).formatter(5)
+    ).toBe('5%');
+
+    rerender(<ProfilerDetailsCard {...mockProps} showYAxisCategory />);
+
+    expect(lineProps().yAxis).toEqual({ type: 'category' });
+  });
+
+  it('renders the Data Quality tooltip with the date and formatted values', () => {
+    render(<ProfilerDetailsCard {...mockProps} />);
+    const content = lineProps().tooltip?.render?.(
+      [
+        {
+          seriesKey: 'value',
+          name: 'Value',
+          value: 1,
+          color: '#100000',
+          dataIndex: 0,
+        },
+        {
+          seriesKey: 'other',
+          name: 'Other',
+          value: null,
+          color: '#a0a000',
+          dataIndex: 0,
+        },
+      ],
+      mockProps.chartCollection.data[0]
+    );
+    render(<>{content}</>);
+
+    expect(screen.getByText('date:1')).toBeInTheDocument();
+    expect(screen.getByText('fmt:1')).toBeInTheDocument();
+    expect(screen.queryByText('Other')).not.toBeInTheDocument();
+  });
+
+  it('shows the placeholder when there is no data', () => {
     render(
       <ProfilerDetailsCard
         {...mockProps}
-        chartCollection={{
-          data: mockData,
-          information: mockProps.chartCollection.information,
-        }}
+        chartCollection={{ data: [], information: [] }}
       />
     );
 
-    expect(screen.getByText('Brush')).toBeInTheDocument();
-  });
-
-  it('No data should be rendered', async () => {
-    render(
-      <ProfilerDetailsCard
-        {...mockProps}
-        chartCollection={{
-          data: [],
-          information: [],
-        }}
-      />
-    );
-
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(LineChart).not.toHaveBeenCalled();
   });
 });
