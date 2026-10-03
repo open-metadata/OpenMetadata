@@ -47,6 +47,7 @@ describe('incident group plural counts', () => {
     expect(t('label.group-count', { count: 5 })).toBe('<0>5</0> групп');
     expect(t('label.group-count', { count: 0 })).toBe('<0>0</0> групп');
     expect(t('label.table-count', { count: 22 })).toBe('22 таблицы');
+    expect(t('label.incident-count', { count: 21 })).toBe('<0>21</0> инцидент');
   });
 
   it('should pick the Arabic dual form', async () => {

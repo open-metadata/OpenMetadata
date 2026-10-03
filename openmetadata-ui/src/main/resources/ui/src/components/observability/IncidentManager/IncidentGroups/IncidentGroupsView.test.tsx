@@ -155,14 +155,19 @@ jest.mock('./IncidentGroupDrawer', () =>
 jest.mock('./IncidentGroupDetail', () =>
   jest
     .fn()
-    .mockImplementation(({ group, onBack }: IncidentGroupDetailProps) => (
-      <div data-testid="incident-group-detail">
-        <span data-testid="detail-group">{`${group.name}:${group.incidentCount}`}</span>
-        <button data-testid="detail-back" onClick={onBack}>
-          back
-        </button>
-      </div>
-    ))
+    .mockImplementation(
+      ({ group, onBack, onClearFilters }: IncidentGroupDetailProps) => (
+        <div data-testid="incident-group-detail">
+          <span data-testid="detail-group">{`${group.name}:${group.incidentCount}`}</span>
+          <button data-testid="detail-back" onClick={onBack}>
+            back
+          </button>
+          <button data-testid="detail-clear-filters" onClick={onClearFilters}>
+            clear
+          </button>
+        </div>
+      )
+    )
 );
 
 jest.mock('./IncidentGroupsFilters', () =>
@@ -1281,6 +1286,28 @@ describe('IncidentGroupsView filters and paging', () => {
     );
   });
 
+  it('should keep filters cleared in the drill-down once it is closed', async () => {
+    await act(async () => {
+      renderView('/observability/incident-manager?assignee=aaron');
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('group-open-def-unique'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('detail-clear-filters'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('detail-back'));
+    });
+
+    const search = screen.getByTestId('location-search').textContent;
+
+    expect(search).not.toContain('assignee=aaron');
+    expect(search).not.toContain('group=');
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+  });
+
   it('should keep the groups page across a drill-down', async () => {
     mockListIncidentGroups.mockResolvedValue({
       data: mockGroups,
@@ -1381,6 +1408,42 @@ describe('IncidentGroupsView filters and paging', () => {
     );
   });
 
+  it('should say a failed read of the linked group in place and retry it', async () => {
+    let isDown = true;
+    mockListIncidentGroups.mockImplementation(
+      async ({ group }: { group?: string }) => {
+        if (group === undefined) {
+          return { data: mockGroups.slice(0, 2), paging: { total: 25 } };
+        }
+        if (isDown) {
+          throw new Error('failure');
+        }
+
+        return { data: [mockGroups[2]], paging: { total: 1 } };
+      }
+    );
+
+    await act(async () => {
+      renderView('/observability/incident-manager?group=def-not-null');
+    });
+
+    expect(
+      screen.getByTestId('incident-group-detail-error')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('incident-group-detail-missing')
+    ).not.toBeInTheDocument();
+
+    isDown = false;
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+    });
+
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeNotNull:1'
+    );
+  });
+
   it('should say so when the linked group has no open incident left', async () => {
     mockListIncidentGroups.mockImplementation(
       async ({ group }: { group?: string }) =>
@@ -1442,9 +1505,10 @@ describe('IncidentGroupsView filters and paging', () => {
       renderView('/observability/incident-manager?group=def-unique');
     });
 
-    expect(showErrorToast).toHaveBeenCalled();
+    // The view says so in place, so no toast repeats it.
+    expect(showErrorToast).not.toHaveBeenCalled();
     expect(
-      screen.getByTestId('incident-group-detail-missing')
+      screen.getByTestId('incident-group-detail-error')
     ).toBeInTheDocument();
   });
 

@@ -23,7 +23,6 @@ import {
 } from '@openmetadata/ui-core-components';
 // The core-components icon barrel re-exports the design team's own SVG set
 import {
-  AlertCircle,
   Search,
   ShieldTick,
   TrendUp01,
@@ -50,6 +49,7 @@ import {
   hasActiveIncidentGroupFilters,
 } from './IncidentGroups.utils';
 import IncidentGroupsFilters from './IncidentGroupsFilters';
+import IncidentGroupsLoadError from './IncidentGroupsLoadError';
 import IncidentGroupsTable from './IncidentGroupsTable';
 import { useIncidentGroups } from './useIncidentGroups';
 
@@ -78,6 +78,8 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     detailKey,
     detailGroup,
     isDetailLoading,
+    isDetailError,
+    retryDetail,
     openGroup,
     closeGroup,
     handleGroupByChange,
@@ -157,25 +159,10 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
 
     if (isError) {
       return (
-        <Box
-          className="tw:relative tw:min-h-80 tw:w-full"
-          data-testid="incident-groups-error">
-          <EmptyPlaceholder
-            actions={[
-              {
-                key: 'retry',
-                color: 'secondary',
-                label: t('label.retry'),
-                onPress: retry,
-              },
-            ]}
-            icon={<AlertCircle className="tw:text-fg-error-primary" />}
-            title={t('server.entity-fetch-error', {
-              entity: t('label.incident-plural'),
-            })}
-            variant="blank"
-          />
-        </Box>
+        <IncidentGroupsLoadError
+          data-testid="incident-groups-error"
+          onRetry={retry}
+        />
       );
     }
 
@@ -255,12 +242,21 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
       );
     }
 
-    return isDetailLoading ? (
-      <Box
-        className="tw:min-h-80 tw:items-center tw:justify-center"
-        data-testid="incident-group-detail-loader">
-        <Loader />
-      </Box>
+    if (isDetailLoading) {
+      return (
+        <Box
+          className="tw:min-h-80 tw:items-center tw:justify-center"
+          data-testid="incident-group-detail-loader">
+          <Loader />
+        </Box>
+      );
+    }
+
+    return isDetailError ? (
+      <IncidentGroupsLoadError
+        data-testid="incident-group-detail-error"
+        onRetry={retryDetail}
+      />
     ) : (
       // The group a link names may have no open incident left in this scope.
       <Box
