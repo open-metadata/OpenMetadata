@@ -20,6 +20,7 @@ import { CheckChangeDescriptionForm } from './CheckChangeDescriptionForm';
 import { CheckConditionForm } from './CheckConditionForm';
 import { DataCompletenessForm } from './DataCompletenessForm';
 import { EndNodeForm } from './EndNodeForm';
+import { ResolvePendingChangeForm } from './ResolvePendingChangeForm';
 import { RevertBackForm } from './RevertBackForm';
 import { SchemaBasedNodeForm } from './SchemaBasedNodeForm';
 import { SetActionForm } from './SetActionForm';
@@ -104,6 +105,14 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
     ),
     [NodeSubType.RollbackEntityTask]: (
       <RevertBackForm
+        node={node}
+        onClose={onClose}
+        onDelete={onDelete}
+        onSave={onSave}
+      />
+    ),
+    [NodeSubType.ResolvePendingChangeTask]: (
+      <ResolvePendingChangeForm
         node={node}
         onClose={onClose}
         onDelete={onDelete}

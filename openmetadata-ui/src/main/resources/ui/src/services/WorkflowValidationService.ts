@@ -36,6 +36,7 @@ import {
   getNodeConfiguration,
   getNodeName,
 } from '../utils/WorkflowNodeConfigUtils';
+import { deserializeEventBasedFilters } from '../utils/WorkflowSerializationUtils';
 
 type NodeConfigWithMetadata = NodeConfig & {
   lastSaved?: string;
@@ -125,12 +126,11 @@ const resolveEventBasedInclude = (
   existingTriggerConfig: Record<string, unknown> | undefined,
   hasUserChanges: boolean
 ) => {
-  if (
-    hasUserChanges &&
-    Array.isArray(startNodeConfig.include) &&
-    startNodeConfig.include.length > 0
-  ) {
-    return startNodeConfig.include;
+  if (hasUserChanges && Array.isArray(startNodeConfig.include)) {
+    // An explicitly cleared list means "every field" and must not fall back to the saved include.
+    return startNodeConfig.include.length > 0
+      ? startNodeConfig.include
+      : undefined;
   }
 
   return existingTriggerConfig?.include;
@@ -142,11 +142,8 @@ const resolveEventBasedFilter = (
   existingTriggerConfig: Record<string, unknown> | undefined,
   hasUserChanges: boolean
 ) => {
-  if (
-    hasUserChanges &&
-    startNodeConfig.triggerFilter &&
-    startNodeConfig.triggerFilter.trim() !== ''
-  ) {
+  const triggerFilter = startNodeConfig.triggerFilter?.trim() ?? '';
+  if (hasUserChanges && triggerFilter !== '') {
     const filterObj: Record<string, string> = {};
     entityTypes.forEach((entityType) => {
       filterObj[entityType] = startNodeConfig.triggerFilter || '';
@@ -155,8 +152,30 @@ const resolveEventBasedFilter = (
     return filterObj;
   }
 
+  // The user emptied a filter that was shown to them: save no filter instead of the old one.
+  const savedFilter = deserializeEventBasedFilters(
+    existingTriggerConfig?.filter as Record<string, string> | undefined,
+    entityTypes
+  );
+  if (
+    hasUserChanges &&
+    startNodeConfig.triggerFilter !== undefined &&
+    savedFilter.trim() !== ''
+  ) {
+    return undefined;
+  }
+
   return existingTriggerConfig?.filter;
 };
+
+const resolveApprovalMode = (
+  startNodeConfig: NodeConfigWithMetadata,
+  existingTriggerConfig: Record<string, unknown> | undefined,
+  hasUserChanges: boolean
+) =>
+  hasUserChanges && startNodeConfig.approvalMode
+    ? startNodeConfig.approvalMode
+    : existingTriggerConfig?.approvalMode;
 
 const buildEventBasedTriggerConfig = (
   startNodeConfig: NodeConfigWithMetadata,
@@ -212,6 +231,15 @@ const buildEventBasedTriggerConfig = (
   );
   if (filter) {
     finalTriggerConfig.filter = filter;
+  }
+
+  const approvalMode = resolveApprovalMode(
+    startNodeConfig,
+    existingTriggerConfig,
+    hasUserChanges
+  );
+  if (approvalMode) {
+    finalTriggerConfig.approvalMode = approvalMode;
   }
 
   return finalTriggerConfig;

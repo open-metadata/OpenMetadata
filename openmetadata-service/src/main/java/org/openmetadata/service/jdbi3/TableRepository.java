@@ -2544,10 +2544,15 @@ public class TableRepository extends EntityRepository<Table> {
         throws IOException {
       EntityRepository<Table> repository =
           (EntityRepository<Table>) Entity.getEntityRepository(TABLE);
+      String result = ENTITY_UPDATED;
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, table);
-          repository.patch(null, table.getId(), importedBy, jsonPatch);
+          UUID pendingChangeRequestId =
+              repository.patch(null, table.getId(), importedBy, jsonPatch).pendingChangeRequestId();
+          if (pendingChangeRequestId != null) {
+            result = pendingApprovalDetail(pendingChangeRequestId);
+          }
         } catch (Exception ex) {
           for (int i = 1; i < records.size(); i++) {
             importFailure(resultsPrinter, ex.getMessage(), records.get(i));
@@ -2563,10 +2568,19 @@ public class TableRepository extends EntityRepository<Table> {
         // created
         // during import
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
+        if (wouldBeHeld(repository, originalTable, table)) {
+          result = ENTITY_PENDING_APPROVAL;
+        }
       }
 
+      // The columns are written as one patch; when it is held, every row reports the pending
+      // change request instead of an update.
+      boolean pending = !ENTITY_UPDATED.equals(result);
       for (int i = 1; i < records.size(); i++) {
-        importSuccess(resultsPrinter, records.get(i), ENTITY_UPDATED);
+        importSuccess(resultsPrinter, records.get(i), result);
+        if (pending) {
+          countPendingApproval();
+        }
       }
     }
 

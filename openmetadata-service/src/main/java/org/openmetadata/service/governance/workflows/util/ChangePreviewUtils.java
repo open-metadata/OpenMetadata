@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -40,6 +41,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 public final class ChangePreviewUtils {
 
   public static final String PROPOSED_CHANGES_KEY = "proposedChanges";
+  public static final String CHANGE_REQUEST_ID_KEY = "changeRequestId";
+  public static final String CHANGE_REQUEST_REVISION_KEY = "changeRequestRevision";
 
   private static final List<String> ID_KEYS =
       List.of("tagFQN", "fullyQualifiedName", "displayName", "name");
@@ -209,8 +212,19 @@ public final class ChangePreviewUtils {
    * merged map is empty (e.g. all changes cancelled out across re-edits).
    */
   public static Object buildProposedChangesPayload(EntityInterface entity, Object existingPayload) {
+    return buildProposedChangesPayload(entity, existingPayload, null);
+  }
+
+  /**
+   * Same as {@link #buildProposedChangesPayload(EntityInterface, Object)} for a task that reviews a
+   * change request: the request's pending revision is what the reviewer approves, so it wins over
+   * the entity's persisted diffs, which never contain it.
+   */
+  public static Object buildProposedChangesPayload(
+      EntityInterface entity, Object existingPayload, ChangeDescription pending) {
     if (entity == null) return existingPayload;
-    ChangeDescription changeDescription = pickIncrementalOrFull(entity);
+    ChangeDescription changeDescription =
+        hasNoChanges(pending) ? pickIncrementalOrFull(entity) : pending;
     if (hasNoChanges(changeDescription)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug(
@@ -221,7 +235,10 @@ public final class ChangePreviewUtils {
       return existingPayload;
     }
     try {
-      Map<String, FieldDiff> priorMap = extractProposedChanges(existingPayload);
+      // A change-request revision is already cumulative, so it replaces rather than merges any
+      // proposedChanges carried over from a prior revision's task.
+      Map<String, FieldDiff> priorMap =
+          hasNoChanges(pending) ? extractProposedChanges(existingPayload) : new LinkedHashMap<>();
       Map<String, FieldDiff> newMap = buildChangeMap(changeDescription);
       Map<String, FieldDiff> merged = mergeChangeMaps(priorMap, newMap);
       if (LOG.isDebugEnabled()) {
@@ -276,6 +293,17 @@ public final class ChangePreviewUtils {
    * the prior payload so the running merge base is preserved. Returns {@code requestedPayload}
    * unchanged when there is nothing to preserve.
    */
+  /**
+   * Stamps the change request and the exact revision a review task decides, so the resolver echoes
+   * the revision back and a decision can never be recorded against a different one.
+   */
+  public static Object withChangeRequestLink(Object payload, UUID changeRequestId, int revision) {
+    Map<String, Object> linked = cloneAsMutableMap(payload);
+    linked.put(CHANGE_REQUEST_ID_KEY, changeRequestId.toString());
+    linked.put(CHANGE_REQUEST_REVISION_KEY, revision);
+    return linked;
+  }
+
   public static Object preserveProposedChanges(Object requestedPayload, Object priorPayload) {
     if (!(requestedPayload instanceof Map<?, ?> requestedMap)) return requestedPayload;
     if (requestedMap.get(PROPOSED_CHANGES_KEY) != null) return requestedPayload;

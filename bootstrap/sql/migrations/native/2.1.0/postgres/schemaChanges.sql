@@ -378,6 +378,79 @@ ALTER TABLE announcement_entity
   GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Information')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
 
+-- Approval-gated change requests: request aggregate, immutable revisions, reviewer decisions and
+-- the single publication per request. activeInterceptKey is non-null only while an intercepted
+-- request is Pending, so the unique index allows at most one active request per (entity, requester).
+CREATE TABLE IF NOT EXISTS change_request (
+  id VARCHAR(36) NOT NULL,
+  entityType VARCHAR(256) NOT NULL,
+  entityId VARCHAR(36) NOT NULL,
+  requestedBy VARCHAR(256) NOT NULL,
+  workflowDefinitionId VARCHAR(36) NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  activeInterceptKey VARCHAR(300) DEFAULT NULL,
+  taskId VARCHAR(36) DEFAULT NULL,
+  deliveryStatus VARCHAR(32) NOT NULL,
+  deliveryAttempts INTEGER NOT NULL DEFAULT 0,
+  nextDeliveryAt BIGINT NOT NULL,
+  claimToken VARCHAR(36) DEFAULT NULL,
+  leaseUntil BIGINT DEFAULT NULL,
+  updatedAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_request_active_intercept_key ON change_request (activeInterceptKey);
+CREATE INDEX IF NOT EXISTS change_request_entity_status_index ON change_request (entityId, status);
+CREATE INDEX IF NOT EXISTS change_request_requester_status_index ON change_request (requestedBy, status);
+CREATE INDEX IF NOT EXISTS change_request_workflow_status_index ON change_request (workflowDefinitionId, status);
+CREATE INDEX IF NOT EXISTS change_request_delivery_index ON change_request (deliveryStatus, nextDeliveryAt);
+CREATE INDEX IF NOT EXISTS change_request_task_index ON change_request (taskId);
+
+CREATE TABLE IF NOT EXISTS change_revision (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  revisionNumber INTEGER NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_revision_request_number_key ON change_revision (changeRequestId, revisionNumber);
+
+CREATE TABLE IF NOT EXISTS approval_decision (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  revisionId VARCHAR(36) NOT NULL,
+  decidedBy VARCHAR(256) NOT NULL,
+  decision VARCHAR(32) NOT NULL,
+  decidedAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS approval_decision_revision_decider_key ON approval_decision (revisionId, decidedBy);
+CREATE INDEX IF NOT EXISTS approval_decision_request_index ON approval_decision (changeRequestId);
+
+CREATE TABLE IF NOT EXISTS change_application (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  revisionId VARCHAR(36) NOT NULL,
+  appliedAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_application_request_key ON change_application (changeRequestId);
+
+-- Ordered history of every change request step (submitted, revised, approved, applied, ended).
+CREATE TABLE IF NOT EXISTS change_lifecycle_event (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  eventSequence INTEGER NOT NULL,
+  eventType VARCHAR(32) NOT NULL,
+  eventAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_lifecycle_event_request_sequence_key ON change_lifecycle_event (changeRequestId, eventSequence);
+
 -- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
 -- that already exists, so existing installs get the rule here. The rule is only added while an allow
 -- rule of the policy still lists ViewAll, since the grant is acceptable only where Data Consumers can

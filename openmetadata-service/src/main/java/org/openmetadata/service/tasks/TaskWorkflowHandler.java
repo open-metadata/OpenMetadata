@@ -52,6 +52,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -138,6 +139,30 @@ public class TaskWorkflowHandler {
       Object resolvedPayload,
       String comment,
       String user) {
+    return resolveTask(
+        task,
+        transitionId,
+        requestedResolutionType,
+        newValue,
+        resolvedPayload,
+        comment,
+        user,
+        null);
+  }
+
+  /**
+   * Resolve a task, first recording the resolver's decision in the catalog when the task reviews a
+   * change request. {@code changeRequestRevision} names the revision the resolver reviewed.
+   */
+  public Task resolveTask(
+      Task task,
+      String transitionId,
+      TaskResolutionType requestedResolutionType,
+      String newValue,
+      Object resolvedPayload,
+      String comment,
+      String user,
+      Integer changeRequestRevision) {
     UUID taskId = task.getId();
     TaskAvailableTransition selectedTransition =
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
@@ -149,6 +174,9 @@ public class TaskWorkflowHandler {
         transitionId,
         effectiveResolutionType,
         user);
+
+    ApprovalDecisionService.recordForTask(
+        task, effectiveResolutionType, changeRequestRevision, comment, user);
 
     // During migration cutover, legacy workflow tasks can be converted to Task entities before
     // workflowInstanceId is backfilled. Runtime-task presence is the source of truth in that case.

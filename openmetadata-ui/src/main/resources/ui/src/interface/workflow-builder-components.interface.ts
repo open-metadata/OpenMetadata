@@ -21,6 +21,7 @@ import {
   OnNodesChange,
 } from 'reactflow';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
+import { ApprovalMode } from '../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { WorkflowTriggerFieldsConfig } from '../rest/metadataTypeAPI';
 
@@ -44,6 +45,7 @@ export interface NodeConfig {
   scheduleType?: string;
   cronExpression?: string;
   batchSize?: number;
+  approvalMode?: ApprovalMode;
 }
 
 export interface DataAssetFiltersSectionProps {
@@ -333,4 +335,6 @@ export interface NodeConfigSidebarProps {
   setNodes?: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges?: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
   triggerFieldsConfig: WorkflowTriggerFieldsConfig;
+  /** The workflow has a Resolve Pending Change step, so its trigger takes an approval mode. */
+  hasPendingChangeHook?: boolean;
 }

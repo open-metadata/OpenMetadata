@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -62,6 +64,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -888,10 +891,31 @@ public class TaskRepository extends EntityRepository<Task> {
       Object resolvedPayload,
       String comment,
       String user) {
+    return resolveTaskWithWorkflow(
+        task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, null);
+  }
+
+  public Task resolveTaskWithWorkflow(
+      Task task,
+      String transitionId,
+      TaskResolutionType resolutionType,
+      String newValue,
+      Object resolvedPayload,
+      String comment,
+      String user,
+      Integer changeRequestRevision) {
     TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
         task, transitionId, resolvedPayload, newValue);
     return TaskWorkflowHandler.getInstance()
-        .resolveTask(task, transitionId, resolutionType, newValue, resolvedPayload, comment, user);
+        .resolveTask(
+            task,
+            transitionId,
+            resolutionType,
+            newValue,
+            resolvedPayload,
+            comment,
+            user,
+            changeRequestRevision);
   }
 
   /**
@@ -1041,6 +1065,10 @@ public class TaskRepository extends EntityRepository<Task> {
     if (!closeTask && !isApprovalTask(task)) {
       validateUnderlyingEntityPermission(authorizer, securityContext, task);
     }
+
+    if (!closeTask) {
+      enforceReviewerForApprovalStatusTask(task, securityContext);
+    }
   }
 
   private boolean isApprovalTask(Task task) {
@@ -1048,6 +1076,37 @@ public class TaskRepository extends EntityRepository<Task> {
     return taskType == TaskEntityType.GlossaryApproval
         || taskType == TaskEntityType.RequestApproval
         || taskType == TaskEntityType.DataAccessRequest;
+  }
+
+  /**
+   * Resolving an approval task on a governed entity that is IN_REVIEW drives the reviewer-gated
+   * status transition enforced by {@link EntityRepository.EntityUpdater#checkUpdatedByReviewer}.
+   * Mirror that gate here so a non-reviewer is rejected with 403 up front, instead of resolving the
+   * task and letting the governance workflow instance fail on the status update downstream. The
+   * check no-ops when the entity has no reviewers (preserving the admin/owner approval path) and
+   * when the target is not a governed, in-review entity (so DAR and non-status approvals are
+   * unaffected — their targets return a null entityStatus).
+   */
+  private void enforceReviewerForApprovalStatusTask(Task task, SecurityContext securityContext) {
+    // A change request's review task approves the held edit, not a status transition; its
+    // reviewers (including the admin fallback) are decided by the review workflow.
+    if (task.getAbout() == null
+        || !isApprovalTask(task)
+        || GovernanceApprovalRegistry.isPendingChangeWorkflow(task.getWorkflowDefinitionId())) {
+      return;
+    }
+    // Entity types with no reviewers field (e.g. a table) can never be reviewer-gated, so skip them
+    // before requesting the field — otherwise Entity.getEntity(..., "reviewers") throws
+    // "Invalid field name reviewers" for those types.
+    EntityRepository<?> targetRepository = Entity.getEntityRepository(task.getAbout().getType());
+    if (!targetRepository.getAllowedFields().contains(Entity.FIELD_REVIEWERS)) {
+      return;
+    }
+    EntityInterface target = Entity.getEntity(task.getAbout(), Entity.FIELD_REVIEWERS, NON_DELETED);
+    if (target.getEntityStatus() == EntityStatus.IN_REVIEW && !nullOrEmpty(target.getReviewers())) {
+      EntityRepository.EntityUpdater.checkUpdatedByReviewer(
+          target, securityContext.getUserPrincipal().getName());
+    }
   }
 
   private boolean isUserTaskFiler(Task task, SecurityContext securityContext) {

@@ -9,6 +9,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
@@ -27,6 +28,7 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.DataCompletenessTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RollbackEntityTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
@@ -70,6 +72,8 @@ public class NodeFactory {
       case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition, config);
       case ROLLBACK_ENTITY_TASK -> new RollbackEntityTask(
           (RollbackEntityTaskDefinition) nodeDefinition, config);
+      case RESOLVE_PENDING_CHANGE_TASK -> new ResolvePendingChangeTask(
+          (ResolvePendingChangeTaskDefinition) nodeDefinition, config);
       case DATA_COMPLETENESS_TASK -> new DataCompletenessTask(
           (DataCompletenessTaskDefinition) nodeDefinition, config);
       case PARALLEL_GATEWAY -> new ParallelGateway(

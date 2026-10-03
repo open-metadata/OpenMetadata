@@ -15,6 +15,11 @@
  */
 export interface ResolveTask {
     /**
+     * Revision number of the linked change request the resolver reviewed. Required when the
+     * task reviews a change request.
+     */
+    changeRequestRevision?: number;
+    /**
      * Comment explaining the resolution.
      */
     comment?: string;

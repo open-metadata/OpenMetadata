@@ -180,6 +180,9 @@ const NODE_SPECIFIC_CONFIG_HANDLERS: Record<
   [NodeSubType.CheckChangeDescriptionTask]: applyCheckChangeDescriptionConfig,
   [NodeSubType.RollbackEntityTask]: applyPassthroughConfig,
   [NodeSubType.SinkTask]: applyPassthroughConfig,
+  // resolvePendingChangeTask requires config.action; passing it through keeps a load/save round
+  // trip from dropping it.
+  [NodeSubType.ResolvePendingChangeTask]: applyPassthroughConfig,
 };
 
 const addNodeSpecificConfig = (

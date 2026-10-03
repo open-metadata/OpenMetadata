@@ -1303,7 +1303,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             newValue,
             resolvedPayload,
             comment,
-            userName);
+            userName,
+            resolveTask.getChangeRequestRevision());
     return Response.ok(resolvedTask).build();
   }
 

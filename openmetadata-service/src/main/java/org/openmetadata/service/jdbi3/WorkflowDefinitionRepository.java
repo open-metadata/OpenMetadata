@@ -1,9 +1,15 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -14,12 +20,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
+import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -50,17 +59,32 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   @Override
   protected void postCreate(WorkflowDefinition entity) {
     WorkflowHandler.getInstance().deploy(new Workflow(entity));
+    // A new workflow may add/remove approval gating for an entity type; drop the cached rules so
+    // the
+    // gate reflects it on the next edit instead of after the cache TTL.
+    GovernanceApprovalRegistry.invalidate();
   }
 
   @Override
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
+    GovernanceApprovalRegistry.invalidate();
+    if (GovernanceApprovalRegistry.hasPendingChangeHook(updated)) {
+      ChangeRequestService.redeliverStuck(updated.getId());
+    } else {
+      ChangeRequestService.cancelAllForWorkflow(
+          updated.getId(),
+          "Approval workflow %s no longer reviews changes".formatted(updated.getName()));
+    }
   }
 
   @Override
   protected void postDelete(WorkflowDefinition entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
+    GovernanceApprovalRegistry.invalidate();
+    ChangeRequestService.cancelAllForWorkflow(
+        entity.getId(), "Approval workflow %s was deleted".formatted(entity.getName()));
   }
 
   @Override
@@ -189,8 +213,114 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateNodeInputOutputMapping(workflowDefinition);
     // 5. Conditional task validations
     validateConditionalTasks(workflowDefinition);
-    // 6. Restrict the values interpolated into conditional-edge JUEL expressions
+    // 6. Change-request hook workflows resolve the request on every terminal path
+    validatePendingChangeResolution(workflowDefinition);
+    // 7. Restrict the values interpolated into conditional-edge JUEL expressions
     validateEdgeConditions(workflowDefinition);
+  }
+
+  /**
+   * A workflow that reviews change requests (by carrying at least one {@code
+   * resolvePendingChangeTask} hook) must resolve the request on every path that can reach an end
+   * event, must start from edits, and must use a JSON Logic filter.
+   */
+  private void validatePendingChangeResolution(WorkflowDefinition workflowDefinition) {
+    List<WorkflowNodeDefinitionInterface> nodes = listOrEmpty(workflowDefinition.getNodes());
+    Set<String> hooks = new HashSet<>();
+    Set<String> ends = new HashSet<>();
+    String start = null;
+    for (WorkflowNodeDefinitionInterface node : nodes) {
+      String subType = node.getSubType();
+      if (NodeSubType.RESOLVE_PENDING_CHANGE_TASK.value().equals(subType)) {
+        hooks.add(node.getName());
+      } else if (NodeSubType.END_EVENT.value().equals(subType)) {
+        ends.add(node.getName());
+      } else if (NodeSubType.START_EVENT.value().equals(subType)) {
+        start = node.getName();
+      }
+    }
+    if (!hooks.isEmpty()) {
+      validateHookTrigger(workflowDefinition);
+      validateJsonLogicFilter(workflowDefinition);
+    }
+    if (!hooks.isEmpty()
+        && start != null
+        && reachesEndWithoutHook(workflowDefinition, start, hooks, ends)) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' reviews change requests but at least one path reaches an end event "
+                  + "without a commit or discard. Every terminal path must resolve the change "
+                  + "request or it would stay pending forever.",
+              workflowDefinition.getName()));
+    }
+  }
+
+  // Change requests are submitted by edits, and hook workflows start only from them.
+  private void validateHookTrigger(WorkflowDefinition workflowDefinition) {
+    JsonNode trigger = JsonUtils.valueToTree(workflowDefinition.getTrigger());
+    boolean updated = false;
+    for (JsonNode event : trigger.path("config").path("events")) {
+      updated = updated || "Updated".equals(event.asText());
+    }
+    if (!"eventBasedEntity".equals(trigger.path("type").asText(null)) || !updated) {
+      throw BadRequestException.of(
+          "Workflow '%s' reviews change requests, so it must use an eventBasedEntity trigger on the Updated event"
+              .formatted(workflowDefinition.getName()));
+    }
+  }
+
+  // Hook workflows are evaluated by the RuleEngine at admission; an Elasticsearch query filter
+  // would
+  // be silently ignored there, so it is rejected instead.
+  private void validateJsonLogicFilter(WorkflowDefinition workflowDefinition) {
+    JsonNode filter =
+        JsonUtils.valueToTree(workflowDefinition.getTrigger()).path("config").path("filter");
+    List<String> logics = new ArrayList<>();
+    filter.fields().forEachRemaining(entry -> logics.add(entry.getValue().asText()));
+    if (filter.isTextual()) {
+      logics.add(filter.asText());
+    }
+    for (String logic : logics) {
+      if (isElasticsearchQuery(logic)) {
+        throw BadRequestException.of(
+            "Workflow '%s': approval workflow filters must be JSON Logic; Elasticsearch query filters are not supported"
+                .formatted(workflowDefinition.getName()));
+      }
+    }
+  }
+
+  private static boolean isElasticsearchQuery(String logic) {
+    boolean query = false;
+    if (logic != null && logic.trim().startsWith("{")) {
+      JsonNode parsed = JsonUtils.readTree(logic);
+      query = parsed.has("query") || parsed.has("bool");
+    }
+    return query;
+  }
+
+  private boolean reachesEndWithoutHook(
+      WorkflowDefinition workflowDefinition, String start, Set<String> hooks, Set<String> ends) {
+    Map<String, List<String>> outgoing = new HashMap<>();
+    for (EdgeDefinition edge : listOrEmpty(workflowDefinition.getEdges())) {
+      outgoing.computeIfAbsent(edge.getFrom(), key -> new ArrayList<>()).add(edge.getTo());
+    }
+    Deque<Map.Entry<String, Boolean>> stack = new ArrayDeque<>();
+    Set<String> visited = new HashSet<>();
+    stack.push(Map.entry(start, hooks.contains(start)));
+    boolean orphanFound = false;
+    while (!stack.isEmpty() && !orphanFound) {
+      Map.Entry<String, Boolean> current = stack.pop();
+      String node = current.getKey();
+      boolean hookSeen = current.getValue();
+      if (ends.contains(node) && !hookSeen) {
+        orphanFound = true;
+      } else if (visited.add(node + "|" + hookSeen)) {
+        for (String next : listOrEmpty(outgoing.get(node))) {
+          stack.push(Map.entry(next, hookSeen || hooks.contains(next)));
+        }
+      }
+    }
+    return orphanFound;
   }
 
   private void validateEdgeConditions(WorkflowDefinition workflowDefinition) {
@@ -416,10 +546,12 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       // Suspend all active process instances for this workflow
       WorkflowHandler.getInstance().suspendWorkflow(workflowName);
 
-      workflow.setSuspended(true);
+      // updatedAt moves the definition epoch, so every server drops its cached approval rules.
+      workflow.withSuspended(true).withUpdatedAt(System.currentTimeMillis());
       dao.update(workflow);
       EntityRepository.invalidateCacheForEntity(
           entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      GovernanceApprovalRegistry.invalidate();
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -441,10 +573,12 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       // Resume all suspended process instances for this workflow
       WorkflowHandler.getInstance().resumeWorkflow(workflowName);
 
-      workflow.setSuspended(false);
+      workflow.withSuspended(false).withUpdatedAt(System.currentTimeMillis());
       dao.update(workflow);
       EntityRepository.invalidateCacheForEntity(
           entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      GovernanceApprovalRegistry.invalidate();
+      ChangeRequestService.redeliverStuck(workflow.getId());
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);

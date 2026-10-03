@@ -56,6 +56,7 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -170,6 +171,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -235,6 +237,11 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.governance.approval.ApprovedApplication;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -4250,6 +4257,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
     // Always set impersonatedBy to clear it when null (regular user operations)
     updated.setImpersonatedBy(impersonatedBy);
+    // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
+    updated.setId(original.getId());
+    Optional<StagedChange> staged =
+        ApprovalGate.admit(original, updated, updatedBy, impersonatedBy);
+    return staged
+        .map(change -> stagedPutResponse(uriInfo, original, change))
+        .orElseGet(() -> putAndStore(uriInfo, original, updated, requireCurrentVersion));
+  }
+
+  private PutResponse<T> stagedPutResponse(UriInfo uriInfo, T original, StagedChange change) {
+    UUID requestId = ChangeRequestService.submit(change).getId();
+    return new PutResponse<>(Status.OK, withHref(uriInfo, original), ENTITY_NO_CHANGE)
+        .withPendingChangeRequestId(requestId);
+  }
+
+  private PutResponse<T> putAndStore(
+      UriInfo uriInfo, T original, T updated, boolean requireCurrentVersion) {
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       try (var ignored = phase("putRestoreEntity")) {
@@ -4294,6 +4318,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
     // Always set impersonatedBy to clear it when null (regular user operations)
     updated.setImpersonatedBy(impersonatedBy);
+    // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
+    updated.setId(original.getId());
+    Optional<StagedChange> staged =
+        ApprovalGate.admit(original, updated, updatedBy, impersonatedBy);
+    return staged
+        .map(change -> stagedPutResponse(uriInfo, original, change))
+        .orElseGet(() -> putForImportAndStore(uriInfo, original, updated));
+  }
+
+  private PutResponse<T> putForImportAndStore(UriInfo uriInfo, T original, T updated) {
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       try (var ignored = phase("putRestoreEntityImport")) {
@@ -4376,7 +4410,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         uriInfo,
         changeSource,
         useOptimisticLocking,
-        impersonatedBy);
+        impersonatedBy,
+        null);
   }
 
   /**
@@ -4438,7 +4473,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         uriInfo,
         changeSource,
         useOptimisticLocking,
-        impersonatedBy);
+        impersonatedBy,
+        null);
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
@@ -4449,7 +4485,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking,
-      String impersonatedBy) {
+      String impersonatedBy,
+      ApprovedApplication approval) {
+    T updated = preparePatched(original, patch, user);
+    // Always set impersonatedBy to the passed value (which can be null)
+    // This ensures that when regular users make changes (impersonatedBy=null),
+    // any existing impersonatedBy value is cleared, preventing it from persisting
+    updated.setImpersonatedBy(impersonatedBy);
+    Optional<StagedChange> staged =
+        admitOrVerify(original, updated, user, impersonatedBy, approval);
+    return staged
+        .map(change -> stagedPatchResponse(uriInfo, original, change))
+        .orElseGet(
+            () ->
+                patchAndStore(
+                    original,
+                    updated,
+                    patchedFieldNames,
+                    uriInfo,
+                    changeSource,
+                    useOptimisticLocking));
+  }
+
+  /**
+   * What approval gating would decide for a PATCH by {@code user}, computed on the same prepared
+   * entity a real PATCH admits, without storing anything.
+   */
+  public final Optional<StagedChange> previewPatch(UUID id, String user, JsonPatch patch) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    return ApprovalGate.preview(original, preparePatched(original, patch, user), user);
+  }
+
+  /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
+  public final void validatePatch(UUID id, String user, JsonPatch patch) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    preparePatched(original, patch, user);
+  }
+
+  private T preparePatched(T original, JsonPatch patch, String user) {
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
@@ -4484,12 +4557,58 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("patchRestoreAttributes")) {
       restorePatchAttributes(original, updated);
     }
+    return updated;
+  }
 
-    // Always set impersonatedBy to the passed value (which can be null)
-    // This ensures that when regular users make changes (impersonatedBy=null),
-    // any existing impersonatedBy value is cleared, preventing it from persisting
-    updated.setImpersonatedBy(impersonatedBy);
+  private Optional<StagedChange> admitOrVerify(
+      T original, T updated, String user, String impersonatedBy, ApprovedApplication approval) {
+    Optional<StagedChange> staged = Optional.empty();
+    if (approval == null) {
+      staged = ApprovalGate.admit(original, updated, user, impersonatedBy);
+    } else {
+      ApprovalGate.verifyApproved(approval, original);
+    }
+    return staged;
+  }
 
+  private PatchResponse<T> stagedPatchResponse(UriInfo uriInfo, T original, StagedChange change) {
+    UUID requestId = ChangeRequestService.submit(change).getId();
+    return new PatchResponse<>(Status.OK, withHref(uriInfo, original), ENTITY_NO_CHANGE, requestId);
+  }
+
+  /**
+   * Publishes an approved change request revision as its requester, in the caller's transaction.
+   * The gate re-verifies the request is Approved for this revision inside the same transaction, so
+   * no caller-supplied flag can bypass admission.
+   */
+  public final PatchResponse<T> applyApprovedChange(ApprovedApplication approval, JsonPatch patch) {
+    T original = get(null, approval.entityId(), patchFields, NON_DELETED, false);
+    PatchResponse<T> response =
+        patchCommonWithOptimisticLocking(
+            original,
+            patch,
+            JsonUtils.extractPatchedFields(patch),
+            approval.requestedBy(),
+            null,
+            null,
+            false,
+            null,
+            approval);
+    createAndInsertChangeEvent(
+        original,
+        response.entity(),
+        response.entity().getChangeDescription(),
+        response.changeType());
+    return response;
+  }
+
+  private PatchResponse<T> patchAndStore(
+      T original,
+      T updated,
+      Set<String> patchedFieldNames,
+      UriInfo uriInfo,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking) {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;
     try (var ignored = phase("patchEntityUpdate")) {
@@ -4686,6 +4805,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void postDelete(T entity, boolean hardDelete) {
+    // A bulk hard-delete cascade cancels the change requests of each chunk in one query; an entity
+    // without an id was never stored, so it has none.
+    if (!isInHardDeleteCascade() && entity.getId() != null) {
+      ChangeRequestService.cancelForDeletedEntities(List.of(entity.getId()));
+    }
     // Delete from RDF only on hard delete
     if (hardDelete) {
       RdfUpdater.deleteEntity(entity.getEntityReference());
@@ -7152,6 +7276,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // skip the per-entity dispatch; the root entity's own deleteFromSearch (fired by the
         // top-level delete()) still runs and triggers the covering cascade.
         boolean skipPerEntitySearch = descendantsCoveredByAncestorCascade;
+        ChangeRequestService.cancelForDeletedEntities(
+            entities.stream().map(EntityInterface::getId).toList());
         for (T entity : entities) {
           postDelete(entity, true);
           if (!skipPerEntitySearch) {
@@ -9447,6 +9573,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       try (var ignored = phase("entityUpdatePostUpdate")) {
         postUpdate(original, updated);
       }
+      ChangeRequestService.afterEntityChanged(entityType, updated.getId());
       try (var ignored = phase("entityUpdateDeferredReact")) {
         runDeferredReactOperations();
       }
@@ -9759,8 +9886,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (original.getEntityStatus() == updated.getEntityStatus()) {
           return;
         }
-        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
+        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status. A workflow
+        // step (impersonated by governance-bot) applies the decision of its own approval task,
+        // whose assignees already decided who may approve; checking the entity's reviewers again
+        // would read the list as changed by the edit being approved.
         if (!consolidatingChanges
+            && !GOVERNANCE_BOT.equals(updated.getImpersonatedBy())
             && original.getEntityStatus() == EntityStatus.IN_REVIEW
             && (updated.getEntityStatus() == EntityStatus.APPROVED
                 || updated.getEntityStatus() == EntityStatus.REJECTED)) {
@@ -13484,6 +13615,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
+    int pendingApproval =
+        stageGatedBulkUpdates(updateEntities, existingByFqn, userName, successRequests);
+
     // Batch update existing entities
     bulkUpdateEntities(
         uriInfo,
@@ -13500,6 +13634,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     result.setNumberOfRowsProcessed(entities.size());
     result.setNumberOfRowsPassed(successRequests.size());
     result.setNumberOfRowsFailed(failedRequests.size());
+    result.setNumberOfRowsPendingApproval(pendingApproval);
     result.setSuccessRequest(successRequests);
     result.setFailedRequest(failedRequests);
 
@@ -13535,6 +13670,50 @@ public abstract class EntityRepository<T extends EntityInterface> {
         totalDurationNanos / 1_000_000);
 
     return result;
+  }
+
+  /**
+   * Bulk updates that change a field gated by an approval workflow are submitted as change requests
+   * instead of being written. Each is removed from {@code updateEntities} and reported as a
+   * successful item carrying its change request id. Returns how many were staged.
+   */
+  private int stageGatedBulkUpdates(
+      List<T> updateEntities,
+      Map<String, T> existingByFqn,
+      String userName,
+      List<BulkResponse> successRequests) {
+    int staged = 0;
+    if (!GovernanceApprovalRegistry.gatingRules(entityType).isEmpty()) {
+      Iterator<T> candidates = updateEntities.iterator();
+      while (candidates.hasNext()) {
+        T entity = candidates.next();
+        Optional<StagedChange> change =
+            admitBulkUpdate(existingByFqn.get(entity.getFullyQualifiedName()), entity, userName);
+        if (change.isPresent()) {
+          candidates.remove();
+          successRequests.add(pendingApprovalResponse(entity, change.get()));
+          staged++;
+        }
+      }
+    }
+    return staged;
+  }
+
+  // The pre-fetched original carries no relationship fields; re-read it with the fields a PUT
+  // compares so the change request records the published values it is based on.
+  private Optional<StagedChange> admitBulkUpdate(T original, T updated, String userName) {
+    T hydrated = get(null, original.getId(), getPutFields(), ALL, false);
+    updated.setId(original.getId());
+    return ApprovalGate.admit(hydrated, updated, userName, null);
+  }
+
+  private BulkResponse pendingApprovalResponse(T entity, StagedChange change) {
+    UUID requestId = ChangeRequestService.submit(change).getId();
+    return new BulkResponse()
+        .withRequest(entity.getFullyQualifiedName())
+        .withStatus(Status.OK.getStatusCode())
+        .withMessage(
+            "%s: change request %s".formatted(EntityCsv.ENTITY_PENDING_APPROVAL, requestId));
   }
 
   public Optional<BulkOperationResult> getBulkJobStatus(String jobId) {

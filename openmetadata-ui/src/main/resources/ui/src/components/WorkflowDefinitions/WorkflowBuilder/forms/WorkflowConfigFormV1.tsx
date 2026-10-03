@@ -15,6 +15,7 @@ import React from 'react';
 import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
+import { ApprovalModeSection } from './ApprovalModeSection';
 import { DataAssetFiltersSection } from './DataAssetFiltersSection';
 import { DataAssetFormSection } from './DataAssetFormSection';
 import { EventTriggerFilterSection } from './EventTriggerFilterSection';
@@ -30,6 +31,7 @@ interface WorkflowConfigFormV1Props {
   allowFullStartNodeConfiguration: boolean;
   allowStartNodeFilterScheduleAndBatchEdit: boolean;
   allowScheduledTrigger: boolean;
+  hasPendingChangeHook?: boolean;
   updateConfig: <K extends keyof NodeConfig>(
     key: K,
     value: NodeConfig[K]
@@ -63,6 +65,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   allowFullStartNodeConfiguration,
   allowStartNodeFilterScheduleAndBatchEdit,
   allowScheduledTrigger,
+  hasPendingChangeHook = false,
   updateConfig,
   removeFromArray,
   handleEventTypeChange,
@@ -158,6 +161,17 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
           }
         />
       )}
+
+      {config.triggerType === WorkflowType.EVENT_BASED &&
+        hasPendingChangeHook && (
+          <ApprovalModeSection
+            approvalMode={config.approvalMode}
+            lockFields={lockFilterSections}
+            onApprovalModeChange={(approvalMode) =>
+              updateConfig('approvalMode', approvalMode)
+            }
+          />
+        )}
     </div>
   );
 };

@@ -43,6 +43,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -233,6 +234,7 @@ public class WorkflowDefinitionResource
             false);
     WorkflowHandler.getInstance().deleteWorkflowDefinition(wd);
     WorkflowHandler.getInstance().deploy(new Workflow(wd));
+    ChangeRequestService.redeliverStuck(wd.getId());
     return Response.status(Response.Status.OK).entity("Workflow Redeployed").build();
   }
 

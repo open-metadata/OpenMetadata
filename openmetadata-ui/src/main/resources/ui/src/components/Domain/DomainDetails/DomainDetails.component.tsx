@@ -126,6 +126,7 @@ import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/Asse
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -1063,6 +1064,10 @@ const DomainDetails = ({
                       </Space>
                     </Button>
                   </Dropdown>
+                )}
+
+                {!isVersionsView && (
+                  <ChangeRequestsIndicator entityId={domain.id} />
                 )}
 
                 <ButtonGroup className="spaced" size="small">

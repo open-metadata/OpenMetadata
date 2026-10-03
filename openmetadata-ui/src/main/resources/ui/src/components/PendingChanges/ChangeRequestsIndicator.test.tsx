@@ -1,0 +1,124 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  ChangeRequest,
+  ChangeRequestOrigin,
+  ChangeRequestStatus,
+  ChangeRevisionStatus,
+  MutationOpType,
+} from '../../generated/governance/changeRequest/changeRequest';
+import {
+  getChangeRequestsForEntity,
+  withdrawChangeRequest,
+} from '../../rest/changeRequestsAPI';
+import ChangeRequestsIndicator from './ChangeRequestsIndicator.component';
+
+jest.mock('../../rest/changeRequestsAPI', () => ({
+  getChangeRequestsForEntity: jest.fn(),
+  withdrawChangeRequest: jest.fn(),
+}));
+
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({ currentUser: { name: 'alice' } }),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
+const request = (overrides: Partial<ChangeRequest>): ChangeRequest => ({
+  id: 'cr-1',
+  entityType: 'glossary',
+  entityId: 'entity-1',
+  entityFullyQualifiedName: 'g1',
+  requestedBy: 'alice',
+  origin: ChangeRequestOrigin.Intercepted,
+  workflowDefinitionId: 'wf-1',
+  status: ChangeRequestStatus.Pending,
+  activeRevisionId: 'rev-2',
+  activeRevisionNumber: 2,
+  createdAt: 1,
+  updatedAt: 1,
+  activeRevision: {
+    id: 'rev-2',
+    changeRequestId: 'cr-1',
+    revisionNumber: 2,
+    digest: 'd',
+    status: ChangeRevisionStatus.Active,
+    createdBy: 'alice',
+    createdAt: 1,
+    ops: [
+      {
+        op: MutationOpType.Set,
+        field: 'description',
+        value: JSON.stringify('<p>New text</p>'),
+      },
+    ],
+  },
+  ...overrides,
+});
+
+const renderIndicator = async () => {
+  await act(async () => {
+    render(<ChangeRequestsIndicator entityId="entity-1" />);
+  });
+};
+
+describe('ChangeRequestsIndicator', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('renders nothing when no request is open', async () => {
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
+      request({ status: ChangeRequestStatus.Applied }),
+    ]);
+
+    await renderIndicator();
+
+    expect(screen.queryByTestId('pending-change-requests')).toBeNull();
+  });
+
+  it('shows open requests and lets the requester withdraw at the viewed revision', async () => {
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([request({})]);
+    (withdrawChangeRequest as jest.Mock).mockResolvedValue({});
+
+    await renderIndicator();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pending-change-requests'));
+    });
+
+    expect(screen.getByTestId('change-op-description')).toHaveTextContent(
+      'New text'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('withdraw-change-request'));
+    });
+
+    expect(withdrawChangeRequest).toHaveBeenCalledWith('cr-1', 2);
+  });
+
+  it("offers no withdraw on someone else's request", async () => {
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
+      request({ requestedBy: 'bob' }),
+    ]);
+
+    await renderIndicator();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('pending-change-requests'));
+    });
+
+    expect(screen.queryByTestId('withdraw-change-request')).toBeNull();
+  });
+});

@@ -425,6 +425,12 @@ export interface EntityTriggerDefinition {
  */
 export interface TriggerConfiguration {
     /**
+     * How a workflow with a resolvePendingChange hook treats edits to the fields it gates.
+     * Enforce (also when absent) holds them for review; Shadow lets them publish and only
+     * records that they would have been held.
+     */
+    approvalMode?: ApprovalMode;
+    /**
      * Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes'
      * for multiple types.
      */
@@ -465,6 +471,16 @@ export interface TriggerConfiguration {
      * Defines the schedule of the Periodic Trigger.
      */
     schedule?: any[] | boolean | AppScheduleClass | number | number | null | string;
+}
+
+/**
+ * How a workflow with a resolvePendingChange hook treats edits to the fields it gates.
+ * Enforce (also when absent) holds them for review; Shadow lets them publish and only
+ * records that they would have been held.
+ */
+export enum ApprovalMode {
+    Enforce = "Enforce",
+    Shadow = "Shadow",
 }
 
 /**

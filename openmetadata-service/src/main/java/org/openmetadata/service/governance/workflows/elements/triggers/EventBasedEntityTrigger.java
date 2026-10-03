@@ -1,9 +1,13 @@
 package org.openmetadata.service.governance.workflows.elements.triggers;
 
+import static org.openmetadata.service.governance.workflows.Workflow.CHANGE_REQUEST_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.CHANGE_REQUEST_REVISION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.CHANGE_REQUEST_WORKFLOW_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
@@ -29,9 +33,9 @@ import org.flowable.bpmn.model.Signal;
 import org.flowable.bpmn.model.SignalEventDefinition;
 import org.flowable.bpmn.model.StartEvent;
 import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
-import org.openmetadata.schema.governance.workflows.elements.triggers.Event;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.approval.ChangeRequestKeys;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FilterEntityImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
@@ -50,25 +54,34 @@ public class EventBasedEntityTrigger implements TriggerInterface {
 
   public static String PASSES_FILTER_VARIABLE = "passesFilter";
 
+  private static final List<String> CHANGE_REQUEST_VARIABLES =
+      List.of(
+          UPDATED_BY_VARIABLE,
+          CHANGE_REQUEST_ID_VARIABLE,
+          CHANGE_REQUEST_REVISION_VARIABLE,
+          CHANGE_REQUEST_WORKFLOW_VARIABLE);
+
   private final EventBasedEntityTriggerDefinition triggerDefinition;
 
   public EventBasedEntityTrigger(
       String mainWorkflowName,
       String triggerWorkflowId,
-      EventBasedEntityTriggerDefinition triggerDefinition) {
+      EventBasedEntityTriggerDefinition triggerDefinition,
+      boolean changeRequestHook) {
     this.triggerDefinition = triggerDefinition;
     Process process = new Process();
     process.setId(triggerWorkflowId);
     process.setName(triggerWorkflowId);
     attachWorkflowInstanceListeners(process);
 
-    setStartEvents(triggerWorkflowId, triggerDefinition);
+    setStartEvents(triggerWorkflowId, mainWorkflowName, triggerDefinition, changeRequestHook);
 
     ServiceTask filterTask = getFilterTask(triggerWorkflowId, triggerDefinition);
     process.addFlowElement(filterTask);
 
     CallActivity workflowTrigger =
-        getWorkflowTrigger(triggerWorkflowId, mainWorkflowName, triggerDefinition.getOutput());
+        getWorkflowTrigger(
+            triggerWorkflowId, mainWorkflowName, triggerDefinition.getOutput(), changeRequestHook);
     process.addFlowElement(workflowTrigger);
 
     ErrorEventDefinition runtimeExceptionDefinition = new ErrorEventDefinition();
@@ -119,35 +132,43 @@ public class EventBasedEntityTrigger implements TriggerInterface {
   }
 
   private void setStartEvents(
-      String workflowTriggerId, EventBasedEntityTriggerDefinition triggerDefinition) {
-
-    List<String> entityTypes = getEntityTypesFromConfig(triggerDefinition.getConfig());
-    Set<Event> events = triggerDefinition.getConfig().getEvents();
-
-    for (String entityType : entityTypes) {
-      for (Event event : events) {
-
-        String eventId = event.toString(); // or event.getName()
-        String signalId = getEntitySignalId(entityType, eventId);
-
-        Signal signal = new SignalBuilder().id(signalId).build();
-
-        SignalEventDefinition signalEventDefinition = new SignalEventDefinition();
-        signalEventDefinition.setSignalRef(signal.getId());
-
-        // Create start event with proper ID
-        String startEventId =
-            getFlowableElementId(
-                workflowTriggerId, String.format("%s-%s-%s", entityType, eventId, "start"));
-
-        StartEvent startEvent = new StartEventBuilder().id(startEventId).build();
-
-        startEvent.getEventDefinitions().add(signalEventDefinition);
-
-        this.startEvents.add(startEvent);
-        this.signals.add(signal);
+      String workflowTriggerId,
+      String mainWorkflowName,
+      EventBasedEntityTriggerDefinition triggerDefinition,
+      boolean changeRequestHook) {
+    for (String entityType : getEntityTypesFromConfig(triggerDefinition.getConfig())) {
+      for (String signalId :
+          signalIdsFor(mainWorkflowName, entityType, triggerDefinition, changeRequestHook)) {
+        addStartEvent(workflowTriggerId, entityType, signalId);
       }
     }
+  }
+
+  // A hook workflow reviews change requests only; it never starts from persisted change events,
+  // and reactive workflows never start from a change request.
+  private List<String> signalIdsFor(
+      String mainWorkflowName,
+      String entityType,
+      EventBasedEntityTriggerDefinition triggerDefinition,
+      boolean changeRequestHook) {
+    return changeRequestHook
+        ? List.of(ChangeRequestKeys.submittedSignalId(mainWorkflowName, entityType))
+        : triggerDefinition.getConfig().getEvents().stream()
+            .map(event -> getEntitySignalId(entityType, event.toString()))
+            .toList();
+  }
+
+  private void addStartEvent(String workflowTriggerId, String entityType, String signalId) {
+    Signal signal = new SignalBuilder().id(signalId).build();
+    SignalEventDefinition signalEventDefinition = new SignalEventDefinition();
+    signalEventDefinition.setSignalRef(signal.getId());
+    String startEventId =
+        getFlowableElementId(
+            workflowTriggerId, String.format("%s-%s-%s", entityType, signalId, "start"));
+    StartEvent startEvent = new StartEventBuilder().id(startEventId).build();
+    startEvent.getEventDefinitions().add(signalEventDefinition);
+    this.startEvents.add(startEvent);
+    this.signals.add(signal);
   }
 
   private List<String> getEntityTypesFromConfig(Object configObj) {
@@ -162,7 +183,10 @@ public class EventBasedEntityTrigger implements TriggerInterface {
   }
 
   private CallActivity getWorkflowTrigger(
-      String triggerWorkflowId, String mainWorkflowName, Set<String> triggerOutputs) {
+      String triggerWorkflowId,
+      String mainWorkflowName,
+      Set<String> triggerOutputs,
+      boolean changeRequestHook) {
     CallActivity workflowTrigger =
         new CallActivityBuilder()
             .id(getFlowableElementId(triggerWorkflowId, "workflowTrigger"))
@@ -198,6 +222,15 @@ public class EventBasedEntityTrigger implements TriggerInterface {
         inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
         inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
         inputParameters.add(inputParameter);
+      }
+    }
+
+    // A hook workflow's nodes need the change request the run reviews, whatever the trigger lists.
+    if (changeRequestHook) {
+      for (String variable : CHANGE_REQUEST_VARIABLES) {
+        if (!triggerOutputs.contains(variable)) {
+          inputParameters.add(passThrough(variable));
+        }
       }
     }
 
@@ -251,6 +284,13 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     }
 
     return serviceTask;
+  }
+
+  private static IOParameter passThrough(String variable) {
+    IOParameter parameter = new IOParameter();
+    parameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, variable));
+    parameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, variable));
+    return parameter;
   }
 
   private String getEntitySignalId(String entityType, String event) {
