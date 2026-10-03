@@ -239,7 +239,7 @@
       <dependency>
         <groupId>com.squareup.okhttp3</groupId>
         <artifactId>okhttp</artifactId>
-        <version>4.12.0</version>
+        <version>5.5.0</version>
       </dependency>
       <!-- Held alongside okhttp above. client-java 25.x declares logging-interceptor 5.1.0,
            which drags in okhttp-jvm 5.1.0 — okhttp 5 moved the okhttp3.* classes into that
