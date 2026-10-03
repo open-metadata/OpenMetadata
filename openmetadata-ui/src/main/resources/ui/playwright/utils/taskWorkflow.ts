@@ -382,11 +382,17 @@ export const getTaskCard = (page: Page, task: CreatedTask) => {
   const taskDisplayId = getTaskDisplayId(task.taskId);
 
   // The card renders aria-label="#<displayId> <type>", so its accessible name
-  // identifies the task outright. hasText would be a substring match -- #12
-  // also matches #120 -- hence the anchored pattern.
-  return page.getByRole('button', {
-    name: new RegExp(`^#${taskDisplayId}\\b`),
-  });
+  // identifies the task. It is not enough on its own: the card also contains a
+  // redirect-task-button-link whose own name starts with the same "#<id>". So
+  // require both identities -- the task card AND that accessible name.
+  //
+  // The pattern is anchored because a substring match on "#12" also hits
+  // "#120".
+  return page
+    .getByTestId('task-feed-card')
+    .and(
+      page.getByRole('button', { name: new RegExp(`^#${taskDisplayId}\\b`) })
+    );
 };
 
 export const openTaskDetails = async (page: Page, task: CreatedTask) => {
