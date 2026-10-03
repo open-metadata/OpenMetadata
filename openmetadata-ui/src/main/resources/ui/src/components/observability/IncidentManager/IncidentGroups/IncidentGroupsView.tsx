@@ -23,18 +23,21 @@ import {
 } from '@openmetadata/ui-core-components';
 // The core-components icon barrel re-exports the design team's own SVG set
 import {
-  AlertCircle,
   Search,
   ShieldTick,
   TrendUp01,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
+import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import Loader from '../../../common/Loader/Loader';
 import IncidentGroupByDropdown from './IncidentGroupByDropdown';
+import IncidentGroupDetail from './IncidentGroupDetail';
+import IncidentGroupDrawer from './IncidentGroupDrawer';
 import {
   CLEARED_INCIDENT_GROUP_FILTERS,
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
@@ -42,9 +45,11 @@ import {
 import { IncidentGroupsViewProps } from './IncidentGroups.types';
 import {
   countRecurringIncidentGroups,
+  getIncidentGroupKey,
   hasActiveIncidentGroupFilters,
 } from './IncidentGroups.utils';
 import IncidentGroupsFilters from './IncidentGroupsFilters';
+import IncidentGroupsLoadError from './IncidentGroupsLoadError';
 import IncidentGroupsTable from './IncidentGroupsTable';
 import { useIncidentGroups } from './useIncidentGroups';
 
@@ -70,6 +75,13 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     isLoading,
     isError,
     retry,
+    detailKey,
+    detailGroup,
+    isDetailLoading,
+    isDetailError,
+    retryDetail,
+    openGroup,
+    closeGroup,
     handleGroupByChange,
     handleFiltersChange,
     handleSortTypeChange,
@@ -95,6 +107,44 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
    */
   const isInitialLoading = isLoading && isEmpty(incidentGroups);
 
+  const [previewGroup, setPreviewGroup] = useState<TestCaseIncidentGroup>();
+  const isRouteVisible = useIsRouteVisible();
+  // The row the user drilled in from, to hand focus back to on the way out.
+  const [returnFocusKey, setReturnFocusKey] = useState<string>();
+
+  const handleOpenGroup = useCallback(
+    (group: TestCaseIncidentGroup) => {
+      setPreviewGroup(undefined);
+
+      return openGroup(group);
+    },
+    [openGroup]
+  );
+
+  const handleBack = useCallback(() => {
+    setReturnFocusKey(detailGroup && getIncidentGroupKey(detailGroup));
+
+    return closeGroup();
+  }, [closeGroup, detailGroup]);
+
+  useEffect(() => {
+    if (detailKey !== undefined || !returnFocusKey) {
+      return;
+    }
+    // The table builds its rows a pass after it mounts, so the row is looked
+    // up once they are in.
+    const testId = `group-open-${returnFocusKey}`.replaceAll(
+      '"',
+      String.raw`\"`
+    );
+    const frame = requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`[data-testid="${testId}"]`)?.focus();
+      setReturnFocusKey(undefined);
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [detailKey, returnFocusKey]);
+
   const renderContent = () => {
     if (isInitialLoading) {
       return (
@@ -109,25 +159,10 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
 
     if (isError) {
       return (
-        <Box
-          className="tw:relative tw:min-h-80 tw:w-full"
-          data-testid="incident-groups-error">
-          <EmptyPlaceholder
-            actions={[
-              {
-                key: 'retry',
-                color: 'secondary',
-                label: t('label.retry'),
-                onPress: retry,
-              },
-            ]}
-            icon={<AlertCircle className="tw:text-fg-error-primary" />}
-            title={t('server.entity-fetch-error', {
-              entity: t('label.incident-plural'),
-            })}
-            variant="blank"
-          />
-        </Box>
+        <IncidentGroupsLoadError
+          data-testid="incident-groups-error"
+          onRetry={retry}
+        />
       );
     }
 
@@ -173,6 +208,8 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
           groupBy={groupBy}
           groups={incidentGroups}
           sortType={sortType}
+          onGroupOpen={handleOpenGroup}
+          onGroupPreview={setPreviewGroup}
           onSortTypeChange={handleSortTypeChange}
         />
         <PaginationCardWithControls
@@ -191,6 +228,58 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
     );
   };
 
+  const renderDetail = () => {
+    if (detailGroup) {
+      return (
+        <IncidentGroupDetail
+          filters={filters}
+          group={detailGroup}
+          onBack={handleBack}
+          onClearFilters={() =>
+            handleFiltersChange(CLEARED_INCIDENT_GROUP_FILTERS)
+          }
+        />
+      );
+    }
+
+    if (isDetailLoading) {
+      return (
+        <Box
+          className="tw:min-h-80 tw:items-center tw:justify-center"
+          data-testid="incident-group-detail-loader">
+          <Loader />
+        </Box>
+      );
+    }
+
+    return isDetailError ? (
+      <IncidentGroupsLoadError
+        data-testid="incident-group-detail-error"
+        onRetry={retryDetail}
+      />
+    ) : (
+      // The group a link names may have no open incident left in this scope.
+      <Box
+        className="tw:relative tw:min-h-80 tw:w-full"
+        data-testid="incident-group-detail-missing">
+        <EmptyPlaceholder
+          actions={[
+            {
+              key: 'back',
+              color: 'secondary',
+              label: t('label.back-to-group-plural'),
+              onPress: handleBack,
+            },
+          ]}
+          description={t('message.try-adjusting-filter')}
+          icon={<Search className="tw:text-fg-quaternary" />}
+          title={t('message.no-match-found')}
+          variant="blank"
+        />
+      </Box>
+    );
+  };
+
   const hasStats = !isInitialLoading && !isError;
   const groupCount = paging?.total ?? incidentGroups.length;
 
@@ -200,53 +289,71 @@ const IncidentGroupsView = ({ refreshKey }: IncidentGroupsViewProps) => {
       className="tw:gap-4"
       data-testid="incident-groups"
       direction="col">
-      <Box className="tw:items-center tw:justify-between tw:gap-2">
-        {/* Kept when empty, so the dimension picker stays on the right. */}
-        <Box align="center" gap={3}>
-          {hasStats && (
-            <>
-              <Typography
-                as="span"
-                className="tw:text-secondary"
-                data-testid="incident-groups-count"
-                size="text-sm">
-                <Transi18next
-                  i18nKey="label.group-count"
-                  renderElement={STAT_COUNT_ELEMENT}
-                  values={{ count: groupCount }}
-                />
-              </Typography>
-              <Divider className="tw:h-4" orientation="vertical" />
-              <Tooltip
-                placement="top"
-                title={t('message.recurring-groups-loaded')}>
-                <TooltipTrigger>
-                  <Box align="center" gap={1}>
-                    <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
-                    <Typography
-                      as="span"
-                      className="tw:text-secondary"
-                      data-testid="incident-groups-recurring-count"
-                      size="text-sm">
-                      <Transi18next
-                        i18nKey="label.recurring-count"
-                        renderElement={STAT_COUNT_ELEMENT}
-                        values={{ count: recurringCount }}
-                      />
-                    </Typography>
-                  </Box>
-                </TooltipTrigger>
-              </Tooltip>
-            </>
-          )}
-        </Box>
-        <IncidentGroupByDropdown
-          value={groupBy}
-          onChange={handleGroupByChange}
-        />
-      </Box>
-      <IncidentGroupsFilters filters={filters} onChange={handleFiltersChange} />
-      {renderContent()}
+      {detailKey === undefined ? (
+        <>
+          <Box className="tw:items-center tw:justify-between tw:gap-2">
+            {/* Kept when empty, so the dimension picker stays on the right. */}
+            <Box align="center" gap={3}>
+              {hasStats && (
+                <>
+                  <Typography
+                    as="span"
+                    className="tw:text-secondary"
+                    data-testid="incident-groups-count"
+                    size="text-sm">
+                    <Transi18next
+                      i18nKey="label.group-count"
+                      renderElement={STAT_COUNT_ELEMENT}
+                      values={{ count: groupCount }}
+                    />
+                  </Typography>
+                  <Divider className="tw:h-4" orientation="vertical" />
+                  <Tooltip
+                    placement="top"
+                    title={t('message.recurring-groups-loaded')}>
+                    <TooltipTrigger>
+                      <Box align="center" gap={1}>
+                        <TrendUp01 className="tw:size-4 tw:text-fg-error-primary" />
+                        <Typography
+                          as="span"
+                          className="tw:text-secondary"
+                          data-testid="incident-groups-recurring-count"
+                          size="text-sm">
+                          <Transi18next
+                            i18nKey="label.recurring-count"
+                            renderElement={STAT_COUNT_ELEMENT}
+                            values={{ count: recurringCount }}
+                          />
+                        </Typography>
+                      </Box>
+                    </TooltipTrigger>
+                  </Tooltip>
+                </>
+              )}
+            </Box>
+            <IncidentGroupByDropdown
+              value={groupBy}
+              onChange={handleGroupByChange}
+            />
+          </Box>
+          <IncidentGroupsFilters
+            filters={filters}
+            onChange={handleFiltersChange}
+          />
+          {renderContent()}
+        </>
+      ) : (
+        renderDetail()
+      )}
+      <IncidentGroupDrawer
+        filters={filters}
+        // The app keeps this page mounted, hidden, while another route shows,
+        // but the drawer is portaled above everything: it waits for the page to
+        // come back, as open as it was left.
+        group={isRouteVisible ? previewGroup : undefined}
+        onClose={() => setPreviewGroup(undefined)}
+        onViewAll={handleOpenGroup}
+      />
     </Box>
   );
 };

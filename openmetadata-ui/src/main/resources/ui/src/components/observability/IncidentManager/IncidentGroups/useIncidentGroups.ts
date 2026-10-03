@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { pick } from 'lodash';
+import { isString, omit, pick } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,33 +34,58 @@ import {
   DEFAULT_INCIDENT_SORT_TYPE,
   INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUP_BY_PARAM,
+  INCIDENT_GROUP_DETAIL_PARAM,
   INCIDENT_GROUP_FILTER_KEYS,
 } from './IncidentGroups.constants';
 import { IncidentGroupFilters } from './IncidentGroups.types';
 import {
+  getIncidentGroupFilterKey,
   getIncidentGroupsQuery,
   getPageAfterEmptyRead,
   parseIncidentGroupBy,
   parseIncidentGroupFilters,
 } from './IncidentGroups.utils';
+import { useIncidentPaging } from './useIncidentPaging';
 
-interface IncidentGroupsPage {
-  /** The query the page belongs to; a page of another query is page 1. */
-  queryKey: string;
-  currentPage: number;
+/** The last read of the group a drill-down names. */
+interface DetailRead {
+  key: string;
+  group?: TestCaseIncidentGroup;
+  isError?: boolean;
 }
+
+/**
+ * What the drill-down shows: the group as read, or the row's own group while
+ * the read is out or once it failed; loading and failed only with neither.
+ */
+const resolveDetail = (
+  detailKey: string | undefined,
+  detail: DetailRead | undefined,
+  loadedGroup: TestCaseIncidentGroup | undefined
+) => {
+  const hasRead = detailKey !== undefined && detail?.key === detailKey;
+  const detailGroup = hasRead && !detail?.isError ? detail?.group : loadedGroup;
+
+  return {
+    detailGroup,
+    isDetailLoading: detailKey !== undefined && !hasRead && !detailGroup,
+    isDetailError: hasRead && Boolean(detail?.isError) && !detailGroup,
+  };
+};
 
 /**
  * Owns the grouped incident listing: the grouping dimension and the filters are
  * read from and written to the URL, and every change to them refires the fetch
- * from the first page. Pages are walked with the cursors the server hands back,
- * passed straight back as `offset` and never decoded.
+ * from the first page, which the server is asked for by number.
  *
  * `refreshKey` is the caller's way of saying the groups it is showing are out
  * of date — a new value refires the fetch once, which is how an incident
  * changed elsewhere on the page reaches these rows without a reload. That
  * re-read runs in the background whenever there are rows to keep: they stay put
  * until the new ones land.
+ *
+ * The open drill-down is in the URL too, and its group is read on its own: the
+ * one a link names may sit on any page of the listing.
  */
 export const useIncidentGroups = ({
   refreshKey,
@@ -95,6 +120,12 @@ export const useIncidentGroups = ({
     () => parseIncidentGroupFilters(QueryString.parse(filtersSearch)),
     [filtersSearch]
   );
+  const detailParam = searchParams[INCIDENT_GROUP_DETAIL_PARAM];
+  const detailKey = isString(detailParam) ? detailParam : undefined;
+  // The group last read for the drill-down, with the key it was read for.
+  const [detail, setDetail] = useState<DetailRead>();
+  // Bumped to read the open group again after its read failed.
+  const [detailAttempt, setDetailAttempt] = useState(0);
 
   const [incidentGroups, setIncidentGroups] = useState<TestCaseIncidentGroup[]>(
     []
@@ -108,20 +139,10 @@ export const useIncidentGroups = ({
   const [sortType, setSortType] = useState<IncidentSortType>(
     DEFAULT_INCIDENT_SORT_TYPE
   );
-  const [pageSize, setPageSize] = useState(INCIDENT_GROUPS_PAGE_SIZE);
-  /**
-   * Any change to what is listed starts over from the first page. The page is
-   * therefore tagged with its query, and read as page 1 once the query moves
-   * on — no reset effect, so no extra fetch of the stale page.
-   */
-  const queryKey = `${groupBy}|${sortType}|${pageSize}|${domain}|${filtersSearch}`;
-  const [page, setPage] = useState<IncidentGroupsPage>({
-    queryKey,
-    currentPage: 1,
-  });
-  const activePage: IncidentGroupsPage =
-    page.queryKey === queryKey ? page : { queryKey, currentPage: 1 };
-  const { currentPage } = activePage;
+  const { currentPage, pageSize, setPageSize, goToPage } = useIncidentPaging(
+    `${groupBy}|${sortType}|${domain}|${filtersSearch}`,
+    INCIDENT_GROUPS_PAGE_SIZE
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   // Guards against a slow response for a dimension the user already left.
@@ -198,7 +219,7 @@ export const useIncidentGroups = ({
         // The earlier page is read the way this one was: a refresh stays in
         // the background, keeping the rows on screen if that read fails too.
         fetchedRefreshKey.current = previousRefreshKey;
-        setPage({ queryKey, currentPage: pageAfterEmptyRead });
+        goToPage(pageAfterEmptyRead);
 
         return;
       }
@@ -235,7 +256,7 @@ export const useIncidentGroups = ({
     sortType,
     pageSize,
     currentPage,
-    queryKey,
+    goToPage,
     filters,
     domain,
     refreshKey,
@@ -251,6 +272,88 @@ export const useIncidentGroups = ({
       latestRequest.current += 1;
     };
   }, [fetchIncidentGroups]);
+
+  useEffect(() => {
+    if (detailKey === undefined) {
+      return;
+    }
+    let isCurrent = true;
+    listIncidentGroups({
+      groupBy,
+      group: detailKey,
+      limit: 1,
+      domain,
+      ...getIncidentGroupsQuery(filters),
+    })
+      .then(({ data }) => {
+        if (isCurrent) {
+          setDetail({ key: detailKey, group: data[0] });
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setDetail({ key: detailKey, isError: true });
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [detailKey, groupBy, domain, filters, refreshKey, detailAttempt]);
+
+  // A group opened from a row is on screen already, so it shows at once; the
+  // read above then keeps it current.
+  const loadedDetailGroup =
+    detailKey === undefined
+      ? undefined
+      : incidentGroups.find(
+          (group) => getIncidentGroupFilterKey(group) === detailKey
+        );
+  const { detailGroup, isDetailLoading, isDetailError } = resolveDetail(
+    detailKey,
+    detail,
+    loadedDetailGroup
+  );
+
+  const openGroup = useCallback(
+    (group: TestCaseIncidentGroup) =>
+      navigate(
+        {
+          search: QueryString.stringify(
+            {
+              ...searchParams,
+              [INCIDENT_GROUP_DETAIL_PARAM]: getIncidentGroupFilterKey(group),
+            },
+            { arrayFormat: 'repeat' }
+          ),
+        },
+        { state: { fromGroups: true } }
+      ),
+    [navigate, searchParams]
+  );
+
+  // Back from a drill-down opened here retraces that step, so the browser's
+  // Back cannot return to it; one reached by a link has nothing to retrace.
+  const closeGroup = useCallback(
+    () =>
+      (location.state as { fromGroups?: boolean } | null)?.fromGroups
+        ? navigate(-1)
+        : navigate(
+            {
+              search: QueryString.stringify(
+                omit(searchParams, INCIDENT_GROUP_DETAIL_PARAM),
+                { arrayFormat: 'repeat' }
+              ),
+            },
+            { replace: true }
+          ),
+    [location.state, navigate, searchParams]
+  );
+
+  const retryDetail = useCallback(
+    () => setDetailAttempt((attempt) => attempt + 1),
+    []
+  );
 
   const handleGroupByChange = useCallback(
     (updatedGroupBy: IncidentGroupBy) => {
@@ -286,8 +389,8 @@ export const useIncidentGroups = ({
   );
 
   const handlePageChange = useCallback(
-    (nextPage: number) => setPage({ queryKey, currentPage: nextPage }),
-    [queryKey]
+    (nextPage: number) => goToPage(nextPage),
+    [goToPage]
   );
 
   return {
@@ -301,6 +404,13 @@ export const useIncidentGroups = ({
     isLoading,
     isError,
     retry: fetchIncidentGroups,
+    detailKey,
+    detailGroup,
+    isDetailLoading,
+    isDetailError,
+    retryDetail,
+    openGroup,
+    closeGroup,
     handleGroupByChange,
     handleFiltersChange,
     handleSortTypeChange: setSortType,

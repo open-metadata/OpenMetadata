@@ -162,6 +162,32 @@ export const isUnownedIncidentGroup = (group: TestCaseIncidentGroup): boolean =>
   group.groupBy === IncidentGroupBy.Owner && !group.id;
 
 /**
+ * The key the groups endpoint narrows the listing to one group by: a table
+ * group's FQN, any other group's entity id, and empty for the owner bucket of
+ * no entity.
+ */
+export const getIncidentGroupFilterKey = (
+  group: TestCaseIncidentGroup
+): string =>
+  group.groupBy === IncidentGroupBy.Table
+    ? group.fullyQualifiedName ?? group.name
+    : group.id ?? '';
+
+/** Identity of a group across reads: its entity id, else what names it. */
+export const getIncidentGroupKey = (group: TestCaseIncidentGroup): string =>
+  group.id ?? group.fullyQualifiedName ?? group.name;
+
+/**
+ * The group's display name. The owner bucket of no entity has no name of its
+ * own, so the caller names it.
+ */
+export const getIncidentGroupName = (
+  group: TestCaseIncidentGroup,
+  unownedName: string
+): string =>
+  isUnownedIncidentGroup(group) ? unownedName : getEntityName(group);
+
+/**
  * The group's open incidents split into the slices of the status bar. The
  * server already sends them the way the bar draws them — most actionable
  * first, statuses with no incident left out, and never a `Resolved` count,

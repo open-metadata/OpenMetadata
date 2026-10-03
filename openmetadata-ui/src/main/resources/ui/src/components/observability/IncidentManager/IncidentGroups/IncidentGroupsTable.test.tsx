@@ -48,6 +48,23 @@ jest.mock('./IncidentTrendSparkline', () => ({
 }));
 
 const mockOnSortTypeChange = jest.fn();
+const mockOnGroupPreview = jest.fn();
+const mockOnGroupOpen = jest.fn();
+
+// Same press sequence react-aria listens for on rows and buttons.
+const press = (element: HTMLElement) => {
+  fireEvent.pointerDown(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.pointerUp(element, {
+    button: 0,
+    pointerId: 1,
+    pointerType: 'mouse',
+  });
+  fireEvent.click(element);
+};
 
 const fixtureGroup: TestCaseIncidentGroup = {
   groupBy: IncidentGroupBy.Table,
@@ -110,6 +127,8 @@ const renderTable = (
       groupBy={groupBy}
       groups={groups}
       sortType="desc"
+      onGroupOpen={mockOnGroupOpen}
+      onGroupPreview={mockOnGroupPreview}
       onSortTypeChange={mockOnSortTypeChange}
     />
   );
@@ -323,5 +342,27 @@ describe('IncidentGroupsTable', () => {
     expect(screen.getByTestId('group-related')).toHaveTextContent(
       'label.type-count:1'
     );
+  });
+
+  it('should preview a group when its row is pressed', () => {
+    renderTable();
+
+    press(screen.getByTestId('group-name'));
+
+    expect(mockOnGroupPreview).toHaveBeenCalledWith(fixtureGroup);
+    expect(mockOnGroupOpen).not.toHaveBeenCalled();
+  });
+
+  it('should open the drill-down from the row chevron, not the preview', () => {
+    renderTable();
+
+    const open = screen.getByTestId(`group-open-${fixtureGroup.id}`);
+
+    expect(open).toHaveAccessibleName('label.view-entity');
+
+    press(open);
+
+    expect(mockOnGroupOpen).toHaveBeenCalledWith(fixtureGroup);
+    expect(mockOnGroupPreview).not.toHaveBeenCalled();
   });
 });

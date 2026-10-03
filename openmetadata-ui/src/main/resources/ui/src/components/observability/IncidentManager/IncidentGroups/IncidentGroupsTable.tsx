@@ -13,18 +13,18 @@
 
 import {
   AvatarGroup,
-  Badge,
   Box,
+  Button,
   Table,
   toOwnerRefs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Container,
+  ChevronRight,
+  Cube01,
   LayersTwo01,
   User01,
 } from '@openmetadata/ui-core-components/icons';
-import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -37,11 +37,10 @@ import {
   formatDate,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
+import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
 import {
   INCIDENT_GROUPS_SORT_COLUMN,
   INCIDENT_GROUP_MAX_AVATARS,
-  INCIDENT_GROUP_SEVERITY_COLOR,
 } from './IncidentGroups.constants';
 import {
   IncidentGroupCellProps,
@@ -50,10 +49,12 @@ import {
 } from './IncidentGroups.types';
 import {
   getIncidentGroupByOption,
+  getIncidentGroupKey,
+  getIncidentGroupName,
   getIncidentGroupSubLine,
   getIncidentGroupSubLineTitle,
-  isUnownedIncidentGroup,
 } from './IncidentGroups.utils';
+import IncidentSeverityBadge from './IncidentSeverityBadge';
 import IncidentStatusBreakdown from './IncidentStatusBreakdown';
 import IncidentTrendSparkline from './IncidentTrendSparkline';
 
@@ -99,38 +100,6 @@ const StackedCell = ({
     )}
   </Box>
 );
-
-/**
- * What the group's incidents span, counted: the tables of a test definition
- * group, the test definitions (check types) of any other. A group with a single
- * test definition names it instead, as the design does.
- */
-const RelatedEntityCell = ({ group }: IncidentGroupCellProps) => {
-  const { t } = useTranslation();
-  const isTableCount = group.groupBy === IncidentGroupBy.TestDefinition;
-  const count = isTableCount ? group.tableCount : group.testDefinitionCount;
-  const onlyTestDefinition =
-    !isTableCount && count === 1 ? group.testDefinitions?.[0] : undefined;
-
-  if (count === undefined) {
-    return null;
-  }
-
-  const countLabel = t(
-    isTableCount ? 'label.table-count' : 'label.type-count',
-    {
-      count,
-    }
-  );
-
-  return (
-    <span data-testid="group-related">
-      <Badge color="gray" size="sm" type="pill-color">
-        {onlyTestDefinition ? getEntityName(onlyTestDefinition) : countLabel}
-      </Badge>
-    </span>
-  );
-};
 
 /**
  * The group's assignees as the owner stack every other listing draws: a hover
@@ -194,13 +163,14 @@ const IncidentGroupsTable = ({
   groupBy,
   sortType,
   onSortTypeChange,
+  onGroupPreview,
+  onGroupOpen,
 }: IncidentGroupsTableProps) => {
   const { t } = useTranslation();
 
   const dimension = getIncidentGroupByOption(groupBy);
   // A table group's sub-line lists check types; every other group's, tables.
-  const subLineIcon =
-    groupBy === IncidentGroupBy.Table ? LayersTwo01 : Container;
+  const subLineIcon = groupBy === IncidentGroupBy.Table ? LayersTwo01 : Cube01;
 
   const columns = useMemo(
     () => [
@@ -223,6 +193,7 @@ const IncidentGroupsTable = ({
       { id: 'assignees', label: t('label.assignee-plural') },
       { id: 'lastSeen', label: t('label.last-seen') },
       { id: 'trend', label: t('label.trend') },
+      { id: 'open', ariaLabel: t('label.action-plural') },
     ],
     [dimension.labelKey, groupBy, t]
   );
@@ -238,29 +209,31 @@ const IncidentGroupsTable = ({
     onSortTypeChange(descriptor.direction === 'ascending' ? 'asc' : 'desc');
 
   const renderRow = (group: TestCaseIncidentGroup) => {
-    const rowId = group.id ?? group.fullyQualifiedName ?? group.name;
+    const rowId = getIncidentGroupKey(group);
+    const groupName = getIncidentGroupName(
+      group,
+      t('label.no-entity', { entity: t('label.owner') })
+    );
 
     return (
-      <Table.Row id={rowId} key={rowId}>
+      <Table.Row
+        className="tw:cursor-pointer"
+        id={rowId}
+        key={rowId}
+        onAction={() => onGroupPreview(group)}>
         <Table.Cell className="tw:max-w-72">
           <StackedCell
             caption={getIncidentGroupSubLine(group) || undefined}
             captionIcon={subLineIcon}
             captionTestId="group-sub-line"
             captionTitle={getIncidentGroupSubLineTitle(group)}
-            value={
-              // The unowned bucket stands for no entity, so it is named here
-              // rather than after something the server resolved.
-              isUnownedIncidentGroup(group)
-                ? t('label.no-entity', { entity: t('label.owner') })
-                : getEntityName(group)
-            }
+            value={groupName}
             valueTestId="group-name"
             valueTitle={group.fullyQualifiedName}
           />
         </Table.Cell>
         <Table.Cell>
-          <RelatedEntityCell group={group} />
+          <IncidentGroupRelatedBadge group={group} />
         </Table.Cell>
         <Table.Cell>
           <StackedCell
@@ -271,18 +244,7 @@ const IncidentGroupsTable = ({
         </Table.Cell>
         <Table.Cell>
           <span data-testid="group-severity">
-            <Badge
-              color={
-                group.severity
-                  ? INCIDENT_GROUP_SEVERITY_COLOR[group.severity]
-                  : 'gray'
-              }
-              size="sm"
-              type="pill-color">
-              {group.severity
-                ? startCase(group.severity)
-                : t('label.no-entity', { entity: t('label.severity') })}
-            </Badge>
+            <IncidentSeverityBadge severity={group.severity} />
           </span>
         </Table.Cell>
         <Table.Cell>
@@ -301,6 +263,16 @@ const IncidentGroupsTable = ({
             trendDirection={group.trendDirection}
           />
         </Table.Cell>
+        <Table.Cell>
+          <Button
+            aria-label={t('label.view-entity', { entity: groupName })}
+            color="tertiary"
+            data-testid={`group-open-${rowId}`}
+            iconLeading={ChevronRight}
+            size="sm"
+            onPress={() => onGroupOpen(group)}
+          />
+        </Table.Cell>
       </Table.Row>
     );
   };
@@ -316,6 +288,7 @@ const IncidentGroupsTable = ({
         {(column) => (
           <Table.Head
             allowsSorting={column.allowsSorting}
+            aria-label={column.ariaLabel}
             id={column.id}
             isRowHeader={column.id === 'name'}
             key={column.id}

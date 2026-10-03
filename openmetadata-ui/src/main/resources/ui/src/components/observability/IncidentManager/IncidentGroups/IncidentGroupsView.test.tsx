@@ -11,9 +11,17 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
+import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import {
   IncidentGroupBy,
   IncidentTrendDirection,
@@ -24,6 +32,8 @@ import { listIncidentGroups } from '../../../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   IncidentGroupByDropdownProps,
+  IncidentGroupDetailProps,
+  IncidentGroupDrawerProps,
   IncidentGroupsFiltersProps,
   IncidentGroupsTableProps,
 } from './IncidentGroups.types';
@@ -90,7 +100,13 @@ jest.mock('./IncidentGroupsTable', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ groups, sortType, onSortTypeChange }: IncidentGroupsTableProps) => (
+      ({
+        groups,
+        sortType,
+        onSortTypeChange,
+        onGroupPreview,
+        onGroupOpen,
+      }: IncidentGroupsTableProps) => (
         <div data-testid="incident-groups-table">
           <span data-testid="table-group-count">{groups.length}</span>
           <span data-testid="table-sort-type">{sortType}</span>
@@ -98,6 +114,56 @@ jest.mock('./IncidentGroupsTable', () =>
             data-testid="flip-sort"
             onClick={() => onSortTypeChange('asc')}>
             asc
+          </button>
+          <button
+            data-testid="preview-first-group"
+            onClick={() => onGroupPreview(groups[0])}>
+            preview
+          </button>
+          <button
+            // The real chevron is keyed the way the view looks it up to restore focus.
+            data-testid={`group-open-${groups[0]?.id ?? groups[0]?.name}`}
+            onClick={() => onGroupOpen(groups[0])}>
+            open
+          </button>
+        </div>
+      )
+    )
+);
+
+jest.mock('./IncidentGroupDrawer', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ group, onClose, onViewAll }: IncidentGroupDrawerProps) =>
+        group ? (
+          <div data-testid="incident-group-drawer">
+            <span data-testid="drawer-group">{group.name}</span>
+            <button data-testid="drawer-close" onClick={onClose}>
+              close
+            </button>
+            <button
+              data-testid="drawer-view-all"
+              onClick={() => onViewAll(group)}>
+              view all
+            </button>
+          </div>
+        ) : null
+    )
+);
+
+jest.mock('./IncidentGroupDetail', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ group, onBack, onClearFilters }: IncidentGroupDetailProps) => (
+        <div data-testid="incident-group-detail">
+          <span data-testid="detail-group">{`${group.name}:${group.incidentCount}`}</span>
+          <button data-testid="detail-back" onClick={onBack}>
+            back
+          </button>
+          <button data-testid="detail-clear-filters" onClick={onClearFilters}>
+            clear
           </button>
         </div>
       )
@@ -175,18 +241,21 @@ const LocationSearch = () => {
 const mockGroups = [
   {
     groupBy: IncidentGroupBy.TestDefinition,
+    id: 'def-unique',
     name: 'columnValuesToBeUnique',
     incidentCount: 5,
     trendDirection: IncidentTrendDirection.Rising,
   },
   {
     groupBy: IncidentGroupBy.TestDefinition,
+    id: 'def-row-count',
     name: 'tableRowCountToEqual',
     incidentCount: 3,
     trendDirection: IncidentTrendDirection.Rising,
   },
   {
     groupBy: IncidentGroupBy.TestDefinition,
+    id: 'def-not-null',
     name: 'columnValuesToBeNotNull',
     incidentCount: 1,
     trendDirection: IncidentTrendDirection.Falling,
@@ -1169,5 +1238,304 @@ describe('IncidentGroupsView filters and paging', () => {
     } finally {
       useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
     }
+  });
+
+  it('should preview a group in the drawer and close it again', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    expect(
+      screen.queryByTestId('incident-group-drawer')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('preview-first-group'));
+
+    expect(screen.getByTestId('drawer-group')).toHaveTextContent(
+      'columnValuesToBeUnique'
+    );
+
+    fireEvent.click(screen.getByTestId('drawer-close'));
+
+    expect(
+      screen.queryByTestId('incident-group-drawer')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should drill into a group in place of the groups and come back to them', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    fireEvent.click(screen.getByTestId('group-open-def-unique'));
+
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeUnique:5'
+    );
+    expect(
+      screen.queryByTestId('incident-groups-table')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('filters-state')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('detail-back'));
+
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('group-open-def-unique')).toHaveFocus()
+    );
+  });
+
+  it('should keep filters cleared in the drill-down once it is closed', async () => {
+    await act(async () => {
+      renderView('/observability/incident-manager?assignee=aaron');
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('group-open-def-unique'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('detail-clear-filters'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('detail-back'));
+    });
+
+    const search = screen.getByTestId('location-search').textContent;
+
+    expect(search).not.toContain('assignee=aaron');
+    expect(search).not.toContain('group=');
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+  });
+
+  it('should keep the groups page across a drill-down', async () => {
+    mockListIncidentGroups.mockResolvedValue({
+      data: mockGroups,
+      paging: { total: 25, after: 'cursor-2' },
+    });
+
+    await act(async () => {
+      renderView();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('next'));
+    });
+
+    fireEvent.click(screen.getByTestId('group-open-def-unique'));
+    fireEvent.click(screen.getByTestId('detail-back'));
+
+    expect(screen.getByRole('textbox', { name: 'Current page' })).toHaveValue(
+      '2'
+    );
+  });
+
+  it('should open the drill-down from the drawer', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    fireEvent.click(screen.getByTestId('preview-first-group'));
+    fireEvent.click(screen.getByTestId('drawer-view-all'));
+
+    expect(
+      screen.queryByTestId('incident-group-drawer')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeUnique'
+    );
+  });
+
+  it('should show the drilled-into group as the latest read has it', async () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/observability/incident-manager']}>
+        {viewTree(0)}
+      </MemoryRouter>
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByTestId('group-open-def-unique'));
+    mockListIncidentGroups.mockResolvedValue({
+      data: [{ ...mockGroups[0], incidentCount: 7 }, ...mockGroups.slice(1)],
+      paging: { total: 5 },
+    });
+
+    await act(async () => {
+      rerender(
+        <MemoryRouter initialEntries={['/observability/incident-manager']}>
+          {viewTree(1)}
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeUnique:7'
+    );
+  });
+
+  it('should put the drill-down in the URL and read its group on its own', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('group-open-def-unique'));
+    });
+
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      'group=def-unique'
+    );
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith(
+      expect.objectContaining({ group: 'def-unique', limit: 1 })
+    );
+  });
+
+  it('should reopen the drill-down a link names, wherever its group is', async () => {
+    mockListIncidentGroups.mockImplementation(
+      async ({ group }: { group?: string }) =>
+        group === undefined
+          ? { data: mockGroups.slice(0, 2), paging: { total: 25 } }
+          : { data: [mockGroups[2]], paging: { total: 1 } }
+    );
+
+    await act(async () => {
+      renderView('/observability/incident-manager?group=def-not-null');
+    });
+
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeNotNull:1'
+    );
+  });
+
+  it('should say a failed read of the linked group in place and retry it', async () => {
+    let isDown = true;
+    mockListIncidentGroups.mockImplementation(
+      async ({ group }: { group?: string }) => {
+        if (group === undefined) {
+          return { data: mockGroups.slice(0, 2), paging: { total: 25 } };
+        }
+        if (isDown) {
+          throw new Error('failure');
+        }
+
+        return { data: [mockGroups[2]], paging: { total: 1 } };
+      }
+    );
+
+    await act(async () => {
+      renderView('/observability/incident-manager?group=def-not-null');
+    });
+
+    expect(
+      screen.getByTestId('incident-group-detail-error')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('incident-group-detail-missing')
+    ).not.toBeInTheDocument();
+
+    isDown = false;
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+    });
+
+    expect(screen.getByTestId('detail-group')).toHaveTextContent(
+      'columnValuesToBeNotNull:1'
+    );
+  });
+
+  it('should say so when the linked group has no open incident left', async () => {
+    mockListIncidentGroups.mockImplementation(
+      async ({ group }: { group?: string }) =>
+        group === undefined
+          ? { data: mockGroups, paging: { total: 5 } }
+          : { data: [], paging: { total: 0 } }
+    );
+
+    await act(async () => {
+      renderView(
+        '/observability/incident-manager?groupBy=testDefinition&group=gone'
+      );
+    });
+
+    expect(
+      screen.getByTestId('incident-group-detail-missing')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.back-to-group-plural' })
+      );
+    });
+
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      '?groupBy=testDefinition'
+    );
+    expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
+  });
+
+  it('should wait for the linked group before showing its drill-down', async () => {
+    mockListIncidentGroups.mockImplementation(({ group }: { group?: string }) =>
+      group === undefined
+        ? Promise.resolve({ data: [], paging: { total: 0 } })
+        : new Promise(jest.fn())
+    );
+
+    await act(async () => {
+      renderView('/observability/incident-manager?group=def-unique');
+    });
+
+    expect(
+      screen.getByTestId('incident-group-detail-loader')
+    ).toBeInTheDocument();
+  });
+
+  it('should report a failed read of the linked group', async () => {
+    mockListIncidentGroups.mockImplementation(
+      async ({ group }: { group?: string }) => {
+        if (group !== undefined) {
+          throw new Error('failure');
+        }
+
+        return { data: [], paging: { total: 0 } };
+      }
+    );
+
+    await act(async () => {
+      renderView('/observability/incident-manager?group=def-unique');
+    });
+
+    // The view says so in place, so no toast repeats it.
+    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId('incident-group-detail-error')
+    ).toBeInTheDocument();
+  });
+
+  it('should hide the drawer while the page is kept hidden behind another route', async () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/observability/incident-manager']}>
+        {viewTree()}
+      </MemoryRouter>
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByTestId('preview-first-group'));
+
+    expect(screen.getByTestId('incident-group-drawer')).toBeInTheDocument();
+
+    rerender(
+      <MemoryRouter initialEntries={['/observability/incident-manager']}>
+        <RouteVisibilityProvider isVisible={false}>
+          {viewTree()}
+        </RouteVisibilityProvider>
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.queryByTestId('incident-group-drawer')
+    ).not.toBeInTheDocument();
   });
 });

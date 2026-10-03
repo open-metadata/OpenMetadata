@@ -119,9 +119,15 @@ export type TestCaseIncidentStatusParams = ListParams & {
   testDefinition?: string;
   /** Direct owner (user or team name) of the incident's test case. */
   owner?: string;
+  /** Only incidents of test cases with no direct owner. */
+  unowned?: boolean;
   sortField?: string;
   sortType?: IncidentSortType;
-  dateField?: 'timestamp' | 'updatedAt';
+  /**
+   * `/search/list` takes `timestamp`/`updatedAt`; the cursor-paginated listing
+   * takes the incident's own `createdAt`/`updatedAt`, as the groups do.
+   */
+  dateField?: 'timestamp' | IncidentDateField;
 };
 
 export type ListIncidentGroupsParams = {
@@ -141,6 +147,8 @@ export type ListIncidentGroupsParams = {
   /** 1-based page, an alternative to `offset` that can jump to any page. */
   page?: number;
   sortType?: IncidentSortType;
+  /** Only the group with this key; see `getIncidentGroupFilterKey`. */
+  group?: string;
 };
 
 /**
