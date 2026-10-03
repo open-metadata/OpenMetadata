@@ -79,10 +79,7 @@ const STAT_COUNT_ELEMENT = (
  * over the fetched groups, the filter row, and the paged group table — plus
  * the loading/empty/error states of the fetch that feeds them.
  */
-const IncidentGroupsView = ({
-  refreshKey,
-  canEditIncidents,
-}: IncidentGroupsViewProps) => {
+const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
   const { t } = useTranslation();
   const {
     refresh,
@@ -108,7 +105,7 @@ const IncidentGroupsView = ({
     handleSortTypeChange,
     handlePageChange,
     handlePageSizeChange,
-  } = useIncidentGroups({ refreshKey });
+  } = useIncidentGroups();
   const { isApplying, applyBulkChange } = useIncidentGroupBulkUpdate({
     filters,
   });

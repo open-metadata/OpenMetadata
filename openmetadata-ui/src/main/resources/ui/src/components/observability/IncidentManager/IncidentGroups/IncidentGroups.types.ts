@@ -45,14 +45,14 @@ export interface IncidentGroupByDropdownProps {
 }
 
 /**
- * Incident timestamp a date range applies to, in the vocabulary the URL already
- * speaks for the incident listing: `timestamp` is when the incident was opened.
+ * Incident timestamp a date range applies to, in the incident list endpoint's
+ * vocabulary: `timestamp` is when the incident was opened.
  */
 export type IncidentListDateField = 'timestamp' | 'updatedAt';
 
 /**
- * Filters of the grouped view. Each key is also its query string param, shared
- * with the incident listing on the same page so both read one filter set.
+ * Filters of the grouped view. Each key is also its query string param, so a
+ * shared link or a reload keeps them.
  */
 export interface IncidentGroupFilters {
   testCaseFQN?: string;
@@ -172,12 +172,6 @@ export interface IncidentGroupBulkFailuresModalProps {
 }
 
 export interface IncidentGroupsViewProps {
-  /**
-   * Bumped by the page when an incident it lists below changes status: the
-   * groups summarise those incidents, so their counts have to be re-read for
-   * the change to show. Every new value costs one fetch — nothing polls.
-   */
-  refreshKey?: number;
   /** Whether the user may change incidents, which the bulk actions do. */
   canEditIncidents: boolean;
 }

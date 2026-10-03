@@ -354,8 +354,8 @@ const LocationSearch = () => {
   return (
     <>
       <span data-testid="location-search">{search}</span>
-      {/* Stands in for the incident table below, which writes its own paging
-          params into the same query string. */}
+      {/* Writes a param the groups do not read, as the drill-down does with
+          its own. */}
       <button
         aria-label="write-unrelated-param"
         data-testid="write-unrelated-param"
@@ -391,17 +391,22 @@ const mockGroups = [
   },
 ];
 
-const viewTree = (refreshKey?: number) => (
-  <>
-    <IncidentGroupsView canEditIncidents refreshKey={refreshKey} />
-    <LocationSearch />
-  </>
-);
-
 const renderView = (initialEntry = '/observability/incident-manager') =>
   render(
-    <MemoryRouter initialEntries={[initialEntry]}>{viewTree()}</MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <IncidentGroupsView canEditIncidents />
+      <LocationSearch />
+    </MemoryRouter>
   );
+
+// A bulk change that went through is what re-reads the groups on screen.
+const applyBulkAck = async () => {
+  fireEvent.click(screen.getByTestId('select-first-group'));
+  fireEvent.click(screen.getByTestId('bulk-ack'));
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('bulk-status-modal-apply'));
+  });
+};
 
 describe('IncidentGroupsView', () => {
   beforeEach(() => {
@@ -666,39 +671,15 @@ describe('IncidentGroupsView', () => {
     });
   });
 
-  it('should re-read the groups when the page reports an incident change', async () => {
-    let rendered: ReturnType<typeof render> | undefined;
-
-    await act(async () => {
-      rendered = render(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(0)}
-        </MemoryRouter>
-      );
+  it('should keep the rows and the stats on screen while a bulk change is re-read', async () => {
+    mockApplyBulkChange.mockResolvedValue({
+      total: 1,
+      passed: 1,
+      failures: [],
+      unchanged: 0,
     });
-
-    expect(mockListIncidentGroups).toHaveBeenCalledTimes(1);
-
     await act(async () => {
-      rendered?.rerender(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
-    });
-
-    expect(mockListIncidentGroups).toHaveBeenCalledTimes(2);
-  });
-
-  it('should keep the rows and the stats on screen while a reported change is re-read', async () => {
-    let rendered: ReturnType<typeof render> | undefined;
-
-    await act(async () => {
-      rendered = render(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(0)}
-        </MemoryRouter>
-      );
+      renderView();
     });
 
     let resolveRefresh: (value: unknown) => void = jest.fn();
@@ -708,11 +689,7 @@ describe('IncidentGroupsView', () => {
       })
     );
 
-    rendered?.rerender(
-      <MemoryRouter initialEntries={['/observability/incident-manager']}>
-        {viewTree(1)}
-      </MemoryRouter>
-    );
+    await applyBulkAck();
 
     // The re-read is in flight: the table the user is reading stays put.
     expect(
@@ -730,26 +707,20 @@ describe('IncidentGroupsView', () => {
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('2');
   });
 
-  it('should leave the rows in place when a reported change fails to re-read', async () => {
-    let rendered: ReturnType<typeof render> | undefined;
-
+  it('should leave the rows in place when a bulk change fails to re-read', async () => {
+    mockApplyBulkChange.mockResolvedValue({
+      total: 1,
+      passed: 1,
+      failures: [],
+      unchanged: 0,
+    });
     await act(async () => {
-      rendered = render(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(0)}
-        </MemoryRouter>
-      );
+      renderView();
     });
 
     mockListIncidentGroups.mockRejectedValue(new Error('failure'));
 
-    await act(async () => {
-      rendered?.rerender(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
-    });
+    await applyBulkAck();
 
     expect(
       screen.queryByTestId('incident-groups-error')
@@ -791,99 +762,18 @@ describe('IncidentGroupsView', () => {
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('1');
   });
 
-  it('should hold the error state when a reported change fails to re-read it', async () => {
-    mockListIncidentGroups.mockRejectedValue(new Error('failure'));
-    let rendered: ReturnType<typeof render> | undefined;
-
+  it('should own the loader and the error when a bulk change lands on an empty table', async () => {
+    let resolveBulk: (value: unknown) => void = jest.fn();
+    mockApplyBulkChange.mockReturnValue(
+      new Promise((resolve) => {
+        resolveBulk = resolve;
+      })
+    );
     await act(async () => {
-      rendered = render(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(0)}
-        </MemoryRouter>
-      );
+      renderView('/observability/incident-manager?groupBy=testDefinition');
     });
 
-    expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
-
-    await act(async () => {
-      rendered?.rerender(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
-    });
-
-    // Clearing the flag for a re-read that fails too would leave the section
-    // on the 'no incidents' placeholder while the endpoint is still down.
-    expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('incident-groups-empty')
-    ).not.toBeInTheDocument();
-  });
-
-  it('should clear the error once a reported change re-reads successfully', async () => {
-    mockListIncidentGroups.mockRejectedValueOnce(new Error('failure'));
-    let rendered: ReturnType<typeof render> | undefined;
-
-    await act(async () => {
-      rendered = render(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(0)}
-        </MemoryRouter>
-      );
-    });
-
-    expect(screen.getByTestId('incident-groups-error')).toBeInTheDocument();
-
-    await act(async () => {
-      rendered?.rerender(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
-    });
-
-    expect(
-      screen.queryByTestId('incident-groups-error')
-    ).not.toBeInTheDocument();
-    expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
-  });
-
-  it('should not re-read the groups while the reported change stands', async () => {
-    let rendered: ReturnType<typeof render> | undefined;
-
-    await act(async () => {
-      rendered = render(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
-    });
-
-    await act(async () => {
-      rendered?.rerender(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
-    });
-
-    expect(mockListIncidentGroups).toHaveBeenCalledTimes(1);
-  });
-
-  it('should own the loader and the error when a reported change finds the table empty', async () => {
-    let rendered: ReturnType<typeof render> | undefined;
-
-    await act(async () => {
-      rendered = render(
-        <MemoryRouter
-          initialEntries={[
-            '/observability/incident-manager?groupBy=testDefinition',
-          ]}>
-          {viewTree(0)}
-        </MemoryRouter>
-      );
-    });
+    await applyBulkAck();
 
     // The dimension switch never settles, so its rows never reach the table.
     mockListIncidentGroups.mockReturnValue(new Promise(() => undefined));
@@ -895,14 +785,7 @@ describe('IncidentGroupsView', () => {
     mockListIncidentGroups.mockRejectedValue(new Error('failure'));
 
     await act(async () => {
-      rendered?.rerender(
-        <MemoryRouter
-          initialEntries={[
-            '/observability/incident-manager?groupBy=testDefinition',
-          ]}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
+      resolveBulk({ total: 1, passed: 1, failures: [], unchanged: 0 });
     });
 
     // The re-read supersedes the switch it raced, so it is the only request
@@ -1186,26 +1069,20 @@ describe('IncidentGroupsView filters and paging', () => {
   });
 
   it('should keep the page across a background refresh', async () => {
-    const { rerender } = render(
-      <MemoryRouter initialEntries={['/observability/incident-manager']}>
-        {viewTree(0)}
-      </MemoryRouter>
-    );
-
+    mockApplyBulkChange.mockResolvedValue({
+      total: 1,
+      passed: 1,
+      failures: [],
+      unchanged: 0,
+    });
     await act(async () => {
-      await Promise.resolve();
+      renderView();
     });
     await goToSecondPage();
 
     mockListIncidentGroups.mockResolvedValueOnce(secondPage);
 
-    await act(async () => {
-      rerender(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
-    });
+    await applyBulkAck();
 
     expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
       groupBy: IncidentGroupBy.TestDefinition,
@@ -1217,14 +1094,14 @@ describe('IncidentGroupsView filters and paging', () => {
   });
 
   it('should step back to the last page when a refresh empties the current one', async () => {
-    const { rerender } = render(
-      <MemoryRouter initialEntries={['/observability/incident-manager']}>
-        {viewTree(0)}
-      </MemoryRouter>
-    );
-
+    mockApplyBulkChange.mockResolvedValue({
+      total: 1,
+      passed: 1,
+      failures: [],
+      unchanged: 0,
+    });
     await act(async () => {
-      await Promise.resolve();
+      renderView();
     });
     await goToSecondPage();
 
@@ -1233,13 +1110,7 @@ describe('IncidentGroupsView filters and paging', () => {
       paging: { total: 10 },
     });
 
-    await act(async () => {
-      rerender(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
-    });
+    await applyBulkAck();
 
     expect(mockListIncidentGroups).toHaveBeenLastCalledWith({
       groupBy: IncidentGroupBy.TestDefinition,
@@ -1254,14 +1125,14 @@ describe('IncidentGroupsView filters and paging', () => {
   });
 
   it('should keep the rows when the page stepped back to fails to read', async () => {
-    const { rerender } = render(
-      <MemoryRouter initialEntries={['/observability/incident-manager']}>
-        {viewTree(0)}
-      </MemoryRouter>
-    );
-
+    mockApplyBulkChange.mockResolvedValue({
+      total: 1,
+      passed: 1,
+      failures: [],
+      unchanged: 0,
+    });
     await act(async () => {
-      await Promise.resolve();
+      renderView();
     });
     await goToSecondPage();
 
@@ -1269,13 +1140,7 @@ describe('IncidentGroupsView filters and paging', () => {
       .mockResolvedValueOnce({ data: [], paging: { total: 10 } })
       .mockRejectedValueOnce(new Error('failure'));
 
-    await act(async () => {
-      rerender(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
-    });
+    await applyBulkAck();
 
     expect(showErrorToast).toHaveBeenCalled();
     expect(
@@ -1475,15 +1340,19 @@ describe('IncidentGroupsView filters and paging', () => {
   });
 
   it('should show the drilled-into group as the latest read has it', async () => {
-    const { rerender } = render(
-      <MemoryRouter initialEntries={['/observability/incident-manager']}>
-        {viewTree(0)}
-      </MemoryRouter>
+    let resolveBulk: (value: unknown) => void = jest.fn();
+    mockApplyBulkChange.mockReturnValue(
+      new Promise((resolve) => {
+        resolveBulk = resolve;
+      })
     );
     await act(async () => {
-      await Promise.resolve();
+      renderView();
     });
 
+    // A bulk change still running when the user drills into a group re-reads
+    // the groups under the drill-down once it lands.
+    await applyBulkAck();
     fireEvent.click(screen.getByTestId('group-open-def-unique'));
     mockListIncidentGroups.mockResolvedValue({
       data: [{ ...mockGroups[0], incidentCount: 7 }, ...mockGroups.slice(1)],
@@ -1491,11 +1360,7 @@ describe('IncidentGroupsView filters and paging', () => {
     });
 
     await act(async () => {
-      rerender(
-        <MemoryRouter initialEntries={['/observability/incident-manager']}>
-          {viewTree(1)}
-        </MemoryRouter>
-      );
+      resolveBulk({ total: 1, passed: 1, failures: [], unchanged: 0 });
     });
 
     expect(screen.getByTestId('detail-group')).toHaveTextContent(
@@ -1644,7 +1509,7 @@ describe('IncidentGroupsView filters and paging', () => {
   it('should hide the drawer while the page is kept hidden behind another route', async () => {
     const { rerender } = render(
       <MemoryRouter initialEntries={['/observability/incident-manager']}>
-        {viewTree()}
+        <IncidentGroupsView canEditIncidents />
       </MemoryRouter>
     );
     await act(async () => {
@@ -1658,7 +1523,7 @@ describe('IncidentGroupsView filters and paging', () => {
     rerender(
       <MemoryRouter initialEntries={['/observability/incident-manager']}>
         <RouteVisibilityProvider isVisible={false}>
-          {viewTree()}
+          <IncidentGroupsView canEditIncidents />
         </RouteVisibilityProvider>
       </MemoryRouter>
     );

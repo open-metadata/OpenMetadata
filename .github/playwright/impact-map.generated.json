@@ -667,6 +667,7 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityFilters.spec.ts",
@@ -1553,9 +1554,9 @@
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
-        "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AIMode/TestCaseBreadcrumb.spec.ts",
         "playwright/e2e/Features/AIMode/TestCaseEdit.spec.ts",
@@ -1601,6 +1602,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerTableLayout.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
@@ -1908,12 +1910,13 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
-        "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts",
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerTableLayout.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
@@ -2640,6 +2643,7 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
@@ -2874,6 +2878,7 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
@@ -2899,6 +2904,7 @@
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerTableLayout.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
@@ -3180,9 +3186,9 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
-        "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AIMode/TestCaseBreadcrumb.spec.ts",
         "playwright/e2e/Features/AIMode/TestCaseEdit.spec.ts",
@@ -3258,6 +3264,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerTableLayout.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
@@ -3671,11 +3678,12 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/dateTime.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts",
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerTableLayout.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
@@ -3829,6 +3837,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerTableLayout.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
@@ -7068,8 +7077,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/IncidentManager/IncidentManagerTable.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerTableLayout.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainIncidentIsolation.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts"
@@ -10117,9 +10126,51 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/IncidentManager/IncidentGroups/IncidentGroupBulkStatusModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/IncidentManager/IncidentGroups/IncidentGroupDetail.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/IncidentManager/IncidentGroups/IncidentGroupDrawer.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/IncidentManager/IncidentGroups/IncidentGroupsSelectionBar.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/IncidentManager/IncidentGroups/IncidentGroupsTable.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
+        "playwright/e2e/Features/AIMode/TestCaseBreadcrumb.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/observability/IncidentManager/IncidentGroups/IncidentGroupsView.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts"
       ]
     },
@@ -10168,16 +10219,6 @@
       "specs": [
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/observability/common/FilterChip/FilterChip.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
-        "playwright/e2e/Features/RTL.spec.ts"
       ]
     },
     {
@@ -10590,6 +10631,7 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityFilters.spec.ts",
@@ -10672,6 +10714,7 @@
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerTableLayout.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
@@ -12253,9 +12296,9 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/TourUtils.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerTableLayout.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Flow/Tour.spec.ts",

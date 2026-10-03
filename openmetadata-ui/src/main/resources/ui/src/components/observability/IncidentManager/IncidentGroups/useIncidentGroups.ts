@@ -78,22 +78,15 @@ const resolveDetail = (
  * read from and written to the URL, and every change to them refires the fetch
  * from the first page, which the server is asked for by number.
  *
- * `refreshKey` is the caller's way of saying the groups it is showing are out
- * of date — a new value refires the fetch once, which is how an incident
- * changed elsewhere on the page reaches these rows without a reload. That
- * re-read runs in the background whenever there are rows to keep: they stay put
- * until the new ones land.
+ * `refresh` says the groups on screen are out of date, e.g. after a bulk
+ * change: it refires the fetch once, in the background whenever there are rows
+ * to keep — they stay put until the new ones land.
  *
  * The open drill-down is in the URL too, and its group is read on its own: the
  * one a link names may sit on any page of the listing.
  */
-export const useIncidentGroups = ({
-  refreshKey: externalRefreshKey,
-}: { refreshKey?: number } = {}) => {
-  // The view's own reason to re-read, e.g. after a bulk change, adds to the
-  // caller's; both refresh in the background alike.
-  const [localRefreshKey, setLocalRefreshKey] = useState(0);
-  const refreshKey = (externalRefreshKey ?? 0) + localRefreshKey;
+export const useIncidentGroups = () => {
+  const [refreshKey, setRefreshKey] = useState(0);
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
@@ -114,9 +107,8 @@ export const useIncidentGroups = ({
 
   const groupBy = parseIncidentGroupBy(searchParams[INCIDENT_GROUP_BY_PARAM]);
 
-  // Keyed on the filter params alone: the incident table on the same page
-  // writes its own paging params into this query string, and those must not
-  // refetch the groups.
+  // Keyed on the filter params alone: the drill-down writes its own param into
+  // this query string, and opening a group must not refetch the groups.
   const filtersSearch = QueryString.stringify(
     pick(searchParams, INCIDENT_GROUP_FILTER_KEYS)
   );
@@ -397,7 +389,7 @@ export const useIncidentGroups = ({
     [goToPage]
   );
 
-  const refresh = useCallback(() => setLocalRefreshKey((key) => key + 1), []);
+  const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
 
   return {
     refresh,

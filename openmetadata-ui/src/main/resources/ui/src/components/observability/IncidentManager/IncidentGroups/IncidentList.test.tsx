@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import {
   Severities,
   TestCaseResolutionStatus,
@@ -61,6 +61,12 @@ const fresh: TestCaseResolutionStatus = {
   },
 };
 
+const LocationState = () => (
+  <span data-testid="location-state">
+    {JSON.stringify(useLocation().state)}
+  </span>
+);
+
 const renderList = (
   incidents: TestCaseResolutionStatus[] = [assigned, fresh],
   isLoading = false
@@ -98,6 +104,31 @@ describe('IncidentList', () => {
     expect(within(row).getByTestId('incident-table')).toHaveTextContent(
       'customers'
     );
+  });
+
+  it('should hand the test case page a breadcrumb back to the listing as left', () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          '/observability/incident-manager?groupBy=table&group=svc.db.shop.customers',
+        ]}>
+        <IncidentList incidents={[assigned]} isLoading={false} />
+        <LocationState />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: 'customers_row_count' }));
+
+    expect(
+      JSON.parse(screen.getByTestId('location-state').textContent ?? '')
+    ).toEqual({
+      breadcrumbData: [
+        {
+          name: 'label.incident-manager',
+          url: '/observability/incident-manager?groupBy=table&group=svc.db.shop.customers',
+        },
+      ],
+    });
   });
 
   it('should show the failure reason, status, severity and assignee', () => {

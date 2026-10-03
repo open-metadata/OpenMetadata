@@ -11,39 +11,28 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { useIncidentManagerListPage } from '../../IncidentManager/useIncidentManagerListPage';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import IncidentManagerPage from './IncidentManagerPage';
 
-const mockUseIncidentManagerListPage = useIncidentManagerListPage as jest.Mock;
+const mockUsePermissionProvider = usePermissionProvider as jest.Mock;
 
-jest.mock('../../IncidentManager/useIncidentManagerListPage', () => ({
-  useIncidentManagerListPage: jest.fn(),
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn(),
 }));
 
 jest.mock('./IncidentGroups/IncidentGroupsView', () =>
   jest
     .fn()
     .mockImplementation(
-      ({
-        refreshKey,
-        canEditIncidents,
-      }: {
-        refreshKey?: number;
-        canEditIncidents: boolean;
-      }) => (
+      ({ canEditIncidents }: { canEditIncidents: boolean }) => (
         <div
           data-can-edit={String(canEditIncidents)}
-          data-testid="incident-groups-view">
-          {refreshKey}
-        </div>
+          data-testid="incident-groups-view"
+        />
       )
     )
-);
-
-jest.mock('../../IncidentManager/IncidentManagerTable.component', () =>
-  jest.fn().mockImplementation(() => <div data-testid="incident-table" />)
 );
 
 jest.mock('./IncidentManagerPageWidgets', () =>
@@ -66,19 +55,15 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     ))
 );
 
-const listPage = (canView: boolean, canEditStatus = false) => ({
-  commonTestCasePermission: {
-    ViewAll: canView,
-    ViewBasic: canView,
-    EditStatus: canEditStatus,
-  },
-  isIncidentPage: true,
-  testCaseListData: { data: [], isLoading: false },
-  testCasePermissions: [],
-  isPermissionLoading: false,
-  showPagination: false,
-  pagingData: {},
-});
+const withTestCasePermission = (canView?: boolean, canEditStatus = false) =>
+  mockUsePermissionProvider.mockReturnValue({
+    permissions: {
+      testCase:
+        canView === undefined
+          ? undefined
+          : { ViewAll: canView, ViewBasic: canView, EditStatus: canEditStatus },
+    },
+  });
 
 const renderPage = () =>
   render(
@@ -90,15 +75,14 @@ const renderPage = () =>
 describe('IncidentManagerPage (app mode)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseIncidentManagerListPage.mockReturnValue(listPage(true));
+    withTestCasePermission(true);
   });
 
-  it('should render the widgets, the incident groups and the incident table', () => {
+  it('should render the widgets above the incident groups', () => {
     renderPage();
 
     expect(screen.getByTestId('incident-widgets')).toBeInTheDocument();
     expect(screen.getByTestId('incident-groups-view')).toBeInTheDocument();
-    expect(screen.getByTestId('incident-table')).toBeInTheDocument();
   });
 
   it('should offer the bulk actions only to who may change incident statuses', () => {
@@ -109,7 +93,7 @@ describe('IncidentManagerPage (app mode)', () => {
       'false'
     );
 
-    mockUseIncidentManagerListPage.mockReturnValue(listPage(true, true));
+    withTestCasePermission(true, true);
     renderPage();
 
     expect(screen.getAllByTestId('incident-groups-view')[1]).toHaveAttribute(
@@ -119,7 +103,7 @@ describe('IncidentManagerPage (app mode)', () => {
   });
 
   it('should show the permission placeholder without view access', () => {
-    mockUseIncidentManagerListPage.mockReturnValue(listPage(false));
+    withTestCasePermission(false);
 
     renderPage();
 
@@ -129,31 +113,10 @@ describe('IncidentManagerPage (app mode)', () => {
     expect(
       screen.queryByTestId('incident-groups-view')
     ).not.toBeInTheDocument();
-    expect(screen.queryByTestId('incident-table')).not.toBeInTheDocument();
-  });
-
-  it('should re-read the groups once per incident changed in the table', () => {
-    renderPage();
-
-    expect(screen.getByTestId('incident-groups-view')).toHaveTextContent('0');
-
-    const { onIncidentChange } =
-      mockUseIncidentManagerListPage.mock.calls[0][0];
-
-    act(() => onIncidentChange());
-
-    expect(screen.getByTestId('incident-groups-view')).toHaveTextContent('1');
-
-    act(() => onIncidentChange());
-
-    expect(screen.getByTestId('incident-groups-view')).toHaveTextContent('2');
   });
 
   it('should treat a permission that has not loaded as no view access', () => {
-    mockUseIncidentManagerListPage.mockReturnValue({
-      ...listPage(true),
-      commonTestCasePermission: undefined,
-    });
+    withTestCasePermission(undefined);
 
     renderPage();
 
