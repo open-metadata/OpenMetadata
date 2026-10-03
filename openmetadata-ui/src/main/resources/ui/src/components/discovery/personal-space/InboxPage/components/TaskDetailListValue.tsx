@@ -12,6 +12,7 @@
  */
 import {
   Badge,
+  Box,
   Button,
   Dropdown,
   Typography,
@@ -67,16 +68,18 @@ const TaskDetailListValue: React.FC<TaskDetailListValueProps> = ({
             {t('label.view-more-count', { countValue: hiddenCount })}
           </Button>
           <Dropdown.Popover className="tw:w-64" placement="bottom start">
-            <div
-              className="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-secondary tw:px-3 tw:py-2"
-              data-testid="task-detail-list-header">
+            <Box
+              align="center"
+              className="tw:border-b tw:border-secondary tw:px-3 tw:py-2"
+              data-testid="task-detail-list-header"
+              justify="between">
               <Typography size="text-sm" weight="semibold">
                 {title}
               </Typography>
               <Badge color="gray" size="sm" type="pill-color">
                 {items.length}
               </Badge>
-            </div>
+            </Box>
             <Dropdown.Menu
               aria-label={title}
               className="tw:max-h-64 tw:overflow-y-auto"

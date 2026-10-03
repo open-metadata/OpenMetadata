@@ -72,10 +72,12 @@ const TaskCommentActions = ({
   const { t } = useTranslation();
 
   return (
-    <div
+    <Box
+      align="center"
       aria-label={t('label.action-plural')}
-      className="tw:flex tw:items-center tw:gap-1 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-within:opacity-100"
+      className="tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-within:opacity-100"
       data-testid="task-comment-actions"
+      gap={1}
       role="group">
       {canEdit && (
         <ButtonUtility
@@ -97,7 +99,7 @@ const TaskCommentActions = ({
           onClick={onDeleteRequest}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

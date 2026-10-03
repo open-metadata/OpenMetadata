@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { TestCasePageTabs } from '../../enums/TestCase.enum';
+import { TestCasePageTabs } from '../../enums/TestSuite.enum';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 
-// Moved to `enums/TestCase.enum` so lower layers can name a tab without
+// Moved to `enums/TestSuite.enum` so lower layers can name a tab without
 // importing this page; re-exported here for the modules that already do.
 export { TestCasePageTabs };
 export interface TestCaseIncidentStatusData {

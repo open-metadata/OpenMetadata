@@ -18,7 +18,7 @@ import {
   ROUTES,
 } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { TestCasePageTabs } from '../enums/TestCase.enum';
+import { TestCasePageTabs } from '../enums/TestSuite.enum';
 import { TaskEntityStatus, type Task as TaskEntity } from '../rest/tasksAPI';
 import {
   getEntityDetailsPath,

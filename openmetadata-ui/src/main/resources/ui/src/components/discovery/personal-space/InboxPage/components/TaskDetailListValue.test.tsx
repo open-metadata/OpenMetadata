@@ -25,6 +25,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Badge: ({ children }: { children?: ReactNode }) => (
       <span data-testid="list-count">{children}</span>
     ),
+    Box: ({
+      children,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      'data-testid'?: string;
+    }) => <div data-testid={testId}>{children}</div>,
     Button: ({
       children,
       'data-testid': testId,
