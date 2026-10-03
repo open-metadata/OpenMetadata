@@ -24,6 +24,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -42,8 +43,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertRows;
+import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
@@ -74,8 +77,11 @@ public class EventSubscriptionScheduler {
   public static final String SCHEDULER_NAME = "OMEventSubScheduler";
   private static final int SCHEDULER_THREAD_COUNT = 10;
   // A trigger later than this is skipped by acquisition until the misfire handler, which rescans at
-  // this period, picks it up again.
-  static final long MISFIRE_THRESHOLD_MS = 5_000L;
+  // this period, fires it once now. A tick that ends past its next slot restarts its timetable
+  // (behind), so a trigger is late only while it waits for a free thread. It must stay acquirable
+  // for that whole wait: an alert that has waited then wins the next thread by fire time, even
+  // while the re-runs of ticks stopped by their budget keep coming.
+  static final long MISFIRE_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(10);
 
   // Derived from the scheduler's instance name, which Quartz already requires to be unique per
   // cluster. DBConnectionManager is a process-wide singleton whose registration is an unguarded
@@ -108,6 +114,8 @@ public class EventSubscriptionScheduler {
       OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
       throws SchedulerException {
 
+    AlertingSettings.use(AlertingSettings.from(config.getAlertingConfiguration()));
+    ServerStopping.registerShutdownHook();
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(quartzProperties(config.getDataSourceFactory()));
     // Must precede getScheduler(): that is where the job store resolves its datasource name.
@@ -224,6 +232,16 @@ public class EventSubscriptionScheduler {
   static SimpleScheduleBuilder pollerSchedule(int intervalSeconds) {
     return SimpleScheduleBuilder.repeatSecondlyForever(intervalSeconds)
         .withMisfireHandlingInstructionNowWithExistingCount();
+  }
+
+  // Quartz counts a repeating trigger's next slot from the slot before it, so a run that outlasts
+  // its interval leaves the trigger behind: it would fire once per missed slot, and one behind by
+  // more than the misfire threshold would drop out of acquisition. A poller behind is restarted
+  // from the end of its run, one interval later.
+  static boolean behind(Trigger stored, long now) {
+    return stored != null
+        && stored.getNextFireTime() != null
+        && stored.getNextFireTime().getTime() < now;
   }
 
   private SubscriptionStatus getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status status) {

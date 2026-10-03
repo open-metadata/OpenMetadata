@@ -15,10 +15,12 @@ package org.openmetadata.service.events.scheduled;
 
 import com.google.common.util.concurrent.Striped;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -119,6 +121,28 @@ public final class AlertJobs {
     alertIds.forEach(AlertJobs::converge);
   }
 
+  /**
+   * Restarts the tick's alert one poll interval from now when the tick ended past the alert's next
+   * slot. Written from the stored row under the alert's lock, like every other trigger write, and
+   * written again from the row when a save moved it meanwhile.
+   */
+  public static void restartIfBehind(JobExecutionContext tick) throws SchedulerException {
+    AlertJobs jobs = started;
+    Optional<UUID> alertId = jobs == null ? Optional.empty() : alertOf(tick);
+    if (alertId.isPresent()) {
+      jobs.restart(alertId.get(), System.currentTimeMillis());
+    }
+  }
+
+  /** The alert's trigger restarted one poll interval from now, when the stored one is behind. */
+  static Optional<Trigger> restarted(Trigger stored, EventSubscription row, long now) {
+    boolean restart = EventSubscriptionScheduler.behind(stored, now) && shouldBeScheduled(row);
+    return restart
+        ? Optional.of(
+            trigger(row, new Date(now + TimeUnit.SECONDS.toMillis(row.getPollInterval()))))
+        : Optional.empty();
+  }
+
   /** Runs a tick that stopped for its time budget again at once, from the scheduler that ran it. */
   public static void runAgainNow(JobExecutionContext tick) throws SchedulerException {
     tick.getScheduler().triggerJob(tick.getJobDetail().getKey());
@@ -179,6 +203,30 @@ public final class AlertJobs {
       return Optional.ofNullable(name).map(UUID::fromString);
     } catch (IllegalArgumentException notAnId) {
       return Optional.empty();
+    }
+  }
+
+  private void restart(UUID alertId, long now) throws SchedulerException {
+    Lock lock = LOCKS.get(alertId);
+    lock.lock();
+    try {
+      EventSubscription stored = AlertRows.readOrNull(alertId);
+      Optional<Trigger> restarted =
+          restarted(scheduler.getTrigger(triggerKey(alertId)), stored, now);
+      if (restarted.isPresent()) {
+        scheduler.rescheduleJob(triggerKey(alertId), restarted.get());
+        settleIfMoved(alertId, stored);
+      }
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  // A save on another node may have written its own trigger meanwhile: its row wins.
+  private void settleIfMoved(UUID alertId, EventSubscription restartedFrom)
+      throws SchedulerException {
+    if (!Objects.equals(versionOf(restartedFrom), versionOf(AlertRows.readOrNull(alertId)))) {
+      settle(alertId);
     }
   }
 
@@ -250,10 +298,14 @@ public final class AlertJobs {
   }
 
   static Trigger trigger(EventSubscription stored) {
+    return trigger(stored, new Date());
+  }
+
+  private static Trigger trigger(EventSubscription stored, Date startAt) {
     return TriggerBuilder.newTrigger()
         .withIdentity(triggerKey(stored.getId()))
         .withSchedule(EventSubscriptionScheduler.pollerSchedule(stored.getPollInterval()))
-        .startNow()
+        .startAt(startAt)
         .build();
   }
 }

@@ -25,6 +25,7 @@ import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -286,7 +287,12 @@ public final class AlertUtil {
         .filter(
             entry ->
                 isChangeEventAllowed(entry.getKey(), filteringRules, watermark, onEvaluationError))
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        .collect(
+            Collectors.toMap(
+                Map.Entry::getKey,
+                Map.Entry::getValue,
+                (first, second) -> first,
+                LinkedHashMap::new));
   }
 
   /**
