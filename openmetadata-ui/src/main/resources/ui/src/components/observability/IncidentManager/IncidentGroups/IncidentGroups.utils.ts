@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { castArray, isString, isUndefined, sumBy, uniq } from 'lodash';
+import { castArray, isString, isUndefined, sumBy } from 'lodash';
 import { ParsedQs } from 'qs';
 import {
   IncidentGroupBy,
@@ -67,10 +67,10 @@ const readTimestamp = (value: unknown) => {
 };
 
 const isOpenIncidentStatus = (value: unknown): value is OpenIncidentStatus =>
-  INCIDENT_GROUP_STATUS_OPTIONS.some((status) => status === value);
+  INCIDENT_GROUP_STATUS_OPTIONS.includes(value as OpenIncidentStatus);
 
 const isSeverityFilter = (value: unknown): value is IncidentSeverityFilter =>
-  INCIDENT_SEVERITY_FILTER_OPTIONS.some((severity) => severity === value);
+  INCIDENT_SEVERITY_FILTER_OPTIONS.includes(value as IncidentSeverityFilter);
 
 /**
  * The grouped view's filters out of the query string. A value the endpoint
@@ -82,8 +82,12 @@ export const parseIncidentGroupFilters = (
 ): IncidentGroupFilters => ({
   testCaseFQN: readText(params.testCaseFQN),
   assignee: readText(params.assignee),
-  status: uniq(castArray(params.status ?? [])).filter(isOpenIncidentStatus),
-  severity: uniq(castArray(params.severity ?? [])).filter(isSeverityFilter),
+  status: [...new Set(castArray(params.status ?? []))].filter(
+    isOpenIncidentStatus
+  ),
+  severity: [...new Set(castArray(params.severity ?? []))].filter(
+    isSeverityFilter
+  ),
   dateField:
     params.dateField === 'updatedAt'
       ? 'updatedAt'
