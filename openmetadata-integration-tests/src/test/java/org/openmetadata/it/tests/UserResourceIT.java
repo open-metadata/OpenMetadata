@@ -36,6 +36,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -45,6 +47,8 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -652,6 +656,50 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertNull(
         getEntity(user.getId().toString()).getDefaultDomain(),
         "a deleted domain must not linger as the user's selection");
+  }
+
+  @Test
+  void test_selectedDomainDoesNotHideAGlossarysTerms(TestNamespace ns) {
+    // Children of an opened entity are listed in full: terms inherit the glossary's domain.
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navTerms"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("navbar pick"));
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("navG"))
+                    .withDescription("glossary in the picked domain")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    GlossaryTerm term =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("inheritsDomain")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("no domain of its own"));
+    String userName = "navterms" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String email = userName + "@test.openmetadata.org";
+    User user = createEntity(new CreateUser().withName(userName).withEmail(email));
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchEntity(user.getId().toString(), user);
+
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.addQueryParam("glossary", glossary.getId().toString());
+    ListResponse<GlossaryTerm> terms =
+        SdkClients.createClient(email, email, new String[] {}).glossaryTerms().list(params);
+
+    assertTrue(
+        terms.getData().stream().anyMatch(t -> t.getId().equals(term.getId())),
+        "a glossary's terms must not be hidden by the navbar domain pick");
   }
 
   @Test

@@ -67,4 +67,40 @@ class DomainNavFilterTest {
     assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
     assertEquals("hAlpha", filter.getQueryParams().get("domainFqnHash"));
   }
+
+  @Test
+  void apply_skipsListScopedToAParent() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("parent", "glossaryA");
+    DomainNavFilter.apply(filter, Entity.GLOSSARY_TERM, true, DOMAIN_ID, "hAlpha");
+    assertNull(filter.getQueryParams().get("domainId"));
+    assertNull(filter.getQueryParams().get("domainFqnHash"));
+  }
+
+  @Test
+  void apply_parentScopedListDropsTheEchoedSelection() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("databaseSchema", "svc.db.schema");
+    filter.addQueryParam("domainId", "'" + DOMAIN_ID + "'");
+    DomainNavFilter.apply(filter, Entity.TABLE, true, DOMAIN_ID, "hAlpha");
+    assertNull(filter.getQueryParams().get("domainId"));
+  }
+
+  @Test
+  void apply_parentScopedListKeepsAnExplicitOtherDomain() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("service", "svc");
+    filter.addQueryParam("domainId", "'22222222-2222-2222-2222-222222222222'");
+    DomainNavFilter.apply(filter, Entity.DATABASE, true, DOMAIN_ID, "hAlpha");
+    assertEquals("'22222222-2222-2222-2222-222222222222'", filter.getQueryParams().get("domainId"));
+  }
+
+  @Test
+  void apply_nullParentParamIsNotAScope() {
+    // Resources add optional params unconditionally, e.g. addQueryParam("parent", null).
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("parent", (String) null);
+    DomainNavFilter.apply(filter, Entity.GLOSSARY_TERM, true, DOMAIN_ID, "hAlpha");
+    assertEquals(DOMAIN_ID, filter.getQueryParams().get("domainId"));
+  }
 }

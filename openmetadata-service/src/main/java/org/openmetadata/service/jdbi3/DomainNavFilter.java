@@ -15,6 +15,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.Set;
+
 /**
  * Applies the global (navbar) domain filter to a list from the caller's persisted selected domain.
  *
@@ -26,6 +28,26 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
  */
 public final class DomainNavFilter {
   private DomainNavFilter() {}
+
+  /** List params that confine a list to the children of one entity. */
+  private static final Set<String> PARENT_SCOPE_PARAMS =
+      Set.of(
+          "service",
+          "database",
+          "databaseSchema",
+          "parent",
+          "directChildrenOf",
+          "apiCollection",
+          "directory",
+          "spreadsheet",
+          "aboutEntity",
+          "entityFQNHash",
+          "entityLink");
+
+  private static boolean isScopedToParent(ListFilter filter) {
+    return PARENT_SCOPE_PARAMS.stream()
+        .anyMatch(param -> !nullOrEmpty(filter.getQueryParams().get(param)));
+  }
 
   /**
    * True when the navbar domain filter should narrow a list of {@code entityType}.
@@ -67,6 +89,14 @@ public final class DomainNavFilter {
         hasExplicitDomain
             && !nullOrEmpty(selectedDomainIds)
             && explicitDomainIds.replace("'", "").equals(selectedDomainIds);
+    if (isScopedToParent(filter)) {
+      // Children of an opened entity (e.g. a glossary's terms) are listed in full; they mostly
+      // inherit the parent's domain and hold no domain row of their own.
+      if (echoesSelection) {
+        filter.removeQueryParam("domainId");
+      }
+      return;
+    }
     if (!shouldApply(
         entityType, supportsDomains, hasExplicitDomain && !echoesSelection, selectedDomainIds)) {
       return;
