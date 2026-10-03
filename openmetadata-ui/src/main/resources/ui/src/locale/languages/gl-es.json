@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "Non hai datos de liñaxe dispoñibles",
     "no-lines-match": "Ningunha liña coincide.",
     "no-match-found": "Non se atopou ningunha coincidencia",
+    "no-match-in-first-tasks": "Non hai coincidencias nas primeiras {{count}} tarefas. Carga máis para seguir buscando.",
     "no-matching-test-cases": "Non hai casos de proba coincidentes",
     "no-matching-test-cases-description": "Ningún caso de proba coincide cos filtros actuais. Axústaos ou bórraos para velo todo.",
     "no-matching-test-suites": "Non hai suites coincidentes",

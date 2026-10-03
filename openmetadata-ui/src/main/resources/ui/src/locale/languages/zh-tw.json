@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "沒有可用的血緣資料",
     "no-lines-match": "沒有符合的行。",
     "no-match-found": "找不到相符項目",
+    "no-match-in-first-tasks": "前 {{count}} 個任務中沒有相符項目。載入更多以繼續搜尋。",
     "no-matching-test-cases": "沒有符合的測試案例",
     "no-matching-test-cases-description": "沒有測試案例符合目前的篩選條件。請調整或清除篩選條件以檢視全部。",
     "no-matching-test-suites": "沒有符合的套件",

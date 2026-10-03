@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "No lineage data available",
     "no-lines-match": "No lines match.",
     "no-match-found": "No match found",
+    "no-match-in-first-tasks": "No match in the first {{count}} tasks. Load more to keep searching.",
     "no-matching-test-cases": "No matching test cases",
     "no-matching-test-cases-description": "No test cases match the current filters. Adjust or clear them to see everything.",
     "no-matching-test-suites": "No matching suites",

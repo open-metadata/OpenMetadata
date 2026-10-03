@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "No hay datos de linaje disponibles",
     "no-lines-match": "No hay líneas coincidentes.",
     "no-match-found": "No se encontraron coincidencias",
+    "no-match-in-first-tasks": "No hay coincidencias en las primeras {{count}} tareas. Carga más para seguir buscando.",
     "no-matching-test-cases": "No hay casos de prueba coincidentes",
     "no-matching-test-cases-description": "Ningún caso de prueba coincide con los filtros actuales. Ajústalos o bórralos para verlo todo.",
     "no-matching-test-suites": "No hay suites coincidentes",

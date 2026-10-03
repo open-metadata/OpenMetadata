@@ -30,7 +30,7 @@ import {
   getTaskStatusBadge,
   getTaskStatusLabel,
 } from './taskResolution.utils';
-import { TaskResolveAction } from './taskResolve.utils';
+import { getTaskStatusBucket, TaskStatusBucket } from './taskList.utils';
 
 // The label key is echoed back so assertions read as the key that will render.
 const t = (key: string) => key;
@@ -163,12 +163,6 @@ describe('getTaskStatusBadge', () => {
 
 describe('getTaskStatusLabel', () => {
   const t = (key: string) => key;
-  const approve: TaskResolveAction = {
-    id: 'approve',
-    kind: 'approve',
-    label: 'Approve',
-    requiresComment: false,
-  };
 
   const openTask = (overrides: Partial<Task> = {}): Task =>
     ({
@@ -182,7 +176,6 @@ describe('getTaskStatusLabel', () => {
     expect(
       getTaskStatusLabel(
         openTask({ status: TaskStatus.Rejected }),
-        [],
         new Set(),
         t
       )
@@ -190,17 +183,34 @@ describe('getTaskStatusLabel', () => {
   });
 
   it('reads an open task nobody holds as unassigned', () => {
-    expect(getTaskStatusLabel(openTask(), [approve], new Set(), t)).toEqual({
+    expect(getTaskStatusLabel(openTask(), new Set(), t)).toEqual({
       label: 'label.unassigned',
       tone: 'gray',
     });
   });
 
-  it('reads a task the viewer can approve as pending their approval', () => {
+  // An incident only resolves; held by the viewer it still waits on them, as
+  // the Status filter files it.
+  it('agrees with the Status filter on a resolve-only task the viewer holds', () => {
+    const incident = openTask({
+      category: TaskCategory.Incident,
+      assignees: [{ id: 'u1' }],
+      workflowStageDisplayName: 'Triage',
+    } as unknown as Partial<Task>);
+    const viewer = new Set(['u1']);
+
+    expect(getTaskStatusLabel(incident, viewer, t)?.label).toBe(
+      'label.pending-approval'
+    );
+    expect(getTaskStatusBucket(incident, viewer)).toBe(
+      TaskStatusBucket.PendingApproval
+    );
+  });
+
+  it('reads a task the viewer holds as pending their approval', () => {
     expect(
       getTaskStatusLabel(
         openTask({ assignees: [{ id: 'u1' }] } as unknown as Partial<Task>),
-        [approve],
         new Set(['u1']),
         t
       )
@@ -212,7 +222,6 @@ describe('getTaskStatusLabel', () => {
     expect(
       getTaskStatusLabel(
         openTask({ assignees: [{ id: 'team-1' }] } as unknown as Partial<Task>),
-        [approve],
         new Set(['u1', 'team-1']),
         t
       )?.label
@@ -226,7 +235,6 @@ describe('getTaskStatusLabel', () => {
           assignees: [{ id: 'u2' }],
           workflowStageDisplayName: 'Awaiting grant',
         } as unknown as Partial<Task>),
-        [],
         new Set(['u1']),
         t
       )?.label
@@ -240,7 +248,6 @@ describe('getTaskStatusLabel', () => {
           category: TaskCategory.Approval,
           assignees: [{ id: 'u2' }],
         } as unknown as Partial<Task>),
-        [approve],
         new Set(['u1']),
         t
       )?.label
@@ -251,7 +258,6 @@ describe('getTaskStatusLabel', () => {
     expect(
       getTaskStatusLabel(
         openTask({ assignees: [{ id: 'u2' }] } as unknown as Partial<Task>),
-        [approve],
         new Set(['u1']),
         t
       )?.label

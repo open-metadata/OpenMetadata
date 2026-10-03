@@ -228,6 +228,9 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
               color="secondary"
               data-testid="task-actions-menu"
               iconLeading={<DotsVertical className="tw:size-4" />}
+              // Like the header buttons, the menu waits out a running
+              // transition, so no second one can start.
+              isDisabled={loadingTransitionId !== undefined}
               size="sm"
             />
             <Dropdown.Popover className="tw:w-max tw:min-w-40">

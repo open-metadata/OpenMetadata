@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "Veri soyu verisi mevcut değil",
     "no-lines-match": "Eşleşen satır yok.",
     "no-match-found": "Eşleşme bulunamadı",
+    "no-match-in-first-tasks": "İlk {{count}} görevde eşleşme yok. Aramaya devam etmek için daha fazla yükleyin.",
     "no-matching-test-cases": "Eşleşen test durumu yok",
     "no-matching-test-cases-description": "Geçerli filtrelerle eşleşen test durumu yok. Her şeyi görmek için filtreleri ayarlayın veya temizleyin.",
     "no-matching-test-suites": "Eşleşen takım yok",

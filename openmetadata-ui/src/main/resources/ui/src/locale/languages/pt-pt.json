@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "Nenhum dado de linhagem disponível",
     "no-lines-match": "Nenhuma linha corresponde.",
     "no-match-found": "Nenhuma correspondência encontrada",
+    "no-match-in-first-tasks": "Nenhuma correspondência nas primeiras {{count}} tarefas. Carregue mais para continuar a pesquisar.",
     "no-matching-test-cases": "Nenhum caso de teste corresponde",
     "no-matching-test-cases-description": "Nenhum caso de teste corresponde aos filtros atuais. Ajuste-os ou limpe-os para ver tudo.",
     "no-matching-test-suites": "Nenhum conjunto corresponde",

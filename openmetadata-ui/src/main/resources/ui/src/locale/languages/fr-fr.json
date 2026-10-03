@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "Aucune donnée de lignage disponible",
     "no-lines-match": "Aucune ligne ne correspond.",
     "no-match-found": "Aucune correspondance trouvée",
+    "no-match-in-first-tasks": "Aucune correspondance dans les {{count}} premières tâches. Chargez-en plus pour poursuivre la recherche.",
     "no-matching-test-cases": "Aucun cas de test correspondant",
     "no-matching-test-cases-description": "Aucun cas de test ne correspond aux filtres actuels. Ajustez-les ou effacez-les pour tout afficher.",
     "no-matching-test-suites": "Aucune suite correspondante",

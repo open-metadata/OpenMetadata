@@ -232,6 +232,18 @@ export const isTaskOpen = (task: Pick<Task, 'status' | 'type'>): boolean =>
   (task.type === TaskType.DataAccessRequest &&
     task.status === TaskStatus.Approved);
 
+/**
+ * Whether an open task waits on the viewer: it is assigned to them or one of
+ * their teams. The Status filter and the status label both read it, so a task
+ * filed under "Pending approval" also says so.
+ */
+export const isTaskPendingViewer = (
+  task: Pick<Task, 'status' | 'type' | 'assignees'>,
+  currentUserIds: ReadonlySet<string>
+): boolean =>
+  isTaskOpen(task) &&
+  (task.assignees ?? []).some(({ id }) => currentUserIds.has(id));
+
 export interface RelativeDayGroup<T> {
   day: string;
   items: T[];

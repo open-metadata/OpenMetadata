@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "Geen herkomstgegevens beschikbaar",
     "no-lines-match": "Geen overeenkomende regels.",
     "no-match-found": "Geen overeenkomst gevonden",
+    "no-match-in-first-tasks": "Geen overeenkomsten in de eerste {{count}} taken. Laad meer om verder te zoeken.",
     "no-matching-test-cases": "Geen overeenkomende testcases",
     "no-matching-test-cases-description": "Geen testcases komen overeen met de huidige filters. Pas ze aan of wis ze om alles te zien.",
     "no-matching-test-suites": "Geen overeenkomende suites",

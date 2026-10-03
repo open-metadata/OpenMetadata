@@ -640,7 +640,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     );
   }
 
-  const statusBadge = getTaskStatusLabel(task, actions, currentUserIds, t);
+  const statusBadge = getTaskStatusLabel(task, currentUserIds, t);
   // Titleless tasks (governance workflows) carry the taskId as their name, so
   // getTaskTitleParts composes a title from the task type and the entity it is about
   // instead of repeating the id.

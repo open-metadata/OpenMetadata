@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "Inga härkomstdata tillgängliga",
     "no-lines-match": "Inga rader matchar.",
     "no-match-found": "Ingen matchning hittades",
+    "no-match-in-first-tasks": "Inga träffar bland de första {{count}} uppgifterna. Läs in fler för att fortsätta söka.",
     "no-matching-test-cases": "Inga matchande testfall",
     "no-matching-test-cases-description": "Inga testfall matchar de aktuella filtren. Justera eller rensa dem för att se allt.",
     "no-matching-test-suites": "Inga matchande sviter",

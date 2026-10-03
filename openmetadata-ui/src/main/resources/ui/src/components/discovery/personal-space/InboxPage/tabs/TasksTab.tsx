@@ -136,7 +136,11 @@ const isListSettled = ({
 interface TasksEmptyStateProps {
   status: TaskStatusFilter;
   isNarrowed: boolean;
+  // Set when a narrowed scan stopped at its cap with pages still unread, so
+  // "no match" covers only the tasks scanned so far.
+  scannedCount?: number;
   onClearFilters: () => void;
+  onLoadMore: () => void;
 }
 
 // A dedicated empty state per status: All = generic "nothing to do", Open =
@@ -145,21 +149,40 @@ interface TasksEmptyStateProps {
 const TasksEmptyState = ({
   status,
   isNarrowed,
+  scannedCount,
   onClearFilters,
+  onLoadMore,
 }: TasksEmptyStateProps) => {
   const { t } = useTranslation();
+  const isScanCapped = scannedCount !== undefined;
+  const clearAction = {
+    key: 'clear-filters',
+    label: t('label.clear-all'),
+    onPress: onClearFilters,
+  };
 
   const noMatch = (
     <EmptyPlaceholder
-      actions={[
-        {
-          key: 'clear-filters',
-          label: t('label.clear-all'),
-          onPress: onClearFilters,
-        },
-      ]}
-      data-testid="inbox-tasks-no-match"
-      description={t('message.no-results-for-filters-description')}
+      actions={
+        isScanCapped
+          ? [
+              {
+                key: 'load-more',
+                label: t('label.load-more'),
+                onPress: onLoadMore,
+              },
+              clearAction,
+            ]
+          : [clearAction]
+      }
+      data-testid={
+        isScanCapped ? 'inbox-tasks-no-match-scanned' : 'inbox-tasks-no-match'
+      }
+      description={
+        isScanCapped
+          ? t('message.no-match-in-first-tasks', { count: scannedCount })
+          : t('message.no-results-for-filters-description')
+      }
       icon={
         <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
       }
@@ -452,9 +475,15 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // A short narrowed list keeps the scroll sentinel in view, which would page
   // through the user's whole history; stop after a bounded scan.
   const isClientNarrowed = typeFilter.length > 0 || statusFilter.length > 0;
+  // "Load more" on a capped no-match raises the cap by another scan.
+  const [scanLimit, setScanLimit] = useState(MAX_NARROWED_SCAN);
   const canLoadMore = useCallback(
-    (loaded: Task[]) => !isClientNarrowed || loaded.length < MAX_NARROWED_SCAN,
-    [isClientNarrowed]
+    (loaded: Task[]) => !isClientNarrowed || loaded.length < scanLimit,
+    [isClientNarrowed, scanLimit]
+  );
+  const handleScanFurther = useCallback(
+    () => setScanLimit((limit) => limit + MAX_NARROWED_SCAN),
+    []
   );
 
   const {
@@ -652,8 +681,10 @@ const TasksTab: React.FC<TasksTabProps> = ({
           showEmptyState ? (
             <TasksEmptyState
               isNarrowed={isNarrowed}
+              scannedCount={hasMore ? tasks.length : undefined}
               status={status}
               onClearFilters={handleClearFilters}
+              onLoadMore={handleScanFurther}
             />
           ) : undefined
         }

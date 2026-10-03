@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "ไม่มีข้อมูลลำดับชั้น",
     "no-lines-match": "ไม่มีบรรทัดที่ตรงกัน",
     "no-match-found": "ไม่พบการจับคู่",
+    "no-match-in-first-tasks": "ไม่พบรายการที่ตรงกันใน {{count}} งานแรก โหลดเพิ่มเพื่อค้นหาต่อ",
     "no-matching-test-cases": "ไม่มีกรณีทดสอบที่ตรงกัน",
     "no-matching-test-cases-description": "ไม่มีกรณีทดสอบที่ตรงกับตัวกรองปัจจุบัน ปรับหรือล้างตัวกรองเพื่อดูทั้งหมด",
     "no-matching-test-suites": "ไม่มีชุดที่ตรงกัน",

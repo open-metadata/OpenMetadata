@@ -482,6 +482,10 @@ const TASK = {
   comments: [],
 };
 
+// An approved access request stays open awaiting its grant, so its next
+// transitions stay actionable; any other approved task is closed.
+const DAR_TASK = { ...TASK, type: 'DataAccessRequest' };
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetContributions.mockReturnValue([]);
@@ -587,14 +591,14 @@ describe('TaskDetailPanel', () => {
     // Approve → the workflow moves the DAR to "awaiting grant". The panel polls
     // until the consumed transition is gone, then renders Mark as granted.
     jest.useFakeTimers();
-    mockResolveTask.mockResolvedValue({ ...TASK, status: 'Approved' });
+    mockResolveTask.mockResolvedValue({ ...DAR_TASK, status: 'Approved' });
     mockGetTaskById
       // Initial load, then one poll that still echoes the consumed transition.
       .mockResolvedValueOnce({ data: TASK })
       .mockResolvedValueOnce({ data: TASK })
       .mockResolvedValue({
         data: {
-          ...TASK,
+          ...DAR_TASK,
           status: 'Approved',
           availableTransitions: [
             {
@@ -633,7 +637,7 @@ describe('TaskDetailPanel', () => {
     // The poll gives up after its attempts; re-firing the consumed transition
     // would hit a workflow with no active task (500), so it must stay hidden.
     jest.useFakeTimers();
-    mockResolveTask.mockResolvedValue({ ...TASK, status: 'Approved' });
+    mockResolveTask.mockResolvedValue({ ...DAR_TASK, status: 'Approved' });
 
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 

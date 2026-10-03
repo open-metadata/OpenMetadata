@@ -377,7 +377,17 @@ const describeTagUpdate = (
       approve: t('label.approve-entity', { entity: t('label.tag') }),
     },
     rows: [
-      ...tagsRow('tags', t('label.tag'), payload.tagsToAdd),
+      // Approving applies both lists, so the approver sees both.
+      ...tagsRow(
+        'tags',
+        t('label.add-entity', { entity: t('label.tag-plural') }),
+        payload.tagsToAdd
+      ),
+      ...tagsRow(
+        'tagsToRemove',
+        t('label.remove-entity', { entity: t('label.tag-plural') }),
+        payload.tagsToRemove
+      ),
       ...textRow(
         'source',
         'source',

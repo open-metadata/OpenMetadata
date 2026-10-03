@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "Keine Lineage-Daten verfügbar",
     "no-lines-match": "Keine Zeilen stimmen überein.",
     "no-match-found": "Keine Übereinstimmung gefunden",
+    "no-match-in-first-tasks": "Keine Treffer in den ersten {{count}} Aufgaben. Laden Sie mehr, um weiterzusuchen.",
     "no-matching-test-cases": "Keine passenden Testfälle",
     "no-matching-test-cases-description": "Keine Testfälle entsprechen den aktuellen Filtern. Passen Sie sie an oder setzen Sie sie zurück, um alles anzuzeigen.",
     "no-matching-test-suites": "Keine passenden Suiten",

@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "אין נתוני שושלת זמינים",
     "no-lines-match": "אין שורות תואמות.",
     "no-match-found": "לא נמצאה התאמה",
+    "no-match-in-first-tasks": "לא נמצאה התאמה ב-{{count}} המשימות הראשונות. טען עוד כדי להמשיך לחפש.",
     "no-matching-test-cases": "אין מקרי בדיקה תואמים",
     "no-matching-test-cases-description": "אין מקרי בדיקה שתואמים למסננים הנוכחיים. התאימו או נקו אותם כדי לראות הכול.",
     "no-matching-test-suites": "אין חבילות תואמות",

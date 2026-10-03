@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "利用可能なリネージデータがありません",
     "no-lines-match": "一致する行がありません。",
     "no-match-found": "一致するものは見つかりませんでした",
+    "no-match-in-first-tasks": "最初の {{count}} 件のタスクに一致するものはありません。さらに読み込んで検索を続けてください。",
     "no-matching-test-cases": "一致するテストケースはありません",
     "no-matching-test-cases-description": "現在のフィルターに一致するテストケースはありません。フィルターを調整またはクリアしてすべて表示してください。",
     "no-matching-test-suites": "一致するスイートはありません",

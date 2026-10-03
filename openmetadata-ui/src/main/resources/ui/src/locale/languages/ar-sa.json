@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "لا تتوفر بيانات سلسلة البيانات",
     "no-lines-match": "لا توجد أسطر مطابقة.",
     "no-match-found": "لم يتم العثور على تطابق",
+    "no-match-in-first-tasks": "لا توجد نتائج مطابقة في أول {{count}} مهمة. حمّل المزيد لمتابعة البحث.",
     "no-matching-test-cases": "لا توجد حالات اختبار مطابقة",
     "no-matching-test-cases-description": "لا توجد حالات اختبار تطابق عوامل التصفية الحالية. عدّلها أو امسحها لعرض كل شيء.",
     "no-matching-test-suites": "لا توجد مجموعات مطابقة",

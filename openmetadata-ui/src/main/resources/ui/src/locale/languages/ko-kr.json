@@ -4570,6 +4570,7 @@
     "no-lineage-data-available": "사용 가능한 계보 데이터가 없습니다",
     "no-lines-match": "일치하는 줄이 없습니다.",
     "no-match-found": "일치하는 항목을 찾을 수 없습니다",
+    "no-match-in-first-tasks": "처음 {{count}}개 작업에서 일치하는 항목이 없습니다. 더 불러와 계속 검색하세요.",
     "no-matching-test-cases": "일치하는 테스트 케이스 없음",
     "no-matching-test-cases-description": "현재 필터와 일치하는 테스트 케이스가 없습니다. 필터를 조정하거나 지워서 전체를 확인하세요.",
     "no-matching-test-suites": "일치하는 스위트 없음",
