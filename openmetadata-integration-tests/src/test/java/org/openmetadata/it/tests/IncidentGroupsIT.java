@@ -1170,6 +1170,36 @@ public class IncidentGroupsIT {
   }
 
   @Test
+  void testAssignByDottedNameStoresTheFullAssignee() throws Exception {
+    long ts = System.currentTimeMillis();
+    User dotted = createUser("incident.groups.dotted." + ts);
+    Table table = createTable(schemaFqn, "incident_groups_assign_by_name_" + ts);
+    TestDefinition definition =
+        createTestDefinition(
+            "incident_groups_assign_by_name_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase testCase =
+        createTestCase(
+            "incident_groups_assign_by_name_case", tableLink(table), definition, List.of());
+    createStatus(testCase, TestCaseResolutionStatusTypes.New, null);
+
+    createStatus(
+        testCase,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned()
+            .withAssignee(
+                new EntityReference()
+                    .withName(dotted.getName().toUpperCase())
+                    .withType(Entity.USER)));
+
+    Assigned assigned =
+        JsonUtils.convertValue(
+            fetchStatuses(testCase).getFirst().getTestCaseResolutionStatusDetails(),
+            Assigned.class);
+    assertEquals(dotted.getId(), assigned.getAssignee().getId());
+    assertEquals(dotted.getName(), assigned.getAssignee().getName());
+  }
+
+  @Test
   void testBulkNewOnOpenIncidentRejected() throws Exception {
     long ts = System.currentTimeMillis();
     Table table = createTable(schemaFqn, "incident_groups_bulk_new_" + ts);

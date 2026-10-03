@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -11,6 +13,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityTimeSeriesMapper;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 public class TestCaseResolutionStatusMapper
     implements EntityTimeSeriesMapper<TestCaseResolutionStatus, CreateTestCaseResolutionStatus> {
@@ -53,9 +56,18 @@ public class TestCaseResolutionStatusMapper
       return details;
     }
     String type = assignee.getType() != null ? assignee.getType() : Entity.USER;
+    if (assignee.getId() != null) {
+      return assigned.withAssignee(
+          Entity.getEntityReferenceById(type, assignee.getId(), Include.NON_DELETED));
+    }
+    if (nullOrEmpty(assignee.getName())) {
+      return details;
+    }
+    // The lookup takes an FQN: a name with a dot in it is quoted, and a user's is lowercased the
+    // way the user repository builds it.
+    String name = Entity.USER.equals(type) ? assignee.getName().toLowerCase() : assignee.getName();
     return assigned.withAssignee(
-        assignee.getId() != null
-            ? Entity.getEntityReferenceById(type, assignee.getId(), Include.NON_DELETED)
-            : Entity.getEntityReferenceByName(type, assignee.getName(), Include.NON_DELETED));
+        Entity.getEntityReferenceByName(
+            type, FullyQualifiedName.quoteName(name), Include.NON_DELETED));
   }
 }

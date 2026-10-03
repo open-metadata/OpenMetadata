@@ -40,7 +40,9 @@ import {
 } from './IncidentGroups.types';
 import {
   getIncidentGroupFilterKey,
+  getIncidentGroupSortQuery,
   getIncidentGroupsQuery,
+  getPageAfterEmptyRead,
   parseIncidentGroupBy,
   parseIncidentGroupFilters,
 } from './IncidentGroups.utils';
@@ -166,18 +168,28 @@ export const useIncidentGroups = () => {
       const response = await listIncidentGroups({
         groupBy,
         limit: pageSize,
-        sortType: sort.type,
-        // The endpoint's own default, left out so the usual request stays bare.
-        sortField:
-          sort.field === DEFAULT_INCIDENT_GROUP_SORT.field
-            ? undefined
-            : sort.field,
+        ...getIncidentGroupSortQuery(sort),
         page: currentPage,
         domain,
         ...getIncidentGroupsQuery(filters),
       });
 
       if (latestRequest.current !== requestId) {
+        return;
+      }
+
+      // A refresh can leave the page past the end, e.g. once the last groups
+      // on it were resolved. Shown as is, it would read as no groups at all,
+      // with no pager back to the pages that still hold some.
+      const pageAfterEmptyRead = getPageAfterEmptyRead(
+        response.data.length,
+        currentPage,
+        pageSize,
+        response.paging.total
+      );
+      if (pageAfterEmptyRead !== undefined) {
+        goToPage(pageAfterEmptyRead);
+
         return;
       }
 
@@ -208,7 +220,17 @@ export const useIncidentGroups = () => {
         setIsLoading(false);
       }
     }
-  }, [groupBy, sort, pageSize, currentPage, filters, domain, refreshKey, t]);
+  }, [
+    groupBy,
+    sort,
+    pageSize,
+    currentPage,
+    goToPage,
+    filters,
+    domain,
+    refreshKey,
+    t,
+  ]);
 
   useEffect(() => {
     fetchIncidentGroups();
