@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../../generated/type/paging';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import { getIncidentGroupIncidentsQuery } from './IncidentGroupIncidents.utils';
 import { IncidentGroupFilters } from './IncidentGroups.types';
-import { getPageAfterEmptyRead } from './IncidentGroups.utils';
+import {
+  getIncidentGroupKey,
+  getPageAfterEmptyRead,
+} from './IncidentGroups.utils';
 import { useIncidentPaging } from './useIncidentPaging';
 
 interface UseIncidentGroupIncidentsProps {
@@ -51,12 +51,11 @@ export const useIncidentGroupIncidents = ({
   filters,
   defaultPageSize,
 }: UseIncidentGroupIncidentsProps) => {
-  const { t } = useTranslation();
   const { activeDomain } = useDomainStore();
   const domain =
     activeDomain === DEFAULT_DOMAIN_VALUE ? undefined : activeDomain;
   const groupKey = group
-    ? `${group.groupBy}|${group.id ?? group.fullyQualifiedName ?? group.name}`
+    ? `${group.groupBy}|${getIncidentGroupKey(group)}`
     : '';
   const { currentPage, pageSize, setPageSize, goToPage } = useIncidentPaging(
     `${groupKey}|${domain}|${JSON.stringify(filters)}`,
@@ -71,7 +70,8 @@ export const useIncidentGroupIncidents = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const latestRequest = useRef(0);
-  // Bumped to re-read the page in hand, e.g. after an incident on it changed.
+  // Bumped to re-read the page in hand: an incident on it changed, or its read
+  // failed.
   const [refreshKey, setRefreshKey] = useState(0);
   const groupRef = useRef(group);
   groupRef.current = group;
@@ -114,16 +114,10 @@ export const useIncidentGroupIncidents = ({
           goToPage(pageAfterEmptyRead);
         }
       })
-      .catch((error: AxiosError) => {
+      .catch(() => {
         if (isCurrent()) {
           setRead(undefined);
           setIsError(true);
-          showErrorToast(
-            error,
-            t('server.entity-fetch-error', {
-              entity: t('label.incident-plural'),
-            })
-          );
         }
       })
       .finally(() => {
@@ -135,16 +129,7 @@ export const useIncidentGroupIncidents = ({
     return () => {
       latestRequest.current += 1;
     };
-  }, [
-    groupKey,
-    filters,
-    domain,
-    pageSize,
-    currentPage,
-    goToPage,
-    refreshKey,
-    t,
-  ]);
+  }, [groupKey, filters, domain, pageSize, currentPage, goToPage, refreshKey]);
 
   const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
 

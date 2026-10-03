@@ -23,7 +23,6 @@ import {
 } from '@openmetadata/ui-core-components';
 // The core-components icon barrel re-exports the design team's own SVG set
 import {
-  AlertCircle,
   Search,
   ShieldTick,
   TrendUp01,
@@ -33,9 +32,9 @@ import { isEmpty, sumBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
-import { TestCaseResolutionStatusTypes as CreateStatusTypes } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
+import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import {
   showErrorToast,
@@ -54,9 +53,10 @@ import {
 } from './IncidentGroups.constants';
 import {
   BulkIncidentChange,
+  BulkIncidentDetails,
   BulkIncidentOutcome,
-  BulkIncidentStatus,
-  IncidentGroupBulkStatusModalProps,
+  IncidentGroupsViewProps,
+  PendingBulkChange,
 } from './IncidentGroups.types';
 import {
   countRecurringIncidentGroups,
@@ -64,17 +64,22 @@ import {
   hasActiveIncidentGroupFilters,
 } from './IncidentGroups.utils';
 import IncidentGroupsFilters from './IncidentGroupsFilters';
+import IncidentGroupsLoadError from './IncidentGroupsLoadError';
 import IncidentGroupsSelectionBar from './IncidentGroupsSelectionBar';
 import IncidentGroupsTable from './IncidentGroupsTable';
 import { useIncidentGroupBulkUpdate } from './useIncidentGroupBulkUpdate';
 import { useIncidentGroups } from './useIncidentGroups';
+
+const STAT_COUNT_ELEMENT = (
+  <Typography as="span" className="tw:text-primary" weight="semibold" />
+);
 
 /**
  * Grouped incident listing: the `Group by` dimension picker, the header stats
  * over the fetched groups, the filter row, and the paged group table — plus
  * the loading/empty/error states of the fetch that feeds them.
  */
-const IncidentGroupsView = () => {
+const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
   const { t } = useTranslation();
   const {
     refresh,
@@ -91,6 +96,8 @@ const IncidentGroupsView = () => {
     detailKey,
     detailGroup,
     isDetailLoading,
+    isDetailError,
+    retryDetail,
     openGroup,
     closeGroup,
     handleGroupByChange,
@@ -125,10 +132,9 @@ const IncidentGroupsView = () => {
   const [selection, setSelection] = useState<
     ReadonlyMap<string, TestCaseIncidentGroup>
   >(new Map());
-  // The status that needs more than itself (an assignee, a reason), while its
-  // details are being asked for.
-  const [pendingStatus, setPendingStatus] =
-    useState<IncidentGroupBulkStatusModalProps['status']>();
+  // Every bulk change is confirmed first, with how many incidents it reaches:
+  // it cannot be undone, and the selection can span pages.
+  const [pendingChange, setPendingChange] = useState<PendingBulkChange>();
   const [bulkOutcome, setBulkOutcome] = useState<BulkIncidentOutcome>();
 
   // Another dimension or other filters make other groups; a page or a sort
@@ -182,18 +188,22 @@ const IncidentGroupsView = () => {
         );
       }
       clearSelection();
-      refresh();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setPendingStatus(undefined);
+      setPendingChange(undefined);
+      // Even a change that failed part way has written what came before.
+      refresh();
     }
   };
 
-  const handleSetStatus = (status: BulkIncidentStatus) =>
-    status === CreateStatusTypes.ACK
-      ? runBulkChange({ kind: 'status', status })
-      : setPendingStatus(status);
+  const handleApplyPending = (details?: BulkIncidentDetails) =>
+    pendingChange &&
+    runBulkChange(
+      pendingChange.kind === 'status'
+        ? { ...pendingChange, details }
+        : pendingChange
+    );
 
   const [previewGroup, setPreviewGroup] = useState<TestCaseIncidentGroup>();
   const isRouteVisible = useIsRouteVisible();
@@ -256,25 +266,10 @@ const IncidentGroupsView = () => {
 
     if (isError) {
       return (
-        <Box
-          className="tw:relative tw:min-h-80 tw:w-full"
-          data-testid="incident-groups-error">
-          <EmptyPlaceholder
-            actions={[
-              {
-                key: 'retry',
-                color: 'secondary',
-                label: t('label.retry'),
-                onPress: retry,
-              },
-            ]}
-            icon={<AlertCircle className="tw:text-fg-error-primary" />}
-            title={t('server.entity-fetch-error', {
-              entity: t('label.incident-plural'),
-            })}
-            variant="blank"
-          />
-        </Box>
+        <IncidentGroupsLoadError
+          data-testid="incident-groups-error"
+          onRetry={retry}
+        />
       );
     }
 
@@ -316,22 +311,25 @@ const IncidentGroupsView = () => {
 
     return (
       <>
-        {selectedGroups.length > 0 && (
+        {canEditIncidents && selectedGroups.length > 0 && (
           <IncidentGroupsSelectionBar
             incidentCount={selectedIncidentCount}
             isApplying={isApplying}
             selectedCount={selectedGroups.length}
             onClearSelection={clearSelection}
             onSetSeverity={(severity) =>
-              runBulkChange({ kind: 'severity', severity })
+              setPendingChange({ kind: 'severity', severity })
             }
-            onSetStatus={handleSetStatus}
+            onSetStatus={(status) =>
+              setPendingChange({ kind: 'status', status })
+            }
           />
         )}
         <TableCard.Root>
           <IncidentGroupsTable
             groupBy={groupBy}
             groups={incidentGroups}
+            isSelectable={canEditIncidents}
             selectedKeys={selectedKeys}
             sort={sort}
             onGroupOpen={handleOpenGroup}
@@ -375,12 +373,21 @@ const IncidentGroupsView = () => {
       );
     }
 
-    return isDetailLoading ? (
-      <Box
-        className="tw:min-h-80 tw:items-center tw:justify-center"
-        data-testid="incident-group-detail-loader">
-        <Loader />
-      </Box>
+    if (isDetailLoading) {
+      return (
+        <Box
+          className="tw:min-h-80 tw:items-center tw:justify-center"
+          data-testid="incident-group-detail-loader">
+          <Loader />
+        </Box>
+      );
+    }
+
+    return isDetailError ? (
+      <IncidentGroupsLoadError
+        data-testid="incident-group-detail-error"
+        onRetry={retryDetail}
+      />
     ) : (
       // The group a link names may have no open incident left in this scope.
       <Box
@@ -425,17 +432,11 @@ const IncidentGroupsView = () => {
                     className="tw:text-secondary"
                     data-testid="incident-groups-count"
                     size="text-sm">
-                    <Typography
-                      as="span"
-                      className="tw:text-primary"
-                      weight="semibold">
-                      {groupCount}
-                    </Typography>{' '}
-                    {t(
-                      groupCount === 1
-                        ? 'label.group-lowercase'
-                        : 'label.group-lowercase-plural'
-                    )}
+                    <Transi18next
+                      i18nKey="label.group-count"
+                      renderElement={STAT_COUNT_ELEMENT}
+                      values={{ count: groupCount }}
+                    />
                   </Typography>
                   <Divider className="tw:h-4" orientation="vertical" />
                   <Tooltip
@@ -449,13 +450,11 @@ const IncidentGroupsView = () => {
                           className="tw:text-secondary"
                           data-testid="incident-groups-recurring-count"
                           size="text-sm">
-                          <Typography
-                            as="span"
-                            className="tw:text-primary"
-                            weight="semibold">
-                            {recurringCount}
-                          </Typography>{' '}
-                          {t('label.recurring-lowercase')}
+                          <Transi18next
+                            i18nKey="label.recurring-count"
+                            renderElement={STAT_COUNT_ELEMENT}
+                            values={{ count: recurringCount }}
+                          />
                         </Typography>
                       </Box>
                     </TooltipTrigger>
@@ -478,14 +477,11 @@ const IncidentGroupsView = () => {
         renderDetail()
       )}
       <IncidentGroupBulkStatusModal
+        change={pendingChange}
         incidentCount={selectedIncidentCount}
         isApplying={isApplying}
-        status={pendingStatus}
-        onApply={(details) =>
-          pendingStatus &&
-          runBulkChange({ kind: 'status', status: pendingStatus, details })
-        }
-        onCancel={() => setPendingStatus(undefined)}
+        onApply={handleApplyPending}
+        onCancel={() => setPendingChange(undefined)}
       />
       <IncidentGroupBulkFailuresModal
         outcome={bulkOutcome}

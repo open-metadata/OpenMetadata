@@ -28,19 +28,33 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import { toBulkStatusDetails } from './IncidentGroupBulk.utils';
-import { INCIDENT_FAILURE_REASON_OPTIONS } from './IncidentGroups.constants';
+import {
+  BULK_STATUS_TITLE_KEY,
+  INCIDENT_FAILURE_REASON_OPTIONS,
+} from './IncidentGroups.constants';
 import {
   BulkStatusFormValues,
   IncidentGroupBulkStatusModalProps,
+  PendingBulkChange,
 } from './IncidentGroups.types';
+import IncidentSeverityBadge from './IncidentSeverityBadge';
+
+/** The modal's title for each change it confirms. */
+const getTitleKey = (change?: PendingBulkChange) => {
+  if (change?.kind === 'severity') {
+    return 'label.set-severity';
+  }
+
+  return BULK_STATUS_TITLE_KEY[change?.status ?? CreateStatusTypes.ACK];
+};
 
 /**
- * Collects what a bulk move to Assigned or Resolved needs on top of the
- * status — an assignee, or a reason and a comment — once for every incident
- * of the selected groups.
+ * Confirms a bulk change before it touches every incident of the selected
+ * groups, and collects what a move to Assigned or Resolved needs on top of
+ * the status — an assignee, or a reason and a comment.
  */
 const IncidentGroupBulkStatusModal = ({
-  status,
+  change,
   incidentCount,
   isApplying,
   onCancel,
@@ -50,23 +64,30 @@ const IncidentGroupBulkStatusModal = ({
   const { currentUser } = useApplicationStore();
   const assigneePicker = useUserTeamOptions();
   const form = useForm<BulkStatusFormValues>({ mode: 'onSubmit' });
-  const isAssign = status === CreateStatusTypes.Assigned;
+  const status = change?.kind === 'status' ? change.status : undefined;
+  // Only these two carry more than the status, and ask for it here.
+  const detailStatus =
+    status === CreateStatusTypes.Assigned ||
+    status === CreateStatusTypes.Resolved
+      ? status
+      : undefined;
+  const isAssign = detailStatus === CreateStatusTypes.Assigned;
 
   // Each opening starts from an empty form. The fields are remounted too: the
   // pickers keep what they last showed in state of their own.
   const [opening, setOpening] = useState(0);
   useEffect(() => {
-    if (status) {
+    if (change) {
       form.reset({});
       setOpening((count) => count + 1);
     }
-  }, [form, status]);
+  }, [form, change]);
 
   const required = (field: string) => ({
     required: t('label.field-required', { field }),
   });
 
-  const fields: FieldProp[] = isAssign
+  const statusFields: FieldProp[] = isAssign
     ? [
         {
           id: 'root/assignee',
@@ -123,24 +144,27 @@ const IncidentGroupBulkStatusModal = ({
         },
       ];
 
+  const fields = detailStatus ? statusFields : [];
+
   const handleSubmit = (values: BulkStatusFormValues) =>
-    status &&
     onApply(
-      toBulkStatusDetails(
-        status,
-        values,
-        currentUser &&
-          getEntityReferenceFromEntity(currentUser, EntityType.USER)
-      )
+      detailStatus
+        ? toBulkStatusDetails(
+            detailStatus,
+            values,
+            currentUser &&
+              getEntityReferenceFromEntity(currentUser, EntityType.USER)
+          )
+        : undefined
     );
 
   return (
     <SimpleModal
       data-testid="incident-groups-bulk-status-modal"
       isOkLoading={isApplying}
-      isOpen={Boolean(status)}
+      isOpen={Boolean(change)}
       okText={t('label.apply')}
-      title={isAssign ? t('label.assign-to') : t('label.resolve')}
+      title={t(getTitleKey(change))}
       onCancel={onCancel}
       onOk={form.handleSubmit(handleSubmit)}>
       <HookForm
@@ -154,6 +178,9 @@ const IncidentGroupBulkStatusModal = ({
           size="text-sm">
           {t('message.bulk-incident-scope', { count: incidentCount })}
         </Typography>
+        {change?.kind === 'severity' && (
+          <IncidentSeverityBadge severity={change.severity} />
+        )}
         {fields.map((field) => (
           <Fragment key={field.name}>{getField(field)}</Fragment>
         ))}

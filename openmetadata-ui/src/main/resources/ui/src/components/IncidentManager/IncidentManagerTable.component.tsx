@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { Table as TableType } from '../../generated/entity/data/table';
-import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/tests/testCase';
 import {
   Assigned,
@@ -39,8 +38,6 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
-import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
@@ -53,6 +50,7 @@ import {
 } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
+import { canEditIncidentRow } from './IncidentManager.utils';
 
 export interface IncidentManagerTableProps {
   isIncidentPage: boolean;
@@ -97,22 +95,12 @@ const IncidentManagerTable = ({
   // case with no permissions entry (fetch pending/not found) falls back to
   // DEFAULT_ENTITY_PERMISSION, reproducing the old optional-chaining-is-falsy behavior.
   //
-  // Incident actions (status, severity and assignee) are gated by `EditStatus` on the test
-  // case rather than `EditAll`, so a role can manage incidents while keeping read-only access
-  // to the test cases themselves. `can(EditStatus)` routes through the same
-  // getPrioritizedEditPermission path — falling back to `EditAll` when the payload carries no
-  // `EditStatus` — and applies the `deleted` gate, so it is equivalent to the
-  // hasIncidentEditPermission helper this replaces.
-  const getRowEditPermission = (fqn?: string) => {
-    const hasPermission = testCasePermissions.find(
-      (item) => item.fullyQualifiedName === fqn
-    );
-
-    return getDerivedPermissionFlags(
-      hasPermission ?? DEFAULT_ENTITY_PERMISSION,
+  const getRowEditPermission = (fqn?: string) =>
+    canEditIncidentRow(
+      testCasePermissions,
+      fqn,
       Boolean(tableDetails?.deleted)
-    ).can(Operation.EditStatus);
-  };
+    );
 
   const testCaseResolutionStatusDetailsRender = (
     value?: Assigned,

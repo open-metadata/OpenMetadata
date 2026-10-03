@@ -257,3 +257,13 @@ export const INCIDENT_TREND_DIRECTION_LABELS: Record<
   [IncidentTrendDirection.Falling]: 'label.falling',
   [IncidentTrendDirection.Steady]: 'label.steady',
 };
+
+/** Groups whose incidents a bulk change reads at once. */
+export const BULK_GROUP_READ_CONCURRENCY = 4;
+
+/** The confirm modal's title for each bulk status. */
+export const BULK_STATUS_TITLE_KEY: Record<BulkIncidentStatus, string> = {
+  [CreateStatusTypes.ACK]: 'label.acknowledge',
+  [CreateStatusTypes.Assigned]: 'label.assign-to',
+  [CreateStatusTypes.Resolved]: 'label.resolve',
+};

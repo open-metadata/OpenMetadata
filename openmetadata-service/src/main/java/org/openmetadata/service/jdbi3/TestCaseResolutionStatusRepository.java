@@ -21,11 +21,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +57,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -80,8 +82,10 @@ public class TestCaseResolutionStatusRepository
   public static final String INCIDENT_GROUP_SORT_FIELD_SEVERITY = "severity";
   public static final String INCIDENT_GROUP_SORT_FIELD_LAST_SEEN = "lastSeen";
   private static final int TREND_BUCKET_COUNT = 8;
-  // Related tables and test definitions a group names inline; its counts carry the full number.
-  private static final int INCIDENT_GROUP_RELATED_LIMIT = 5;
+  // A record range that holds every record, for listings whose range applies to the incidents.
+  // Boxed, as a listing without a range passes null bounds through the same expression.
+  private static final Long ALL_RECORDS_START_TS = 0L;
+  private static final Long ALL_RECORDS_END_TS = Long.MAX_VALUE;
 
   // Open statuses from the most actionable to the least. Shared with the query rather than
   // restated here, so the breakdown order, the statusRank expression and the set of statuses a
@@ -95,9 +99,51 @@ public class TestCaseResolutionStatusRepository
   /** Group-by field of the latest-status-per-test-case incident listings. */
   public static final String LATEST_PER_TEST_CASE = "testCase.fullyQualifiedName.keyword";
 
+  private static final UnaryOperator<String> USER_FQN_NAME = name -> name.toLowerCase(Locale.ROOT);
+
   // An incident's test case, and the asset that test case belongs to, never change.
   private static final Set<String> TEST_CASE_INVARIANT_PARAMS =
       Set.of("testCaseFqn", "originEntityFQN");
+
+  /**
+   * Incident timestamp a date range applies to. Each value is also the name of the {@code
+   * test_case_incident} column holding that timestamp.
+   */
+  public enum IncidentDateField {
+    CREATED_AT(INCIDENT_DATE_FIELD_CREATED_AT),
+    UPDATED_AT(INCIDENT_DATE_FIELD_UPDATED_AT);
+
+    private final String value;
+
+    IncidentDateField(String value) {
+      this.value = value;
+    }
+
+    public String value() {
+      return value;
+    }
+
+    // Query params bind through toString, so it is the API value rather than the constant name.
+    @Override
+    public String toString() {
+      return value;
+    }
+
+    public static IncidentDateField fromValue(String value) {
+      return Arrays.stream(values())
+          .filter(field -> field.value.equals(value))
+          .findFirst()
+          .orElseThrow(
+              () ->
+                  new IllegalArgumentException(
+                      String.format(
+                          "Invalid dateField '%s'. Must be one of %s",
+                          value, Arrays.toString(values()))));
+    }
+  }
+
+  /** A flat incident listing's range, and the incident timestamp it applies to if any. */
+  public record IncidentListRange(IncidentDateField dateField, Long startTs, Long endTs) {}
 
   public TestCaseResolutionStatusRepository() {
     super(
@@ -932,6 +978,76 @@ public class TestCaseResolutionStatusRepository
         .orElse(records.get(records.size() - 1));
   }
 
+  /**
+   * The flat incident listing. With a date field the range applies to the incidents themselves, the
+   * way the groups apply it, so the records are no longer filtered by their own timestamp. The
+   * record range is opened up rather than dropped: {@code latest} is only honoured over a range.
+   */
+  public ResultList<TestCaseResolutionStatus> listIncidentRecords(
+      String offset, int limit, ListFilter filter, boolean latest, IncidentListRange range) {
+    boolean isIncidentRange = range.dateField() != null;
+    if (isIncidentRange) {
+      addIncidentListRange(filter, range);
+    }
+    return list(
+        offset,
+        isIncidentRange ? ALL_RECORDS_START_TS : range.startTs(),
+        isIncidentRange ? ALL_RECORDS_END_TS : range.endTs(),
+        limit,
+        filter,
+        latest);
+  }
+
+  private static void addIncidentListRange(ListFilter filter, IncidentListRange range) {
+    filter.addQueryParam("incidentListDateField", range.dateField().value());
+    if (range.startTs() != null) {
+      filter.addQueryParam("incidentListStartTs", String.valueOf(range.startTs()));
+    }
+    if (range.endTs() != null) {
+      filter.addQueryParam("incidentListEndTs", String.valueOf(range.endTs()));
+    }
+  }
+
+  /**
+   * Scopes the flat incident listing to the test cases a user or team owns directly, or to those
+   * nobody owns — the owner dimension's "No Owner" group.
+   */
+  public void addTestCaseOwnerFilter(ListFilter filter, String owner, boolean unowned) {
+    if (unowned && !nullOrEmpty(owner)) {
+      throw new IllegalArgumentException("`owner` and `unowned` cannot be combined");
+    }
+    UUID ownerId = resolveOwnerFilterId(owner);
+    if (ownerId != null) {
+      filter.addQueryParam("testCaseOwnerId", ownerId.toString());
+    }
+    if (unowned) {
+      filter.addQueryParam("testCaseUnowned", Boolean.TRUE.toString());
+    }
+  }
+
+  public static UUID resolveFilterEntityId(String entityType, String name) {
+    UUID entityId = null;
+    if (!nullOrEmpty(name)) {
+      EntityReference result = getEntityReferenceByName(entityType, name, Include.NON_DELETED);
+      if (!nullOrEmpty(result)) {
+        entityId = result.getId();
+      }
+    }
+    return entityId;
+  }
+
+  private static UUID resolveOwnerFilterId(String owner) {
+    UUID result = null;
+    if (!nullOrEmpty(owner)) {
+      try {
+        result = resolveFilterEntityId(Entity.USER, owner);
+      } catch (EntityNotFoundException e) {
+        result = resolveFilterEntityId(Entity.TEAM, owner);
+      }
+    }
+    return result;
+  }
+
   public ResultList<TestCaseIncidentGroup> listIncidentGroups(
       IncidentGroupBy groupBy,
       ListFilter filter,
@@ -940,54 +1056,12 @@ public class TestCaseResolutionStatusRepository
       int limit,
       String offset) {
     int offsetInt = getOffset(offset);
-    CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO dao =
-        (CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao;
-    CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage page =
-        dao.listIncidentGroups(
-            groupBy, filter, incidentGroupOrderBy(sortField, sortType), limit, offsetInt);
-    Map<String, EntityReference> references = resolveIncidentGroupEntities(page.counts());
-    Map<String, EntityReference> tables =
-        findReferences(
-            Entity.TABLE,
-            page.counts().stream()
-                .flatMap(count -> rankByOccurrence(count.tables()).stream())
-                .collect(Collectors.toSet()));
-    Map<String, EntityReference> assignees =
-        findAssignees(
-            page.counts().stream()
-                .flatMap(count -> parseAssignees(count.assignees()).stream())
-                .collect(Collectors.toSet()));
-    Map<String, EntityReference> testDefinitions =
-        findReferences(
-            Entity.TEST_DEFINITION,
-            page.counts().stream()
-                .flatMap(count -> rankByOccurrence(count.testDefinitions()).stream())
-                .collect(Collectors.toSet()));
-    List<TestCaseIncidentGroup> groups =
-        page.counts().stream()
-            .map(
-                count ->
-                    toIncidentGroup(
-                            groupBy,
-                            count,
-                            parseIncidentCreatedAt(count),
-                            references.get(count.groupKey()))
-                        .withAssigneeReferences(
-                            parseAssignees(count.assignees()).stream()
-                                .map(assignees::get)
-                                .filter(Objects::nonNull)
-                                .toList())
-                        .withTableCount(count.tableCount())
-                        .withTables(relatedTables(count, tables))
-                        .withTestDefinitionCount(count.testDefinitionCount())
-                        .withTestDefinitions(
-                            rankByOccurrence(count.testDefinitions()).stream()
-                                .map(testDefinitions::get)
-                                .filter(Objects::nonNull)
-                                .toList()))
-            .toList();
+    IncidentGroupPage page =
+        ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+            .listIncidentGroups(
+                groupBy, filter, incidentGroupOrderBy(sortField, sortType), limit, offsetInt);
     return new ResultList<>(
-        groups,
+        toIncidentGroups(groupBy, page),
         getBeforeOffset(offsetInt, limit),
         getAfterOffset(offsetInt, limit, page.total()),
         page.total());
@@ -1017,6 +1091,68 @@ public class TestCaseResolutionStatusRepository
               INCIDENT_GROUP_SORT_FIELD_SEVERITY,
               INCIDENT_GROUP_SORT_FIELD_LAST_SEEN));
     };
+  }
+
+  private static List<TestCaseIncidentGroup> toIncidentGroups(
+      IncidentGroupBy groupBy, IncidentGroupPage page) {
+    IncidentGroupReferences references = resolveIncidentGroupReferences(page);
+    return page.counts().stream()
+        .map(
+            count ->
+                withRelatedEntities(
+                    toIncidentGroup(
+                        groupBy,
+                        count,
+                        parseIncidentCreatedAt(count),
+                        references.groups().get(count.groupKey())),
+                    count,
+                    page,
+                    references))
+        .toList();
+  }
+
+  // The entities a page of groups names, each looked up once for the whole page.
+  private record IncidentGroupReferences(
+      Map<String, EntityReference> groups,
+      Map<String, EntityReference> tables,
+      Map<String, EntityReference> assignees,
+      Map<String, EntityReference> testDefinitions) {}
+
+  private static IncidentGroupReferences resolveIncidentGroupReferences(IncidentGroupPage page) {
+    return new IncidentGroupReferences(
+        resolveIncidentGroupEntities(page.counts()),
+        findReferences(Entity.TABLE, relatedKeys(page.tables())),
+        findAssignees(
+            page.counts().stream()
+                .flatMap(count -> parseAssignees(count.assignees()).stream())
+                .collect(Collectors.toSet())),
+        findReferences(Entity.TEST_DEFINITION, relatedKeys(page.testDefinitions())));
+  }
+
+  private static Set<String> relatedKeys(Map<String, List<String>> keysByGroup) {
+    return keysByGroup.values().stream().flatMap(List::stream).collect(Collectors.toSet());
+  }
+
+  private static TestCaseIncidentGroup withRelatedEntities(
+      TestCaseIncidentGroup group,
+      CollectionDAO.TestCaseIncidentGroupCount count,
+      IncidentGroupPage page,
+      IncidentGroupReferences references) {
+    List<String> testDefinitionIds =
+        page.testDefinitions().getOrDefault(count.groupKey(), List.of());
+    return group
+        .withAssigneeReferences(
+            knownReferences(parseAssignees(count.assignees()), references.assignees()))
+        .withTableCount(count.tableCount())
+        .withTables(
+            relatedTables(page.tables().getOrDefault(count.groupKey(), List.of()), references))
+        .withTestDefinitionCount(count.testDefinitionCount())
+        .withTestDefinitions(knownReferences(testDefinitionIds, references.testDefinitions()));
+  }
+
+  private static List<EntityReference> knownReferences(
+      List<String> keys, Map<String, EntityReference> references) {
+    return keys.stream().map(references::get).filter(Objects::nonNull).toList();
   }
 
   private static String incidentGroupSortOrder(String sortType) {
@@ -1142,41 +1278,21 @@ public class TestCaseResolutionStatusRepository
     return result;
   }
 
-  // The related keys of a group (table FQNs or test definition ids), one per incident row, ranked
-  // by how many of the group's incidents carry them and capped to what the group names inline.
-  private static List<String> rankByOccurrence(String keysJson) {
-    List<String> result = List.of();
-    if (!nullOrEmpty(keysJson)) {
-      Map<String, Long> occurrences =
-          Arrays.stream(JsonUtils.readValue(keysJson, String[].class))
-              .filter(key -> !nullOrEmpty(key))
-              .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-      result =
-          occurrences.entrySet().stream()
-              .sorted(
-                  Map.Entry.<String, Long>comparingByValue()
-                      .reversed()
-                      .thenComparing(Map.Entry.comparingByKey()))
-              .limit(INCIDENT_GROUP_RELATED_LIMIT)
-              .map(Map.Entry::getKey)
-              .toList();
-    }
-    return result;
-  }
-
   // A table can be gone while incidents raised on it are still open; it is then named after its
   // FQN, the way a table group whose table is gone is.
   private static List<EntityReference> relatedTables(
-      CollectionDAO.TestCaseIncidentGroupCount count, Map<String, EntityReference> tables) {
-    return rankByOccurrence(count.tables()).stream()
+      List<String> tableFqns, IncidentGroupReferences references) {
+    return tableFqns.stream()
         .map(
             fqn ->
-                tables.getOrDefault(
-                    fqn,
-                    new EntityReference()
-                        .withType(Entity.TABLE)
-                        .withName(List.of(FullyQualifiedName.split(fqn)).getLast())
-                        .withFullyQualifiedName(fqn)))
+                references
+                    .tables()
+                    .getOrDefault(
+                        fqn,
+                        new EntityReference()
+                            .withType(Entity.TABLE)
+                            .withName(List.of(FullyQualifiedName.split(fqn)).getLast())
+                            .withFullyQualifiedName(fqn)))
         .toList();
   }
 
@@ -1205,18 +1321,29 @@ public class TestCaseResolutionStatusRepository
   // carry the type and display name the groups show; users are looked up first, as the incident
   // workflow assigns users far more often than teams.
   private static Map<String, EntityReference> findAssignees(Collection<String> names) {
+    Map<String, EntityReference> result =
+        new HashMap<>(findAssigneesByName(Entity.USER, names, USER_FQN_NAME));
+    List<String> unresolved = names.stream().filter(name -> !result.containsKey(name)).toList();
+    result.putAll(findAssigneesByName(Entity.TEAM, unresolved, UnaryOperator.identity()));
+    return result;
+  }
+
+  // A user's FQN is its lowercased name, while a record written before assignees were resolved
+  // keeps the name in the case it was sent. The references are keyed by the row's own names.
+  private static Map<String, EntityReference> findAssigneesByName(
+      String entityType, Collection<String> names, UnaryOperator<String> toFqnName) {
+    Map<String, List<String>> namesByFqnName =
+        names.stream().collect(Collectors.groupingBy(toFqnName));
+    List<String> fqns =
+        namesByFqnName.keySet().stream().map(FullyQualifiedName::quoteName).toList();
     Map<String, EntityReference> result = new HashMap<>();
-    List<String> fqns = names.stream().map(FullyQualifiedName::quoteName).toList();
-    for (String entityType : List.of(Entity.USER, Entity.TEAM)) {
-      if (result.size() == names.size()) {
-        break;
-      }
-      for (EntityReference reference :
-          Entity.getEntityRepository(entityType)
-              .getDao()
-              .findReferencesByFqns(fqns, Include.NON_DELETED)) {
-        result.putIfAbsent(reference.getName(), reference);
-      }
+    for (EntityReference reference :
+        Entity.getEntityRepository(entityType)
+            .getDao()
+            .findReferencesByFqns(fqns, Include.NON_DELETED)) {
+      namesByFqnName
+          .getOrDefault(toFqnName.apply(reference.getName()), List.of())
+          .forEach(name -> result.put(name, reference));
     }
     return result;
   }
