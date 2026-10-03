@@ -594,15 +594,15 @@ public interface AccessControlDAOs {
       return "user_entity";
     }
 
-    /** Ids of users whose persisted navbar selection ({@code defaultDomain}) is {@code domainId}. */
+    /** Ids of users whose persisted navbar selection ({@code defaultDomain}) is in {@code domainIds}. */
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT id FROM user_entity WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.defaultDomain.id')) = :domainId",
+            "SELECT id FROM user_entity WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.defaultDomain.id')) IN (<domainIds>)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-        value = "SELECT id FROM user_entity WHERE json->'defaultDomain'->>'id' = :domainId",
+        value = "SELECT id FROM user_entity WHERE json->'defaultDomain'->>'id' IN (<domainIds>)",
         connectionType = POSTGRES)
-    List<String> listUserIdsByDefaultDomain(@Bind("domainId") String domainId);
+    List<String> listUserIdsByDefaultDomains(@BindList("domainIds") List<String> domainIds);
 
     @Override
     default Class<User> getEntityClass() {

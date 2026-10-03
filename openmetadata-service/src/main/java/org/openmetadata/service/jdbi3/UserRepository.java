@@ -30,6 +30,7 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import com.google.common.collect.Lists;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -291,18 +292,22 @@ public class UserRepository extends EntityRepository<User> {
    * Evicts the cached subject so the change is visible on the next request.
    */
   public void clearDefaultDomainReferences(Collection<UUID> domainIds) {
-    for (UUID domainId : domainIds) {
-      for (String userId :
-          daoCollection.userDAO().listUserIdsByDefaultDomain(domainId.toString())) {
-        User user = get(null, UUID.fromString(userId), getFields("defaultDomain"), ALL, false);
-        if (user.getDefaultDomain() == null) {
-          continue;
-        }
-        User updated = JsonUtils.deepCopy(user, User.class).withDefaultDomain(null);
-        patch(null, user.getId(), ADMIN_USER_NAME, JsonUtils.getJsonPatch(user, updated));
-        SubjectCache.invalidateUserContext(user.getName());
+    List<String> ids = domainIds.stream().map(UUID::toString).toList();
+    for (List<String> chunk : Lists.partition(ids, PAGE_SIZE)) {
+      for (String userId : daoCollection.userDAO().listUserIdsByDefaultDomains(chunk)) {
+        clearDefaultDomain(UUID.fromString(userId));
       }
     }
+  }
+
+  private void clearDefaultDomain(UUID userId) {
+    User user = get(null, userId, getFields("defaultDomain"), ALL, false);
+    if (user.getDefaultDomain() == null) {
+      return;
+    }
+    User updated = JsonUtils.deepCopy(user, User.class).withDefaultDomain(null);
+    patch(null, user.getId(), ADMIN_USER_NAME, JsonUtils.getJsonPatch(user, updated));
+    SubjectCache.invalidateUserContext(user.getName());
   }
 
   /** A navbar selection must resolve to a real domain; anything else is rejected up front. */
