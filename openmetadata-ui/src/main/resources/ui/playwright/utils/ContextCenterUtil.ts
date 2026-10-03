@@ -408,7 +408,9 @@ export const uploadFileViaModal = async (
     name: fileName,
   });
 
-  await expect(modal.getByText(fileName).first()).toBeVisible();
+  await expect(
+    modal.getByText(fileName).filter({ visible: true })
+  ).not.toHaveCount(0);
 
   const uploadResPromise = page.waitForResponse(
     '/api/v1/contextCenter/drive/files/upload'
@@ -852,8 +854,8 @@ export const scrollHierarchyToNode = async (
   for (let attempt = 0; attempt < 100 && !(await node.isVisible()); attempt++) {
     await scrollNearestScrollableAncestor(hierarchy);
     await expect(
-      hierarchy.locator('[data-testid^="page-node-"]').first()
-    ).toBeVisible();
+      hierarchy.locator('[data-testid^="page-node-"]').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     let lastNode = await getLastNode();
 
@@ -965,8 +967,10 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
   for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
     await scrollNearestScrollableAncestor(listing);
     await expect(
-      listing.locator('[data-testid^="knowledge-card-"]').first()
-    ).toBeVisible();
+      listing
+        .locator('[data-testid^="knowledge-card-"]')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
 
     let lastCard = await getLastCard();
 

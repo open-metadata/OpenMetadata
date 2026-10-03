@@ -292,7 +292,9 @@ test.describe('FeedWidget on landing page', () => {
       '[data-testid="message-container"]'
     );
 
-    await expect(messageContainers.first()).toBeVisible();
+    await expect(messageContainers.filter({ visible: true })).not.toHaveCount(
+      0
+    );
     await expect(
       container.locator('[data-testid="no-data-placeholder-container"]')
     ).toHaveCount(0);
@@ -346,7 +348,9 @@ test.describe('FeedWidget on landing page', () => {
 
     // The global stream is shared with every other worker in this shard, so a
     // specific card cannot be asserted here — only that the list is populated.
-    await expect(widget.getByTestId('message-container').first()).toBeVisible();
+    await expect(
+      widget.getByTestId('message-container').filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('footer view more navigates to the user activity feed', async ({
@@ -885,7 +889,9 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     const editorLocator = page.locator(
       '[data-testid="editor-wrapper"] .ProseMirror, [data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
     );
-    await expect(editorLocator.first()).toBeVisible({ timeout: 10000 });
+    await expect(editorLocator.filter({ visible: true })).not.toHaveCount(0, {
+      timeout: 10000,
+    });
 
     return editorLocator.first();
   };

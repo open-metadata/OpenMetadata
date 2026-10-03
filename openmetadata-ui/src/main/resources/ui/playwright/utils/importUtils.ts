@@ -1621,7 +1621,9 @@ export const addGridRowAndSelectFirstCell = async (page: Page) => {
 
   await scrollIntoViewCenter(lastRowFirstCell);
   await lastRowFirstCell.click();
-  await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR).first()).toBeVisible();
+  await expect(
+    page.locator(RDG_ACTIVE_CELL_SELECTOR).filter({ visible: true })
+  ).not.toHaveCount(0);
   await selectActiveRowCellByColumn(page, 'name');
 };
 

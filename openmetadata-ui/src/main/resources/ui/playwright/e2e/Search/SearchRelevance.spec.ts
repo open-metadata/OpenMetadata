@@ -593,8 +593,10 @@ test.describe(
 
       await expect(signalBoosts).toBeVisible();
       await expect(
-        signalBoosts.getByTestId('ranking-signal-contributor').first()
-      ).toBeVisible();
+        signalBoosts
+          .getByTestId('ranking-signal-contributor')
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
       // Each contributor is a signed contribution against a named signal.
       await expect(
         signalBoosts.getByTestId('ranking-signal-contributor').first()
@@ -655,7 +657,9 @@ test.describe(
 
       await page.getByTestId('ranking-details-switch').click();
       await rankingDetailsResponse;
-      await expect(page.getByTestId('ranking-details').first()).toBeVisible();
+      await expect(
+        page.getByTestId('ranking-details').filter({ visible: true })
+      ).not.toHaveCount(0);
       await expect(page.getByTestId('ranking-details').first()).toContainText(
         /Exact name|Close name|Structural context|Score/i
       );

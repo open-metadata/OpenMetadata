@@ -638,8 +638,11 @@ export const addMultiOwner = async (data: {
 
   for (const name of owners) {
     await expect(
-      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name).first()
-    ).toBeVisible();
+      page
+        .locator(`[data-testid="${resultTestId}"]`)
+        .getByTestId(name)
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   }
 };
 

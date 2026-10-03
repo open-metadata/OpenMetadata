@@ -398,7 +398,9 @@ export const deleteEdge = async (
 
   await addPipeline.dispatchEvent('click');
 
-  await expect(page.getByRole('dialog').first()).toBeVisible();
+  await expect(
+    page.getByRole('dialog').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await page
     .locator(
@@ -406,7 +408,9 @@ export const deleteEdge = async (
     )
     .dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(
+    page.locator('[role="dialog"]').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   const sceneRes = page.waitForResponse('**/api/v1/lineage/scene?*');

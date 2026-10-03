@@ -435,8 +435,8 @@ export const validateValueForProperty = async (data: {
         .getByRole('row')
         .filter({ hasText: values[0] })
         .filter({ hasText: values[1] })
-        .first()
-    ).toBeVisible();
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   } else if (propertyType === 'hyperlink-cp') {
     // Value format: "url,displayText" or just "url"
     const [url, displayText] = value.split(',');

@@ -80,8 +80,10 @@ const checkElementVisibility = async (
     switch (type) {
       case 'direct': {
         await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`).first()
-        ).toBeVisible();
+          testUserPage
+            .locator(`[data-testid="${testId}"]`)
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
 
         break;
       }
@@ -535,7 +537,9 @@ export const testDashboardDataModelSpecificOperations = async (
 // after a vote action triggers the re-fetch of entity details.
 const testVotePreservesUsage = async (testUserPage: Page) => {
   await testUserPage.locator('[data-testid="up-vote-btn"]').click();
-  await expect(testUserPage.getByText('Usage').first()).toBeVisible();
+  await expect(
+    testUserPage.getByText('Usage').filter({ visible: true })
+  ).not.toHaveCount(0);
 };
 
 export const testDashboardSpecificOperations = async (

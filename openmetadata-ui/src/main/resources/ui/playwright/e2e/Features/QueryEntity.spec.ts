@@ -249,8 +249,8 @@ test('Query Entity', async ({ page }) => {
       page,
     });
     await expect(
-      page.locator('[data-testid="query-card"]').first()
-    ).toBeVisible();
+      page.locator('[data-testid="query-card"]').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     await queryFilters({
       filter: 'None',
@@ -271,8 +271,8 @@ test('Query Entity', async ({ page }) => {
     });
 
     await expect(
-      page.locator('[data-testid="query-card"]').first()
-    ).toBeVisible();
+      page.locator('[data-testid="query-card"]').filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   await test.step('Verify vote for query', async () => {

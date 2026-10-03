@@ -77,8 +77,10 @@ test.describe('AI mode Observability', () => {
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('ask-sidebar')).toBeVisible();
-        // eslint-disable-next-line om-playwright/no-positional-locator -- the module label also renders in the AI sidebar nav, so the page body copy is the second match; this only asserts the page painted, not which node
-        await expect(page.getByText(expectedText).first()).toBeVisible();
+         
+        await expect(
+          page.getByText(expectedText).filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     }
   });
@@ -472,8 +474,10 @@ test.describe('AI mode Observability', () => {
     });
     await waitForAllLoadersToDisappear(page);
 
-    // eslint-disable-next-line om-playwright/no-positional-locator -- the label also renders in the AI sidebar nav; this only asserts the alerts page painted
-    await expect(page.getByText('Observability Alert').first()).toBeVisible();
+     
+    await expect(
+      page.getByText('Observability Alert').filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(page.getByTestId('breadcrumb')).toBeVisible();
     await expect(page.getByTestId('breadcrumb').getByLabel('Home')).toHaveCount(
       0

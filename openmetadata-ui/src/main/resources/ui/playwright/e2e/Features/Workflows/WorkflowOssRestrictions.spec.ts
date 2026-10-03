@@ -284,7 +284,9 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await fitViewButton.click();
         await enterEditMode(page);
 
-        await expect(page.locator('.react-flow__node').first()).toBeVisible();
+        await expect(
+          page.locator('.react-flow__node').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
