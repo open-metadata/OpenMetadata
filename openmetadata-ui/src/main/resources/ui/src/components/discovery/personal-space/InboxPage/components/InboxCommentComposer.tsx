@@ -25,10 +25,11 @@ import './inbox-comment-composer.less';
 export interface InboxCommentComposerProps {
   onSave: (message: string) => void;
   placeHolder?: string;
+  focused?: boolean;
 }
 
 /**
- * Comment composer shared by the Inbox (Activity drawer + Task detail). It
+ * Comment composer shared by the Inbox (activity card threads + Task detail). It
  * reuses the OSS {@link ActivityFeedEditorNew} verbatim — so mention (@),
  * hashtag (#), markdown, the send button and Enter-to-send all keep working —
  * and only restyles it via the scoped `inbox-comment-composer__editor` class:
@@ -40,6 +41,7 @@ export interface InboxCommentComposerProps {
 const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
   onSave,
   placeHolder,
+  focused,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -110,6 +112,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
             />
           }
           emptyMentionText={t('message.no-match-found')}
+          focused={focused}
           placeHolder={placeholderText}
           ref={editorRef}
           onSave={handleEditorSave}

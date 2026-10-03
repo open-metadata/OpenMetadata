@@ -12,6 +12,7 @@
  */
 
 import { TFunction } from 'i18next';
+import { castArray, compact, uniq } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType } from 'Models';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
@@ -26,7 +27,9 @@ import {
   TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 import { InboxDateRange } from '../../../../interface/inbox.interface';
 import {
   addActivityReaction,
@@ -45,10 +48,16 @@ import {
   getRelativeTime,
   getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+
 // e.g. "Jun 05, 2026, 03:01 PM" — no timezone offset.
-const ACTIVITY_DATE_FORMAT = 'MMM dd, yyyy, hh:mm a';
+export const ACTIVITY_DATE_FORMAT = 'MMM dd, yyyy, hh:mm a';
+// Under a day header the date is already shown, so a card needs only the time.
+export const ACTIVITY_CLOCK_FORMAT = 'hh:mm a';
+// The day header's date, e.g. "Thu, Jul 30".
+const ACTIVITY_DAY_FORMAT = 'ccc, MMM d';
 
 /**
  * Recent activity reads best relative ("2 hours ago"); once it is a few days
@@ -64,87 +73,279 @@ export const formatActivityTime = (timestamp?: number): string => {
     : getRelativeTime(timestamp);
 };
 
+/** What an activity changed, as display values for the card's change panel. */
+export interface ActivityChange {
+  labelKey: string;
+  before: string[];
+  after: string[];
+  // Descriptions are prose, not a set of chips.
+  isText: boolean;
+}
+
+const CHANGE_LABEL_KEY: Partial<Record<ActivityEventType, string>> = {
+  [ActivityEventType.TagsUpdated]: 'label.tag-plural',
+  [ActivityEventType.ColumnTagsUpdated]: 'label.tag-plural',
+  [ActivityEventType.OwnerUpdated]: 'label.owner-plural',
+  [ActivityEventType.DomainUpdated]: 'label.domain-plural',
+  [ActivityEventType.DescriptionUpdated]: 'label.description',
+  [ActivityEventType.ColumnDescriptionUpdated]: 'label.description',
+};
+
+const DESCRIPTION_EVENTS = new Set([
+  ActivityEventType.DescriptionUpdated,
+  ActivityEventType.ColumnDescriptionUpdated,
+]);
+
+// Tags carry a tagFQN; owners and domains are entity references.
+const getChangeValueName = (value: TagLabel | EntityReference): string =>
+  'tagFQN' in value ? value.tagFQN : getEntityName(value);
+
+// The server stores each side as JSON truncated at 1000 characters, so a long
+// list may not parse; undefined lets the card fall back to the summary.
+const parseChangeValues = (value?: string): string[] | undefined => {
+  if (!value) {
+    return [];
+  }
+  try {
+    return castArray(JSON.parse(value)).map(getChangeValueName);
+  } catch {
+    return undefined;
+  }
+};
+
+export const getActivityChange = (
+  activity: ActivityEvent
+): ActivityChange | undefined => {
+  const labelKey = CHANGE_LABEL_KEY[activity.eventType];
+  if (!labelKey) {
+    return undefined;
+  }
+  const isText = DESCRIPTION_EVENTS.has(activity.eventType);
+  // Descriptions stay markdown; the panel renders them as the entity page does.
+  const parse = isText
+    ? (value?: string) => compact([value?.trim()])
+    : parseChangeValues;
+  const before = parse(activity.oldValue);
+  const after = parse(activity.newValue);
+  const hasChange = Boolean(before?.length || after?.length);
+
+  return before && after && hasChange
+    ? { labelKey, before, after, isText }
+    : undefined;
+};
+
+// A card's sentence, by event type; tags and descriptions also depend on
+// whether a column changed and which way.
+const EVENT_LABEL_KEY: Partial<Record<ActivityEventType, string>> = {
+  [ActivityEventType.EntityCreated]: 'message.activity-created-asset',
+  [ActivityEventType.EntityDeleted]: 'message.activity-deleted-asset',
+  [ActivityEventType.EntitySoftDeleted]: 'message.activity-deleted-asset',
+  [ActivityEventType.EntityRestored]: 'message.activity-restored-asset',
+  [ActivityEventType.OwnerUpdated]: 'message.activity-changed-owner',
+  [ActivityEventType.DomainUpdated]: 'message.activity-changed-domain',
+  [ActivityEventType.TierUpdated]: 'message.activity-changed-tier',
+  [ActivityEventType.CustomPropertyUpdated]:
+    'message.activity-updated-custom-property',
+  [ActivityEventType.TestCaseStatusChanged]:
+    'message.activity-updated-test-status',
+  [ActivityEventType.PipelineStatusChanged]:
+    'message.activity-updated-pipeline-status',
+};
+
+enum TagChange {
+  Added = 'added',
+  Removed = 'removed',
+  Changed = 'changed',
+}
+
+type ChangeTarget = 'asset' | 'column';
+
+// [one value, several values]; a mixed change reads the same for any count.
+const TAG_LABEL_KEY: Record<
+  ChangeTarget,
+  Record<TagChange, [string, string]>
+> = {
+  asset: {
+    [TagChange.Added]: [
+      'message.activity-added-tag',
+      'message.activity-added-tag-plural',
+    ],
+    [TagChange.Removed]: [
+      'message.activity-removed-tag',
+      'message.activity-removed-tag-plural',
+    ],
+    [TagChange.Changed]: [
+      'message.activity-changed-tags',
+      'message.activity-changed-tags',
+    ],
+  },
+  column: {
+    [TagChange.Added]: [
+      'message.activity-added-column-tag',
+      'message.activity-added-column-tag-plural',
+    ],
+    [TagChange.Removed]: [
+      'message.activity-removed-column-tag',
+      'message.activity-removed-column-tag-plural',
+    ],
+    [TagChange.Changed]: [
+      'message.activity-changed-column-tags',
+      'message.activity-changed-column-tags',
+    ],
+  },
+};
+
+const DESCRIPTION_LABEL_KEY: Record<ChangeTarget, string> = {
+  asset: 'message.activity-updated-description',
+  column: 'message.activity-updated-column-description',
+};
+
+const TIER_TAG_PREFIX = 'Tier.';
+
+const getChangeTarget = ({ eventType, fieldName }: ActivityEvent) =>
+  eventType === ActivityEventType.ColumnTagsUpdated ||
+  eventType === ActivityEventType.ColumnDescriptionUpdated ||
+  fieldName?.startsWith('columns.')
+    ? 'column'
+    : 'asset';
+
+// Values cut off by the server parse to nothing, which reads as a change.
+const getTagChange = (before: string[], after: string[]): TagChange => {
+  if (!before.length) {
+    return after.length ? TagChange.Added : TagChange.Changed;
+  }
+
+  return after.length ? TagChange.Changed : TagChange.Removed;
+};
+
+// Tier is stored as a tag, but the design names it.
+const isTierChange = (tags: string[]) =>
+  tags.length > 0 && tags.every((tag) => tag.startsWith(TIER_TAG_PREFIX));
+
+const getTagsLabel = (activity: ActivityEvent, t: TFunction): string => {
+  const { before = [], after = [] } = getActivityChange(activity) ?? {};
+  if (isTierChange([...before, ...after])) {
+    return t('message.activity-changed-tier');
+  }
+  const count = after.length || before.length;
+  const [one, many] =
+    TAG_LABEL_KEY[getChangeTarget(activity)][getTagChange(before, after)];
+
+  return t(count > 1 ? many : one, { count });
+};
+
 /**
- * Header action text for an activity-event card ("updated Description for"),
- * derived from `eventType` (+ `fieldName`), reusing existing lowercase keys.
+ * The card's sentence after the actor's name ("added a tag to a column"),
+ * complete on its own: the entity is the line below it.
  */
 export const getActivityEventLabel = (
   activity: ActivityEvent,
   t: TFunction
 ): string => {
-  const updated = t('label.updated-lowercase');
-  const forPrep = t('label.for-lowercase');
-  const onPrep = t('label.on-lowercase');
-
-  const labelMap: Partial<Record<ActivityEventType, string>> = {
-    [ActivityEventType.EntityCreated]: `${t(
-      'label.created-lowercase'
-    )} ${onPrep}`,
-    [ActivityEventType.EntityDeleted]: `${t(
-      'label.deleted-lowercase'
-    )} ${onPrep}`,
-    [ActivityEventType.EntitySoftDeleted]: `${t(
-      'label.deleted-lowercase'
-    )} ${onPrep}`,
-    [ActivityEventType.EntityRestored]: `${t(
-      'label.restored-lowercase'
-    )} ${onPrep}`,
-    [ActivityEventType.DescriptionUpdated]: `${updated} ${t(
-      'label.description'
-    )} ${forPrep}`,
-    [ActivityEventType.ColumnDescriptionUpdated]: `${updated} ${t(
-      'label.description'
-    )} ${forPrep}`,
-    [ActivityEventType.TagsUpdated]: `${t('label.added-lowercase')} ${t(
-      'label.tag-plural'
-    )} ${t('label.to-lowercase')}`,
-    [ActivityEventType.ColumnTagsUpdated]: `${t('label.added-lowercase')} ${t(
-      'label.tag-plural'
-    )} ${t('label.to-lowercase')}`,
-    [ActivityEventType.OwnerUpdated]: `${updated} ${t(
-      'label.owner'
-    )} ${forPrep}`,
-    [ActivityEventType.DomainUpdated]: `${updated} ${t(
-      'label.domain'
-    )} ${forPrep}`,
-    [ActivityEventType.TierUpdated]: `${updated} ${t('label.tier')} ${forPrep}`,
-    [ActivityEventType.CustomPropertyUpdated]: `${updated} ${t(
-      'label.custom-property'
-    )} ${forPrep}`,
-    [ActivityEventType.TestCaseStatusChanged]: `${updated} ${t(
-      'label.status'
-    )} ${onPrep}`,
-    [ActivityEventType.PipelineStatusChanged]: `${updated} ${t(
-      'label.pipeline'
-    )} ${t('label.status')} ${onPrep}`,
-  };
-
-  const mappedLabel = labelMap[activity.eventType];
-  if (mappedLabel) {
-    return mappedLabel;
+  const { eventType, fieldName } = activity;
+  if (
+    eventType === ActivityEventType.TagsUpdated ||
+    eventType === ActivityEventType.ColumnTagsUpdated
+  ) {
+    return getTagsLabel(activity, t);
+  }
+  if (DESCRIPTION_EVENTS.has(eventType)) {
+    return t(DESCRIPTION_LABEL_KEY[getChangeTarget(activity)]);
+  }
+  const labelKey = EVENT_LABEL_KEY[eventType];
+  if (labelKey) {
+    return t(labelKey);
   }
 
-  return activity.fieldName
-    ? `${updated} ${activity.fieldName} ${forPrep}`
-    : `${updated} ${onPrep}`;
+  return fieldName
+    ? t('label.updated-field-for-lowercase', { field: fieldName })
+    : t('message.activity-updated-asset');
 };
 
-// Activity feed scope: "all" shows every conversation; "me" restricts to
-// conversations the current user owns or follows.
-export type InboxScope = 'all' | 'me';
+/**
+ * One edit that both removes and adds values on a list field (swapping an
+ * owner, replacing a tag) is stored as two events, a removal and an addition,
+ * sharing the entity, field and timestamp. Fold each removal into its addition
+ * so the card reads Before → After. The addition keeps its id, so replies and
+ * reactions left on the removal event are not shown.
+ */
+export const pairFieldChanges = (
+  activities: ActivityEvent[]
+): ActivityEvent[] => {
+  const changeKey = ({ entity, fieldName, timestamp }: ActivityEvent) =>
+    fieldName ? `${entity.id}|${fieldName}|${timestamp}` : undefined;
+  const removals = new Map<string, ActivityEvent>();
+  activities.forEach((activity) => {
+    const key = changeKey(activity);
+    if (key && activity.oldValue && !activity.newValue) {
+      removals.set(key, activity);
+    }
+  });
+  const paired = new Set<ActivityEvent>();
+  const folded = activities.map((activity) => {
+    const key = changeKey(activity);
+    const removal =
+      key && activity.newValue && !activity.oldValue
+        ? removals.get(key)
+        : undefined;
+    if (removal) {
+      paired.add(removal);
+    }
+
+    return removal ? { ...activity, oldValue: removal.oldValue } : activity;
+  });
+
+  return folded.filter((activity) => !paired.has(activity));
+};
+
+// The Activity tab's sub-tabs: whose activity the feed shows.
+export enum ActivityFilter {
+  All = 'all',
+  Mentions = 'mentions',
+  MyAssets = 'my-assets',
+  Following = 'following',
+}
+
+export enum ActivityGrouping {
+  Day = 'day',
+  Asset = 'asset',
+  User = 'user',
+}
+
+// The Type filter's options: the change panel's field labels, plus Other for
+// everything without one (lifecycle events, conversations).
+export const ACTIVITY_TYPE_OTHER = 'label.other';
+export const ACTIVITY_TYPE_KEYS = [
+  ...uniq(compact(Object.values(CHANGE_LABEL_KEY))),
+  ACTIVITY_TYPE_OTHER,
+];
+
+export const getActivityTypeKey = (activity?: ActivityEvent): string =>
+  (activity && CHANGE_LABEL_KEY[activity.eventType]) ?? ACTIVITY_TYPE_OTHER;
+
+// "Today · Thu, Jul 30", "2 days ago · Wed, Jul 28"
+export const getActivityDayLabel = (timestamp: number): string =>
+  `${getRelativeCalendar(timestamp, undefined, 'days')} · ${formatDateTimeLong(
+    timestamp,
+    ACTIVITY_DAY_FORMAT
+  )}`;
 
 // Selected date window for the Inbox (Activity + Tasks), passed to the feed/task
 // list APIs as startTs/endTs (server-side filtering).
 export type { InboxDateRange } from '../../../../interface/inbox.interface';
 
-// Default Inbox window: the last 30 days (start-of-day to now), used by the page
-// on first render and by the sidebar inbox-icon count.
-export const getDefaultInboxDateRange = (): InboxDateRange => ({
-  startTs: getStartOfDayInMillis(
-    getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
-  ),
+// The window a date preset covers: from the start of its first day to the end
+// of today. getDefaultInboxDateRange (last 30 days) seeds the page and the
+// sidebar inbox-icon count.
+export const getInboxDateRange = (days: number): InboxDateRange => ({
+  startTs: getStartOfDayInMillis(getEpochMillisForPastDays(days)),
   endTs: getEndOfDayInMillis(getCurrentMillis()),
 });
+
+export const DEFAULT_INBOX_DATE_PRESET = 'last30days';
+
+export const getDefaultInboxDateRange = (): InboxDateRange =>
+  getInboxDateRange(PROFILER_FILTER_RANGE.last30days.days);
 
 const ACTIVITY_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -179,6 +380,17 @@ export const getActivityWindowDays = (dateRange?: InboxDateRange): number => {
 
   return Math.min(Math.max(days, 1), MAX_ACTIVITY_DAYS);
 };
+
+// A list that came back a full page may hold fewer items than the window has,
+// so its length is a floor, not a total.
+export interface InboxCount {
+  total: number;
+  isCapped: boolean;
+}
+
+// "42", or "300+" when the count is a floor.
+export const formatInboxCount = ({ total, isCapped }: InboxCount): string =>
+  isCapped ? `${total}+` : String(total);
 
 /**
  * Whether a millis timestamp falls inside the selected Inbox date window.
@@ -254,118 +466,12 @@ export const isTaskPendingViewer = (
   !PAST_APPROVAL_STATUSES.has(task.status) &&
   (task.assignees ?? []).some(({ id }) => currentUserIds.has(id));
 
-export interface RelativeDayGroup<T> {
-  day: string;
-  items: T[];
-}
-
-export type ActivityBucketKey = 'today' | 'yesterday' | 'earlier';
-
-export interface ActivityBucket {
-  key: ActivityBucketKey;
-  // Sub-label shown next to the bucket title, e.g. "Tuesday, July 9" or a
-  // "July 4 - July 7" range for the Earlier bucket.
-  dateText: string;
-  items: Conversation[];
-}
-
-// Display timestamp for a conversation card/drawer ("Posted on …"). createdAt is
-// the Conversation V2 counterpart of the legacy threadTs, so the posted time is
-// shown createdAt-first (matches upstream's card display). Used by
-// ActivityDetailDrawer and by getActivityBuckets (display grouping), NOT by the
-// merged-list sort (use getFeedSortTimestamp for that).
-export const getFeedTimestamp = (feed: Conversation): number =>
-  feed.createdAt ?? feed.updatedAt ?? 0;
-
-// Sort key for the merged inbox list. Mirrors upstream's getConversationTimestamp
-// (ActivityFeedListV1New.component.tsx): last-activity (updatedAt) first, falling
-// back to createdAt. Kept separate from getFeedTimestamp so the displayed
-// timestamp (createdAt-first) is unaffected — many products order threads by
-// last activity while showing the original post time, which is what upstream and
-// the inbox display both do (OpenMetadata#30879, #30909).
+// Sort key for the merged inbox list and its day groups. Mirrors upstream's
+// getConversationTimestamp (ActivityFeedListV1New.component.tsx): last activity
+// (updatedAt) first, falling back to createdAt, so a replied conversation rises
+// above newer unreplied ones (OpenMetadata#30879, #30909).
 export const getFeedSortTimestamp = (feed: Conversation): number =>
   feed.updatedAt ?? feed.createdAt ?? 0;
-
-const SINGLE_DAY_FORMAT = 'cccc, LLLL d';
-const RANGE_DAY_FORMAT = 'LLLL d';
-
-/**
- * Bucket conversations into Today / Yesterday / Earlier (matching the figma),
- * each with a human date sub-label. Earlier collapses everything older into a
- * single group with a date range. Empty buckets are omitted; order is fixed
- * (today → yesterday → earlier).
- */
-export const getActivityBuckets = (feeds: Conversation[]): ActivityBucket[] => {
-  const now = DateTime.now();
-  const yesterdayStart = now.minus({ days: 1 });
-  const today: Conversation[] = [];
-  const yesterday: Conversation[] = [];
-  const earlier: Conversation[] = [];
-
-  feeds.forEach((feed) => {
-    const dt = DateTime.fromMillis(getFeedTimestamp(feed));
-    if (dt.hasSame(now, 'day')) {
-      today.push(feed);
-    } else if (dt.hasSame(yesterdayStart, 'day')) {
-      yesterday.push(feed);
-    } else {
-      earlier.push(feed);
-    }
-  });
-
-  const singleDate = (items: Conversation[]): string =>
-    DateTime.fromMillis(getFeedTimestamp(items[0])).toFormat(SINGLE_DAY_FORMAT);
-
-  const buckets: ActivityBucket[] = [];
-  if (today.length) {
-    buckets.push({ key: 'today', dateText: singleDate(today), items: today });
-  }
-  if (yesterday.length) {
-    buckets.push({
-      key: 'yesterday',
-      dateText: singleDate(yesterday),
-      items: yesterday,
-    });
-  }
-  if (earlier.length) {
-    const timestamps = earlier.map(getFeedTimestamp);
-    const min = Math.min(...timestamps);
-    const max = Math.max(...timestamps);
-    const format = (ms: number) =>
-      DateTime.fromMillis(ms).toFormat(RANGE_DAY_FORMAT);
-    buckets.push({
-      key: 'earlier',
-      dateText: min === max ? format(min) : `${format(min)} - ${format(max)}`,
-      items: earlier,
-    });
-  }
-
-  return buckets;
-};
-
-/**
- * Bucket a list into ordered groups keyed by a relative-calendar day label
- * ("Today", "Yesterday", …) computed from each item's timestamp. Preserves the
- * incoming order so callers control sorting upstream.
- */
-export const groupByRelativeDay = <T>(
-  items: T[],
-  getTimestamp: (item: T) => number | undefined
-): RelativeDayGroup<T>[] => {
-  const groups: RelativeDayGroup<T>[] = [];
-
-  items.forEach((item) => {
-    const day = getRelativeCalendar(getTimestamp(item) || 0);
-    const existing = groups.find((group) => group.day === day);
-    if (existing) {
-      existing.items.push(item);
-    } else {
-      groups.push({ day, items: [item] });
-    }
-  });
-
-  return groups;
-};
 
 export interface ReactionUser {
   id?: string;

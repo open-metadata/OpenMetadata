@@ -16,12 +16,20 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { ConversationFilterType } from '../../../../generated/type/conversationFilterType';
 
-const mockGetUserActivity = jest.fn();
+const mockGetActivityEvents = jest.fn();
+const mockGetMyActivityFeed = jest.fn();
+const mockGetFollowingActivityFeed = jest.fn();
+const mockGetMentionsActivityFeed = jest.fn();
 const mockListConversations = jest.fn();
 let mockCurrentUser: { id?: string } | undefined;
 
 jest.mock('rest/activityAPI', () => ({
-  getUserActivity: (...args: unknown[]) => mockGetUserActivity(...args),
+  getActivityEvents: (...args: unknown[]) => mockGetActivityEvents(...args),
+  getMyActivityFeed: (...args: unknown[]) => mockGetMyActivityFeed(...args),
+  getFollowingActivityFeed: (...args: unknown[]) =>
+    mockGetFollowingActivityFeed(...args),
+  getMentionsActivityFeed: (...args: unknown[]) =>
+    mockGetMentionsActivityFeed(...args),
 }));
 
 jest.mock('rest/conversationsAPI', () => ({
@@ -32,9 +40,21 @@ jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
-import { fetchInboxActivity, useInboxActivity } from './useInboxActivity';
+import { ActivityFilter } from './inbox.utils';
+import {
+  fetchInboxActivity,
+  useInboxActivity,
+  useInboxActivityCounts,
+} from './useInboxActivity';
 
-const threeEvents = { data: [{ id: '1' }, { id: '2' }, { id: '3' }] };
+// Inside the 100–200 window the range tests use.
+const threeEvents = {
+  data: [
+    { id: '1', timestamp: 150 },
+    { id: '2', timestamp: 150 },
+    { id: '3', timestamp: 150 },
+  ],
+};
 const twoThreads = { data: [{ id: 't1' }, { id: 't2' }] };
 
 const createWrapper = () => {
@@ -50,26 +70,31 @@ const createWrapper = () => {
 beforeEach(() => {
   jest.clearAllMocks();
   mockCurrentUser = { id: 'u1' };
-  mockGetUserActivity.mockResolvedValue(threeEvents);
+  [
+    mockGetActivityEvents,
+    mockGetMyActivityFeed,
+    mockGetFollowingActivityFeed,
+    mockGetMentionsActivityFeed,
+  ].forEach((mock) => mock.mockResolvedValue(threeEvents));
   mockListConversations.mockResolvedValue(twoThreads);
 });
 
 describe('fetchInboxActivity', () => {
-  it('fetches the user’s own activity + every conversation for "all" (admin)', async () => {
+  // "All" is everything the viewer may see: every event, every conversation.
+  it('fetches every activity event and conversation for All', async () => {
     const { activities, threads } = await fetchInboxActivity(
-      'all',
+      ActivityFilter.All,
       'u1',
       100,
       200
     );
 
-    // Activity is always the user's own events (actor-based).
-    expect(mockGetUserActivity).toHaveBeenCalledWith('u1', {
+    expect(mockGetActivityEvents).toHaveBeenCalledWith({
       days: 1,
       limit: 200,
     });
-    // Admin conversations are unfiltered (no filterType, no userId). The limit is
-    // 100, not ACTIVITY_LIMIT: /conversations rejects anything above @Max(100).
+    // The limit is 100, not ACTIVITY_LIMIT: /conversations rejects anything
+    // above @Max(100).
     expect(mockListConversations).toHaveBeenCalledWith({
       filterType: undefined,
       userId: undefined,
@@ -81,20 +106,50 @@ describe('fetchInboxActivity', () => {
     expect(threads).toHaveLength(2);
   });
 
-  it('scopes conversations to owned/followed ones for "me" (non-admin)', async () => {
-    await fetchInboxActivity('me', 'u1');
+  it.each([
+    [
+      ActivityFilter.MyAssets,
+      mockGetMyActivityFeed,
+      ConversationFilterType.Owner,
+    ],
+    [
+      ActivityFilter.Following,
+      mockGetFollowingActivityFeed,
+      ConversationFilterType.Follows,
+    ],
+  ])(
+    'scopes %s to its activity feed and conversations',
+    async (filter, activityRequest, filterType) => {
+      await fetchInboxActivity(filter, 'u1');
 
-    expect(mockGetUserActivity).toHaveBeenCalledWith('u1', {
-      days: 30,
-      limit: 200,
-    });
-    expect(mockListConversations).toHaveBeenCalledWith({
-      filterType: ConversationFilterType.OwnerOrFollows,
-      userId: 'u1',
-      limit: 100,
-      startTs: undefined,
-      endTs: undefined,
-    });
+      expect(activityRequest).toHaveBeenCalledWith({ days: 30, limit: 200 });
+      expect(mockGetActivityEvents).not.toHaveBeenCalled();
+      expect(mockListConversations).toHaveBeenCalledWith({
+        filterType,
+        userId: 'u1',
+        limit: 100,
+        startTs: undefined,
+        endTs: undefined,
+      });
+    }
+  );
+
+  // Replies that name the viewer, plus the conversations that do.
+  it('reads the mentions feed and mentioning conversations for Mentions', async () => {
+    const { activities } = await fetchInboxActivity(
+      ActivityFilter.Mentions,
+      'u1'
+    );
+
+    expect(activities).toEqual(threeEvents.data);
+    expect(mockGetMentionsActivityFeed).toHaveBeenCalled();
+    expect(mockGetActivityEvents).not.toHaveBeenCalled();
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filterType: ConversationFilterType.Mentions,
+        userId: 'u1',
+      })
+    );
   });
 
   // Regression: these were fetched with Promise.all, so a rejected conversation
@@ -102,33 +157,98 @@ describe('fetchInboxActivity', () => {
   it('still returns activity when the conversation fetch fails', async () => {
     mockListConversations.mockRejectedValue(new Error('400 Bad Request'));
 
-    const { activities, threads } = await fetchInboxActivity('all', 'u1');
+    const { activities, threads } = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1'
+    );
 
     expect(activities).toHaveLength(3);
     expect(threads).toEqual([]);
   });
 
   it('still returns conversations when the activity fetch fails', async () => {
-    mockGetUserActivity.mockRejectedValue(new Error('boom'));
+    mockGetActivityEvents.mockRejectedValue(new Error('boom'));
 
-    const { activities, threads } = await fetchInboxActivity('all', 'u1');
+    const { activities, threads } = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1'
+    );
 
     expect(activities).toEqual([]);
     expect(threads).toHaveLength(2);
   });
 
-  it('returns empty lists when the user id is not resolved yet', async () => {
-    const result = await fetchInboxActivity('all', undefined);
+  // The server's whole-day `days` reaches back past startTs (a 7-day preset
+  // sends days=8), so events outside the exact window are dropped.
+  it('clips activity events to the selected window', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: [
+        { id: 'before', timestamp: 99 },
+        { id: 'start', timestamp: 100 },
+        { id: 'end', timestamp: 200 },
+        { id: 'after', timestamp: 201 },
+      ],
+    });
 
-    expect(result).toEqual({ activities: [], threads: [] });
-    expect(mockGetUserActivity).not.toHaveBeenCalled();
+    const { activities } = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1',
+      100,
+      200
+    );
+
+    expect(activities.map(({ id }) => id)).toEqual(['start', 'end']);
+  });
+
+  // The Mentions window is when the mention was made, so an older event with
+  // a fresh mention stays.
+  it('keeps Mentions events older than the window', async () => {
+    mockGetMentionsActivityFeed.mockResolvedValue({
+      data: [{ id: 'old', timestamp: 1 }],
+    });
+
+    const { activities } = await fetchInboxActivity(
+      ActivityFilter.Mentions,
+      'u1',
+      100,
+      200
+    );
+
+    expect(activities.map(({ id }) => id)).toEqual(['old']);
+  });
+
+  it.each([
+    ['activity', 200, 0, true],
+    ['conversation', 0, 100, true],
+    ['neither', 199, 99, false],
+  ])(
+    'flags a full %s page as capped',
+    async (_, activityCount, threadCount, isCapped) => {
+      mockGetActivityEvents.mockResolvedValue({
+        data: Array.from({ length: activityCount }, (_, i) => ({ id: i })),
+      });
+      mockListConversations.mockResolvedValue({
+        data: Array.from({ length: threadCount }, (_, i) => ({ id: `t${i}` })),
+      });
+
+      const result = await fetchInboxActivity(ActivityFilter.All, 'u1');
+
+      expect(result.isCapped).toBe(isCapped);
+    }
+  );
+
+  it('returns empty lists when the user id is not resolved yet', async () => {
+    const result = await fetchInboxActivity(ActivityFilter.All, undefined);
+
+    expect(result).toEqual({ activities: [], threads: [], isCapped: false });
+    expect(mockGetActivityEvents).not.toHaveBeenCalled();
     expect(mockListConversations).not.toHaveBeenCalled();
   });
 });
 
 describe('useInboxActivity', () => {
   it('merges activity events and conversations into one list', async () => {
-    const { result } = renderHook(() => useInboxActivity('all'), {
+    const { result } = renderHook(() => useInboxActivity(ActivityFilter.All), {
       wrapper: createWrapper(),
     });
 
@@ -143,7 +263,7 @@ describe('useInboxActivity', () => {
   });
 
   it('orders the merged list by timestamp, newest first', async () => {
-    mockGetUserActivity.mockResolvedValue({
+    mockGetActivityEvents.mockResolvedValue({
       data: [
         { id: 'a-old', timestamp: 100 },
         { id: 'a-new', timestamp: 400 },
@@ -151,14 +271,13 @@ describe('useInboxActivity', () => {
     });
     mockListConversations.mockResolvedValue({
       data: [
-        // createdAt is the Conversation V2 counterpart of the legacy threadTs;
-        // getFeedTimestamp falls back to updatedAt when it is absent.
+        // Conversations sort by last activity: updatedAt, else createdAt.
         { id: 't-mid', createdAt: 200 },
         { id: 't-late', updatedAt: 300 },
       ],
     });
 
-    const { result } = renderHook(() => useInboxActivity('all'), {
+    const { result } = renderHook(() => useInboxActivity(ActivityFilter.All), {
       wrapper: createWrapper(),
     });
 
@@ -170,9 +289,9 @@ describe('useInboxActivity', () => {
   });
 
   it('shows conversations alone when the user has no events', async () => {
-    mockGetUserActivity.mockResolvedValue({ data: [] });
+    mockGetActivityEvents.mockResolvedValue({ data: [] });
 
-    const { result } = renderHook(() => useInboxActivity('all'), {
+    const { result } = renderHook(() => useInboxActivity(ActivityFilter.All), {
       wrapper: createWrapper(),
     });
 
@@ -190,7 +309,7 @@ describe('useInboxActivity', () => {
   // production shape (backend always sets createdAt on insert, bumps only
   // updatedAt), where the `?? updatedAt` fallback never fires.
   it('orders a replied conversation above a newer unreplied one by last-activity', async () => {
-    mockGetUserActivity.mockResolvedValue({ data: [] });
+    mockGetActivityEvents.mockResolvedValue({ data: [] });
     mockListConversations.mockResolvedValue({
       data: [
         // Replied Aug 20, reply landed Sep 4 -> updatedAt >> createdAt.
@@ -200,7 +319,7 @@ describe('useInboxActivity', () => {
       ],
     });
 
-    const { result } = renderHook(() => useInboxActivity('all'), {
+    const { result } = renderHook(() => useInboxActivity(ActivityFilter.All), {
       wrapper: createWrapper(),
     });
 
@@ -219,7 +338,7 @@ describe('useInboxActivity', () => {
   // the inbox would still diverge on equal-timestamp ordering and rely on JS
   // sort stability plus the server's `updatedAt DESC, id DESC` order.
   it('breaks timestamp ties by ascending id, matching upstream', async () => {
-    mockGetUserActivity.mockResolvedValue({ data: [] });
+    mockGetActivityEvents.mockResolvedValue({ data: [] });
     mockListConversations.mockResolvedValue({
       data: [
         // Both unreplied, equal timestamps -> tie decided by id.
@@ -228,7 +347,7 @@ describe('useInboxActivity', () => {
       ],
     });
 
-    const { result } = renderHook(() => useInboxActivity('all'), {
+    const { result } = renderHook(() => useInboxActivity(ActivityFilter.All), {
       wrapper: createWrapper(),
     });
 
@@ -238,5 +357,53 @@ describe('useInboxActivity', () => {
       'alpha',
       'zebra',
     ]);
+  });
+});
+
+describe('useInboxActivityCounts', () => {
+  it('counts each sub-tab as its list would show it', async () => {
+    const { result } = renderHook(() => useInboxActivityCounts(), {
+      wrapper: createWrapper(),
+    });
+
+    const count = { total: 5, isCapped: false };
+
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        [ActivityFilter.All]: count,
+        [ActivityFilter.Mentions]: count,
+        [ActivityFilter.MyAssets]: count,
+        [ActivityFilter.Following]: count,
+      })
+    );
+  });
+
+  it('marks a sub-tab whose list hit the page size as capped', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, i) => ({ id: i })),
+    });
+
+    const { result } = renderHook(() => useInboxActivityCounts(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(result.current[ActivityFilter.All]).toEqual({
+        total: 202,
+        isCapped: true,
+      })
+    );
+
+    expect(result.current[ActivityFilter.Mentions]?.isCapped).toBe(false);
+  });
+
+  it('counts nothing until the user id is resolved', () => {
+    mockCurrentUser = undefined;
+
+    const { result } = renderHook(() => useInboxActivityCounts(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current).toEqual({});
   });
 });

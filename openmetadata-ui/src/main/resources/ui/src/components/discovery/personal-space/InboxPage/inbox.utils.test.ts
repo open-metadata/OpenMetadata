@@ -30,8 +30,6 @@ import {
 } from '../../../../rest/conversationsAPI';
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
-  // Bucket by calendar day derived from the ms timestamp.
-  getRelativeCalendar: (ts: number) => `day-${Math.floor(ts / 100)}`,
   getStartOfDayInMillis: (value: number) => value ?? 0,
   getEndOfDayInMillis: (value: number) => value ?? 0,
   getEpochMillisForPastDays: (days: number) => days,
@@ -54,14 +52,14 @@ jest.mock('../../../../rest/conversationsAPI', () => ({
 
 import { Task } from '../../../../generated/entity/tasks/task';
 import {
+  formatInboxCount,
   formatInboxDate,
   formatInboxDateTime,
-  getActivityBuckets,
+  getActivityChange,
   getActivityEventLabel,
   getFeedSortTimestamp,
-  getFeedTimestamp,
-  groupByRelativeDay,
   isTaskOpen,
+  pairFieldChanges,
   toggleActivityReaction,
   toggleConversationReaction,
 } from './inbox.utils';
@@ -101,25 +99,98 @@ describe('inbox.utils', () => {
   });
 
   describe('getActivityEventLabel', () => {
-    const activity = (eventType: ActivityEventType, fieldName?: string) =>
-      ({ eventType, fieldName } as ActivityEvent);
+    const activity = (
+      eventType: ActivityEventType,
+      fieldName?: string,
+      oldValue?: string,
+      newValue?: string
+    ) => ({ eventType, fieldName, oldValue, newValue } as ActivityEvent);
+    const tags = (...fqns: string[]) =>
+      JSON.stringify(fqns.map((tagFQN) => ({ tagFQN })));
 
-    it('labels EntityCreated as "created on"', () => {
-      expect(
-        getActivityEventLabel(activity(ActivityEventType.EntityCreated), t)
-      ).toBe('label.created-lowercase label.on-lowercase');
+    // Each sentence is complete; the entity is the card's next line.
+    it.each([
+      [ActivityEventType.EntityCreated, 'message.activity-created-asset'],
+      [ActivityEventType.EntitySoftDeleted, 'message.activity-deleted-asset'],
+      [ActivityEventType.OwnerUpdated, 'message.activity-changed-owner'],
+      [ActivityEventType.DomainUpdated, 'message.activity-changed-domain'],
+      [
+        ActivityEventType.DescriptionUpdated,
+        'message.activity-updated-description',
+      ],
+    ])('labels %s as a whole sentence', (eventType, key) => {
+      expect(getActivityEventLabel(activity(eventType), t)).toBe(key);
     });
 
-    it('labels DescriptionUpdated as "updated description for"', () => {
+    it('names a column description change', () => {
       expect(
-        getActivityEventLabel(activity(ActivityEventType.DescriptionUpdated), t)
-      ).toBe('label.updated-lowercase label.description label.for-lowercase');
+        getActivityEventLabel(
+          activity(
+            ActivityEventType.DescriptionUpdated,
+            'columns.email.description'
+          ),
+          t
+        )
+      ).toBe('message.activity-updated-column-description');
     });
 
-    it('labels TagsUpdated as "added tags to"', () => {
+    it('reads which way a column tag changed, and how many', () => {
+      const added = activity(
+        ActivityEventType.TagsUpdated,
+        'columns.email.tags',
+        undefined,
+        tags('PII.Sensitive')
+      );
+      const removed = activity(
+        ActivityEventType.TagsUpdated,
+        'tags',
+        tags('PII.Sensitive', 'PersonalData.Personal')
+      );
+
+      expect(getActivityEventLabel(added, t)).toBe(
+        'message.activity-added-column-tag'
+      );
+      expect(getActivityEventLabel(removed, t)).toBe(
+        'message.activity-removed-tag-plural'
+      );
+    });
+
+    it('calls a swap of tags a change', () => {
       expect(
-        getActivityEventLabel(activity(ActivityEventType.TagsUpdated), t)
-      ).toBe('label.added-lowercase label.tag-plural label.to-lowercase');
+        getActivityEventLabel(
+          activity(
+            ActivityEventType.TagsUpdated,
+            'tags',
+            tags('PII.NonSensitive'),
+            tags('PII.Sensitive')
+          ),
+          t
+        )
+      ).toBe('message.activity-changed-tags');
+    });
+
+    it('calls tags it cannot read a change', () => {
+      expect(
+        getActivityEventLabel(
+          activity(ActivityEventType.TagsUpdated, 'tags', '[{"tagFQN":"PI'),
+          t
+        )
+      ).toBe('message.activity-changed-tags');
+    });
+
+    // Tier is stored as a tag, so its own sentence comes from the values.
+    it('names a tier change', () => {
+      expect(
+        getActivityEventLabel(
+          activity(
+            ActivityEventType.TagsUpdated,
+            'tags',
+            undefined,
+            tags('Tier.Tier1')
+          ),
+          t
+        )
+      ).toBe('message.activity-changed-tier');
     });
 
     it('uses the field name for a generic EntityUpdated', () => {
@@ -128,101 +199,20 @@ describe('inbox.utils', () => {
           activity(ActivityEventType.EntityUpdated, 'schema'),
           t
         )
-      ).toBe('label.updated-lowercase schema label.for-lowercase');
+      ).toBe('label.updated-field-for-lowercase');
     });
 
-    it('falls back to "updated on" for EntityUpdated with no field', () => {
+    it('falls back to updating the asset when no field is named', () => {
       expect(
         getActivityEventLabel(activity(ActivityEventType.EntityUpdated), t)
-      ).toBe('label.updated-lowercase label.on-lowercase');
+      ).toBe('message.activity-updated-asset');
     });
   });
 
-  describe('groupByRelativeDay', () => {
-    it('buckets items by relative day, preserving order', () => {
-      const items = [
-        { id: 'a', ts: 100 },
-        { id: 'b', ts: 150 },
-        { id: 'c', ts: 500 },
-      ];
-
-      const groups = groupByRelativeDay(items, (item) => item.ts);
-
-      expect(groups).toHaveLength(2);
-      expect(groups[0].day).toBe('day-1');
-      expect(groups[0].items.map((i) => i.id)).toEqual(['a', 'b']);
-      expect(groups[1].day).toBe('day-5');
-      expect(groups[1].items.map((i) => i.id)).toEqual(['c']);
-    });
-
-    it('treats a missing timestamp as 0', () => {
-      const groups = groupByRelativeDay([{ id: 'x' }], () => undefined);
-
-      expect(groups[0].day).toBe('day-0');
-    });
-
-    it('returns an empty array for no items', () => {
-      expect(groupByRelativeDay([], () => 0)).toEqual([]);
-    });
-  });
-
-  describe('getActivityBuckets', () => {
-    const now = DateTime.now();
-    const single = (ms: number) =>
-      DateTime.fromMillis(ms).toFormat('cccc, LLLL d');
-    const range = (ms: number) => DateTime.fromMillis(ms).toFormat('LLLL d');
-
-    it('buckets feeds into today / yesterday / earlier with date labels', () => {
-      const todayTs = now.toMillis();
-      const yesterdayTs = now.minus({ days: 1 }).toMillis();
-      const oldNewer = now.minus({ days: 5 }).toMillis();
-      const oldOlder = now.minus({ days: 10 }).toMillis();
-
-      const feeds = [
-        { id: 'today', createdAt: todayTs },
-        { id: 'yest', createdAt: yesterdayTs },
-        { id: 'old-a', createdAt: oldOlder },
-        { id: 'old-b', createdAt: oldNewer },
-      ] as Conversation[];
-
-      const buckets = getActivityBuckets(feeds);
-
-      expect(buckets.map((b) => b.key)).toEqual([
-        'today',
-        'yesterday',
-        'earlier',
-      ]);
-      expect(buckets[0].items.map((f) => f.id)).toEqual(['today']);
-      expect(buckets[0].dateText).toBe(single(todayTs));
-      expect(buckets[1].dateText).toBe(single(yesterdayTs));
-      expect(buckets[2].items.map((f) => f.id)).toEqual(['old-a', 'old-b']);
-      expect(buckets[2].dateText).toBe(
-        `${range(oldOlder)} - ${range(oldNewer)}`
-      );
-    });
-
-    it('omits empty buckets and uses a single date when earlier spans one day', () => {
-      const old = now.minus({ days: 3 }).toMillis();
-      const buckets = getActivityBuckets([
-        { id: 'o', createdAt: old },
-      ] as Conversation[]);
-
-      expect(buckets).toHaveLength(1);
-      expect(buckets[0].key).toBe('earlier');
-      expect(buckets[0].dateText).toBe(range(old));
-    });
-
-    it('returns an empty array for no feeds', () => {
-      expect(getActivityBuckets([])).toEqual([]);
-    });
-  });
-
-  describe('feed timestamps', () => {
-    // Locks the deliberate separation between the sort key (updatedAt-first,
-    // upstream parity) and the display timestamp (createdAt-first, "Posted on").
-    // See useInboxActivity for the sort consumer and ActivityDetailDrawer for the
-    // display consumer. Regression for the inbox sort precedence bug.
-    it('getFeedSortTimestamp prefers updatedAt (last activity) for sorting', () => {
+  describe('getFeedSortTimestamp', () => {
+    // Last activity first, so a replied conversation sorts above newer
+    // unreplied ones (upstream parity). Regression for the inbox sort bug.
+    it('prefers updatedAt over createdAt', () => {
       const feed = {
         id: 'c1',
         createdAt: 200,
@@ -231,17 +221,16 @@ describe('inbox.utils', () => {
 
       expect(getFeedSortTimestamp(feed)).toBe(400);
     });
+  });
 
-    it('getFeedTimestamp prefers createdAt (posted time) for display', () => {
-      const feed = {
-        id: 'c1',
-        createdAt: 200,
-        updatedAt: 400,
-      } as Conversation;
+  describe('formatInboxCount', () => {
+    it('shows an exact count as is', () => {
+      expect(formatInboxCount({ total: 42, isCapped: false })).toBe('42');
+    });
 
-      // Same both-present shape as the sort test above: display stays createdAt,
-      // never updatedAt, so displayed "Posted on" time is unaffected by the fix.
-      expect(getFeedTimestamp(feed)).toBe(200);
+    // A full page is a floor, not a total.
+    it('marks a capped count with a trailing plus', () => {
+      expect(formatInboxCount({ total: 300, isCapped: true })).toBe('300+');
     });
   });
 
@@ -382,6 +371,108 @@ describe('inbox.utils', () => {
       );
 
       expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('getActivityChange', () => {
+    const event = (
+      eventType: ActivityEventType,
+      oldValue?: string,
+      newValue?: string
+    ) => ({ eventType, oldValue, newValue } as ActivityEvent);
+
+    it('names added tags by their FQN', () => {
+      expect(
+        getActivityChange(
+          event(
+            ActivityEventType.TagsUpdated,
+            undefined,
+            JSON.stringify([{ tagFQN: 'PII.Sensitive' }])
+          )
+        )
+      ).toEqual({
+        labelKey: 'label.tag-plural',
+        before: [],
+        after: ['PII.Sensitive'],
+        isText: false,
+      });
+    });
+
+    it('names owners on both sides of a paired swap', () => {
+      expect(
+        getActivityChange(
+          event(
+            ActivityEventType.OwnerUpdated,
+            JSON.stringify([{ name: 'ram', displayName: 'Ram' }]),
+            JSON.stringify([{ name: 'platform' }])
+          )
+        )
+      ).toMatchObject({ before: ['Ram'], after: ['platform'] });
+    });
+
+    // The panel renders it, so markdown reaches it untouched.
+    it('keeps a description as written', () => {
+      expect(
+        getActivityChange(
+          event(ActivityEventType.DescriptionUpdated, 'Old', '**New** ')
+        )
+      ).toEqual({
+        labelKey: 'label.description',
+        before: ['Old'],
+        after: ['**New**'],
+        isText: true,
+      });
+    });
+
+    // The server truncates each side at 1000 characters.
+    it('gives up on a value cut off mid-JSON', () => {
+      expect(
+        getActivityChange(
+          event(ActivityEventType.TagsUpdated, undefined, '[{"tagFQN":"PI')
+        )
+      ).toBeUndefined();
+    });
+
+    it('has nothing to show for an event without a change panel', () => {
+      expect(
+        getActivityChange(event(ActivityEventType.EntityCreated))
+      ).toBeUndefined();
+    });
+  });
+
+  describe('pairFieldChanges', () => {
+    const change = (
+      id: string,
+      values: Partial<ActivityEvent>
+    ): ActivityEvent =>
+      ({
+        id,
+        entity: { id: 't1' },
+        fieldName: 'owners',
+        timestamp: 1,
+        ...values,
+      } as ActivityEvent);
+
+    it('folds a removal into the addition from the same edit', () => {
+      const removal = change('r', { oldValue: '[ram]' });
+      const addition = change('a', { newValue: '[team]' });
+
+      expect(pairFieldChanges([removal, addition])).toEqual([
+        { ...addition, oldValue: '[ram]' },
+      ]);
+    });
+
+    it('leaves changes from different edits apart', () => {
+      const removal = change('r', { oldValue: '[ram]' });
+      const later = change('a', { newValue: '[team]', timestamp: 2 });
+
+      expect(pairFieldChanges([removal, later])).toEqual([removal, later]);
+    });
+
+    it('leaves events without a field alone', () => {
+      const created = change('c', { fieldName: undefined, newValue: 'x' });
+
+      expect(pairFieldChanges([created])).toEqual([created]);
     });
   });
 });
