@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { DateRangePicker } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import type { DateValue } from 'react-aria-components';
 import { dateValueToMillis, millisToDateValue } from './calendarDate.utils';
@@ -21,7 +20,7 @@ type PickerRange = { start: DateValue; end: DateValue } | null;
 export interface DqDateRangeFilterProps {
   startTs?: number;
   endTs?: number;
-  /** `sm` shrinks the core `md` trigger to match the sm filter inputs. */
+  /** `sm` matches the trigger to the sm filter inputs. */
   size?: 'sm' | 'md';
   /** Stretch the trigger across its container, like the inputs beside it. */
   fullWidth?: boolean;
@@ -87,29 +86,17 @@ export const DqDateRangeFilter = ({
     setValue(buildValue());
   };
 
-  const picker = (
+  return (
     <DateRangePicker
+      fullWidth={fullWidth}
       isOpen={isOpen}
+      size={size}
       value={value}
       onApply={handleApply}
       onCancel={handleCancel}
       onChange={setValue}
       onOpenChange={onOpenChange}
     />
-  );
-
-  // The core DateRangePicker trigger is a hardcoded `md` button that sizes to
-  // its text; scope-override it down to `sm` padding, or across the field, so
-  // it lines up with the inputs beside it.
-  const wrapperClassName = classNames({
-    'tw:[&_button]:px-3! tw:[&_button]:py-2!': size === 'sm',
-    'tw:w-full tw:[&_button]:w-full tw:[&_button]:justify-start': fullWidth,
-  });
-
-  return wrapperClassName ? (
-    <div className={wrapperClassName}>{picker}</div>
-  ) : (
-    picker
   );
 };
 
