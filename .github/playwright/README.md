@@ -21,9 +21,11 @@ The common matrix is bounded to 5–24 runners and uses a 21-minute allocation b
 
 The `Basic` and `chromium` projects share that common 24-runner cap and are balanced together; they are not separate pools of standard hosted runners. Isolated ingestion, search, reindex, permission, and global-state lanes are additional because they cannot safely share mutable server state with the common matrix.
 
-Impact-mapped targeted CI runs the representative Table-source scenario from `DataAssetLineage.spec.ts`. A direct change to that spec, full CI, and local runs retain every source-entity scenario in the same file. This preserves stable IDs and lets the duration planner distribute the full matrix instead of concentrating it in an unsharded stress project. Custom Properties keeps the complete widget contract on Table and one String CRUD smoke per remaining entity.
-
 The `@ingestion` project is excluded from common Chromium only when the dynamic planner is active. Its source-matched Airflow image is restored only for ingestion shards, so other workflows that invoke the regular Chromium project keep their existing behavior.
+
+## Entity matrix
+
+Specs that repeat the same scenarios for every entity type (Entity, Lineage, Custom Properties, Explore right panel, service pages, …) wrap the generating collection in `pickEntityMatrix` from `playwright/utils/entityMatrix.ts`. Pull request and merge-queue runs (`entity_matrix=representative` from `select_playwright_tests.py`) generate those tests for one representative entity only — Table for data assets, Database Service for services. The nightly schedule and manual dispatches run the full matrix, as do local runs. A spec changed directly in the pull request keeps its full matrix so the edit is validated against every entity before it merges. Test titles do not depend on the selected set, so stable IDs and timing history are shared between both modes.
 
 ## Golden fixture
 

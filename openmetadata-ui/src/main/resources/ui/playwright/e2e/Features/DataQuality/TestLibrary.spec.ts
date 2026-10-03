@@ -294,10 +294,7 @@ test.describe(
         await toastNotification(page, /updated successfully/i);
 
         // Verify switch state changed
-        await expect(firstSwitch).toHaveAttribute(
-          'aria-checked',
-          String('false')
-        );
+        await expect(firstSwitch.getByRole('switch')).not.toBeChecked();
       });
 
       await test.step('should delete a test definition', async () => {
@@ -551,10 +548,7 @@ test.describe(
       expect(disableResponse.status()).toBe(200);
 
       // Verify switch state changed
-      await expect(enabledSwitch).toHaveAttribute(
-        'aria-checked',
-        String('false')
-      );
+      await expect(enabledSwitch.getByRole('switch')).not.toBeChecked();
 
       const patchResponse2 = page.waitForResponse(
         (response) =>
@@ -591,7 +585,7 @@ test.describe(
           `enable-switch-${externalTest.name}`
         );
 
-        await expect(enableSwitch).toBeDisabled();
+        await expect(enableSwitch.getByRole('switch')).toBeDisabled();
 
         const switchParent = enableSwitch.locator('..');
         await switchParent.hover();

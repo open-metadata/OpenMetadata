@@ -62,6 +62,7 @@ import {
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
 import {
   applyGlossaryPicker,
@@ -130,7 +131,13 @@ test.afterAll('Cleanup shared entities', async () => {
   await afterAction();
 });
 
-Object.entries(entities).forEach(([key, EntityClass]) => {
+const entityEntries = Object.entries(entities);
+
+pickEntityMatrix(
+  __filename,
+  entityEntries,
+  entityEntries.filter(([, EntityClass]) => EntityClass === TableClass)
+).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   // For tables, softDeleteEntity counts and clicks the deleted table in its
   // schema's listing, so that table must be alone in its own schema.

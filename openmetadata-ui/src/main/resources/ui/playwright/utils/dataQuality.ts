@@ -326,9 +326,11 @@ export const addTestSuitePipeline = async (page: Page) => {
   await addButton.click();
   await testSuiteByNameResponse;
 
+  // The pipeline form's toggle shares this testid with the test-case list's
+  // checkbox; the toggle's wrapper is the one holding a switch.
   const selectAllTestCases = page
     .getByTestId('select-all-test-cases')
-    .and(page.getByRole('switch'));
+    .filter({ has: page.getByRole('switch') });
   await expect(selectAllTestCases).toBeVisible();
   await selectAllTestCases.click();
 

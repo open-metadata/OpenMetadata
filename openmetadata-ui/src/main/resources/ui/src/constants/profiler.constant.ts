@@ -65,6 +65,10 @@ export const PROFILER_METRIC = [
 ];
 export const PROFILER_CHART_DATA_SIZE = 500;
 
+// Ingestion treats a 0 sample as "no sampling" and profiles the full table,
+// overriding any parent schema/database/pipeline sampling.
+export const MIN_PROFILE_SAMPLE = 1;
+
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
     days: 1,

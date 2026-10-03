@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal, Space, Switch } from 'antd';
+import { Skeleton, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -321,11 +321,11 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           expandable={expandableConfig}
           extraTableFilters={
             <Space align="center">
-              <span>
-                <Switch
-                  checked={showDeletedTeam}
+              <span className="tw:inline-flex tw:items-center">
+                <Toggle
                   data-testid="show-deleted"
-                  onClick={onShowDeletedTeamChange}
+                  isSelected={showDeletedTeam}
+                  onChange={onShowDeletedTeamChange}
                 />
                 <Typography className="m-l-xs">{t('label.deleted')}</Typography>
               </span>
