@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import ReactEChartsCore from 'echarts-for-react/lib/core';
-import type { ECElementEvent } from 'echarts';
+// The ESM build: `lib/core` is CommonJS, and Vite's dev interop hands a
+// default import of it the module object instead of the component.
+import ReactEChartsCore from 'echarts-for-react/esm/core';
+import type { ECElementEvent, EChartsType } from 'echarts';
 import { ReactNode, useMemo, useRef } from 'react';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
@@ -40,6 +42,8 @@ export interface EChartProps {
   /** Forces a colour mode. Detected from `.dark-mode` when omitted. */
   isDark?: boolean;
   onEvents?: Record<string, (event: ECElementEvent) => void>;
+  /** Receives the ECharts instance once it exists. */
+  onChartReady?: (chart: EChartsType) => void;
   loading?: boolean;
   isEmpty?: boolean;
   /** Shown instead of the chart when `isEmpty`. */
@@ -80,6 +84,7 @@ export const EChart = ({
   width = DEFAULT_WIDTH,
   isDark,
   onEvents,
+  onChartReady,
   loading = false,
   isEmpty = false,
   emptyState,
@@ -143,6 +148,7 @@ export const EChart = ({
           opts={RENDER_OPTS}
           replaceMerge={REPLACE_MERGE_KEYS}
           style={size}
+          onChartReady={onChartReady}
           onEvents={events}
         />
       )}

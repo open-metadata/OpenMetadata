@@ -11,6 +11,16 @@
  *  limitations under the License.
  */
 
-.custom-data-insight-tooltip-title {
-  color: var(--om-color-text-primary);
-}
+import { buildChartTheme } from './theme';
+import type { ChartPalette } from './types';
+import { useIsDarkMode } from './use-is-dark-mode';
+
+// No element: the colour mode is read from `<html>` only.
+const DOCUMENT_ROOT = { current: null };
+
+/**
+ * The palette charts are drawing with right now, for UI drawn next to a chart
+ * — e.g. legend dots — that must match its colours. Pair with `chartColor`.
+ */
+export const useChartPalette = (): ChartPalette =>
+  buildChartTheme({ isDark: useIsDarkMode(DOCUMENT_ROOT) }).palette;
