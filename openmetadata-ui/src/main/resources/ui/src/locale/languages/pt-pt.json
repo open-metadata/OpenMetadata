@@ -4575,6 +4575,8 @@
     "no-filter-patterns-available": "Não há padrões de filtro disponíveis para este conector.",
     "no-folders-yet-create-one": "Ainda não há pastas; crie uma para organizar documentos por tema ou equipa.",
     "no-glossary-term": "Parece que não existem Termos de Glossário definidos no momento. Para criar um novo Termo de Glossário, utilize simplesmente o botão 'Adicionar Termo'.",
+    "no-glossary-term-relation-yet": "Ainda não existem relações de termos do glossário",
+    "no-glossary-term-relation-yet-description": "Crie um tipo de relação para definir relações semânticas entre os termos do glossário.",
     "no-glossary-terms-found": "Não foram encontrados termos do glossário. Crie um glossário e adicione termos para visualizar os seus conceitos de negócio.",
     "no-glossary-to-export": "Nenhum glossário disponível para exportar.",
     "no-hierarchical-relations-found": "Nenhuma relação hierárquica encontrada.",

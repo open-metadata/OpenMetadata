@@ -4575,6 +4575,8 @@
     "no-filter-patterns-available": "Er zijn geen filterpatronen beschikbaar voor deze connector.",
     "no-folders-yet-create-one": "Nog geen mappen, maak er een aan om documenten te organiseren per onderwerp of team.",
     "no-glossary-term": "Op dit moment zijn er nog geen woordenlijsttermen gedefinieerd. Om een nieuwe termenlijst te maken, gebruik je de knop 'Term toevoegen'.",
+    "no-glossary-term-relation-yet": "Nog geen woordenlijstterm-relaties",
+    "no-glossary-term-relation-yet-description": "Maak een relatietype om semantische relaties tussen woordenlijsttermen te definiëren.",
     "no-glossary-terms-found": "Geen glossariumtermen gevonden. Maak een glossarium aan en voeg termen toe om uw bedrijfsconcepten te visualiseren.",
     "no-glossary-to-export": "Geen glossarium beschikbaar voor export.",
     "no-hierarchical-relations-found": "Geen hiërarchische relaties gevonden.",

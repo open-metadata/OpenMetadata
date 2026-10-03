@@ -56,14 +56,19 @@ import {
 import { sidebarClick } from './sidebar';
 import { clickUntilVisible } from './waitHelpers';
 
+/**
+ * Waits until no loader is left in `scope`: the whole page, or a widget's
+ * locator (a popover, a dropdown) when only that widget's data matters.
+ * Counting instead of `locator.waitFor()` keeps it non-strict, so several
+ * loaders mounted at once (e.g. the lineage section and a picker) never throw.
+ */
 export const waitForAllLoadersToDisappear = async (
-  page: Page,
+  scope: Page | Locator,
   dataTestId = 'loader',
   timeout = 30000
 ) => {
-  const loaders = page.locator(`[data-testid="${dataTestId}"]`);
+  const loaders = scope.locator(`[data-testid="${dataTestId}"]`);
 
-  // Wait for the loader elements count to become 0
   await expect(loaders).toHaveCount(0, { timeout });
 };
 
@@ -540,22 +545,14 @@ export const addMultiOwner = async (data: {
     page.locator(`[data-testid="${activatorBtnDataTestId}"]`)
   );
 
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByTestId('loader')
-    .first()
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('select-owner-tabs'));
 
   await page
     .locator("[data-testid='select-owner-tabs']")
     .getByRole('tab', { name: 'Users' })
     .click();
 
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByTestId('loader')
-    .first()
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('select-owner-tabs'));
 
   const isClearButtonVisible = await page
     .getByTestId('select-owner-tabs')
@@ -570,11 +567,7 @@ export const addMultiOwner = async (data: {
       .getByRole('tab', { name: 'Users' })
       .click();
 
-    await page
-      .getByTestId('select-owner-tabs')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('select-owner-tabs'));
   }
 
   if (clearAll && isMultipleOwners) {
@@ -598,11 +591,7 @@ export const addMultiOwner = async (data: {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
     await searchOwner;
-    await page
-      .getByTestId('select-owner-tabs')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('select-owner-tabs'));
 
     const ownerItem = page
       .locator('[data-testid="owner-option"]')
@@ -2668,17 +2657,25 @@ export const testCopyLinkButton = async ({
   containerTestId,
   expectedUrlPath,
   entityFqn,
+  rowName,
 }: {
   page: Page;
   buttonTestId: 'copy-column-link-button' | 'copy-field-link-button';
   containerTestId: string;
   expectedUrlPath: string;
   entityFqn: string;
+  rowName: string;
 }) => {
-  await expect(page.getByTestId(containerTestId)).toBeVisible();
+  const container = page.getByTestId(containerTestId);
+  await expect(container).toBeVisible();
 
-  // Find the first copy button and verify it's visible
-  const copyButton = page.getByTestId(buttonTestId).first();
+  // Every column/field row renders its own copy button, so the caller has to say
+  // which row it means. The names come from the fixture the test created, so
+  // they are unique on the page.
+  const copyButton = container
+    .getByRole('row')
+    .filter({ hasText: rowName })
+    .getByTestId(buttonTestId);
   await expect(copyButton).toBeVisible();
 
   // Click copy button and get clipboard text

@@ -4575,6 +4575,8 @@
     "no-filter-patterns-available": "No filter patterns are available for this connector.",
     "no-folders-yet-create-one": "No folders yet, create one to organize documents by topic or team.",
     "no-glossary-term": "It appears that there are no Glossary Terms defined at the moment. To create a new Glossary Term, simply use the 'Add Term' button.",
+    "no-glossary-term-relation-yet": "No glossary term relations yet",
+    "no-glossary-term-relation-yet-description": "Create a relation type to define semantic relationships between glossary terms.",
     "no-glossary-terms-found": "No glossary terms found. Create a glossary and add terms to visualize your business concepts.",
     "no-glossary-to-export": "No glossary available to export.",
     "no-hierarchical-relations-found": "No hierarchical relations found.",

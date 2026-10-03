@@ -4575,6 +4575,8 @@
     "no-filter-patterns-available": "此連接器沒有可用的篩選模式。",
     "no-folders-yet-create-one": "尚無資料夾,建立一個以依主題或團隊整理文件。",
     "no-glossary-term": "看來目前還沒有定義任何詞彙表術語。要建立新的詞彙表術語，只需使用「新增術語」按鈕。",
+    "no-glossary-term-relation-yet": "尚無詞彙表術語關係",
+    "no-glossary-term-relation-yet-description": "建立關係類型以定義詞彙表術語之間的語意關係。",
     "no-glossary-terms-found": "找不到詞彙表術語。請建立詞彙表並新增術語，以視覺化您的業務概念。",
     "no-glossary-to-export": "沒有可匯出的詞彙表。",
     "no-hierarchical-relations-found": "找不到階層關係。",

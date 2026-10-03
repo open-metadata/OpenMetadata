@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,16 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.custom-legend {
-  .recharts-default-legend {
-    .recharts-legend-item {
-      cursor: pointer;
-    }
-  }
-}
-.recharts-default-legend {
-  .recharts-legend-item {
-    // need to add !important as library applying margin with inline style
-    margin-right: var(--om-space-16) !important;
-  }
-}
+
+import { TargetEntityType } from '../../../../../../generated/governance/intakeForm';
+
+export type GovernanceView =
+  | { type: 'landing' }
+  | { type: 'glossary-list' }
+  | { type: 'glossary-add' }
+  | { type: 'glossary-edit'; name: string }
+  | { type: 'intake-list' }
+  | { type: 'intake-add'; entityType: TargetEntityType }
+  | { type: 'intake-edit'; id: string };
