@@ -51,7 +51,9 @@ export const DomainMismatchAlert = ({
   const { t } = useTranslation();
   const { activeDomain } = useDomainStore();
   const switchActiveDomain = useSwitchActiveDomain();
-  const [dismissed, setDismissed] = useState(() => isDismissed(entityId));
+  // Track the dismissed id, not a boolean: the header is reused across entities of one type.
+  const [dismissedId, setDismissedId] = useState<string>();
+  const dismissed = dismissedId === entityId || isDismissed(entityId);
 
   const show =
     !dismissed &&
@@ -80,7 +82,7 @@ export const DomainMismatchAlert = ({
       variant="brand"
       onClose={() => {
         rememberDismissed(entityId);
-        setDismissed(true);
+        setDismissedId(entityId);
       }}
     />
   );

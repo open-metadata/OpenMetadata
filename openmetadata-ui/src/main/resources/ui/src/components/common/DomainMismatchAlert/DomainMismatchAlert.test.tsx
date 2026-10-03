@@ -68,4 +68,14 @@ describe('DomainMismatchAlert', () => {
 
     expect(screen.queryByTestId('domain-mismatch-alert')).toBeNull();
   });
+
+  it('does not carry a dismissal over to another entity on the same mount', () => {
+    const { rerender } = render(
+      <DomainMismatchAlert domains={[marketing]} entityId="e1" />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    rerender(<DomainMismatchAlert domains={[marketing]} entityId="e2" />);
+
+    expect(screen.getByTestId('domain-mismatch-alert')).toBeInTheDocument();
+  });
 });
