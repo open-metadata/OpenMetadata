@@ -14,6 +14,7 @@
 import { uniqBy } from 'lodash';
 import { useCallback, useState } from 'react';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
+import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseIncidentGroup } from '../../../../generated/tests/testCaseIncidentGroup';
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import { BulkOperationResult } from '../../../../generated/type/bulkOperationResult';
@@ -23,6 +24,7 @@ import {
   getListTestCaseIncidentStatus,
   IncidentCursor,
   MAX_BULK_INCIDENT_UPDATE_SIZE,
+  TestCaseIncidentStatusParams,
 } from '../../../../rest/incidentManagerAPI';
 import {
   buildBulkIncidentEntries,
@@ -35,35 +37,46 @@ import {
   IncidentGroupFilters,
 } from './IncidentGroups.types';
 
-/** Every open incident of one group, read page after page. */
-const fetchAllGroupIncidents = async (
+/**
+ * Every open incident a query lists from `offset` on, read page after page:
+ * each page needs the cursor of the one before it.
+ */
+const fetchIncidentsFrom = async (
+  query: TestCaseIncidentStatusParams,
+  offset?: IncidentCursor
+): Promise<TestCaseResolutionStatus[]> => {
+  const { data, paging } = await getListTestCaseIncidentStatus({
+    ...query,
+    limit: MAX_BULK_INCIDENT_UPDATE_SIZE,
+    offset,
+  });
+
+  return paging?.after
+    ? [...data, ...(await fetchIncidentsFrom(query, paging.after))]
+    : data;
+};
+
+/** Every open incident of one group. */
+const fetchAllGroupIncidents = (
   group: TestCaseIncidentGroup,
   filters: IncidentGroupFilters,
   domain?: string
-) => {
-  const query = getIncidentGroupIncidentsQuery(
-    group,
-    filters,
-    Date.now(),
-    domain
+) =>
+  fetchIncidentsFrom(
+    getIncidentGroupIncidentsQuery(group, filters, Date.now(), domain)
   );
-  const incidents: TestCaseResolutionStatus[] = [];
-  let offset: IncidentCursor | undefined;
 
-  do {
-    // Each page needs the cursor of the one before it.
-    // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
-    const { data, paging } = await getListTestCaseIncidentStatus({
-      ...query,
-      limit: MAX_BULK_INCIDENT_UPDATE_SIZE,
-      offset,
-    });
-    incidents.push(...data);
-    offset = paging?.after;
-  } while (offset);
-
-  return incidents;
-};
+/**
+ * Sends the batches one call after another: the endpoint caps a call at 100
+ * entries, and one call at a time keeps the writes off each other.
+ */
+const sendBatches = async ([
+  batch,
+  ...rest
+]: CreateTestCaseResolutionStatus[][]): Promise<BulkOperationResult[]> =>
+  batch
+    ? [await bulkCreateResolutionStatus(batch), ...(await sendBatches(rest))]
+    : [];
 
 /**
  * Applies one change to every open incident of a selection of groups: their
@@ -101,14 +114,7 @@ export const useIncidentGroupBulkUpdate = ({
           incidents,
           change
         );
-        const results: BulkOperationResult[] = [];
-
-        for (const batch of chunkBulkIncidentEntries(entries)) {
-          // The endpoint caps a call at 100 entries; one call at a time keeps
-          // the writes off each other.
-          // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
-          results.push(await bulkCreateResolutionStatus(batch));
-        }
+        const results = await sendBatches(chunkBulkIncidentEntries(entries));
 
         return {
           total: entries.length,
