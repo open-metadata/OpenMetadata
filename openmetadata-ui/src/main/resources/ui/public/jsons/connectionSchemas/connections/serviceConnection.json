@@ -27076,18 +27076,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "supportsLineageExtraction": {
-                      "description": "Supports Lineage Extraction.",
-                      "type": "boolean",
-                      "default": true,
-                      "title": "Supports Lineage Extraction"
-                    },
-                    "supportsUsageExtraction": {
-                      "description": "Supports Usage Extraction.",
-                      "type": "boolean",
-                      "default": true,
-                      "title": "Supports Usage Extraction"
                     }
                   },
                   "additionalProperties": false,
@@ -69828,18 +69816,6 @@
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
-                    },
-                    "supportsLineageExtraction": {
-                      "description": "Supports Lineage Extraction.",
-                      "type": "boolean",
-                      "default": true,
-                      "title": "Supports Lineage Extraction"
-                    },
-                    "supportsUsageExtraction": {
-                      "description": "Supports Usage Extraction.",
-                      "type": "boolean",
-                      "default": true,
-                      "title": "Supports Usage Extraction"
                     }
                   },
                   "additionalProperties": false,

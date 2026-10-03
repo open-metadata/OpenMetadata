@@ -316,6 +316,10 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     For string columns, fn() wraps the column with LenFn before calling
     _compute_sqa_fn, so compiler.process() already produces LENGTH("col")
     here — no special-casing needed.
+
+    The value is computed one level below the window: ordering the window by an
+    expression over a view column that is itself an expression fails with
+    "768: Internal error in routine find_replace_column: unexpected cd_expr".
     """
     col_clause = elements.clauses.clauses[0]
     col = compiler.process(col_clause)
@@ -337,8 +341,8 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     return (  # noqa: UP032
         "(SELECT AVG(CASE WHEN rn = {pos1} OR rn = {pos2} "
         "THEN CAST(_col_val_ AS DECIMAL(32,4)) END) "
-        "FROM (SELECT {col} AS _col_val_, "
-        "ROW_NUMBER() OVER (ORDER BY {col}) AS rn, "
+        "FROM (SELECT _col_val_, "
+        "ROW_NUMBER() OVER (ORDER BY _col_val_) AS rn, "
         "COUNT(*) OVER () AS cnt "
-        "FROM {table} WHERE {col} IS NOT NULL) sub)"
+        "FROM (SELECT {col} AS _col_val_ FROM {table} WHERE {col} IS NOT NULL) vals) sub)"
     ).format(pos1=pos1, pos2=pos2, col=col, table=table)

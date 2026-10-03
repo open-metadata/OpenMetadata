@@ -123,6 +123,20 @@ RUN if [ $(uname -m) = "x86_64" ]; then \
   rm -f /tmp/ibm-iaccess.deb; \
 fi
 
+# Bake the Informix JDBC driver into the image.
+# sqlalchemy-jdbcapi otherwise fetches it from Maven Central on the first
+# Informix connection. An air-gapped or egress-filtered deployment cannot do
+# that, and the failure lands at Test Connection as a Maven URL error naming
+# neither Informix nor the network policy. Checksums are pinned in the script;
+# the library verifies nothing it downloads.
+# The directory is read-only at runtime by design -- no driver should be
+# fetched mid-ingestion. A future JDBC connector belongs in the script too.
+COPY ingestion/scripts/fetch_informix_jdbc.sh /tmp/fetch_informix_jdbc.sh
+RUN bash /tmp/fetch_informix_jdbc.sh /opt/jdbc-drivers \
+  && chmod -R a+rX /opt/jdbc-drivers \
+  && rm -f /tmp/fetch_informix_jdbc.sh
+ENV SQLALCHEMY_JDBCAPI_DRIVER_CACHE=/opt/jdbc-drivers
+
 WORKDIR ingestion/
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.

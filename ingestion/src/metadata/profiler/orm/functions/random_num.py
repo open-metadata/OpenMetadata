@@ -111,6 +111,24 @@ def _(*_, **__):
     return "0"
 
 
+@compiles(RandomNumFn, Dialects.Informix)
+def _(*_, **__):
+    """Informix has no random number function at all.
+
+    RANDOM() and RAND() are both unresolvable routines, and DBINFO offers
+    nothing per-row -- 'sessionid' is constant for the whole session. The one
+    per-row value Informix does expose, rowid, raises "857: Rowids do not exist
+    on table" on any fragmented table, which is exactly the large table a
+    profile sample is worth taking on.
+
+    So we return 0, the same trick Snowflake and Teradata use: MOD(0, 100) is
+    always <= the sample percentage, so every row passes and the profiler reads
+    the whole table. Percentage sampling is therefore a no-op here -- slower
+    than sampling, but accurate, and it cannot fail.
+    """
+    return "0"
+
+
 @compiles(RandomNumFn, Dialects.Vertica)
 def _(*_, **__):
     """
