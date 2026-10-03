@@ -1930,6 +1930,94 @@ public class ColumnCustomPropertiesIT {
     }
   }
 
+  /** A bulk update that changes a column's references must apply them, as a single PUT does. */
+  @Test
+  void test_tableColumn_bulkUpdateChangesReferences(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      CreateTable create =
+          new CreateTable()
+              .withName(ns.prefix("bulkUpdateRefTable"))
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName("id")
+                          .withDataType(ColumnDataType.BIGINT)
+                          .withExtension(Map.of(propName, List.of(teamRef(first))))));
+      client.tables().bulkCreateOrUpdate(List.of(create));
+      create.setColumns(
+          List.of(
+              new Column()
+                  .withName("id")
+                  .withDataType(ColumnDataType.BIGINT)
+                  .withExtension(Map.of(propName, List.of(teamRef(second))))));
+
+      var result = client.tables().bulkCreateOrUpdate(List.of(create));
+
+      assertEquals(0, result.getNumberOfRowsFailed(), String.valueOf(result.getFailedRequest()));
+      Table table =
+          client.tables().getByName(schema.getFullyQualifiedName() + "." + create.getName());
+      assertEquals(
+          List.of(second.getId().toString()),
+          columnReferenceIds(tableWith(client, table, "columns,extension"), "id", propName));
+      assertNoReferencesTo(first.getId());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  /**
+   * A data-model column whose only custom property is a reference has no inline extension, so an
+   * edit of it must be applied to a baseline that includes the stored references.
+   */
+  @Test
+  void test_dataModelColumn_editOfAReferenceOnlyColumnSucceeds(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName =
+        addTeamReferenceProperty(
+            client, DASHBOARD_DATA_MODEL_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    try {
+      Team first = createTeam(client, ns.prefix("first"));
+      Team second = createTeam(client, ns.prefix("second"));
+      DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+      DashboardDataModel dataModel =
+          client
+              .dashboardDataModels()
+              .create(
+                  new CreateDashboardDataModel()
+                      .withName(ns.prefix("refOnlyDataModel"))
+                      .withService(service.getFullyQualifiedName())
+                      .withDataModelType(DataModelType.LookMlView)
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("metric1")
+                                  .withDataType(ColumnDataType.BIGINT)
+                                  .withExtension(Map.of(propName, List.of(teamRef(first)))))));
+      DashboardDataModel read =
+          client.dashboardDataModels().get(dataModel.getId().toString(), "columns,extension");
+      columnNamed(read.getColumns(), "metric1")
+          .setExtension(Map.of(propName, List.of(teamRef(first), teamRef(second))));
+
+      client.dashboardDataModels().update(dataModel.getId().toString(), read);
+
+      DashboardDataModel reloaded =
+          client.dashboardDataModels().get(dataModel.getId().toString(), "columns,extension");
+      assertEquals(
+          List.of(first.getId().toString(), second.getId().toString()),
+          referenceIdsOf(columnNamed(reloaded.getColumns(), "metric1"), propName));
+    } finally {
+      removeColumnTypeProperty(client, DASHBOARD_DATA_MODEL_COLUMN, propName);
+    }
+  }
+
   @Test
   void test_tableColumn_nestedColumnReferenceIsRemoved(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();

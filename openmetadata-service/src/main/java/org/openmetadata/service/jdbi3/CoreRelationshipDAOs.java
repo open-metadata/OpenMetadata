@@ -399,6 +399,7 @@ public interface CoreRelationshipDAOs {
     String COLUMNS =
         "id, columnKey, propertyName, targetId, holderType, targetType, position, json";
 
+    @Transaction
     @ConnectionAwareSqlBatch(
         value =
             "INSERT IGNORE INTO custom_property_reference("
@@ -423,6 +424,7 @@ public interface CoreRelationshipDAOs {
       }
     }
 
+    @Transaction
     @ConnectionAwareSqlBatch(
         value =
             "UPDATE custom_property_reference SET position = :position, json = :json, "

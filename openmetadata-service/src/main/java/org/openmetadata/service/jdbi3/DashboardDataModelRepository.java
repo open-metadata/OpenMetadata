@@ -51,6 +51,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
   private final TableMetadataLoader columnExtensions;
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
+  // A column's reference values live outside the row JSON, so a PATCH or PUT baseline needs the
+  // columns loaded to carry them, as it does for a table.
+  public static final String PATCH_FIELDS = "columns";
+  public static final String UPDATE_FIELDS = "columns";
 
   public DashboardDataModelRepository() {
     super(
@@ -58,8 +62,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         Entity.DASHBOARD_DATA_MODEL,
         DashboardDataModel.class,
         Entity.getCollectionDAO().dashboardDataModelDAO(),
-        "",
-        "",
+        PATCH_FIELDS,
+        UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
     // Covered by the parent service delete cascade: search docs by service.id
