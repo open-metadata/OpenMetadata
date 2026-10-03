@@ -25,6 +25,7 @@ import org.flowable.bpmn.model.IOParameter;
 import org.flowable.bpmn.model.Process;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.elements.triggers.NoOpTriggerDefinition;
+import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 
 class NoOpTriggerTest {
 
@@ -53,6 +54,41 @@ class NoOpTriggerTest {
         callActivity.getInParameters().stream()
             .map(IOParameter::getTarget)
             .anyMatch("taskCategory"::equals));
+  }
+
+  @Test
+  void calledWorkflowFailureIsCarriedUpToTheTrigger() {
+    NoOpTrigger trigger =
+        new NoOpTrigger(
+            "WorkflowManagedTask",
+            "WorkflowManagedTaskTrigger",
+            new NoOpTriggerDefinition().withOutput(Set.of("relatedEntity")));
+    BpmnModel model = new BpmnModel();
+    trigger.addToWorkflow(model);
+
+    CallActivity callActivity = findCallActivity(model);
+
+    assertTrue(
+        callActivity.getOutParameters().stream()
+            .anyMatch(
+                p ->
+                    "global_failure".equals(p.getSource())
+                        && SubWorkflowFailureListener.SUB_WORKFLOW_FAILURE_VARIABLE.equals(
+                            p.getTarget())),
+        "global_failure is mapped out of the called workflow");
+    assertTrue(
+        callActivity.getOutParameters().stream()
+            .anyMatch(p -> "global_exception".equals(p.getSource())),
+        "the exception mapping is kept");
+    assertTrue(
+        callActivity.getExecutionListeners().stream()
+            .anyMatch(
+                l ->
+                    "end".equals(l.getEvent())
+                        && SubWorkflowFailureListener.class
+                            .getName()
+                            .equals(l.getImplementation())),
+        "an end listener folds the mapped failure into the trigger's failure variable");
   }
 
   private CallActivity findCallActivity(BpmnModel model) {

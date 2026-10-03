@@ -11,11 +11,19 @@
  *  limitations under the License.
  */
 
-import { Input, Select } from '@openmetadata/ui-core-components';
+import {
+  Checkbox,
+  Input,
+  PasswordInput,
+  Select,
+} from '@openmetadata/ui-core-components';
+import { omit } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
+import { MASKED_PASSWORD_VALUE } from '../../../../constants/Secrets.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
+import { CommitSigningKey } from '../../../../generated/governance/workflows/elements/nodes/automatedTask/sinkConfig/gitSinkConfig';
 import {
   createNodeConfig,
   isValidString,
@@ -35,21 +43,48 @@ interface SinkNodeConfig {
   repositoryUrl?: string;
   branch?: string;
   basePath?: string;
-  credentials?: { token?: string };
+  credentials?: { type?: string; token?: string };
   conflictResolution?: string;
   commitConfig?: {
     messageTemplate?: string;
     authorName?: string;
     authorEmail?: string;
   };
+  signingKey?: CommitSigningKey;
+  allowUnsignedFastPush?: boolean;
+}
+
+interface SinkTaskConfig {
+  outputFormat?: string;
+  sinkConfig?: SinkNodeConfig;
 }
 
 interface SinkNodeData {
   displayName?: string;
   label?: string;
   description?: string;
-  config?: { sinkConfig?: SinkNodeConfig };
+  config?: SinkTaskConfig;
 }
+
+interface SinkFormData {
+  displayName: string;
+  description: string;
+  repositoryUrl: string;
+  branch: string;
+  basePath: string;
+  token: string;
+  conflictResolution: string;
+  commitMessageTemplate: string;
+  authorName: string;
+  authorEmail: string;
+  signingPrivateKey: string;
+  signingPassphrase: string;
+  allowUnsignedFastPush: boolean;
+}
+
+type SinkFormTextField = {
+  [K in keyof SinkFormData]: SinkFormData[K] extends string ? K : never;
+}[keyof SinkFormData];
 
 const buildSinkConnectionValues = (sinkConfig: SinkNodeConfig) => ({
   repositoryUrl: sinkConfig.repositoryUrl || '',
@@ -57,6 +92,9 @@ const buildSinkConnectionValues = (sinkConfig: SinkNodeConfig) => ({
   basePath: sinkConfig.basePath || 'metadata',
   token: sinkConfig.credentials?.token || '',
   conflictResolution: sinkConfig.conflictResolution || 'overwriteExternal',
+  signingPrivateKey: sinkConfig.signingKey?.privateKey || '',
+  signingPassphrase: sinkConfig.signingKey?.passphrase || '',
+  allowUnsignedFastPush: sinkConfig.allowUnsignedFastPush ?? false,
 });
 
 const buildSinkMetaValues = (
@@ -72,6 +110,71 @@ const buildSinkMetaValues = (
   authorName: sinkConfig.commitConfig?.authorName || t('label.brand-name-bot'),
   authorEmail: sinkConfig.commitConfig?.authorEmail || 'bot@openmetadata.org',
 });
+
+const buildSigningKey = (
+  formData: SinkFormData
+): CommitSigningKey | undefined => {
+  let signingKey: CommitSigningKey | undefined;
+  if (formData.signingPrivateKey) {
+    signingKey = { privateKey: formData.signingPrivateKey };
+    if (formData.signingPassphrase) {
+      signingKey.passphrase = formData.signingPassphrase;
+    }
+  }
+
+  return signingKey;
+};
+
+// Fields the form does not render (apiBaseUrl, retryConfig, timeout, ...) come
+// from the stored config, so saving the node does not drop them. signingKey and
+// allowUnsignedFastPush are rebuilt from the form: an empty key or an unchecked
+// box leaves the field out rather than sending an empty or default value.
+const buildSinkConfig = (
+  storedSinkConfig: SinkNodeConfig,
+  formData: SinkFormData
+): SinkNodeConfig => {
+  const signingKey = buildSigningKey(formData);
+
+  return {
+    ...omit(storedSinkConfig, ['signingKey', 'allowUnsignedFastPush']),
+    repositoryUrl: formData.repositoryUrl,
+    branch: formData.branch,
+    basePath: formData.basePath,
+    credentials: {
+      ...storedSinkConfig.credentials,
+      type: 'token',
+      token: formData.token,
+    },
+    conflictResolution: formData.conflictResolution,
+    commitConfig: {
+      ...storedSinkConfig.commitConfig,
+      messageTemplate: formData.commitMessageTemplate,
+      authorName: formData.authorName,
+      authorEmail: formData.authorEmail,
+    },
+    ...(signingKey && { signingKey }),
+    ...(formData.allowUnsignedFastPush && { allowUnsignedFastPush: true }),
+  };
+};
+
+// A masked key is a placeholder, not key text: the first edit replaces it
+// rather than appending to it. Armored keys and secret references never contain
+// '*', so stripping them leaves only what the user typed or pasted. A masked
+// passphrase belongs to the replaced key, so it is reset too.
+const applyPrivateKeyChange = (
+  prev: SinkFormData,
+  value: string
+): SinkFormData => {
+  const replacesMask = prev.signingPrivateKey === MASKED_PASSWORD_VALUE;
+  const resetsPassphrase =
+    replacesMask && prev.signingPassphrase === MASKED_PASSWORD_VALUE;
+
+  return {
+    ...prev,
+    signingPrivateKey: replacesMask ? value.replace(/\*/g, '') : value,
+    signingPassphrase: resetsPassphrase ? '' : prev.signingPassphrase,
+  };
+};
 
 export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
   node,
@@ -98,7 +201,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
     [t]
   );
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SinkFormData>({
     displayName: '',
     description: '',
     repositoryUrl: '',
@@ -109,14 +212,28 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
     commitMessageTemplate: 'Sync {entityType}: {entityName}',
     authorName: t('label.brand-name-bot'),
     authorEmail: 'bot@openmetadata.org',
+    signingPrivateKey: '',
+    signingPassphrase: '',
+    allowUnsignedFastPush: false,
   });
 
   const updateFormData = useCallback(
-    (field: keyof typeof formData, value: string) => {
+    (field: SinkFormTextField, value: string) => {
       setFormData((prev) => ({ ...prev, [field]: value }));
     },
     []
   );
+
+  const handlePrivateKeyChange = useCallback((value: string) => {
+    setFormData((prev) => applyPrivateKeyChange(prev, value));
+  }, []);
+
+  const handleAllowUnsignedFastPushChange = useCallback((value: boolean) => {
+    setFormData((prev) => ({ ...prev, allowUnsignedFastPush: value }));
+  }, []);
+
+  const isSigningKeyConfigured =
+    formData.signingPrivateKey === MASKED_PASSWORD_VALUE;
 
   useEffect(() => {
     if (node?.data) {
@@ -131,31 +248,21 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
   }, [node]);
 
   const handleSave = () => {
-    const sinkConfig = {
-      repositoryUrl: formData.repositoryUrl,
-      branch: formData.branch,
-      basePath: formData.basePath,
-      credentials: {
-        type: 'token',
-        token: formData.token,
-      },
-      conflictResolution: formData.conflictResolution,
-      commitConfig: {
-        messageTemplate: formData.commitMessageTemplate,
-        authorName: formData.authorName,
-        authorEmail: formData.authorEmail,
-      },
-    };
+    const storedConfig = (node.data as SinkNodeData)?.config ?? {};
 
+    // The node's config is replaced as a whole on save, so the task-level
+    // fields this form does not render (batchMode, syncMode, entityFilter, ...)
+    // are carried over from the stored config.
     const config = createNodeConfig({
       displayName: formData.displayName,
       description: formData.description,
       type: 'automatedTask',
       subType: 'sinkTask',
       config: {
+        ...storedConfig,
         sinkType: 'git',
-        outputFormat: 'yaml',
-        sinkConfig,
+        outputFormat: storedConfig.outputFormat ?? 'yaml',
+        sinkConfig: buildSinkConfig(storedConfig.sinkConfig ?? {}, formData),
       },
     });
 
@@ -263,6 +370,52 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
             placeholder="Sync {entityType}: {entityName}"
             value={formData.commitMessageTemplate}
             onChange={(value) => updateFormData('commitMessageTemplate', value)}
+          />
+        </div>
+
+        <div className="tw:mt-5">
+          <PasswordInput
+            multiline
+            data-testid="signing-private-key-input"
+            hint={
+              <>
+                <span className="tw:block">
+                  {t('message.git-sink-signing-key-hint')}
+                </span>
+                {isSigningKeyConfigured && (
+                  <span className="tw:block">
+                    {t('message.git-sink-signing-key-configured')}
+                  </span>
+                )}
+              </>
+            }
+            isDisabled={isFormDisabled}
+            label={t('label.signing-private-key')}
+            rows={4}
+            value={formData.signingPrivateKey}
+            onChange={handlePrivateKeyChange}
+          />
+        </div>
+
+        <div className="tw:mt-5">
+          <Input
+            data-testid="signing-passphrase-input"
+            isDisabled={isFormDisabled || !formData.signingPrivateKey}
+            label={t('label.passphrase')}
+            type="password"
+            value={formData.signingPassphrase}
+            onChange={(value) => updateFormData('signingPassphrase', value)}
+          />
+        </div>
+
+        <div className="tw:mt-5">
+          <Checkbox
+            data-testid="allow-unsigned-fast-push-checkbox"
+            hint={t('message.git-sink-unsigned-fast-push-hint')}
+            isDisabled={isFormDisabled}
+            isSelected={formData.allowUnsignedFastPush}
+            label={t('label.allow-unsigned-fast-push')}
+            onChange={handleAllowUnsignedFastPushChange}
           />
         </div>
       </div>

@@ -51,7 +51,8 @@ public class MainWorkflow {
           NodeFactory.createNode(
               nodeDefinitionObj,
               workflowDefinition.getConfig(),
-              workflowDefinition.getFullyQualifiedName());
+              workflowDefinition.getFullyQualifiedName(),
+              workflowDefinition.getEdges());
       node.addToWorkflow(model, process);
 
       Optional.ofNullable(node.getRuntimeExceptionBoundaryEvent())

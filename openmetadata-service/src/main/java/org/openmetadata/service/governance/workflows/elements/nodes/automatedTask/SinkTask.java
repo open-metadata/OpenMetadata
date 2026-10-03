@@ -14,10 +14,12 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask;
 
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_RESULT;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
@@ -29,6 +31,7 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
@@ -46,10 +49,23 @@ import org.openmetadata.service.governance.workflows.flowable.builders.SubProces
  * Git repositories, webhooks, and HTTP endpoints.
  */
 public class SinkTask implements NodeInterface {
+  public static final String FAILURE_HANDLED_BY_BRANCH_FIELD = "failureHandledByBranchExpr";
+
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
   public SinkTask(SinkTaskDefinition nodeDefinition, WorkflowConfiguration config) {
+    this(nodeDefinition, config, false);
+  }
+
+  /**
+   * @param failureHandledByBranch whether the workflow routes this node's {@code failure} result
+   *     to an edge of its own, in which case the delegate does not raise the workflow failure flag
+   */
+  public SinkTask(
+      SinkTaskDefinition nodeDefinition,
+      WorkflowConfiguration config,
+      boolean failureHandledByBranch) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess =
@@ -59,6 +75,13 @@ public class SinkTask implements NodeInterface {
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
     ServiceTask sinkTask = getSinkServiceTask(subProcessId, nodeDefinition);
+    sinkTask
+        .getFieldExtensions()
+        .add(
+            new FieldExtensionBuilder()
+                .fieldName(FAILURE_HANDLED_BY_BRANCH_FIELD)
+                .fieldValue(String.valueOf(failureHandledByBranch))
+                .build());
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
@@ -77,6 +100,13 @@ public class SinkTask implements NodeInterface {
     this.runtimeExceptionBoundaryEvent =
         getRuntimeExceptionBoundaryEvent(subProcess, config.getStoreStageStatus());
     this.subProcess = subProcess;
+  }
+
+  /** True when an edge leaves {@code nodeName} on its {@code failure} result. */
+  public static boolean isFailureHandledByBranch(String nodeName, List<EdgeDefinition> edges) {
+    return edges.stream()
+        .anyMatch(
+            edge -> nodeName.equals(edge.getFrom()) && FAILURE_RESULT.equals(edge.getCondition()));
   }
 
   @Override

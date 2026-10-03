@@ -8,15 +8,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
@@ -24,6 +29,9 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator;
+import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator.TerminationOutcome;
+import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator.TerminationRequest;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.Collection;
@@ -45,6 +53,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class WorkflowInstanceResource
     extends EntityTimeSeriesResource<WorkflowInstance, WorkflowInstanceRepository> {
   public static final String COLLECTION_PATH = "/v1/governance/workflowInstances";
+  private static final int MAX_TERMINATION_REASON_LENGTH = 1000;
 
   public WorkflowInstanceResource(Authorizer authorizer) {
     super(Entity.WORKFLOW_INSTANCE, authorizer);
@@ -125,5 +134,61 @@ public class WorkflowInstanceResource
       filter.addQueryParam("entityLink", entityLink);
     }
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
+  }
+
+  @POST
+  @Path("/{id}/terminate")
+  @Operation(
+      operationId = "terminateWorkflowInstance",
+      summary = "Terminate a Workflow Instance",
+      description =
+          "Delete every running process of a Workflow Instance, including one left locked by a "
+              + "server that stopped mid-job, and record the instance as FAILURE. When a job of "
+              + "the instance is executing now, a stop request is recorded instead: a batch sink "
+              + "stops before its next sub-batch and a periodic-batch trigger before its next "
+              + "batch, after which the instance is recorded as FAILURE. Any other job runs to "
+              + "its end first. Admin only.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The terminated Workflow Instance",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = WorkflowInstance.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description =
+                "A job of the instance is executing now; a stop request is recorded and the "
+                    + "still running Workflow Instance is returned",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = WorkflowInstance.class))),
+        @ApiResponse(responseCode = "403", description = "Caller is not an admin"),
+        @ApiResponse(responseCode = "404", description = "Workflow Instance for `id` not found"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "The instance has already ended, and has no running process or one whose job "
+                    + "is executing now")
+      })
+  public Response terminate(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Workflow Instance", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Reason recorded on the terminated Workflow Instance")
+          @QueryParam("reason")
+          @Size(max = MAX_TERMINATION_REASON_LENGTH)
+          String reason) {
+    authorizer.authorizeAdmin(securityContext);
+    TerminationRequest request =
+        new TerminationRequest(id, reason, securityContext.getUserPrincipal().getName());
+    TerminationOutcome outcome =
+        WorkflowInstanceTerminator.forCurrentEngine(repository).terminate(request);
+    Response.ResponseBuilder response =
+        outcome.stopRequested() ? Response.accepted() : Response.ok();
+    return response.entity(outcome.workflowInstance()).build();
   }
 }

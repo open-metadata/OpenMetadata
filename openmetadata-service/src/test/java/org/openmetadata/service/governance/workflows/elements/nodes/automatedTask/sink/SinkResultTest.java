@@ -159,4 +159,55 @@ class SinkResultTest {
     assertTrue(result.getErrors().isEmpty());
     assertTrue(result.getMetadata().isEmpty());
   }
+
+  @Test
+  void serializedErrorNeverCarriesTheCause() {
+    SinkResult result = SinkResult.failure("svc.db.sch.t", new IllegalStateException("boom"));
+
+    String json = org.openmetadata.schema.utils.JsonUtils.pojoToJson(result);
+
+    assertTrue(json.contains("boom"), json);
+    assertFalse(json.contains("cause"), json);
+    assertFalse(json.contains("stackTrace"), json);
+    assertNotNull(result.getErrors().getFirst().getCause(), "the cause stays available in memory");
+  }
+
+  @Test
+  void summaryCapsErrorsAndReadsCommitIds() {
+    List<SinkResult.SinkError> errors =
+        java.util.stream.IntStream.range(0, 50)
+            .mapToObj(
+                i ->
+                    SinkResult.SinkError.builder()
+                        .entityFqn("e%d".formatted(i))
+                        .errorMessage("x".repeat(5000))
+                        .build())
+            .toList();
+    SinkResult result =
+        SinkResult.builder()
+            .success(false)
+            .syncedCount(10)
+            .failedCount(50)
+            .syncedEntities(List.of("a", "b"))
+            .errors(errors)
+            .metadata(Map.of(SinkResultSummary.COMMIT_IDS_KEY, List.of("c1", "c2")))
+            .build();
+
+    SinkResultSummary summary = SinkResultSummary.from(result);
+
+    assertEquals(SinkResultSummary.MAX_ERRORS, summary.errors().size());
+    assertEquals(30, summary.unlistedFailures());
+    assertEquals(List.of("c1", "c2"), summary.commitIds());
+    assertTrue(
+        summary.errors().getFirst().errorMessage().length()
+            <= SinkResultSummary.MAX_ERROR_MESSAGE_LENGTH);
+    assertEquals(
+        List.of("single"),
+        SinkResultSummary.from(
+                SinkResult.builder()
+                    .success(true)
+                    .metadata(Map.of(SinkResultSummary.COMMIT_ID_KEY, "single"))
+                    .build())
+            .commitIds());
+  }
 }

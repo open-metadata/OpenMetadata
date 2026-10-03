@@ -94,7 +94,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
     WorkflowHandler.getInstance().updateBusinessKey(processInstanceId, workflowInstanceBusinessKey);
   }
 
-  private static boolean isUuid(String value) {
+  static boolean isUuid(String value) {
     boolean valid = false;
     if (value != null && !value.isBlank()) {
       try {

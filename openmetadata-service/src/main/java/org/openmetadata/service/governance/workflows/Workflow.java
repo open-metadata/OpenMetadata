@@ -31,6 +31,11 @@ public class Workflow {
   // Whitelisted in WorkflowFailureListener so PROCESS_CANCELLED stays silent for supersede.
   public static final String SUPERSEDED_BY_NEWER_RUN =
       "Superseded by a newer approval workflow run for the same entity";
+  // Cause string passed to deleteProcessInstance when an administrator terminates a workflow
+  // instance. Whitelisted in WorkflowFailureListener; the admin's own reason lives on the
+  // WorkflowInstance record, so this string stays fixed for the whitelist match.
+  public static final String TERMINATED_BY_ADMIN =
+      "Workflow instance terminated by an administrator";
   public static final String APPROVE_CONDITION = "approve";
   public static final String REJECT_CONDITION = "reject";
   public static final String LEGACY_APPROVE_CONDITION = "true";

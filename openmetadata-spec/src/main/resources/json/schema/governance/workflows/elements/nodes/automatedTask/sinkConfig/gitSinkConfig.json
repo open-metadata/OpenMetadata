@@ -90,6 +90,33 @@
       },
       "additionalProperties": false
     },
+    "signingKey": {
+      "title": "Commit Signing Key",
+      "description": "OpenPGP key the sink signs its pushed commits with. GitHub shows them as Verified when the key's public half is on the GitHub account of the key's email. Without it, commits go through the GitHub API, unless unsigned fast pushes are allowed.",
+      "type": "object",
+      "properties": {
+        "privateKey": {
+          "title": "Private Key",
+          "description": "ASCII-armored OpenPGP private key (-----BEGIN PGP PRIVATE KEY BLOCK-----). Commits are authored as the key's first user ID with an email. Supports secret references (e.g., secret:/path/to/key).",
+          "type": "string",
+          "format": "password"
+        },
+        "passphrase": {
+          "title": "Passphrase",
+          "description": "Passphrase of the private key, if it has one. Supports secret references.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["privateKey"],
+      "additionalProperties": false
+    },
+    "allowUnsignedFastPush": {
+      "title": "Allow Unsigned Fast Push",
+      "description": "Without a signing key, push unsigned commits with git instead of committing through the GitHub API. Faster, but GitHub shows the commits as unverified, and branches that require signed commits reject them.",
+      "type": "boolean",
+      "default": false
+    },
     "conflictResolution": {
       "$ref": "#/definitions/conflictResolution"
     },
