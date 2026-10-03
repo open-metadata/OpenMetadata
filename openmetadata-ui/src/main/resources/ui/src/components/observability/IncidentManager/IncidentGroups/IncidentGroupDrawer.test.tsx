@@ -99,7 +99,7 @@ describe('IncidentGroupDrawer', () => {
       'Row count'
     );
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '3 label.table-lowercase-plural'
+      'label.table-count'
     );
     expect(screen.getByTestId('incident-group-stat-count')).toHaveTextContent(
       '5'

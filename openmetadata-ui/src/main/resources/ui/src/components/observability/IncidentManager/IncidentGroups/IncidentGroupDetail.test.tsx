@@ -91,7 +91,7 @@ describe('IncidentGroupDetail', () => {
 
     expect(screen.getByRole('heading', { name: 'orders' })).toBeInTheDocument();
     expect(screen.getByTestId('group-related')).toHaveTextContent(
-      '2 label.type-lowercase-plural'
+      'label.type-count'
     );
     expect(screen.getByTestId('incident-group-summary')).toHaveTextContent(
       '1 label.incident-lowercase · message.incident-group-seen-range'

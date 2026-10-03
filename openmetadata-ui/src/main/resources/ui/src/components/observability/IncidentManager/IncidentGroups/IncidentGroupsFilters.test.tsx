@@ -215,6 +215,17 @@ describe('IncidentGroupsFilters', () => {
     expect(screen.getByText('label.date-range')).toBeInTheDocument();
   });
 
+  it('should name the group of every control after its caption', () => {
+    renderFilters({ status: [TestCaseResolutionStatusTypes.ACK] });
+
+    expect(
+      screen.getByRole('group', { name: 'label.status' })
+    ).toContainElement(screen.getByTestId('incident-groups-status'));
+    expect(
+      screen.getByRole('group', { name: 'label.date-range' })
+    ).toContainElement(screen.getByTestId('date-range-filter'));
+  });
+
   it('should load test cases on open and search them as the user types', async () => {
     renderFilters();
 
@@ -226,7 +237,7 @@ describe('IncidentGroupsFilters', () => {
       expect.objectContaining({ query: '*' })
     );
     expect(
-      screen.getByTestId(
+      await screen.findByTestId(
         'incident-groups-test-case-option-svc.db.schema.orders.row_count'
       )
     ).toHaveTextContent('Row count');
@@ -257,6 +268,49 @@ describe('IncidentGroupsFilters', () => {
     );
   });
 
+  it('should keep the latest search when an older one resolves after it', async () => {
+    const hitsFor = (name: string) => ({
+      hits: {
+        hits: [
+          {
+            _source: { name, displayName: name, fullyQualifiedName: name },
+          },
+        ],
+      },
+    });
+    const pending: ((value: unknown) => void)[] = [];
+    mockSearchQuery.mockImplementation(
+      ({ query }: { query: string }) =>
+        new Promise((resolve) =>
+          pending.push(() => resolve(hitsFor(`${query}-result`)))
+        )
+    );
+    renderFilters();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('incident-groups-test-case-open'));
+    });
+    await act(async () => pending.shift()?.(undefined));
+
+    fireEvent.click(screen.getByTestId('incident-groups-test-case-search'));
+    await waitFor(() => expect(pending).toHaveLength(1));
+    const olderSearch = pending.shift();
+
+    fireEvent.click(
+      screen.getByTestId('incident-groups-test-case-search-empty')
+    );
+    await waitFor(() => expect(pending).toHaveLength(1));
+    await act(async () => pending.shift()?.(undefined));
+    await act(async () => olderSearch?.(undefined));
+
+    expect(
+      screen.getByTestId('incident-groups-test-case-option-*-result')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('incident-groups-test-case-option-query-result')
+    ).not.toBeInTheDocument();
+  });
+
   it('should not search test cases when the menu closes', async () => {
     renderFilters();
 
@@ -274,7 +328,7 @@ describe('IncidentGroupsFilters', () => {
       fireEvent.click(screen.getByTestId('incident-groups-test-case-open'));
     });
     fireEvent.click(
-      screen.getByTestId(
+      await screen.findByTestId(
         'incident-groups-test-case-option-svc.db.schema.orders.row_count'
       )
     );
