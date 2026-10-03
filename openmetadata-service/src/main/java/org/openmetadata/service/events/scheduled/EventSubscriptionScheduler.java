@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.events.scheduled;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_INFO_KEY;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
@@ -22,6 +23,7 @@ import io.dropwizard.db.DataSourceFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
@@ -33,13 +35,12 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.api.events.EventsRecord;
+import org.openmetadata.schema.entity.events.DestinationHealth;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
-import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -51,17 +52,15 @@ import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.events.subscription.AlertRows;
+import org.openmetadata.service.events.subscription.ledger.AlertLedger;
+import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
 import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.DIContainer;
-import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
@@ -271,7 +270,7 @@ public class EventSubscriptionScheduler {
     lock.lock();
     try {
       for (int attempt = 1; attempt <= SCHEDULE_SYNC_ATTEMPTS; attempt++) {
-        EventSubscription committed = readCommitted(subscriptionId);
+        EventSubscription committed = AlertRows.readOrNull(subscriptionId);
         applyScheduledState(subscriptionId, committed);
         if (isSettled(subscriptionId, committed)) {
           return;
@@ -288,7 +287,7 @@ public class EventSubscriptionScheduler {
   /** Settled means the row has not moved since the decision was taken and the job store agrees. */
   private boolean isSettled(UUID subscriptionId, EventSubscription applied)
       throws SchedulerException {
-    EventSubscription current = readCommitted(subscriptionId);
+    EventSubscription current = AlertRows.readOrNull(subscriptionId);
     if (!Objects.equals(versionOf(applied), versionOf(current))) {
       return false;
     }
@@ -310,6 +309,8 @@ public class EventSubscriptionScheduler {
     // The scheduled snapshot is what the status endpoint reads back, so stamp the destinations on
     // it the way the caller's entity was stamped before it used to be serialised into job data.
     setDestinationStatuses(committed, SubscriptionStatus.Status.ACTIVE);
+    // Rows first: a tick that finds no position row does nothing.
+    AlertRecord.start(committed);
     JobDetail jobDetail = jobBuilder(newPublisher(committed), committed, subscriptionId.toString());
     // Write the job and its trigger in a single job-store transaction rather than deleting the pair
     // and re-adding it. Delete-then-add leaves a window in which the alert is not scheduled at all,
@@ -324,17 +325,6 @@ public class EventSubscriptionScheduler {
 
   private static Double versionOf(EventSubscription subscription) {
     return subscription == null ? null : subscription.getVersion();
-  }
-
-  /** The committed row, or null once the subscription has been deleted. */
-  private EventSubscription readCommitted(UUID subscriptionId) {
-    EntityRepository<? extends EntityInterface> repository =
-        Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
-    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
-      return (EventSubscription) repository.get(null, subscriptionId, repository.getFields("*"));
-    } catch (EntityNotFoundException deleted) {
-      return null;
-    }
   }
 
   private AbstractEventConsumer newPublisher(EventSubscription eventSubscription)
@@ -463,232 +453,93 @@ public class EventSubscriptionScheduler {
   }
 
   public SubscriptionStatus getStatusForEventSubscription(UUID subscriptionId, UUID destinationId) {
-    Optional<EventSubscription> eventSubscriptionOpt =
-        getEventSubscriptionFromScheduledJob(subscriptionId);
-
-    if (eventSubscriptionOpt.isPresent()) {
-      // Find the destination and get its status
-      Optional<SubscriptionDestination> destinationOpt =
-          eventSubscriptionOpt.get().getDestinations().stream()
-              .filter(destination -> destination.getId().equals(destinationId))
-              .findFirst();
-      if (destinationOpt.isPresent()) {
-        Object status = destinationOpt.get().getStatusDetails();
-        return convertToSubscriptionStatus(status);
-      }
-      return null;
-    }
-
-    EntityRepository<? extends EntityInterface> subscriptionRepository =
-        Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
-
-    Optional<EventSubscription> subscriptionOpt =
-        Optional.ofNullable(
-            (EventSubscription)
-                subscriptionRepository.get(
-                    null, subscriptionId, subscriptionRepository.getFields("id")));
-
-    return subscriptionOpt
-        .filter(subscription -> Boolean.FALSE.equals(subscription.getEnabled()))
-        .map(
-            subscription -> new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED))
-        .orElse(null);
+    EventSubscription alert = AlertRows.read(subscriptionId);
+    return Boolean.FALSE.equals(alert.getEnabled())
+        ? new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED)
+        : destinationsWithHealth(alert).stream()
+            .filter(destination -> destination.getId().equals(destinationId))
+            .findFirst()
+            .map(destination -> convertToSubscriptionStatus(destination.getStatusDetails()))
+            .orElse(null);
   }
 
   public List<SubscriptionDestination> listAlertDestinations(UUID subscriptionId) {
-    Optional<EventSubscription> eventSubscriptionOpt =
-        getEventSubscriptionFromScheduledJob(subscriptionId);
+    EventSubscription alert = AlertRows.read(subscriptionId);
+    return Boolean.FALSE.equals(alert.getEnabled())
+        ? Collections.emptyList()
+        : destinationsWithHealth(alert);
+  }
 
-    EventSubscription eventSubscription =
-        eventSubscriptionOpt.orElseGet(
-            () -> {
-              EntityRepository<? extends EntityInterface> subscriptionRepository =
-                  Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
+  /** Every destination of the alert with its current status: one read, whatever their number. */
+  public List<SubscriptionDestination> destinationsWithStatus(EventSubscription alert) {
+    return destinationsWithHealth(alert);
+  }
 
-              return (EventSubscription)
-                  subscriptionRepository.get(
-                      null,
-                      subscriptionId,
-                      subscriptionRepository.getFields("id,destinations,enabled"));
-            });
-
-    if (eventSubscription != null && Boolean.FALSE.equals(eventSubscription.getEnabled())) {
-      return Collections.emptyList();
+  // Health lives in a row of its own, so registering, editing and restarting never reset it.
+  private static List<SubscriptionDestination> destinationsWithHealth(EventSubscription alert) {
+    Map<String, DestinationHealth> health =
+        AlertRecord.open(alert).map(AlertLedger::health).orElse(Map.of());
+    long now = System.currentTimeMillis();
+    for (SubscriptionDestination destination : listOrEmpty(alert.getDestinations())) {
+      destination.setStatusDetails(
+          statusToShow(alert, destination, health.get(destination.getId().toString()), now));
     }
+    return listOrEmpty(alert.getDestinations());
+  }
 
-    return eventSubscription.getDestinations();
+  // Disabled is decided when read, from the alert and the destination as they are now, and never
+  // stored. Otherwise the last tick that reached the destination speaks, and Active before any has.
+  private static SubscriptionStatus statusToShow(
+      EventSubscription alert,
+      SubscriptionDestination destination,
+      DestinationHealth known,
+      long now) {
+    boolean switchedOff =
+        Boolean.FALSE.equals(alert.getEnabled()) || Boolean.FALSE.equals(destination.getEnabled());
+    SubscriptionStatus status;
+    if (switchedOff) {
+      status = new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED);
+    } else if (known != null) {
+      status = known.getStatus();
+    } else {
+      status =
+          new SubscriptionStatus().withStatus(SubscriptionStatus.Status.ACTIVE).withTimestamp(now);
+    }
+    return status;
   }
 
   public EventsRecord getEventSubscriptionEventsRecord(UUID subscriptionId) {
-    long failedEventsCount =
-        Entity.getCollectionDAO().changeEventDAO().countFailedEvents(subscriptionId.toString());
-
-    long successfulEventsCount =
-        Entity.getCollectionDAO()
-            .eventSubscriptionDAO()
-            .getSuccessfulRecordCount(subscriptionId.toString());
-
-    long unprocessedEventsCount = getRelevantUnprocessedEvents(subscriptionId);
-    long totalEventsCount = failedEventsCount + successfulEventsCount + unprocessedEventsCount;
-
+    AlertProgress progress = AlertProgress.of(AlertRows.read(subscriptionId));
+    AlertProgress.Counts counts = progress.counts();
+    long pending = progress.relevantUnreadCount();
     return new EventsRecord()
-        .withTotalEventsCount(totalEventsCount)
-        .withFailedEventsCount(failedEventsCount)
-        .withPendingEventsCount(unprocessedEventsCount)
-        .withSuccessfulEventsCount(successfulEventsCount);
-  }
-
-  public long getRelevantUnprocessedEvents(UUID subscriptionId) {
-    // Fetch subscription ONCE before the loop to avoid N+1 query problem
-    // Previously, getEventSubscription was called for each event in the stream
-    EventSubscription subscription = getEventSubscription(subscriptionId);
-    FilteringRules filteringRules = subscription.getFilteringRules();
-    Long startingTimestamp =
-        AlertUtil.alertingWatermark(
-            subscription,
-            getEventSubscriptionOffset(subscriptionId)
-                .map(EventSubscriptionOffset::getStartingTimestamp)
-                .orElse(null));
-
-    long offset =
-        getEventSubscriptionOffset(subscriptionId)
-            .map(EventSubscriptionOffset::getCurrentOffset)
-            .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
-
-    return Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset).parallelStream()
-        .map(
-            eventJson -> {
-              ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
-              return event != null
-                      && AlertUtil.isChangeEventAllowed(
-                          event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
-                  ? event
-                  : null;
-            })
-        .filter(Objects::nonNull)
-        .count();
+        .withTotalEventsCount(counts.handled() + pending)
+        .withFailedEventsCount(counts.failed())
+        .withPendingEventsCount(pending)
+        .withSuccessfulEventsCount(counts.delivered());
   }
 
   public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(
       UUID subscriptionId, int limit, int paginationOffset, boolean listCountOnly) {
-    Optional<EventSubscriptionOffset> eventSubscriptionOffsetOptional =
-        getEventSubscriptionOffset(subscriptionId);
-
-    long currentOffset =
-        eventSubscriptionOffsetOptional.map(EventSubscriptionOffset::getCurrentOffset).orElse(0L);
-    long latestOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
-    long startingOffset =
-        eventSubscriptionOffsetOptional.map(EventSubscriptionOffset::getStartingOffset).orElse(0L);
-    long failedEventsCount =
-        Entity.getCollectionDAO().changeEventDAO().countFailedEvents(subscriptionId.toString());
-
-    long successfulEventsCount =
-        Entity.getCollectionDAO()
-            .eventSubscriptionDAO()
-            .getSuccessfulRecordCount(subscriptionId.toString());
-
-    long totalUnprocessedEventCount = getUnpublishedEventCount(subscriptionId);
-
-    boolean hasProcessedAllEvents = checkIfPublisherPublishedAllEvents(subscriptionId);
-
-    List<ChangeEvent> unprocessedEvents =
-        Optional.ofNullable(getRelevantUnprocessedEvents(subscriptionId, limit, paginationOffset))
-            .orElse(Collections.emptyList());
-
-    if (listCountOnly) {
-      return new EventSubscriptionDiagnosticInfo()
-          .withLatestOffset(latestOffset)
-          .withCurrentOffset(currentOffset)
-          .withStartingOffset(startingOffset)
-          .withHasProcessedAllEvents(hasProcessedAllEvents)
-          .withSuccessfulEventsCount(successfulEventsCount)
-          .withFailedEventsCount(failedEventsCount)
-          .withTotalUnprocessedEventsCount(totalUnprocessedEventCount)
-          .withRelevantUnprocessedEventsCount((long) unprocessedEvents.size())
-          .withRelevantUnprocessedEventsList(null)
-          .withTotalUnprocessedEventsList(null);
-    }
-
-    List<ChangeEvent> allUnprocessedEvents =
-        getAllUnprocessedEvents(subscriptionId, limit, paginationOffset);
-
+    AlertProgress progress = AlertProgress.of(AlertRows.read(subscriptionId));
+    AlertProgress.Counts counts = progress.counts();
+    List<ChangeEvent> relevant = progress.relevantUnread(limit, paginationOffset);
     return new EventSubscriptionDiagnosticInfo()
-        .withLatestOffset(Entity.getCollectionDAO().changeEventDAO().getLatestOffset())
-        .withCurrentOffset(currentOffset)
-        .withStartingOffset(startingOffset)
-        .withHasProcessedAllEvents(hasProcessedAllEvents)
-        .withSuccessfulEventsCount(successfulEventsCount)
-        .withFailedEventsCount(failedEventsCount)
-        .withTotalUnprocessedEventsCount(totalUnprocessedEventCount)
-        .withTotalUnprocessedEventsList(allUnprocessedEvents)
-        .withRelevantUnprocessedEventsCount((long) unprocessedEvents.size())
-        .withRelevantUnprocessedEventsList(unprocessedEvents);
+        .withLatestOffset(progress.latestOffset())
+        .withCurrentOffset(progress.currentOffset())
+        .withStartingOffset(progress.startingOffset())
+        .withHasProcessedAllEvents(progress.caughtUp())
+        .withSuccessfulEventsCount(counts.delivered())
+        .withFailedEventsCount(counts.failed())
+        .withTotalUnprocessedEventsCount(progress.unread())
+        .withRelevantUnprocessedEventsCount((long) relevant.size())
+        .withRelevantUnprocessedEventsList(listCountOnly ? null : relevant)
+        .withTotalUnprocessedEventsList(
+            listCountOnly ? null : progress.allUnread(limit, paginationOffset));
   }
 
   public boolean checkIfPublisherPublishedAllEvents(UUID subscriptionID) {
-    long countOfEvents = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
-
-    return getEventSubscriptionOffset(subscriptionID)
-        .map(offset -> offset.getCurrentOffset() == countOfEvents)
-        .orElse(false);
-  }
-
-  public long getUnpublishedEventCount(UUID subscriptionID) {
-    long countOfEvents = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
-
-    return getEventSubscriptionOffset(subscriptionID)
-        .map(offset -> Math.abs(countOfEvents - offset.getCurrentOffset()))
-        .orElse(countOfEvents);
-  }
-
-  public List<ChangeEvent> getRelevantUnprocessedEvents(
-      UUID subscriptionId, int limit, int paginationOffset) {
-    // Fetch subscription ONCE before the loop to avoid N+1 query problem
-    EventSubscription subscription = getEventSubscription(subscriptionId);
-    FilteringRules filteringRules = subscription.getFilteringRules();
-    Long startingTimestamp =
-        AlertUtil.alertingWatermark(
-            subscription,
-            getEventSubscriptionOffset(subscriptionId)
-                .map(EventSubscriptionOffset::getStartingTimestamp)
-                .orElse(null));
-
-    long offset =
-        getEventSubscriptionOffset(subscriptionId)
-            .map(EventSubscriptionOffset::getCurrentOffset)
-            .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
-
-    return Entity.getCollectionDAO()
-        .changeEventDAO()
-        .listUnprocessedEvents(offset, limit, paginationOffset)
-        .parallelStream()
-        .map(
-            eventJson -> {
-              ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
-              return event != null
-                      && AlertUtil.isChangeEventAllowed(
-                          event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
-                  ? event
-                  : null;
-            })
-        .filter(Objects::nonNull)
-        .toList();
-  }
-
-  public List<ChangeEvent> getAllUnprocessedEvents(
-      UUID subscriptionId, int limit, int paginationOffset) {
-    long offset =
-        getEventSubscriptionOffset(subscriptionId)
-            .map(EventSubscriptionOffset::getCurrentOffset)
-            .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
-
-    return Entity.getCollectionDAO()
-        .changeEventDAO()
-        .listUnprocessedEvents(offset, limit, paginationOffset)
-        .parallelStream()
-        .map(eventJson -> ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class))
-        .filter(Objects::nonNull)
-        .collect(Collectors.toList());
+    return AlertProgress.of(AlertRows.read(subscriptionID)).caughtUp();
   }
 
   public List<FailedEventResponse> getFailedEventsByIdAndSource(
@@ -715,12 +566,6 @@ public class EventSubscriptionScheduler {
     return Entity.getCollectionDAO()
         .changeEventDAO()
         .listAllEventsWithStatuses(subscriptionId.toString(), limit, offset);
-  }
-
-  private EventSubscription getEventSubscription(UUID eventSubscriptionId) {
-    EventSubscriptionRepository repository =
-        (EventSubscriptionRepository) Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
-    return repository.get(null, eventSubscriptionId, repository.getFields("*"));
   }
 
   public List<FailedEventResponse> getFailedEventsById(UUID subscriptionId, int limit, int offset) {
@@ -784,34 +629,10 @@ public class EventSubscriptionScheduler {
     return Optional.empty();
   }
 
+  // Reading never creates the row: an alert that has never run reports the latest offset as both
+  // its position and its start, and where it really starts is decided when it is first scheduled.
   public Optional<EventSubscriptionOffset> getEventSubscriptionOffset(UUID subscriptionID) {
-    EventSubscriptionOffset offset = getStartingOffset(subscriptionID);
-    if (offset != null && offset.getCurrentOffset() != null) {
-      return Optional.of(offset);
-    }
-
-    try {
-      JobDetail jobDetail =
-          alertsScheduler.getJobDetail(new JobKey(subscriptionID.toString(), ALERT_JOB_GROUP));
-      if (jobDetail != null) {
-        Object offsetValue = jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
-        if (offsetValue instanceof String offsetJson) {
-          EventSubscriptionOffset jobOffset =
-              JsonUtils.readValue(offsetJson, EventSubscriptionOffset.class);
-          if (jobOffset != null) {
-            return Optional.of(jobOffset);
-          }
-        } else if (offsetValue instanceof EventSubscriptionOffset jobOffset) {
-          return Optional.of(jobOffset);
-        }
-      }
-    } catch (Exception ex) {
-      LOG.error(
-          "Failed to get Event Subscription offset from Job, Subscription Id : {}",
-          subscriptionID,
-          ex);
-    }
-    return Optional.empty();
+    return Optional.of(AlertRecord.positionOrLatest(subscriptionID));
   }
 
   public int countTotalEvents(UUID id, TypedEvent.Status status) {

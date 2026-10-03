@@ -21,14 +21,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.util.DIContainer;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobKey;
+import org.quartz.Scheduler;
 
 @ExtendWith(MockitoExtension.class)
 class AlertPublisherTest {
@@ -220,5 +226,25 @@ class AlertPublisherTest {
     subDest.setType(SubscriptionDestination.SubscriptionType.EMAIL);
     subDest.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
     return subDest;
+  }
+
+  // Quartz threads are shared and never pass the request filter that clears per-request caches.
+  @Test
+  void tickStartsAndEndsWithClearedCaches() throws Exception {
+    UUID alertId = UUID.randomUUID();
+    JobDetail job = mock(JobDetail.class);
+    when(job.getKey()).thenReturn(new JobKey(alertId.toString(), "OMAlertJobGroup"));
+    JobExecutionContext context = mock(JobExecutionContext.class);
+    when(context.getJobDetail()).thenReturn(job);
+    when(context.getScheduler()).thenReturn(mock(Scheduler.class));
+
+    try (MockedStatic<PerRequestContextCleaner> cleaner =
+            mockStatic(PerRequestContextCleaner.class);
+        MockedStatic<AlertRows> rows = mockStatic(AlertRows.class)) {
+      rows.when(() -> AlertRows.readOrNull(alertId)).thenReturn(null);
+      new AlertPublisher(dependencies).execute(context);
+
+      cleaner.verify(PerRequestContextCleaner::clear, times(2));
+    }
   }
 }
