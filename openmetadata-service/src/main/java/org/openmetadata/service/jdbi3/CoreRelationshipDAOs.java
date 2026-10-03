@@ -13,11 +13,13 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.TermRelationMetadataCodec.DEFAULT_RELATION_TYPE;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.google.common.collect.Lists;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -39,8 +41,10 @@ import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.customizer.BindBeanList;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
+import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
@@ -72,6 +76,9 @@ public interface CoreRelationshipDAOs {
 
   @CreateSqlObject
   EntityExtensionDAO entityExtensionDAO();
+
+  @CreateSqlObject
+  CustomPropertyReferenceDAO customPropertyReferenceDAO();
 
   interface EntityExtensionDAO {
     @ConnectionAwareSqlUpdate(
@@ -381,6 +388,225 @@ public interface CoreRelationshipDAOs {
      */
     default void deleteByJsonSchemaBatch(List<String> ids, String jsonSchema) {
       EntityDAO.updateInChunks(ids, chunk -> deleteByJsonSchemaBatchInternal(chunk, jsonSchema));
+    }
+  }
+
+  /**
+   * Rows of {@code custom_property_reference}: the only home of entityReference and
+   * entityReferenceList custom-property values. {@code columnKey} is empty for entity-level values.
+   */
+  interface CustomPropertyReferenceDAO {
+    String COLUMNS =
+        "id, columnKey, propertyName, targetId, holderType, targetType, position, json";
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT IGNORE INTO custom_property_reference("
+                + COLUMNS
+                + ") VALUES (:id, "
+                + ":columnKey, :propertyName, :targetId, :holderType, :targetType, :position, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO custom_property_reference("
+                + COLUMNS
+                + ") VALUES (:id, :columnKey, "
+                + ":propertyName, :targetId, :holderType, :targetType, :position, (:json :: jsonb)) "
+                + "ON CONFLICT DO NOTHING",
+        connectionType = POSTGRES)
+    @BatchChunkSize(500)
+    void insertManyInternal(@BindMethods List<ReferenceRow> rows);
+
+    default void insertMany(List<ReferenceRow> rows) {
+      if (!nullOrEmpty(rows)) {
+        insertManyInternal(rows);
+      }
+    }
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE custom_property_reference SET position = :position, json = :json, "
+                + "targetType = :targetType "
+                + "WHERE id = :id AND columnKey = :columnKey AND propertyName = :propertyName "
+                + "AND targetId = :targetId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "UPDATE custom_property_reference SET position = :position, json = (:json :: jsonb), "
+                + "targetType = :targetType "
+                + "WHERE id = :id AND columnKey = :columnKey AND propertyName = :propertyName "
+                + "AND targetId = :targetId",
+        connectionType = POSTGRES)
+    @BatchChunkSize(500)
+    void updateManyInternal(@BindMethods List<ReferenceRow> rows);
+
+    default void updateMany(List<ReferenceRow> rows) {
+      if (!nullOrEmpty(rows)) {
+        updateManyInternal(rows);
+      }
+    }
+
+    @SqlBatch(
+        "DELETE FROM custom_property_reference WHERE id = :id AND columnKey = :columnKey "
+            + "AND propertyName = :propertyName AND targetId = :targetId")
+    @BatchChunkSize(500)
+    void deleteManyInternal(@BindMethods List<ReferenceRow> rows);
+
+    default void deleteMany(List<ReferenceRow> rows) {
+      if (!nullOrEmpty(rows)) {
+        deleteManyInternal(rows);
+      }
+    }
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM custom_property_reference WHERE id IN (<ids>) "
+            + "AND columnKey = '' ORDER BY id, propertyName, position")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findEntityLevelInternal(@BindList("ids") List<String> ids);
+
+    default List<ReferenceRow> findEntityLevel(List<String> holderIds) {
+      return nullOrEmpty(holderIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(holderIds, this::findEntityLevelInternal);
+    }
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM custom_property_reference WHERE id IN (<ids>) "
+            + "AND columnKey <> '' ORDER BY id, columnKey, propertyName, position")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findColumnLevelInternal(@BindList("ids") List<String> ids);
+
+    default List<ReferenceRow> findColumnLevel(List<String> holderIds) {
+      return nullOrEmpty(holderIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(holderIds, this::findColumnLevelInternal);
+    }
+
+    @SqlQuery(
+        "SELECT "
+            + COLUMNS
+            + " FROM custom_property_reference WHERE id = :id "
+            + "AND columnKey IN (<keys>) ORDER BY columnKey, propertyName, position")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findColumnsInternal(
+        @BindUUID("id") UUID id, @BindList("keys") List<String> columnKeys);
+
+    default List<ReferenceRow> findColumns(UUID holderId, List<String> columnKeys) {
+      return nullOrEmpty(columnKeys)
+          ? List.of()
+          : EntityDAO.queryInChunks(columnKeys, chunk -> findColumnsInternal(holderId, chunk));
+    }
+
+    @SqlQuery("SELECT " + COLUMNS + " FROM custom_property_reference WHERE targetId IN (<ids>)")
+    @RegisterRowMapper(ReferenceRowMapper.class)
+    List<ReferenceRow> findByTargetsInternal(@BindList("ids") List<String> ids);
+
+    /** Every stored reference to these entities, at entity and column level. */
+    default List<ReferenceRow> findByTargets(List<String> targetIds) {
+      return nullOrEmpty(targetIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(targetIds, this::findByTargetsInternal);
+    }
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM custom_property_reference WHERE id IN (<ids>) AND columnKey = '' "
+            + "AND propertyName = :propertyName")
+    long countEntityLevel(
+        @BindList("ids") List<String> holderIds, @Bind("propertyName") String propertyName);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM custom_property_reference WHERE id IN (<ids>) AND columnKey <> ''")
+    long countColumnLevel(@BindList("ids") List<String> holderIds);
+
+    @SqlUpdate("DELETE FROM custom_property_reference WHERE id IN (<ids>)")
+    void deleteByHoldersInternal(@BindList("ids") List<String> ids);
+
+    default void deleteByHolders(List<String> holderIds) {
+      if (!nullOrEmpty(holderIds)) {
+        EntityDAO.updateInChunks(holderIds, this::deleteByHoldersInternal);
+      }
+    }
+
+    /**
+     * Holders of references to these entities, locking the rows a delete is about to remove. Plain
+     * rows rather than DISTINCT, because Postgres does not allow DISTINCT with FOR UPDATE.
+     */
+    @SqlQuery("SELECT id FROM custom_property_reference WHERE targetId IN (<ids>) FOR UPDATE")
+    List<String> lockHoldersOfTargetsInternal(@BindList("ids") List<String> ids);
+
+    default List<String> lockHoldersOfTargets(List<String> targetIds) {
+      return nullOrEmpty(targetIds)
+          ? List.of()
+          : EntityDAO.queryInChunks(targetIds, this::lockHoldersOfTargetsInternal);
+    }
+
+    @SqlUpdate("DELETE FROM custom_property_reference WHERE targetId IN (<ids>)")
+    int deleteByTargetsInternal(@BindList("ids") List<String> ids);
+
+    /** Rows removed, so a caller can skip follow-up work when nothing referenced the targets. */
+    default int deleteByTargets(List<String> targetIds) {
+      int removed = 0;
+      for (List<String> chunk : Lists.partition(targetIds, 500)) {
+        removed += deleteByTargetsInternal(chunk);
+      }
+      return removed;
+    }
+
+    @SqlUpdate("DELETE FROM custom_property_reference WHERE id = :id AND columnKey = :columnKey")
+    void deleteColumn(@BindUUID("id") UUID id, @Bind("columnKey") String columnKey);
+
+    @SqlUpdate(
+        "DELETE FROM custom_property_reference WHERE holderType = :holderType "
+            + "AND propertyName = :propertyName AND columnKey = ''")
+    void deleteEntityLevelProperty(
+        @Bind("holderType") String holderType, @Bind("propertyName") String propertyName);
+
+    @SqlUpdate(
+        "DELETE FROM custom_property_reference WHERE holderType = :holderType "
+            + "AND propertyName = :propertyName AND columnKey <> ''")
+    void deleteColumnLevelProperty(
+        @Bind("holderType") String holderType, @Bind("propertyName") String propertyName);
+  }
+
+  /** One referenced entity of one custom-property value; {@code json} is the reference snapshot. */
+  record ReferenceRow(
+      String id,
+      String columnKey,
+      String propertyName,
+      String targetId,
+      String holderType,
+      String targetType,
+      int position,
+      String json) {
+    /** The table's primary key: one row per holder, column, property and target id. */
+    String primaryKey() {
+      return id + '\u0000' + columnKey + '\u0000' + propertyName + '\u0000' + targetId;
+    }
+
+    /** A reference is the same only if both its target id and type are. */
+    String key() {
+      return propertyName + '\u0000' + targetId + '\u0000' + targetType;
+    }
+  }
+
+  class ReferenceRowMapper implements RowMapper<ReferenceRow> {
+    @Override
+    public ReferenceRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ReferenceRow(
+          rs.getString("id"),
+          rs.getString("columnKey"),
+          rs.getString("propertyName"),
+          rs.getString("targetId"),
+          rs.getString("holderType"),
+          rs.getString("targetType"),
+          rs.getInt("position"),
+          rs.getString("json"));
     }
   }
 

@@ -30,6 +30,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CustomPropertyReferences;
 import org.openmetadata.service.jdbi3.TableMetadataLoader;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -59,6 +60,7 @@ class TableMetadataReadIT {
     ReadResult<Table> result = read(table, "columns,customMetrics");
 
     assertEquals(1, result.extensionQueries());
+    assertEquals(0, result.referenceQueries());
     assertMetrics(result.value(), columnCount);
     assertMetrics(
         SdkClients.adminClient().tables().get(table.getId().toString(), "columns,customMetrics"),
@@ -80,8 +82,9 @@ class TableMetadataReadIT {
 
     ReadResult<Table> result = read(table, "columns,extension");
 
-    // One table-extension query and one query for all requested column keys.
+    // One table-extension query and one query for all requested column keys, in each store.
     assertEquals(2, result.extensionQueries());
+    assertEquals(2, result.referenceQueries());
     assertEquals(Map.of("note", "legacy"), result.value().getColumns().getFirst().getExtension());
     assertNull(result.value().getColumns().getLast().getExtension());
   }
@@ -91,6 +94,7 @@ class TableMetadataReadIT {
     Table table = createTable(ns, 100);
     ReadResult<Table> result = read(table, "columns");
     assertEquals(0, result.extensionQueries());
+    assertEquals(0, result.referenceQueries());
     assertNull(result.value().getCustomMetrics());
     assertNull(result.value().getColumns().getFirst().getCustomMetrics());
   }
@@ -164,7 +168,11 @@ class TableMetadataReadIT {
   @Test
   void metadataReadsJoinTheCallersTransaction(TestNamespace ns) {
     Table table = createTable(ns, 3);
-    var loader = new TableMetadataLoader(() -> Entity.getCollectionDAO().entityExtensionDAO());
+    var loader =
+        new TableMetadataLoader(
+            () -> Entity.getCollectionDAO().entityExtensionDAO(),
+            () -> new CustomPropertyReferences(Entity.getCollectionDAO()),
+            Entity.TABLE);
 
     assertThrows(
         IllegalStateException.class,
@@ -249,13 +257,15 @@ class TableMetadataReadIT {
     assertEquals(List.of(), table.getColumns().getLast().getCustomMetrics());
   }
 
+  /** Counts both stores of custom-property values: entity_extension and the reference rows. */
   private <T> ReadResult<T> countExtensionQueries(Supplier<T> operation) {
-    try (var queries = new SqlQueryCounter(Entity.getJdbi(), "from entity_extension")) {
-      return new ReadResult<>(operation.get(), queries.count());
+    try (var queries = new SqlQueryCounter(Entity.getJdbi(), "from entity_extension");
+        var references = new SqlQueryCounter(Entity.getJdbi(), "from custom_property_reference")) {
+      return new ReadResult<>(operation.get(), queries.count(), references.count());
     } finally {
       RequestEntityCache.clear();
     }
   }
 
-  private record ReadResult<T>(T value, int extensionQueries) {}
+  private record ReadResult<T>(T value, int extensionQueries, int referenceQueries) {}
 }

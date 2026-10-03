@@ -31,6 +31,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
@@ -70,6 +71,9 @@ public class Migration extends MigrationProcessImpl {
     // Data contracts stored their entity reference as sent, usually without a name or FQN.
     // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
     rebuildDataContractEntityReferences(collectionDAO);
+    // entityReference / entityReferenceList values move to custom_property_reference, their only
+    // home from 2.1 on, so a hard delete can remove references to the deleted entity. Restartable.
+    CustomPropertyReferenceMigration.migrate(handle, collectionDAO, POSTGRES);
     // MlModelRepository now indexes feature tags into tag_usage like every other type with inline
     // children. That fires only on write, so features tagged before this upgrade would read back
     // as untagged from any FQN-prefix query. Idempotent. DB-agnostic, so it runs on both engines.

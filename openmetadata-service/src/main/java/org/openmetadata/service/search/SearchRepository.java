@@ -28,6 +28,7 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_NESTED_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
@@ -63,6 +64,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.google.common.collect.Lists;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -203,6 +205,8 @@ public class SearchRepository {
   private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
 
   private static final int REFERENCE_REINDEX_BATCH_SIZE = 100;
+  // Bounds one custom-property cleanup request; more holders are split across requests.
+  private static final int MAX_HOLDER_IDS_PER_CLEANUP_REQUEST = 10_000;
 
   /**
    * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
@@ -3684,6 +3688,50 @@ public class SearchRepository {
       }
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Strips references to hard-deleted entities from search documents' custom-property values, at
+   * entity level and on columns. Called after the delete commits with the holders it found, so
+   * their documents are selected by id even where the mapping cannot match the reference (a
+   * nested child column, or an index without typed custom properties); column documents are
+   * matched by the reference itself. Fans out to staged indexes so a running reindex keeps it.
+   */
+  public void removeCustomPropertyReferences(List<UUID> deletedIds, Set<UUID> holders) {
+    List<String> ids = deletedIds.stream().map(UUID::toString).toList();
+    List<String> holderIds = holders.stream().map(UUID::toString).toList();
+    try {
+      List<List<String>> batches =
+          holderIds.isEmpty()
+              ? List.of(List.of())
+              : Lists.partition(holderIds, MAX_HOLDER_IDS_PER_CLEANUP_REQUEST);
+      for (int i = 0; i < batches.size(); i++) {
+        // The reference match covers every holder at once, so only the first request carries it.
+        removeCustomPropertyReferences(ids, batches.get(i), i == 0);
+      }
+    } catch (IOException | RuntimeException e) {
+      LOG.error("Failed to remove custom-property references to {} from search", ids, e);
+    }
+  }
+
+  private void removeCustomPropertyReferences(
+      List<String> ids, List<String> holderIds, boolean matchByReference) throws IOException {
+    searchClient.updateChildrenByNestedField(
+        getWriteFanoutTargets(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+        holderIds,
+        matchByReference
+            ? List.of("customPropertiesTyped", "columns.customPropertiesTyped")
+            : List.of(),
+        "refId",
+        withUppercase(ids),
+        new ImmutablePair<>(REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT, Map.of("ids", ids)));
+  }
+
+  /** Documents written before 2.1 may hold a reference id as the client sent it. */
+  private static List<String> withUppercase(List<String> ids) {
+    List<String> values = new ArrayList<>(ids);
+    ids.forEach(id -> values.add(id.toUpperCase(Locale.ROOT)));
+    return values;
   }
 
   public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping)
