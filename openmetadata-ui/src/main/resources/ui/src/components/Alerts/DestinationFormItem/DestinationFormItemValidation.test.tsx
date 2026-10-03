@@ -19,6 +19,10 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import DestinationFormItemFormBridge, {
   DestinationFormFields,
@@ -118,11 +122,24 @@ function ParentFormFocusHarness() {
 function ParentFormDestinationChangeHarness() {
   const [values, setValues] = useState<Partial<DestinationFormFields>>({
     destinations: OAUTH_DESTINATION_VALUES.destinations,
-    resources: ['table'],
   });
 
   return <DestinationFormItemFormBridge values={values} onChange={setValues} />;
 }
+
+// The page provides the chosen sources; the destination form holds only its own fields.
+const TABLE_SELECTION = {
+  sources: ['table'],
+  support: {},
+  capabilities: { loading: false },
+  loading: false,
+  search: {
+    indexes: [],
+    containerEntities: [],
+    byName: jest.fn(),
+    byId: jest.fn(),
+  },
+} as AlertSelection;
 
 function UnconfiguredEmailDestinationHarness() {
   const [values, setValues] = useState<Partial<DestinationFormFields>>({
@@ -133,10 +150,13 @@ function UnconfiguredEmailDestinationHarness() {
         type: SubscriptionType.Email,
       },
     ],
-    resources: ['table'],
   });
 
-  return <DestinationFormItemFormBridge values={values} onChange={setValues} />;
+  return (
+    <AlertSelectionProvider value={TABLE_SELECTION}>
+      <DestinationFormItemFormBridge values={values} onChange={setValues} />
+    </AlertSelectionProvider>
+  );
 }
 
 describe('DestinationFormItem validation', () => {

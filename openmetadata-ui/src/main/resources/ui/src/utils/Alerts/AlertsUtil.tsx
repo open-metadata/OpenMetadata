@@ -23,7 +23,7 @@ import {
 import { AlertProps, Checkbox, Col, MenuProps, Select, Tooltip } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
-import { isEmpty, uniqBy } from 'lodash';
+import { isEmpty, uniq, uniqBy } from 'lodash';
 import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
@@ -53,8 +53,8 @@ import {
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
-import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import alertsClassBase from '../AlertsClassBase';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { EntityIconSize } from '../EntityIconUtils';
 import { getEntityName, getEntityNameLabel } from '../EntityNameUtils';
@@ -63,6 +63,7 @@ import searchClassBase from '../SearchClassBase';
 import { getTermQuery } from '../SearchPureUtils';
 import { showErrorToast } from '../ToastUtils';
 import './alerts-util.less';
+import type { AlertSourceSearch } from './AlertSourceSearch';
 import {
   getAlertEventsFilterLabels,
   getMessageFromArgumentName,
@@ -157,21 +158,24 @@ export const searchEntity = async ({
 
 // Indexes to search for an Entity FQN filter: the source plus its ancestor (container) entity
 // types from the resource descriptor, so a parent FQN can be selected to scope to its descendants.
+// An alert can watch several sources, and a name filter then searches every one of them.
 export const getFqnSearchIndexes = (
-  selectedTrigger: string,
+  selectedTrigger: string | string[],
   containerEntities: string[] = []
 ): SearchIndex[] => {
   const mapping = searchClassBase.getEntityTypeSearchIndexMapping();
-  const sourceIndex = mapping[selectedTrigger];
+  const sources = [selectedTrigger].flat();
 
   // The "all" index already spans every entity, so ancestor indexes are redundant there.
-  if (sourceIndex === SearchIndex.ALL) {
-    return [sourceIndex];
+  if (sources.some((source) => mapping[source] === SearchIndex.ALL)) {
+    return [SearchIndex.ALL];
   }
 
-  return [selectedTrigger, ...containerEntities]
-    .map((type) => mapping[type])
-    .filter((index): index is SearchIndex => Boolean(index));
+  return uniq(
+    [...sources, ...containerEntities]
+      .map((type) => mapping[type])
+      .filter((index): index is SearchIndex => Boolean(index))
+  );
 };
 
 export const getTableSuggestions = async (searchText: string) => {
@@ -182,28 +186,9 @@ export const getTableSuggestions = async (searchText: string) => {
   });
 };
 
-export const getDataContractSuggestions = async (searchText = '') => {
-  try {
-    const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
-
-    return contracts
-      .map((contract) => contract.fullyQualifiedName ?? '')
-      .filter(Boolean)
-      .map((fullyQualifiedName) => ({
-        label: fullyQualifiedName,
-        value: fullyQualifiedName,
-      }));
-  } catch (error) {
-    showErrorToast(
-      error as AxiosError,
-      t('server.entity-fetch-error', {
-        entity: t('label.data-contract'),
-      })
-    );
-
-    return [];
-  }
-};
+// A data contract's name comes from the search its source brings, as in every alert form.
+export const getDataContractSuggestions = (searchText = '') =>
+  alertsClassBase.getSourceNameSearch()[EntityType.DATA_CONTRACT](searchText);
 
 export const getTestSuiteSuggestions = async (searchText: string) => {
   return searchEntity({ searchText, searchIndex: SearchIndex.TEST_SUITE });
@@ -296,54 +281,24 @@ export const getFieldByArgumentType = (
   fieldName: number,
   argument: string,
   index: number,
-  selectedTrigger: string,
-  containerEntities: string[] = [],
+  search: AlertSourceSearch,
   supportedEventTypes: EventType[] = []
 ) => {
-  const getEntityByFQN = async (searchText: string) => {
-    if (selectedTrigger === EntityType.DATA_CONTRACT) {
-      return getDataContractSuggestions(searchText);
-    }
-
-    return searchEntity({
-      searchText,
-      searchIndex: getFqnSearchIndexes(selectedTrigger, containerEntities),
-      showDisplayNameAsLabel: false,
-      wildcardEntityTypes: containerEntities,
-    });
-  };
-
   const getEntityByIdSuggestions = async (searchText?: string) => {
-    const searchIndexMapping =
-      searchClassBase.getEntityTypeSearchIndexMapping();
-    const trimmed = (searchText ?? '').trim();
-    const isUuidInput = UUID_REGEX.test(trimmed);
-
     try {
-      const response = await searchQuery({
-        query: trimmed,
-        pageNumber: 1,
-        pageSize: PAGE_SIZE_LARGE,
-        queryFilter: isUuidInput ? getTermQuery({ id: trimmed }) : undefined,
-        searchIndex: searchIndexMapping[selectedTrigger],
-      });
+      const found = await search.byId(searchText);
 
       return uniqBy(
-        response.hits.hits.map((d) => {
-          const id = d._source.id ?? '';
-          const fqn = d._source.fullyQualifiedName ?? '';
-
-          return {
-            uuid: id,
-            value: id,
-            label: (
-              <div className="entity-id-option">
-                <div>{id}</div>
-                <div className="entity-id-option-fqn">{fqn}</div>
-              </div>
-            ),
-          };
-        }),
+        found.map(({ id, fullyQualifiedName }) => ({
+          uuid: id,
+          value: id,
+          label: (
+            <div className="entity-id-option">
+              <div>{id}</div>
+              <div className="entity-id-option-fqn">{fullyQualifiedName}</div>
+            </div>
+          ),
+        })),
         'value'
       );
     } catch (error) {
@@ -365,16 +320,16 @@ export const getFieldByArgumentType = (
   const fieldRenderers: Record<string, () => JSX.Element> = {
     fqnList: () => (
       <FQNListSelect
-        api={getEntityByFQN}
+        api={search.byName}
         className="w-full"
-        containerEntities={containerEntities}
+        containerEntities={search.containerEntities}
         data-testid="fqn-list-select"
         mode="multiple"
         optionFilterProp="label"
         placeholder={t('label.search-by-type', {
           type: t('label.fqn-uppercase'),
         })}
-        searchIndex={getFqnSearchIndexes(selectedTrigger, containerEntities)}
+        searchIndex={search.indexes}
       />
     ),
     domainList: () => (
@@ -577,9 +532,8 @@ export const getFieldByArgumentType = (
 export const getConditionalField = (
   condition: string,
   name: number,
-  selectedTrigger: string,
+  search: AlertSourceSearch,
   supportedActions?: EventFilterRule[],
-  containerEntities?: string[],
   supportedEventTypes?: EventType[]
 ) => {
   const selectedAction = supportedActions?.find(
@@ -599,8 +553,7 @@ export const getConditionalField = (
           name,
           argument,
           index,
-          selectedTrigger,
-          containerEntities,
+          search,
           supportedEventTypes
         );
       })}

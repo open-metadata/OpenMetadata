@@ -37,8 +37,11 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-const renderResources = (alertType?: AlertType, selectedResource?: string) =>
-  renderHook(() => useAlertResources(alertType, selectedResource));
+// One array, as a form hands the same sources back on every render.
+const TABLE = ['table'];
+
+const renderResources = (alertType?: AlertType, sources?: string[]) =>
+  renderHook(() => useAlertResources(alertType, sources));
 
 describe('useAlertResources', () => {
   beforeEach(() => {
@@ -76,7 +79,7 @@ describe('useAlertResources', () => {
     expect(mockObservabilityResources).not.toHaveBeenCalled();
   });
 
-  it('narrows filters and triggers to the selected source', async () => {
+  it('narrows filters and triggers to the selected source until the server answers', async () => {
     mockObservabilityResources.mockResolvedValue({
       data: [
         {
@@ -88,12 +91,12 @@ describe('useAlertResources', () => {
       ],
     });
 
-    const { result } = renderResources(AlertType.Observability, 'table');
+    const { result } = renderResources(AlertType.Observability, TABLE);
 
     await waitFor(() =>
-      expect(result.current.supportedFilters?.map((f) => f.name)).toEqual([
-        'filterByFqn',
-      ])
+      expect(
+        result.current.selection.support.supportedFilters?.map((f) => f.name)
+      ).toEqual(['filterByFqn'])
     );
 
     expect(result.current.shouldShowFiltersSection).toBe(true);
