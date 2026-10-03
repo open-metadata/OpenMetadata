@@ -97,7 +97,7 @@ test('Query Entity', async ({ page }) => {
     await tableSearchResponse;
 
     await page
-      .locator('div')
+      .locator('.ant-select-dropdown:visible .ant-select-item-option')
       .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table1}$`) })
       .click();
 
@@ -210,7 +210,7 @@ test('Query Entity', async ({ page }) => {
     await page.keyboard.type(queryData.queryUsedIn.table2);
     await tableSearchResponse;
     await page
-      .locator('div')
+      .locator('.ant-select-dropdown:visible .ant-select-item-option')
       .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table2}$`) })
       .click();
     await clickOutside(page);

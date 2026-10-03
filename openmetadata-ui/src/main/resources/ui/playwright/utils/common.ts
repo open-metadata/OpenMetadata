@@ -512,11 +512,14 @@ export const toastNotification = async (
 ) => {
   const toast = page
     .getByTestId('alert-bar')
-    .filter({ hasText: message });
+    .filter({ hasText: message })
+    .filter({ visible: true });
 
-  // Toasts auto-dismiss; assert only the text-filtered toast being visible, not its internal
-  // icon, to avoid the icon detaching between the filter resolving and the check.
-  await expect(toast).toBeVisible({ timeout });
+  // Two saves in quick succession legitimately stack two identical toasts, so
+  // "the toast appeared" is a count assertion, not a single-element one.
+  // Toasts auto-dismiss, so match on the filtered text only — asserting an
+  // internal icon races the toast detaching between resolve and check.
+  await expect(toast).not.toHaveCount(0, { timeout });
 };
 
 /**
@@ -533,10 +536,11 @@ export const waitForToastToDisappear = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page
-    .getByTestId('alert-bar')
-    .filter({ hasText: message })
-    .waitFor({ state: 'detached', timeout });
+  // Identical toasts can stack, so waitFor() would be a strict-mode error here;
+  // "the toast is gone" is a count-0 condition anyway.
+  await expect(
+    page.getByTestId('alert-bar').filter({ hasText: message })
+  ).toHaveCount(0, { timeout });
 };
 
 /**
@@ -1710,12 +1714,14 @@ export const testTableSearch = async (
     await waitForSearchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByText(searchTerm)).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.getByText(notVisibleText)).not.toBeVisible({
-      timeout: 5_000,
-    });
+    // The term also appears in the search box, so assert on presence/absence
+    // of *visible* matches rather than on a single element.
+    await expect(
+      page.getByText(searchTerm).filter({ visible: true })
+    ).not.toHaveCount(0, { timeout: 5_000 });
+    await expect(
+      page.getByText(notVisibleText).filter({ visible: true })
+    ).toHaveCount(0, { timeout: 5_000 });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 };
 

@@ -80,6 +80,7 @@ test(
       await page
         .getByRole('option')
         .filter({ hasText: 'Table Column Count To Equal' })
+        .first()
         .click();
       await page.getByPlaceholder('Enter a Count').fill('13');
       await submitTestCaseForm(page);

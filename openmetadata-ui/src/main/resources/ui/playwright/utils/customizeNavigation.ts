@@ -31,15 +31,15 @@ const NAV_ITEMS = [
 
 export const checkDefaultStateForNavigationTree = async (page: Page) => {
   for (const item of NAV_ITEMS) {
-    await expect(
-      page.getByTestId('page-layout-v1').getByText(item)
-    ).toBeVisible();
-    await expect(
-      page
-        .getByTestId('page-layout-v1')
-        .getByText(item)
-        .getByRole('switch')
-    ).toBeChecked();
+    // The label can also appear outside the tree, so pin the row by the switch
+    // it owns rather than by its text alone.
+    const navRow = page
+      .getByTestId('page-layout-v1')
+      .getByText(item)
+      .filter({ has: page.getByRole('switch') });
+
+    await expect(navRow).toBeVisible();
+    await expect(navRow.getByRole('switch')).toBeChecked();
   }
 };
 

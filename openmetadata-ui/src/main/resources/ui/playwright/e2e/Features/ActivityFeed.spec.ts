@@ -322,6 +322,7 @@ test.describe('FeedWidget on landing page', () => {
       widget
         .getByTestId('message-container')
         .filter({ hasText: ownedActivityMarker })
+        .filter({ hasNot: page.getByTestId('message-container') })
     ).toBeVisible();
 
     await selectActivityFeedFilterAndVerifyEndpoint(
@@ -335,6 +336,7 @@ test.describe('FeedWidget on landing page', () => {
       widget
         .getByTestId('message-container')
         .filter({ hasText: followedActivityMarker })
+        .filter({ hasNot: page.getByTestId('message-container') })
     ).toBeVisible();
 
     await selectActivityFeedFilterAndVerifyEndpoint(
@@ -393,7 +395,8 @@ test.describe('FeedWidget on landing page', () => {
 
     const seededCard = widget
       .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker });
+      .filter({ hasText: ownedActivityMarker })
+      .filter({ hasNot: page.getByTestId('message-container') });
 
     await expect(seededCard).toBeVisible();
     await expect(seededCard.getByTestId('headerText')).toBeVisible();
@@ -419,7 +422,8 @@ test.describe('FeedWidget on landing page', () => {
     // an index would not resolve to the same card on the toggle-off pass.
     const seededCard = widget
       .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker });
+      .filter({ hasText: ownedActivityMarker })
+      .filter({ hasNot: page.getByTestId('message-container') });
 
     await expect(seededCard).toBeVisible();
 
@@ -457,7 +461,8 @@ test.describe('FeedWidget on landing page', () => {
 
     const seededCard = widget
       .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker });
+      .filter({ hasText: ownedActivityMarker })
+      .filter({ hasNot: page.getByTestId('message-container') });
 
     await expect(seededCard).toBeVisible();
     await seededCard.click();
@@ -579,7 +584,10 @@ test.describe('Mention notifications in Notification Box', () => {
 
       const seededThread = user1Page
         .locator('[data-testid="message-container"]')
-        .filter({ hasText: 'Initial conversation thread for mention test' });
+        .filter({ hasText: 'Initial conversation thread for mention test' })
+        // Feed cards nest: an open thread renders its reply composer inside a
+        // second message-container, so match the leaf card, not its wrapper.
+        .filter({ hasNot: user1Page.getByTestId('message-container') });
 
       await expect(seededThread).toBeVisible({ timeout: 30_000 });
       await seededThread.click();
@@ -737,7 +745,10 @@ test.describe('Mention notifications in Notification Box', () => {
 
       const message = user1Page
         .locator('[data-testid="message-container"]')
-        .filter({ hasText: 'Initial conversation thread for mention test' });
+        .filter({ hasText: 'Initial conversation thread for mention test' })
+        // Feed cards nest: an open thread renders its reply composer inside a
+        // second message-container, so match the leaf card, not its wrapper.
+        .filter({ hasNot: user1Page.getByTestId('message-container') });
       await expect(message).toBeVisible();
 
       const reactionResponse = user1Page.waitForResponse(

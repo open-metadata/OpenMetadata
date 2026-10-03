@@ -405,7 +405,11 @@ test.describe(
         });
 
         await test.step('New row renders in the list', async () => {
-          await expect(page.getByText(scenario.label)).toBeVisible();
+          // The label text also appears in the page sub-heading, so address the
+          // listing row by the entity type it is keyed on.
+          await expect(
+            page.getByTestId(`row-${scenario.entityType}`)
+          ).toBeVisible();
           for (const propertyName of scenario.customPropertyNames) {
             await expect(
               page.getByText(`extension.${propertyName}`)

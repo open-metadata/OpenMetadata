@@ -55,7 +55,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Wait for dropdown to ensure options are visible
       // Antd dropdowns often render in portal, so we look for text 'Yesterday' globaly or in dropdown
-      const yesterdayOption = page.getByRole('menuitemradio', { name: 'Yesterday' });
+      const yesterdayOption = page.getByRole('menuitemradio', {
+        name: 'Yesterday',
+      });
       await expect(yesterdayOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -106,7 +108,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByRole('menuitemradio', { name: 'Yesterday' });
+      const yesterdayOption = page.getByRole('menuitemradio', {
+        name: 'Yesterday',
+      });
       await yesterdayOption.click();
 
       // Verify Time filter is active
@@ -180,7 +184,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByRole('menuitemradio', { name: 'Yesterday' });
+      const yesterdayOption = page.getByRole('menuitemradio', {
+        name: 'Yesterday',
+      });
       // Wait for API response
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
@@ -218,7 +224,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByRole('menuitemradio', { name: 'Yesterday' });
+      const yesterdayOption = page.getByRole('menuitemradio', {
+        name: 'Yesterday',
+      });
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
       );
@@ -237,7 +245,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const last7DaysOption = page.getByRole('menuitemradio', { name: 'Last 7 Days' });
+      const last7DaysOption = page.getByRole('menuitemradio', {
+        name: 'Last 7 Days',
+      });
       await expect(last7DaysOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -483,7 +493,8 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .locator(
           '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu-item'
         )
-        .filter({ hasText: '50' });
+        .filter({ hasText: '50' })
+        .first();
 
       if (await option50Global.isVisible()) {
         const auditLogResponse = page.waitForResponse(

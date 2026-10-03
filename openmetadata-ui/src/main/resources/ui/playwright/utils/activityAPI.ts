@@ -73,7 +73,11 @@ export const getActivityFeedItems = (page: Page) =>
   page.locator('#center-container').getByTestId('message-container');
 
 export const getFeedItemByText = async (page: Page, text: string) => {
-  const feedItem = getActivityFeedItems(page).filter({ hasText: text });
+  // Feed cards nest — an open thread renders its reply composer inside a second
+  // message-container — so match the leaf card rather than its wrapper.
+  const feedItem = getActivityFeedItems(page)
+    .filter({ hasText: text })
+    .filter({ hasNot: page.getByTestId('message-container') });
 
   await expect(feedItem).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
   await expect(feedItem).toContainText(text);

@@ -1550,7 +1550,8 @@ test.describe(
         await page.click('#testCaseFormV1_params_locationReferenceType');
         const postalCodeOption = page
           .getByRole('option')
-          .filter({ hasText: 'POSTAL_CODE' });
+          .filter({ hasText: 'POSTAL_CODE' })
+          .first();
         await expect(postalCodeOption).toBeVisible();
         await postalCodeOption.click();
 

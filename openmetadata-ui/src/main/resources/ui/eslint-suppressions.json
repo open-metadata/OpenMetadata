@@ -144,7 +144,7 @@
   },
   "playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 1
+      "count": 2
     }
   },
   "playwright/e2e/Features/DataQuality/DataQuality.spec.ts": {
@@ -437,12 +437,17 @@
   },
   "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 3
     }
   },
   "playwright/e2e/Features/Topic.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
+    }
+  },
+  "playwright/e2e/Features/Workflows/NoOpWorkflowNodeConfig.spec.ts": {
+    "om-playwright/no-positional-locator": {
+      "count": 1
     }
   },
   "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts": {
@@ -461,6 +466,11 @@
     }
   },
   "playwright/e2e/Flow/MetricListSearch.spec.ts": {
+    "om-playwright/no-positional-locator": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Flow/ObservabilityAlerts.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
     }
@@ -498,6 +508,11 @@
   "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
+    }
+  },
+  "playwright/e2e/Pages/AuditLogs.spec.ts": {
+    "om-playwright/no-positional-locator": {
+      "count": 1
     }
   },
   "playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts": {
@@ -589,7 +604,7 @@
       "count": 1
     },
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 6
     }
   },
   "playwright/e2e/Pages/GlossaryImportExport.spec.ts": {
