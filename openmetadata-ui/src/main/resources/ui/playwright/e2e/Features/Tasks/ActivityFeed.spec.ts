@@ -847,7 +847,7 @@ test.describe('Activity Feed - Entity Page counts', () => {
     );
 
     await expect(
-      feedItems.filter({ hasText: seededActivitySummary }).first()
+      feedItems.filter({ hasText: seededActivitySummary })
     ).toBeVisible({ timeout: 30_000 });
 
     // Deliberately not asserting badge === rendered here. The badge is a

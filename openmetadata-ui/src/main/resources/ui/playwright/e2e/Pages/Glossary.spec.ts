@@ -2162,8 +2162,7 @@ test.describe('Glossary tests', () => {
 
         const languageDropdown = page
           .locator('.nav-bar-side-items button.ant-dropdown-trigger')
-          .filter({ hasText: 'EN' })
-          .first();
+          .filter({ hasText: 'EN' });
         await languageDropdown.click();
         await waitForAntdPopupToSettle(page);
 
@@ -2205,8 +2204,7 @@ test.describe('Glossary tests', () => {
 
         const languageDropdown = page
           .locator('.nav-bar-side-items button.ant-dropdown-trigger')
-          .filter({ hasText: 'DE' })
-          .first();
+          .filter({ hasText: 'DE' });
         await languageDropdown.click();
         await waitForAntdPopupToSettle(page);
 

@@ -231,7 +231,7 @@ export const selectActiveGlossaryTerm = async (
   page: Page,
   glossaryTermName: string
 ) => {
-  const glossaryTermEntry = page.getByTestId(glossaryTermName).first();
+  const glossaryTermEntry = page.getByTestId(glossaryTermName);
 
   await expect(glossaryTermEntry).toBeVisible();
   await glossaryTermEntry.scrollIntoViewIfNeeded().catch(() => undefined);
@@ -996,14 +996,13 @@ export const dragAndDropTerm = async (
   // Find the row containing the drag element text
   const dragLocator = page
     .locator('tr')
-    .filter({ hasText: dragElement })
-    .first();
+    .filter({ hasText: dragElement });
 
   // Find the row containing the drop target text (or the header if dropTarget is "Terms")
   const dropLocator =
     dropTarget === 'Terms'
       ? page.locator('th:has-text("Terms")').first()
-      : page.locator('tr').filter({ hasText: dropTarget }).first();
+      : page.locator('tr').filter({ hasText: dropTarget });
 
   // The glossary page keeps rendering after its loaders clear: the description
   // block above the table hydrates last and pushes every row down by about a row

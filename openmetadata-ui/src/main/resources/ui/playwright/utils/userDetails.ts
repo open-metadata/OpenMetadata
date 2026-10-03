@@ -54,8 +54,7 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
 
   const directTeamOption = teamDropdown
     .locator('.ant-select-tree-title')
-    .filter({ hasText: new RegExp(`^${teamName}$`) })
-    .first();
+    .filter({ hasText: new RegExp(`^${teamName}$`) });
 
   if (await directTeamOption.isVisible().catch(() => false)) {
     // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay

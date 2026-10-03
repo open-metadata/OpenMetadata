@@ -750,8 +750,7 @@ export const addUser = async (
   await rolesSearchResponse;
   const roleOption = page
     .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) })
-    .first();
+    .filter({ hasText: new RegExp(`^${role}$`) });
   await expect(roleOption).toBeVisible({ timeout: 120000 });
   await roleOption.click();
   await clickOutside(page);
@@ -768,8 +767,7 @@ export const addUser = async (
     const personaOption = page
       .locator('.ant-select-dropdown:visible')
       .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] })
-      .first();
+      .filter({ hasText: personas[0] });
     await personaOption.waitFor({ state: 'visible' });
     await personaOption.click();
     await clickOutside(page);

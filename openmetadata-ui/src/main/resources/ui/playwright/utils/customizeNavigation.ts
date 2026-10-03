@@ -32,13 +32,12 @@ const NAV_ITEMS = [
 export const checkDefaultStateForNavigationTree = async (page: Page) => {
   for (const item of NAV_ITEMS) {
     await expect(
-      page.getByTestId('page-layout-v1').getByText(item).first()
+      page.getByTestId('page-layout-v1').getByText(item)
     ).toBeVisible();
     await expect(
       page
         .getByTestId('page-layout-v1')
         .getByText(item)
-        .first()
         .getByRole('switch')
     ).toBeChecked();
   }

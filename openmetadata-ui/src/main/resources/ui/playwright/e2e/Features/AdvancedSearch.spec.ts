@@ -498,7 +498,6 @@ test.describe(
             dropdown
               .getByRole('option')
               .filter({ hasText: new RegExp(`^${status}$`, 'i') })
-              .first()
           ).toBeVisible();
         }
       });

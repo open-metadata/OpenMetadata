@@ -411,7 +411,7 @@ export const uploadFileViaModal = async (
     name: fileName,
   });
 
-  await expect(modal.getByText(fileName).first()).toBeVisible();
+  await expect(modal.getByText(fileName)).toBeVisible();
 
   const uploadResPromise = page.waitForResponse(
     '/api/v1/contextCenter/drive/files/upload'

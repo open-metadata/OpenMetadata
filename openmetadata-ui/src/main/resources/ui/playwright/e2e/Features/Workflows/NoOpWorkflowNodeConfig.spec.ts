@@ -106,8 +106,7 @@ async function openNodeConfigSidebar(page: Page) {
 
   const node = page
     .locator('.react-flow__node')
-    .filter({ hasText: 'Run App' })
-    .first();
+    .filter({ hasText: 'Run App' });
 
   await expect(node).toBeVisible();
   await node.click();

@@ -646,7 +646,7 @@ export const addMultiOwner = async (data: {
 
   for (const name of owners) {
     await expect(
-      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name).first()
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
     ).toBeVisible();
   }
 };
@@ -992,7 +992,6 @@ export const assignTag = async (
 
   await page
     .getByTestId(`tree-node-${tagFqn ? `${tagFqn}` : tag}`)
-    .first()
     .click();
 
   await page.getByTestId('update-btn').waitFor({ state: 'visible' });
@@ -1247,8 +1246,7 @@ export const openColumnDetailPanel = async ({
   if (entityType === 'MlModel') {
     clickTarget = page
       .locator(`[${rowSelector}="${columnId}"]`)
-      .getByTestId(columnNameTestId)
-      .first();
+      .getByTestId(columnNameTestId);
     await clickTarget.waitFor({ state: 'visible' });
   } else {
     const row = page.locator(`[${rowSelector}="${columnId}"]`).first();
@@ -2435,7 +2433,6 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
       .getByTestId('explore-tree')
       .getByRole('row')
       .filter({ hasText: serviceType })
-      .first()
   ).toHaveAttribute('aria-selected', 'true');
 };
 
@@ -2675,10 +2672,12 @@ export const testCopyLinkButton = async ({
   expectedUrlPath: string;
   entityFqn: string;
 }) => {
-  await expect(page.getByTestId(containerTestId)).toBeVisible();
+  const container = page.getByTestId(containerTestId);
+  await expect(container).toBeVisible();
 
-  // Find the first copy button and verify it's visible
-  const copyButton = page.getByTestId(buttonTestId).first();
+  // Scope to the container the caller named: every column/field row renders its
+  // own copy button, so a page-wide lookup is ambiguous by construction.
+  const copyButton = container.getByTestId(buttonTestId);
   await expect(copyButton).toBeVisible();
 
   // Click copy button and get clipboard text

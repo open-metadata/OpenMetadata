@@ -91,7 +91,6 @@ test(
       await page
         .getByRole('option')
         .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
-        .first()
         .click();
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
@@ -109,7 +108,6 @@ test(
         await page
           .getByRole('option')
           .filter({ hasText: dimension })
-          .first()
           .click();
       }
 
@@ -125,7 +123,6 @@ test(
       await page
         .getByRole('option')
         .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.label })
-        .first()
         .click();
 
       await submitTestCaseForm(page);
@@ -171,7 +168,6 @@ test(
         .filter({
           hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0],
         })
-        .first()
         .click();
 
       await page.keyboard.press('Escape');

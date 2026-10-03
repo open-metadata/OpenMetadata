@@ -238,7 +238,7 @@ const selectExtensionReference = async ({
 
   const option = optionTestId
     ? page.getByTestId(optionTestId)
-    : page.getByRole('option').filter({ hasText: optionText }).first();
+    : page.getByRole('option').filter({ hasText: optionText });
   await expect(option).toBeVisible({ timeout: 15000 });
   await option.click();
 };
@@ -405,7 +405,7 @@ test.describe(
         });
 
         await test.step('New row renders in the list', async () => {
-          await expect(page.getByText(scenario.label).first()).toBeVisible();
+          await expect(page.getByText(scenario.label)).toBeVisible();
           for (const propertyName of scenario.customPropertyNames) {
             await expect(
               page.getByText(`extension.${propertyName}`)

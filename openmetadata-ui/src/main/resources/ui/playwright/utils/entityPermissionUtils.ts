@@ -146,7 +146,7 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).toBeVisible();
+        await expect(testUserPage.getByText(testId)).toBeVisible();
 
         break;
       }
@@ -223,7 +223,7 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).not.toBeVisible();
+        await expect(testUserPage.getByText(testId)).not.toBeVisible();
 
         break;
       }

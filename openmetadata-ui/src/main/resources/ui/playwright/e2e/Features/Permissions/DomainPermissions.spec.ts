@@ -109,7 +109,7 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
         .getByTestId('tags-container')
         .getByTestId('add-tag');
     } else {
-      element = testUserPage.getByTestId(testId).first();
+      element = testUserPage.getByTestId(testId);
     }
 
     await expect(element).toBeVisible();
@@ -179,7 +179,7 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
         .getByTestId('tags-container')
         .getByTestId('add-tag');
     } else {
-      element = testUserPage.getByTestId(testId).first();
+      element = testUserPage.getByTestId(testId);
     }
 
     await expect(element).not.toBeVisible();

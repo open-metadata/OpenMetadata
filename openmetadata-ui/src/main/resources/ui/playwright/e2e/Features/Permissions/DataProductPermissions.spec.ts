@@ -113,7 +113,7 @@ test.describe('Data Product Permissions', () => {
           .getByTestId('tags-container')
           .getByTestId('add-tag');
       } else {
-        element = testUserPage.getByTestId(testId).first();
+        element = testUserPage.getByTestId(testId);
       }
 
       await expect(element).toBeVisible();
@@ -167,7 +167,7 @@ test.describe('Data Product Permissions', () => {
           .getByTestId('tags-container')
           .getByTestId('add-tag');
       } else {
-        element = testUserPage.getByTestId(testId).first();
+        element = testUserPage.getByTestId(testId);
       }
 
       await expect(element).not.toBeVisible();

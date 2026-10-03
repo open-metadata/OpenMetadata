@@ -951,8 +951,7 @@ test.describe(
 
           const dimensionCard = page
             .locator('[data-testid="status-data-widget"]')
-            .filter({ hasText: dimension.displayText })
-            .first();
+            .filter({ hasText: dimension.displayText });
 
           const cardCount = await dimensionCard.count();
           if (cardCount > 0) {

@@ -188,8 +188,7 @@ export const openEntitySummaryPanel = async ({
         .locator('[data-testid^="table-data-card"]')
         .filter({
           has: page.getByTestId('entity-link').filter({ hasText: entityName }),
-        })
-        .first();
+        });
 
   expect(
     await runSearch(),

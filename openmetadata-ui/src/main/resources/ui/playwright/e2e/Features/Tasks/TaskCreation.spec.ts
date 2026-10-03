@@ -123,8 +123,7 @@ test.describe('Task Creation - Request Description', () => {
     // Find column row and click request description within that row
     const columnRow = page
       .locator('tr')
-      .filter({ has: page.locator('[data-testid="column-name"]') })
-      .first();
+      .filter({ has: page.locator('[data-testid="column-name"]') });
     await columnRow.hover();
 
     // Find the request description button within this specific column row

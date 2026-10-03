@@ -3789,7 +3789,6 @@ test.describe('Domain description editor popups', () => {
       await page
         .locator('.mention-item')
         .filter({ hasText: 'admin' })
-        .first()
         .click();
 
       await expect(description.locator('a[data-type="mention"]')).toBeVisible();

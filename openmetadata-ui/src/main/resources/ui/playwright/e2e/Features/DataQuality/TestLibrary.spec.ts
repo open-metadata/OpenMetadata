@@ -224,8 +224,7 @@ test.describe(
 
         // Find and click edit button on first row
         const firstEditButton = page
-          .getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`)
-          .first();
+          .getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`);
         await firstEditButton.click();
 
         // Wait for drawer to open (form body confirms the edit drawer opened).

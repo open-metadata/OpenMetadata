@@ -728,7 +728,7 @@ test.describe('Context Center - Documents Page', () => {
       buffer: Buffer.from('context center upload test file'),
     });
 
-    await expect(modal.getByText(fileName).first()).toBeVisible();
+    await expect(modal.getByText(fileName)).toBeVisible();
 
     const uploadResPromise = page.waitForResponse(
       '/api/v1/contextCenter/drive/files/upload'
@@ -740,7 +740,7 @@ test.describe('Context Center - Documents Page', () => {
     contextFileIdsToCleanup.add(uploadedDocument.id);
 
     await expect(modal).not.toBeVisible();
-    await expect(page.getByText(fileName).first()).toBeVisible();
+    await expect(page.getByText(fileName)).toBeVisible();
   });
 
   // ─── Req 1: All card details (name, size, updatedBy, updatedAt, folder) ──
@@ -1651,7 +1651,7 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: fileName,
     });
-    await expect(modal.getByText(fileName).first()).toBeVisible();
+    await expect(modal.getByText(fileName)).toBeVisible();
 
     // Trigger the first (failing) upload.
     const failedResPromise = page.waitForResponse(
@@ -1800,7 +1800,7 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: errorFile,
     });
-    await expect(modal.getByText(errorFile).first()).toBeVisible();
+    await expect(modal.getByText(errorFile)).toBeVisible();
 
     const firstFailRes = page.waitForResponse(
       '**/api/v1/contextCenter/drive/files/upload'
@@ -1819,7 +1819,7 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: newFile,
     });
-    await expect(modal.getByText(newFile).first()).toBeVisible();
+    await expect(modal.getByText(newFile)).toBeVisible();
 
     // Upload the new file — it succeeds.
     const secondSuccessRes = waitForResponseWithStatus(

@@ -512,8 +512,7 @@ export const toastNotification = async (
 ) => {
   const toast = page
     .getByTestId('alert-bar')
-    .filter({ hasText: message })
-    .first();
+    .filter({ hasText: message });
 
   // Toasts auto-dismiss; assert only the text-filtered toast being visible, not its internal
   // icon, to avoid the icon detaching between the filter resolving and the check.
@@ -537,7 +536,6 @@ export const waitForToastToDisappear = async (
   await page
     .getByTestId('alert-bar')
     .filter({ hasText: message })
-    .first()
     .waitFor({ state: 'detached', timeout });
 };
 
@@ -1712,10 +1710,10 @@ export const testTableSearch = async (
     await waitForSearchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByText(searchTerm).first()).toBeVisible({
+    await expect(page.getByText(searchTerm)).toBeVisible({
       timeout: 5_000,
     });
-    await expect(page.getByText(notVisibleText).first()).not.toBeVisible({
+    await expect(page.getByText(notVisibleText)).not.toBeVisible({
       timeout: 5_000,
     });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });

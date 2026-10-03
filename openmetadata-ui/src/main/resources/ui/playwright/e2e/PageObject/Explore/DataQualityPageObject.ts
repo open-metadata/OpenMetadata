@@ -251,7 +251,7 @@ export class DataQualityPageObject extends RightPanelBase {
     expectedStatus: string
   ): Promise<void> {
     const cards = this.testCaseCards;
-    const card = cards.filter({ hasText: testCaseName }).first();
+    const card = cards.filter({ hasText: testCaseName });
     await card.waitFor({ state: 'visible' });
 
     const statusBadge = card.locator('.status-badge-label');
@@ -268,7 +268,7 @@ export class DataQualityPageObject extends RightPanelBase {
     testCaseName: string,
     details: { columnName?: string; entityLink?: string }
   ): Promise<void> {
-    const card = this.testCaseCards.filter({ hasText: testCaseName }).first();
+    const card = this.testCaseCards.filter({ hasText: testCaseName });
     await card.waitFor({ state: 'visible' });
 
     if (details.columnName) {

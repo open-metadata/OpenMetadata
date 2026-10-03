@@ -48,8 +48,7 @@ const expandTreeNode = async (page: Page, titleTestId: string) => {
   const row = page
     .getByTestId('explore-tree')
     .getByRole('row')
-    .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
-    .first();
+    .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) });
 
   const isExpanded = async () =>
     (await row.getAttribute('aria-expanded')) === 'true';

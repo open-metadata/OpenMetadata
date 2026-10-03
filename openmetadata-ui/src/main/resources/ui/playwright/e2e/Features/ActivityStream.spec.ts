@@ -94,7 +94,6 @@ test.describe('Activity Stream on Entity Pages', () => {
       page
         .locator('#feedData [data-testid="message-container"]')
         .filter({ hasText: seededActivitySummary })
-        .first()
     ).toBeVisible({ timeout: 30_000 });
   });
 

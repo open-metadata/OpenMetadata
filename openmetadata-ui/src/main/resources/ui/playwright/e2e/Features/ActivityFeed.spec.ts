@@ -322,7 +322,6 @@ test.describe('FeedWidget on landing page', () => {
       widget
         .getByTestId('message-container')
         .filter({ hasText: ownedActivityMarker })
-        .first()
     ).toBeVisible();
 
     await selectActivityFeedFilterAndVerifyEndpoint(
@@ -336,7 +335,6 @@ test.describe('FeedWidget on landing page', () => {
       widget
         .getByTestId('message-container')
         .filter({ hasText: followedActivityMarker })
-        .first()
     ).toBeVisible();
 
     await selectActivityFeedFilterAndVerifyEndpoint(
@@ -395,8 +393,7 @@ test.describe('FeedWidget on landing page', () => {
 
     const seededCard = widget
       .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker })
-      .first();
+      .filter({ hasText: ownedActivityMarker });
 
     await expect(seededCard).toBeVisible();
     await expect(seededCard.getByTestId('headerText')).toBeVisible();
@@ -422,8 +419,7 @@ test.describe('FeedWidget on landing page', () => {
     // an index would not resolve to the same card on the toggle-off pass.
     const seededCard = widget
       .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker })
-      .first();
+      .filter({ hasText: ownedActivityMarker });
 
     await expect(seededCard).toBeVisible();
 
@@ -461,8 +457,7 @@ test.describe('FeedWidget on landing page', () => {
 
     const seededCard = widget
       .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker })
-      .first();
+      .filter({ hasText: ownedActivityMarker });
 
     await expect(seededCard).toBeVisible();
     await seededCard.click();
@@ -584,8 +579,7 @@ test.describe('Mention notifications in Notification Box', () => {
 
       const seededThread = user1Page
         .locator('[data-testid="message-container"]')
-        .filter({ hasText: 'Initial conversation thread for mention test' })
-        .first();
+        .filter({ hasText: 'Initial conversation thread for mention test' });
 
       await expect(seededThread).toBeVisible({ timeout: 30_000 });
       await seededThread.click();
@@ -743,8 +737,7 @@ test.describe('Mention notifications in Notification Box', () => {
 
       const message = user1Page
         .locator('[data-testid="message-container"]')
-        .filter({ hasText: 'Initial conversation thread for mention test' })
-        .first();
+        .filter({ hasText: 'Initial conversation thread for mention test' });
       await expect(message).toBeVisible();
 
       const reactionResponse = user1Page.waitForResponse(
@@ -869,8 +862,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       .locator(
         '[data-testid="message-container"], [data-testid="feed-reply-card"]'
       )
-      .filter({ hasText: CHINESE_MENTION_THREAD_MESSAGE })
-      .first();
+      .filter({ hasText: CHINESE_MENTION_THREAD_MESSAGE });
 
     await expect(seededThread).toBeVisible({ timeout: 30_000 });
     await seededThread.click();
@@ -902,8 +894,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
 
     const hashtagItem = page
       .locator('.hashtag-item')
-      .filter({ hasText: label })
-      .first();
+      .filter({ hasText: label });
 
     if (await hashtagItem.isVisible().catch(() => false)) {
       await hashtagItem.click();
@@ -1002,12 +993,12 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   // one lands. Anything asserting on order, counts or the active item has to
   // wait for BOTH kinds to be on screen first, or it races the slower response.
   const waitForBothFeedKinds = async (feedList: Locator) => {
-    await expect(
-      feedList.filter({ hasText: conversationMessage }).first()
-    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
-    await expect(
-      feedList.filter({ hasText: activityMarker }).first()
-    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+    await expect(feedList.filter({ hasText: conversationMessage })).toBeVisible(
+      { timeout: FEED_ITEM_TIMEOUT }
+    );
+    await expect(feedList.filter({ hasText: activityMarker })).toBeVisible({
+      timeout: FEED_ITEM_TIMEOUT,
+    });
   };
 
   test.beforeAll(
@@ -1089,15 +1080,15 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     const feedList = await openActivityFeedTab(adminPage);
 
     // Conversation thread must be visible...
-    await expect(
-      feedList.filter({ hasText: conversationMessage }).first()
-    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+    await expect(feedList.filter({ hasText: conversationMessage })).toBeVisible(
+      { timeout: FEED_ITEM_TIMEOUT }
+    );
 
     // ...alongside the seeded change-event activity (from /api/v1/activity).
     // On the buggy either-or code these two never render together.
-    await expect(
-      feedList.filter({ hasText: activityMarker }).first()
-    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+    await expect(feedList.filter({ hasText: activityMarker })).toBeVisible({
+      timeout: FEED_ITEM_TIMEOUT,
+    });
   });
 
   test('A change-event activity exposes its reply editor', async ({
@@ -1108,7 +1099,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
 
     // Open the seeded change-event activity in the right panel. Scoped to
     // #feedData so this is the list card, not the panel's own copy.
-    const activityCard = feedList.filter({ hasText: activityMarker }).first();
+    const activityCard = feedList.filter({ hasText: activityMarker });
     await activityCard.click();
     await waitForAllLoadersToDisappear(adminPage);
 
@@ -1144,9 +1135,9 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     // post-reply count. Both kinds have to be on screen before counting.
     await waitForBothFeedKinds(feedList);
 
-    const seededConversation = feedList
-      .filter({ hasText: conversationMessage })
-      .first();
+    const seededConversation = feedList.filter({
+      hasText: conversationMessage,
+    });
 
     const countBeforeReply = await feedListCount();
 
@@ -1289,7 +1280,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await waitForBothFeedKinds(feedList);
 
     // Select the seeded change-event activity into the right panel.
-    const activityCard = feedList.filter({ hasText: activityMarker }).first();
+    const activityCard = feedList.filter({ hasText: activityMarker });
     await activityCard.click();
     await waitForAllLoadersToDisappear(adminPage);
 

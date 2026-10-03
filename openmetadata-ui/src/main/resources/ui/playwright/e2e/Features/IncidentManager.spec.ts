@@ -188,7 +188,6 @@ const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
     ? page
         .locator('[data-testid="test-case-incident-manager-table"] tbody tr')
         .filter({ hasText: testCaseName })
-        .first()
         .locator('button')
         .last()
     : null;

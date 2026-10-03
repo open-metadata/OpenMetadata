@@ -156,7 +156,7 @@ test.describe('User with different Roles', () => {
       team.responseData.displayName
     );
 
-    await adminPage.getByText(team.responseData.displayName).first().click();
+    await adminPage.getByText(team.responseData.displayName).click();
 
     const domainResponse = adminPage.waitForResponse((response) =>
       response.url().includes('/api/v1/domains/hierarchy')
@@ -602,7 +602,7 @@ test.describe('User with different Roles', () => {
       const searchResponse = await searchPromise;
       expect(searchResponse.status()).toBe(200);
 
-      const assetCard = adminPage.getByText(assetCardText).first();
+      const assetCard = adminPage.getByText(assetCardText);
 
       await expect(assetCard).toBeVisible();
 
