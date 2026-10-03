@@ -41,7 +41,7 @@ jest.mock('../../constants/constants', () => ({
   NO_DATA_PLACEHOLDER: '--',
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Edit01: () => <svg />,
   Trash01: () => <svg />,
 }));

@@ -11,214 +11,35 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  chooseSelectOption,
   getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  backToLanding,
+  createRelationTypeViaApi,
+  deleteRelationTypeByNameViaApi,
+  ensureCustomProperty,
+  ensureNoIntakeForm,
+  fillInput,
+  fillTextArea,
+  findRowAcrossPages,
+  INTAKE_FORMS_API,
+  navigateToGlossaryList,
+  navigateToIntakeList,
+  openGovernanceSettings,
+  RELATION_TYPES_API,
+  selectOption,
+} from '../../utils/governance';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
-import { enableAiAppMode } from '../Utils/appMode';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const RELATION_TYPES_API = '/api/v1/relationshipTypes';
-const INTAKE_FORMS_API = '/api/v1/governance/intakeForms';
 const SYSTEM_DEFINED_RELATION = 'broader';
-
-// ─── API helpers ──────────────────────────────────────────────────────────────
-
-type RelationTypePayload = { name: string; displayName: string };
-type RelationshipTypeResponse = RelationTypePayload & { id: string };
-
-const createRelationTypeViaApi = async (
-  apiContext: APIRequestContext,
-  payload: RelationTypePayload
-): Promise<RelationshipTypeResponse> => {
-  const response = await apiContext.post(RELATION_TYPES_API, {
-    data: {
-      ...payload,
-      category: 'CUSTOM',
-      description: '',
-      paletteKey: 'VIOLET',
-      rdfPredicate: `https://example.org/${payload.name}`,
-    },
-  });
-  expect(response.status()).toBe(201);
-
-  return response.json() as Promise<RelationshipTypeResponse>;
-};
-
-const deleteRelationTypeViaApi = async (
-  apiContext: APIRequestContext,
-  id: string
-) => {
-  const response = await apiContext.delete(`${RELATION_TYPES_API}/${id}`);
-  expect([200, 204, 404]).toContain(response.status());
-};
-
-const deleteRelationTypeByNameViaApi = async (
-  apiContext: APIRequestContext,
-  name: string
-) => {
-  const response = await apiContext.get(
-    `${RELATION_TYPES_API}/name/${encodeURIComponent(name)}`
-  );
-  if (response.ok()) {
-    const rt = (await response.json()) as RelationshipTypeResponse;
-    await deleteRelationTypeViaApi(apiContext, rt.id);
-  }
-};
-
-const ensureNoIntakeForm = async (
-  apiContext: APIRequestContext,
-  entityType: string
-) => {
-  const listRes = await apiContext.get(
-    `${INTAKE_FORMS_API}?limit=100&include=all`
-  );
-  if (listRes.status() !== 200) {
-    return;
-  }
-  const list = await listRes.json();
-  const forms = (list.data ?? []) as Array<{ id: string; entityType: string }>;
-  for (const form of forms) {
-    if (form.entityType === entityType) {
-      const del = await apiContext.delete(
-        `${INTAKE_FORMS_API}/${form.id}?hardDelete=true`
-      );
-      expect([200, 204, 404]).toContain(del.status());
-    }
-  }
-};
-
-const ensureCustomProperty = async (
-  apiContext: APIRequestContext,
-  entityType: string,
-  propertyName: string,
-  propertyTypeName: string
-) => {
-  const typeRes = await apiContext.get(
-    `/api/v1/metadata/types/name/${entityType}?fields=customProperties`
-  );
-  expect(typeRes.status()).toBe(200);
-  const type = await typeRes.json();
-  const existing = (type.customProperties ?? []).find(
-    (cp: { name: string }) => cp.name === propertyName
-  );
-  if (existing) {
-    return;
-  }
-  const propTypeRes = await apiContext.get(
-    `/api/v1/metadata/types/name/${propertyTypeName}`
-  );
-  expect(propTypeRes.status()).toBe(200);
-  const propType = await propTypeRes.json();
-  const put = await apiContext.put(`/api/v1/metadata/types/${type.id}`, {
-    data: {
-      name: propertyName,
-      description: 'Custom property registered by ProfileModalGovernance test',
-      propertyType: { id: propType.id, type: 'type' },
-    },
-  });
-  expect(put.status()).toBe(200);
-};
-
-// ─── UI helpers ───────────────────────────────────────────────────────────────
-
-/** Open the profile modal and navigate to the Governance tab. */
-const openGovernanceSettings = async (page: Page): Promise<void> => {
-  await enableAiAppMode(page);
-  await redirectToHomePage(page);
-  await waitForAllLoadersToDisappear(page);
-  await page.getByTestId('ask-ai-user-menu-trigger').click();
-  await page.getByTestId('ai-user-menu-profile').click();
-  await page.getByTestId('ai-profile-page').waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-  await page.getByTestId('profile-nav-governance').click();
-  await page.getByTestId('governance-landing').waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-/** Navigate to the Glossary Relations list from the landing. */
-const navigateToGlossaryList = async (page: Page): Promise<void> => {
-  const listResponse = page.waitForResponse(
-    (r) =>
-      r.url().includes(RELATION_TYPES_API) && r.request().method() === 'GET'
-  );
-  await page.getByTestId('governance-card-glossary-relations').click();
-  await listResponse;
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('relation-types-table')).toBeVisible();
-};
-
-/** Navigate back to the landing via the breadcrumb. */
-const backToLanding = async (page: Page): Promise<void> => {
-  const landing = page.getByTestId('governance-landing');
-  await page
-    .getByTestId('profile-content-header')
-    .getByLabel('Breadcrumb')
-    .getByText('Governance', { exact: true })
-    .click();
-  await landing.waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-const fillInput = async (page: Page, testId: string, value: string) => {
-  await page.getByTestId(testId).locator('input').fill(value);
-};
-
-const fillTextArea = async (page: Page, testId: string, value: string) => {
-  await page.getByTestId(testId).locator('textarea').fill(value);
-};
-
-const selectOption = async (page: Page, testId: string, option: string) => {
-  await chooseSelectOption(
-    page.getByTestId(testId),
-    page.getByRole('option', { name: option, exact: true })
-  );
-};
-
-/** Scroll through paginated table to find a row by test-id. */
-const findRowAcrossPages = async (
-  page: Page,
-  testId: string
-): Promise<void> => {
-  const target = page.getByTestId(testId);
-
-  while (true) {
-    const found = await target
-      .waitFor({ state: 'visible', timeout: 3_000 })
-      .then(
-        () => true,
-        () => false
-      );
-
-    if (found) {
-      return;
-    }
-
-    const nextBtn = page.getByRole('button', { name: 'Next Page' });
-
-    if ((await nextBtn.count()) === 0 || !(await nextBtn.isEnabled())) {
-      throw new Error(`testId "${testId}" not found on any page`);
-    }
-
-    const currentPage = page.getByLabel('Current page');
-    const pageNumber = Number(await currentPage.inputValue());
-    await nextBtn.click();
-    await expect(currentPage).toHaveValue(String(pageNumber + 1));
-    await page
-      .getByTestId('relation-types-table')
-      .locator('tbody tr')
-      .waitFor({ state: 'visible', timeout: 5_000 });
-  }
-};
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
@@ -231,7 +52,6 @@ test.describe(
     test('shows 2 landing cards and navigates to each section', async ({
       page,
     }) => {
-      test.slow();
 
       await test.step('Open Governance settings tab', async () => {
         await openGovernanceSettings(page);
@@ -281,7 +101,6 @@ test.describe(
     test('creates a custom relation type via the form page', async ({
       page,
     }) => {
-      test.slow();
 
       const relationName = `pwRelModal${uuid()}`;
       const displayName = `PW Modal Relation ${uuid()}`;
@@ -348,7 +167,6 @@ test.describe(
     test('cancel on the form page returns to the list without creating', async ({
       page,
     }) => {
-      test.slow();
 
       const relationName = `pwRelCancelModal${uuid()}`;
 
@@ -371,7 +189,6 @@ test.describe(
     test('edits a custom relation type — name field is immutable', async ({
       page,
     }) => {
-      test.slow();
 
       const relationName = `pwRelEditModal${uuid()}`;
       const updatedDisplayName = `PW Modal Updated ${uuid()}`;
@@ -433,7 +250,6 @@ test.describe(
     });
 
     test('deletes a custom relation type', async ({ page }) => {
-      test.slow();
 
       const relationName = `pwRelDeleteModal${uuid()}`;
       const { apiContext, afterAction } = await getApiContext(page);
@@ -561,21 +377,9 @@ test.describe(
       await afterAction();
     });
 
-    const navigateToIntakeList = async (page: Page) => {
-      const listResponse = page.waitForResponse(
-        (r) =>
-          r.url().includes(INTAKE_FORMS_API) && r.request().method() === 'GET'
-      );
-      await page.getByTestId('governance-card-intake-forms').click();
-      await listResponse;
-      await waitForAllLoadersToDisappear(page);
-      await expect(page.getByTestId('add-intake-form')).toBeVisible();
-    };
-
     test('creates a Data Product intake form via the form page', async ({
       page,
     }) => {
-      test.slow();
 
       await openGovernanceSettings(page);
       await navigateToIntakeList(page);
@@ -660,7 +464,6 @@ test.describe(
     test('cancel on the intake form page returns to the list without saving', async ({
       page,
     }) => {
-      test.slow();
 
       await openGovernanceSettings(page);
       await navigateToIntakeList(page);
@@ -684,7 +487,6 @@ test.describe(
       browser,
       page,
     }) => {
-      test.slow();
 
       await test.step('Seed a form via API', async () => {
         const { apiContext, afterAction } = await performAdminLogin(browser);

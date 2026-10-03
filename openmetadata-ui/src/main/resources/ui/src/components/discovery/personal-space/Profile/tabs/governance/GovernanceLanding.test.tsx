@@ -61,7 +61,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  Documents: () => <svg data-testid="documents-icon" />,
+  Building01: () => <svg data-testid="building-icon" />,
   GlossaryTerm: () => <svg data-testid="glossary-term-icon" />,
 }));
 

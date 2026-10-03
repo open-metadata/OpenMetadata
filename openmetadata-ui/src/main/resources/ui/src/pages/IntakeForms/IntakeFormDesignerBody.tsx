@@ -284,9 +284,11 @@ const IntakeFormDesignerBody = forwardRef<
   );
 
   return (
-    <div
-      className="tw:flex tw:flex-col tw:gap-6 tw:px-4 tw:pb-6 tw:pt-0 tw:md:px-6"
-      data-testid="intake-form-designer-body">
+    <Box
+      className="tw:px-4 tw:pb-6 tw:pt-0 tw:md:px-6"
+      data-testid="intake-form-designer-body"
+      direction="col"
+      gap={6}>
       <Alert
         title={t('message.intake-form-one-per-type-help', {
           entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
@@ -357,7 +359,7 @@ const IntakeFormDesignerBody = forwardRef<
           true
         )}
       </Box>
-    </div>
+    </Box>
   );
 });
 
