@@ -1425,6 +1425,26 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Test
+  void patch_tableTypeRegularToDeltaLake_keepsSameEntity(TestNamespace ns) {
+    // A connector that learns a table is Delta re-ingests it with a new tableType. The type must
+    // flip on the same entity: no new id, no new FQN, no migration.
+    CreateTable request = createMinimalRequest(ns);
+    request.setName(ns.prefix("delta_lake_table"));
+    request.setTableType(TableType.Regular);
+
+    Table table = createEntity(request);
+    assertEquals(TableType.Regular, table.getTableType());
+
+    table.setTableType(TableType.DeltaLake);
+    patchEntity(table.getId().toString(), table);
+
+    Table readBack = getEntity(table.getId().toString());
+    assertEquals(table.getId(), readBack.getId());
+    assertEquals(table.getFullyQualifiedName(), readBack.getFullyQualifiedName());
+    assertEquals(TableType.DeltaLake, readBack.getTableType());
+  }
+
+  @Test
   void test_patchTable_removeColumnWithPrimaryKeyConstraint(TestNamespace ns) {
 
     // Create a table with 3 columns: id (PRIMARY KEY), name, email

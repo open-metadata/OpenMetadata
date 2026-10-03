@@ -54,7 +54,7 @@ DATABRICKS_GET_TABLE_DESCRIBE_JSON = "DESCRIBE TABLE EXTENDED {database_name}.{s
 
 DATABRICKS_GET_TABLE_TYPES = textwrap.dedent(
     """
-    SELECT table_name, table_type
+    SELECT table_name, table_type, data_source_format
     FROM {database_name}.information_schema.tables
     WHERE table_schema = :schema_name
     """

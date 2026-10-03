@@ -595,8 +595,12 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
     @patch.object(UnitycatalogSource, "sql_connection", create=True)
     @patch("databricks.sdk.service.catalog.TablesAPI.list")
     @patch("databricks.sdk.service.catalog.TablesAPI.get")
+    # The raw tables listing that reveals securable_kind bypasses TablesAPI, so
+    # without this the schema's Iceberg lookup dials the real host and burns the
+    # SDK's whole retry budget before the test can finish.
+    @patch("databricks.sdk.core.ApiClient.do", return_value={"tables": []})
     def test_get_tables_with_constraints(
-        self, mock_dbx_get_table, mock_dbx_list_table, mock_sql_connection, mock_process_table
+        self, mock_api_do, mock_dbx_get_table, mock_dbx_list_table, mock_sql_connection, mock_process_table
     ):
         mock_tables_with_constraints = [
             SimpleNamespace(
