@@ -52,7 +52,6 @@ test.describe(
     test('shows 2 landing cards and navigates to each section', async ({
       page,
     }) => {
-
       await test.step('Open Governance settings tab', async () => {
         await openGovernanceSettings(page);
       });
@@ -101,7 +100,6 @@ test.describe(
     test('creates a custom relation type via the form page', async ({
       page,
     }) => {
-
       const relationName = `pwRelModal${uuid()}`;
       const displayName = `PW Modal Relation ${uuid()}`;
       const { apiContext, afterAction } = await getApiContext(page);
@@ -167,7 +165,6 @@ test.describe(
     test('cancel on the form page returns to the list without creating', async ({
       page,
     }) => {
-
       const relationName = `pwRelCancelModal${uuid()}`;
 
       await openGovernanceSettings(page);
@@ -189,7 +186,6 @@ test.describe(
     test('edits a custom relation type — name field is immutable', async ({
       page,
     }) => {
-
       const relationName = `pwRelEditModal${uuid()}`;
       const updatedDisplayName = `PW Modal Updated ${uuid()}`;
       const { apiContext, afterAction } = await getApiContext(page);
@@ -250,7 +246,6 @@ test.describe(
     });
 
     test('deletes a custom relation type', async ({ page }) => {
-
       const relationName = `pwRelDeleteModal${uuid()}`;
       const { apiContext, afterAction } = await getApiContext(page);
 
@@ -380,7 +375,6 @@ test.describe(
     test('creates a Data Product intake form via the form page', async ({
       page,
     }) => {
-
       await openGovernanceSettings(page);
       await navigateToIntakeList(page);
 
@@ -464,7 +458,6 @@ test.describe(
     test('cancel on the intake form page returns to the list without saving', async ({
       page,
     }) => {
-
       await openGovernanceSettings(page);
       await navigateToIntakeList(page);
 
@@ -487,7 +480,6 @@ test.describe(
       browser,
       page,
     }) => {
-
       await test.step('Seed a form via API', async () => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
         const res = await apiContext.post(INTAKE_FORMS_API, {
