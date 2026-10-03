@@ -39,7 +39,6 @@ import {
   formatDate,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { stopPropagationIfInteractive } from '../../../../utils/InteractiveTargetUtils';
 import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
 import {
   INCIDENT_GROUP_MAX_AVATARS,
@@ -240,15 +239,13 @@ const IncidentGroupsTable = ({
         key={rowId}
         onAction={() => onGroupPreview(group)}>
         <Table.Cell className="tw:w-9 tw:pr-0">
-          <div role="presentation" onClick={stopPropagationIfInteractive}>
-            <Checkbox
-              aria-label={t('label.select-entity', { entity: groupName })}
-              data-testid={`group-select-${rowId}`}
-              isSelected={selectedKeys.has(rowId)}
-              slot={null}
-              onChange={(isSelected) => onGroupSelect(group, isSelected)}
-            />
-          </div>
+          <Checkbox
+            aria-label={t('label.select-entity', { entity: groupName })}
+            data-testid={`group-select-${rowId}`}
+            isSelected={selectedKeys.has(rowId)}
+            slot={null}
+            onChange={(isSelected) => onGroupSelect(group, isSelected)}
+          />
         </Table.Cell>
         <Table.Cell className="tw:max-w-72">
           <StackedCell
@@ -293,18 +290,14 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          {/* The row previews on activation, so the drill-down press has to
-              stay with its button. */}
-          <div role="presentation" onClick={stopPropagationIfInteractive}>
-            <Button
-              aria-label={t('label.view-entity', { entity: groupName })}
-              color="tertiary"
-              data-testid={`group-open-${rowId}`}
-              iconLeading={ChevronRight}
-              size="sm"
-              onPress={() => onGroupOpen(group)}
-            />
-          </div>
+          <Button
+            aria-label={t('label.view-entity', { entity: groupName })}
+            color="tertiary"
+            data-testid={`group-open-${rowId}`}
+            iconLeading={ChevronRight}
+            size="sm"
+            onPress={() => onGroupOpen(group)}
+          />
         </Table.Cell>
       </Table.Row>
     );

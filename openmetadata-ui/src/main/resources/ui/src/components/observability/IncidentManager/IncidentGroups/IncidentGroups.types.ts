@@ -112,7 +112,9 @@ export type BulkIncidentChange =
   | {
       kind: 'status';
       status: BulkIncidentStatus;
-      details?: CreateTestCaseResolutionStatus['testCaseResolutionStatusDetails'];
+      details?: NonNullable<
+        CreateTestCaseResolutionStatus['testCaseResolutionStatusDetails']
+      >;
     }
   | { kind: 'severity'; severity: CreateSeverities };
 
