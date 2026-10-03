@@ -4,36 +4,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.servlet.http.HttpServletRequest;
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.security.JwtFilter;
 
 @Slf4j
 public class McpUtils {
 
   private static final McpJsonMapper JSON_MAPPER =
       new JacksonMcpJsonMapper(JsonUtils.getObjectMapper());
-
-  @SuppressWarnings("unchecked")
-  public static McpSchema.JSONRPCMessage getJsonRpcMessageWithAuthorizationParam(
-      McpJsonMapper jsonMapper, HttpServletRequest request, String body) throws IOException {
-    Map<String, Object> requestMessage = JsonUtils.getMap(JsonUtils.readTree(body));
-    Map<String, Object> params = (Map<String, Object>) requestMessage.get("params");
-    if (params != null) {
-      Map<String, Object> arguments = (Map<String, Object>) params.get("arguments");
-      if (arguments != null) {
-        arguments.put("Authorization", JwtFilter.extractToken(request.getHeader("Authorization")));
-      }
-    }
-    return McpSchema.deserializeJsonRpcMessage(jsonMapper, JsonUtils.pojoToJson(requestMessage));
-  }
 
   @SuppressWarnings("unchecked")
   public static List<Map<String, Object>> loadDefinitionsFromJson(String json) {
@@ -155,16 +137,5 @@ public class McpUtils {
       LOG.error("Error during server startup", e);
       throw new RuntimeException("Failed to start MCP server", e);
     }
-  }
-
-  public static String readRequestBody(HttpServletRequest request) throws IOException {
-    StringBuilder body = new StringBuilder();
-    try (BufferedReader reader = request.getReader()) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        body.append(line);
-      }
-    }
-    return body.toString();
   }
 }
