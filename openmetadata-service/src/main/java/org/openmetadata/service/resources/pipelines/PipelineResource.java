@@ -1000,9 +1000,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
 
     try {
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(""));
       PipelineMetrics metrics =
           repository.getPipelineMetrics(
               query, service, serviceType, status, domain, owner, tier, startTs, endTs);
