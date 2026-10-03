@@ -35,6 +35,7 @@ import org.openmetadata.schema.type.AnnouncementColor;
 import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.AnnouncementType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
@@ -459,6 +460,39 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
             .findFirst()
             .orElseThrow();
     assertEquals(AnnouncementStatus.Expired, listed.getStatus());
+  }
+
+  /**
+   * The schema requires both times, but only on the create/PUT body: PATCH binds the patched JSON
+   * with no bean validation, so a remove op could leave an announcement with no window at all.
+   */
+  @Test
+  void testPatchCannotRemoveTheTimeWindow(TestNamespace ns) {
+    long now = System.currentTimeMillis();
+    Announcement created =
+        createEntity(
+            new CreateAnnouncement()
+                .withName(ns.prefix("window-required"))
+                .withDescription("Keeps its window")
+                .withStartTime(now)
+                .withEndTime(now + 86400000L));
+    String id = created.getId().toString();
+
+    for (String field : List.of("startTime", "endTime")) {
+      assertThrows(
+          InvalidRequestException.class,
+          () ->
+              SdkClients.adminClient()
+                  .announcements()
+                  .patch(
+                      id, JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/" + field + "\"}]")),
+          field);
+    }
+
+    Announcement unchanged = getEntity(id);
+    assertEquals(created.getStartTime(), unchanged.getStartTime());
+    assertEquals(created.getEndTime(), unchanged.getEndTime());
+    assertEquals(AnnouncementStatus.Active, unchanged.getStatus());
   }
 
   @Test
