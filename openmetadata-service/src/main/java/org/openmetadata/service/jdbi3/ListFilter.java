@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
@@ -19,6 +20,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -38,6 +40,17 @@ public class ListFilter extends Filter<ListFilter> {
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
+  // An fqnHash joins one MD5 hex digest per FQN segment.
+  private static final int FQN_HASH_SEGMENT_LENGTH = 32;
+  private static final String FQN_HASH_COLUMN = "fqnHash";
+  // Where a test case's table inherits its domain from, the table itself first.
+  private static final List<TestCaseAncestor> TEST_CASE_DOMAIN_ANCESTORS =
+      List.of(
+          new TestCaseAncestor(Entity.TABLE, "table_entity", FQN_HASH_COLUMN, 4),
+          new TestCaseAncestor(
+              Entity.DATABASE_SCHEMA, "database_schema_entity", FQN_HASH_COLUMN, 3),
+          new TestCaseAncestor(Entity.DATABASE, "database_entity", FQN_HASH_COLUMN, 2),
+          new TestCaseAncestor(Entity.DATABASE_SERVICE, "dbservice_entity", "nameHash", 1));
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -94,8 +107,11 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getTestDefinitionCondition());
     conditions.add(getTestCaseOwnerCondition());
+    conditions.add(getTestCaseUnownedCondition());
+    conditions.add(getIncidentListDateRangeCondition());
     conditions.add(getIncidentAssigneeCondition());
     conditions.add(getIncidentDomainCondition());
+    conditions.add(getIncidentListDomainCondition());
     conditions.add(getIncidentDateRangeCondition());
     conditions.add(getDirectoryCondition(tableName));
     conditions.add(getSpreadsheetCondition(tableName));
@@ -670,6 +686,36 @@ public class ListFilter extends Filter<ListFilter> {
     return result;
   }
 
+  // Scopes the test_case_resolution_status_time_series listing to the test cases with no direct
+  // user or team owner, which is what the owner dimension's "No Owner" incident group holds;
+  // testCaseUnowned is only set by TestCaseResolutionStatusResource#list.
+  private String getTestCaseUnownedCondition() {
+    String result = "";
+    if (Boolean.parseBoolean(queryParams.get("testCaseUnowned"))) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT uotc.fqnHash FROM test_case uotc WHERE NOT EXISTS ("
+                  + "SELECT 1 FROM entity_relationship uoer WHERE uoer.toId = uotc.id "
+                  + "AND uoer.fromEntity IN ('%s', '%s') AND uoer.toEntity = '%s' "
+                  + "AND uoer.relation = %d))",
+              Entity.USER, Entity.TEAM, Entity.TEST_CASE, Relationship.OWNS.ordinal());
+    }
+    return result;
+  }
+
+  // The flat listing's take on getIncidentDateRangeCondition: the range applies to the incident a
+  // record belongs to, so a drill-down from a group lists the incidents that group counted.
+  private String getIncidentListDateRangeCondition() {
+    String column = "tli." + getIncidentDateColumn(queryParams.get("incidentListDateField"));
+    String clauses =
+        getIncidentDateClauses(
+            column, queryParams.get("incidentListStartTs"), queryParams.get("incidentListEndTs"));
+    return clauses.isEmpty()
+        ? ""
+        : String.format(
+            "stateId IN (SELECT tli.stateId FROM test_case_incident tli WHERE %s)", clauses);
+  }
+
   // The incident grouping query (TestCaseResolutionStatusRepository#listIncidentGroups) reduces
   // test_case_resolution_status_time_series records to one latest row per stateId in a CTE
   // aliased {@code i} (createdAt/updatedAt are the chain's first/last record timestamps) and
@@ -682,50 +728,90 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getIncidentDomainCondition() {
-    String domainId = queryParams.get("incidentDomainId");
-    String result = "";
-    if (!nullOrEmpty(domainId)) {
-      result =
-          String.format(
-              "EXISTS (SELECT 1 FROM entity_relationship dr WHERE dr.fromId = :incidentDomainId "
-                  + "AND dr.fromEntity = 'domain' AND dr.relation = %d "
-                  + "AND dr.toId = tc.id AND dr.toEntity = 'testCase')",
-              Relationship.HAS.ordinal());
+    return nullOrEmpty(queryParams.get("incidentDomainId"))
+        ? ""
+        : testCaseInDomainCondition("tc", "incidentDomainId");
+  }
+
+  // The flat listing's take on getIncidentDomainCondition, so a drill-down from a group in a
+  // domain lists the incidents that group counted.
+  private String getIncidentListDomainCondition() {
+    return nullOrEmpty(queryParams.get("incidentListDomainId"))
+        ? ""
+        : "entityFQNHash IN (SELECT dtc.fqnHash FROM test_case dtc WHERE "
+            + testCaseInDomainCondition("dtc", "incidentListDomainId")
+            + ")";
+  }
+
+  // A test case is in the domain it has itself or, as is usual, the one its table has — which the
+  // table may in turn inherit from its schema, database or service. Inherited domains are resolved
+  // at read time and leave no relationship on the entity that inherits them.
+  private static String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
+    String ownDomain =
+        String.format(
+            "EXISTS (SELECT 1 FROM entity_relationship dr WHERE dr.fromId = :%s "
+                + "AND dr.fromEntity = '%s' AND dr.relation = %d "
+                + "AND dr.toId = %s.id AND dr.toEntity = '%s')",
+            domainParam,
+            Entity.DOMAIN,
+            Relationship.HAS.ordinal(),
+            testCaseAlias,
+            Entity.TEST_CASE);
+    return Stream.concat(
+            Stream.of(ownDomain),
+            TEST_CASE_DOMAIN_ANCESTORS.stream()
+                .map(ancestor -> ancestor.inDomainCondition(testCaseAlias, domainParam)))
+        .collect(Collectors.joining(" OR ", "(", ")"));
+  }
+
+  // An ancestor of a test case found by its hash column, which holds the leading fqnDepth hashed
+  // segments of the test case's fqnHash.
+  private record TestCaseAncestor(
+      String entityType, String tableName, String hashColumn, int fqnDepth) {
+
+    String inDomainCondition(String testCaseAlias, String domainParam) {
+      return String.format(
+          "EXISTS (SELECT 1 FROM %s da INNER JOIN entity_relationship dar "
+              + "ON dar.toId = da.id AND dar.toEntity = '%s' "
+              + "WHERE da.%s = LEFT(%s.fqnHash, %d) AND dar.fromId = :%s "
+              + "AND dar.fromEntity = '%s' AND dar.relation = %d)",
+          tableName,
+          entityType,
+          hashColumn,
+          testCaseAlias,
+          fqnHashPrefixLength(),
+          domainParam,
+          Entity.DOMAIN,
+          Relationship.HAS.ordinal());
     }
-    return result;
+
+    private int fqnHashPrefixLength() {
+      return fqnDepth * FQN_HASH_SEGMENT_LENGTH + (fqnDepth - 1) * Entity.SEPARATOR.length();
+    }
   }
 
   private String getIncidentDateRangeCondition() {
-    String start = queryParams.get("incidentStartTs");
-    String end = queryParams.get("incidentEndTs");
+    return getIncidentDateClauses(
+        "i." + getIncidentDateColumn(queryParams.get("incidentDateField")),
+        queryParams.get("incidentStartTs"),
+        queryParams.get("incidentEndTs"));
+  }
+
+  private static String getIncidentDateClauses(String column, String start, String end) {
     List<String> clauses = new ArrayList<>();
-    if (!nullOrEmpty(start) || !nullOrEmpty(end)) {
-      String column = getIncidentDateColumn(queryParams.get("incidentDateField"));
-      if (!nullOrEmpty(start)) {
-        clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
-      }
-      if (!nullOrEmpty(end)) {
-        clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
-      }
+    if (!nullOrEmpty(start)) {
+      clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+    }
+    if (!nullOrEmpty(end)) {
+      clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
     }
     return String.join(" AND ", clauses);
   }
 
-  private String getIncidentDateColumn(String dateField) {
-    String defaulted =
-        dateField == null
-            ? TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT
-            : dateField;
-    return switch (defaulted) {
-      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT -> "i.createdAt";
-      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT -> "i.updatedAt";
-      default -> throw new IllegalArgumentException(
-          String.format(
-              "Invalid dateField '%s'. Must be one of [%s, %s]",
-              dateField,
-              TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT,
-              TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT));
-    };
+  private static String getIncidentDateColumn(String dateField) {
+    return dateField == null
+        ? IncidentDateField.CREATED_AT.value()
+        : IncidentDateField.fromValue(dateField).value();
   }
 
   public String getIncludeCondition(String tableName) {
