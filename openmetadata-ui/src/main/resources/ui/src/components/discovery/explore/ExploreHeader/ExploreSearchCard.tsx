@@ -28,6 +28,7 @@ import { ExploreQuickFilters } from './ExploreQuickFilters';
 import type { QuickFilter } from './ExploreQuickFilters.interface';
 import { ExploreSearchCardInfo } from './ExploreSearchCardInfo';
 import { ExploreSearchInput } from './ExploreSearchInput';
+import { DomainFilterChip } from '../../../common/DomainFilterChip/DomainFilterChip.component';
 
 export const ExploreSearchCard = () => {
   const navigate = useNavigate();
@@ -237,6 +238,7 @@ export const ExploreSearchCard = () => {
       <div className="tw:w-full">
         <ExploreQuickFilters onFilterClick={handleQuickFilterClick} />
       </div>
+      <DomainFilterChip />
     </Box>
   );
 
