@@ -213,6 +213,58 @@ class SqlLineageTest(TestCase):
         # silently dropped, which is correct.
         self.assertEqual(len(col_lineage), 2)
 
+    def test_get_column_lineage_mixed_explicit_and_select_all(self):
+        """
+        SELECT upper(name) AS name_upper, * FROM t produces pairs like
+        [("name_upper","name"), ("*","*")].  The ("*","*") wildcard must expand
+        all source columns while the explicit ("name_upper","name") is preserved —
+        not overwritten by the expansion.
+        """
+        column_lineage_map = {
+            "testdb.public.target": {
+                "testdb.public.sales": [
+                    ("name_upper", "name"),   # SELECT upper(name) AS name_upper
+                    ("*", "*"),               # SELECT *
+                ]
+            }
+        }
+
+        def _table(fqn_str, cols):
+            return Table(
+                id=uuid.uuid4(),
+                name=fqn_str.split(".")[-1],
+                fullyQualifiedName=fqn_str,
+                columns=[
+                    {
+                        "name": c,
+                        "dataType": "VARCHAR",
+                        "fullyQualifiedName": f"{fqn_str}.{c}",
+                    }
+                    for c in cols
+                ],
+            )
+
+        to_entity = _table("testdb.public.target", ["name_upper", "name", "region"])
+        from_entity = _table("testdb.public.sales", ["name", "region"])
+
+        col_lineage = get_column_lineage(
+            to_entity=to_entity,
+            to_table_raw_name="testdb.public.target",
+            from_entity=from_entity,
+            from_table_raw_name="testdb.public.sales",
+            column_lineage_map=column_lineage_map,
+        )
+
+        pairs = {
+            (c.fromColumns[0].root.split(".")[-1], c.toColumn.root.split(".")[-1])
+            for c in col_lineage
+        }
+        # Explicit non-wildcard pair must be present
+        self.assertIn(("name", "name_upper"), pairs)
+        # Wildcard expansion must also be present
+        self.assertIn(("name", "name"), pairs)
+        self.assertIn(("region", "region"), pairs)
+
     def test_populate_column_lineage_map_select_all(self):
         """
         Method to test column lineage map populate func
