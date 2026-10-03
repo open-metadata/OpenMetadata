@@ -26,8 +26,7 @@ public class AlertFactory {
     try {
       return channel.publisher(subscription, config);
     } catch (RuntimeException e) {
-      return new UnservedDestination(
-          subscription, config, "its stored configuration is not usable: " + e.getMessage());
+      return UnservedDestination.ofAnUnusableConfiguration(subscription, config, e.getMessage());
     }
   }
 }

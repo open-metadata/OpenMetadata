@@ -53,6 +53,11 @@ record BuiltInChannel(
   }
 
   @Override
+  public Optional<String> unavailableBecause() {
+    return transport().flatMap(Transport::unavailableBecause);
+  }
+
+  @Override
   public Destination<ChangeEvent> publisher(
       EventSubscription alert, SubscriptionDestination destination) {
     return publishers.apply(alert, destination);

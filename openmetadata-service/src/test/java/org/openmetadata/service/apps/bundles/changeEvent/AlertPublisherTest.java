@@ -64,7 +64,7 @@ class AlertPublisherTest {
     changeEvent = createMockChangeEvent();
 
     alertPublisher.eventSubscription = eventSubscription;
-    alertPublisher.destinationMap = new HashMap<>();
+    alertPublisher.openTick(new HashMap<>());
 
     lenient().when(eventSubscription.getName()).thenReturn("test-subscription");
     lenient().when(eventSubscription.getEnabled()).thenReturn(true);
@@ -118,7 +118,7 @@ class AlertPublisherTest {
     // Use TestAlertPublisher to avoid Entity.getCollectionDAO() static call
     TestAlertPublisher testPublisher = new TestAlertPublisher(dependencies);
     testPublisher.eventSubscription = eventSubscription;
-    testPublisher.destinationMap = new HashMap<>();
+    testPublisher.openTick(new HashMap<>());
 
     SubscriptionDestination subDest = createMockSubscriptionDestination();
     lenient().when(destination.getEnabled()).thenReturn(true);

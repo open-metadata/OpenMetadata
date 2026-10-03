@@ -1,7 +1,9 @@
 package org.openmetadata.service.events.subscription;
 
 import io.micrometer.core.instrument.Metrics;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+import org.openmetadata.service.events.subscription.ledger.DestinationOutcome;
 
 /**
  * What the alert pipeline counts about itself. The reconciler, the compare-and-set and the
@@ -26,6 +28,7 @@ public final class AlertTelemetry {
   private static final String STOPPED_BY_BUDGET = "alert_ticks_stopped_by_budget";
   private static final String IMMEDIATE_RERUNS = "alert_immediate_reruns";
   private static final String ATTEMPTS_ON_UNREACHABLE = "alert_attempts_on_unreachable_target";
+  private static final String DESTINATION_OUTCOMES = "alert_destination_outcomes";
 
   private AlertTelemetry() {}
 
@@ -60,6 +63,17 @@ public final class AlertTelemetry {
 
   public static void absorbed(String what) {
     Metrics.counter(ABSORBED, "what", what).increment();
+  }
+
+  /** One per destination and tick: delivered, failed, or not attempted and why. */
+  public static void destinationOutcome(DestinationOutcome outcome) {
+    Metrics.counter(
+            DESTINATION_OUTCOMES,
+            "kind",
+            outcome.kind().name().toLowerCase(Locale.ROOT),
+            "cause",
+            outcome.cause().name().toLowerCase(Locale.ROOT))
+        .increment();
   }
 
   public static void channelOutcomes(int succeeded, int failed) {

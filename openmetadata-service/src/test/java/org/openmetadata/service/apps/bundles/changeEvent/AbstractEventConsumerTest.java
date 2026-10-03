@@ -19,8 +19,6 @@ import static org.mockito.Mockito.*;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.util.*;
-import java.util.LinkedHashMap;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,9 +43,11 @@ import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO.FailedEventRow;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
-import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDetail;
@@ -464,15 +464,15 @@ class AbstractEventConsumerTest {
     consumer.eventSubscription = eventSubscription;
 
     UUID webhookId = UUID.randomUUID();
-    UUID emailId = UUID.randomUUID();
+    UUID slackId = UUID.randomUUID();
     Map<UUID, Destination<ChangeEvent>> destinations = new HashMap<>();
     destinations.put(webhookId, mockDestination(SubscriptionType.WEBHOOK));
-    destinations.put(emailId, mockDestination(SubscriptionType.EMAIL));
-    consumer.destinationMap = destinations;
+    destinations.put(slackId, mockDestination(SubscriptionType.SLACK));
+    consumer.openTick(destinations);
     consumer.ledger = TestLedgers.fresh();
 
     ChangeEvent event = createMockChangeEvent();
-    Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(webhookId, emailId));
+    Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(webhookId, slackId));
 
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
       alertUtil
@@ -497,69 +497,56 @@ class AbstractEventConsumerTest {
   }
 
   // #25312: same-type destinations get one send via the primary, recipients unioned across them.
+  // Slack rather than Email in these tests: the Email channel asks the mail server first.
   @Test
   @SuppressWarnings("unchecked")
   void testRecipientsUnionedAndSentOncePerSameTypeDestinations() throws Exception {
     RealPublishConsumer consumer = newRealConsumerWithMetrics();
 
-    Destination<ChangeEvent> emailA = mockDestination(SubscriptionType.EMAIL, true);
-    Destination<ChangeEvent> emailB = mockDestination(SubscriptionType.EMAIL, true);
-    SubscriptionDestination subA = emailA.getSubscriptionDestination();
-    SubscriptionDestination subB = emailB.getSubscriptionDestination();
+    Destination<ChangeEvent> slackA = mockDestination(SubscriptionType.SLACK, true);
+    Destination<ChangeEvent> slackB = mockDestination(SubscriptionType.SLACK, true);
+    SubscriptionDestination subA = slackA.getSubscriptionDestination();
+    SubscriptionDestination subB = slackB.getSubscriptionDestination();
     UUID idA = UUID.randomUUID();
     UUID idB = UUID.randomUUID();
-    Map<UUID, Destination<ChangeEvent>> destinations = new HashMap<>();
-    destinations.put(idA, emailA);
-    destinations.put(idB, emailB);
-    consumer.destinationMap = destinations;
+    Map<UUID, Destination<ChangeEvent>> destinations = new LinkedHashMap<>();
+    destinations.put(idA, slackA);
+    destinations.put(idB, slackB);
 
     ChangeEvent event = createMockChangeEvent();
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(idA, idB));
 
-    Recipient r1 = new EmailRecipient("a@example.com");
-    Recipient r2 = new EmailRecipient("b@example.com");
-    Set<Recipient> union = Set.of(r1, r2);
+    Recipient r1 =
+        new WebhookRecipient(new Webhook().withEndpoint(URI.create("https://hooks.example.com/a")));
+    Recipient r2 =
+        new WebhookRecipient(new Webhook().withEndpoint(URI.create("https://hooks.example.com/b")));
 
-    List<Set<Recipient>> sent = new ArrayList<>();
-    // Only the primary is sent to (Set order picks which), so record both and assert the total.
-    lenient()
-        .doAnswer(
-            inv -> {
-              sent.add(inv.getArgument(1));
-              return null;
-            })
-        .when(emailA)
-        .sendMessage(any(), any());
-    lenient()
-        .doAnswer(
-            inv -> {
-              sent.add(inv.getArgument(1));
-              return null;
-            })
-        .when(emailB)
-        .sendMessage(any(), any());
+    List<Recipient> sent = new ArrayList<>();
+    lenient().doAnswer(inv -> sent.add(inv.getArgument(1))).when(slackA).sendTo(any(), any());
+    lenient().doAnswer(inv -> sent.add(inv.getArgument(1))).when(slackB).sendTo(any(), any());
 
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(
                 RecipientResolver.class,
-                (mock, ctx) -> when(mock.resolveRecipients(any(), anyList())).thenReturn(union))) {
+                (mock, ctx) -> {
+                  when(mock.recipientsOf(any(), eq(subA))).thenReturn(Recipients.of(Set.of(r1)));
+                  when(mock.recipientsOf(any(), eq(subB)))
+                      .thenReturn(Recipients.of(Set.of(r1, r2)));
+                })) {
+      consumer.openTick(destinations);
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
 
       consumer.publishEvents(events);
 
-      assertEquals(1, sent.size(), "One send per SubscriptionType, via the primary destination");
-      assertEquals(union, sent.getFirst(), "Recipients unioned across same-type destinations");
-
-      RecipientResolver resolver = resolverCtor.constructed().getFirst();
-      ArgumentCaptor<List<SubscriptionDestination>> captor = ArgumentCaptor.forClass(List.class);
-      verify(resolver).resolveRecipients(eq(event), captor.capture());
-      assertEquals(2, captor.getValue().size());
-      assertTrue(
-          captor.getValue().containsAll(List.of(subA, subB)),
-          "Resolver receives every same-type destination so recipients dedup across them");
+      assertEquals(2, sent.size(), "One send per address, however many destinations lead to it");
+      assertEquals(Set.of(r1, r2), Set.copyOf(sent));
+      verify(slackA).sendTo(any(), eq(r1));
+      verify(slackB).sendTo(any(), eq(r2));
+      verify(slackA, times(1)).prepare(eq(event), any());
+      verify(slackB, never()).prepare(any(), any());
     }
 
     assertEquals(
@@ -568,13 +555,13 @@ class AbstractEventConsumerTest {
         "Event recorded once for the (event, subscription)");
   }
 
-  // #25312: empty recipients (destination requires them, none resolved) is a successful no-op send.
+  // Nobody to send to (the destination requires recipients and none resolved) sends nothing: the
+  // event failed, and the reason says it was never tried.
   @Test
-  void testEmptyRecipientsIsNoOpSuccessAndRecorded() throws Exception {
+  void testEmptyRecipientsFailsWithItsReason() throws Exception {
     RealPublishConsumer consumer = newRealConsumerWithMetrics();
-    Destination<ChangeEvent> email = mockDestination(SubscriptionType.EMAIL, true);
+    Destination<ChangeEvent> slack = mockDestination(SubscriptionType.SLACK, true);
     UUID id = UUID.randomUUID();
-    consumer.destinationMap = Map.of(id, email);
 
     ChangeEvent event = createMockChangeEvent();
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(id));
@@ -584,19 +571,22 @@ class AbstractEventConsumerTest {
             mockConstruction(
                 RecipientResolver.class,
                 (mock, ctx) ->
-                    when(mock.resolveRecipients(any(), anyList())).thenReturn(Set.of()))) {
+                    when(mock.recipientsOf(any(), any())).thenReturn(Recipients.none()))) {
+      consumer.openTick(Map.of(id, slack));
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
       consumer.publishEvents(events);
     }
 
-    verify(email, never()).sendMessage(any(), any());
-    assertEquals(
-        1,
-        (consumer.ledger.pending().delivered()).size(),
-        "Empty recipients is a no-op success and still recorded");
-    assertEquals(1, consumer.ledger.pending().successEvents());
+    verify(slack, never()).sendMessage(any(), any());
+    assertTrue(consumer.ledger.pending().delivered().isEmpty(), "nothing went out");
+    assertEquals(0, consumer.ledger.pending().successEvents());
+    assertEquals(1, consumer.ledger.pending().failedEvents());
+    assertEquals(1, consumer.capturedFailures.size());
+    assertTrue(
+        consumer.capturedFailures.getFirst().getMessage().contains("Not attempted: no "),
+        consumer.capturedFailures.getFirst().getMessage());
   }
 
   // #25312: destinations that don't require recipients always send.
@@ -605,7 +595,6 @@ class AbstractEventConsumerTest {
     RealPublishConsumer consumer = newRealConsumerWithMetrics();
     Destination<ChangeEvent> destination = mockDestination(SubscriptionType.WEBHOOK, false);
     UUID id = UUID.randomUUID();
-    consumer.destinationMap = Map.of(id, destination);
 
     ChangeEvent event = createMockChangeEvent();
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(id));
@@ -613,13 +602,14 @@ class AbstractEventConsumerTest {
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(RecipientResolver.class)) {
+      consumer.openTick(Map.of(id, destination));
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
       consumer.publishEvents(events);
 
       RecipientResolver resolver = resolverCtor.constructed().getFirst();
-      verify(resolver, never()).resolveRecipients(any(), any());
+      verify(resolver, never()).recipientsOf(any(), any());
     }
 
     verify(destination).sendMessage(eq(event), eq(Set.of()));
@@ -631,7 +621,7 @@ class AbstractEventConsumerTest {
   void testMixedDeliveryRecordsOnceAndReportsTypeFailure() throws Exception {
     RealPublishConsumer consumer = newRealConsumerWithMetrics();
     Destination<ChangeEvent> ok = mockDestination(SubscriptionType.WEBHOOK, false);
-    Destination<ChangeEvent> failing = mockDestination(SubscriptionType.EMAIL, false);
+    Destination<ChangeEvent> failing = mockDestination(SubscriptionType.SLACK, false);
     doThrow(mock(EventPublisherException.class)).when(failing).sendMessage(any(), any());
 
     UUID okId = UUID.randomUUID();
@@ -639,7 +629,6 @@ class AbstractEventConsumerTest {
     Map<UUID, Destination<ChangeEvent>> destinations = new HashMap<>();
     destinations.put(okId, ok);
     destinations.put(failId, failing);
-    consumer.destinationMap = destinations;
 
     ChangeEvent event = createMockChangeEvent();
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(okId, failId));
@@ -647,6 +636,7 @@ class AbstractEventConsumerTest {
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(RecipientResolver.class)) {
+      consumer.openTick(destinations);
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
@@ -679,7 +669,7 @@ class AbstractEventConsumerTest {
                 .withConfig(
                     new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com"))));
     UUID unusableId = UUID.randomUUID();
-    consumer.destinationMap = new LinkedHashMap<>(Map.of(unusableId, unusable));
+    consumer.openTick(new LinkedHashMap<>(Map.of(unusableId, unusable)));
     ChangeEvent event = createMockChangeEvent();
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(unusableId));
 
@@ -717,13 +707,16 @@ class AbstractEventConsumerTest {
       Destination<ChangeEvent> usable = mockDestination(SubscriptionType.WEBHOOK, false);
       UUID unusableId = UUID.randomUUID();
       UUID usableId = UUID.randomUUID();
-      consumer.destinationMap = Map.of(unusableId, unusable, usableId, usable);
+      // The channel is grouped in the order the alert declares its destinations.
+      Map<UUID, Destination<ChangeEvent>> destinations = new LinkedHashMap<>();
+      if (unusableFirst) {
+        destinations.put(unusableId, unusable);
+      }
+      destinations.put(usableId, usable);
+      destinations.putIfAbsent(unusableId, unusable);
+      consumer.openTick(destinations);
       ChangeEvent event = createMockChangeEvent();
-      // The channel is grouped in the order of the event's receivers.
-      Set<UUID> receivers =
-          new LinkedHashSet<>(
-              unusableFirst ? List.of(unusableId, usableId) : List.of(usableId, unusableId));
-      Map<ChangeEvent, Set<UUID>> events = Map.of(event, receivers);
+      Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(unusableId, usableId));
 
       try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
         alertUtil
@@ -737,19 +730,25 @@ class AbstractEventConsumerTest {
     }
   }
 
-  private Destination<ChangeEvent> mockDestination(SubscriptionType type) {
+  private Destination<ChangeEvent> mockDestination(SubscriptionType type) throws Exception {
     return mockDestination(type, false);
   }
 
   @SuppressWarnings("unchecked")
   private Destination<ChangeEvent> mockDestination(
-      SubscriptionType type, boolean requiresRecipients) {
+      SubscriptionType type, boolean requiresRecipients) throws Exception {
     Destination<ChangeEvent> destination = mock(Destination.class);
     SubscriptionDestination subscriptionDestination = mock(SubscriptionDestination.class);
     lenient().when(subscriptionDestination.getType()).thenReturn(type);
     lenient().when(destination.getEnabled()).thenReturn(true);
     lenient().when(destination.getSubscriptionDestination()).thenReturn(subscriptionDestination);
     lenient().when(destination.requiresRecipients()).thenReturn(requiresRecipients);
+    lenient().when(subscriptionDestination.getId()).thenReturn(UUID.randomUUID());
+    // A mock answers false for a Boolean, which would read as a destination switched off.
+    lenient().when(subscriptionDestination.getEnabled()).thenReturn(true);
+    lenient().when(destination.prepare(any())).thenCallRealMethod();
+    lenient().when(destination.prepare(any(), any())).thenCallRealMethod();
+    lenient().doCallRealMethod().when(destination).sendTo(any(), any());
     return destination;
   }
 
@@ -830,8 +829,9 @@ class AbstractEventConsumerTest {
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     EventSubscriptionDAOs.EventSubscriptionDAO subscriptionDAO = daoHoldingThePosition();
     when(collectionDAO.eventSubscriptionDAO()).thenReturn(subscriptionDAO);
-    ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
-    ArgumentCaptor<String> extension = ArgumentCaptor.forClass(String.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<FailedEventRow>> rows =
+        ArgumentCaptor.forClass((Class<List<FailedEventRow>>) (Class<?>) List.class);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
@@ -841,17 +841,15 @@ class AbstractEventConsumerTest {
       consumer.commit(null);
     }
 
-    verify(subscriptionDAO, times(2))
-        .upsertFailedEvent(
-            eq(subscriptionId.toString()), extension.capture(), json.capture(), anyString());
-    FailedEvent written = JsonUtils.readValue(json.getAllValues().getFirst(), FailedEvent.class);
+    verify(subscriptionDAO).batchUpsertFailedEvents(eq(subscriptionId.toString()), rows.capture());
+    FailedEvent written = JsonUtils.readValue(rows.getValue().getFirst().json(), FailedEvent.class);
     assertNull(written.getChangeEvent(), "there is no change event behind this failure");
     assertEquals("smtp refused the message", written.getReason());
     assertEquals(subscriptionId, written.getFailingSubscriptionId());
     assertNotNull(written.getTimestamp(), "the row has to date itself");
     assertEquals(
-        extension.getAllValues().getFirst(),
-        extension.getAllValues().getLast(),
+        rows.getValue().getFirst().extension(),
+        rows.getValue().getLast().extension(),
         "one key per subscription, so repeated failures replace rather than accumulate");
   }
 

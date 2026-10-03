@@ -458,9 +458,11 @@ export const createConversationAlert = async ({
 export const checkAlertConfigDetails = async ({
   page,
   sourceName,
+  destinationEndpoint,
 }: {
   page: Page;
   sourceName: string;
+  destinationEndpoint: string;
 }) => {
   // Verify alert configs
   await expect(page.getByTestId('source-select')).toHaveText(
@@ -479,22 +481,24 @@ export const checkAlertConfigDetails = async ({
 
   await expect(
     page.getByTestId('destination-category-select-0').getByRole('combobox')
-  ).toHaveValue('Owners');
-  await expect(
-    page.getByTestId('destination-type-select-0').getByRole('button')
-  ).toContainText('Email');
+  ).toHaveValue('Webhook');
+  await expect(page.getByTestId('endpoint-input-field-0')).toHaveValue(
+    destinationEndpoint
+  );
 };
 
 export const checkAlertDetailsForWithPermissionUser = async ({
   page,
   alertDetails,
   sourceName,
+  destinationEndpoint,
   table,
   user,
 }: {
   page: Page;
   alertDetails: AlertDetails;
   sourceName: string;
+  destinationEndpoint: string;
   table: TableClass;
   user: UserClass;
 }) => {
@@ -514,7 +518,7 @@ export const checkAlertDetailsForWithPermissionUser = async ({
   await updateDescription(page, ALERT_UPDATED_DESCRIPTION, true);
 
   // Check other configs
-  await checkAlertConfigDetails({ page, sourceName });
+  await checkAlertConfigDetails({ page, sourceName, destinationEndpoint });
   await checkRecentEventDetails({
     page,
     alertDetails,
@@ -527,11 +531,13 @@ export const checkAlertFlowForWithoutPermissionUser = async ({
   page,
   alertDetails,
   sourceName,
+  destinationEndpoint,
   table,
 }: {
   page: Page;
   alertDetails: AlertDetails;
   sourceName: string;
+  destinationEndpoint: string;
   table: TableClass;
 }) => {
   await visitNotificationAlertPage(page);
@@ -559,7 +565,7 @@ export const checkAlertFlowForWithoutPermissionUser = async ({
 
   await expect(page.getByTestId('delete-button')).not.toBeAttached();
 
-  await checkAlertConfigDetails({ page, sourceName });
+  await checkAlertConfigDetails({ page, sourceName, destinationEndpoint });
   await checkRecentEventDetails({
     page,
     alertDetails,
@@ -574,6 +580,7 @@ export const createAlertForRecentEventsCheck = async ({
   sourceName,
   sourceDisplayName,
   createButtonId,
+  destinationEndpoint,
   table,
 }: {
   page: Page;
@@ -584,6 +591,7 @@ export const createAlertForRecentEventsCheck = async ({
   createButtonId?: string;
   selectId?: string;
   addTrigger?: boolean;
+  destinationEndpoint: string;
   table: TableClass;
 }) => {
   await inputBasicAlertInformation({
@@ -611,14 +619,13 @@ export const createAlertForRecentEventsCheck = async ({
     eventTypes: ['entitySoftDeleted', 'entityRestored'],
   });
 
-  // Select Destination
+  // Select Destination: a receiver the test runs, so each event is really sent
   await page.click('[data-testid="add-destination-button"]');
-
-  await addInternalDestination({
+  await addExternalDestination({
     page,
     destinationNumber: 0,
-    category: 'Owners',
-    type: 'Email',
+    category: 'Webhook',
+    input: destinationEndpoint,
   });
 
   return await saveAlertAndVerifyResponse(page);

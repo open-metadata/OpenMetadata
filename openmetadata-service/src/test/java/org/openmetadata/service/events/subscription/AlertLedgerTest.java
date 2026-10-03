@@ -7,8 +7,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,7 @@ import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO.FailedEventRow;
 
 class AlertLedgerTest {
 
@@ -57,5 +60,35 @@ class AlertLedgerTest {
 
     assertEquals(AlertLedger.Commit.WRITTEN, result);
     assertEquals(9L, ledger.position());
+  }
+
+  // However many failure rows a tick has, they are written in one batch.
+  @Test
+  void failureRowsOfATickAreWrittenInOneBatch() {
+    EventSubscriptionDAO subscriptionDao = mock(EventSubscriptionDAO.class);
+    when(subscriptionDao.compareAndSetSubscriberExtension(
+            anyString(), eq(LedgerKeys.POSITION), anyString(), anyString()))
+        .thenReturn(1);
+    CollectionDAO dao = mock(CollectionDAO.class);
+    when(dao.eventSubscriptionDAO()).thenReturn(subscriptionDao);
+    UUID alertId = UUID.randomUUID();
+    AlertLedger ledger =
+        new AlertLedger(
+            new EventSubscription().withId(alertId), Map.of(LedgerKeys.POSITION, OPENED_AT));
+    ledger.readUpTo(9L, 0L);
+    List.of("a", "b", "c").forEach(key -> ledger.failure(key, "{}", "SUBSCRIBER"));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(dao);
+      ledger.commit();
+    }
+
+    verify(subscriptionDao)
+        .batchUpsertFailedEvents(
+            alertId.toString(),
+            List.of(
+                new FailedEventRow("a", "{}", "SUBSCRIBER"),
+                new FailedEventRow("b", "{}", "SUBSCRIBER"),
+                new FailedEventRow("c", "{}", "SUBSCRIBER")));
   }
 }

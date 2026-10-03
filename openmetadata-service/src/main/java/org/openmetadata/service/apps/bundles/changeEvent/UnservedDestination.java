@@ -15,40 +15,56 @@ package org.openmetadata.service.apps.bundles.changeEvent;
 
 import java.util.Set;
 import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.ledger.DestinationOutcome.Cause;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 
 /**
  * A destination nothing can be sent through: its channel is not registered on this server, or its
- * stored configuration is one the channel can no longer be built with. Nothing is resolved,
- * rendered or sent for it, it is never sent through another channel instead, and it costs the
- * alert's other destinations nothing.
+ * stored configuration is one the channel can no longer be built with. It never joins its
+ * channel's other destinations, and it is not attempted, with its own reason: nothing is resolved,
+ * rendered or sent for it, and it is never sent through another channel instead.
  */
-@Slf4j
 final class UnservedDestination implements Destination<ChangeEvent> {
   private final EventSubscription alert;
   @Getter private final SubscriptionDestination subscriptionDestination;
+  private final Cause cause;
   private final String reason;
 
-  UnservedDestination(EventSubscription alert, SubscriptionDestination destination, String reason) {
+  private UnservedDestination(
+      EventSubscription alert, SubscriptionDestination destination, Cause cause, String reason) {
     this.alert = alert;
     this.subscriptionDestination = destination;
+    this.cause = cause;
     this.reason = reason;
   }
 
   static UnservedDestination ofAnUnregisteredChannel(
       EventSubscription alert, SubscriptionDestination destination, String channelId) {
     return new UnservedDestination(
-        alert, destination, "The channel " + channelId + " is not registered on this server");
+        alert,
+        destination,
+        Cause.CHANNEL_NOT_REGISTERED,
+        "The channel " + channelId + " is not registered on this server");
   }
 
+  static UnservedDestination ofAnUnusableConfiguration(
+      EventSubscription alert, SubscriptionDestination destination, String why) {
+    return new UnservedDestination(
+        alert,
+        destination,
+        Cause.CONFIGURATION_UNUSABLE,
+        "its stored configuration is not usable: " + why);
+  }
+
+  // Nothing is ever sent through it, so a send that reached it anyway cannot read delivered.
   @Override
-  public void sendMessage(ChangeEvent event, Set<Recipient> recipients) {
-    LOG.debug("Destination {} not attempted: {}", subscriptionDestination.getId(), reason());
+  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
+      throws EventPublisherException {
+    throw new EventPublisherException(reason());
   }
 
   @Override
@@ -73,6 +89,10 @@ final class UnservedDestination implements Destination<ChangeEvent> {
 
   @Override
   public void close() {}
+
+  Cause cause() {
+    return cause;
+  }
 
   String reason() {
     return reason;

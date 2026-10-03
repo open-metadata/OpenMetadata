@@ -51,6 +51,7 @@ import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO.FailedEventRow;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.quartz.JobDetail;
@@ -470,11 +471,13 @@ class AlertStateIT {
             List.of(WITH_TIMESTAMP),
             List.of(1L));
     dao()
-        .upsertFailedEvent(
+        .batchUpsertFailedEvents(
             gone,
-            AbstractEventConsumer.FAILED_EVENT_EXTENSION + "-" + UUID.randomUUID(),
-            WITH_TIMESTAMP,
-            "test");
+            List.of(
+                new FailedEventRow(
+                    AbstractEventConsumer.FAILED_EVENT_EXTENSION + "-" + UUID.randomUUID(),
+                    WITH_TIMESTAMP,
+                    "test")));
 
     EventSubscriptionScheduler.getInstance().reconcileNow();
 

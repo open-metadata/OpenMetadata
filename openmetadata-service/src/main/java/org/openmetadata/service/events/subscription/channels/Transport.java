@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.events.subscription.channels;
 
+import java.util.Optional;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 
@@ -24,6 +25,11 @@ public interface Transport {
    * the configuration is judged as a submitted one.
    */
   void deliver(NotificationMessage message, SubscriptionDestination destination);
+
+  /** Empty while it can send, otherwise the reason it cannot, such as a mail server switched off. */
+  default Optional<String> unavailableBecause() {
+    return Optional.empty();
+  }
 
   /** Called once, when the server shuts down. */
   default void close() {}
