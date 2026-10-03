@@ -38,9 +38,6 @@ import {
   Trash01,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
-// TODO: LockUnlocked01 is not yet in @openmetadata/ui-core-components/icons — switch to the
-// core-ui import once the icon is added.
-import { LockUnlocked01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, noop } from 'lodash';
@@ -1221,7 +1218,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
               {!isOrgType && !team.deleted && (
                 <Dropdown.Item
                   data-testid="toggle-joinable"
-                  icon={team.isJoinable ? Lock01 : LockUnlocked01}
+                  icon={Lock01}
                   onAction={handleToggleJoinable}>
                   {team.isJoinable
                     ? t('label.make-private')
