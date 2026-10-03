@@ -145,6 +145,7 @@ export const useIncidentGroups = ({
     // fails. With nothing settled to keep, the re-read has to report itself
     // like any first read — it supersedes whatever it raced, so it is the only
     // request left to fill the section.
+    const previousRefreshKey = fetchedRefreshKey.current;
     const isBackground =
       !isDimensionChange &&
       hasSettledGroups.current &&
@@ -190,6 +191,9 @@ export const useIncidentGroups = ({
         response.paging.total
       );
       if (pageAfterEmptyRead !== undefined) {
+        // The earlier page is read the way this one was: a refresh stays in
+        // the background, keeping the rows on screen if that read fails too.
+        fetchedRefreshKey.current = previousRefreshKey;
         goToPage(pageAfterEmptyRead);
 
         return;
