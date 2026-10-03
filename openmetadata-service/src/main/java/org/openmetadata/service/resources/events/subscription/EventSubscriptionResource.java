@@ -49,11 +49,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.events.AlertCapabilities;
 import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
 import org.openmetadata.schema.api.events.AlertSchedulingInfo;
@@ -66,13 +64,11 @@ import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
-import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.NotificationResourceDescriptor;
-import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -84,6 +80,7 @@ import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertCatalog;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.events.subscription.DestinationValidation;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.events.subscription.SourceCapabilities;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -94,8 +91,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.URLValidator;
-import org.openmetadata.service.util.email.EmailUtil;
 import org.quartz.SchedulerException;
 
 @Slf4j
@@ -323,11 +318,6 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription request) {
-    if (request.getDestinations() != null && !request.getDestinations().isEmpty()) {
-      for (SubscriptionDestination destination : request.getDestinations()) {
-        validateDestinationConfig(destination);
-      }
-    }
     EventSubscription eventSub =
         mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, eventSub);
@@ -352,11 +342,6 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription create) {
-    if (create.getDestinations() != null && !create.getDestinations().isEmpty()) {
-      for (SubscriptionDestination destination : create.getDestinations()) {
-        validateDestinationConfig(destination);
-      }
-    }
     EventSubscription eventSub =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, eventSub);
@@ -1474,7 +1459,7 @@ public class EventSubscriptionResource
 
   private SubscriptionDestination sendTestMessageToDestination(
       SubscriptionDestination destination) {
-    validateDestinationConfig(destination);
+    DestinationValidation.validate(destination);
     try {
       Destination<ChangeEvent> alert = AlertFactory.getAlert(new EventSubscription(), destination);
       alert.sendTestMessage();
@@ -1496,113 +1481,6 @@ public class EventSubscriptionResource
       result = URL_QUERY_PATTERN.matcher(reason).replaceAll(REDACTED_QUERY_REPLACEMENT);
     }
     return result;
-  }
-
-  private void validateDestinationConfig(SubscriptionDestination destination) {
-    boolean isInternalDestination = isInternalDestination(destination.getCategory());
-    if (isInternalDestination) {
-      return;
-    }
-
-    Object config = destination.getConfig();
-
-    if (config == null) {
-      throw new WebApplicationException(
-          String.format("Destination configuration is required for %s type", destination.getType()),
-          Response.Status.BAD_REQUEST);
-    }
-
-    if (config instanceof Map && ((Map<?, ?>) config).isEmpty()) {
-      throw new WebApplicationException(
-          String.format("Destination configuration is empty for %s type", destination.getType()),
-          Response.Status.BAD_REQUEST);
-    }
-
-    switch (destination.getType()) {
-      case EMAIL -> validateEmailConfig(config);
-      case WEBHOOK, SLACK, MS_TEAMS, G_CHAT -> validateWebhookConfig(config);
-      case ACTIVITY_FEED, GOVERNANCE_WORKFLOW_CHANGE_EVENT -> {}
-    }
-  }
-
-  private boolean isInternalDestination(SubscriptionDestination.SubscriptionCategory category) {
-    return category != null && category != SubscriptionDestination.SubscriptionCategory.EXTERNAL;
-  }
-
-  private void validateEmailConfig(Object config) {
-    EmailAlertConfig emailConfig;
-    try {
-      emailConfig = JsonUtils.convertValue(config, EmailAlertConfig.class);
-    } catch (Exception e) {
-      throw new WebApplicationException(
-          "Invalid email configuration: " + e.getMessage(), Response.Status.BAD_REQUEST);
-    }
-
-    if (emailConfig.getReceivers() == null || emailConfig.getReceivers().isEmpty()) {
-      throw new WebApplicationException(
-          "Email destination requires at least one email address in 'receivers'",
-          Response.Status.BAD_REQUEST);
-    }
-
-    for (String email : emailConfig.getReceivers()) {
-      if (!EmailUtil.isValidEmail(email)) {
-        throw new WebApplicationException(
-            String.format("Invalid email format: '%s'", email), Response.Status.BAD_REQUEST);
-      }
-    }
-  }
-
-  private void validateWebhookConfig(Object config) {
-    Webhook webhookConfig;
-    try {
-      webhookConfig = JsonUtils.convertValue(config, Webhook.class);
-    } catch (Exception e) {
-      throw new WebApplicationException(
-          "Invalid webhook configuration: " + e.getMessage(), Response.Status.BAD_REQUEST);
-    }
-
-    if (webhookConfig.getEndpoint() == null) {
-      throw new WebApplicationException(
-          "Webhook destination requires an 'endpoint' URL", Response.Status.BAD_REQUEST);
-    }
-
-    String endpoint = webhookConfig.getEndpoint().toString();
-    if (endpoint.trim().isEmpty()) {
-      throw new WebApplicationException(
-          "Webhook endpoint URL cannot be empty", Response.Status.BAD_REQUEST);
-    }
-
-    try {
-      URLValidator.validateURL(endpoint);
-    } catch (Exception e) {
-      throw new WebApplicationException(
-          String.format("Invalid webhook endpoint URL: %s", e.getMessage()),
-          Response.Status.BAD_REQUEST);
-    }
-    if (webhookConfig.getAuthType() instanceof Map<?, ?> authMap
-        && WebhookOAuth2Config.Type.OAUTH_2.value().equals(authMap.get("type"))) {
-      WebhookOAuth2Config oauth2Config =
-          JsonUtils.convertValue(webhookConfig.getAuthType(), WebhookOAuth2Config.class);
-      String tokenUrl =
-          oauth2Config == null || oauth2Config.getTokenUrl() == null
-              ? null
-              : oauth2Config.getTokenUrl().toString();
-      if (oauth2Config == null
-          || nullOrEmpty(tokenUrl)
-          || nullOrEmpty(oauth2Config.getClientId())
-          || nullOrEmpty(oauth2Config.getClientSecret())) {
-        throw new WebApplicationException(
-            "OAuth2 configuration requires tokenUrl, clientId, and clientSecret",
-            Response.Status.BAD_REQUEST);
-      }
-      try {
-        URLValidator.validateURL(oauth2Config.getTokenUrl().toString());
-      } catch (Exception e) {
-        throw new WebApplicationException(
-            String.format("Invalid OAuth2 token URL: %s", e.getMessage()),
-            Response.Status.BAD_REQUEST);
-      }
-    }
   }
 
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors() {

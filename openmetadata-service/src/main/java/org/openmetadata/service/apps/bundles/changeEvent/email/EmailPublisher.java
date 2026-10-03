@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.email;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
-
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -26,7 +24,6 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -48,19 +45,16 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   private final EventSubscription eventSubscription;
 
   public EmailPublisher(
-      EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
-    if (subscriptionDestination.getType() == EMAIL) {
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDestination;
-      this.emailAlertConfig =
-          JsonUtils.convertValue(subscriptionDestination.getConfig(), EmailAlertConfig.class);
-      this.messageEngine =
-          new HandlebarsNotificationMessageEngine(
-              (NotificationTemplateRepository)
-                  Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
-    } else {
-      throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");
-    }
+      EventSubscription eventSubscription,
+      SubscriptionDestination subscriptionDestination,
+      EmailAlertConfig emailAlertConfig) {
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
+    this.emailAlertConfig = emailAlertConfig;
+    this.messageEngine =
+        new HandlebarsNotificationMessageEngine(
+            (NotificationTemplateRepository)
+                Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
   }
 
   @Override
@@ -96,10 +90,12 @@ public class EmailPublisher implements Destination<ChangeEvent> {
     } catch (Exception e) {
       setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
       String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), event, e.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
-          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage()),
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), e.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
   }
@@ -119,7 +115,9 @@ public class EmailPublisher implements Destination<ChangeEvent> {
     } catch (Exception e) {
       this.setStatusForTestDestination(
           TestDestinationStatus.Status.FAILED, 500, System.currentTimeMillis());
-      String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage());
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), e.getMessage());
       LOG.error(message);
       throw new EventPublisherException(message);
     }

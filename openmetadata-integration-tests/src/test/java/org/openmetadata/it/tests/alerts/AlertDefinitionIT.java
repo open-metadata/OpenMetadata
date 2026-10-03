@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory.EXTERNAL;
@@ -9,6 +10,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.util.SdkClients;
@@ -333,6 +335,163 @@ class AlertDefinitionIT {
             .orElseThrow()
             .getWarning();
     assertEquals("No chosen trigger applies to this source, so none of its events match.", warning);
+  }
+
+  // Destinations were checked by the REST resource on POST and PUT only, so a PATCH could store
+  // one that no channel can deliver to.
+  @Test
+  void patchedInvalidDestinationIs400(TestNamespace ns) {
+    EventSubscription alert = create(tableAlert(ns, "patched_invalid_destination"));
+
+    String message =
+        messageOfTheRefusal(
+            () ->
+                patch(
+                    alert,
+                    "[{\"op\":\"replace\",\"path\":\"/destinations/0/config/endpoint\","
+                        + "\"value\":\"ftp://not-a-webhook.example.com\"}]"));
+
+    assertTrue(message.contains("Invalid webhook endpoint URL"), message);
+  }
+
+  // A destination saved under older rules must not stop its alert from being edited.
+  @Test
+  void renameOfAlertWithStaleDestinationSucceeds(TestNamespace ns) {
+    EventSubscription alert = withADestinationTodaysRulesReject(ns, "stale_destination_rename");
+
+    patch(alert, "[{\"op\":\"add\",\"path\":\"/displayName\",\"value\":\"Renamed\"}]");
+
+    assertEquals("Renamed", AlertFixtures.stored(alert.getId()).getDisplayName());
+  }
+
+  // The patch the form sends on save: it fills in, empty, what the stored webhook leaves out.
+  @Test
+  void formSaveOfAlertWithStaleDestinationSucceeds(TestNamespace ns) {
+    EventSubscription alert = withADestinationTodaysRulesReject(ns, "stale_destination_form");
+
+    patch(
+        alert,
+        "[{\"op\":\"add\",\"path\":\"/destinations/0/config/headers\",\"value\":{}},"
+            + "{\"op\":\"add\",\"path\":\"/destinations/0/config/queryParams\",\"value\":{}},"
+            + "{\"op\":\"add\",\"path\":\"/destinations/0/config/authType\",\"value\":{}},"
+            + "{\"op\":\"add\",\"path\":\"/description\",\"value\":\"saved from the form\"}]");
+
+    assertEquals("saved from the form", AlertFixtures.stored(alert.getId()).getDescription());
+  }
+
+  @Test
+  void unchangedDestinationIsNotRevalidated(TestNamespace ns) {
+    EventSubscription alert = withADestinationTodaysRulesReject(ns, "stale_destination_put");
+    CreateEventSubscription sameDestinations =
+        tableAlert(ns, "stale_destination_put")
+            .withDescription("edited by put")
+            .withDestinations(alert.getDestinations());
+
+    put(sameDestinations);
+
+    assertEquals("edited by put", AlertFixtures.stored(alert.getId()).getDescription());
+    assertRejected(
+        () ->
+            patch(
+                alert,
+                "[{\"op\":\"replace\",\"path\":\"/destinations/0/config/endpoint\","
+                    + "\"value\":\"ftp://still-not-a-webhook.example.com\"}]"));
+  }
+
+  // A field the destination's channel does not define is refused on every path that saves it.
+  @Test
+  void destinationWithAFieldItsChannelDoesNotDefineIs400(TestNamespace ns) {
+    CreateEventSubscription request = tableAlert(ns, "undefined_field");
+    request.getDestinations().getFirst().withConfig(withAFieldNoReleaseDefines());
+    EventSubscription plain = create(tableAlert(ns, "undefined_field_on_edit"));
+
+    String message = messageOfTheRefusal(() -> create(request));
+
+    assertTrue(message.contains("Invalid webhook configuration"), message);
+    assertTrue(message.contains("format"), message);
+    assertRejected(
+        () ->
+            put(
+                tableAlert(ns, "undefined_field_on_edit")
+                    .withDestinations(request.getDestinations())));
+    assertRejected(
+        () ->
+            patch(
+                plain,
+                "[{\"op\":\"add\",\"path\":\"/destinations/0/config/format\","
+                    + "\"value\":\"legacy\"}]"));
+  }
+
+  // A PUT sends the stored destinations back, as the edit form does, and they are read again to
+  // encrypt their secrets. A field one carries that no release defines must not stop the save.
+  @Test
+  void putOfAlertWhoseStoredWebhookCarriesAnUndefinedFieldSucceeds(TestNamespace ns) {
+    EventSubscription alert = create(tableAlert(ns, "stored_undefined_field"));
+    alert.getDestinations().getFirst().withConfig(withAFieldNoReleaseDefines());
+    AlertFixtures.writeBehindTheServer(alert);
+
+    put(
+        tableAlert(ns, "stored_undefined_field")
+            .withDisplayName("Renamed")
+            .withDestinations(AlertFixtures.stored(alert.getId()).getDestinations()));
+
+    assertEquals("Renamed", AlertFixtures.stored(alert.getId()).getDisplayName());
+  }
+
+  @Test
+  void registeredChannelIsAccepted(TestNamespace ns) {
+    CreateEventSubscription request = tableAlert(ns, "channel_registered");
+    request.getDestinations().getFirst().withChannel("Webhook");
+
+    EventSubscription created = create(request);
+
+    EventSubscription stored = AlertFixtures.stored(created.getId());
+    assertEquals("Webhook", stored.getDestinations().getFirst().getChannel());
+  }
+
+  @Test
+  void unregisteredChannelIs400(TestNamespace ns) {
+    CreateEventSubscription request = tableAlert(ns, "channel_unregistered");
+    request.getDestinations().getFirst().withChannel("not.registered.here");
+    EventSubscription plain = create(tableAlert(ns, "channel_unregistered_by_patch"));
+
+    String message = messageOfTheRefusal(() -> create(request));
+
+    assertTrue(message.contains("No channel not.registered.here is registered"), message);
+    assertRejected(
+        () ->
+            patch(
+                plain,
+                "[{\"op\":\"add\",\"path\":\"/destinations/0/channel\","
+                    + "\"value\":\"not.registered.here\"}]"));
+  }
+
+  // A client that does not know the field leaves it out, and the alert is delivered by its type.
+  @Test
+  void saveLeavingChannelOutSucceeds(TestNamespace ns) {
+    CreateEventSubscription request = tableAlert(ns, "channel_left_out");
+    request.getDestinations().getFirst().withChannel("Webhook");
+    EventSubscription created = create(request);
+
+    put(tableAlert(ns, "channel_left_out").withDescription("saved without the field"));
+
+    EventSubscription stored = AlertFixtures.stored(created.getId());
+    assertEquals("saved without the field", stored.getDescription());
+    assertNull(stored.getDestinations().getFirst().getChannel());
+  }
+
+  private static EventSubscription withADestinationTodaysRulesReject(
+      TestNamespace ns, String name) {
+    EventSubscription alert = create(tableAlert(ns, name));
+    alert
+        .getDestinations()
+        .getFirst()
+        .withConfig(new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com")));
+    return AlertFixtures.writeBehindTheServer(alert);
+  }
+
+  private static Map<String, Object> withAFieldNoReleaseDefines() {
+    return Map.of("endpoint", "http://localhost:9/unused", "format", "legacy");
   }
 
   private static String messageOfTheRefusal(Runnable save) {

@@ -14,7 +14,6 @@ package org.openmetadata.service.notifications;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -27,13 +26,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.channels.ChannelRenderer;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
-import org.openmetadata.service.notifications.channels.email.EmailHtmlRenderer;
-import org.openmetadata.service.notifications.channels.gchat.GChatCardRenderer;
-import org.openmetadata.service.notifications.channels.slack.SlackBlockKitRenderer;
-import org.openmetadata.service.notifications.channels.teams.TeamsAdaptiveCardRenderer;
 import org.openmetadata.service.notifications.template.NotificationTemplateProcessor;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsNotificationTemplateProcessor;
 import org.openmetadata.service.util.email.EmailUtil;
@@ -45,26 +41,10 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
 
   private final NotificationTemplateRepository templateRepository;
   private final NotificationTemplateProcessor templateProcessor;
-  private final Map<SubscriptionDestination.SubscriptionType, ChannelRenderer> channelRenderers;
 
   public HandlebarsNotificationMessageEngine(NotificationTemplateRepository templateRepository) {
     this.templateRepository = templateRepository;
     this.templateProcessor = new HandlebarsNotificationTemplateProcessor();
-    this.channelRenderers = initializeChannelRenderers();
-  }
-
-  private Map<SubscriptionDestination.SubscriptionType, ChannelRenderer>
-      initializeChannelRenderers() {
-    Map<SubscriptionDestination.SubscriptionType, ChannelRenderer> renderers =
-        new EnumMap<>(SubscriptionDestination.SubscriptionType.class);
-
-    renderers.put(SubscriptionDestination.SubscriptionType.EMAIL, new EmailHtmlRenderer());
-    renderers.put(SubscriptionDestination.SubscriptionType.SLACK, SlackBlockKitRenderer.create());
-    renderers.put(
-        SubscriptionDestination.SubscriptionType.MS_TEAMS, TeamsAdaptiveCardRenderer.create());
-    renderers.put(SubscriptionDestination.SubscriptionType.G_CHAT, GChatCardRenderer.create());
-
-    return renderers;
   }
 
   @Override
@@ -97,13 +77,19 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
     }
 
     // Phase 2: Convert Markdown to channel-specific format
-    ChannelRenderer renderer = channelRenderers.get(destination.getType());
-    if (renderer == null) {
-      throw new IllegalArgumentException("Unsupported destination type: " + destination.getType());
-    }
+    ChannelRenderer renderer = rendererOf(destination);
 
     // Let the renderer handle markdown parsing and conversion
     return renderer.render(markdownContent, markdownSubject);
+  }
+
+  private static ChannelRenderer rendererOf(SubscriptionDestination destination) {
+    return Channels.required(destination)
+        .renderer()
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "Unsupported destination type: " + destination.getType()));
   }
 
   private Map<String, Object> buildEventContext(ChangeEvent event, EventSubscription subscription) {

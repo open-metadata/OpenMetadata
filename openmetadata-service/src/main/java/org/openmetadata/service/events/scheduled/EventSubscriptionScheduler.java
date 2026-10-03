@@ -44,6 +44,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertRows;
+import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
@@ -442,6 +443,7 @@ public class EventSubscriptionScheduler {
       instance.reconciler.stop();
       AlertJobs.stop();
       instance.alertsScheduler.shutdown(true);
+      Channels.closeTransports();
     }
   }
 }

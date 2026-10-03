@@ -1,6 +1,5 @@
 package org.openmetadata.service.governance.workflows;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
@@ -116,16 +115,8 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
   public WorkflowEventConsumer(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
-    if (subscriptionDestination.getType()
-        == SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT) {
-
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDestination;
-    } else {
-      throw new IllegalArgumentException(
-          String.format(
-              "WorkflowEventConsumer does not work with %s.", subscriptionDestination.getType()));
-    }
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
   }
 
   private static boolean isTransientDatabaseError(Throwable e) {
@@ -199,11 +190,11 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       LOG.error("WorkflowEventConsumer - Error processing event", exc);
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(
-              GOVERNANCE_WORKFLOW_CHANGE_EVENT, event, exc.getMessage());
+              subscriptionDestination.getType(), event, exc.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
           CatalogExceptionMessage.eventPublisherFailedToPublish(
-              GOVERNANCE_WORKFLOW_CHANGE_EVENT, exc.getMessage()),
+              subscriptionDestination.getType(), exc.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
   }
