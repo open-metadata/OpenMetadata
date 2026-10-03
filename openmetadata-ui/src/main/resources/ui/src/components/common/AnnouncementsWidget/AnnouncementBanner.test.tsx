@@ -247,6 +247,9 @@ describe('AnnouncementBanner', () => {
     // a button's UA `text-align: center` beats an inherited value.
     expect(title.closest('button')).toBeNull();
     expect(title).not.toHaveClass('tw:truncate');
+    // Nothing clips it now, so it has to fit by wrapping — a title with no break
+    // points would otherwise push itself and the badge past the banner's edge.
+    expect(title).toHaveClass('tw:min-w-0', 'tw:break-words');
   });
 
   it('should still truncate the collapsed title and keep its tooltip', () => {

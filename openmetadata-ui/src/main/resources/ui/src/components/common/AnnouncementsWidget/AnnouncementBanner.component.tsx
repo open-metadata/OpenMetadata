@@ -123,7 +123,17 @@ const AnnouncementTitle = ({
     return (
       <Typography
         as="span"
-        className={classNames(className, OVER_OVERLAY_CLASS, clickable)}
+        // Nothing clips this one, so it has to fit by wrapping. A flex item's
+        // minimum is its min-content width, so without `min-w-0` a title with no
+        // break points — an FQN, a URL, a bare identifier — cannot shrink, and
+        // without `break-words` it has nowhere to break: on the landing banner it
+        // pushed itself and the badge beside it past the banner's edge.
+        className={classNames(
+          className,
+          OVER_OVERLAY_CLASS,
+          'tw:min-w-0 tw:break-words',
+          clickable
+        )}
         data-testid="announcement-title-btn"
         size={size}
         weight="semibold"
