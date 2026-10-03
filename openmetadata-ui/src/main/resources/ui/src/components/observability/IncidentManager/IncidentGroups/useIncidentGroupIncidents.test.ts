@@ -152,4 +152,29 @@ describe('useIncidentGroupIncidents', () => {
 
     expect(result.current.incidents).toEqual([]);
   });
+
+  it("should not show the previous group's incidents while the next one loads", async () => {
+    const { result, rerender } = renderIncidents(GROUP);
+    await waitFor(() => expect(result.current.incidents).toEqual(INCIDENTS));
+
+    mockList.mockReturnValue(new Promise(jest.fn()));
+    rerender({ current: undefined });
+    rerender({
+      current: { ...GROUP, id: 'other-id', name: 'columnValuesToBeUnique' },
+    });
+
+    expect(result.current.incidents).toEqual([]);
+    expect(result.current.paging).toBeUndefined();
+    expect(result.current.isLoading).toBe(true);
+  });
+
+  it('should not refetch when the same group is handed in again as a new object', async () => {
+    const { result, rerender } = renderIncidents(GROUP);
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    rerender({ current: { ...GROUP, incidentCount: 3 } });
+
+    expect(mockList).toHaveBeenCalledTimes(1);
+    expect(result.current.incidents).toEqual(INCIDENTS);
+  });
 });
