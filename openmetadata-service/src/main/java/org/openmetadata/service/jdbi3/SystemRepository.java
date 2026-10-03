@@ -483,6 +483,10 @@ public class SystemRepository {
     if (settingsType == SettingsType.LOGIN_CONFIGURATION) {
       LoginAttemptCache.updateLoginConfiguration();
     }
+
+    if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
+      Entity.getSearchRepository().reconcileColumnIndex();
+    }
   }
 
   public void updateSetting(Settings setting) {
